@@ -1228,7 +1228,7 @@ function CommandCenterOverview({
     },
     {
       id: "reenrollment",
-      title: "Rematrícula",
+      title: "Situação académica",
       description: rematriculaCopy?.descricao ?? "Sem operação disponível neste momento.",
       value: rematriculaValue,
       tone: rematriculaTone,
@@ -1408,6 +1408,7 @@ function Catalogo({
   onResolverReconciliacao,
   onCancelPendingPedido,
   onRefreshRematricula,
+  onStartEnrollment,
   onRematricula,
   onRegularize,
 }: {
@@ -1450,6 +1451,7 @@ function Catalogo({
   onResolverReconciliacao: () => void;
   onCancelPendingPedido: () => Promise<void>;
   onRefreshRematricula: () => Promise<unknown>;
+  onStartEnrollment?: () => void;
   onRematricula: () => void;
   onRegularize: () => void;
 }) {
@@ -1724,6 +1726,41 @@ function Catalogo({
                 )}
               </div>
             ) : null}
+            {view === "reenrollment" && rematriculaState === "SOURCE_RECORD_REQUIRED" && (
+              <div role="status" className="mb-3 rounded-xl border border-border bg-muted/20 p-4">
+                <p className="text-sm font-semibold text-foreground">Matrícula de origem por confirmar</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Não há uma matrícula de origem confirmada nesta ficha. Consulte o vínculo do aluno antes de lançar notas ou iniciar uma rematrícula.
+                </p>
+                {onStartEnrollment ? (
+                  <button type="button" onClick={onStartEnrollment}
+                    className="mt-3 inline-flex min-h-10 items-center rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95">
+                    Abrir matrícula no Balcão
+                  </button>
+                ) : rematriculaAcademic?.source?.matricula_id ? (
+                  <button type="button" onClick={() => void onRefreshRematricula()}
+                    className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
+                    Verificar matrícula novamente
+                  </button>
+                ) : null}
+              </div>
+            )}
+            {view === "reenrollment" && rematriculaCanWriteGrades &&
+              rematriculaAcademic?.source?.turma_id &&
+              rematriculaAcademic?.source?.ano_letivo_id &&
+              ["ativo", "ativa", "active"].includes((rematriculaAcademic.source.status ?? "").toLowerCase()) &&
+              rematriculaAcademic?.regime?.escala !== "qualitativa" && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Notas individuais</p>
+                    <p className="text-xs text-muted-foreground">Registar uma avaliação do aluno selecionado, conforme o trimestre autorizado.</p>
+                  </div>
+                  <button type="button" onClick={() => onLancarNota(null)}
+                    className="inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
+                    Lançar nota
+                  </button>
+                </div>
+              )}
             {/* All seven non-standard academic cases are resolved in-place. */}
             {raaMatriculaId && raaAlunoId ? (
               <RaaBalcaoResolutionPanel
@@ -1769,6 +1806,7 @@ function Catalogo({
                 status={rematriculaState}
                 anoDestino={rematriculaAnoLabel}
                 turma={rematriculaDestinoTurma}
+                taxaValor={rematriculaPrice}
                 canContinue={rematriculaReady && !rematriculaWizardOpen}
                 onContinue={onRematricula}
               />
@@ -3119,7 +3157,7 @@ export default function BalcaoAtendimento({
         </div>
       ) : null}
       {view === "reenrollment" && dossier.aluno && (
-        <section aria-label="Aluno selecionado para rematrícula"
+        <section aria-label="Aluno selecionado para situação académica"
           className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-3 sm:p-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-foreground" aria-hidden="true">
             {dossier.aluno.nome.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
@@ -3196,7 +3234,7 @@ export default function BalcaoAtendimento({
                   }
                   rematriculaState={
                     view === "reenrollment" || servicos.some(isServicoRematricula)
-                      ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
+                      ? !dossier.aluno.matricula_id ? "SOURCE_RECORD_REQUIRED" : rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
                       : null
                   }
                   rematriculaPrice={rematricula.service?.valor_base ?? null}
@@ -3241,6 +3279,7 @@ export default function BalcaoAtendimento({
                   onResolverReconciliacao={rematricula.openReconciliationModal}
                   onCancelPendingPedido={rematricula.cancelPendingPedido}
                   onRefreshRematricula={rematricula.refreshStatus}
+                  onStartEnrollment={!dossier.aluno.matricula_id && onNavigateAction ? () => onNavigateAction("enrollment") : undefined}
                   onRematricula={rematricula.openModal}
                   onRegularize={() => setDebtModalOpen(true)}
                 />

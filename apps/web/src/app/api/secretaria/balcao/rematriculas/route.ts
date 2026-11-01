@@ -604,7 +604,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "O pagamento não possui itens com valor válido.", code: "PAYMENT_ITEMS_EMPTY" }, { status: 409 });
     }
 
-    const { data: pedidosExistentes } = await (supabase as any)
+    const { data: pedidosExistentes, error: pedidosExistentesError } = await (supabase as any)
       .from("servico_pedidos")
       .select("id, status, reason_code, reason_detail, contexto")
       .eq("escola_id", escolaId)
@@ -612,6 +612,9 @@ export async function POST(request: Request) {
       .eq("servico_codigo", SERVICE_CODE)
       .in("status", ["pending_payment", "granted"])
       .order("created_at", { ascending: false });
+    // Se não conseguimos consultar pedidos existentes, nunca presumir
+    // "não foi pago" e abrir outra cobrança.
+    if (pedidosExistentesError) throw pedidosExistentesError;
     const pedidosDoAno = (pedidosExistentes ?? []).filter(
       (pedido: any) => pedido.contexto?.ano_letivo_id === academicContext.anoLetivoId
         || Number(pedido.contexto?.ano_letivo) === Number(academicContext.anoLetivoLabel.slice(0, 4)),
@@ -629,13 +632,13 @@ export async function POST(request: Request) {
     }
     if (pedidoExistente?.status === "granted") {
       const matriculaDestinoId = (pedidoExistente.contexto as any)?.matricula_destino_id;
-      if (!matriculaDestinoId) {
-        // The payment may have granted the service before the academic
-        // matrícula was finalized. Never issue a second charge or fabricate
-        // a destination from the origin matrícula; reconcile the paid order.
+      if (!matriculaDestinoId || !matriculaDestino?.id ||
+          String(matriculaDestinoId) !== String(matriculaDestino.id)) {
+        // Um pedido concedido não prova que a matrícula de destino foi
+        // concluída para este aluno/escola/ano. Reconciliar sem recobrar.
         return NextResponse.json({
           ok: false,
-          error: "Pagamento já recebido; a matrícula será concluída sem nova cobrança.",
+          error: "Pagamento já confirmado; verifique o vínculo da matrícula de destino sem criar uma nova cobrança.",
           code: "REMATRICULA_RECONCILIATION_REQUIRED",
           pedido_id: pedidoExistente.id,
         }, { status: 409 });
@@ -721,18 +724,21 @@ export async function POST(request: Request) {
       // prosseguir com o método escolhido no atendimento actual.
       let pagamentoAssociado = false;
       if (!pedidoExistente.contexto?.reason_code && !pedidoExistente.reason_code) {
-        const { data: intents } = await (supabase as any)
+        const { data: intents, error: intentsError } = await (supabase as any)
           .from("pagamento_intents")
           .select("id")
           .eq("escola_id", escolaId)
           .eq("servico_pedido_id", pedidoExistente.id)
           .limit(1);
-        const { data: pagamentos } = await (supabase as any)
+        const { data: pagamentos, error: pagamentosError } = await (supabase as any)
           .from("pagamentos")
           .select("id, meta")
           .eq("escola_id", escolaId)
           .eq("aluno_id", body.aluno_id)
           .limit(50);
+        // Nunca cancelar pedido/recomeçar cobrança quando as provas de
+        // pagamento não puderam ser consultadas.
+        if (intentsError || pagamentosError) throw intentsError ?? pagamentosError;
         pagamentoAssociado = Boolean(
           (intents ?? []).length > 0 ||
           (pagamentos ?? []).some((pagamento: any) =>
@@ -831,6 +837,13 @@ export async function POST(request: Request) {
       })
       .select("id, contexto")
       .single();
+    if (pedidoError?.code === "23505") {
+      return NextResponse.json({
+        ok: false,
+        code: "PAYMENT_IN_PROGRESS",
+        error: "Já existe uma operação de rematrícula para este aluno e ano. Atualize o atendimento antes de cobrar.",
+      }, { status: 409 });
+    }
     if (pedidoError) throw pedidoError;
 
     let paymentJson: any = { data: null };

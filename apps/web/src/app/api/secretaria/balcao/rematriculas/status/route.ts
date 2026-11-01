@@ -102,7 +102,7 @@ export async function GET(request: Request) {
 
     // Pedidos desta sessão permanecem recuperáveis mesmo depois de a janela
     // fechar, sem criar uma nova cobrança ou associá-los a outro ano.
-    const { data: rematriculaPedidosAtivos } = await supabase
+    const { data: rematriculaPedidosAtivos, error: pedidosAtivosError } = await supabase
       .from("servico_pedidos")
       .select("id, status, created_at, reason_code, reason_detail, valor_cobrado, contexto")
       .eq("escola_id", escolaId)
@@ -110,6 +110,9 @@ export async function GET(request: Request) {
       .eq("servico_codigo", "SERV_REMATRICULA")
       .in("status", ["pending_payment", "granted"])
       .order("created_at", { ascending: false });
+    // A leitura da cobrança é obrigatória: falhar a consulta não é
+    // equivalente a "sem pagamento", pois permitiria nova cobrança indevida.
+    if (pedidosAtivosError) throw pedidosAtivosError;
     const targetScope = await resolveAnoLetivoScope(supabase, escolaId, { anoLetivoId: academicContext.anoLetivoId });
     // Nunca associar o ano destino ao ID do ano de origem. Isso criava um
     // contexto contraditório (ex.: etiqueta 2027/2028, sessão real 2026/2027).
@@ -395,18 +398,19 @@ export async function GET(request: Request) {
     // abandonada, não um pagamento em andamento.
     let pedidoTemPagamentoAssociado = false;
     if (pedidoExistente?.status === "pending_payment") {
-      const { data: intents } = await supabase
+      const { data: intents, error: intentsError } = await supabase
         .from("pagamento_intents")
         .select("id, status, reference, evidence_url")
         .eq("escola_id", escolaId)
         .eq("servico_pedido_id", pedidoExistente.id)
         .limit(1);
-      const { data: pagamentos } = await supabase
+      const { data: pagamentos, error: pagamentosError } = await supabase
         .from("pagamentos")
         .select("id, meta")
         .eq("escola_id", escolaId)
         .eq("aluno_id", aluno_id)
         .limit(50);
+      if (intentsError || pagamentosError) throw intentsError ?? pagamentosError;
       pedidoTemPagamentoAssociado = Boolean(
         (intents ?? []).length > 0 ||
         (pagamentos ?? []).some((pagamento: any) =>
@@ -450,7 +454,15 @@ export async function GET(request: Request) {
 
     // ── Determine status ──────────────────────────────────────────────────
     let status = "READY";
-    const pedidoTemMatriculaDestino = Boolean(pedidoExistente?.contexto?.matricula_destino_id);
+    // A referência no pedido só comprova a progressão se corresponder à
+    // matrícula de destino do próprio aluno, da própria escola e do ano alvo.
+    // Nunca declarar conclusão financeira/academica a partir de uma referência
+    // órfã, nem do comprovativo de uma matrícula diferente.
+    const pedidoDestinoId = pedidoExistente?.contexto?.matricula_destino_id;
+    const pedidoTemMatriculaDestino = Boolean(
+      pedidoDestinoId && matriculaDestino?.id &&
+      String(pedidoDestinoId) === String(matriculaDestino.id),
+    );
     const historicoAcademicoPendente =
       pedidoExistente?.status === "granted" &&
       pedidoTemMatriculaDestino &&
@@ -464,8 +476,8 @@ export async function GET(request: Request) {
     // não pode voltar a READY nem desaparecer da operação da secretaria.
     // Mantê-la na fila de reconciliação permite escolher a turma e completar
     // a progressão sem cobrar novamente.
-    const pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoTemMatriculaDestino && !comprovanteData;
-    const pedidoConcluido = pedidoExistente?.status === "granted" && (pedidoTemMatriculaDestino || Boolean(comprovanteData));
+    const pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoTemMatriculaDestino;
+    const pedidoConcluido = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino;
     if (historicoAcademicoPendente) {
       status = "ACADEMIC_HISTORY_PENDING";
     } else if (comprovantePendente) {
@@ -502,12 +514,14 @@ export async function GET(request: Request) {
       status = "WINDOW_CLOSED";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
+    } else if (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe")) {
+      // Não mostrar CTA ativo se o wizard não puder abrir por falta do serviço.
+      // Isenção explícita por classe (preço 0) continua permitida.
+      status = "PRICE_NOT_CONFIGURED";
     } else if (matriculaDestino?.turma_id && !reclassificacao) {
       status = "RECONFIRMATION_REQUIRED";
     } else if (reclassificacao) {
       status = "FINALIST_PENDING";
-    } else if (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe")) {
-      status = "PRICE_NOT_CONFIGURED";
     }
 
     // ── Extract turma_id from granted pedido contexto ─────────────────────

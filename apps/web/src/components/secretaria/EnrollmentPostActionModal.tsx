@@ -50,6 +50,8 @@ export function EnrollmentPostActionModal({
   const [periodError, setPeriodError] = useState<string | null>(null);
   const [periodReadOnly, setPeriodReadOnly] = useState(false);
   const [nota, setNota] = useState("");
+  const [gradeReceipt, setGradeReceipt] = useState<{ disciplina: string; trimestre: number; tipo: string; valor: number } | null>(null);
+  const [tipoAvaliacao, setTipoAvaliacao] = useState<"MAC" | "NPP" | "NPT">("MAC");
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -58,6 +60,7 @@ export function EnrollmentPostActionModal({
       setResult(null);
       setShowPassword(false);
       setCopied(false);
+      setGradeReceipt(null);
     }
   }, [open, action]);
 
@@ -69,6 +72,8 @@ export function EnrollmentPostActionModal({
     setPeriodError(null);
     setPeriodReadOnly(false);
     setNota("");
+    setGradeReceipt(null);
+    setTipoAvaliacao("MAC");
     setDisciplinaId("");
     setTurmaDisciplinaId("");
     setNotaMaxima(null);
@@ -233,12 +238,16 @@ export function EnrollmentPostActionModal({
           disciplina_id: selected.disciplina.id,
           turma_disciplina_id: selected.id,
           trimestre: Number(periodo),
+          tipo_avaliacao: tipoAvaliacao,
           notas: [{ aluno_id: alunoId, valor }],
         }),
       });
       const json = await response.json().catch(() => ({}));
       if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível lançar a nota.");
-      setResult({ login: "Nota lançada", senha: null });
+      setGradeReceipt({
+        disciplina: selected.disciplina.nome ?? "Disciplina",
+        trimestre: Number(periodo), tipo: tipoAvaliacao, valor,
+      });
       onAcademicSaved?.();
     } catch (error) {
       setResult({ error: error instanceof Error ? error.message : "Não foi possível lançar a nota." });
@@ -248,6 +257,7 @@ export function EnrollmentPostActionModal({
   };
 
   const selectedPeriod = periodos.find((item) => String(item.numero) === periodo);
+  const periodClosed = selectedPeriod?.estado === "past" || selectedPeriod?.estado === "locked";
   const periodUnavailable = periodLoading || Boolean(periodError) || periodReadOnly ||
     !selectedPeriod || !selectedPeriod.disciplina_ativa || ["future", "unconfigured"].includes(selectedPeriod.estado);
 
@@ -323,7 +333,7 @@ export function EnrollmentPostActionModal({
               </div>
             )}
             {!academicYearId && !academicYearError && <p className="text-xs text-muted-foreground">A confirmar o ano letivo ativo...</p>}
-            <select value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); setNota(""); setResult(null); }} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" disabled={!turmaId || loading}>
+            <select value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); setNota(""); setResult(null); }} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" disabled={!turmaId || loading || Boolean(gradeReceipt)}>
               <option value="">Selecionar disciplina</option>
               {disciplinas.map((item) => <option key={item.id} value={item.disciplina?.id ?? ""}>{item.disciplina?.nome ?? "Disciplina"}</option>)}
             </select>
@@ -339,12 +349,20 @@ export function EnrollmentPostActionModal({
                 </button>
               </div>
             )}
-            {periodReadOnly && <p role="status" className="text-xs text-muted-foreground">Este ano letivo está encerrado. Consulte a direção para reabertura.</p>}
-            <div className="grid grid-cols-2 gap-3">
+            {periodReadOnly && (
+              <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/20 p-3">
+                <p className="text-xs text-muted-foreground">Ano letivo encerrado. Solicite a reabertura à direção antes de lançar notas.</p>
+                <button type="button" onClick={() => setPeriodRetry((value) => value + 1)}
+                  disabled={periodLoading} className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted">
+                  Verificar novamente
+                </button>
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <select aria-label="Trimestre da matrícula de origem" value={periodo}
                 onChange={(event) => { setPeriodo(event.target.value); setNota(""); setResult(null); }}
                 className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                disabled={loading || periodLoading || Boolean(periodError) || periodReadOnly}>
+                disabled={loading || periodLoading || Boolean(periodError) || periodReadOnly || Boolean(gradeReceipt)}>
                 <option value="">Selecionar trimestre</option>
                 {periodos.map((item) => <option key={item.numero} value={String(item.numero)}
                   disabled={!item.disciplina_ativa || item.estado === "future" || item.estado === "unconfigured"}>
@@ -354,12 +372,60 @@ export function EnrollmentPostActionModal({
                     item.estado === "locked" ? " · encerrado" : ""}
                 </option>)}
               </select>
-              <input type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-border bg-background px-3 py-2 text-sm" disabled={loading} />
+              <select aria-label="Tipo de avaliação" value={tipoAvaliacao}
+                onChange={(event) => { setTipoAvaliacao(event.target.value as "MAC" | "NPP" | "NPT"); setNota(""); setResult(null); }}
+                disabled={loading || periodUnavailable || Boolean(gradeReceipt)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm">
+                <option value="MAC">MAC · Avaliação contínua</option>
+                <option value="NPP">NPP · Prova do professor</option>
+                <option value="NPT">NPT · Prova trimestral</option>
+              </select>
+              <input aria-label="Nota do aluno" type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => { setNota(event.target.value); setResult(null); }} placeholder="Nota" className="rounded-xl border border-border bg-background px-3 py-2 text-sm" disabled={loading || periodUnavailable || Boolean(gradeReceipt)} />
             </div>
-            {selectedPeriod && ["past", "locked"].includes(selectedPeriod.estado) &&
-              <p role="status" className="text-xs text-muted-foreground">Este período exige autorização de reabertura para correções.</p>}
-            {result?.error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{result.error}</p>}
-            {result?.login === "Nota lançada" ? <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-4 w-4" /> Nota lançada com sucesso.</p> : <button type="button" onClick={() => void lancarNota()} disabled={loading || periodUnavailable || !turmaId || !academicYearId || Boolean(academicYearError) || Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground disabled:opacity-60">{loading && <Loader2 className="h-4 w-4 animate-spin" />} Lançar nota</button>}
+            {!periodLoading && !periodError && !periodReadOnly && periodos.length > 0 &&
+              periodos.every((item) => !item.disciplina_ativa || ["future", "unconfigured"].includes(item.estado)) && (
+                <p role="status" className="rounded-xl border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  Esta disciplina ainda não tem um trimestre disponível para lançamento. Verifique o calendário académico.
+                </p>
+              )}
+            {periodClosed && (
+              <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs text-foreground">
+                Período encerrado. O lançamento só será aceite se a direção tiver autorizado a reabertura.
+                <button type="button" onClick={() => setPeriodRetry((value) => value + 1)}
+                  disabled={periodLoading}
+                  className="ml-2 inline-flex rounded-xl border border-border bg-card px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted">
+                  Atualizar período
+                </button>
+              </p>
+            )}
+            {result?.error && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-foreground">{result.error}</p>}
+            {gradeReceipt ? (
+              <div role="status" aria-live="polite" className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+                <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-emerald" aria-hidden="true" /> Nota registada
+                </p>
+                <p className="text-sm text-foreground">
+                  {gradeReceipt.disciplina} · {gradeReceipt.trimestre}.º trimestre · {gradeReceipt.tipo} · {gradeReceipt.valor}
+                </p>
+                <p className="text-xs text-muted-foreground">Confirme a situação académica atualizada antes de continuar.</p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => onOpenChange(false)}
+                    className="rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95">Concluir</button>
+                  <button type="button" onClick={() => { setGradeReceipt(null); setNota(""); setDisciplinaId(""); setTurmaDisciplinaId(""); setPeriodo(""); setResult(null); }}
+                    className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
+                    Lançar outra avaliação
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" onClick={() => void lancarNota()}
+                disabled={loading || periodUnavailable || !turmaId || !academicYearId || Boolean(academicYearError) ||
+                  Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-3 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {loading ? "A guardar nota…" : periodClosed ? "Guardar com reabertura autorizada" : "Guardar nota"}
+              </button>
+            )}
           </div>
         )}
 

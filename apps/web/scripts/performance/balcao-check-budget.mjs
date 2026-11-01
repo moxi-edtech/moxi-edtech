@@ -16,7 +16,8 @@ assert.deepEqual(after.errors,[],"no browser runtime errors");
 assert.ok(after.idle.requests <= baseline.idle.requests,"idle requests must not increase");
 const statuses=[];
 for (const [name, original] of Object.entries(baseline.perTab)){
-  const current=after.perTab[name];
+  // Keep the immutable baseline key while matching the renamed visible tab.
+  const current=after.perTab[name === "Rematrícula" ? "Situação académica" : name];
   assert.ok(current, name+": route disappeared from benchmark");
   const reqCap=original.requests.median>0?1:0;
   assert.ok(current.requests.median<=reqCap, name+": repeated navigation calls exceeded fixture budget");

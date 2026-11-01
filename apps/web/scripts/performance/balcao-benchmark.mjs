@@ -17,7 +17,7 @@ const idleMs = Math.max(1000, Number(process.env.PERF_IDLE_MS || 60000));
 const capture = process.env.PERF_CAPTURE === "1";
 const studentId = "00000000-0000-4000-8000-000000000401";
 const yearId = "00000000-0000-4000-8000-000000000404";
-const tabs = ["Visão geral", "Matrícula", "Rematrícula", "Pagar", "Documento", "Perfil", "Nota"];
+const tabs = ["Visão geral", "Matrícula", "Situação académica", "Pagar", "Documento", "Perfil", "Nota"];
 const viewports = [[1366,768],[1536,864],[1920,1080],[768,1024],[390,844]];
 const zooms = [1,1.25,1.5];
 
