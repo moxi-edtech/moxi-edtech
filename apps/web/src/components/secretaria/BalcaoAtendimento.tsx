@@ -1515,6 +1515,8 @@ function Catalogo({
           anoDestino={rematriculaAnoLabel}
           status={rematriculaState}
           motivo={rematriculaAcademic?.reason ?? null}
+          academic={rematriculaAcademic ?? null}
+          canLancarNota={rematriculaCanWriteGrades}
           progress={activeProgress}
           timeline={rematriculaTimeline}
           timelineAno={rematriculaTimelineYear != null ? `${rematriculaTimelineYear}/${rematriculaTimelineYear + 1}` : null}
