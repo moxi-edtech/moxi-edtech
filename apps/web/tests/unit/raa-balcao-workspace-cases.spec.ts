@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildRaaBalcaoWorkspaceCases, raaBalcaoProgress } from "../../src/lib/rematricula/raa-balcao-cases";
+import { buildRaaBalcaoWorkspaceCases, raaBalcaoProgress, raaSubjectIssueLabel } from "../../src/lib/rematricula/raa-balcao-cases";
 
 const source = {
   primaryAction: "justificacao" as const,
@@ -73,4 +73,18 @@ test("missing names never become fictitious numbered disciplines or raw UUID lab
   });
   assert.equal(items[0].titulo, "Nome da disciplina indisponível");
   assert.equal(items[0].referenceId, "d1");
+});
+
+test("verified RAA subject statuses become short diagnostics without inventing missing components", () => {
+  const items = buildRaaBalcaoWorkspaceCases({
+    primaryAction: "nota", title: "Pauta por concluir",
+    disciplinaIds: ["math", "port", "unknown"],
+    disciplinaNames: { math: "Matemática", port: "Língua Portuguesa", unknown: "Geografia" },
+    disciplinaStatuses: { math: "pendente_formula", port: "pendente_dados" },
+  });
+  assert.deepEqual(items.map((i) => i.resumo), ["Fórmula pendente", "Dados da pauta incompletos", ""]);
+  assert.equal(raaSubjectIssueLabel("aprovado"), "");
+  assert.equal(raaSubjectIssueLabel("recurso"), "Resultado em recurso");
+  assert.equal(raaBalcaoProgress(items).total, 3);
+  assert.equal(items.every((i) => i.periodo === "nao_identificado"), true);
 });
