@@ -22,12 +22,39 @@ type Resultado = { exame_sessao_id: string; nota: number | null; estado: string 
 
 const PROVAS = new Set(["PROVA_TRIMESTRAL", "EXAME_NACIONAL", "EXAME_ORAL", "EXAME_ESCRITO", "EXAME_EXTRAORDINARIO"]);
 
-/** School-wide events coexist with offering-specific events. Never include another offering. */
-export function selectApplicableCalendarRecords<T extends { offering_id: string | null }>(
-  records: readonly T[], offeringId: string | null,
-): T[] {
-  return records.filter((record) => record.offering_id == null ||
-    (offeringId !== null && record.offering_id === offeringId));
+/**
+ * School-wide calendar items coexist with the student's own offering.
+ * A specific instance replaces the shared copy only when both represent
+ * the SAME canonical event (source_item_id), or a truly identical legacy item.
+ * Never remove independent school-wide events or include another offering.
+ */
+export function selectApplicableCalendarRecords<T extends {
+  offering_id: string | null;
+  source_item_id?: string | null;
+  tipo?: string;
+  nome?: string | null;
+  data_inicio?: string;
+  data_fim?: string;
+}>(records: readonly T[], offeringId: string | null): T[] {
+  const scoped = records.filter((record) =>
+    record.offering_id === null || (offeringId !== null && record.offering_id === offeringId));
+  const selected = new Map<string, T>();
+  scoped.forEach((record, index) => {
+    const sourceId = record.source_item_id?.trim();
+    const name = record.nome?.trim();
+    // Fallback is safe only for exact duplicates; same dates and type alone
+    // may represent distinct exams, which must remain visible separately.
+    const key = sourceId
+      ? "source:" + record.tipo + ":" + sourceId
+      : name && record.tipo && record.data_inicio && record.data_fim
+        ? "legacy:" + [record.tipo, name, record.data_inicio, record.data_fim].join(":")
+        : "row:" + index;
+    const previous = selected.get(key);
+    if (!previous || (record.offering_id === offeringId && previous.offering_id === null)) {
+      selected.set(key, record);
+    }
+  });
+  return Array.from(selected.values());
 }
 
 /** An offering-specific trimester overrides its school-wide counterpart, one period at a time. */
