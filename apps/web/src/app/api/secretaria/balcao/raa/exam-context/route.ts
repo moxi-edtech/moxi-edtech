@@ -9,7 +9,8 @@ export const revalidate = 0;
 
 // Only existing official sessions and curriculum assignments are returned.
 // The source enrolment (not the target enrolment year) anchors the context.
-const roles = ["professor", "secretaria", "admin", "admin_escola", "staff_admin", "diretor"] as const;
+const roles = ["professor", "secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin", "diretor"] as const;
+const resultWriterRoles = ["professor", "secretaria", "admin", "admin_escola", "staff_admin", "diretor"] as const;
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
@@ -22,6 +23,9 @@ export async function GET(request: Request) {
   if (!escolaId) return NextResponse.json({ ok: false, error: "Escola indisponível." }, { status: 403 });
   const access = await requireRoleInSchool({ supabase, escolaId, roles: [...roles] });
   if (access.error) return access.error;
+  // The result writer endpoint has a narrower role contract. Match it here
+  // so the Balcão does not offer a save action that would be rejected.
+  const canWrite = await requireRoleInSchool({ supabase, escolaId, roles: [...resultWriterRoles] });
 
   const { data: matricula, error: matriculaError } = await supabase.from("matriculas")
     .select("id,aluno_id,turma_id,session_id,status")
@@ -56,6 +60,7 @@ export async function GET(request: Request) {
       turma_id: matricula.turma_id, ano_letivo_id: matricula.session_id,
       locked: matricula.status !== "ativo" },
     disciplinas: disciplinas ?? [],
+    can_record_result: !canWrite.error && matricula.status === "ativo",
     sessoes: sessoes ?? [],
     resultados: resultados ?? [],
   });
