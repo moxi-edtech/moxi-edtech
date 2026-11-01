@@ -360,7 +360,7 @@ export default function Page() {
 
         {/* WIDGET AULA ATIVA EM DECORRÊNCIA */}
         {aulaAtiva && (
-          <section className="relative overflow-hidden rounded-[2rem] border border-emerald-500/30 bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 p-5 text-white shadow-lg">
+          <section className="relative overflow-hidden rounded-[2rem] border border-emerald-500/30 bg-[#1F6B3B] p-5 text-white shadow-lg">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3.5">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-inner">
@@ -390,7 +390,7 @@ export default function Page() {
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <Link
                   href={professorHref(`/professor/frequencias?turma_id=${aulaAtiva.turma_id ?? ''}&disciplina_id=${aulaAtiva.disciplina_id ?? ''}`)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-black text-slate-950 shadow-md hover:bg-emerald-400 active:scale-95 transition-all"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-2.5 text-xs font-semibold text-slate-950 shadow-md hover:brightness-95 active:scale-95 transition-all"
                 >
                   <ClipboardDocumentListIcon className="h-4 w-4" />
                   <span>Fazer Chamada Rápida (1-Click)</span>
@@ -408,7 +408,7 @@ export default function Page() {
         )}
 
         {/* RESUMO DE IMPACTO */}
-        <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 text-white shadow-2xl shadow-amber/10">
+        <section className="relative overflow-hidden rounded-[2rem] bg-[#1F6B3B] p-6 text-white shadow-2xl shadow-amber/10">
           {/* Background Elements */}
           <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-amber/10 blur-3xl" />
           <div className="absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-emerald-500/5 blur-3xl" />
@@ -468,7 +468,7 @@ export default function Page() {
                icon: BookOpenIcon, 
                href: "/professor/materiais",
                color: "from-blue-500 to-indigo-600",
-               light: "bg-blue-50 text-blue-600"
+               light: "bg-slate-100 text-slate-700"
             },
             {
                title: "Planos de Aula",
@@ -552,9 +552,9 @@ export default function Page() {
                     </button>
                     {expandedTurmaId === turma.id && <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4">
                       <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-emerald-50 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-emerald-700 hover:bg-emerald-100">Presenças</Link>
-                      <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-blue-50 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-blue-700 hover:bg-blue-100">Notas</Link>
+                      <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-[#EDF6F0] px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wide text-[#1F6B3B] hover:bg-blue-100">Notas</Link>
                       <Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-amber-50 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-amber-700 hover:bg-amber-100">Plano de aula</Link>
-                      <Link href={professorHref(`/professor/materiais?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-indigo-50 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-indigo-700 hover:bg-indigo-100">Material</Link>
+                      <Link href={professorHref(`/professor/materiais?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-slate-50 px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-700 hover:bg-indigo-100">Material</Link>
                       <Link href={professorHref(`/professor/turmas/${turma.id}/horario`)} className="col-span-2 rounded-xl border border-slate-200 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-slate-600 hover:bg-slate-50">Horário compartilhado</Link>
                     </div>}
                   </div>

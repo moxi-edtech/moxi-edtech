@@ -29,11 +29,13 @@ export default function ProfessorPortalLayout({ children }: { children: React.Re
   );
 
   return (
-    <AppShell
-      mobileNav={<ProfessorBottomNav items={mobileNavItems} activePath={pathname} />}
-      hideSidebarOnMobile
-    >
-      {children}
-    </AppShell>
+    <div className="klasse-portal-theme">
+      <AppShell
+        mobileNav={<ProfessorBottomNav items={mobileNavItems} activePath={pathname} />}
+        hideSidebarOnMobile
+      >
+        {children}
+      </AppShell>
+    </div>
   );
 }

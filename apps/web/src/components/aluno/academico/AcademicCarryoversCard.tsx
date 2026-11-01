@@ -131,7 +131,7 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
           <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Anos anteriores</p>
           <h3 className="mt-1 text-base font-black text-slate-950">Dependências académicas</h3>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-600">
-            Estas disciplinas pertencem à matrícula do ano anterior. A matrícula atual continua válida enquanto o RAA acompanha a resolução.
+            Acompanha as disciplinas de anos anteriores que ainda precisam de atenção.
           </p>
         </div>
         <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700">

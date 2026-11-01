@@ -28,3 +28,25 @@
   .operations-kpi-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
+
+
+/* Identidade KLASSE limitada aos portais Aluno/Professor.
+   Nunca alterar tokens globais do Balcão, Secretaria ou Admin. */
+.klasse-portal-theme {
+  --primary: #1f6b3b;
+  --primary-foreground: #ffffff;
+  --ring: #c79a2f;
+  --accent: #edf6f0;
+  --accent-foreground: #124329;
+}
+.klasse-portal-theme .klasse-portal-cta {
+  background-color: #e3b23c;
+  color: #1e293b;
+}
+.klasse-portal-theme .klasse-portal-cta:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+.klasse-portal-theme .klasse-portal-cta:focus-visible {
+  outline: 2px solid #755819;
+  outline-offset: 2px;
+}

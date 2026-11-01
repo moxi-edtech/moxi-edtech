@@ -90,7 +90,7 @@ export function BoletimGradeGrid({
       ? subject.avaliacoes.filter(a => Number.isFinite(a.nota))
       : periodAssessments(subject, selectedTerm);
     return <div className="space-y-3 py-2" data-testid="boletim-assessment-details">
-      {locked ? <p className="text-sm text-muted-foreground">As classificações e avaliações estão protegidas. Consulta o estado do pedido abaixo.</p>
+      {locked ? <p className="text-sm text-muted-foreground">Consulta o estado do boletim para aceder às notas.</p>
         : !showGrades ? <p className="text-sm text-muted-foreground">Seleciona «Exibir notas» para consultar os detalhes.</p>
         : entries.length === 0 ? <p className="text-sm text-muted-foreground">Ainda não há avaliações publicadas neste período.</p>
         : <ul className="space-y-2">
@@ -136,7 +136,7 @@ export function BoletimGradeGrid({
         </button>
         <button type="button" disabled={locked || downloading} onClick={onDownload}
           aria-label={locked ? "Imprimir boletim indisponível até à liberação" : "Descarregar boletim em PDF para imprimir"}
-          className={`inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 ${focus}`}>
+          className={`inline-flex min-h-11 items-center gap-2 klasse-portal-cta rounded-xl px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${focus}`}>
           {downloading ? <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" /> : <Download aria-hidden="true" className="h-4 w-4" />}
           {downloading ? "A preparar PDF…" : "Imprimir / PDF"}
         </button>
@@ -144,10 +144,10 @@ export function BoletimGradeGrid({
     </div>
 
     {locked && <p className="flex items-center gap-2 text-sm text-muted-foreground">
-      <LockKeyhole aria-hidden="true" className="h-4 w-4 shrink-0" /> As disciplinas são visíveis. As notas aparecem após a liberação do boletim.
+      <LockKeyhole aria-hidden="true" className="h-4 w-4 shrink-0" /> As notas ainda não estão disponíveis. Vê o próximo passo abaixo.
     </p>}
     {!locked && !hasPublishedAssessments && !hasFinals && <p className="text-sm text-muted-foreground">
-      Ainda não há avaliações publicadas. Os campos vazios não representam nota zero.
+      Ainda não há avaliações publicadas neste período.
     </p>}
     {!locked && !showGrades && <p role="status" className="text-sm text-muted-foreground">
       As notas estão ocultas neste ecrã; o PDF mantém as classificações autorizadas.
