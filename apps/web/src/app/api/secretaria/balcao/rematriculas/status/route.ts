@@ -450,7 +450,15 @@ export async function GET(request: Request) {
 
     // ── Determine status ──────────────────────────────────────────────────
     let status = "READY";
-    const pedidoTemMatriculaDestino = Boolean(pedidoExistente?.contexto?.matricula_destino_id);
+    // A referência no pedido só comprova a progressão se corresponder à
+    // matrícula de destino do próprio aluno, da própria escola e do ano alvo.
+    // Nunca declarar conclusão financeira/academica a partir de uma referência
+    // órfã, nem do comprovativo de uma matrícula diferente.
+    const pedidoDestinoId = pedidoExistente?.contexto?.matricula_destino_id;
+    const pedidoTemMatriculaDestino = Boolean(
+      pedidoDestinoId && matriculaDestino?.id &&
+      String(pedidoDestinoId) === String(matriculaDestino.id),
+    );
     const historicoAcademicoPendente =
       pedidoExistente?.status === "granted" &&
       pedidoTemMatriculaDestino &&
@@ -464,8 +472,8 @@ export async function GET(request: Request) {
     // não pode voltar a READY nem desaparecer da operação da secretaria.
     // Mantê-la na fila de reconciliação permite escolher a turma e completar
     // a progressão sem cobrar novamente.
-    const pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoTemMatriculaDestino && !comprovanteData;
-    const pedidoConcluido = pedidoExistente?.status === "granted" && (pedidoTemMatriculaDestino || Boolean(comprovanteData));
+    const pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoTemMatriculaDestino;
+    const pedidoConcluido = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino;
     if (historicoAcademicoPendente) {
       status = "ACADEMIC_HISTORY_PENDING";
     } else if (comprovantePendente) {
