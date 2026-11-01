@@ -30,6 +30,7 @@ import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalca
 import { RaaBalcaoResolutionPanel } from "@/components/secretaria/RaaBalcaoResolutionPanel";
 import { RematriculaWorkspaceHeader, RematriculaAcademicDestination, type RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
 import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
+import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
 import { RematriculaWindowRecovery } from "@/components/secretaria/RematriculaWindowRecovery";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
@@ -1006,6 +1007,10 @@ const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> =
     titulo: "Taxa de rematrícula sem valor definido",
     descricao: "Defina o valor da taxa nas configurações da escola para ativar esta operação.",
   },
+  DESTINATION_ENROLLED: {
+    titulo: "Matrícula do ano destino existente",
+    descricao: "O aluno já tem matrícula neste ano. Consulte a ficha antes de iniciar uma operação.",
+  },
   SOURCE_RECORD_REQUIRED: {
     titulo: "Falta a matrícula de origem",
     descricao: "Não se encontra a matrícula anterior deste aluno; regularize o vínculo de origem antes de continuar.",
@@ -1385,6 +1390,9 @@ function Catalogo({
   rematriculaSchoolId,
   rematriculaWindow,
   rematriculaAcademic,
+  rematriculaTimeline,
+  rematriculaOrigemAno,
+  rematriculaDestinoMatriculaId,
   rematriculaDestinoTurma,
   raaMatriculaId,
   raaAlunoId,
@@ -1422,6 +1430,9 @@ function Catalogo({
   rematriculaSchoolId: string;
   rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
   rematriculaAcademic: RaaBalcaoAcademic | null | undefined;
+  rematriculaTimeline: RaaBalcaoTimeline | null;
+  rematriculaOrigemAno: number | null;
+  rematriculaDestinoMatriculaId: string | null;
   rematriculaDestinoTurma: TurmaOption | null;
   raaMatriculaId: string | null;
   raaAlunoId: string | null;
@@ -1494,10 +1505,13 @@ function Catalogo({
         </div>
       ) : view === "reenrollment" ? (
         <RematriculaWorkspaceHeader
+          anoOrigem={rematriculaOrigemAno != null ? `${rematriculaOrigemAno}/${rematriculaOrigemAno + 1}` : null}
           anoDestino={rematriculaAnoLabel}
           status={rematriculaState}
           motivo={rematriculaAcademic?.reason ?? null}
           progress={activeProgress}
+          timeline={rematriculaTimeline}
+          destinoMatriculaId={rematriculaDestinoMatriculaId}
         />
       ) : view === "all" ? (
         <div className="mb-4 flex items-center gap-2">
@@ -3184,6 +3198,9 @@ export default function BalcaoAtendimento({
                   rematriculaSchoolId={escolaId}
                   rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
+                  rematriculaTimeline={rematricula.academicTimeline}
+                  rematriculaOrigemAno={rematricula.academic?.source?.ano_letivo_ano ?? null}
+                  rematriculaDestinoMatriculaId={rematricula.destinoMatriculaId}
                   rematriculaDestinoTurma={rematricula.destinoTurma ?? null}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
