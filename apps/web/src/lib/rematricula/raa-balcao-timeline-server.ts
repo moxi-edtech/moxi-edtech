@@ -42,6 +42,8 @@ export async function loadRaaBalcaoAcademicTimeline(
           .eq("escola_id", escolaId).eq("matricula_id", matriculaOrigem.id),
       ]);
       if (!periodsResult.error && !eventsResult.error && !examsResult.error && !pautasResult.error) {
+        type PeriodRecord = { id: string; tipo: string; numero: number; data_inicio: string; data_fim: string; offering_id: string | null };
+        type EventRecord = { tipo: string; data_inicio: string; data_fim: string; offering_id: string | null };
         const pickOffering = <T extends { offering_id: string | null }>(items: T[] | null) => {
           const specific = sourceOfferingId
             ? (items ?? []).filter((item) => item.offering_id === sourceOfferingId) : [];
@@ -57,8 +59,8 @@ export async function loadRaaBalcaoAcademicTimeline(
         if (!resultsError) {
           academicTimeline = summarizeRaaBalcaoTimeline({
             hoje: new Date().toLocaleDateString("sv-SE", { timeZone: "Africa/Luanda" }),
-            periodos: pickOffering(periodsResult.data),
-            eventos: pickOffering(eventsResult.data),
+            periodos: pickOffering<PeriodRecord>((periodsResult.data ?? []) as PeriodRecord[]),
+            eventos: pickOffering<EventRecord>((eventsResult.data ?? []) as EventRecord[]),
             sessoes,
             resultados: resultados ?? [],
             pautas: pautasResult.data ?? [],
