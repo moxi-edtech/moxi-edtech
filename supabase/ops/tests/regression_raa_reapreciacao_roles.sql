@@ -62,25 +62,26 @@ BEGIN
   END;
 END $$;
 
--- The generic role helper expands 'admin' to admin_financeiro. The
--- dedicated RAA policy must still deny that exact stored financial role.
+-- admin_financeiro is an explicitly authorized decision-maker.
+-- Exercise real writes for this role and separately test the director.
 SET request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
 DO $$
 DECLARE affected integer;
 BEGIN
   UPDATE public.reapreciacao_pedidos
-    SET estado='deferido', decisao_motivo='Financeiro não decide',
+    SET estado='deferido', decisao_motivo='Reapreciação deferida pelo administrador financeiro',
         decidido_por=auth.uid(), decidido_em=now(), updated_at=now()
-    WHERE id='00000000-0000-4000-8000-000000000001';
+    WHERE id='00000000-0000-4000-8000-000000000003';
   GET DIAGNOSTICS affected = ROW_COUNT;
-  IF affected <> 0 THEN RAISE EXCEPTION 'admin_financeiro decided academic appeal'; END IF;
+  IF affected <> 1 THEN RAISE EXCEPTION 'admin_financeiro must decide academic appeal'; END IF;
+
   UPDATE public.raa_indisciplina_eventos
-    SET estado='resolvido', decisao_motivo='Financeiro não decide disciplina',
+    SET estado='resolvido', decisao_motivo='Revisão disciplinar fundamentada pelo administrador financeiro',
         resolvido_por=auth.uid(), resolvido_em=now(), updated_at=now()
-    WHERE id='00000000-0000-4000-8000-000000000005';
+    WHERE id='00000000-0000-4000-8000-000000000006';
   GET DIAGNOSTICS affected = ROW_COUNT;
-  IF affected <> 0 THEN RAISE EXCEPTION 'admin_financeiro decided discipline'; END IF;
-END $;
+  IF affected <> 1 THEN RAISE EXCEPTION 'admin_financeiro must decide disciplinary review'; END IF;
+END $$;
 
 SET request.jwt.claim.sub = '44444444-4444-4444-8444-444444444444';
 SET app.mock_role = 'diretor';
@@ -109,6 +110,12 @@ WHERE id='00000000-0000-4000-8000-000000000005';
 RESET ROLE;
 DO $$
 BEGIN
+ IF (SELECT estado FROM public.reapreciacao_pedidos
+     WHERE id='00000000-0000-4000-8000-000000000003') <> 'deferido'
+ THEN RAISE EXCEPTION 'admin_financeiro failed to decide the petition'; END IF;
+ IF (SELECT estado FROM public.raa_indisciplina_eventos
+     WHERE id='00000000-0000-4000-8000-000000000006') <> 'resolvido'
+ THEN RAISE EXCEPTION 'admin_financeiro failed to decide discipline'; END IF;
  IF (SELECT estado FROM public.raa_indisciplina_eventos
      WHERE id='00000000-0000-4000-8000-000000000005') <> 'resolvido'
  THEN RAISE EXCEPTION 'director failed to decide discipline'; END IF;
