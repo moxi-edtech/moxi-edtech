@@ -629,13 +629,13 @@ export async function POST(request: Request) {
     }
     if (pedidoExistente?.status === "granted") {
       const matriculaDestinoId = (pedidoExistente.contexto as any)?.matricula_destino_id;
-      if (!matriculaDestinoId) {
-        // The payment may have granted the service before the academic
-        // matrícula was finalized. Never issue a second charge or fabricate
-        // a destination from the origin matrícula; reconcile the paid order.
+      if (!matriculaDestinoId || !matriculaDestino?.id ||
+          String(matriculaDestinoId) !== String(matriculaDestino.id)) {
+        // Um pedido concedido não prova que a matrícula de destino foi
+        // concluída para este aluno/escola/ano. Reconciliar sem recobrar.
         return NextResponse.json({
           ok: false,
-          error: "Pagamento já recebido; a matrícula será concluída sem nova cobrança.",
+          error: "Pagamento já confirmado; verifique o vínculo da matrícula de destino sem criar uma nova cobrança.",
           code: "REMATRICULA_RECONCILIATION_REQUIRED",
           pedido_id: pedidoExistente.id,
         }, { status: 409 });
