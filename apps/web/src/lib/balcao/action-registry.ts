@@ -72,9 +72,9 @@ export const BALCAO_ACTION_REGISTRY: Record<BalcaoActionId, BalcaoActionDefiniti
   },
   reenrollment: {
     id: "reenrollment",
-    label: "Rematrícula",
-    shortLabel: "Rematrícula",
-    description: "Verificar elegibilidade e concluir a rematrícula no mesmo atendimento.",
+    label: "Situação académica",
+    shortLabel: "Situação académica",
+    description: "Acompanhar notas, avaliações, exames e rematrícula do aluno selecionado.",
     requiresStudent: true,
     surface: "command-center",
     panel: "balcao",
