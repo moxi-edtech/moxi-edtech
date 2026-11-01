@@ -68,11 +68,11 @@ function exameLabel(timeline: RaaBalcaoTimeline): string {
 }
 
 export function RematriculaWorkspaceHeader({
-  anoOrigem, anoDestino, status, motivo, progress, timeline, destinoMatriculaId,
+  anoOrigem, anoDestino, status, motivo, progress, timeline, timelineAno, destinoMatriculaId,
 }: {
   anoOrigem: string | null; anoDestino: string | null; status: Status;
   motivo: string | null; progress: RaaProgressSnapshot | null;
-  timeline: RaaBalcaoTimeline | null; destinoMatriculaId: string | null;
+  timeline: RaaBalcaoTimeline | null; timelineAno: string | null; destinoMatriculaId: string | null;
 }) {
   const display = rematriculaDisplayState(status);
   const count = progress && progress.total > 0 && !progress.loading ? progress : null;
@@ -93,9 +93,9 @@ export function RematriculaWorkspaceHeader({
         ].join(" ")} role="status">{display.title}</span>
       </div>
       {timeline && (
-        <section className="rounded-xl border border-border bg-muted/20 p-3 sm:p-4" aria-label="Etapas académicas do ano de origem">
+        <section className="rounded-xl border border-border bg-muted/20 p-3 sm:p-4" aria-label="Percurso académico do ano em curso">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-foreground">{timeline.faseLabel}</h3>
+            <h3 className="text-sm font-semibold text-foreground">{timeline.faseLabel}{timelineAno ? " · " + timelineAno : ""}</h3>
             <span className="text-xs text-muted-foreground">{timeline.proximaEtapa}</span>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
