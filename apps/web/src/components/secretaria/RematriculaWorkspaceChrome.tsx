@@ -60,8 +60,13 @@ export function rematriculaDisplayState(status: Status): {
   return { title: "A resolver", message: "Consulte as pendências para continuar.", tone: "warning" };
 }
 
+function formatAcademicDate(value: string): string {
+  const [year, month, day] = value.slice(0, 10).split("-");
+  return year && month && day ? day + "/" + month + "/" + year : value;
+}
+
 function provaLabel(timeline: RaaBalcaoTimeline): string {
-  if (timeline.provas === "agendadas") return "Agendadas" + (timeline.proximaProvaEm ? " · " + timeline.proximaProvaEm : "");
+  if (timeline.provas === "agendadas") return "Agendadas" + (timeline.proximaProvaEm ? " · " + formatAcademicDate(timeline.proximaProvaEm) : "");
   if (timeline.provas === "em_curso") return "Período de provas";
   if (timeline.provas === "datas_decorridas") return "Datas passadas · verificar realização";
   return "Sem datas confirmadas";
@@ -153,7 +158,10 @@ export function RematriculaWorkspaceHeader({
         <section className="rounded-xl border border-border bg-muted/20 p-3 sm:p-4" aria-label="Percurso académico do ano em curso">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <h3 className="text-sm font-semibold text-foreground">{timeline.faseLabel}{timelineAno ? " · " + timelineAno : ""}</h3>
-            <span className="text-xs font-medium text-foreground">{timeline.proximaEtapa}</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              {timeline.proximaEtapa}
+            </span>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
@@ -161,9 +169,12 @@ export function RematriculaWorkspaceHeader({
               <p className="mt-1 text-xs font-semibold text-foreground">{provaLabel(timeline)}</p>
             </div>
             <div>
-              <p className="text-[11px] font-medium text-muted-foreground">Pauta final</p>
+              <p className="text-[11px] font-medium text-muted-foreground">Pautas</p>
               <p className="mt-1 text-xs font-semibold text-foreground">
-                {timeline.pautaFinalPublicada ? "Publicada" : "Publicação por confirmar"}
+                {timeline.pautaFinalPublicada ? "Pauta final publicada"
+                  : timeline.publicacaoPautaPrevistaEm
+                    ? "Publicação prevista · " + formatAcademicDate(timeline.publicacaoPautaPrevistaEm)
+                    : "Aguardando publicação"}
               </p>
             </div>
             <div>
