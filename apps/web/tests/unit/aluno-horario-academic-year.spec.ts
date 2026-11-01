@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "../../src/types/supabase";
+import type { Database } from "../../../../types/supabase";
 import { resolveStudentTimetableTurma } from "../../src/lib/aluno/resolveStudentTimetableTurma";
 
 const year = "d9cd907e-ae4e-470a-830e-b636c68bda66";
