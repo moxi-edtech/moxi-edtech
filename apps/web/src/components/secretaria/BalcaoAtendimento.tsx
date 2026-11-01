@@ -1228,7 +1228,7 @@ function CommandCenterOverview({
     },
     {
       id: "reenrollment",
-      title: "Rematrícula",
+      title: "Situação académica",
       description: rematriculaCopy?.descricao ?? "Sem operação disponível neste momento.",
       value: rematriculaValue,
       tone: rematriculaTone,
@@ -3119,7 +3119,7 @@ export default function BalcaoAtendimento({
         </div>
       ) : null}
       {view === "reenrollment" && dossier.aluno && (
-        <section aria-label="Aluno selecionado para rematrícula"
+        <section aria-label="Aluno selecionado para situação académica"
           className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-3 sm:p-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-foreground" aria-hidden="true">
             {dossier.aluno.nome.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
