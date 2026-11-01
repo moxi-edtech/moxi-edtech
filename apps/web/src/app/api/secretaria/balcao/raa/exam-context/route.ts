@@ -68,7 +68,7 @@ export async function GET(request: Request) {
     ok: false, error: "Não foi possível consultar os nomes das disciplinas.",
   }, { status: 503 });
   const nomes = new Map<string, string>(
-    (catalogo ?? []).map((item: { id: string; nome: string }) => [item.id, item.nome]),
+    (catalogo ?? []).map((item: { id: string; nome: string }): [string, string] => [item.id, item.nome]),
   );
 
   return NextResponse.json({
