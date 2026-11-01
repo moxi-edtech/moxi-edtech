@@ -28,7 +28,7 @@ export function buildRaaBalcaoCases(source: RaaBalcaoCaseSources): RaaBalcaoCase
     (source.disciplinaIds ?? []).forEach((id, i) => items.push({
       id: "nota:" + id, referenceId: id, kind: "nota",
       titulo: "Disciplina pendente " + (i + 1),
-      resumo: "Verificar notas e fórmula da avaliação oficial",
+      resumo: "Verifique as notas desta disciplina e conclua o que falta",
       estado: "pendente", periodo: "nao_identificado",
     }));
   }
@@ -72,7 +72,7 @@ export function buildRaaBalcaoCases(source: RaaBalcaoCaseSources): RaaBalcaoCase
     // evidence has not yet been filed or another authority must decide it.
     items.push({
       id: "raa:decisao", kind: "orientacao", titulo: source.title,
-      resumo: "Requer análise da decisão RAA e respetivas evidências",
+      resumo: "Consulte o resultado e resolva os pontos em aberto",
       estado: "pendente", periodo: "ano_letivo",
     });
   }

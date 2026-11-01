@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { summarizeRaaBalcaoTimeline } from "../../src/lib/rematricula/raa-balcao-timeline";
+import { selectApplicableCalendarRecords, selectApplicablePeriods, summarizeRaaBalcaoTimeline } from "../../src/lib/rematricula/raa-balcao-timeline";
+import { nextAcademicActionForBalcao } from "../../src/lib/rematricula/raa-balcao-next-action";
 
 const periodos = [
   { id: "p1", tipo: "TRIMESTRE", numero: 1, data_inicio: "2026-09-01", data_fim: "2026-11-30" },
@@ -94,9 +95,112 @@ test("status endpoint and UI use source-year data and restrict write actions", (
   assert.match(status, /academic_permissions: \{ can_write_grades:/);
   assert.match(chrome, /Origem:/);
   assert.match(chrome, /Destino:/);
+  assert.match(chrome, /nextAcademicActionForBalcao/);
+  assert.match(chrome, /publicacaoPautaPrevistaEm/);
+  assert.match(timelineServer, /source_item_id/);
   assert.match(balcao, /canLancarNota=\{rematriculaCanWriteGrades\}/);
   assert.match(panel, /examContext\.can_record_result/);
   assert.match(examContext, /can_record_result:/);
   assert.match(resultWriter, /EXAM_NOT_STARTED/);
   assert.match(writer, /REMATRICULA_TARGET_ALREADY_ENROLLED/);
+});
+
+test("specific offering trimester overrides only the matching school-wide trimester", () => {
+  const mixed = [
+    { id: "g1", tipo: "TRIMESTRE", numero: 1, data_inicio: "2026-09-01", data_fim: "2026-11-30", offering_id: null },
+    { id: "g2", tipo: "TRIMESTRE", numero: 2, data_inicio: "2027-01-05", data_fim: "2027-03-31", offering_id: null },
+    { id: "a1", tipo: "TRIMESTRE", numero: 1, data_inicio: "2026-10-01", data_fim: "2026-12-10", offering_id: "offer-a" },
+    { id: "b1", tipo: "TRIMESTRE", numero: 1, data_inicio: "2026-08-01", data_fim: "2026-11-15", offering_id: "offer-b" },
+  ];
+  assert.deepEqual(selectApplicablePeriods(mixed, "offer-a").map((p) => p.id), ["g2", "a1"]);
+  assert.deepEqual(selectApplicablePeriods(mixed, null).map((p) => p.id), ["g1", "g2"]);
+});
+
+test("shared events remain visible with specific events; other offerings do not leak", () => {
+  const events = [
+    { offering_id: null, tipo: "PROVA_TRIMESTRAL" },
+    { offering_id: "offer-a", tipo: "EXAME_ORAL" },
+    { offering_id: "offer-b", tipo: "EXAME_ESCRITO" },
+  ];
+  assert.deepEqual(selectApplicableCalendarRecords(events, "offer-a").map((e) => e.tipo),
+    ["PROVA_TRIMESTRAL", "EXAME_ORAL"]);
+});
+
+test("next step uses the earliest upcoming official date, not a generic trimester label", () => {
+  const upcoming = summarizeRaaBalcaoTimeline({
+    ...base, hoje: "2027-05-15",
+    eventos: [
+      { tipo: "PROVA_TRIMESTRAL", data_inicio: "2027-05-20", data_fim: "2027-05-22" },
+      { tipo: "PROVA_TRIMESTRAL", data_inicio: "2027-06-20", data_fim: "2027-06-25" },
+    ],
+  });
+  assert.ok(upcoming.proximaEtapa.includes("20/05/2027"));
+});
+
+test("scheduled publication never masquerades as an already published final pauta", () => {
+  const result = summarizeRaaBalcaoTimeline({
+    ...base, hoje: "2027-07-14",
+    eventos: [{ tipo: "PUBLICACAO_PAUTA", data_inicio: "2027-07-16", data_fim: "2027-07-16" }],
+  });
+  assert.equal(result.pautaFinalPublicada, false);
+  assert.equal(result.publicacaoPautaPrevistaEm, "2027-07-16");
+  assert.match(result.proximaEtapa, /Publicação da pauta prevista/);
+  assert.ok(result.proximaEtapa.includes("16/07/2027"));
+});
+
+test("overlapping official trimesters never show an invented active trimester", () => {
+  const overlap = summarizeRaaBalcaoTimeline({
+    ...base, hoje: "2027-05-15",
+    periodos: [...periodos, { id: "duplicate", tipo: "TRIMESTRE", numero: 2, data_inicio: "2027-05-01", data_fim: "2027-05-30" }],
+  });
+  assert.equal(overlap.fase, "desconhecida");
+  assert.match(overlap.proximaEtapa, /Confirmar as datas/);
+});
+
+test("canonical event is displayed once; independent school event stays visible", () => {
+  const records = [
+    { tipo: "PROVA_TRIMESTRAL", nome: "I trimestre", source_item_id: "item-1", offering_id: null, data_inicio: "2026-11-04", data_fim: "2026-11-10" },
+    { tipo: "PROVA_TRIMESTRAL", nome: "I trimestre", source_item_id: "item-1", offering_id: "offer-a", data_inicio: "2026-12-09", data_fim: "2026-12-18" },
+    { tipo: "EXAME_ORAL", nome: "Avaliação geral", source_item_id: "item-2", offering_id: null, data_inicio: "2027-06-01", data_fim: "2027-06-03" },
+    { tipo: "EXAME_ESCRITO", nome: "Outra oferta", source_item_id: "item-3", offering_id: "offer-b", data_inicio: "2027-05-01", data_fim: "2027-05-02" },
+  ];
+  const selected = selectApplicableCalendarRecords(records, "offer-a");
+  assert.equal(selected.length, 2);
+  assert.equal(selected[0].data_inicio, "2026-12-09");
+  assert.equal(selected[1].nome, "Avaliação geral");
+  const general = selectApplicableCalendarRecords(records, null);
+  assert.equal(general.length, 2);
+  assert.equal(general[0].data_inicio, "2026-11-04");
+});
+
+test("legacy duplicates collapse only when name, dates and type all match", () => {
+  const records = [
+    { tipo: "PROVA_TRIMESTRAL", nome: "Provas I", offering_id: null, data_inicio: "2026-12-09", data_fim: "2026-12-18" },
+    { tipo: "PROVA_TRIMESTRAL", nome: "Provas I", offering_id: "offer-a", data_inicio: "2026-12-09", data_fim: "2026-12-18" },
+    { tipo: "PROVA_TRIMESTRAL", nome: "Provas II", offering_id: "offer-a", data_inicio: "2027-04-01", data_fim: "2027-04-09" },
+  ];
+  assert.deepEqual(selectApplicableCalendarRecords(records, "offer-a").map((v) => v.nome), ["Provas I", "Provas II"]);
+});
+
+test("next action follows the official date only when academic decision is pending", () => {
+  const timeline = summarizeRaaBalcaoTimeline({
+    ...base, hoje: "2027-05-15",
+    eventos: [{ tipo: "PROVA_TRIMESTRAL", data_inicio: "2027-05-20", data_fim: "2027-05-22" }],
+  });
+  const pending = nextAcademicActionForBalcao("ACADEMIC_PENDING", timeline);
+  assert.equal(pending.title, "Ano em curso");
+  assert.ok(pending.message?.includes("20/05/2027"));
+  assert.ok(pending.message?.includes("decisão final"));
+  assert.deepEqual(nextAcademicActionForBalcao("READY", timeline), { title: null, message: null });
+  assert.deepEqual(nextAcademicActionForBalcao("WINDOW_CLOSED", timeline), { title: null, message: null });
+});
+
+test("published pauta triggers verification, while unknown period asks to check dates", () => {
+  const published = summarizeRaaBalcaoTimeline({
+    ...base, hoje: "2027-07-17",
+    pautas: [{ status: "SUCCESS", pdf_path: "final.pdf", periodo_letivo_id: "p3" }],
+  });
+  const unknown = summarizeRaaBalcaoTimeline({ ...base, hoje: "2027-07-17", periodos: [] });
+  assert.match(nextAcademicActionForBalcao("ACADEMIC_PENDING", published).message ?? "", /Pauta publicada/);
+  assert.equal(nextAcademicActionForBalcao("ACADEMIC_PENDING", unknown).title, "Calendário por confirmar");
 });
