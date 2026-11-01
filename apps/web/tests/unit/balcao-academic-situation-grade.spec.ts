@@ -95,40 +95,40 @@ test("locked periods are explained, and official write permissions remain server
   assert.match(api, /Past\/locked writes are adjudicated by the database trigger/);
 });
 
-test("enrollment exists but reenrollment payment is not proven: keep payment-only action", () => {
+test("existing target enrollment requires payment reconciliation, not duplicate enrollment", () => {
   const status = source("app/api/secretaria/balcao/rematriculas/status/route.ts");
   const writer = source("app/api/secretaria/balcao/rematriculas/route.ts");
   const chrome = source("components/secretaria/RematriculaWorkspaceChrome.tsx");
   const balc = source("components/secretaria/BalcaoAtendimento.tsx");
-  assert.match(status, /status = "RECONFIRMATION_REQUIRED"/);
-  assert.match(status, /matriculaDestino\\?\\.turma_id && !reclassificacao/);
-  assert.match(writer, /REMATRICULA_TARGET_ALREADY_ENROLLED/);
-  assert.match(writer, /reconfirmacaoApenas/);
-  assert.match(chrome, /title: "Taxa por confirmar"/);
-  assert.match(chrome, /Regularizar taxa de rematrícula/);
-  assert.match(balc, /taxaValor=\\{rematriculaPrice\\}/);
+  assert.ok(status.includes('status = "RECONFIRMATION_REQUIRED"'));
+  assert.ok(status.includes('matriculaDestino?.turma_id && !reclassificacao'));
+  assert.ok(writer.includes('REMATRICULA_TARGET_ALREADY_ENROLLED'));
+  assert.ok(writer.includes('reconfirmacaoApenas'));
+  assert.ok(chrome.includes('title: "Taxa por confirmar"'));
+  assert.ok(chrome.includes('Regularizar taxa de rematrícula'));
+  assert.ok(balc.includes('taxaValor={rematriculaPrice}'));
 });
 
-test("payment granted without verified destination stays in reconciliation, never completed", () => {
+test("paid order without verified destination must stay in reconciliation", () => {
   const status = source("app/api/secretaria/balcao/rematriculas/status/route.ts");
   const writer = source("app/api/secretaria/balcao/rematriculas/route.ts");
-  assert.match(status, /pedidoDestinoId && matriculaDestino\\?\\.id/);
-  assert.match(status, /String\\(pedidoDestinoId\\) === String\\(matriculaDestino\\.id\\)/);
-  assert.match(status, /pagamentoSemProgressao = pedidoExistente\\?\\.status === "granted" && !pedidoTemMatriculaDestino/);
-  assert.match(status, /pedidoConcluido = pedidoExistente\\?\\.status === "granted" && pedidoTemMatriculaDestino/);
-  assert.match(writer, /!matriculaDestinoId \\|\\| !matriculaDestino\\?\\.id/);
-  assert.match(writer, /code: "REMATRICULA_RECONCILIATION_REQUIRED"/);
+  assert.ok(status.includes('pedidoDestinoId && matriculaDestino?.id'));
+  assert.ok(status.includes('String(pedidoDestinoId) === String(matriculaDestino.id)'));
+  assert.ok(status.includes('pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoTemMatriculaDestino'));
+  assert.ok(status.includes('pedidoConcluido = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino'));
+  assert.ok(writer.includes('!matriculaDestinoId || !matriculaDestino?.id'));
+  assert.ok(writer.includes('code: "REMATRICULA_RECONCILIATION_REQUIRED"'));
 });
 
-test("payment evidence errors fail closed instead of creating a second charge", () => {
+test("payment read failures and concurrent active orders never start another checkout", () => {
   const status = source("app/api/secretaria/balcao/rematriculas/status/route.ts");
   const writer = source("app/api/secretaria/balcao/rematriculas/route.ts");
   const hook = source("hooks/useRematriculaBalcao.ts");
-  assert.match(status, /if \\(pedidosAtivosError\\) throw pedidosAtivosError/);
-  assert.match(status, /if \\(intentsError \\|\\| pagamentosError\\) throw intentsError \\?\\? pagamentosError/);
-  assert.match(writer, /if \\(pedidosExistentesError\\) throw pedidosExistentesError/);
-  assert.match(writer, /if \\(intentsError \\|\\| pagamentosError\\) throw intentsError \\?\\? pagamentosError/);
-  assert.match(writer, /pedidoError\\?\\.code === "23505"/);
-  assert.match(hook, /const clearStatusSnapshot = useCallback/);
-  assert.match(hook, /clearStatusSnapshot\\(\\);/);
+  assert.ok(status.includes('if (pedidosAtivosError) throw pedidosAtivosError'));
+  assert.ok(status.includes('if (intentsError || pagamentosError) throw intentsError ?? pagamentosError'));
+  assert.ok(writer.includes('if (pedidosExistentesError) throw pedidosExistentesError'));
+  assert.ok(writer.includes('if (intentsError || pagamentosError) throw intentsError ?? pagamentosError'));
+  assert.ok(writer.includes('pedidoError?.code === "23505"'));
+  assert.ok(hook.includes('const clearStatusSnapshot = useCallback'));
+  assert.ok(hook.includes('clearStatusSnapshot();'));
 });
