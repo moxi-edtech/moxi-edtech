@@ -21,6 +21,34 @@ RETURNS boolean LANGUAGE sql STABLE AS
 $$ SELECT public.user_can_access_raa_school(p_escola_id)
   AND nullif(current_setting('app.mock_role', true), '') = ANY(p_roles) $$;
 
+CREATE TABLE public.escola_users (
+  escola_id uuid NOT NULL, user_id uuid NOT NULL, papel text NOT NULL,
+  PRIMARY KEY (escola_id, user_id)
+);
+INSERT INTO public.escola_users (escola_id, user_id, papel) VALUES
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','11111111-1111-4111-8111-111111111111','secretaria'),
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','33333333-3333-4333-8333-333333333333','admin_financeiro'),
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','44444444-4444-4444-8444-444444444444','diretor');
+
+CREATE TABLE public.raa_indisciplina_eventos (
+  id uuid PRIMARY KEY, escola_id uuid NOT NULL,
+  estado text NOT NULL DEFAULT 'registado', decisao_motivo text,
+  resolvido_por uuid, resolvido_em timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  matricula_id uuid DEFAULT '55555555-5555-4555-8555-555555555555'
+);
+ALTER TABLE public.raa_indisciplina_eventos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY raa_indisciplina_director_update_v2 ON public.raa_indisciplina_eventos
+  FOR UPDATE TO authenticated
+  USING (public.user_can_access_raa_school(escola_id)
+    AND public.user_has_role_in_school(escola_id,ARRAY['admin','admin_escola','diretor']::text[]))
+  WITH CHECK (public.user_can_access_raa_school(escola_id));
+CREATE POLICY raa_indisciplina_school_read_v2 ON public.raa_indisciplina_eventos
+  FOR SELECT TO authenticated USING (public.user_can_access_raa_school(escola_id));
+GRANT ALL ON public.raa_indisciplina_eventos TO anon, authenticated, service_role;
+INSERT INTO public.raa_indisciplina_eventos (id,escola_id,estado) VALUES
+  ('00000000-0000-4000-8000-000000000005','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','registado');
+
 CREATE TABLE public.reapreciacao_pedidos (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL,
   estado text NOT NULL DEFAULT 'pendente',
