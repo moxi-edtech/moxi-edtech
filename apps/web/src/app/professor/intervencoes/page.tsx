@@ -142,7 +142,7 @@ export default function ProfessorIntervencoesPage() {
 
                 <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-500">
-                    Situação: <span className="font-semibold text-foreground">{item.status.replaceAll("_", " ")}</span>
+                    Situação: <span className="font-semibold text-foreground">{item.status.replace(/_/g, " ")}</span>
                   </span>
                   <button
                     type="button"
