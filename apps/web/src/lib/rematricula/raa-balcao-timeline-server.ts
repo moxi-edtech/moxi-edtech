@@ -1,4 +1,4 @@
-import { summarizeRaaBalcaoTimeline, type RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
+import { selectApplicableCalendarRecords, selectApplicablePeriods, summarizeRaaBalcaoTimeline, type RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
 
 /**
  * Read-only academic overview. It is deliberately separate from the RAA
@@ -20,14 +20,21 @@ export async function loadRaaBalcaoAcademicTimeline(
         ? await supabase.from("school_education_offerings").select("id")
             .eq("escola_id", escolaId).eq("course_id", sourceClass.curso_id).limit(2)
         : { data: null };
-      const sourceOfferingId = sourceOfferings?.length === 1 ? sourceOfferings[0].id : null;
+      // Multiple offerings for the same course are ambiguous: do not display another
+      // offering's dates as authoritative for this student.
+      if (sourceOfferings && sourceOfferings.length > 1) return null;
+      const sourceOfferingId: string | null = sourceOfferings?.length === 1 ? sourceOfferings[0].id : null;
+      const offeringScope = sourceOfferingId
+        ? "offering_id.is.null,offering_id.eq." + sourceOfferingId : "offering_id.is.null";
       const [periodsResult, eventsResult, examsResult, pautasResult, petitionsResult] = await Promise.all([
         supabase.from("periodos_letivos")
           .select("id,tipo,numero,data_inicio,data_fim,offering_id")
-          .eq("escola_id", escolaId).eq("ano_letivo_id", matriculaOrigem.session_id).limit(100),
+          .eq("escola_id", escolaId).eq("ano_letivo_id", matriculaOrigem.session_id)
+          .or(offeringScope).limit(100),
         supabase.from("calendario_eventos")
           .select("tipo,data_inicio,data_fim,offering_id")
           .eq("escola_id", escolaId).eq("ano_letivo_id", matriculaOrigem.session_id)
+          .or(offeringScope)
           .in("tipo", ["PROVA_TRIMESTRAL", "EXAME_NACIONAL", "EXAME_ORAL", "EXAME_ESCRITO", "EXAME_EXTRAORDINARIO"])
           .limit(100),
         supabase.from("exame_sessoes")
@@ -44,11 +51,6 @@ export async function loadRaaBalcaoAcademicTimeline(
       if (!periodsResult.error && !eventsResult.error && !examsResult.error && !pautasResult.error) {
         type PeriodRecord = { id: string; tipo: string; numero: number; data_inicio: string; data_fim: string; offering_id: string | null };
         type EventRecord = { tipo: string; data_inicio: string; data_fim: string; offering_id: string | null };
-        const pickOffering = <T extends { offering_id: string | null }>(items: T[] | null) => {
-          const specific = sourceOfferingId
-            ? (items ?? []).filter((item) => item.offering_id === sourceOfferingId) : [];
-          return specific.length > 0 ? specific : (items ?? []).filter((item) => item.offering_id == null);
-        };
         const sessoes = examsResult.data ?? [];
         const { data: resultados, error: resultsError } = sessoes.length
           ? await supabase.from("exame_resultados")
@@ -59,8 +61,8 @@ export async function loadRaaBalcaoAcademicTimeline(
         if (!resultsError) {
           academicTimeline = summarizeRaaBalcaoTimeline({
             hoje: new Date().toLocaleDateString("sv-SE", { timeZone: "Africa/Luanda" }),
-            periodos: pickOffering<PeriodRecord>((periodsResult.data ?? []) as PeriodRecord[]),
-            eventos: pickOffering<EventRecord>((eventsResult.data ?? []) as EventRecord[]),
+            periodos: selectApplicablePeriods((periodsResult.data ?? []) as PeriodRecord[], sourceOfferingId),
+            eventos: selectApplicableCalendarRecords((eventsResult.data ?? []) as EventRecord[], sourceOfferingId),
             sessoes,
             resultados: resultados ?? [],
             pautas: pautasResult.data ?? [],
