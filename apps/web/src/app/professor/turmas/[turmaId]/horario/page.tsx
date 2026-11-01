@@ -20,25 +20,32 @@ export default function ProfessorTurmaHorarioPage() {
   const [payload, setPayload] = useState<HorarioResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal: AbortSignal) => {
     if (!turmaId) { setPayload(null); setLoading(false); return; }
+    setPayload(null);
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/professor/turmas/${encodeURIComponent(turmaId)}/horario`, { cache: "no-store" });
+      const response = await fetch(`/api/professor/turmas/${encodeURIComponent(turmaId)}/horario`, {
+        cache: "no-store", signal,
+      });
       const json = await response.json().catch(() => null);
       if (!response.ok || json?.ok !== true) throw new Error("Não foi possível consultar o horário.");
-      setPayload(json as HorarioResponse);
+      if (!signal.aborted) setPayload(json as HorarioResponse);
     } catch {
-      setPayload(null);
-      setError("Não foi possível consultar o horário desta turma.");
+      if (!signal.aborted) setError("Não foi possível consultar o horário desta turma.");
     } finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
   }, [turmaId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    void load(ctrl.signal);
+    return () => ctrl.abort();
+  }, [load, retry]);
   const grouped = useMemo(() => (payload?.items ?? []).reduce((acc, item) => {
     const list = acc.get(item.dia_semana) ?? [];
     list.push(item);
@@ -57,7 +64,7 @@ export default function ProfessorTurmaHorarioPage() {
         {error ? (
           <div role="alert" className="rounded-xl border border-border bg-card p-4">
             <p className="text-sm font-semibold text-foreground">{error}</p>
-            <button type="button" onClick={() => void load()}
+            <button type="button" onClick={() => setRetry(current => current + 1)}
               className="mt-3 min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-primary hover:bg-muted">
               Tentar novamente
             </button>

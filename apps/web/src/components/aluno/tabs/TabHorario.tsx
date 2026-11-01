@@ -60,6 +60,8 @@ export function TabHorario() {
 
   const [data, setData] = useState<TimetableData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [horarioError, setHorarioError] = useState(false);
+  const [horarioRetry, setHorarioRetry] = useState(0);
   const [activeDay, setActiveDay] = useState<number>(Math.min(5, Math.max(1, new Date().getDay())));
   const [activeTab, setActiveTab] = useState<"horario" | "agenda">("horario");
   const [academicEvents, setAcademicEvents] = useState<AcademicEvent[]>([]);
@@ -70,18 +72,27 @@ export function TabHorario() {
   useEffect(() => {
     const ctrl = new AbortController();
     setLoading(true);
+    setData(null);
+    setHorarioError(false);
 
-    const url = studentId 
-      ? `/api/aluno/horario?studentId=${studentId}`
-      : "/api/aluno/horario";
+    const params = new URLSearchParams();
+    if (studentId) params.set("studentId", studentId);
+    const url = `/api/aluno/horario${params.size ? `?${params.toString()}` : ""}`;
 
-    fetch(url, { cache: "no-store", signal: ctrl.signal })
-      .then((r) => r.json() as Promise<TimetableData>)
-      .then((json) => setData(json))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
+    void (async () => {
+      try {
+        const response = await fetch(url, { cache: "no-store", signal: ctrl.signal });
+        const json = await response.json().catch(() => null) as TimetableData | null;
+        if (!response.ok || json?.ok !== true) throw new Error("Horário indisponível");
+        if (!ctrl.signal.aborted) setData(json);
+      } catch {
+        if (!ctrl.signal.aborted) setHorarioError(true);
+      } finally {
+        if (!ctrl.signal.aborted) setLoading(false);
+      }
+    })();
     return () => ctrl.abort();
-  }, [studentId]);
+  }, [studentId, horarioRetry]);
 
   const slotsPorDia = useMemo(() => {
     if (!data?.slots) return [];
@@ -174,7 +185,15 @@ export function TabHorario() {
       </div>
 
       {/* MODO 1: Grade de Aulas Semanal */}
-      {activeTab === "horario" && (!data?.version ? (
+      {activeTab === "horario" && (horarioError ? (
+        <section role="alert" className="rounded-xl border border-border bg-card p-5">
+          <p className="text-sm font-semibold text-foreground">Não foi possível consultar o horário.</p>
+          <button type="button" onClick={() => setHorarioRetry(current => current + 1)}
+            className="mt-3 min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-primary hover:bg-muted">
+            Tentar novamente
+          </button>
+        </section>
+      ) : !data?.version ? (
         <section className="rounded-xl border border-border bg-card p-6 text-center">
           <Calendar className="mx-auto h-6 w-6 text-primary" aria-hidden="true" />
           <h3 className="mt-2 text-base font-semibold text-foreground">Horário ainda não publicado</h3>
