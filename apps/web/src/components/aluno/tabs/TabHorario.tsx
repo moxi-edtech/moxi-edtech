@@ -144,7 +144,7 @@ export function TabHorario() {
     <div className="space-y-6 pb-8">
       <header className="space-y-1 px-1">
         <h2 className="text-xl font-semibold text-primary tracking-tight">Horário e calendário</h2>
-        <p className="text-xs font-medium text-slate-500">Consulta o teu horário e os próximos eventos do ano letivo.</p>
+        <p className="text-xs font-medium text-muted-foreground">Consulta o teu horário e os próximos eventos do ano letivo.</p>
       </header>
 
       {/* Switcher Sóbrio de Modos */}

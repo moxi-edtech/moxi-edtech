@@ -142,7 +142,7 @@ export function TabPerfil() {
       <AlunoCard>
         <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
           <User className="h-4 w-4 text-amber" />
-          <h2 className="text-sm font-semibold text-slate-900">Dados pessoais</h2>
+          <h2 className="text-sm font-semibold text-foreground">Dados pessoais</h2>
         </div>
         
         <form onSubmit={handleSalvarDados} className="space-y-4">
@@ -211,7 +211,7 @@ export function TabPerfil() {
       <AlunoCard>
         <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
           <Lock className="h-4 w-4 text-amber" />
-          <h2 className="text-sm font-semibold text-slate-900">Segurança da conta</h2>
+          <h2 className="text-sm font-semibold text-foreground">Segurança da conta</h2>
         </div>
         
         <form onSubmit={handleSalvarSenha} className="space-y-4">

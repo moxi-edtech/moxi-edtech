@@ -162,14 +162,14 @@ export function TabFinanceiro() {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Saldo atual</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Saldo atual</p>
           <p className={`mt-2 text-lg font-bold ${resumo && resumo.saldo_consolidado > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
             {resumo ? money.format(resumo.saldo_consolidado) : "—"}
           </p>
-          <p className="text-[10px] text-slate-400 mt-1 uppercase">Após pagamentos e acertos</p>
+          <p className="text-[10px] text-muted-foreground mt-1 uppercase">Após pagamentos e acertos</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Total pago</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Total pago</p>
           <p className="mt-2 text-lg font-semibold text-slate-700">{resumo ? money.format(resumo.total_pago) : "—"}</p>
         </div>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
