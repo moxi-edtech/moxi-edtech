@@ -27,7 +27,7 @@ test("source eligibility gates destination and never creates a client-side RAA o
 });
 test("the student, process and wizard remain in one workspace, without modal auto-open",()=>{
  const balc=source("components/secretaria/BalcaoAtendimento.tsx");
- assert.match(balc,/Aluno selecionado para rematrícula/);
+ assert.match(balc,/Aluno selecionado para situação académica/);
  assert.match(balc,/searchOpen \|\| view === "reenrollment"/);
  assert.match(balc,/balcao-rematricula-wizard/);
  assert.doesNotMatch(balc,/autoOpenedRematriculaRef/);
