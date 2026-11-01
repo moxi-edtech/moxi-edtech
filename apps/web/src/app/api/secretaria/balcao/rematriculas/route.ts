@@ -16,6 +16,7 @@ import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 import { resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
+import { isSourceYearStillInEarlyTrimester } from "@/lib/rematricula/raa-balcao-early-trimester";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -260,6 +261,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: "Não foi possível identificar a matrícula anterior para esta operação.", code: "REMATRICULA_SOURCE_INVALID" }, { status: 409 });
       }
       matricula = matriculaAnterior;
+    }
+    if (await isSourceYearStillInEarlyTrimester(supabase, escolaId, matricula)) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_YEAR_IN_PROGRESS",
+        error: "O ano de origem ainda está no 1.º ou 2.º trimestre. Consulte o progresso académico.",
+      }, { status: 409 });
     }
     const origemMatriculaId = String(matricula.id);
     let { data: matriculaDestino } = await supabase
