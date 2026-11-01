@@ -59,3 +59,18 @@ test("RAA panel resolves names from authorized source school, not invented label
  assert.match(panel,/hasTrimesterCases/);
  assert.doesNotMatch(panel,/disciplinas com elementos pendentes/);
 });
+
+test("non-actionable reenrollment shows the destination without a dead button", () => {
+ const frame=source("components/secretaria/RematriculaWorkspaceChrome.tsx");
+ assert.match(frame,/canContinue && !completed && !destinationEnrolled && !cycleCompleted/);
+ assert.match(frame,/pendingSubjectsActionForBalcao/);
+});
+test("individual-grade action preserves selected discipline and never bypasses source checks", () => {
+ const balc=source("components/secretaria/BalcaoAtendimento.tsx");
+ const modal=source("components/secretaria/EnrollmentPostActionModal.tsx");
+ assert.match(balc,/onLancarNota=\{\(trimestre, disciplinaId\) => \{/);
+ assert.match(balc,/initialDisciplinaId: disciplinaId \?\? null/);
+ assert.match(modal,/initialDisciplinaId\?: string \| null/);
+ assert.match(modal,/item\.disciplina\?\.id === initialDisciplinaId/);
+ assert.match(modal,/setTurmaDisciplinaId\(found\?\.id \?\? ""\)/);
+});
