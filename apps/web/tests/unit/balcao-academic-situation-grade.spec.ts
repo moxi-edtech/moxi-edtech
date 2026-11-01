@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { BALCAO_ACTION_REGISTRY } from "../../src/lib/balcao/action-registry";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), "src", path), "utf8");
 
