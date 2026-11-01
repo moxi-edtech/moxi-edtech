@@ -1391,6 +1391,7 @@ function Catalogo({
   rematriculaWindow,
   rematriculaAcademic,
   rematriculaTimeline,
+  rematriculaTimelineYear,
   rematriculaOrigemAno,
   rematriculaDestinoMatriculaId,
   rematriculaCanWriteGrades,
@@ -1432,6 +1433,7 @@ function Catalogo({
   rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
   rematriculaAcademic: RaaBalcaoAcademic | null | undefined;
   rematriculaTimeline: RaaBalcaoTimeline | null;
+  rematriculaTimelineYear: number | null;
   rematriculaOrigemAno: number | null;
   rematriculaDestinoMatriculaId: string | null;
   rematriculaCanWriteGrades: boolean;
@@ -1513,6 +1515,7 @@ function Catalogo({
           motivo={rematriculaAcademic?.reason ?? null}
           progress={activeProgress}
           timeline={rematriculaTimeline}
+          timelineAno={rematriculaTimelineYear != null ? `${rematriculaTimelineYear}/${rematriculaTimelineYear + 1}` : null}
           destinoMatriculaId={rematriculaDestinoMatriculaId}
         />
       ) : view === "all" ? (
@@ -2771,6 +2774,7 @@ export default function BalcaoAtendimento({
     alunoId: dossier.aluno?.id ?? null,
     matriculaId: dossier.aluno?.matricula_id ?? null,
     academicYearId: effectiveAcademicYearId,
+    includeAcademicTimeline: view === "reenrollment",
     responsavelContato: dossier.aluno?.telefone_responsavel ?? null,
     itensPagamento: itensRematricula,
   });
@@ -3202,6 +3206,7 @@ export default function BalcaoAtendimento({
                   rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
                   rematriculaTimeline={rematricula.academicTimeline}
+                  rematriculaTimelineYear={rematricula.academicTimelineYear}
                   rematriculaOrigemAno={rematricula.academic?.source?.ano_letivo_ano ?? null}
                   rematriculaDestinoMatriculaId={rematricula.destinoMatriculaId}
                   rematriculaCanWriteGrades={rematricula.canWriteGrades}
