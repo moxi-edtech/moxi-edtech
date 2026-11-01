@@ -7,8 +7,8 @@ import { RAA_ACADEMIC_DECISION_ROLES, hasExactRaaAcademicDecisionRole } from "..
 const api=(path:string)=>readFileSync(resolve(process.cwd(),"src",path),"utf8");
 const migration=()=>readFileSync(resolve(process.cwd(),"../../supabase/migrations/20271031002000_raa_reapreciacao_decision_permission_fix.sql"),"utf8");
 
-test("academic appeal and disciplinary decisions are restricted to academic directors",()=>{
-  assert.deepEqual([...RAA_ACADEMIC_DECISION_ROLES],["admin","admin_escola","diretor"]);
+test("academic appeal and disciplinary decisions include admin_financeiro explicitly",()=>{
+  assert.deepEqual([...RAA_ACADEMIC_DECISION_ROLES],["admin","admin_escola","diretor","admin_financeiro"]);
   const appeal=api("app/api/academico/raa/reapreciacao/decisao/route.ts");
   const discipline=api("app/api/academico/raa/indisciplina/route.ts");
   assert.match(appeal,/hasExactRaaAcademicDecisionRole\(supabase, escolaId, auth\.user\.id\)/);
@@ -50,13 +50,13 @@ test("no direct client UPDATE/DELETE or mutable student/tenant columns",()=>{
   assert.doesNotMatch(sql,/GRANT ALL ON .*reapreciacao_pedidos TO authenticated/);
 });
 
-test("academic decisions never inherit admin aliases (particularly admin_financeiro)", async () => {
+test("academic decisions allow exact roles without broadening via aliases", async () => {
   const mockFor = (papel: string | null) => ({
     from: () => ({ select: () => ({ eq: () => ({ eq: () => ({
       maybeSingle: async () => ({ data: papel === null ? null : { papel }, error: null }),
     }) }) }) }),
   });
-  for (const papel of ["secretaria", "staff_admin", "admin_financeiro", "professor", "secretaria_financeiro"]) {
+  for (const papel of ["secretaria", "staff_admin", "professor", "secretaria_financeiro"]) {
     assert.equal(await hasExactRaaAcademicDecisionRole(mockFor(papel) as any, "school", "user"), false, papel);
   }
   for (const papel of RAA_ACADEMIC_DECISION_ROLES) {
