@@ -32,7 +32,7 @@ export async function loadRaaBalcaoAcademicTimeline(
           .eq("escola_id", escolaId).eq("ano_letivo_id", matriculaOrigem.session_id)
           .or(offeringScope).limit(100),
         supabase.from("calendario_eventos")
-          .select("tipo,data_inicio,data_fim,offering_id")
+          .select("tipo,nome,data_inicio,data_fim,offering_id,source_item_id")
           .eq("escola_id", escolaId).eq("ano_letivo_id", matriculaOrigem.session_id)
           .or(offeringScope)
           .in("tipo", ["PROVA_TRIMESTRAL", "EXAME_NACIONAL", "EXAME_ORAL", "EXAME_ESCRITO", "EXAME_EXTRAORDINARIO", "PUBLICACAO_PAUTA", "CONSELHO_CLASSE"])
@@ -50,7 +50,7 @@ export async function loadRaaBalcaoAcademicTimeline(
       ]);
       if (!periodsResult.error && !eventsResult.error && !examsResult.error && !pautasResult.error) {
         type PeriodRecord = { id: string; tipo: string; numero: number; data_inicio: string; data_fim: string; offering_id: string | null };
-        type EventRecord = { tipo: string; data_inicio: string; data_fim: string; offering_id: string | null };
+        type EventRecord = { tipo: string; nome: string | null; data_inicio: string; data_fim: string; offering_id: string | null; source_item_id: string | null };
         const sessoes = examsResult.data ?? [];
         const { data: resultados, error: resultsError } = sessoes.length
           ? await supabase.from("exame_resultados")
