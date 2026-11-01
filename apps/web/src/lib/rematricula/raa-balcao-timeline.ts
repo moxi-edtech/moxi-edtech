@@ -10,6 +10,7 @@ export type RaaBalcaoTimeline = {
   provas: "agendadas" | "em_curso" | "datas_decorridas" | "sem_calendario";
   proximaProvaEm: string | null;
   pautaFinalPublicada: boolean;
+  publicacaoPautaPrevistaEm: string | null;
   exames: "sem_sessao" | "agendados" | "com_notas" | "notas_pendentes";
   notasExameRegistadas: number;
   pedidosReapreciacao: number | null;
@@ -142,6 +143,11 @@ export function summarizeRaaBalcaoTimeline(input: {
       .map((s) => ({ date: s.data_inicio, label: "Próximo exame" })),
   ].sort((a, b) => a.date.localeCompare(b.date))[0];
 
+  const publicacaoPautaPrevistaEm = input.eventos
+    .filter((event) => event.tipo === "PUBLICACAO_PAUTA" && event.data_inicio > hoje)
+    .map((event) => event.data_inicio)
+    .sort()[0] ?? null;
+
   const proximaEtapa = activePeriods.length > 1 ? "Confirmar as datas do calendário"
     : provaAtual ? "Provas em curso · acompanhar resultados"
     : upcoming ? upcoming.label + " · " + displayDate(upcoming.date)
@@ -154,7 +160,7 @@ export function summarizeRaaBalcaoTimeline(input: {
   return {
     fase, faseLabel: labels[fase], proximaEtapa,
     provas: estadoProvas, proximaProvaEm: provaAtual?.data_inicio ?? provaFutura?.data_inicio ?? null,
-    pautaFinalPublicada, exames, notasExameRegistadas,
+    pautaFinalPublicada, publicacaoPautaPrevistaEm, exames, notasExameRegistadas,
     pedidosReapreciacao: input.pedidosReapreciacao ?? null,
   };
 }
