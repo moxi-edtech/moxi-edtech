@@ -589,6 +589,8 @@ export function RaaBalcaoResolutionPanel({
                 <p role="status" className="mt-2 text-sm text-muted-foreground">A confirmar a turma e o ano letivo de origem.</p>
               ) : origemEncerrada ? (
                 <p role="status" className="text-sm text-muted-foreground">Lançamento bloqueado pela matrícula de origem.</p>
+              ) : planAction === "reapreciacao" ? (
+                <p className="text-xs text-muted-foreground">Consulte o exame ou recurso desta disciplina.</p>
               ) : canLancarNota ? (
                 <button type="button"
                   onClick={() => onLancarNota(activeCase && isRaaTrimestre(activeCase.periodo) ? activeCase.periodo : null, activeCase?.referenceId ?? null)}
