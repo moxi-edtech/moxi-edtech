@@ -1724,6 +1724,22 @@ function Catalogo({
                 )}
               </div>
             ) : null}
+            {view === "reenrollment" && rematriculaCanWriteGrades &&
+              rematriculaAcademic?.source?.turma_id &&
+              rematriculaAcademic?.source?.ano_letivo_id &&
+              ["ativo", "ativa", "active"].includes((rematriculaAcademic.source.status ?? "").toLowerCase()) &&
+              rematriculaAcademic?.regime?.escala !== "qualitativa" && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Notas individuais</p>
+                    <p className="text-xs text-muted-foreground">Registar uma avaliação do aluno selecionado, conforme o trimestre autorizado.</p>
+                  </div>
+                  <button type="button" onClick={() => onLancarNota(null)}
+                    className="inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
+                    Lançar nota
+                  </button>
+                </div>
+              )}
             {/* All seven non-standard academic cases are resolved in-place. */}
             {raaMatriculaId && raaAlunoId ? (
               <RaaBalcaoResolutionPanel
