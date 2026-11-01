@@ -15,6 +15,7 @@ export type RaaBalcaoCaseSources = {
   action: RaaBalcaoAction;
   title: string;
   disciplinaIds?: readonly string[];
+  disciplinaNames?: Readonly<Record<string, string>>;
   faltas?: readonly { id: string; data_falta: string; status: string; motivo: string; trimestre?: RaaTrimestre | null }[];
   pedidos?: readonly { id: string; protocolo_publico: string; estado: string; motivo: string }[];
   eventos?: readonly { id: string; categoria: string; estado: string; descricao: string }[];
@@ -25,10 +26,10 @@ export function buildRaaBalcaoCases(source: RaaBalcaoCaseSources): RaaBalcaoCase
   const items: RaaBalcaoCase[] = [];
   const { action } = source;
   if (action === "nota") {
-    (source.disciplinaIds ?? []).forEach((id, i) => items.push({
+    (source.disciplinaIds ?? []).forEach((id) => items.push({
       id: "nota:" + id, referenceId: id, kind: "nota",
-      titulo: "Disciplina pendente " + (i + 1),
-      resumo: "Verifique as notas desta disciplina e conclua o que falta",
+      titulo: source.disciplinaNames?.[id]?.trim() || "Nome da disciplina indisponível",
+      resumo: "",
       estado: "pendente", periodo: "nao_identificado",
     }));
   }
