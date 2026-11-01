@@ -94,3 +94,41 @@ test("locked periods are explained, and official write permissions remain server
   assert.match(api, /lancar_notas_batch/);
   assert.match(api, /Past\/locked writes are adjudicated by the database trigger/);
 });
+
+test("enrollment exists but reenrollment payment is not proven: keep payment-only action", () => {
+  const status = source("app/api/secretaria/balcao/rematriculas/status/route.ts");
+  const writer = source("app/api/secretaria/balcao/rematriculas/route.ts");
+  const chrome = source("components/secretaria/RematriculaWorkspaceChrome.tsx");
+  const balc = source("components/secretaria/BalcaoAtendimento.tsx");
+  assert.match(status, /status = "RECONFIRMATION_REQUIRED"/);
+  assert.match(status, /matriculaDestino\\?\\.turma_id && !reclassificacao/);
+  assert.match(writer, /REMATRICULA_TARGET_ALREADY_ENROLLED/);
+  assert.match(writer, /reconfirmacaoApenas/);
+  assert.match(chrome, /title: "Taxa por confirmar"/);
+  assert.match(chrome, /Regularizar taxa de rematrícula/);
+  assert.match(balc, /taxaValor=\\{rematriculaPrice\\}/);
+});
+
+test("payment granted without verified destination stays in reconciliation, never completed", () => {
+  const status = source("app/api/secretaria/balcao/rematriculas/status/route.ts");
+  const writer = source("app/api/secretaria/balcao/rematriculas/route.ts");
+  assert.match(status, /pedidoDestinoId && matriculaDestino\\?\\.id/);
+  assert.match(status, /String\\(pedidoDestinoId\\) === String\\(matriculaDestino\\.id\\)/);
+  assert.match(status, /pagamentoSemProgressao = pedidoExistente\\?\\.status === "granted" && !pedidoTemMatriculaDestino/);
+  assert.match(status, /pedidoConcluido = pedidoExistente\\?\\.status === "granted" && pedidoTemMatriculaDestino/);
+  assert.match(writer, /!matriculaDestinoId \\|\\| !matriculaDestino\\?\\.id/);
+  assert.match(writer, /code: "REMATRICULA_RECONCILIATION_REQUIRED"/);
+});
+
+test("payment evidence errors fail closed instead of creating a second charge", () => {
+  const status = source("app/api/secretaria/balcao/rematriculas/status/route.ts");
+  const writer = source("app/api/secretaria/balcao/rematriculas/route.ts");
+  const hook = source("hooks/useRematriculaBalcao.ts");
+  assert.match(status, /if \\(pedidosAtivosError\\) throw pedidosAtivosError/);
+  assert.match(status, /if \\(intentsError \\|\\| pagamentosError\\) throw intentsError \\?\\? pagamentosError/);
+  assert.match(writer, /if \\(pedidosExistentesError\\) throw pedidosExistentesError/);
+  assert.match(writer, /if \\(intentsError \\|\\| pagamentosError\\) throw intentsError \\?\\? pagamentosError/);
+  assert.match(writer, /pedidoError\\?\\.code === "23505"/);
+  assert.match(hook, /const clearStatusSnapshot = useCallback/);
+  assert.match(hook, /clearStatusSnapshot\\(\\);/);
+});
