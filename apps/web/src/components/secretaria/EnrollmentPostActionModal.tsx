@@ -24,13 +24,14 @@ type Props = {
   turmaId?: string | null;
   originAnoLetivoId?: string | null;
   initialTrimestre?: 1 | 2 | 3 | null;
+  initialDisciplinaId?: string | null;
   elevated?: boolean;
   onPayment: () => void;
   onAcademicSaved?: () => void;
 };
 
 export function EnrollmentPostActionModal({
-  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, originAnoLetivoId, initialTrimestre, onPayment, onAcademicSaved, elevated = false,
+  open, onOpenChange, action, escolaId, alunoId, alunoNome, turmaId, originAnoLetivoId, initialTrimestre, initialDisciplinaId, onPayment, onAcademicSaved, elevated = false,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ login?: string | null; senha?: string | null; error?: string } | null>(null);
@@ -166,13 +167,30 @@ export function EnrollmentPostActionModal({
 
   useEffect(() => {
     if (!open || action !== "notas" || !turmaId) return;
+    let active = true;
     setDisciplinas([]);
     setDisciplinaId("");
+    setTurmaDisciplinaId("");
     fetch(`/api/secretaria/turmas/${encodeURIComponent(turmaId)}/disciplinas`, { cache: "no-store" })
-      .then((response) => response.json())
-      .then((json) => setDisciplinas(Array.isArray(json?.items) ? json.items : []))
-      .catch(() => setDisciplinas([]));
-  }, [open, action, turmaId]);
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Não foi possível consultar as disciplinas desta turma.");
+        return response.json();
+      })
+      .then((json) => {
+        if (!active) return;
+        const items = Array.isArray(json?.items) ? json.items as typeof disciplinas : [];
+        setDisciplinas(items);
+        const found = initialDisciplinaId
+          ? items.find((item) => item.disciplina?.id === initialDisciplinaId)
+          : null;
+        // An incoming ID is a hint, not an authorization to write to a turma.
+        // Only preselect IDs returned by this authorized source-turma API.
+        setDisciplinaId(found?.disciplina?.id ?? "");
+        setTurmaDisciplinaId(found?.id ?? "");
+      })
+      .catch(() => { if (active) setDisciplinas([]); });
+    return () => { active = false; };
+  }, [open, action, turmaId, alunoId, initialDisciplinaId]);
 
   useEffect(() => {
     let active = true;
