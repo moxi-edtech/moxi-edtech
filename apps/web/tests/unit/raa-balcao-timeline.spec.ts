@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { summarizeRaaBalcaoTimeline } from "../../src/lib/rematricula/raa-balcao-timeline";
+import { selectApplicableCalendarRecords, selectApplicablePeriods, summarizeRaaBalcaoTimeline } from "../../src/lib/rematricula/raa-balcao-timeline";
 
 const periodos = [
   { id: "p1", tipo: "TRIMESTRE", numero: 1, data_inicio: "2026-09-01", data_fim: "2026-11-30" },
@@ -99,4 +99,45 @@ test("status endpoint and UI use source-year data and restrict write actions", (
   assert.match(examContext, /can_record_result:/);
   assert.match(resultWriter, /EXAM_NOT_STARTED/);
   assert.match(writer, /REMATRICULA_TARGET_ALREADY_ENROLLED/);
+});
+
+test("specific offering trimester overrides only the matching school-wide trimester", () => {
+  const mixed = [
+    { id: "g1", tipo: "TRIMESTRE", numero: 1, data_inicio: "2026-09-01", data_fim: "2026-11-30", offering_id: null },
+    { id: "g2", tipo: "TRIMESTRE", numero: 2, data_inicio: "2027-01-05", data_fim: "2027-03-31", offering_id: null },
+    { id: "a1", tipo: "TRIMESTRE", numero: 1, data_inicio: "2026-10-01", data_fim: "2026-12-10", offering_id: "offer-a" },
+    { id: "b1", tipo: "TRIMESTRE", numero: 1, data_inicio: "2026-08-01", data_fim: "2026-11-15", offering_id: "offer-b" },
+  ];
+  assert.deepEqual(selectApplicablePeriods(mixed, "offer-a").map((p) => p.id), ["g2", "a1"]);
+  assert.deepEqual(selectApplicablePeriods(mixed, null).map((p) => p.id), ["g1", "g2"]);
+});
+
+test("shared events remain visible with specific events; other offerings do not leak", () => {
+  const events = [
+    { offering_id: null, tipo: "PROVA_TRIMESTRAL" },
+    { offering_id: "offer-a", tipo: "EXAME_ORAL" },
+    { offering_id: "offer-b", tipo: "EXAME_ESCRITO" },
+  ];
+  assert.deepEqual(selectApplicableCalendarRecords(events, "offer-a").map((e) => e.tipo),
+    ["PROVA_TRIMESTRAL", "EXAME_ORAL"]);
+});
+
+test("next step uses the earliest upcoming official date, not a generic trimester label", () => {
+  const upcoming = summarizeRaaBalcaoTimeline({
+    ...base, hoje: "2027-05-15",
+    eventos: [
+      { tipo: "PROVA_TRIMESTRAL", data_inicio: "2027-05-20", data_fim: "2027-05-22" },
+      { tipo: "PROVA_TRIMESTRAL", data_inicio: "2027-06-20", data_fim: "2027-06-25" },
+    ],
+  });
+  assert.match(upcoming.proximaEtapa, /20\\/05\\/2027/);
+});
+
+test("overlapping official trimesters never show an invented active trimester", () => {
+  const overlap = summarizeRaaBalcaoTimeline({
+    ...base, hoje: "2027-05-15",
+    periodos: [...periodos, { id: "duplicate", tipo: "TRIMESTRE", numero: 2, data_inicio: "2027-05-01", data_fim: "2027-05-30" }],
+  });
+  assert.equal(overlap.fase, "desconhecida");
+  assert.match(overlap.proximaEtapa, /Confirmar as datas/);
 });
