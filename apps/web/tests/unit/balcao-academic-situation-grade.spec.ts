@@ -50,10 +50,10 @@ test("academic situation prioritizes the current state and next action before tr
   const header = source("components/secretaria/RematriculaWorkspaceChrome.tsx");
   assert.match(header, /Situação académica<\/h2>/);
   assert.match(header, /aria-label="Resumo da situação académica"/);
-  assert.ok(
-    header.indexOf('aria-label="Elegibilidade académica"') <
-      header.indexOf('aria-label="Percurso académico do ano em curso"'),
-    "next action must precede the detailed trimester timeline",
+  const nextAction = header.indexOf('aria-label="Próxima ação académica"');
+  const calendar = header.indexOf('aria-label="Calendário de origem"');
+  assert.ok(nextAction >= 0 && calendar > nextAction,
+    "the single next action must precede the optional calendar",
   );
 });
 
