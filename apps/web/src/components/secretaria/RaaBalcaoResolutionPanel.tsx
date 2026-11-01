@@ -150,13 +150,11 @@ export function RaaBalcaoResolutionPanel({
   const hasTrimesterCases = cases.some((item) => isRaaTrimestre(item.periodo));
   const progress = raaBalcaoProgress(cases);
   const visibleCases = cases.filter((item) => matchesRaaPeriodFilter(item.periodo, periodFilter));
-  const visibleProgress = raaBalcaoProgress(visibleCases);
   const activeCase = cases.find((item) => item.id === caseId) ?? null;
   const action = activeCase?.kind === "nota" ? "nota" :
     activeCase?.kind === "justificacao" ? "justificacao" :
     activeCase?.kind === "pedido" || activeCase?.kind === "exame" ? "reapreciacao" :
     activeCase?.kind === "disciplina" ? "disciplina" : planAction;
-  const hasEvidence = cases.some((item) => item.kind !== "orientacao");
   const canDecide = Boolean(selected) && !saving;
   useEffect(() => {
     onProgressChange?.({ matriculaId, total: progress.total, registados: progress.registados, loading });
