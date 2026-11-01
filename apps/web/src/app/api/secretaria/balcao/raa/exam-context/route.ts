@@ -61,6 +61,7 @@ export async function GET(request: Request) {
       locked: matricula.status !== "ativo" },
     disciplinas: disciplinas ?? [],
     can_record_result: !canWrite.error && matricula.status === "ativo",
+    hoje_angola: new Date().toLocaleDateString("sv-SE", { timeZone: "Africa/Luanda" }),
     sessoes: sessoes ?? [],
     resultados: resultados ?? [],
   });
