@@ -1393,6 +1393,7 @@ function Catalogo({
   rematriculaTimeline,
   rematriculaOrigemAno,
   rematriculaDestinoMatriculaId,
+  rematriculaCanWriteGrades,
   rematriculaDestinoTurma,
   raaMatriculaId,
   raaAlunoId,
@@ -1433,6 +1434,7 @@ function Catalogo({
   rematriculaTimeline: RaaBalcaoTimeline | null;
   rematriculaOrigemAno: number | null;
   rematriculaDestinoMatriculaId: string | null;
+  rematriculaCanWriteGrades: boolean;
   rematriculaDestinoTurma: TurmaOption | null;
   raaMatriculaId: string | null;
   raaAlunoId: string | null;
@@ -1728,6 +1730,7 @@ function Catalogo({
                 alunoId={raaAlunoId}
                 academic={rematriculaAcademic ?? null}
                 onLancarNota={onLancarNota}
+                canLancarNota={rematriculaCanWriteGrades}
                 onDocumentos={onDocumentos}
                 onRecheck={onRefreshRematricula}
                 onProgressChange={setRaaProgress}
@@ -3201,10 +3204,12 @@ export default function BalcaoAtendimento({
                   rematriculaTimeline={rematricula.academicTimeline}
                   rematriculaOrigemAno={rematricula.academic?.source?.ano_letivo_ano ?? null}
                   rematriculaDestinoMatriculaId={rematricula.destinoMatriculaId}
+                  rematriculaCanWriteGrades={rematricula.canWriteGrades}
                   rematriculaDestinoTurma={rematricula.destinoTurma ?? null}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
                   onLancarNota={(trimestre) => {
+                    if (!rematricula.canWriteGrades) return;
                     const source = rematricula.academic?.source;
                     if (!source?.turma_id || !source.ano_letivo_id) {
                       error("Não foi possível identificar a turma e o ano de origem.");
