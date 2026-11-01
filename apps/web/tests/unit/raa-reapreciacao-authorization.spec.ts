@@ -41,6 +41,9 @@ test("no direct client UPDATE/DELETE or mutable student/tenant columns",()=>{
   assert.match(sql,/REVOKE ALL ON TABLE public\.reapreciacao_pedidos FROM PUBLIC, anon, authenticated/);
   assert.match(sql,/GRANT UPDATE \(estado, decisao_motivo, decidido_por, decidido_em, updated_at\)/);
   assert.match(sql,/FOR UPDATE TO authenticated/);
+  assert.match(sql,/public\.raa_has_exact_school_role/);
+  assert.match(sql,/eu\.papel::text = ANY \(p_roles\)/);
+  assert.match(sql,/DROP POLICY IF EXISTS raa_indisciplina_director_update_v2/);
   assert.match(sql,/FOR INSERT TO authenticated/);
   assert.match(sql,/solicitado_por = \(SELECT auth\.uid\(\)\)/);
   assert.match(sql,/decidido_por = \(SELECT auth\.uid\(\)\)/);
