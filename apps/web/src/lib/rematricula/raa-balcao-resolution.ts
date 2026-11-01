@@ -12,37 +12,37 @@ export type RaaBalcaoPlan = {
 const BLOCKED: Partial<Record<RematriculaCardState, RaaBalcaoPlan>> = {
   ACADEMIC_PENDING: {
     titulo: "Notas ou dados académicos pendentes",
-    detalhe: "Complete a pauta com a competência adequada. Não existe aprovação por omissão.",
+    detalhe: "Verifique as notas em falta na pauta.",
     acao: "nota", permiteRematricula: false,
   },
   ACADEMIC_REVIEW_REQUIRED: {
     titulo: "Exame ou recurso pendente",
-    detalhe: "Consulte os pedidos e decisões. A decisão do pedido não substitui a nota ou o resultado oficial.",
+    detalhe: "Consulte o exame, o pedido e o resultado publicado.",
     acao: "reapreciacao", permiteRematricula: false,
   },
   ACADEMIC_CONDITIONAL_BLOCKED: {
     titulo: "Inscrição condicional ainda bloqueada",
-    detalhe: "A progressão condicional exige conclusão do exame ou do recurso previsto no RAA.",
+    detalhe: "Conclua o exame ou o recurso pendente.",
     acao: "reapreciacao", permiteRematricula: false,
   },
   ACADEMIC_ATTENDANCE_REVIEW_REQUIRED: {
     titulo: "Retenção por faltas",
-    detalhe: "Analise as justificações comprovadas. Aprovar uma justificação não altera automaticamente a frequência nem o histórico legal.",
+    detalhe: "Analise as faltas e justificações.",
     acao: "justificacao", permiteRematricula: false,
   },
   ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED: {
     titulo: "Retenção por indisciplina",
-    detalhe: "A decisão disciplinar compete à direção; não é uma retificação livre do resultado académico.",
+    detalhe: "Reveja a ocorrência e registe a decisão autorizada.",
     acao: "disciplina", permiteRematricula: false,
   },
   ACADEMIC_NOT_APPROVED: {
     titulo: "Resultado académico não autoriza progressão",
-    detalhe: "Reveja as evidências oficiais. Nenhuma decisão manual do Balcão pode substituir o RAA.",
+    detalhe: "Consulte o resultado e as pendências académicas.",
     acao: "rever_resultado", permiteRematricula: false,
   },
   ACADEMIC_CYCLE_COMPLETED: {
     titulo: "Ciclo de ensino concluído",
-    detalhe: "Não crie matrícula seguinte. Prossiga para a emissão de documentos no próprio Balcão.",
+    detalhe: "Consulte e emita os documentos de conclusão.",
     acao: "documentos", permiteRematricula: false,
   },
 };
