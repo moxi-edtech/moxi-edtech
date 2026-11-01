@@ -120,6 +120,7 @@ interface StatusResponse {
   ok: boolean;
   cicloVida?: StudentLifecycle | null;
   academic_timeline?: RaaBalcaoTimeline | null;
+  academic_timeline_ano_letivo_ano?: number | null;
   academic_permissions?: { can_write_grades: boolean };
   destino_matricula_id?: string | null;
   status: RematriculaCardState;
@@ -246,6 +247,7 @@ export function useRematriculaBalcao(opts: {
   alunoId: string | null;
   matriculaId: string | null;
   academicYearId: string | null;
+  includeAcademicTimeline?: boolean;
   /** Only authenticated, tenant/polo-bound workspace scopes may persist drafts. */
   draftScope?: string | null;
   responsavelContato?: string | null;
@@ -262,6 +264,7 @@ export function useRematriculaBalcao(opts: {
   const [academic, setAcademic] = useState<StatusResponse["academic"]>(null);
   const [cicloVida, setCicloVida] = useState<StudentLifecycle | null>(null);
   const [academicTimeline, setAcademicTimeline] = useState<RaaBalcaoTimeline | null>(null);
+  const [academicTimelineYear, setAcademicTimelineYear] = useState<number | null>(null);
   const [destinoMatriculaId, setDestinoMatriculaId] = useState<string | null>(null);
   const [canWriteGrades, setCanWriteGrades] = useState(false);
   const [pedido, setPedido] = useState<StatusResponse["pedido"]>(null);
@@ -322,6 +325,7 @@ export function useRematriculaBalcao(opts: {
       statusRequestGeneration.current += 1;
       setCardState(null);
       setAcademicTimeline(null);
+      setAcademicTimelineYear(null);
       setDestinoMatriculaId(null);
       setCanWriteGrades(false);
       setAnoLetivo(null);
@@ -341,6 +345,7 @@ export function useRematriculaBalcao(opts: {
         params.set("ano_letivo_id", opts.academicYearId);
       }
       if (destinationTurmaId) params.set("destino_turma_id", destinationTurmaId);
+      if (opts.includeAcademicTimeline) params.set("include_academic_timeline", "1");
 
       const res = await fetch(
         `/api/secretaria/balcao/rematriculas/status?${params.toString()}`,
@@ -356,6 +361,7 @@ export function useRematriculaBalcao(opts: {
         setAcademic(data.academic ?? null);
         setCicloVida(data.cicloVida ?? null);
         setAcademicTimeline(data.academic_timeline ?? null);
+        setAcademicTimelineYear(data.academic_timeline_ano_letivo_ano ?? null);
         setDestinoMatriculaId(data.destino_matricula_id ?? null);
         setCanWriteGrades(data.academic_permissions?.can_write_grades === true);
         setPedido(data.pedido);
@@ -370,6 +376,7 @@ export function useRematriculaBalcao(opts: {
         setCardState("ERROR");
         setCicloVida(null);
         setAcademicTimeline(null);
+        setAcademicTimelineYear(null);
         setDestinoMatriculaId(null);
         setCanWriteGrades(false);
         setApiError((data as any)?.error ?? "Não foi possível verificar a elegibilidade da matrícula.");
@@ -379,13 +386,14 @@ export function useRematriculaBalcao(opts: {
       console.error("[useRematriculaBalcao] Error fetching status:", e);
       setCardState("ERROR");
       setAcademicTimeline(null);
+      setAcademicTimelineYear(null);
       setDestinoMatriculaId(null);
       setCanWriteGrades(false);
       setApiError("Não foi possível atualizar o estado da rematrícula. Verifique a ligação e tente novamente.");
     } finally {
       if (requestGeneration === statusRequestGeneration.current) setLoading(false);
     }
-  }, [opts.alunoId, opts.matriculaId, opts.academicYearId]);
+  }, [opts.alunoId, opts.matriculaId, opts.academicYearId, opts.includeAcademicTimeline]);
 
   // Auto-fetch on aluno/matricula change
   useEffect(() => {
@@ -406,6 +414,7 @@ export function useRematriculaBalcao(opts: {
     setAcademic(null);
     setCicloVida(null);
     setAcademicTimeline(null);
+    setAcademicTimelineYear(null);
     setDestinoMatriculaId(null);
     setCanWriteGrades(false);
     setTargetYearLabel(null);
@@ -837,6 +846,7 @@ export function useRematriculaBalcao(opts: {
     academic,
     cicloVida,
     academicTimeline,
+    academicTimelineYear,
     destinoMatriculaId,
     canWriteGrades,
     pedido,
