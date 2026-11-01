@@ -45,3 +45,49 @@ test("canonical grade API enforces tenant, role, official calendar and enrollmen
   assert.match(route, /lancar_notas_batch/);
   assert.match(route, /idempotency-key/);
 });
+ 
+test("academic situation prioritizes the current state and next action before trimester progress", () => {
+  const header = source("components/secretaria/RematriculaWorkspaceChrome.tsx");
+  assert.match(header, /Situação académica<\/h2>/);
+  assert.match(header, /aria-label="Resumo da situação académica"/);
+  assert.ok(
+    header.indexOf('aria-label="Elegibilidade académica"') <
+      header.indexOf('aria-label="Percurso académico do ano em curso"'),
+    "next action must precede the detailed trimester timeline",
+  );
+});
+
+test("a student without an associated enrollment gets an explicit non-writing state", () => {
+  const workspace = source("components/secretaria/BalcaoAtendimento.tsx");
+  assert.match(workspace, /!dossier\.aluno\.matricula_id \? "SOURCE_RECORD_REQUIRED"/);
+  assert.match(workspace, /rematriculaState === "SOURCE_RECORD_REQUIRED"/);
+  assert.match(workspace, /Matrícula de origem por confirmar/);
+  assert.match(workspace, /Verificar matrícula novamente/);
+  assert.match(workspace, /rematriculaAcademic\?\.source\?\.matricula_id &&/);
+  const api = source("app/api/secretaria/notas/route.ts");
+  assert.match(api, /ACTIVE_ENROLLMENT_REQUIRED/);
+});
+
+test("grade receipt confirms exactly what was saved and requires deliberate next action", () => {
+  const modal = source("components/secretaria/EnrollmentPostActionModal.tsx");
+  assert.match(modal, /setGradeReceipt\(\{/);
+  assert.match(modal, /disciplina: selected\.disciplina\.nome/);
+  assert.match(modal, /onAcademicSaved\?\.\(\)/);
+  assert.match(modal, /role="status" aria-live="polite"/);
+  assert.match(modal, /Nota registada/);
+  assert.match(modal, /Lançar outra avaliação/);
+  assert.match(modal, /disabled=\{loading \|\| periodUnavailable \|\| Boolean\(gradeReceipt\)\}/);
+});
+
+test("locked periods are explained, and official write permissions remain server controlled", () => {
+  const modal = source("components/secretaria/EnrollmentPostActionModal.tsx");
+  assert.match(modal, /selectedPeriod\?\.estado === "past"/);
+  assert.match(modal, /selectedPeriod\?\.estado === "locked"/);
+  assert.match(modal, /Guardar com reabertura autorizada/);
+  assert.match(modal, /periodReadOnly/);
+  assert.match(modal, /disciplina_ativa/);
+  const api = source("app/api/secretaria/notas/route.ts");
+  assert.match(api, /authorizeTurmasManage/);
+  assert.match(api, /lancar_notas_batch/);
+  assert.match(api, /Past\/locked writes are adjudicated by the database trigger/);
+});
