@@ -133,6 +133,16 @@ test("next step uses the earliest upcoming official date, not a generic trimeste
   assert.match(upcoming.proximaEtapa, /20\\/05\\/2027/);
 });
 
+test("scheduled publication never masquerades as an already published final pauta", () => {
+  const result = summarizeRaaBalcaoTimeline({
+    ...base, hoje: "2027-07-14",
+    eventos: [{ tipo: "PUBLICACAO_PAUTA", data_inicio: "2027-07-16", data_fim: "2027-07-16" }],
+  });
+  assert.equal(result.pautaFinalPublicada, false);
+  assert.match(result.proximaEtapa, /Publicação da pauta prevista/);
+  assert.match(result.proximaEtapa, /16\\/07\\/2027/);
+});
+
 test("overlapping official trimesters never show an invented active trimester", () => {
   const overlap = summarizeRaaBalcaoTimeline({
     ...base, hoje: "2027-05-15",
