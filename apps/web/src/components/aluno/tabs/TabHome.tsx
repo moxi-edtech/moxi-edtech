@@ -134,7 +134,7 @@ export function TabHome() {
       <header className="flex items-center justify-between px-1">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900">
-            {greeting}, <span className="text-emerald">{status?.nome.split(' ')[0]}!</span>
+            {greeting}, <span className="text-primary">{status?.nome.split(' ')[0]}!</span>
           </h1>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
             {status?.classe} • {status?.turma}
@@ -203,7 +203,7 @@ export function TabHome() {
       {alert && (
         <motion.div 
             whileTap={{ scale: 0.98 }}
-            className="group relative overflow-hidden rounded-[2rem] bg-slate-900 p-6 text-white shadow-2xl"
+            className="group relative overflow-hidden rounded-[2rem] bg-klasse-green p-6 text-white shadow-sm"
         >
             <div className="absolute -right-4 -top-4 h-32 w-32 rounded-full bg-white/5 blur-2xl" />
             <div className="relative z-10 flex items-center justify-between">

@@ -151,10 +151,10 @@ export function TabFinanceiro() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Financeiro (Livro Razão)</p>
+        <div><h1 className="text-xl font-semibold text-primary">Financeiro</h1><p className="mt-1 text-sm text-muted-foreground">Mensalidades, pagamentos e recibos.</p></div>
         <button
           onClick={refresh}
-          className="min-h-10 rounded-full border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 shadow-sm"
+          className="min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-sm hover:bg-muted"
         >
           {refreshing ? "A atualizar..." : "Atualizar"}
         </button>
@@ -162,18 +162,18 @@ export function TabFinanceiro() {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Saldo Consolidado</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Saldo atual</p>
           <p className={`mt-2 text-lg font-bold ${resumo && resumo.saldo_consolidado > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
             {resumo ? money.format(resumo.saldo_consolidado) : "—"}
           </p>
-          <p className="text-[10px] text-slate-400 mt-1 uppercase">Débitos - Créditos</p>
+          <p className="text-[10px] text-slate-400 mt-1 uppercase">Após pagamentos e acertos</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Total Pago</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Total pago</p>
           <p className="mt-2 text-lg font-semibold text-slate-700">{resumo ? money.format(resumo.total_pago) : "—"}</p>
         </div>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.2em] text-amber-700">A Pagar</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-amber-700">Por pagar</p>
           <p className="mt-2 text-lg font-semibold text-amber-800">{resumo ? money.format(resumo.total_pendente) : "—"}</p>
         </div>
       </div>
@@ -186,7 +186,7 @@ export function TabFinanceiro() {
               id="fromAno"
               value={fromAno}
               onChange={(e) => setFromAno(Number(e.target.value))}
-              className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20"
+              className="min-h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
             >
               {years.map((year) => (
                 <option key={`from-${year}`} value={year}>{year}</option>
@@ -199,7 +199,7 @@ export function TabFinanceiro() {
               id="toAno"
               value={toAno}
               onChange={(e) => setToAno(Number(e.target.value))}
-              className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20"
+              className="min-h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
             >
               {years.map((year) => (
                 <option key={`to-${year}`} value={year}>{year}</option>
@@ -364,7 +364,7 @@ export function TabFinanceiro() {
                 {servico.acao ? (
                   <Link
                     href={studentId ? `${servico.acao.href}&studentId=${encodeURIComponent(studentId)}` : servico.acao.href}
-                    className="mt-2 inline-flex min-h-10 items-center rounded-xl bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-800"
+                    className="klasse-portal-cta mt-2 inline-flex min-h-11 items-center rounded-xl px-3 py-2 text-xs font-semibold"
                   >
                     {servico.acao.label}
                   </Link>

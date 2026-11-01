@@ -247,7 +247,7 @@ export default function ProfessorCalendarioPage() {
         ) : (
           <>
             <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-              <section className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-900 p-6 text-white shadow-xl shadow-slate-900/10">
+              <section className="relative overflow-hidden rounded-[2rem] border border-klasse-green-700 bg-klasse-green p-6 text-white shadow-sm">
                 <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-amber/10 blur-3xl" />
                 <div className="absolute -bottom-10 left-0 h-32 w-32 rounded-full bg-emerald-400/10 blur-3xl" />
                 <div className="relative z-10 space-y-6">
@@ -262,8 +262,8 @@ export default function ProfessorCalendarioPage() {
                       </h2>
                       <p className="max-w-2xl text-sm font-medium text-slate-300">
                         {anoLetivo
-                          ? `Janela oficial entre ${formatDateRange(anoLetivo.data_inicio, anoLetivo.data_fim)}.`
-                          : "A escola ainda não definiu um ano lectivo activo; o portal mostra os próximos eventos disponíveis."}
+                          ? `Período escolar: ${formatDateRange(anoLetivo.data_inicio, anoLetivo.data_fim)}.`
+                          : "Ainda não há ano letivo activo. Consulta os próximos eventos disponíveis."}
                       </p>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">

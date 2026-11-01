@@ -325,7 +325,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                      <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> A processar
                    </span>
                  ) : doc.pagamento_configurado === false ? (
-                   <p className="text-xs font-medium leading-5 text-amber-800">A escola precisa definir a taxa.</p>
+                   <p className="text-xs font-medium leading-5 text-amber-800">Taxa ainda não disponível.</p>
                  ) : (
                    <PortalAction onClick={() => void handleAction(doc)}
                       variant={["pending", "blocked"].includes(doc.status) ? "outline" : "primary"}
@@ -336,10 +336,11 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                  )}
                </div>
 
-              <div className="rounded-lg border border-border bg-muted/40 px-3 py-2" role="status">
-                 <p className="text-sm font-semibold text-foreground">{documentNotice(doc).title}</p>
-                 <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{documentNotice(doc).message}</p>
-               </div>
+              {(doc.status === "pending_payment" || doc.status === "pending" || doc.status === "blocked") && (
+                <p className="text-xs leading-5 text-muted-foreground" role="status">
+                  {documentNotice(doc).message}
+                </p>
+              )}
                {/* Motivo de Rejeição (se houver) */}
               {doc.status === 'rejected' && doc.reject_reason && (
                 <div className="mt-1 flex items-start gap-2 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-800">

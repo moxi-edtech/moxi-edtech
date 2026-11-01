@@ -177,7 +177,7 @@ export default function ProfessorMateriaisPage() {
           />
           <button
             onClick={() => setShowModal(true)}
-            className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-xs font-black text-white shadow-md hover:bg-emerald-500 transition cursor-pointer self-start md:self-auto"
+            className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold shadow-sm transition cursor-pointer self-start md:self-auto"
           >
             <Plus className="w-4 h-4" />
             <span>Novo Material</span>
@@ -340,7 +340,7 @@ export default function ProfessorMateriaisPage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-4 py-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 shadow-md"
+                    className="klasse-portal-cta min-h-11 px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm"
                   >
                     {saving ? "A Guardar..." : "Guardar Rascunho"}
                   </button>
