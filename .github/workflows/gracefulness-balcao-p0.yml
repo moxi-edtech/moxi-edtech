@@ -101,6 +101,7 @@ on:
       - "apps/web/src/lib/rematricula/raa-balcao-early-trimester.ts"
       - "apps/web/tests/unit/raa-balcao-early-trimester.spec.ts"
       - "apps/web/tests/unit/raa-balcao-timeline.spec.ts"
+      - "apps/web/tests/unit/balcao-academic-situation-grade.spec.ts"
       - "apps/web/src/lib/rematricula/raa-balcao-cases.ts"
       - "apps/web/src/components/secretaria/RematriculaWorkspaceChrome.tsx"
       - "apps/web/tests/unit/raa-balcao-workspace-cases.spec.ts"
@@ -216,6 +217,7 @@ jobs:
             tests/unit/raa-balcao-workspace-cases.spec.ts \
             tests/unit/raa-balcao-temporal-context.spec.ts \
             tests/unit/raa-balcao-timeline.spec.ts \
+            tests/unit/balcao-academic-situation-grade.spec.ts \
             tests/unit/raa-balcao-early-trimester.spec.ts \
             tests/unit/raa-balcao-trimester-contract.spec.ts \
             tests/unit/rematricula-workspace-ui.spec.ts \
