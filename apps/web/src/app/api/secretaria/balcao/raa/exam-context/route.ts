@@ -54,12 +54,31 @@ export async function GET(request: Request) {
     ok: false, error: "Não foi possível confirmar as sessões e disciplinas do RAA.",
   }, { status: 503 });
 
+  // RAA IDs identify catalog disciplines. Resolve only the installed evaluation
+  // disciplines for the source turma, never an unscoped global catalog.
+  const disciplinaIds = [...new Set(
+    (disciplinas ?? []).map((item: { avaliacao_disciplina_id: string | null }) => item.avaliacao_disciplina_id)
+      .filter((id: string | null): id is string => Boolean(id)),
+  )];
+  const { data: catalogo, error: catalogError } = disciplinaIds.length
+    ? await supabase.from("disciplinas_catalogo").select("id,nome")
+      .eq("escola_id", escolaId).in("id", disciplinaIds).limit(100)
+    : { data: [], error: null };
+  if (catalogError) return NextResponse.json({
+    ok: false, error: "Não foi possível consultar os nomes das disciplinas.",
+  }, { status: 503 });
+  const nomes = new Map<string, string>(
+    (catalogo ?? []).map((item: { id: string; nome: string }) => [item.id, item.nome]),
+  );
+
   return NextResponse.json({
     ok: true,
     source: { matricula_id: matricula.id, aluno_id: matricula.aluno_id,
       turma_id: matricula.turma_id, ano_letivo_id: matricula.session_id,
       locked: matricula.status !== "ativo" },
-    disciplinas: disciplinas ?? [],
+    disciplinas: (disciplinas ?? []).map((item: { id: string; avaliacao_disciplina_id: string | null }) => ({
+      ...item, nome: item.avaliacao_disciplina_id ? nomes.get(item.avaliacao_disciplina_id) ?? null : null,
+    })),
     can_record_result: !canWrite.error && matricula.status === "ativo",
     hoje_angola: new Date().toLocaleDateString("sv-SE", { timeZone: "Africa/Luanda" }),
     sessoes: sessoes ?? [],
