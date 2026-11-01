@@ -132,7 +132,7 @@ export function RaaBalcaoResolutionPanel({
 
   useEffect(() => { void load(); }, [load]);
 
-  const nomesDisciplinas: Record<string, string> = {};
+  const nomesDisciplinas: Record<string, string> = { ...academic?.disciplina_names };
   for (const disciplina of examContext?.disciplinas ?? []) {
     if (disciplina.avaliacao_disciplina_id && disciplina.nome?.trim()) {
       nomesDisciplinas[disciplina.avaliacao_disciplina_id] = disciplina.nome.trim();
