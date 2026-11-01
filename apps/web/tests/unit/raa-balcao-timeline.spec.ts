@@ -95,6 +95,9 @@ test("status endpoint and UI use source-year data and restrict write actions", (
   assert.match(status, /academic_permissions: \{ can_write_grades:/);
   assert.match(chrome, /Origem:/);
   assert.match(chrome, /Destino:/);
+  assert.match(chrome, /nextAcademicActionForBalcao/);
+  assert.match(chrome, /publicacaoPautaPrevistaEm/);
+  assert.match(timelineServer, /source_item_id/);
   assert.match(balcao, /canLancarNota=\{rematriculaCanWriteGrades\}/);
   assert.match(panel, /examContext\.can_record_result/);
   assert.match(examContext, /can_record_result:/);
@@ -140,6 +143,7 @@ test("scheduled publication never masquerades as an already published final paut
     eventos: [{ tipo: "PUBLICACAO_PAUTA", data_inicio: "2027-07-16", data_fim: "2027-07-16" }],
   });
   assert.equal(result.pautaFinalPublicada, false);
+  assert.equal(result.publicacaoPautaPrevistaEm, "2027-07-16");
   assert.match(result.proximaEtapa, /Publicação da pauta prevista/);
   assert.ok(result.proximaEtapa.includes("16/07/2027"));
 });
