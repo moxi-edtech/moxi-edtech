@@ -3,7 +3,8 @@
 import { CheckCircle2, ChevronRight, GraduationCap, LockKeyhole, CalendarDays } from "lucide-react";
 import type { RematriculaCardState, TurmaOption } from "@/hooks/useRematriculaBalcao";
 import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
-import { nextAcademicActionForBalcao } from "@/lib/rematricula/raa-balcao-next-action";
+import { nextAcademicActionForBalcao, pendingSubjectsActionForBalcao } from "@/lib/rematricula/raa-balcao-next-action";
+import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 
 export type RaaProgressSnapshot = {
   matriculaId: string;
@@ -80,19 +81,21 @@ function exameLabel(timeline: RaaBalcaoTimeline): string {
 }
 
 export function RematriculaWorkspaceHeader({
-  anoOrigem, anoDestino, status, motivo, progress, timeline, timelineAno, temPendencias = false,
+  anoOrigem, anoDestino, status, motivo, progress, timeline, timelineAno, academic, canLancarNota = false, temPendencias = false,
 }: {
   anoOrigem: string | null; anoDestino: string | null; status: Status;
   motivo: string | null; progress: RaaProgressSnapshot | null;
   timeline: RaaBalcaoTimeline | null; timelineAno: string | null; destinoMatriculaId: string | null;
+  academic?: RaaBalcaoAcademic | null; canLancarNota?: boolean;
   temPendencias?: boolean;
 }) {
   const baseDisplay = rematriculaDisplayState(status);
   const academicNext = nextAcademicActionForBalcao(status, timeline);
+  const subjectsNext = pendingSubjectsActionForBalcao(status, academic ?? null, canLancarNota, timeline);
   const display = {
     ...baseDisplay,
-    title: academicNext.title ?? baseDisplay.title,
-    message: academicNext.message ?? baseDisplay.message,
+    title: subjectsNext?.title ?? academicNext.title ?? baseDisplay.title,
+    message: subjectsNext?.message ?? academicNext.message ?? baseDisplay.message,
   };
   const showPendingLink = temPendencias && (progress === null || progress.loading ||
     progress.registados < progress.total);
