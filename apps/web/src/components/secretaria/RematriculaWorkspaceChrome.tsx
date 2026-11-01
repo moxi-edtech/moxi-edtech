@@ -24,10 +24,10 @@ export function rematriculaDisplayState(status: Status): {
     title: "Concluída", message: "Rematrícula já registada.", tone: "success",
   };
   if (status === "DESTINATION_ENROLLED") return {
-    title: "Matrícula existente", message: "O aluno já tem matrícula no ano de destino.", tone: "muted",
+    title: "Matrícula existente", message: "O vínculo está confirmado. O pagamento da taxa não foi apurado nesta operação; verifique o histórico financeiro antes de cobrar.", tone: "warning",
   };
   if (status === "RECONFIRMATION_REQUIRED") return {
-    title: "Confirmar operação", message: "A matrícula de destino já existe. Não escolha outra turma.", tone: "success",
+    title: "Taxa por confirmar", message: "A matrícula de destino já existe. Confirme a taxa aplicável sem criar outra matrícula nem alterar a turma.", tone: "warning",
   };
   if (status && ACTIONABLE.has(status)) return {
     title: "Pode continuar", message: "Confirme a turma, a operação e o pagamento.", tone: "success",
@@ -43,6 +43,12 @@ export function rematriculaDisplayState(status: Status): {
   };
   if (status === "ACADEMIC_CYCLE_COMPLETED") return {
     title: "Ciclo concluído", message: "Consulte os documentos de conclusão.", tone: "success",
+  };
+  if (status === "RECONCILIATION_REQUIRED") return {
+    title: "Pagamento confirmado", message: "Falta concluir ou reconciliar a matrícula de destino, sem nova cobrança.", tone: "warning",
+  };
+  if (status === "PAYMENT_IN_PROGRESS") return {
+    title: "Pagamento em curso", message: "Consulte a cobrança já iniciada e confirme a liquidação antes de concluir.", tone: "warning",
   };
   if (status === "WINDOW_CLOSED") return {
     title: "Período fechado", message: "A direção pode reabrir o período neste atendimento.", tone: "warning",
@@ -156,9 +162,10 @@ export function RematriculaWorkspaceHeader({
 }
 
 export function RematriculaAcademicDestination({
-  status, anoDestino, turma, canContinue, onContinue,
+  status, anoDestino, turma, taxaValor, canContinue, onContinue,
 }: {
   status: Status; anoDestino: string | null; turma: TurmaOption | null;
+  taxaValor?: number | null;
   canContinue: boolean; onContinue: () => void;
 }) {
   const completed = status === "ALREADY_COMPLETED";
@@ -200,7 +207,7 @@ export function RematriculaAcademicDestination({
           ].join(" ")}>
           {canContinue ? <ChevronRight className="h-4 w-4" aria-hidden="true" /> :
             <LockKeyhole className="h-4 w-4" aria-hidden="true" />}
-          {status === "RECONFIRMATION_REQUIRED" ? "Confirmar rematrícula" :
+          {status === "RECONFIRMATION_REQUIRED" ? (taxaValor != null && taxaValor > 0 ? "Regularizar taxa de rematrícula" : "Confirmar rematrícula") :
             canContinue ? "Continuar rematrícula" : "Rematrícula indisponível"}
         </button>
       )}
