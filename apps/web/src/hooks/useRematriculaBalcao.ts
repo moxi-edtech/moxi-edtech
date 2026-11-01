@@ -120,6 +120,7 @@ interface StatusResponse {
   ok: boolean;
   cicloVida?: StudentLifecycle | null;
   academic_timeline?: RaaBalcaoTimeline | null;
+  academic_permissions?: { can_write_grades: boolean };
   destino_matricula_id?: string | null;
   status: RematriculaCardState;
   service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" } | null;
@@ -262,6 +263,7 @@ export function useRematriculaBalcao(opts: {
   const [cicloVida, setCicloVida] = useState<StudentLifecycle | null>(null);
   const [academicTimeline, setAcademicTimeline] = useState<RaaBalcaoTimeline | null>(null);
   const [destinoMatriculaId, setDestinoMatriculaId] = useState<string | null>(null);
+  const [canWriteGrades, setCanWriteGrades] = useState(false);
   const [pedido, setPedido] = useState<StatusResponse["pedido"]>(null);
   const [comprovante, setComprovante] =
     useState<StatusResponse["comprovante"]>(null);
@@ -321,6 +323,7 @@ export function useRematriculaBalcao(opts: {
       setCardState(null);
       setAcademicTimeline(null);
       setDestinoMatriculaId(null);
+      setCanWriteGrades(false);
       setAnoLetivo(null);
       setTargetYearLabel(null);
       setLoading(false);
@@ -354,6 +357,7 @@ export function useRematriculaBalcao(opts: {
         setCicloVida(data.cicloVida ?? null);
         setAcademicTimeline(data.academic_timeline ?? null);
         setDestinoMatriculaId(data.destino_matricula_id ?? null);
+        setCanWriteGrades(data.academic_permissions?.can_write_grades === true);
         setPedido(data.pedido);
         setComprovante(data.comprovante);
         setAnoLetivo(data.ano_letivo);
@@ -367,6 +371,7 @@ export function useRematriculaBalcao(opts: {
         setCicloVida(null);
         setAcademicTimeline(null);
         setDestinoMatriculaId(null);
+        setCanWriteGrades(false);
         setApiError((data as any)?.error ?? "Não foi possível verificar a elegibilidade da matrícula.");
       }
     } catch (e) {
@@ -375,6 +380,7 @@ export function useRematriculaBalcao(opts: {
       setCardState("ERROR");
       setAcademicTimeline(null);
       setDestinoMatriculaId(null);
+      setCanWriteGrades(false);
       setApiError("Não foi possível atualizar o estado da rematrícula. Verifique a ligação e tente novamente.");
     } finally {
       if (requestGeneration === statusRequestGeneration.current) setLoading(false);
@@ -401,6 +407,7 @@ export function useRematriculaBalcao(opts: {
     setCicloVida(null);
     setAcademicTimeline(null);
     setDestinoMatriculaId(null);
+    setCanWriteGrades(false);
     setTargetYearLabel(null);
     setRematriculaWindow(null);
     setDecisaoResultado("aprovado");
@@ -831,6 +838,7 @@ export function useRematriculaBalcao(opts: {
     cicloVida,
     academicTimeline,
     destinoMatriculaId,
+    canWriteGrades,
     pedido,
     comprovante,
     anoLetivo,
