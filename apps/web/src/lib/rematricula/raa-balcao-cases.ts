@@ -16,11 +16,23 @@ export type RaaBalcaoCaseSources = {
   title: string;
   disciplinaIds?: readonly string[];
   disciplinaNames?: Readonly<Record<string, string>>;
+  disciplinaStatuses?: Readonly<Record<string, string>>;
   faltas?: readonly { id: string; data_falta: string; status: string; motivo: string; trimestre?: RaaTrimestre | null }[];
   pedidos?: readonly { id: string; protocolo_publico: string; estado: string; motivo: string }[];
   eventos?: readonly { id: string; categoria: string; estado: string; descricao: string }[];
   sessoes?: readonly { id: string; tipo: string; estado: string; data_inicio: string }[];
 };
+
+/** Display copy for a *verified* RAA status. Absent status stays unspecified. */
+export function raaSubjectIssueLabel(status: string | null | undefined): string {
+  if (status === "pendente_formula") return "Fórmula pendente";
+  if (status === "pendente_dados") return "Dados da pauta incompletos";
+  if (status === "recurso") return "Resultado em recurso";
+  if (status === "reprovado_por_faltas") return "Revisão de faltas";
+  if (status === "reprovado_por_indisciplina") return "Revisão disciplinar";
+  if (status === "reprovado") return "Resultado não aprovado";
+  return "";
+}
 
 export function buildRaaBalcaoCases(source: RaaBalcaoCaseSources): RaaBalcaoCase[] {
   const items: RaaBalcaoCase[] = [];
@@ -29,7 +41,7 @@ export function buildRaaBalcaoCases(source: RaaBalcaoCaseSources): RaaBalcaoCase
     (source.disciplinaIds ?? []).forEach((id) => items.push({
       id: "nota:" + id, referenceId: id, kind: "nota",
       titulo: source.disciplinaNames?.[id]?.trim() || "Nome da disciplina indisponível",
-      resumo: "",
+      resumo: raaSubjectIssueLabel(source.disciplinaStatuses?.[id]),
       estado: "pendente", periodo: "nao_identificado",
     }));
   }
