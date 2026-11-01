@@ -48,7 +48,7 @@ export function rematriculaDisplayState(status: Status): {
     title: "Período fechado", message: "A direção pode reabrir o período neste atendimento.", tone: "warning",
   };
   if (status === "SOURCE_RECORD_REQUIRED") return {
-    title: "Origem por confirmar", message: "Identifique a matrícula do ano de origem.", tone: "warning",
+    title: "Matrícula por confirmar", message: "Verifique o vínculo do aluno ao ano de origem antes de lançar notas ou avançar.", tone: "warning",
   };
   return { title: "A resolver", message: "Consulte as pendências para continuar.", tone: "warning" };
 }
@@ -78,10 +78,10 @@ export function RematriculaWorkspaceHeader({
   const count = progress && progress.total > 0 && !progress.loading ? progress : null;
   const reasonNeedsDetail = motivo && motivo.trim() && status !== "ACADEMIC_PENDING";
   return (
-    <header className="space-y-3" aria-label="Resumo da rematrícula">
+    <header className="space-y-3" aria-label="Resumo da situação académica">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-sora text-xl font-bold tracking-tight text-foreground sm:text-2xl">Rematrícula</h2>
+          <h2 className="font-sora text-xl font-bold tracking-tight text-foreground sm:text-2xl">Situação académica</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Origem: {anoOrigem ?? "Por confirmar"} · Destino: {anoDestino ?? "Por confirmar"}
           </p>
@@ -92,34 +92,6 @@ export function RematriculaWorkspaceHeader({
           display.tone === "warning" ? "bg-amber/15 text-amber" : "bg-muted text-muted-foreground",
         ].join(" ")} role="status">{display.title}</span>
       </div>
-      {timeline && (
-        <section className="rounded-xl border border-border bg-muted/20 p-3 sm:p-4" aria-label="Percurso académico do ano em curso">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-foreground">{timeline.faseLabel}{timelineAno ? " · " + timelineAno : ""}</h3>
-            <span className="text-xs text-muted-foreground">{timeline.proximaEtapa}</span>
-          </div>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <p className="text-[11px] font-medium text-muted-foreground">Provas</p>
-              <p className="mt-1 text-xs font-semibold text-foreground">{provaLabel(timeline)}</p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium text-muted-foreground">Pauta final</p>
-              <p className="mt-1 text-xs font-semibold text-foreground">
-                {timeline.pautaFinalPublicada ? "Publicada" : "Publicação por confirmar"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium text-muted-foreground">Exames e recursos</p>
-              <p className="mt-1 text-xs font-semibold text-foreground">
-                {exameLabel(timeline)}
-                {timeline.pedidosReapreciacao != null && timeline.pedidosReapreciacao > 0
-                  ? " · " + timeline.pedidosReapreciacao + " pedido(s)" : ""}
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
       <section className="rounded-xl border border-border bg-muted/25 p-3.5" aria-label="Elegibilidade académica">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-emerald" aria-hidden="true" />
@@ -150,6 +122,35 @@ export function RematriculaWorkspaceHeader({
           </div>
         )}
       </section>
+      {timeline && (
+        <section className="rounded-xl border border-border bg-muted/20 p-3 sm:p-4" aria-label="Percurso académico do ano em curso">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-foreground">{timeline.faseLabel}{timelineAno ? " · " + timelineAno : ""}</h3>
+            <span className="text-xs text-muted-foreground">{timeline.proximaEtapa}</span>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">Provas</p>
+              <p className="mt-1 text-xs font-semibold text-foreground">{provaLabel(timeline)}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">Pauta final</p>
+              <p className="mt-1 text-xs font-semibold text-foreground">
+                {timeline.pautaFinalPublicada ? "Publicada" : "Publicação por confirmar"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">Exames e recursos</p>
+              <p className="mt-1 text-xs font-semibold text-foreground">
+                {exameLabel(timeline)}
+                {timeline.pedidosReapreciacao != null && timeline.pedidosReapreciacao > 0
+                  ? " · " + timeline.pedidosReapreciacao + " pedido(s)" : ""}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
     </header>
   );
 }
