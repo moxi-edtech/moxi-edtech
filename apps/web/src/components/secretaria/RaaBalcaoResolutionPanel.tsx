@@ -23,6 +23,7 @@ type ExamContext = {
   source: { matricula_id: string; aluno_id: string; turma_id: string; ano_letivo_id: string; locked: boolean };
   disciplinas: Array<{ id: string; avaliacao_disciplina_id: string | null }>;
   can_record_result: boolean;
+  hoje_angola: string;
   sessoes: Array<{ id: string; tipo: "recurso" | "extraordinario"; estado: string; data_inicio: string; exame_componentes: Array<{ id: string; codigo: string; nota_max: number }> }>;
   resultados: Array<{ id: string; exame_sessao_id: string; exame_componente_id: string; turma_disciplina_id: string; estado: string; nota: number | null }>;
 };
@@ -113,7 +114,7 @@ export function RaaBalcaoResolutionPanel({
     setCanReviewDisciplina(loaded(3)?.can_review === true);
     const exams = loaded(2);
     setExamContext(exams
-      ? { source: exams.source, disciplinas: exams.disciplinas ?? [], can_record_result: exams.can_record_result === true, sessoes: exams.sessoes ?? [], resultados: exams.resultados ?? [] }
+      ? { source: exams.source, disciplinas: exams.disciplinas ?? [], can_record_result: exams.can_record_result === true, hoje_angola: exams.hoje_angola ?? "", sessoes: exams.sessoes ?? [], resultados: exams.resultados ?? [] }
       : null);
     setEventos(Array.isArray(loaded(3)?.items) ? loaded(3).items : []);
     const missing = labels.filter((_, i) => results[i]?.status === "rejected");
@@ -150,6 +151,8 @@ export function RaaBalcaoResolutionPanel({
   useEffect(() => {
     onProgressChange?.({ matriculaId, total: progress.total, registados: progress.registados, loading });
   }, [matriculaId, progress.total, progress.registados, loading, onProgressChange]);
+  const selectedExamSession = examContext?.sessoes.find((session) => session.id === examSessionId);
+  const isFutureExam = Boolean(selectedExamSession && examContext?.hoje_angola && selectedExamSession.data_inicio > examContext.hoje_angola);
   const previousExamResult = examContext?.resultados.find((row) =>
     row.exame_sessao_id === examSessionId &&
     row.exame_componente_id === examComponentId &&
@@ -245,7 +248,7 @@ export function RaaBalcaoResolutionPanel({
       const session = examContext?.sessoes.find((item) => item.id === examSessionId);
       const component = session?.exame_componentes?.find((item) => item.id === examComponentId);
       const note = Number(examNote.replace(",", "."));
-      if (previousExamResult || examContext?.source.locked || !session || !component || !examTurmaDisciplinaId ||
+      if (previousExamResult || isFutureExam || !examContext?.can_record_result || examContext?.source.locked || !session || !component || !examTurmaDisciplinaId ||
           !examNote.trim() || !Number.isFinite(note) || note < 0 || note > Number(component.nota_max)) {
         setError("Confirme a sessão, disciplina, componente e nota dentro da escala autorizada."); return;
       }
@@ -397,7 +400,7 @@ export function RaaBalcaoResolutionPanel({
   };
 
   const submitExam = async () => {
-    if (!examContext || examContext.source.locked || !examContext.can_record_result || saving) return;
+    if (!examContext || examContext.source.locked || !examContext.can_record_result || isFutureExam || saving) return;
     const session = examContext.sessoes.find((item) => item.id === examSessionId);
     const component = session?.exame_componentes?.find((item) => item.id === examComponentId);
     const disciplina = examContext.disciplinas.find((item) => item.id === examTurmaDisciplinaId);
@@ -666,12 +669,15 @@ export function RaaBalcaoResolutionPanel({
                   <label htmlFor="raa-exam-note" className="text-xs font-bold text-foreground">Nota do componente</label>
                   <input id="raa-exam-note" type="number" min="0" step="0.1" value={examNote} onChange={(event) => setExamNote(event.target.value)}
                     className="rounded-lg border border-border bg-background p-2 text-sm" />
+                  {isFutureExam && (
+                    <p role="status" className="text-xs text-muted-foreground">Sessão agendada para {selectedExamSession?.data_inicio}. Aguarde a data da prova.</p>
+                  )}
                   {previousExamResult && (
                     <p role="status" className="rounded-lg border border-border bg-muted p-3 text-sm text-foreground">
                       Resultado já registado: {previousExamResult.nota ?? "sem nota"} · {previousExamResult.estado}. Aguarde validação ou solicite retificação.
                     </p>
                   )}
-                  <button type="button" disabled={saving || Boolean(previousExamResult) || !examSessionId || !examComponentId || !examTurmaDisciplinaId || !examNote.trim()}
+                  <button type="button" disabled={saving || isFutureExam || Boolean(previousExamResult) || !examSessionId || !examComponentId || !examTurmaDisciplinaId || !examNote.trim()}
                     onClick={() => prepareConfirmation("exame")} className="rounded-lg bg-amber px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
                     {saving ? "A guardar..." : "Rever resultado do exame"}
                   </button>
