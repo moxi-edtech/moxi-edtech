@@ -135,6 +135,7 @@ interface StatusResponse {
     reason: string;
     disciplina_ids_pendentes?: string[];
     disciplina_names?: Record<string, string>;
+    disciplina_statuses?: Record<string, string>;
     source?: {
       matricula_id: string;
       ano_letivo_ano?: number;
