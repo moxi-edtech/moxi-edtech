@@ -14,6 +14,7 @@ import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligib
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
 import { loadRaaBalcaoAcademicTimeline } from "@/lib/rematricula/raa-balcao-timeline-server";
+import { isSourceYearStillInEarlyTrimester } from "@/lib/rematricula/raa-balcao-early-trimester";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import {
   resolveBalcaoRematriculaTargetYear,
@@ -313,6 +314,7 @@ export async function GET(request: Request) {
       : null;
     const academicTimelineAno = academicTimeline ? timelineMatricula.ano_letivo : null;
 
+    const trimestreInicialEmCurso = await isSourceYearStillInEarlyTrimester(supabase, escolaId, matriculaOrigem);
     const gradePermissions = await authorizeTurmasManage(supabase, escolaId, user.id)
       .catch(() => ({ allowed: false }));
 
@@ -480,6 +482,8 @@ export async function GET(request: Request) {
         : !pedidoTemPagamentoAssociado
           ? "PENDING_ORDER_REVIEW"
         : "PAYMENT_IN_PROGRESS";
+    } else if (trimestreInicialEmCurso) {
+      status = "ACADEMIC_PENDING";
     } else if (!academicEligibility.eligible) {
       status = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
         ? "ACADEMIC_PENDING"
