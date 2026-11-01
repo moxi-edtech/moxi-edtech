@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Clock, MapPin, User, Calendar, FileCheck, CheckCircle2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
-import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
 import { TableSkeleton } from "@/components/feedback/FeedbackSystem";
 
 type Slot = {
@@ -28,6 +27,12 @@ type TimetableData = {
   version: string | null;
   slots: Slot[];
   assignments: Assignment[];
+  reason?: "NO_ENROLLMENT" | "NO_CLASS" | "NOT_PUBLISHED" | null;
+  context?: {
+    anoLetivoId: string;
+    anoLetivoLabel: string;
+    mode: "CURRENT" | "HISTORICAL_READ";
+  };
 };
 
 type AcademicEvent = {
@@ -62,6 +67,10 @@ export function TabHorario() {
   const [loading, setLoading] = useState(true);
   const [horarioError, setHorarioError] = useState(false);
   const [horarioRetry, setHorarioRetry] = useState(0);
+  const requestKey = `${studentId ?? "default"}:${academicYearId ?? "active"}`;
+  const [resolvedRequestKey, setResolvedRequestKey] = useState<string | null>(null);
+  const visibleData = resolvedRequestKey === requestKey ? data : null;
+  const timetableLoading = loading || resolvedRequestKey !== requestKey;
   const [activeDay, setActiveDay] = useState<number>(Math.min(5, Math.max(1, new Date().getDay())));
   const [activeTab, setActiveTab] = useState<"horario" | "agenda">("horario");
   const [academicEvents, setAcademicEvents] = useState<AcademicEvent[]>([]);
@@ -74,9 +83,11 @@ export function TabHorario() {
     setLoading(true);
     setData(null);
     setHorarioError(false);
+    setResolvedRequestKey(null);
 
     const params = new URLSearchParams();
     if (studentId) params.set("studentId", studentId);
+    if (academicYearId) params.set("ano_letivo_id", academicYearId);
     const url = `/api/aluno/horario${params.size ? `?${params.toString()}` : ""}`;
 
     void (async () => {
@@ -84,23 +95,29 @@ export function TabHorario() {
         const response = await fetch(url, { cache: "no-store", signal: ctrl.signal });
         const json = await response.json().catch(() => null) as TimetableData | null;
         if (!response.ok || json?.ok !== true) throw new Error("Horário indisponível");
-        if (!ctrl.signal.aborted) setData(json);
+        if (!ctrl.signal.aborted) {
+          setData(json);
+          setResolvedRequestKey(requestKey);
+        }
       } catch {
-        if (!ctrl.signal.aborted) setHorarioError(true);
+        if (!ctrl.signal.aborted) {
+          setHorarioError(true);
+          setResolvedRequestKey(requestKey);
+        }
       } finally {
         if (!ctrl.signal.aborted) setLoading(false);
       }
     })();
     return () => ctrl.abort();
-  }, [studentId, horarioRetry]);
+  }, [studentId, academicYearId, horarioRetry, requestKey]);
 
   const slotsPorDia = useMemo(() => {
-    if (!data?.slots) return [];
-    return data.slots.filter((s) => s.dia_semana === activeDay);
-  }, [data, activeDay]);
+    if (!visibleData?.slots) return [];
+    return visibleData.slots.filter((s) => s.dia_semana === activeDay);
+  }, [visibleData, activeDay]);
 
   const getAssignment = (slotId: string) => {
-    return data?.assignments.find((a) => a.slot_id === slotId);
+    return visibleData?.assignments.find((a) => a.slot_id === slotId);
   };
 
   // Fonte: calendário oficial, autorizado pela API para aluno/ano/curso/escola.
@@ -142,20 +159,17 @@ export function TabHorario() {
     return () => ctrl.abort();
   }, [studentId, academicYearId, activeTab, agendaRetry]);
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <SectionTitle>Horário e calendário</SectionTitle>
-        <TableSkeleton rows={5} cols={1} />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 pb-8">
       <header className="space-y-1 px-1">
         <h2 className="text-xl font-semibold text-primary tracking-tight">Horário e calendário</h2>
         <p className="text-xs font-medium text-muted-foreground">Consulta o teu horário e os próximos eventos do ano letivo.</p>
+        {visibleData?.context?.anoLetivoLabel && (
+          <p className="text-xs font-semibold text-primary">
+            Ano letivo {visibleData.context.anoLetivoLabel}
+            {visibleData.context.mode === "HISTORICAL_READ" ? " · Histórico" : ""}
+          </p>
+        )}
       </header>
 
       {/* Switcher Sóbrio de Modos */}
@@ -185,7 +199,9 @@ export function TabHorario() {
       </div>
 
       {/* MODO 1: Grade de Aulas Semanal */}
-      {activeTab === "horario" && (horarioError ? (
+      {activeTab === "horario" && (timetableLoading ? (
+        <TableSkeleton rows={5} cols={1} />
+      ) : horarioError ? (
         <section role="alert" className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm font-semibold text-foreground">Não foi possível consultar o horário.</p>
           <button type="button" onClick={() => setHorarioRetry(current => current + 1)}
@@ -193,11 +209,21 @@ export function TabHorario() {
             Tentar novamente
           </button>
         </section>
-      ) : !data?.version ? (
+      ) : !visibleData?.version ? (
         <section className="rounded-xl border border-border bg-card p-6 text-center">
           <Calendar className="mx-auto h-6 w-6 text-primary" aria-hidden="true" />
-          <h3 className="mt-2 text-base font-semibold text-foreground">Horário ainda não publicado</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Assim que a escola publicar o horário, vais vê-lo aqui.</p>
+          <h3 className="mt-2 text-base font-semibold text-foreground">
+            {visibleData?.reason === "NO_ENROLLMENT" ? "Sem matrícula neste ano letivo"
+              : visibleData?.reason === "NO_CLASS" ? "Turma ainda não atribuída"
+              : "Horário ainda não publicado"}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {visibleData?.reason === "NO_ENROLLMENT"
+              ? "Não existe matrícula associada a este aluno no ano selecionado."
+              : visibleData?.reason === "NO_CLASS"
+                ? "A escola ainda não associou a matrícula a uma turma neste ano."
+                : "Assim que a escola publicar o horário desta turma, vais vê-lo aqui."}
+          </p>
         </section>
       ) : (
         <div className="space-y-4 animate-in fade-in duration-200">
