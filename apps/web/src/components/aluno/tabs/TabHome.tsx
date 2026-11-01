@@ -165,14 +165,14 @@ export function TabHome() {
                     maxValue={20}
                     text={mediaNotas === null ? "—" : String(mediaNotas)}
                     styles={buildStyles({
-                        pathColor: mediaNotas >= 14 ? "#1F6B3B" : mediaNotas >= 10 ? "#E3B23C" : "#E11D48",
+                        pathColor: mediaNotas === null ? "#94A3B8" : mediaNotas >= 14 ? "var(--primary)" : mediaNotas >= 10 ? "var(--color-klasse-gold)" : "#E11D48",
                         textColor: "#0F172A",
                         trailColor: "#F1F5F9",
                         textSize: "24px",
                     })}
                 />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Média recente</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Média recente</p>
             <p className="mt-2 text-xs text-muted-foreground">
               {mediaNotas === null ? "Sem notas publicadas" : "Avaliações disponíveis"}
             </p>

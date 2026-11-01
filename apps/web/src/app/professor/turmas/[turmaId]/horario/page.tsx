@@ -47,7 +47,7 @@ export default function ProfessorTurmaHorarioPage() {
   }, new Map<number, HorarioItem[]>()), [payload]);
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
         <DashboardHeader
           title={`Horário · ${payload?.turma?.nome ?? "Turma"}`}
@@ -97,6 +97,6 @@ export default function ProfessorTurmaHorarioPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

@@ -43,3 +43,24 @@ test("notas e decisões técnicas conservam ações sem poluir a interface", asy
   assert.match(professorNotas, /Alunos que precisam de atenção/);
   assert.match(grade, /locked \? \[\] : subject\.avaliacoes/);
 });
+
+test("horário: eventos vêm do calendário real, sem datas inventadas", async () => {
+  const horario = await read("components/aluno/tabs/TabHorario.tsx");
+  assert.match(horario, /\/api\/aluno\/home\/academic-events/);
+  assert.match(horario, /ano_letivo_id/);
+  assert.match(horario, /studentId/);
+  assert.match(horario, /agendaError/);
+  assert.match(horario, /Horário ainda não publicado/);
+  assert.doesNotMatch(horario, /avaliacoesMock|2026-08-14|2026-08-18/);
+});
+
+test("dashboards não apresentam progresso fictício", async () => {
+  const [principal, home] = await Promise.all([
+    read("components/aluno/dashboard/DashboardLoader.tsx"),
+    read("components/aluno/tabs/TabHome.tsx"),
+  ]);
+  assert.match(principal, /bg-klasse-green/);
+  assert.match(home, /Média recente/);
+  assert.match(home, /mediaNotas === null/);
+  assert.doesNotMatch(home, /\+0\.2|Meta: 90%/);
+});
