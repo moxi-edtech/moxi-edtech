@@ -102,6 +102,9 @@ test("existing target enrollment requires payment reconciliation, not duplicate 
   const balc = source("components/secretaria/BalcaoAtendimento.tsx");
   assert.ok(status.includes('status = "RECONFIRMATION_REQUIRED"'));
   assert.ok(status.includes('matriculaDestino?.turma_id && !reclassificacao'));
+  assert.ok(status.indexOf('!service || !service.ativo') <
+    status.indexOf('} else if (matriculaDestino?.turma_id && !reclassificacao)'),
+    "a missing service must not expose a payment CTA that cannot open");
   assert.ok(writer.includes('REMATRICULA_TARGET_ALREADY_ENROLLED'));
   assert.ok(writer.includes('reconfirmacaoApenas'));
   assert.ok(chrome.includes('title: "Taxa por confirmar"'));
