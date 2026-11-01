@@ -50,6 +50,7 @@ export function EnrollmentPostActionModal({
   const [periodError, setPeriodError] = useState<string | null>(null);
   const [periodReadOnly, setPeriodReadOnly] = useState(false);
   const [nota, setNota] = useState("");
+  const [tipoAvaliacao, setTipoAvaliacao] = useState<"MAC" | "NPP" | "NPT">("MAC");
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -69,6 +70,7 @@ export function EnrollmentPostActionModal({
     setPeriodError(null);
     setPeriodReadOnly(false);
     setNota("");
+    setTipoAvaliacao("MAC");
     setDisciplinaId("");
     setTurmaDisciplinaId("");
     setNotaMaxima(null);
@@ -233,6 +235,7 @@ export function EnrollmentPostActionModal({
           disciplina_id: selected.disciplina.id,
           turma_disciplina_id: selected.id,
           trimestre: Number(periodo),
+          tipo_avaliacao: tipoAvaliacao,
           notas: [{ aluno_id: alunoId, valor }],
         }),
       });
@@ -340,7 +343,7 @@ export function EnrollmentPostActionModal({
               </div>
             )}
             {periodReadOnly && <p role="status" className="text-xs text-muted-foreground">Este ano letivo está encerrado. Consulte a direção para reabertura.</p>}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <select aria-label="Trimestre da matrícula de origem" value={periodo}
                 onChange={(event) => { setPeriodo(event.target.value); setNota(""); setResult(null); }}
                 className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
@@ -354,7 +357,15 @@ export function EnrollmentPostActionModal({
                     item.estado === "locked" ? " · encerrado" : ""}
                 </option>)}
               </select>
-              <input type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-border bg-background px-3 py-2 text-sm" disabled={loading} />
+              <select aria-label="Tipo de avaliação" value={tipoAvaliacao}
+                onChange={(event) => { setTipoAvaliacao(event.target.value as "MAC" | "NPP" | "NPT"); setNota(""); setResult(null); }}
+                disabled={loading || periodLoading || periodReadOnly || !periodo}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm">
+                <option value="MAC">MAC · Avaliação contínua</option>
+                <option value="NPP">NPP · Prova do professor</option>
+                <option value="NPT">NPT · Prova trimestral</option>
+              </select>
+              <input aria-label="Nota do aluno" type="number" min="0" max={notaMaxima ?? 20} step="0.1" value={nota} onChange={(event) => setNota(event.target.value)} placeholder="Nota" className="rounded-xl border border-border bg-background px-3 py-2 text-sm" disabled={loading} />
             </div>
             {selectedPeriod && ["past", "locked"].includes(selectedPeriod.estado) &&
               <p role="status" className="text-xs text-muted-foreground">Este período exige autorização de reabertura para correções.</p>}
