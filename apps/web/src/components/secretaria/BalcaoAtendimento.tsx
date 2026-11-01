@@ -1806,6 +1806,7 @@ function Catalogo({
                 status={rematriculaState}
                 anoDestino={rematriculaAnoLabel}
                 turma={rematriculaDestinoTurma}
+                taxaValor={rematriculaPrice}
                 canContinue={rematriculaReady && !rematriculaWizardOpen}
                 onContinue={onRematricula}
               />
