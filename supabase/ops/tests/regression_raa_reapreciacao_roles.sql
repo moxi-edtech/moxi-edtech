@@ -65,7 +65,7 @@ END $$;
 -- The generic role helper expands 'admin' to admin_financeiro. The
 -- dedicated RAA policy must still deny that exact stored financial role.
 SET request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
-DO $
+DO $$
 DECLARE affected integer;
 BEGIN
   UPDATE public.reapreciacao_pedidos
@@ -107,7 +107,7 @@ SET estado='resolvido', decisao_motivo='Revisão documental validada pela direç
 WHERE id='00000000-0000-4000-8000-000000000005';
 
 RESET ROLE;
-DO $
+DO $$
 BEGIN
  IF (SELECT estado FROM public.raa_indisciplina_eventos
      WHERE id='00000000-0000-4000-8000-000000000005') <> 'resolvido'
