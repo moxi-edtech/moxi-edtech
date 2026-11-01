@@ -1,10 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Academic decisions are restricted to these exact stored school roles.
- * Do not call user_has_role_in_school here: its admin aliases include
- * admin_financeiro and other operational staff permissions.
+/** Explicit stored school roles allowed to make academic decisions.
+ * Do not rely on generic admin role aliases, which can include other roles
+ * not authorized to conclude academic reviews.
  */
-export const RAA_ACADEMIC_DECISION_ROLES = ["admin", "admin_escola", "diretor"] as const;
+export const RAA_ACADEMIC_DECISION_ROLES = ["admin", "admin_escola", "diretor", "admin_financeiro"] as const;
 
 export async function hasExactRaaAcademicDecisionRole(
   supabase: SupabaseClient<any>, escolaId: string, userId: string,
