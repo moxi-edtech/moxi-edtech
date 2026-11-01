@@ -35,7 +35,7 @@ type Props = {
   matriculaId: string;
   alunoId: string;
   academic: Academic;
-  onLancarNota: (trimestre?: 1 | 2 | 3 | null) => void;
+  onLancarNota: (trimestre?: 1 | 2 | 3 | null, disciplinaId?: string | null) => void;
   onDocumentos: () => void;
   canLancarNota: boolean;
   onRecheck: () => Promise<unknown>;
@@ -143,13 +143,17 @@ export function RaaBalcaoResolutionPanel({
     title: plan.titulo,
     disciplinaIds: academic?.disciplina_ids_pendentes,
     disciplinaNames: nomesDisciplinas,
+    disciplinaStatuses: academic?.disciplina_statuses,
     faltas, pedidos, eventos, sessoes: examContext?.sessoes,
   }) : [];
   const origemEncerrada = Boolean(academic?.source?.status) &&
     !["ativo", "ativa", "active"].includes(academic?.source?.status?.toLowerCase() ?? "");
   const hasTrimesterCases = cases.some((item) => isRaaTrimestre(item.periodo));
   const progress = raaBalcaoProgress(cases);
-  const visibleCases = cases.filter((item) => matchesRaaPeriodFilter(item.periodo, periodFilter));
+  // An outdated trimester filter must never hide all notes after a new RAA read.
+  const effectivePeriodFilter = hasTrimesterCases ? periodFilter : "todos";
+  const visibleCases = cases.filter((item) => matchesRaaPeriodFilter(item.periodo, effectivePeriodFilter));
+  const onlySubjects = cases.length > 0 && cases.every((item) => item.kind === "nota");
   const activeCase = cases.find((item) => item.id === caseId) ?? null;
   const action = activeCase?.kind === "nota" ? "nota" :
     activeCase?.kind === "justificacao" ? "justificacao" :
@@ -458,17 +462,13 @@ export function RaaBalcaoResolutionPanel({
   return (
     <section id="balcao-pendencias" key={alunoId + ":" + matriculaId} className="space-y-3 scroll-mt-24" aria-label="Pendências do aluno no Balcão">
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-foreground">Pendências do processo</h3>
-        <span className="text-xs tabular-nums text-muted-foreground">
+        <h3 className="text-sm font-semibold text-foreground">{onlySubjects ? "Disciplinas" : "Pendências"}</h3>
+        {!onlySubjects && <span className="text-xs tabular-nums text-muted-foreground">
           {loading ? "A consultar…" : progress.total + " registo" + (progress.total === 1 ? "" : "s")}
-        </span>
+        </span>}
       </header>
       <div className="space-y-3" aria-live="polite">
-        {origemEncerrada && planAction === "nota" ? (
-          <p role="status" className="rounded-xl border border-border bg-muted/30 p-3 text-sm text-foreground">
-            Matrícula de origem encerrada · reabertura pela direção necessária para lançar notas.
-          </p>
-        ) : regimeGuidance && planAction !== "nota" && regimeGuidance.estado !== "informativo" ? (
+        {regimeGuidance && planAction !== "nota" && regimeGuidance.estado !== "informativo" ? (
           <details className="rounded-xl border border-border bg-muted/30 p-3 text-sm text-foreground">
             <summary className="cursor-pointer font-medium">{regimeGuidance.titulo}</summary>
             <p className="mt-2 text-xs text-muted-foreground">{regimeGuidance.instrucao}</p>
@@ -508,11 +508,15 @@ export function RaaBalcaoResolutionPanel({
                 Sem registos neste trimestre. Veja «Outros» para situações sem período identificado.
               </p>
             )}
-            <div className="space-y-2">
+            <div className={onlySubjects ? "divide-y divide-border overflow-hidden rounded-xl border border-border bg-card" : "space-y-2"}>
               {visibleCases.map(item => (
                 <button type="button" key={item.id} onClick={() => chooseCase(item)}
                   disabled={saving || loading}
-                  className={"group flex w-full min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:opacity-60 sm:p-4 " + (activeCase?.id === item.id ? "border-amber bg-amber/5" : "border-border bg-background hover:border-amber/40 hover:bg-muted/40")}
+                  className={onlySubjects
+                    ? "group flex min-h-11 w-full min-w-0 items-center gap-3 p-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:opacity-60 " +
+                      (activeCase?.id === item.id ? "bg-amber/5" : "")
+                    : "group flex w-full min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:opacity-60 sm:p-4 " +
+                      (activeCase?.id === item.id ? "border-amber bg-amber/5" : "border-border bg-background hover:border-amber/40 hover:bg-muted/40")}
                   aria-label={"Abrir " + item.titulo}
                   aria-expanded={phase === "detail" && activeCase?.id === item.id}>
                   {item.kind !== "nota" && <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
@@ -520,7 +524,7 @@ export function RaaBalcaoResolutionPanel({
                   </span>}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-foreground">{item.titulo}</span>
-                    {item.resumo && <span className="mt-1 block line-clamp-2 text-xs leading-5 text-muted-foreground">{item.resumo}</span>}
+                    {item.resumo && <span className="mt-0.5 block line-clamp-1 text-xs text-muted-foreground">{item.resumo}</span>}
                     {item.kind !== "nota" && item.periodo !== "ano_letivo" && (
                       <span className="mt-1 block text-[11px] font-medium text-muted-foreground">{raaCasePeriodLabel(item.periodo)}</span>
                     )}
@@ -546,10 +550,12 @@ export function RaaBalcaoResolutionPanel({
                   <FileText className="h-4 w-4" aria-hidden="true" /> Emitir documentos <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               ) : null}
-              <button type="button" onClick={() => void load()} disabled={loading || saving}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50 sm:w-auto">
-                <RefreshCw className={"h-4 w-4 " + (loading ? "animate-spin" : "")} aria-hidden="true" /> Atualizar lista
-              </button>
+              {(incompleteSources.length > 0 || error) && (
+                <button type="button" onClick={() => void load()} disabled={loading || saving}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground disabled:opacity-50">
+                  <RefreshCw className={"h-4 w-4 " + (loading ? "animate-spin" : "")} aria-hidden="true" /> Tentar novamente
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -581,14 +587,17 @@ export function RaaBalcaoResolutionPanel({
                 </p>
               ) : !academic?.source?.turma_id || !academic.source.ano_letivo_id ? (
                 <p role="status" className="mt-2 text-sm text-muted-foreground">A confirmar a turma e o ano letivo de origem.</p>
-              ) : !["ativo", "ativa", "active"].includes(academic.source.status.toLowerCase()) ? (
-                <p role="status" className="text-sm text-muted-foreground">Lançamento disponível após reabertura pela direção.</p>
+              ) : origemEncerrada ? (
+                <p role="status" className="text-sm text-muted-foreground">Lançamento bloqueado pela matrícula de origem.</p>
               ) : canLancarNota ? (
-                <button type="button" onClick={() => onLancarNota(activeCase && isRaaTrimestre(activeCase.periodo) ? activeCase.periodo : null)}
-                  className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
-                  Lançar nota nesta ficha
+                <button type="button"
+                  onClick={() => onLancarNota(activeCase && isRaaTrimestre(activeCase.periodo) ? activeCase.periodo : null, activeCase?.referenceId ?? null)}
+                  className="inline-flex min-h-10 items-center rounded-xl bg-amber px-3 py-2 text-xs font-semibold text-white hover:brightness-95">
+                  Rever nota desta disciplina
                 </button>
-              ) : null}
+              ) : (
+                <p className="text-xs text-muted-foreground">Revisão reservada a perfil autorizado.</p>
+              )}
 
             </div>
           )}
@@ -739,10 +748,7 @@ export function RaaBalcaoResolutionPanel({
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground disabled:opacity-50 sm:w-auto">
                 <RefreshCw className="h-4 w-4" aria-hidden="true" /> Verificar situação
               </button>
-              <button type="button" onClick={goToSummary} disabled={saving}
-                className="w-full rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50 sm:w-auto">
-                Voltar às pendências
-              </button>
+ 
             </div>
           </div>
         )}
