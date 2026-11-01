@@ -22,6 +22,7 @@ type EventoDisciplinar = {
 type ExamContext = {
   source: { matricula_id: string; aluno_id: string; turma_id: string; ano_letivo_id: string; locked: boolean };
   disciplinas: Array<{ id: string; avaliacao_disciplina_id: string | null }>;
+  can_record_result: boolean;
   sessoes: Array<{ id: string; tipo: "recurso" | "extraordinario"; estado: string; data_inicio: string; exame_componentes: Array<{ id: string; codigo: string; nota_max: number }> }>;
   resultados: Array<{ id: string; exame_sessao_id: string; exame_componente_id: string; turma_disciplina_id: string; estado: string; nota: number | null }>;
 };
@@ -35,6 +36,7 @@ type Props = {
   academic: Academic;
   onLancarNota: (trimestre?: 1 | 2 | 3 | null) => void;
   onDocumentos: () => void;
+  canLancarNota: boolean;
   onRecheck: () => Promise<unknown>;
   onProgressChange?: (snapshot: RaaProgressSnapshot) => void;
 };
@@ -52,7 +54,7 @@ async function readJson(url: string, init?: RequestInit) {
  * A saved request/decision never becomes an implicit authorization to enroll.
  */
 export function RaaBalcaoResolutionPanel({
-  status, matriculaId, alunoId, academic, onLancarNota, onDocumentos, onRecheck, onProgressChange,
+  status, matriculaId, alunoId, academic, onLancarNota, onDocumentos, canLancarNota, onRecheck, onProgressChange,
 }: Props) {
   const plan = raaBalcaoPlan(status);
   const planAction = plan?.acao;
@@ -111,7 +113,7 @@ export function RaaBalcaoResolutionPanel({
     setCanReviewDisciplina(loaded(3)?.can_review === true);
     const exams = loaded(2);
     setExamContext(exams
-      ? { source: exams.source, disciplinas: exams.disciplinas ?? [], sessoes: exams.sessoes ?? [], resultados: exams.resultados ?? [] }
+      ? { source: exams.source, disciplinas: exams.disciplinas ?? [], can_record_result: exams.can_record_result === true, sessoes: exams.sessoes ?? [], resultados: exams.resultados ?? [] }
       : null);
     setEventos(Array.isArray(loaded(3)?.items) ? loaded(3).items : []);
     const missing = labels.filter((_, i) => results[i]?.status === "rejected");
@@ -227,7 +229,7 @@ export function RaaBalcaoResolutionPanel({
     if (kind === "decisao") {
       if ((action === "reapreciacao" && !canDecideReapreciacao) ||
           (action === "disciplina" && !canReviewDisciplina)) {
-        setError("A decisão académica exige autorização da direção.");
+        setError("Esta decisão não está disponível para o seu perfil.");
         return;
       }
       const minLength = action === "disciplina" ? 15
@@ -395,7 +397,7 @@ export function RaaBalcaoResolutionPanel({
   };
 
   const submitExam = async () => {
-    if (!examContext || examContext.source.locked || saving) return;
+    if (!examContext || examContext.source.locked || !examContext.can_record_result || saving) return;
     const session = examContext.sessoes.find((item) => item.id === examSessionId);
     const component = session?.exame_componentes?.find((item) => item.id === examComponentId);
     const disciplina = examContext.disciplinas.find((item) => item.id === examTurmaDisciplinaId);
@@ -457,7 +459,7 @@ export function RaaBalcaoResolutionPanel({
             <details className="mt-2 text-xs text-muted-foreground">
               <summary className="cursor-pointer font-medium">Ver detalhes</summary>
               <p className="mt-2 leading-5">{regimeGuidance.descricao}</p>
-              {regimeGuidance.baseLegal && <p className="mt-1">Referência: {regimeGuidance.baseLegal}</p>}
+
               {regimeGuidance.origem === "sem_apuramento" && <p className="mt-1">Aguardando confirmação da regra desta classe.</p>}
             </details>
           </div>
@@ -596,19 +598,19 @@ export function RaaBalcaoResolutionPanel({
                 <p role="status" className="mt-2 text-sm text-muted-foreground">A confirmar a turma e o ano letivo de origem.</p>
               ) : !["ativo", "ativa", "active"].includes(academic.source.status.toLowerCase()) ? (
                 <p role="status" className="mt-2 text-sm text-muted-foreground">Matrícula de origem encerrada. Peça a reabertura académica à direção.</p>
-              ) : (
+              ) : canLancarNota ? (
                 <button type="button" onClick={() => onLancarNota(activeCase && isRaaTrimestre(activeCase.periodo) ? activeCase.periodo : null)}
                   className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
                   Lançar nota nesta ficha
                 </button>
-              )}
-              <p className="mt-2 text-xs text-muted-foreground">Período encerrado? Solicite a reabertura à direção.</p>
+              ) : null}
+
             </div>
           )}
           {action === "rever_resultado" && (
             <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
               <p className="text-sm text-muted-foreground">Este resultado precisa de revisão académica.</p>
-              {["ativo", "ativa", "active"].includes(academic?.source?.status?.toLowerCase() ?? "") && academic?.regime?.escala !== "qualitativa" &&
+              {canLancarNota && ["ativo", "ativa", "active"].includes(academic?.source?.status?.toLowerCase() ?? "") && academic?.regime?.escala !== "qualitativa" &&
                 academic?.source?.ano_letivo_id && academic?.source?.turma_id ? (
                   <button type="button" onClick={() => onLancarNota(activeCase && isRaaTrimestre(activeCase.periodo) ? activeCase.periodo : null)}
                     className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground">
@@ -628,11 +630,11 @@ export function RaaBalcaoResolutionPanel({
           {action === "reapreciacao" && examContext && activeCase?.kind !== "pedido" && (
             <div className="space-y-3 rounded-xl border border-border bg-card p-3" aria-label="Resultado do exame no Balcão">
               <h4 className="text-sm font-bold text-foreground">Exames de recurso e extraordinários</h4>
-              <p className="text-xs text-muted-foreground">
-                Guardar a nota não conclui o exame.
-              </p>
+
               {examContext.source.locked ? (
-                <p role="status" className="text-xs font-bold text-rose-700">Matrícula encerrada: só uma reabertura académica formal permite corrigir resultados.</p>
+                <p role="status" className="text-xs text-muted-foreground">Matrícula de origem encerrada.</p>
+              ) : !examContext.can_record_result ? (
+                <p className="text-xs text-muted-foreground">Exames disponíveis para consulta neste perfil.</p>
               ) : examContext.sessoes.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Sem sessão de exame disponível. Solicite a abertura à direção.</p>
               ) : (
@@ -700,15 +702,15 @@ export function RaaBalcaoResolutionPanel({
           )}
           {action === "disciplina" && (
             <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-              {selected ? "A direção deve confirmar esta revisão." :
-                "Nenhum evento ativo foi selecionado. Só a direção pode encerrar ou cancelar uma ocorrência."}
+              {selected ? "Confirme a revisão autorizada." :
+                "Selecione uma ocorrência para rever."}
             </p>
           )}
           {!!selected && activeCase?.estado !== "registado" &&
             ((action === "reapreciacao" && !canDecideReapreciacao) ||
               (action === "disciplina" && !canReviewDisciplina)) && (
               <p role="status" className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-                Decisão reservada à direção. O processo mantém-se disponível para acompanhamento.
+                Disponível para consulta. A decisão exige um perfil autorizado.
               </p>
             )}
           {!!selected && activeCase?.estado !== "registado" &&
