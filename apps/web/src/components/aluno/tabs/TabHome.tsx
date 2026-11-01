@@ -98,7 +98,7 @@ export function TabHome() {
 
   const mediaNotas = useMemo(() => {
     const validas = grades.filter(g => typeof g.nota === 'number');
-    if (!validas.length) return 0;
+    if (!validas.length) return null;
     return Number((validas.reduce((acc, curr) => acc + (curr.nota || 0), 0) / validas.length).toFixed(1));
   }, [grades]);
 
@@ -161,9 +161,9 @@ export function TabHome() {
          <AlunoCard className="flex flex-col items-center justify-center p-6 text-center border-0 bg-white shadow-xl shadow-slate-200/50">
             <div className="h-20 w-20 mb-4">
                 <CircularProgressbar
-                    value={mediaNotas}
+                    value={mediaNotas ?? 0}
                     maxValue={20}
-                    text={`${mediaNotas}`}
+                    text={mediaNotas === null ? "—" : String(mediaNotas)}
                     styles={buildStyles({
                         pathColor: mediaNotas >= 14 ? "#1F6B3B" : mediaNotas >= 10 ? "#E3B23C" : "#E11D48",
                         textColor: "#0F172A",
@@ -172,18 +172,17 @@ export function TabHome() {
                     })}
                 />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Média Geral</p>
-            <div className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald">
-                <TrendingUp size={12} />
-                <span>+0.2</span>
-            </div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Média recente</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {mediaNotas === null ? "Sem notas publicadas" : "Avaliações disponíveis"}
+            </p>
          </AlunoCard>
 
          <AlunoCard className="flex flex-col items-center justify-center p-6 text-center border-0 bg-white shadow-xl shadow-slate-200/50">
             <div className="h-20 w-20 mb-4">
                 <CircularProgressbar
                     value={status?.assiduidade ?? 0}
-                    text={`${status?.assiduidade ?? 0}%`}
+                    text={status?.assiduidade == null ? "—" : `${status.assiduidade}%`}
                     styles={buildStyles({
                         pathColor: "#3B82F6",
                         textColor: "#0F172A",
@@ -193,9 +192,9 @@ export function TabHome() {
                 />
             </div>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Assiduidade</p>
-            <div className="mt-2 text-xs font-bold text-blue-600">
-                <span>Meta: 90%</span>
-            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {status?.assiduidade == null ? "Sem registos" : "Presenças registadas"}
+            </p>
          </AlunoCard>
       </div>
 

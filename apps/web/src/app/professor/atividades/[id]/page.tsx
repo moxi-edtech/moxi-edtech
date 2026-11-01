@@ -182,7 +182,7 @@ export default function ProfessorAtividadeDetalhesPage({
                       {activity.status}
                     </span>
                   </div>
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                  <h1 className="text-2xl font-semibold text-primary tracking-tight">
                     {activity.titulo}
                   </h1>
                 </div>
@@ -193,7 +193,7 @@ export default function ProfessorAtividadeDetalhesPage({
                   className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                     activity.status === "publicada"
                       ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      : "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md"
+                      : "klasse-portal-cta shadow-sm"
                   }`}
                 >
                   {activity.status === "publicada" ? "Reverter para Rascunho" : "Publicar para a Turma"}
@@ -309,7 +309,7 @@ export default function ProfessorAtividadeDetalhesPage({
                                   type="button"
                                   onClick={() => handleGrade(ent.id)}
                                   disabled={gradingId === ent.id && !gradeValue}
-                                  className="rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-black text-white disabled:opacity-50"
+                                  className="klasse-portal-cta min-h-11 rounded-xl px-3 py-2 text-xs font-semibold disabled:opacity-50"
                                 >
                                   Guardar
                                 </button>

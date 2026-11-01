@@ -48,7 +48,7 @@ export function DashboardHeader({
       {/* Title + Actions */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-foreground tracking-tight">
+          <h1 className="klasse-dashboard-header-title text-xl font-semibold text-foreground tracking-tight">
             {title}
           </h1>
           {description && (

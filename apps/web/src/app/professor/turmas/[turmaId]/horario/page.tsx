@@ -2,19 +2,101 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import { Clock3 } from "lucide-react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 const days = ["", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
-type HorarioItem = { slot_id: string; disciplina_id: string; disciplina_nome: string | null; dia_semana: number; inicio: string; fim: string; sala_nome: string | null; ordem: number };
+type HorarioItem = {
+  slot_id: string; disciplina_id: string; disciplina_nome: string | null;
+  dia_semana: number; inicio: string; fim: string; sala_nome: string | null; ordem: number;
+};
+type HorarioResponse = {
+  ok: boolean; publicado: boolean; turma?: { nome?: string | null }; items?: HorarioItem[];
+};
 
 export default function ProfessorTurmaHorarioPage() {
   const params = useParams<{ turmaId: string }>();
   const turmaId = params?.turmaId;
-  const [payload, setPayload] = useState<{ ok: boolean; publicado: boolean; turma?: { nome?: string | null }; items?: HorarioItem[] } | null>(null);
+  const [payload, setPayload] = useState<HorarioResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const load = useCallback(async () => { if (!turmaId) return; setLoading(true); setError(null); try { const response = await fetch(`/api/professor/turmas/${turmaId}/horario`, { cache: "no-store" }); const json = await response.json().catch(() => null); if (!response.ok || !json?.ok) throw new Error(json?.message ?? json?.error ?? "Não foi possível carregar o horário."); setPayload(json); } catch (cause) { setError(cause instanceof Error ? cause.message : "Não foi possível carregar o horário."); } finally { setLoading(false); } }, [turmaId]);
+
+  const load = useCallback(async () => {
+    if (!turmaId) { setPayload(null); setLoading(false); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/professor/turmas/${encodeURIComponent(turmaId)}/horario`, { cache: "no-store" });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || json?.ok !== true) throw new Error("Não foi possível consultar o horário.");
+      setPayload(json as HorarioResponse);
+    } catch {
+      setPayload(null);
+      setError("Não foi possível consultar o horário desta turma.");
+    } finally {
+      setLoading(false);
+    }
+  }, [turmaId]);
+
   useEffect(() => { void load(); }, [load]);
-  const grouped = useMemo<Map<number, HorarioItem[]>>(() => (payload?.items ?? []).reduce((acc, item) => { const list = acc.get(item.dia_semana) ?? []; list.push(item); acc.set(item.dia_semana, list); return acc; }, new Map<number, HorarioItem[]>()), [payload]);
-  return <div className="min-h-screen bg-slate-50"><div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6"><DashboardHeader title={`Horário · ${payload?.turma?.nome ?? "Turma"}`} description="Quadro publicado da turma, compartilhado com os professores associados." breadcrumbs={[{ label: "Início", href: "/" }, { label: "Professor", href: "/professor" }, { label: "Horário" }]} />{error ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700"><p>{error}</p><button type="button" onClick={() => void load()} className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white">Tentar novamente</button></div> : loading ? <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-500">A carregar horário...</div> : !payload ? null : !payload.publicado ? <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">A escola ainda não publicou o horário desta turma.</div> : grouped.size === 0 ? <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">O horário ainda não tem aulas publicadas para esta turma.</div> : <div className="grid gap-4 md:grid-cols-2">{Array.from(grouped.entries()).map(([day, items]) => <section key={day} className="rounded-2xl border border-slate-200 bg-white p-4"><h2 className="mb-3 font-black text-slate-900">{days[day]}</h2><div className="space-y-2">{items.map((item) => <div key={`${item.slot_id}-${item.disciplina_id}`} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3"><div><p className="font-bold text-slate-900">{item.disciplina_nome}</p><p className="text-xs text-slate-500">{item.inicio.slice(0, 5)}–{item.fim.slice(0, 5)}{item.sala_nome ? ` · ${item.sala_nome}` : ""}</p></div><span className="text-xs font-black text-slate-400">{item.ordem}º</span></div>)}</div></section>)}</div>}</div></div>;
+  const grouped = useMemo(() => (payload?.items ?? []).reduce((acc, item) => {
+    const list = acc.get(item.dia_semana) ?? [];
+    list.push(item);
+    acc.set(item.dia_semana, list);
+    return acc;
+  }, new Map<number, HorarioItem[]>()), [payload]);
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
+        <DashboardHeader
+          title={`Horário · ${payload?.turma?.nome ?? "Turma"}`}
+          description="Consulta as aulas, os horários e as salas da turma."
+          breadcrumbs={[{ label: "Início", href: "/professor" }, { label: "Horário" }]}
+        />
+        {error ? (
+          <div role="alert" className="rounded-xl border border-border bg-card p-4">
+            <p className="text-sm font-semibold text-foreground">{error}</p>
+            <button type="button" onClick={() => void load()}
+              className="mt-3 min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-primary hover:bg-muted">
+              Tentar novamente
+            </button>
+          </div>
+        ) : loading ? (
+          <p role="status" className="rounded-xl bg-muted p-5 text-sm text-muted-foreground">A carregar horário…</p>
+        ) : !payload ? (
+          <p className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">Turma não disponível.</p>
+        ) : !payload.publicado ? (
+          <div className="rounded-xl border border-border bg-card p-5">
+            <p className="font-semibold text-foreground">Horário ainda não publicado</p>
+            <p className="mt-1 text-sm text-muted-foreground">A escola ainda não publicou as aulas desta turma.</p>
+          </div>
+        ) : grouped.size === 0 ? (
+          <p className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">Ainda não há aulas publicadas nesta turma.</p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {Array.from(grouped.entries()).sort(([a], [b]) => a - b).map(([day, items]) => (
+              <section key={day} className="rounded-xl border border-border bg-card p-4">
+                <h2 className="mb-3 text-base font-semibold text-primary">{days[day] ?? "Dia"}</h2>
+                <div className="space-y-2">
+                  {items.map(item => (
+                    <article key={`${item.slot_id}-${item.disciplina_id}`} className="flex items-start gap-3 rounded-xl bg-muted p-3">
+                      <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground">{item.disciplina_nome || "Aula"}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {item.inicio.slice(0, 5)}–{item.fim.slice(0, 5)}
+                          {item.sala_nome ? ` · ${item.sala_nome}` : ""}
+                        </p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
+  );
 }
