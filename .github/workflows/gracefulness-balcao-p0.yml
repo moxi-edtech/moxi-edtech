@@ -97,6 +97,7 @@ on:
       - "apps/web/src/app/api/escola/*/admin/periodos-letivos/upsert-bulk/route.ts"
       - "apps/web/src/lib/rematricula/raa-balcao-resolution.ts"
       - "apps/web/src/lib/rematricula/raa-balcao-timeline.ts"
+      - "apps/web/src/lib/rematricula/raa-balcao-timeline-server.ts"
       - "apps/web/tests/unit/raa-balcao-timeline.spec.ts"
       - "apps/web/src/lib/rematricula/raa-balcao-cases.ts"
       - "apps/web/src/components/secretaria/RematriculaWorkspaceChrome.tsx"
