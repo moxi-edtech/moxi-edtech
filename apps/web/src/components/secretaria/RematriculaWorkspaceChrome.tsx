@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, ChevronRight, GraduationCap, LockKeyhole, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ChevronRight, GraduationCap, LockKeyhole, CalendarDays } from "lucide-react";
 import type { RematriculaCardState, TurmaOption } from "@/hooks/useRematriculaBalcao";
 import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
 
@@ -24,13 +24,13 @@ export function rematriculaDisplayState(status: Status): {
     title: "Concluída", message: "Rematrícula já registada.", tone: "success",
   };
   if (status === "DESTINATION_ENROLLED") return {
-    title: "Matrícula existente", message: "O vínculo está confirmado. O pagamento da taxa não foi apurado nesta operação; verifique o histórico financeiro antes de cobrar.", tone: "warning",
+    title: "Matrícula existente", message: "Consulte a taxa no histórico financeiro antes de cobrar.", tone: "warning",
   };
   if (status === "RECONFIRMATION_REQUIRED") return {
-    title: "Taxa por confirmar", message: "A matrícula de destino já existe. Confirme a taxa aplicável sem criar outra matrícula nem alterar a turma.", tone: "warning",
+    title: "Taxa por confirmar", message: "Confirme a taxa pendente. A turma já está atribuída.", tone: "warning",
   };
   if (status && ACTIONABLE.has(status)) return {
-    title: "Pode continuar", message: "Confirme a turma, a operação e o pagamento.", tone: "success",
+    title: "Pode continuar", message: "Confirme a turma e o pagamento para concluir.", tone: "success",
   };
   if (!status || status === "CHECKING") return {
     title: "A verificar", message: "A consultar a situação académica.", tone: "muted",
@@ -74,11 +74,12 @@ function exameLabel(timeline: RaaBalcaoTimeline): string {
 }
 
 export function RematriculaWorkspaceHeader({
-  anoOrigem, anoDestino, status, motivo, progress, timeline, timelineAno, destinoMatriculaId,
+  anoOrigem, anoDestino, status, motivo, progress, timeline, timelineAno, destinoMatriculaId, temPendencias = false,
 }: {
   anoOrigem: string | null; anoDestino: string | null; status: Status;
   motivo: string | null; progress: RaaProgressSnapshot | null;
   timeline: RaaBalcaoTimeline | null; timelineAno: string | null; destinoMatriculaId: string | null;
+  temPendencias?: boolean;
 }) {
   const display = rematriculaDisplayState(status);
   const count = progress && progress.total > 0 && !progress.loading ? progress : null;
@@ -100,12 +101,17 @@ export function RematriculaWorkspaceHeader({
       </div>
       <section className="rounded-xl border border-border bg-muted/25 p-3.5" aria-label="Elegibilidade académica">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-emerald" aria-hidden="true" />
+          <ChevronRight className="h-4 w-4 text-emerald" aria-hidden="true" />
           <h3 className="text-sm font-semibold text-foreground">Próxima ação</h3>
         </div>
         <p className="mt-1.5 text-sm text-muted-foreground">{display.message}</p>
         {destinoMatriculaId && status !== "ALREADY_COMPLETED" && (
-          <p className="mt-2 text-xs font-medium text-foreground">Matrícula de destino identificada. Não criar outra.</p>
+          <p className="mt-2 text-xs font-medium text-foreground">Turma de destino já vinculada.</p>
+        )}
+        {temPendencias && status !== "ALREADY_COMPLETED" && (
+          <a href="#balcao-pendencias" className="mt-2 inline-flex min-h-10 items-center gap-1 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20">
+            Ver e resolver pendências <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </a>
         )}
         {reasonNeedsDetail && motivo !== display.message && (
           <details className="mt-2 text-xs text-muted-foreground">
@@ -128,11 +134,17 @@ export function RematriculaWorkspaceHeader({
           </div>
         )}
       </section>
+      {!timeline && anoOrigem && status !== "CHECKING" && (
+        <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
+          <CalendarDays className="h-4 w-4" aria-hidden="true" />
+          Calendário por confirmar · consulte as datas da turma.
+        </div>
+      )}
       {timeline && (
         <section className="rounded-xl border border-border bg-muted/20 p-3 sm:p-4" aria-label="Percurso académico do ano em curso">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
             <h3 className="text-sm font-semibold text-foreground">{timeline.faseLabel}{timelineAno ? " · " + timelineAno : ""}</h3>
-            <span className="text-xs text-muted-foreground">{timeline.proximaEtapa}</span>
+            <span className="text-xs font-medium text-foreground">{timeline.proximaEtapa}</span>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
