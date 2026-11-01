@@ -189,7 +189,7 @@ export function RematriculaAcademicDestination({
               destinationEnrolled ? "Matrícula de destino existente." :
               cycleCompleted ? "Consulte os documentos de conclusão." :
               status === "RECONFIRMATION_REQUIRED" ? "Confirmar a rematrícula sem alterar a turma." :
-              !canContinue ? "Aguardando condições para continuar." :
+              !canContinue ? "Disponível após regularização." :
               "Selecione a turma e confirme a operação."}
             {anoDestino && !completed && !cycleCompleted ? " · " + anoDestino : ""}
           </p>
@@ -198,7 +198,7 @@ export function RematriculaAcademicDestination({
           completed || destinationEnrolled ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald" aria-hidden="true" /> :
           <LockKeyhole className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
       </div>
-      {!completed && !destinationEnrolled && !cycleCompleted && (
+      {canContinue && !completed && !destinationEnrolled && !cycleCompleted && (
         <button type="button" onClick={onContinue} disabled={!canContinue}
           className={[
             "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition",
