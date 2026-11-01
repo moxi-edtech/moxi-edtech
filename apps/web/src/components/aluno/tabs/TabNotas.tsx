@@ -429,9 +429,9 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
             void abrirMelhoria(disc);
           } : undefined}
         />
-        {!safeIsLiberado ? <section aria-labelledby="boletim-locked" className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        {!safeIsLiberado ? <section aria-labelledby="boletim-locked" className="rounded-xl border border-border bg-card p-4 sm:p-5 border-l-4 border-l-klasse-gold">
           <div className="flex min-w-0 items-start gap-3">
-            <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-klasse-gold-50 text-klasse-gold-700">
               <LockIcon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1 space-y-2">
@@ -442,7 +442,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
               )}
               {(moneyStatus === "available" || moneyStatus === "pending_payment" || moneyStatus === "rejected") && !serviceUnconfigured && !historicalRead ? (
                 <button type="button" disabled={paymentBusy} onClick={() => void startBoletimPayment()}
-                  className={focus + " inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"}>
+                  className={focus + " klasse-portal-cta inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:opacity-50"}>
                   {paymentBusy ? "A preparar pagamento…" : access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
                 </button>
               ) : onOpenDocuments ? (
@@ -455,7 +455,6 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
                   {access.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/>
                 </Link>
               )}
-              {moneyStatus === "pending" && <p role="status" className="text-xs text-muted-foreground">Solicitação realizada. Aguardando liberação pela secretaria. Atualizamos o estado automaticamente.</p>}
               {paymentError && <p role="alert" className="text-sm text-destructive">{paymentError}</p>}
             </div>
           </div>

@@ -84,11 +84,11 @@ export default function AlunoAtividadesPage() {
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Portal do Aluno</span>
         </div>
-        <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
-          Actividades & Quizzes
+        <h1 className="text-2xl font-black tracking-tight text-primary sm:text-3xl">
+          Actividades
         </h1>
         <p className="text-xs font-medium text-slate-500">
-          Acompanhe os seus exercícios, quizzes e tarefas publicadas pelos seus professores.
+          Consulta as tarefas, começa uma actividade ou retoma um rascunho.
         </p>
       </header>
 
@@ -154,7 +154,7 @@ export default function AlunoAtividadesPage() {
                       )}
                     </div>
 
-                    <h3 className="font-black text-slate-900 text-base group-hover:text-emerald-700 transition-colors">
+                    <h3 className="font-semibold text-foreground text-base group-hover:text-primary transition-colors">
                       {act.titulo}
                     </h3>
                     {act.instrucoes && (
@@ -170,10 +170,10 @@ export default function AlunoAtividadesPage() {
                       isSubmetida
                         ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
                         : isIniciada
-                        ? "bg-amber-400 text-slate-950 hover:bg-amber-300 shadow-2xs"
+                        ? "klasse-portal-cta shadow-2xs"
                         : isExpirado
                         ? "bg-slate-100 text-slate-500 cursor-not-allowed"
-                        : "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md"
+                        : "klasse-portal-cta shadow-sm"
                     }`}
                   >
                     <span>

@@ -565,8 +565,8 @@ export function GradeEntryGrid({
 
           <p className="text-xs text-slate-500">
             {readOnly
-              ? "Ano letivo em consulta histórica. O lançamento de notas está bloqueado."
-              : "As alterações são guardadas automaticamente no fluxo académico canónico."}
+              ? "Ano letivo anterior: consulta apenas."
+              : "As alterações são guardadas automaticamente."}
           </p>
         </div>
       </div>
@@ -703,7 +703,7 @@ export function GradeEntryGrid({
                   type="button"
                   onClick={handleApplyPasteModal}
                   disabled={!pasteText.trim()}
-                  className="px-4 py-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                  className="klasse-portal-cta px-4 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
                 >
                   Preencher Grelha
                 </button>

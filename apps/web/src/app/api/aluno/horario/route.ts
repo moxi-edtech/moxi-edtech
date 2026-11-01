@@ -1,6 +1,26 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
+import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
+import { resolveStudentTimetableTurma } from "@/lib/aluno/resolveStudentTimetableTurma";
+import { AcademicYearContextError } from "@/lib/academic-year/context";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function privateResponse(body: unknown, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: { "Cache-Control": "private, no-store" },
+  });
+}
+
+function emptyHorario(
+  context: { anoLetivoId: string; anoLetivoLabel: string; mode: string },
+  reason: "NO_ENROLLMENT" | "NO_CLASS" | "NOT_PUBLISHED",
+) {
+  return privateResponse({ ok: true, context, reason, version: null, slots: [], assignments: [] });
+}
 
 type Slot = {
   id: string;
@@ -29,36 +49,44 @@ type QuadroRow = {
 export async function GET(request: Request) {
   try {
     const { supabase, ctx } = await getAlunoContext();
-    if (!ctx || !ctx.escolaId) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-    
+    if (!ctx?.escolaId || !ctx.userId) {
+      return privateResponse({ ok: false, error: "Não autenticado." }, 401);
+    }
+
     const authorizedIds = ctx.alunoIds;
-
-    const { searchParams } = new URL(request.url);
-    const selectedId = searchParams.get("studentId");
-    const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });
-
+    const params = new URL(request.url).searchParams;
+    const requestedId = params.get("studentId");
+    // Não aceitar implicitamente outro educando quando o ID pedido não é autorizado.
+    if (requestedId && !ctx.alunoIds.includes(requestedId)) {
+      return privateResponse({ ok: false, error: "Aluno não autorizado." }, 403);
+    }
+    const alunoId = resolveSelectedStudentId({
+      selectedId: requestedId,
+      authorizedIds,
+      fallbackId: ctx.alunoId,
+    });
     if (!alunoId) {
-      return NextResponse.json({ ok: false, error: "Dados do aluno não encontrados" }, { status: 400 });
+      return privateResponse({
+        ok: true, reason: "NO_ENROLLMENT", version: null, slots: [], assignments: [],
+      });
     }
 
-    // Buscar matrícula ativa para este aluno específico
-    const { data: matricula, error: matriculaError } = await supabase
-      .from("matriculas")
-      .select("id, turma_id")
-      .eq("aluno_id", alunoId)
-      .eq("escola_id", ctx.escolaId)
-      .in('status', ['ativo', 'ativa', 'active'])
-      .order('ano_letivo', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Usar a mesma fonte de matrícula/ano da agenda e do boletim.
+    // Uma matrícula encerrada pode ser consultada, mas nunca é substituída pela ativa.
+    const { matricula, context } = await resolveBoletimMatricula(supabase, {
+      escolaId: ctx.escolaId,
+      alunoId,
+      userId: ctx.userId,
+      anoLetivoId: params.get("ano_letivo_id"),
+      operation: "READ",
+    });
 
-    if (matriculaError) throw matriculaError;
-
-    const turmaId = matricula?.turma_id;
-
-    if (!turmaId) {
-      return NextResponse.json({ ok: true, version: null, slots: [], assignments: [] });
-    }
+    const { turmaId, reason } = await resolveStudentTimetableTurma(supabase, {
+      escolaId: ctx.escolaId,
+      anoLetivoId: context.anoLetivoId,
+      matricula,
+    });
+    if (!turmaId) return emptyHorario(context, reason ?? "NO_ENROLLMENT");
 
     // 1. Buscar versão publicada do horário
     const { data: versaoData, error: versaoError } = await supabase
@@ -75,9 +103,7 @@ export async function GET(request: Request) {
 
     const versao = versaoData as { id: string } | null;
 
-    if (!versao) {
-      return NextResponse.json({ ok: true, version: null, slots: [], assignments: [] });
-    }
+    if (!versao) return emptyHorario(context, "NOT_PUBLISHED");
 
     // 2. Buscar o quadro oficial e os slots ligados por FK.
     const { data: quadroData, error: quadroError } = await supabase
@@ -137,14 +163,22 @@ export async function GET(request: Request) {
       return acc;
     }, []);
 
-    return NextResponse.json({
+    return privateResponse({
       ok: true,
+      context: {
+        anoLetivoId: context.anoLetivoId,
+        anoLetivoLabel: context.anoLetivoLabel,
+        mode: context.mode,
+      },
+      reason: null,
       version: versao.id,
       slots,
       assignments,
     });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } catch (error) {
+    if (error instanceof AcademicYearContextError) {
+      return privateResponse({ ok: false, code: error.code, error: error.message }, error.status);
+    }
+    return privateResponse({ ok: false, error: "Não foi possível consultar o horário." }, 503);
   }
 }

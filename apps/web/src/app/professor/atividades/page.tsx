@@ -360,10 +360,10 @@ export default function ProfessorAtividadesPage() {
               setNextActionError(null);
               setShowModal(true);
             }}
-            className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-xs font-black text-white shadow-md hover:bg-emerald-500 active:scale-95 transition-all self-start md:self-auto cursor-pointer"
+            className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold shadow-sm active:scale-95 transition-all self-start md:self-auto cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Criar Nova Actividade</span>
+            <span>Criar actividade</span>
           </button>
         </header>
 
@@ -381,7 +381,7 @@ export default function ProfessorAtividadesPage() {
                 onClick={() => setFilterStatus(tab.id)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                   filterStatus === tab.id
-                    ? "bg-slate-900 text-white shadow-2xs"
+                    ? "bg-klasse-gold text-klasse-gold-900 shadow-sm"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
               >
@@ -413,7 +413,7 @@ export default function ProfessorAtividadesPage() {
             </p>
             <button
               onClick={() => setShowModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-500"
+              className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
             >
               <Plus className="w-4 h-4" />
               <span>Criar Rascunho</span>
@@ -760,7 +760,7 @@ export default function ProfessorAtividadesPage() {
                     type="button"
                     disabled={saving}
                     onClick={() => handleSubmit(true)}
-                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-500 cursor-pointer disabled:opacity-50 shadow-md"
+                    className="klasse-portal-cta inline-flex min-h-11 items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50 shadow-sm"
                   >
                     <Send size={14} />
                     <span>Publicar para a Turma</span>

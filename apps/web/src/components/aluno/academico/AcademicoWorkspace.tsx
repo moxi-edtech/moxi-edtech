@@ -58,12 +58,21 @@ export function AcademicoWorkspace() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  const descriptions: Record<AcademicTab, string> = {
+    notas: "Consulta as tuas classificações e acompanha o estado do boletim.",
+    disciplinas: "Vê as disciplinas do teu ano letivo.",
+    faltas: "Acompanha a assiduidade e justifica faltas quando disponível.",
+    documentos: "Consulta pedidos, pagamentos e documentos escolares.",
+  };
+
   return (
     <div className="mx-auto w-full min-w-0 max-w-4xl space-y-5 pb-8">
-      <header className="space-y-1">
-        <p className="text-xs font-semibold text-emerald-800">Portal do aluno</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Académico</h1>
-        <p className="text-sm leading-6 text-muted-foreground">Acompanha o teu percurso escolar e os serviços da secretaria.</p>
+      <header className="rounded-xl border border-klasse-green/15 bg-klasse-green-50 p-4 sm:p-5">
+        <p className="flex items-center gap-2 text-xs font-semibold text-klasse-green">
+          <BookOpen aria-hidden="true" className="h-4 w-4" /> O teu percurso escolar
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-klasse-green sm:text-3xl">Académico</h1>
+        <p className="mt-1 text-sm leading-6 text-foreground">{descriptions[activeTab]}</p>
       </header>
       <PortalTabs items={sections} value={activeTab} onChange={navigateTab}
         idPrefix="academic" label="Área académica" testId="academic-local-tabs" />

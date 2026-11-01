@@ -930,7 +930,7 @@ function ProfessorNotasContent() {
                     type="button"
                     onClick={handleSaveNow}
                     disabled={!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || savingNow || notasBloqueadas}
-                    className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                    className="klasse-portal-cta w-full rounded-xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                   >
                     {savingNow ? "Salvando..." : "Salvar agora"}
                   </button>
@@ -986,13 +986,14 @@ function ProfessorNotasContent() {
                       const formula = result?.regime?.formula_mfd
                       const formulaText = formula && typeof formula === "object" ? Object.values(formula).find((value) => typeof value === "string" && value.includes("*")) : null
                       const isPendingFormula = result?.status === "pendente_formula"
+                      const statusLabel = ({ aprovado: "Aprovado", reprovado: "Não aprovado", recurso: "Recurso previsto", reprovado_por_faltas: "Resultado por faltas", reprovado_por_indisciplina: "Situação em análise", pendente_formula: "Resultado em apuramento", pendente: "Em apuramento" } as Record<string, string>)[result?.status ?? raaResult.eligibility.status] ?? "Situação em análise"
                       return <div className={`mt-3 rounded-xl border p-3 text-sm ${isPendingFormula ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-slate-50"}`}>
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-black uppercase text-slate-800">{(result?.status ?? raaResult.eligibility.status).replace(/_/g, " ")}</span>
+                          <span className="font-semibold text-foreground">{statusLabel}</span>
                           <span className="text-xs text-slate-500">{raaResult.facts.quantidade_negativas} negativa(s) · {raaResult.facts.percentual_presenca == null ? "frequência pendente" : `${raaResult.facts.percentual_presenca}% presença`}</span>
                         </div>
-                        {isPendingFormula ? <><p className="mt-2 font-semibold text-amber-900">A turma está em regime de exame. A nota da disciplina já foi encontrada, mas o resultado final ainda depende da MFD e do lançamento do exame.</p><p className="mt-1 text-xs text-amber-800">Próximo passo: confirmar a sessão e os componentes do exame; o KLASSE atualizará o resultado quando a fórmula estiver completa.</p></> : <p className="mt-2 text-xs text-slate-600">{raaResult.next_action}</p>}
-                        {result?.regime?.codigo_regime && <p className="mt-2 text-[11px] font-semibold text-slate-500">Regime: {result.regime.codigo_regime}{formulaText ? ` · Fórmula: ${formulaText}` : ""}</p>}
+                        {isPendingFormula ? <><p className="mt-2 font-semibold text-amber-900">O resultado final aguarda as notas do exame.</p><p className="mt-1 text-xs text-amber-800">Confirma a sessão e lança as notas do exame.</p></> : <p className="mt-2 text-xs text-muted-foreground">{raaResult.next_action}</p>}
+                        {result?.regime?.codigo_regime && <details className="mt-3 rounded-xl border border-border bg-card p-3"><summary className="cursor-pointer text-xs font-semibold text-muted-foreground">Ver critérios do resultado</summary><p className="mt-2 text-xs text-muted-foreground">Regime: {result.regime.codigo_regime}{formulaText ? ` · Fórmula: ${formulaText}` : ""}</p></details>}
                         {(result?.status === "reprovado" || raaResult.eligibility.status === "reprovado") && (
                           <div className="mt-3 rounded-lg border border-rose-200 bg-white p-3">
                             {reapreciacaoItem ? (
@@ -1018,8 +1019,8 @@ function ProfessorNotasContent() {
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-bold text-slate-900">Painel de risco RAA</p>
-                        <p className="mt-1 text-xs text-slate-600">{raaViewerScope === "school_management" ? "Visão de acompanhamento da escola para esta turma e disciplina." : "Apenas alunos desta turma e disciplina atribuída ao professor que exigem atenção."}</p>
+                        <p className="text-sm font-semibold text-foreground">Alunos que precisam de atenção</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{raaViewerScope === "school_management" ? "Pendências desta turma e disciplina." : "Pendências nas tuas turmas e disciplinas."}</p>
                       </div>
                       <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-amber-900" aria-live="polite">{loadingRaaRisks ? "A atualizar…" : raaRisksError ? "Ação necessária" : `${raaRisks.length} pendência(s)`}</span>
                     </div>

@@ -125,20 +125,20 @@ export default function DashboardLoader() {
   ];
   return <main className="mx-auto w-full max-w-6xl space-y-6 rounded-2xl bg-background px-3 pb-20 pt-4 text-foreground sm:space-y-8 sm:px-6 sm:pt-8" data-testid="aluno-dashboard-editorial">
     <header className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-        <p className="flex items-center gap-2 text-sm font-semibold text-[#2B6044]"><BookOpen className="h-4 w-4"/> KLASSE <span className="font-normal text-slate-500">/ Portal do aluno</span></p>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+        <p className="flex items-center gap-2 text-sm font-semibold text-primary"><BookOpen className="h-4 w-4"/> KLASSE <span className="font-normal text-muted-foreground">/ Portal do aluno</span></p>
         <nav aria-label="Navegação rápida" className="hidden gap-5 text-sm lg:flex">
           {[["Início","/aluno/dashboard"],["Disciplinas","/aluno/academico?aba=disciplinas"],["Notas","/aluno/academico"],["Documentos","/aluno/documentos"]].map(([label,path])=><Link key={label} href={go(path)} className={`min-h-11 content-center text-muted-foreground hover:text-primary ${focus}`}>{label}</Link>)}
         </nav>
       </div>
-      <div className="relative overflow-hidden rounded-2xl bg-[#142D3B] px-5 py-5 text-white shadow-[0_18px_42px_-28px_rgba(15,42,54,0.65)] sm:px-8 sm:py-7">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full border-[36px] border-[#C2DDBF]/10 sm:right-8" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 right-24 h-44 w-44 rounded-full bg-[#75B59A]/10 blur-2xl" />
+      <div className="relative overflow-hidden rounded-2xl bg-klasse-green px-5 py-5 text-white shadow-sm sm:px-8 sm:py-7">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full border-[36px] border-klasse-green-100/10 sm:right-8" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 right-24 h-44 w-44 rounded-full bg-klasse-green-100/10 blur-2xl" />
         <div className="relative max-w-2xl space-y-3">
-          <p className="text-sm capitalize tracking-wide text-[#C2DDBF]">{today}</p>
+          <p className="text-sm capitalize tracking-wide text-klasse-green-100">{today}</p>
           <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Olá, {firstName}</h1>
-          {(screen.dashboard.turma_nome || screen.dashboard.ano_letivo) && <p className="text-sm text-slate-200">{[screen.dashboard.turma_nome, screen.dashboard.ano_letivo ? `Ano letivo ${screen.dashboard.ano_letivo}` : ""].filter(Boolean).join(" · ")}</p>}
-          <p className="pt-1 text-base text-slate-100">O que precisas de saber hoje.</p>
+          {(screen.dashboard.turma_nome || screen.dashboard.ano_letivo) && <p className="text-sm text-klasse-green-50">{[screen.dashboard.turma_nome, screen.dashboard.ano_letivo ? `Ano letivo ${screen.dashboard.ano_letivo}` : ""].filter(Boolean).join(" · ")}</p>}
+          <p className="pt-1 text-base text-klasse-green-50">O que precisas de saber hoje.</p>
         </div>
       </div>
     </header>
@@ -191,8 +191,8 @@ export default function DashboardLoader() {
     </div>
     <PortalSection id="school-links" title="A tua vida escolar">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(href)} className={`flex min-h-24 min-w-0 flex-col gap-2 rounded-xl border border-border p-3 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-emerald-700/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} bg-card`}>
-          <Icon className="h-5 w-5 text-emerald-800" aria-hidden="true"/><div><p className="text-sm font-semibold text-foreground">{label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">{hint}</p></div>
+        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(href)} className={`flex min-h-24 min-w-0 flex-col gap-2 rounded-xl border border-border p-3 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-klasse-gold-500/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} bg-card`}>
+          <Icon className="h-5 w-5 text-primary" aria-hidden="true"/><div><p className="text-sm font-semibold text-foreground">{label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">{hint}</p></div>
         </Link>)}
       </div>
     </PortalSection>

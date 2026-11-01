@@ -142,13 +142,13 @@ export default function ProfessorIntervencoesPage() {
 
                 <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-500">
-                    Estado: <span className="text-slate-900 uppercase font-black">{item.status}</span>
+                    Situação: <span className="font-semibold text-foreground">{item.status.replace(/_/g, " ")}</span>
                   </span>
                   <button
                     type="button"
                     onClick={() => completeIntervention(item.id)}
                     disabled={updatingId === item.id || item.status === "concluida"}
-                    className="px-4 py-2 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-500 shadow-2xs"
+                    className="klasse-portal-cta inline-flex min-h-11 items-center px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"
                   >
                     {updatingId === item.id ? "A guardar…" : item.status === "concluida" ? "Concluída" : "Concluir Acção"}
                   </button>

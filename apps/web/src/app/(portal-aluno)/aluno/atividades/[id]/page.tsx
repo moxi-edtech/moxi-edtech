@@ -204,7 +204,7 @@ export default function AlunoAtividadeRunnerPage({
           {nextActionError.next_action && (
             <Link
               href={nextActionError.next_action.href}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-400 text-slate-950 font-black text-xs hover:bg-amber-300 shadow-2xs"
+              className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm"
             >
               <span>{nextActionError.next_action.label}</span>
               <ChevronRight size={16} />
@@ -238,7 +238,7 @@ export default function AlunoAtividadeRunnerPage({
           )}
         </div>
 
-        <h1 className="text-xl font-black text-slate-900 tracking-tight sm:text-2xl">
+        <h1 className="text-xl font-semibold text-primary tracking-tight sm:text-2xl">
           {activity.titulo}
         </h1>
 
@@ -382,7 +382,7 @@ export default function AlunoAtividadeRunnerPage({
             type="button"
             disabled={submitting}
             onClick={() => handleSaveSubmission(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-500 shadow-md cursor-pointer disabled:opacity-50 active:scale-95 transition-all"
+            className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold shadow-sm cursor-pointer disabled:opacity-50 active:scale-95 transition-all"
           >
             <Send size={16} />
             <span>Finalizar e Submeter</span>

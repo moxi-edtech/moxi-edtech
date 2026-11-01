@@ -98,7 +98,7 @@ export function TabHome() {
 
   const mediaNotas = useMemo(() => {
     const validas = grades.filter(g => typeof g.nota === 'number');
-    if (!validas.length) return 0;
+    if (!validas.length) return null;
     return Number((validas.reduce((acc, curr) => acc + (curr.nota || 0), 0) / validas.length).toFixed(1));
   }, [grades]);
 
@@ -134,7 +134,7 @@ export function TabHome() {
       <header className="flex items-center justify-between px-1">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900">
-            {greeting}, <span className="text-emerald">{status?.nome.split(' ')[0]}!</span>
+            {greeting}, <span className="text-primary">{status?.nome.split(' ')[0]}!</span>
           </h1>
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
             {status?.classe} • {status?.turma}
@@ -161,29 +161,28 @@ export function TabHome() {
          <AlunoCard className="flex flex-col items-center justify-center p-6 text-center border-0 bg-white shadow-xl shadow-slate-200/50">
             <div className="h-20 w-20 mb-4">
                 <CircularProgressbar
-                    value={mediaNotas}
+                    value={mediaNotas ?? 0}
                     maxValue={20}
-                    text={`${mediaNotas}`}
+                    text={mediaNotas === null ? "—" : String(mediaNotas)}
                     styles={buildStyles({
-                        pathColor: mediaNotas >= 14 ? "#1F6B3B" : mediaNotas >= 10 ? "#E3B23C" : "#E11D48",
+                        pathColor: mediaNotas === null ? "#94A3B8" : mediaNotas >= 14 ? "var(--primary)" : mediaNotas >= 10 ? "var(--color-klasse-gold)" : "#E11D48",
                         textColor: "#0F172A",
                         trailColor: "#F1F5F9",
                         textSize: "24px",
                     })}
                 />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Média Geral</p>
-            <div className="mt-2 flex items-center gap-1 text-xs font-bold text-emerald">
-                <TrendingUp size={12} />
-                <span>+0.2</span>
-            </div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Média recente</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {mediaNotas === null ? "Sem notas publicadas" : "Avaliações disponíveis"}
+            </p>
          </AlunoCard>
 
          <AlunoCard className="flex flex-col items-center justify-center p-6 text-center border-0 bg-white shadow-xl shadow-slate-200/50">
             <div className="h-20 w-20 mb-4">
                 <CircularProgressbar
                     value={status?.assiduidade ?? 0}
-                    text={`${status?.assiduidade ?? 0}%`}
+                    text={status?.assiduidade == null ? "—" : `${status.assiduidade}%`}
                     styles={buildStyles({
                         pathColor: "#3B82F6",
                         textColor: "#0F172A",
@@ -193,9 +192,9 @@ export function TabHome() {
                 />
             </div>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Assiduidade</p>
-            <div className="mt-2 text-xs font-bold text-blue-600">
-                <span>Meta: 90%</span>
-            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {status?.assiduidade == null ? "Sem registos" : "Presenças registadas"}
+            </p>
          </AlunoCard>
       </div>
 
@@ -203,7 +202,7 @@ export function TabHome() {
       {alert && (
         <motion.div 
             whileTap={{ scale: 0.98 }}
-            className="group relative overflow-hidden rounded-[2rem] bg-slate-900 p-6 text-white shadow-2xl"
+            className="group relative overflow-hidden rounded-[2rem] bg-klasse-green p-6 text-white shadow-sm"
         >
             <div className="absolute -right-4 -top-4 h-32 w-32 rounded-full bg-white/5 blur-2xl" />
             <div className="relative z-10 flex items-center justify-between">
