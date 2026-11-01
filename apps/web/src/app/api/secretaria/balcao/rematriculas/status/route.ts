@@ -14,6 +14,7 @@ import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligib
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
 import { summarizeRaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
+import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import {
   resolveBalcaoRematriculaTargetYear,
   shouldBlockClosedRematriculaWindow,
@@ -346,6 +347,9 @@ export async function GET(request: Request) {
       }
     }
 
+    const gradePermissions = await authorizeTurmasManage(supabase, escolaId, user.id)
+      .catch(() => ({ allowed: false }));
+
     // A matrícula destino criada pela promoção é a matrícula operacional do
     // aluno. No Balcão ela é preservada: a operação seguinte cobra somente a
     // taxa de rematrícula, sem seleccionar nem alterar turma/classe.
@@ -548,6 +552,7 @@ export async function GET(request: Request) {
       status,
       cicloVida,
       academic_timeline: academicTimeline,
+      academic_permissions: { can_write_grades: gradePermissions.allowed === true },
       destino_matricula_id: matriculaDestino?.id ?? null,
       service: service
         ? {
