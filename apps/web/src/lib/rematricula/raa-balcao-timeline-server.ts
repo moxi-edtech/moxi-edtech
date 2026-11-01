@@ -35,7 +35,7 @@ export async function loadRaaBalcaoAcademicTimeline(
           .select("tipo,data_inicio,data_fim,offering_id")
           .eq("escola_id", escolaId).eq("ano_letivo_id", matriculaOrigem.session_id)
           .or(offeringScope)
-          .in("tipo", ["PROVA_TRIMESTRAL", "EXAME_NACIONAL", "EXAME_ORAL", "EXAME_ESCRITO", "EXAME_EXTRAORDINARIO"])
+          .in("tipo", ["PROVA_TRIMESTRAL", "EXAME_NACIONAL", "EXAME_ORAL", "EXAME_ESCRITO", "EXAME_EXTRAORDINARIO", "PUBLICACAO_PAUTA", "CONSELHO_CLASSE"])
           .limit(100),
         supabase.from("exame_sessoes")
           .select("id,estado,data_inicio,data_fim")
