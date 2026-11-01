@@ -29,6 +29,7 @@ export type RematriculaCardState =
   | "WINDOW_CLOSED"
   | "TARGET_YEAR_NOT_CONFIGURED"
   | "SOURCE_RECORD_REQUIRED"
+  | "DESTINATION_ENROLLED"
   | "ERROR";
 
 export interface TurmaOption {
