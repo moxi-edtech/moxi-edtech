@@ -1408,6 +1408,7 @@ function Catalogo({
   onResolverReconciliacao,
   onCancelPendingPedido,
   onRefreshRematricula,
+  onStartEnrollment,
   onRematricula,
   onRegularize,
 }: {
@@ -1450,6 +1451,7 @@ function Catalogo({
   onResolverReconciliacao: () => void;
   onCancelPendingPedido: () => Promise<void>;
   onRefreshRematricula: () => Promise<unknown>;
+  onStartEnrollment?: () => void;
   onRematricula: () => void;
   onRegularize: () => void;
 }) {
@@ -1730,12 +1732,17 @@ function Catalogo({
                 <p className="mt-1 text-xs text-muted-foreground">
                   Não há uma matrícula de origem confirmada nesta ficha. Consulte o vínculo do aluno antes de lançar notas ou iniciar uma rematrícula.
                 </p>
-                {rematriculaAcademic?.source?.matricula_id && (
+                {onStartEnrollment ? (
+                  <button type="button" onClick={onStartEnrollment}
+                    className="mt-3 inline-flex min-h-10 items-center rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95">
+                    Abrir matrícula no Balcão
+                  </button>
+                ) : rematriculaAcademic?.source?.matricula_id ? (
                   <button type="button" onClick={() => void onRefreshRematricula()}
                     className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
                     Verificar matrícula novamente
                   </button>
-                )}
+                ) : null}
               </div>
             )}
             {view === "reenrollment" && rematriculaCanWriteGrades &&
@@ -3271,6 +3278,7 @@ export default function BalcaoAtendimento({
                   onResolverReconciliacao={rematricula.openReconciliationModal}
                   onCancelPendingPedido={rematricula.cancelPendingPedido}
                   onRefreshRematricula={rematricula.refreshStatus}
+                  onStartEnrollment={!dossier.aluno.matricula_id && onNavigateAction ? () => onNavigateAction("enrollment") : undefined}
                   onRematricula={rematricula.openModal}
                   onRegularize={() => setDebtModalOpen(true)}
                 />
