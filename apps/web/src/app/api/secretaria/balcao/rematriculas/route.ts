@@ -280,6 +280,16 @@ export async function POST(request: Request) {
           .eq("status", "aguardando_destino")
           .maybeSingle()
       : { data: null };
+    // An existing destination enrollment is immutable in a simple
+    // reconfirmation. Never let a stale draft or crafted request switch turma
+    // and silently turn a fee payment into a second academic progression.
+    if (matriculaDestino?.turma_id && !reclassificacao &&
+        body.destino_turma_id && body.destino_turma_id !== matriculaDestino.turma_id) {
+      return NextResponse.json({
+        ok: false, code: "REMATRICULA_TARGET_ALREADY_ENROLLED",
+        error: "O aluno já tem turma no ano de destino. Atualize a ficha e confirme apenas a taxa.",
+      }, { status: 409 });
+    }
     // Clientes com um rascunho anterior podiam ainda enviar "concluído" sem
     // destino. Se a promoção já criou a matrícula 2026, a fonte de verdade é
     // essa matrícula: o atendimento passa a ser apenas financeiro.
