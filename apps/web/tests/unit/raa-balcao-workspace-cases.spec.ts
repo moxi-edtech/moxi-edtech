@@ -56,3 +56,21 @@ test("recurso e disciplina permanecem no contexto anual quando o registo não ap
   });
   assert.deepEqual(items.map((i)=>i.periodo),["ano_letivo","ano_letivo","ano_letivo"]);
 });
+
+test("shows the actual names of pending subjects without inventing a trimester", () => {
+  const items = buildRaaBalcaoWorkspaceCases({
+    primaryAction: "nota", title: "Notas incompletas",
+    disciplinaIds: ["d1", "d2"],
+    disciplinaNames: { d1: "Matemática", d2: "Língua Portuguesa", other: "Unrelated" },
+  });
+  assert.deepEqual(items.map((item) => item.titulo), ["Matemática", "Língua Portuguesa"]);
+  assert.deepEqual(items.map((item) => item.periodo), ["nao_identificado", "nao_identificado"]);
+  assert.equal(items.every((item) => item.resumo === ""), true);
+});
+test("missing names never become fictitious numbered disciplines or raw UUID labels", () => {
+  const items = buildRaaBalcaoWorkspaceCases({
+    primaryAction: "nota", title: "Notas incompletas", disciplinaIds: ["d1"],
+  });
+  assert.equal(items[0].titulo, "Nome da disciplina indisponível");
+  assert.equal(items[0].referenceId, "d1");
+});
