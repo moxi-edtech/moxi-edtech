@@ -318,19 +318,35 @@ export function useRematriculaBalcao(opts: {
   }, { submitting, enabled: Boolean(opts.alunoId) && !result?.ok });
 
 
+  // Não reutilizar pedido, taxa, matrícula ou decisão de outro aluno.
+  // Uma resposta parcial/erro também deve limpar o snapshot anterior.
+  const clearStatusSnapshot = useCallback(() => {
+    setCardState(null);
+    setService(null);
+    setDebt(null);
+    setAcademic(null);
+    setCicloVida(null);
+    setAcademicTimeline(null);
+    setAcademicTimelineYear(null);
+    setDestinoMatriculaId(null);
+    setCanWriteGrades(false);
+    setPedido(null);
+    setComprovante(null);
+    setAnoLetivo(null);
+    setTargetYearLabel(null);
+    setRematriculaWindow(null);
+    setDestinoTurmaId(null);
+    setDestinoTurma(null);
+    setCohort(null);
+  }, []);
+
   // ────────────────────────────────────────────────────────────────────────
   // Fetch rematrícula eligibility status
   // ────────────────────────────────────────────────────────────────────────
   const fetchStatus = useCallback(async (destinationTurmaId?: string | null) => {
     if (!opts.alunoId || !opts.matriculaId) {
       statusRequestGeneration.current += 1;
-      setCardState(null);
-      setAcademicTimeline(null);
-      setAcademicTimelineYear(null);
-      setDestinoMatriculaId(null);
-      setCanWriteGrades(false);
-      setAnoLetivo(null);
-      setTargetYearLabel(null);
+      clearStatusSnapshot();
       setLoading(false);
       return;
     }
@@ -374,31 +390,25 @@ export function useRematriculaBalcao(opts: {
         setDestinoTurma(data.destino_turma ?? null);
         setCohort(data.cohort ?? null);
       } else {
+        clearStatusSnapshot();
         setCardState("ERROR");
-        setCicloVida(null);
-        setAcademicTimeline(null);
-        setAcademicTimelineYear(null);
-        setDestinoMatriculaId(null);
-        setCanWriteGrades(false);
         setApiError((data as any)?.error ?? "Não foi possível verificar a elegibilidade da matrícula.");
       }
     } catch (e) {
       if (requestGeneration !== statusRequestGeneration.current) return;
       console.error("[useRematriculaBalcao] Error fetching status:", e);
+      clearStatusSnapshot();
       setCardState("ERROR");
-      setAcademicTimeline(null);
-      setAcademicTimelineYear(null);
-      setDestinoMatriculaId(null);
-      setCanWriteGrades(false);
       setApiError("Não foi possível atualizar o estado da rematrícula. Verifique a ligação e tente novamente.");
     } finally {
       if (requestGeneration === statusRequestGeneration.current) setLoading(false);
     }
-  }, [opts.alunoId, opts.matriculaId, opts.academicYearId, opts.includeAcademicTimeline]);
+  }, [opts.alunoId, opts.matriculaId, opts.academicYearId, opts.includeAcademicTimeline, clearStatusSnapshot]);
 
   // Auto-fetch on aluno/matricula change
   useEffect(() => {
-    fetchStatus();
+    clearStatusSnapshot();
+    void fetchStatus();
     // Reset modal state when student changes
     setModalOpen(false);
     setReconciliationMode(false);
@@ -456,7 +466,7 @@ export function useRematriculaBalcao(opts: {
     } catch {
       // Storage indisponível (por exemplo, modo privado): o fluxo continua sem rascunho.
     }
-  }, [draftKey, fetchStatus]);
+  }, [draftKey, fetchStatus, clearStatusSnapshot]);
 
   useEffect(() => {
     if (!draftKey || !opts.alunoId || !opts.matriculaId || result) return;
