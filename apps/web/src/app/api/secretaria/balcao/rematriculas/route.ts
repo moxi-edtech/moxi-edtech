@@ -16,6 +16,7 @@ import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 import { resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
+import { isSourceYearStillInEarlyTrimester } from "@/lib/rematricula/raa-balcao-early-trimester";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -261,6 +262,12 @@ export async function POST(request: Request) {
       }
       matricula = matriculaAnterior;
     }
+    if (await isSourceYearStillInEarlyTrimester(supabase, escolaId, matricula)) {
+      return NextResponse.json({
+        ok: false, code: "ACADEMIC_YEAR_IN_PROGRESS",
+        error: "O ano de origem ainda está no 1.º ou 2.º trimestre. Consulte o progresso académico.",
+      }, { status: 409 });
+    }
     const origemMatriculaId = String(matricula.id);
     let { data: matriculaDestino } = await supabase
       .from("matriculas")
@@ -280,6 +287,16 @@ export async function POST(request: Request) {
           .eq("status", "aguardando_destino")
           .maybeSingle()
       : { data: null };
+    // An existing destination enrollment is immutable in a simple
+    // reconfirmation. Never let a stale draft or crafted request switch turma
+    // and silently turn a fee payment into a second academic progression.
+    if (matriculaDestino?.turma_id && !reclassificacao &&
+        body.destino_turma_id && body.destino_turma_id !== matriculaDestino.turma_id) {
+      return NextResponse.json({
+        ok: false, code: "REMATRICULA_TARGET_ALREADY_ENROLLED",
+        error: "O aluno já tem turma no ano de destino. Atualize a ficha e confirme apenas a taxa.",
+      }, { status: 409 });
+    }
     // Clientes com um rascunho anterior podiam ainda enviar "concluído" sem
     // destino. Se a promoção já criou a matrícula 2026, a fonte de verdade é
     // essa matrícula: o atendimento passa a ser apenas financeiro.

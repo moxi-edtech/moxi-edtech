@@ -96,10 +96,31 @@ on:
       - "apps/web/src/app/api/escola/*/admin/calendario/ajustes/route.ts"
       - "apps/web/src/app/api/escola/*/admin/periodos-letivos/upsert-bulk/route.ts"
       - "apps/web/src/lib/rematricula/raa-balcao-resolution.ts"
+      - "apps/web/src/lib/rematricula/raa-balcao-timeline.ts"
+      - "apps/web/src/lib/rematricula/raa-balcao-timeline-server.ts"
+      - "apps/web/src/lib/rematricula/raa-balcao-early-trimester.ts"
+      - "apps/web/tests/unit/raa-balcao-early-trimester.spec.ts"
+      - "apps/web/tests/unit/raa-balcao-timeline.spec.ts"
       - "apps/web/src/lib/rematricula/raa-balcao-cases.ts"
+      - "apps/web/src/components/secretaria/RematriculaWorkspaceChrome.tsx"
+      - "apps/web/tests/unit/raa-balcao-workspace-cases.spec.ts"
+      - "apps/web/tests/unit/raa-balcao-temporal-context.spec.ts"
+      - "apps/web/tests/unit/raa-balcao-trimester-contract.spec.ts"
+      - "apps/web/src/lib/rematricula/raa-balcao-temporal-context.ts"
+      - "apps/web/src/components/secretaria/EnrollmentPostActionModal.tsx"
+      - "apps/web/tests/unit/rematricula-workspace-ui.spec.ts"
       - "apps/web/src/lib/rematricula/raa-balcao-regime-guidance.ts"
       - "apps/web/tests/unit/raa-balcao-workspace-contract.spec.ts"
       - "apps/web/src/app/api/academico/raa/indisciplina/route.ts"
+      - "apps/web/src/app/api/academico/raa/reapreciacao/route.ts"
+      - "apps/web/src/app/api/academico/raa/reapreciacao/decisao/route.ts"
+      - "apps/web/src/lib/academico/raa-academic-decision-roles.ts"
+      - "apps/web/tests/unit/raa-reapreciacao-authorization.spec.ts"
+      - "apps/web/tests/unit/raa-pauta-publication.spec.ts"
+      - "apps/web/src/lib/academico/raa-pauta-publication.ts"
+      - "supabase/migrations/20271031002000_raa_reapreciacao_decision_permission_fix.sql"
+      - "supabase/ops/tests/bootstrap_raa_reapreciacao_roles.sql"
+      - "supabase/ops/tests/regression_raa_reapreciacao_roles.sql"
       - "apps/web/src/app/api/academico/exames/resultados/route.ts"
       - "apps/web/src/app/api/secretaria/balcao/raa/exam-context/route.ts"
       - "apps/web/src/lib/academico/raa-exam-result-guard.ts"
@@ -192,8 +213,16 @@ jobs:
             tests/unit/rematricula-eligibility.spec.ts \
             tests/unit/raa-balcao-resolution.spec.ts \
             tests/unit/raa-balcao-cases.spec.ts \
+            tests/unit/raa-balcao-workspace-cases.spec.ts \
+            tests/unit/raa-balcao-temporal-context.spec.ts \
+            tests/unit/raa-balcao-timeline.spec.ts \
+            tests/unit/raa-balcao-early-trimester.spec.ts \
+            tests/unit/raa-balcao-trimester-contract.spec.ts \
+            tests/unit/rematricula-workspace-ui.spec.ts \
             tests/unit/raa-balcao-regime-guidance.spec.ts \
             tests/unit/raa-balcao-workspace-contract.spec.ts \
+            tests/unit/raa-reapreciacao-authorization.spec.ts \
+            tests/unit/raa-pauta-publication.spec.ts \
             tests/unit/grade-period-context.spec.ts \
             tests/unit/official-calendar-write-guard.spec.ts \
             tests/unit/canonical-med-calendar.spec.ts \
@@ -247,6 +276,14 @@ jobs:
             src/app/api/secretaria/documentos/emitir/route.ts \
             src/components/secretaria/BalcaoAtendimento.tsx \
             src/components/secretaria/RaaBalcaoResolutionPanel.tsx \
+            src/components/secretaria/RematriculaWorkspaceChrome.tsx \
+            src/lib/rematricula/raa-balcao-cases.ts \
+            src/lib/rematricula/raa-balcao-temporal-context.ts \
+            src/app/api/secretaria/faltas/justificacoes/route.ts \
+            src/app/api/academico/raa/reapreciacao/route.ts \
+            src/app/api/academico/raa/reapreciacao/decisao/route.ts \
+            src/app/api/academico/raa/indisciplina/route.ts \
+            src/lib/academico/raa-academic-decision-roles.ts \
             src/components/secretaria/EnrollmentPostActionModal.tsx \
             src/components/secretaria/PagamentoDividaModal.tsx \
             src/components/secretaria/BalcaoWorkspace.tsx \
@@ -322,6 +359,26 @@ jobs:
 
       - name: Verify PostgreSQL client
         run: psql --version
+
+      - name: Create isolated RAA decision authorization database
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE klasse_raa_roles;"
+
+      - name: Bootstrap RAA policy and role regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_raa_roles
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_raa_reapreciacao_roles.sql
+
+      - name: Apply director-only academic appeal migration in isolation
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_raa_roles
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271031002000_raa_reapreciacao_decision_permission_fix.sql
+
+      - name: RAA secretary/director/anonymous PostgREST authorization regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_raa_roles
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_raa_reapreciacao_roles.sql
 
       - name: Class rectification academic and financial linkage contract
         run: node scripts/ci/class-rectification-contract.mjs

@@ -5,6 +5,7 @@ import { resolveAcademicYearContext } from "@/lib/academic-year/context"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { recordAuditServer } from "@/lib/audit"
+import { hasExactRaaAcademicDecisionRole } from "@/lib/academico/raa-academic-decision-roles"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -85,13 +86,15 @@ export async function GET(request: Request) {
   if (query.data.estado) builder = builder.eq("estado", query.data.estado)
   const { data, error } = await builder
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true, items: data ?? [] })
+  const canReview = await hasExactRaaAcademicDecisionRole(context.supabase, context.escolaId, context.auth.user.id)
+  return NextResponse.json({
+    ok: true, items: data ?? [], can_review: canReview,
+  })
 }
 
 
 // Revisão contextual do RAA: apenas a direção pode decidir sobre eventos graves.
 // Nem a secretaria nem o Balcão ganham permissão para alterar um resultado legal.
-const reviewRoles = ["admin", "admin_escola", "diretor"] as const
 const reviewSchema = z.object({
   id: z.string().uuid(),
   estado: z.enum(["em_analise", "resolvido", "cancelado"]),
@@ -102,8 +105,9 @@ const reviewSchema = z.object({
 export async function PATCH(request: Request) {
   const context = await resolveContext()
   if (context.error || !context.auth || !context.escolaId) return context.error
-  const authz = await requireRoleInSchool({ supabase: context.supabase, escolaId: context.escolaId, roles: [...reviewRoles] })
-  if (authz.error) return authz.error
+  if (!await hasExactRaaAcademicDecisionRole(context.supabase, context.escolaId, context.auth.user.id)) {
+    return NextResponse.json({ ok: false, error: "A decisão disciplinar exige autorização da direção." }, { status: 403 })
+  }
   const parsed = reviewSchema.safeParse(await request.json().catch(() => ({})))
   if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Decisão inválida." }, { status: 400 })
   if (parsed.data.estado !== "em_analise" && parsed.data.confirmar_decisao !== true) {

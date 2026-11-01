@@ -2,6 +2,7 @@ import { classifyRematriculaResponse } from "@/lib/secretaria/rematricula-result
 import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { StudentLifecycle } from "@/lib/matriculas/student-lifecycle";
+import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
 
 // ─── Exported Types ──────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ export type RematriculaCardState =
   | "WINDOW_CLOSED"
   | "TARGET_YEAR_NOT_CONFIGURED"
   | "SOURCE_RECORD_REQUIRED"
+  | "DESTINATION_ENROLLED"
   | "ERROR";
 
 export interface TurmaOption {
@@ -118,6 +120,10 @@ export type ResultadoDecisaoBalcao = "aprovado" | "reprovado" | "concluido";
 interface StatusResponse {
   ok: boolean;
   cicloVida?: StudentLifecycle | null;
+  academic_timeline?: RaaBalcaoTimeline | null;
+  academic_timeline_ano_letivo_ano?: number | null;
+  academic_permissions?: { can_write_grades: boolean };
+  destino_matricula_id?: string | null;
   status: RematriculaCardState;
   service: { id: string; nome: string; valor_base: number; pricing_origin?: "classe" | "fallback" } | null;
   debt: { total: number; count: number } | null;
@@ -130,6 +136,7 @@ interface StatusResponse {
     disciplina_ids_pendentes?: string[];
     source?: {
       matricula_id: string;
+      ano_letivo_ano?: number;
       turma_id: string | null;
       ano_letivo_id: string | null;
       status: string;
@@ -241,6 +248,7 @@ export function useRematriculaBalcao(opts: {
   alunoId: string | null;
   matriculaId: string | null;
   academicYearId: string | null;
+  includeAcademicTimeline?: boolean;
   /** Only authenticated, tenant/polo-bound workspace scopes may persist drafts. */
   draftScope?: string | null;
   responsavelContato?: string | null;
@@ -256,6 +264,10 @@ export function useRematriculaBalcao(opts: {
   const [debt, setDebt] = useState<StatusResponse["debt"]>(null);
   const [academic, setAcademic] = useState<StatusResponse["academic"]>(null);
   const [cicloVida, setCicloVida] = useState<StudentLifecycle | null>(null);
+  const [academicTimeline, setAcademicTimeline] = useState<RaaBalcaoTimeline | null>(null);
+  const [academicTimelineYear, setAcademicTimelineYear] = useState<number | null>(null);
+  const [destinoMatriculaId, setDestinoMatriculaId] = useState<string | null>(null);
+  const [canWriteGrades, setCanWriteGrades] = useState(false);
   const [pedido, setPedido] = useState<StatusResponse["pedido"]>(null);
   const [comprovante, setComprovante] =
     useState<StatusResponse["comprovante"]>(null);
@@ -313,6 +325,10 @@ export function useRematriculaBalcao(opts: {
     if (!opts.alunoId || !opts.matriculaId) {
       statusRequestGeneration.current += 1;
       setCardState(null);
+      setAcademicTimeline(null);
+      setAcademicTimelineYear(null);
+      setDestinoMatriculaId(null);
+      setCanWriteGrades(false);
       setAnoLetivo(null);
       setTargetYearLabel(null);
       setLoading(false);
@@ -330,6 +346,7 @@ export function useRematriculaBalcao(opts: {
         params.set("ano_letivo_id", opts.academicYearId);
       }
       if (destinationTurmaId) params.set("destino_turma_id", destinationTurmaId);
+      if (opts.includeAcademicTimeline) params.set("include_academic_timeline", "1");
 
       const res = await fetch(
         `/api/secretaria/balcao/rematriculas/status?${params.toString()}`,
@@ -344,6 +361,10 @@ export function useRematriculaBalcao(opts: {
         setDebt(data.debt);
         setAcademic(data.academic ?? null);
         setCicloVida(data.cicloVida ?? null);
+        setAcademicTimeline(data.academic_timeline ?? null);
+        setAcademicTimelineYear(data.academic_timeline_ano_letivo_ano ?? null);
+        setDestinoMatriculaId(data.destino_matricula_id ?? null);
+        setCanWriteGrades(data.academic_permissions?.can_write_grades === true);
         setPedido(data.pedido);
         setComprovante(data.comprovante);
         setAnoLetivo(data.ano_letivo);
@@ -355,17 +376,25 @@ export function useRematriculaBalcao(opts: {
       } else {
         setCardState("ERROR");
         setCicloVida(null);
+        setAcademicTimeline(null);
+        setAcademicTimelineYear(null);
+        setDestinoMatriculaId(null);
+        setCanWriteGrades(false);
         setApiError((data as any)?.error ?? "Não foi possível verificar a elegibilidade da matrícula.");
       }
     } catch (e) {
       if (requestGeneration !== statusRequestGeneration.current) return;
       console.error("[useRematriculaBalcao] Error fetching status:", e);
       setCardState("ERROR");
+      setAcademicTimeline(null);
+      setAcademicTimelineYear(null);
+      setDestinoMatriculaId(null);
+      setCanWriteGrades(false);
       setApiError("Não foi possível atualizar o estado da rematrícula. Verifique a ligação e tente novamente.");
     } finally {
       if (requestGeneration === statusRequestGeneration.current) setLoading(false);
     }
-  }, [opts.alunoId, opts.matriculaId, opts.academicYearId]);
+  }, [opts.alunoId, opts.matriculaId, opts.academicYearId, opts.includeAcademicTimeline]);
 
   // Auto-fetch on aluno/matricula change
   useEffect(() => {
@@ -385,6 +414,10 @@ export function useRematriculaBalcao(opts: {
     setCohort(null);
     setAcademic(null);
     setCicloVida(null);
+    setAcademicTimeline(null);
+    setAcademicTimelineYear(null);
+    setDestinoMatriculaId(null);
+    setCanWriteGrades(false);
     setTargetYearLabel(null);
     setRematriculaWindow(null);
     setDecisaoResultado("aprovado");
@@ -813,6 +846,10 @@ export function useRematriculaBalcao(opts: {
     debt,
     academic,
     cicloVida,
+    academicTimeline,
+    academicTimelineYear,
+    destinoMatriculaId,
+    canWriteGrades,
     pedido,
     comprovante,
     anoLetivo,

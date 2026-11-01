@@ -1,0 +1,208 @@
+"use client";
+
+import { CheckCircle2, ChevronRight, GraduationCap, LockKeyhole, ShieldCheck } from "lucide-react";
+import type { RematriculaCardState, TurmaOption } from "@/hooks/useRematriculaBalcao";
+import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
+
+export type RaaProgressSnapshot = {
+  matriculaId: string;
+  total: number;
+  registados: number;
+  loading: boolean;
+};
+
+type Status = RematriculaCardState | "CHECKING" | null;
+const ACTIONABLE: ReadonlySet<string> = new Set([
+  "READY", "RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING",
+  "ACADEMIC_HISTORY_PENDING", "FINALIST_PENDING",
+]);
+
+export function rematriculaDisplayState(status: Status): {
+  title: string; message: string; tone: "success" | "warning" | "muted";
+} {
+  if (status === "ALREADY_COMPLETED") return {
+    title: "Concluída", message: "Rematrícula já registada.", tone: "success",
+  };
+  if (status === "DESTINATION_ENROLLED") return {
+    title: "Matrícula existente", message: "O aluno já tem matrícula no ano de destino.", tone: "muted",
+  };
+  if (status === "RECONFIRMATION_REQUIRED") return {
+    title: "Confirmar operação", message: "A matrícula de destino já existe. Não escolha outra turma.", tone: "success",
+  };
+  if (status && ACTIONABLE.has(status)) return {
+    title: "Pode continuar", message: "Confirme a turma, a operação e o pagamento.", tone: "success",
+  };
+  if (!status || status === "CHECKING") return {
+    title: "A verificar", message: "A consultar a situação académica.", tone: "muted",
+  };
+  if (status === "ACADEMIC_PENDING") return {
+    title: "Ano em curso", message: "A decisão final ainda não está disponível.", tone: "warning",
+  };
+  if (status === "ACADEMIC_REVIEW_REQUIRED" || status === "ACADEMIC_CONDITIONAL_BLOCKED") return {
+    title: "Recurso pendente", message: "Consulte os exames e pedidos antes de continuar.", tone: "warning",
+  };
+  if (status === "ACADEMIC_CYCLE_COMPLETED") return {
+    title: "Ciclo concluído", message: "Consulte os documentos de conclusão.", tone: "success",
+  };
+  if (status === "WINDOW_CLOSED") return {
+    title: "Período fechado", message: "A direção pode reabrir o período neste atendimento.", tone: "warning",
+  };
+  if (status === "SOURCE_RECORD_REQUIRED") return {
+    title: "Origem por confirmar", message: "Identifique a matrícula do ano de origem.", tone: "warning",
+  };
+  return { title: "A resolver", message: "Consulte as pendências para continuar.", tone: "warning" };
+}
+
+function provaLabel(timeline: RaaBalcaoTimeline): string {
+  if (timeline.provas === "agendadas") return "Agendadas" + (timeline.proximaProvaEm ? " · " + timeline.proximaProvaEm : "");
+  if (timeline.provas === "em_curso") return "Período de provas";
+  if (timeline.provas === "datas_decorridas") return "Datas passadas · verificar realização";
+  return "Sem datas confirmadas";
+}
+
+function exameLabel(timeline: RaaBalcaoTimeline): string {
+  if (timeline.exames === "com_notas") return timeline.notasExameRegistadas + " nota(s) registada(s)";
+  if (timeline.exames === "agendados") return "Sessão agendada";
+  if (timeline.exames === "notas_pendentes") return "Notas por confirmar";
+  return "Sem sessão de recurso";
+}
+
+export function RematriculaWorkspaceHeader({
+  anoOrigem, anoDestino, status, motivo, progress, timeline, timelineAno, destinoMatriculaId,
+}: {
+  anoOrigem: string | null; anoDestino: string | null; status: Status;
+  motivo: string | null; progress: RaaProgressSnapshot | null;
+  timeline: RaaBalcaoTimeline | null; timelineAno: string | null; destinoMatriculaId: string | null;
+}) {
+  const display = rematriculaDisplayState(status);
+  const count = progress && progress.total > 0 && !progress.loading ? progress : null;
+  const reasonNeedsDetail = motivo && motivo.trim() && status !== "ACADEMIC_PENDING";
+  return (
+    <header className="space-y-3" aria-label="Resumo da rematrícula">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-sora text-xl font-bold tracking-tight text-foreground sm:text-2xl">Rematrícula</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Origem: {anoOrigem ?? "Por confirmar"} · Destino: {anoDestino ?? "Por confirmar"}
+          </p>
+        </div>
+        <span className={[
+          "rounded-full px-2.5 py-1 text-xs font-semibold",
+          display.tone === "success" ? "bg-emerald/10 text-emerald" :
+          display.tone === "warning" ? "bg-amber/15 text-amber" : "bg-muted text-muted-foreground",
+        ].join(" ")} role="status">{display.title}</span>
+      </div>
+      {timeline && (
+        <section className="rounded-xl border border-border bg-muted/20 p-3 sm:p-4" aria-label="Percurso académico do ano em curso">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-foreground">{timeline.faseLabel}{timelineAno ? " · " + timelineAno : ""}</h3>
+            <span className="text-xs text-muted-foreground">{timeline.proximaEtapa}</span>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">Provas</p>
+              <p className="mt-1 text-xs font-semibold text-foreground">{provaLabel(timeline)}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">Pauta final</p>
+              <p className="mt-1 text-xs font-semibold text-foreground">
+                {timeline.pautaFinalPublicada ? "Publicada" : "Publicação por confirmar"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-muted-foreground">Exames e recursos</p>
+              <p className="mt-1 text-xs font-semibold text-foreground">
+                {exameLabel(timeline)}
+                {timeline.pedidosReapreciacao != null && timeline.pedidosReapreciacao > 0
+                  ? " · " + timeline.pedidosReapreciacao + " pedido(s)" : ""}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+      <section className="rounded-xl border border-border bg-muted/25 p-3.5" aria-label="Elegibilidade académica">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-emerald" aria-hidden="true" />
+          <h3 className="text-sm font-semibold text-foreground">Próxima ação</h3>
+        </div>
+        <p className="mt-1.5 text-sm text-muted-foreground">{display.message}</p>
+        {destinoMatriculaId && status !== "ALREADY_COMPLETED" && (
+          <p className="mt-2 text-xs font-medium text-foreground">Matrícula de destino identificada. Não criar outra.</p>
+        )}
+        {reasonNeedsDetail && motivo !== display.message && (
+          <details className="mt-2 text-xs text-muted-foreground">
+            <summary className="cursor-pointer">Ver motivo</summary>
+            <p className="mt-1">{motivo}</p>
+          </details>
+        )}
+        {count && (
+          <div className="mt-3 space-y-1.5">
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>Pendências analisadas</span>
+              <span className="tabular-nums">{count.registados} de {count.total}</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-border" role="progressbar"
+              aria-valuemin={0} aria-valuemax={count.total} aria-valuenow={count.registados}
+              aria-label="Registos das pendências analisados">
+              <div className="h-full bg-emerald transition-[width]"
+                style={{ width: count.total ? (count.registados / count.total * 100) + "%" : "0%" }} />
+            </div>
+          </div>
+        )}
+      </section>
+    </header>
+  );
+}
+
+export function RematriculaAcademicDestination({
+  status, anoDestino, turma, canContinue, onContinue,
+}: {
+  status: Status; anoDestino: string | null; turma: TurmaOption | null;
+  canContinue: boolean; onContinue: () => void;
+}) {
+  const completed = status === "ALREADY_COMPLETED";
+  const destinationEnrolled = status === "DESTINATION_ENROLLED";
+  const cycleCompleted = status === "ACADEMIC_CYCLE_COMPLETED";
+  const alreadyEnrolled = destinationEnrolled || status === "RECONFIRMATION_REQUIRED";
+  const destination = turma
+    ? [turma.classe_nome, turma.nome].filter(Boolean).join(" · ")
+    : alreadyEnrolled ? "Turma já vinculada à matrícula" : "Turma de destino por selecionar";
+  return (
+    <section className="space-y-3 border-t border-border pt-4" aria-label="Destino académico">
+      <div className="flex items-center gap-2">
+        <GraduationCap className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <h3 className="text-sm font-semibold text-foreground">Destino académico</h3>
+      </div>
+      <div className="flex items-center gap-3 rounded-xl bg-muted/35 p-3.5">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">{cycleCompleted ? "Ciclo de ensino concluído" : destination}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {completed ? "Rematrícula já registada." :
+              destinationEnrolled ? "Matrícula de destino existente." :
+              cycleCompleted ? "Consulte os documentos de conclusão." :
+              status === "RECONFIRMATION_REQUIRED" ? "Confirmar a rematrícula sem alterar a turma." :
+              !canContinue ? "Aguardando condições para continuar." :
+              "Selecione a turma e confirme a operação."}
+            {anoDestino && !completed && !cycleCompleted ? " · " + anoDestino : ""}
+          </p>
+        </div>
+        {canContinue ? <ChevronRight className="h-4 w-4 shrink-0 text-emerald" aria-hidden="true" /> :
+          completed || destinationEnrolled ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald" aria-hidden="true" /> :
+          <LockKeyhole className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
+      </div>
+      {!completed && !destinationEnrolled && !cycleCompleted && (
+        <button type="button" onClick={onContinue} disabled={!canContinue}
+          className={[
+            "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition",
+            "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20",
+            canContinue ? "bg-amber text-white hover:brightness-95" : "cursor-not-allowed bg-muted text-muted-foreground",
+          ].join(" ")}>
+          {canContinue ? <ChevronRight className="h-4 w-4" aria-hidden="true" /> :
+            <LockKeyhole className="h-4 w-4" aria-hidden="true" />}
+          {status === "RECONFIRMATION_REQUIRED" ? "Confirmar rematrícula" :
+            canContinue ? "Continuar rematrícula" : "Rematrícula indisponível"}
+        </button>
+      )}
+    </section>
+  );
+}

@@ -13,6 +13,9 @@ import { resolveRaaProgressionForMatricula } from "@/lib/academico/raa-progressi
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
+import { loadRaaBalcaoAcademicTimeline } from "@/lib/rematricula/raa-balcao-timeline-server";
+import { isSourceYearStillInEarlyTrimester } from "@/lib/rematricula/raa-balcao-early-trimester";
+import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import {
   resolveBalcaoRematriculaTargetYear,
   shouldBlockClosedRematriculaWindow,
@@ -42,6 +45,7 @@ export async function GET(request: Request) {
     const matricula_id = searchParams.get("matricula_id");
     const ano_letivo_id = searchParams.get("ano_letivo_id");
     const destino_turma_id = searchParams.get("destino_turma_id");
+    const includeAcademicTimeline = searchParams.get("include_academic_timeline") === "1";
 
     if (!aluno_id || !matricula_id) {
       return NextResponse.json(
@@ -135,34 +139,12 @@ export async function GET(request: Request) {
     );
     const rematriculaWindow = await resolveRematriculaWindow(supabase, escolaId, targetAnoLetivoAno);
 
-    if (shouldBlockClosedRematriculaWindow({
+    // A janela fechada impede novas rematrículas, mas não oculta o
+    // percurso académico nem operações existentes do aluno.
+    const novaOperacaoForaDaJanela = shouldBlockClosedRematriculaWindow({
       windowOpen: rematriculaWindow.open,
       hasExistingOperationForTarget: pedidosDoAno.length > 0,
-    })) {
-      return NextResponse.json({
-        ok: true,
-        status: "WINDOW_CLOSED",
-        service: null,
-        debt: { total: 0, count: 0 },
-        pedido: null,
-        comprovante: null,
-        ano_letivo: {
-          id: targetAnoLetivoId,
-          ano: targetAnoLetivoAno,
-          label: targetAnoLetivoLabel,
-        },
-        destino_turma_id: null,
-        reclassificacao: null,
-        reconciliation: null,
-        window: {
-          configured: rematriculaWindow.configured,
-          open: false,
-          data_inicio: rematriculaWindow.window?.data_inicio ?? null,
-          data_fim: rematriculaWindow.window?.data_fim ?? null,
-        },
-        context: academicContext,
-      });
-    }
+    });
 
     // ── A origem pode ser do ano anterior; a matrícula destino só nasce após o pagamento ──
     let { data: matriculaOrigem } = await supabase
@@ -184,6 +166,7 @@ export async function GET(request: Request) {
         { status: 404 },
       );
     }
+    const matriculaSelecionada = matriculaOrigem;
     if (Number(matriculaOrigem.ano_letivo ?? 0) >= targetAnoLetivoAno) {
       const { data: matriculaAnteriorPorAno } = await supabase
         .from("matriculas")
@@ -224,7 +207,24 @@ export async function GET(request: Request) {
       if (!matriculaAnterior) {
         return NextResponse.json({
           ok: true,
-          status: "SOURCE_RECORD_REQUIRED",
+          status: Number(matriculaOrigem.ano_letivo) === targetAnoLetivoAno
+            ? "DESTINATION_ENROLLED" : "SOURCE_RECORD_REQUIRED",
+          destino_matricula_id: Number(matriculaOrigem.ano_letivo) === targetAnoLetivoAno
+            ? matriculaOrigem.id : null,
+          academic_timeline: includeAcademicTimeline && Number(matriculaOrigem.ano_letivo) === targetAnoLetivoAno
+            ? await loadRaaBalcaoAcademicTimeline(supabase, escolaId, matriculaOrigem) : null,
+          academic_timeline_ano_letivo_ano: Number(matriculaOrigem.ano_letivo) === targetAnoLetivoAno
+            ? matriculaOrigem.ano_letivo : null,
+          academic: Number(matriculaOrigem.ano_letivo) === targetAnoLetivoAno ? {
+            decision: null, eligible: false, code: "ACADEMIC_RESULT_PENDING",
+            reason: "Matrícula ativa no ano selecionado.",
+            source: {
+              matricula_id: matriculaOrigem.id, turma_id: matriculaOrigem.turma_id,
+              ano_letivo_id: matriculaOrigem.session_id,
+              ano_letivo_ano: matriculaOrigem.ano_letivo,
+              status: matriculaOrigem.status,
+            },
+          } : null,
           service: null,
           debt: { total: 0, count: 0 },
           pedido: null,
@@ -303,6 +303,20 @@ export async function GET(request: Request) {
         };
       }
     }
+
+    // A matrícula de destino pode ser a matrícula do ano que o aluno está a
+    // frequentar. O seu progresso aparece sem alterar a matrícula de origem
+    // que o RAA usa para autorizar a próxima operação.
+    const timelineMatricula = Number(matriculaSelecionada.ano_letivo) === targetAnoLetivoAno
+      ? matriculaSelecionada : matriculaOrigem;
+    const academicTimeline = includeAcademicTimeline
+      ? await loadRaaBalcaoAcademicTimeline(supabase, escolaId, timelineMatricula)
+      : null;
+    const academicTimelineAno = academicTimeline ? timelineMatricula.ano_letivo : null;
+
+    const trimestreInicialEmCurso = await isSourceYearStillInEarlyTrimester(supabase, escolaId, matriculaOrigem);
+    const gradePermissions = await authorizeTurmasManage(supabase, escolaId, user.id)
+      .catch(() => ({ allowed: false }));
 
     // A matrícula destino criada pela promoção é a matrícula operacional do
     // aluno. No Balcão ela é preservada: a operação seguinte cobra somente a
@@ -468,6 +482,8 @@ export async function GET(request: Request) {
         : !pedidoTemPagamentoAssociado
           ? "PENDING_ORDER_REVIEW"
         : "PAYMENT_IN_PROGRESS";
+    } else if (trimestreInicialEmCurso) {
+      status = "ACADEMIC_PENDING";
     } else if (!academicEligibility.eligible) {
       status = academicEligibility.code === "ACADEMIC_RESULT_PENDING"
         ? "ACADEMIC_PENDING"
@@ -482,6 +498,8 @@ export async function GET(request: Request) {
                 : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
                   ? "ACADEMIC_CYCLE_COMPLETED"
                   : "ACADEMIC_NOT_APPROVED";
+    } else if (novaOperacaoForaDaJanela) {
+      status = "WINDOW_CLOSED";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
     } else if (matriculaDestino?.turma_id && !reclassificacao) {
@@ -503,6 +521,10 @@ export async function GET(request: Request) {
       ok: true,
       status,
       cicloVida,
+      academic_timeline: academicTimeline,
+      academic_timeline_ano_letivo_ano: academicTimelineAno,
+      academic_permissions: { can_write_grades: gradePermissions.allowed === true },
+      destino_matricula_id: matriculaDestino?.id ?? null,
       service: service
         ? {
             id: service.id,
@@ -526,6 +548,7 @@ export async function GET(request: Request) {
         disciplina_ids_pendentes: academicEligibility.disciplinaIdsPendentes,
         source: {
           matricula_id: matriculaOrigem.id,
+          ano_letivo_ano: matriculaOrigem.ano_letivo,
           turma_id: matriculaOrigem.turma_id ?? null,
           ano_letivo_id: matriculaOrigem.session_id ?? null,
           status: matriculaOrigem.status,

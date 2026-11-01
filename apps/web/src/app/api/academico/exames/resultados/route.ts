@@ -30,8 +30,17 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" }, { status: 400 });
   const body = parsed.data;
 
-  const { data: session } = await supabase.from("exame_sessoes").select("id, estado, turma_id, ano_letivo_id").eq("id", body.exame_sessao_id).eq("escola_id", escolaId).maybeSingle();
+  const { data: session } = await supabase.from("exame_sessoes").select("id, estado, turma_id, ano_letivo_id, data_inicio").eq("id", body.exame_sessao_id).eq("escola_id", escolaId).maybeSingle();
   if (!session) return NextResponse.json({ ok: false, error: "Sessão de exame não encontrada." }, { status: 404 });
+  // A session being scheduled is not evidence that the exam has taken place.
+  // Check against the school-local date on the server, not the operator's clock.
+  const hojeAngola = new Date().toLocaleDateString("sv-SE", { timeZone: "Africa/Luanda" });
+  if (session.data_inicio > hojeAngola) {
+    return NextResponse.json({
+      ok: false, code: "EXAM_NOT_STARTED",
+      error: "A prova está agendada. O lançamento abre na data da sessão.",
+    }, { status: 409 });
+  }
   if (["encerrada", "cancelada"].includes(session.estado)) return NextResponse.json({ ok: false, error: "A sessão de exame não aceita novos resultados.", code: "EXAM_SESSION_LOCKED" }, { status: 409 });
 
   const { data: matricula } = await supabase.from("matriculas").select("id, aluno_id, turma_id, session_id, status").eq("id", body.matricula_id).eq("escola_id", escolaId).maybeSingle();

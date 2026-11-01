@@ -3,6 +3,8 @@ import { z } from "zod"
 import { requireRoleInSchool } from "@/lib/authz"
 import { resolveAcademicYearContext } from "@/lib/academic-year/context"
 import { calculateReapreciacaoDeadline } from "@/lib/academico/raa-eligibility"
+import { hasExactRaaAcademicDecisionRole } from "@/lib/academico/raa-academic-decision-roles"
+import { getOfficialRaaPublicationAt } from "@/lib/academico/raa-pauta-publication"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
 
@@ -17,7 +19,7 @@ const postSchema = z.object({
   ano_letivo_id: z.string().uuid().optional(),
 })
 
-const roles = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "professor"] as const
+const roles = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "professor", "admin_financeiro"] as const
 
 async function resolveContext(request: Request) {
   const supabase = await supabaseServerTyped<any>()
@@ -70,18 +72,22 @@ export async function POST(request: Request) {
     .eq("tipo", "TRIMESTRE")
     .limit(3)
   const periodoIds = (periodosPublicados ?? []).map((row: any) => row.id).filter(Boolean)
-  const { data: pautaPublicada } = periodoIds.length > 0
+  const { data: pautaPublicada, error: pautaError } = periodoIds.length > 0
     ? await context.supabase
         .from("pautas_oficiais")
-        .select("id, periodo_letivo_id, generated_at")
+        .select("id, periodo_letivo_id, generated_at, updated_at, status, pdf_path")
         .eq("escola_id", context.escolaId)
         .eq("turma_id", matricula.turma_id)
         .in("periodo_letivo_id", periodoIds)
-        .order("generated_at", { ascending: false })
+        .eq("status", "SUCCESS")
+        .neq("pdf_path", "")
+        .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle()
-    : { data: null }
-  if (!pautaPublicada?.generated_at) {
+    : { data: null, error: null }
+  if (pautaError) return NextResponse.json({ ok: false, error: "Falha ao consultar a publicação oficial.", code: "RAA_PUBLICATION_LOOKUP_FAILED" }, { status: 503 })
+  const publishedAt = getOfficialRaaPublicationAt(pautaPublicada)
+  if (!publishedAt) {
     return NextResponse.json({ ok: false, error: "O resultado ainda não tem pauta oficial publicada; o prazo de 48 horas ainda não começou.", code: "RAA_RESULT_NOT_PUBLISHED" }, { status: 409 })
   }
 
@@ -103,8 +109,13 @@ export async function POST(request: Request) {
     .maybeSingle()
   if (active) return NextResponse.json({ ok: true, duplicate: true, item: active })
 
-  const publishedAt = new Date(pautaPublicada.generated_at)
   const prazo = calculateReapreciacaoDeadline(publishedAt)
+  if (prazo.getTime() <= Date.now()) {
+    return NextResponse.json({
+      ok: false, code: "RAA_REAPRECIACAO_EXPIRED",
+      error: "O prazo para solicitar reapreciação deste resultado terminou.",
+    }, { status: 409 })
+  }
   const { data: item, error } = await context.supabase
     .from("reapreciacao_pedidos")
     .insert({
@@ -139,5 +150,9 @@ export async function GET(request: Request) {
   if (query.data.disciplina_id) builder = builder.eq("disciplina_id", query.data.disciplina_id)
   const { data, error } = await builder
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true, items: data ?? [] })
+  const canDecide = await hasExactRaaAcademicDecisionRole(context.supabase, context.escolaId, context.auth.user.id)
+  // Client hint only. The PATCH endpoint and RLS enforce the real permission.
+  return NextResponse.json({
+    ok: true, items: data ?? [], can_decide: canDecide,
+  })
 }
