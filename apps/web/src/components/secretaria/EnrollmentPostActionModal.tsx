@@ -349,7 +349,15 @@ export function EnrollmentPostActionModal({
                 </button>
               </div>
             )}
-            {periodReadOnly && <p role="status" className="text-xs text-muted-foreground">Este ano letivo está encerrado. Consulte a direção para reabertura.</p>}
+            {periodReadOnly && (
+              <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/20 p-3">
+                <p className="text-xs text-muted-foreground">Ano letivo encerrado. Solicite a reabertura à direção antes de lançar notas.</p>
+                <button type="button" onClick={() => setPeriodRetry((value) => value + 1)}
+                  disabled={periodLoading} className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted">
+                  Verificar novamente
+                </button>
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <select aria-label="Trimestre da matrícula de origem" value={periodo}
                 onChange={(event) => { setPeriodo(event.target.value); setNota(""); setResult(null); }}
@@ -383,6 +391,11 @@ export function EnrollmentPostActionModal({
             {periodClosed && (
               <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs text-foreground">
                 Período encerrado. O lançamento só será aceite se a direção tiver autorizado a reabertura.
+                <button type="button" onClick={() => setPeriodRetry((value) => value + 1)}
+                  disabled={periodLoading}
+                  className="ml-2 inline-flex rounded-xl border border-border bg-card px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted">
+                  Atualizar período
+                </button>
               </p>
             )}
             {result?.error && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-foreground">{result.error}</p>}
@@ -398,7 +411,7 @@ export function EnrollmentPostActionModal({
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => onOpenChange(false)}
                     className="rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95">Concluir</button>
-                  <button type="button" onClick={() => { setGradeReceipt(null); setNota(""); setResult(null); }}
+                  <button type="button" onClick={() => { setGradeReceipt(null); setNota(""); setDisciplinaId(""); setTurmaDisciplinaId(""); setPeriodo(""); setResult(null); }}
                     className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
                     Lançar outra avaliação
                   </button>
