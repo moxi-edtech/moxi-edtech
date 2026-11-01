@@ -130,7 +130,7 @@ test("next step uses the earliest upcoming official date, not a generic trimeste
       { tipo: "PROVA_TRIMESTRAL", data_inicio: "2027-06-20", data_fim: "2027-06-25" },
     ],
   });
-  assert.match(upcoming.proximaEtapa, /20\\/05\\/2027/);
+  assert.ok(upcoming.proximaEtapa.includes("20/05/2027"));
 });
 
 test("scheduled publication never masquerades as an already published final pauta", () => {
@@ -140,7 +140,7 @@ test("scheduled publication never masquerades as an already published final paut
   });
   assert.equal(result.pautaFinalPublicada, false);
   assert.match(result.proximaEtapa, /Publicação da pauta prevista/);
-  assert.match(result.proximaEtapa, /16\\/07\\/2027/);
+  assert.ok(result.proximaEtapa.includes("16/07/2027"));
 });
 
 test("overlapping official trimesters never show an invented active trimester", () => {
