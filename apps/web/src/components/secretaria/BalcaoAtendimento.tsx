@@ -1519,6 +1519,7 @@ function Catalogo({
           timeline={rematriculaTimeline}
           timelineAno={rematriculaTimelineYear != null ? `${rematriculaTimelineYear}/${rematriculaTimelineYear + 1}` : null}
           destinoMatriculaId={rematriculaDestinoMatriculaId}
+          temPendencias={Boolean(raaMatriculaId && raaAlunoId)}
         />
       ) : view === "all" ? (
         <div className="mb-4 flex items-center gap-2">
@@ -1753,7 +1754,7 @@ function Catalogo({
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
                   <div>
                     <p className="text-sm font-semibold text-foreground">Notas individuais</p>
-                    <p className="text-xs text-muted-foreground">Registar uma avaliação do aluno selecionado, conforme o trimestre autorizado.</p>
+                    <p className="text-xs text-muted-foreground">Selecione o trimestre e registe a avaliação deste aluno.</p>
                   </div>
                   <button type="button" onClick={() => onLancarNota(null)}
                     className="inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
