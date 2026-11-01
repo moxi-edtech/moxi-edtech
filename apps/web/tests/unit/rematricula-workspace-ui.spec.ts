@@ -7,7 +7,7 @@ const source=(path:string)=>readFileSync(resolve(process.cwd(),"src",path),"utf8
 test("rematrícula owns an accessible, dark/light token-based UX",()=>{
  const frame=source("components/secretaria/RematriculaWorkspaceChrome.tsx");
  const balc=source("components/secretaria/BalcaoAtendimento.tsx");
- assert.match(frame,/Elegibilidade académica/);
+ assert.match(frame,/Próxima ação académica/);
  assert.match(frame,/Destino académico/);
  assert.match(frame,/aria-label="Próxima ação académica"/);
  assert.doesNotMatch(frame,/Pendências analisadas/);
