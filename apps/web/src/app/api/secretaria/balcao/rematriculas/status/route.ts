@@ -261,6 +261,7 @@ export async function GET(request: Request) {
     // explícitos e orientados pelo próprio RAA.
     let academicDecision: any = null;
     let academicGuidance: any = null;
+    let academicDisciplineStatuses: Array<{ disciplina_id: string; status: string }> = [];
     let academicRegime: {
       nivel_ensino: string; classe_num: number | null; ano_numero: number | null;
       modulo_numero: number | null; eh_classe_exame: boolean; escala: "quantitativa_primario" | "quantitativa_secundario" | "qualitativa";
@@ -276,6 +277,7 @@ export async function GET(request: Request) {
         });
         academicDecision = academic.progression.decision;
         academicGuidance = academic.orientacao;
+        academicDisciplineStatuses = academic.disciplinas;
         // The source-enrolment's actual RAA regime and legal findings, not the
         // destination class or any front-end guess. Never infer a decree when
         // its evaluation was unavailable.
@@ -535,6 +537,14 @@ export async function GET(request: Request) {
     // depend on unrelated exam-session queries to render real discipline names.
     const pendentes = [...new Set(academicEligibility.disciplinaIdsPendentes)];
     const nomesPendentes: Record<string, string> = {};
+    const pendenteSet = new Set(pendentes);
+    // The canonical RAA resolver already identified these statuses. Do not
+    // infer missing evaluations or trimesters from dates or catalog metadata.
+    const estadosPendentes = Object.fromEntries(
+      academicDisciplineStatuses
+        .filter((item) => pendenteSet.has(item.disciplina_id))
+        .map((item) => [item.disciplina_id, item.status]),
+    );
     if (pendentes.length > 0 && pendentes.length <= 100) {
       const { data: catalogo, error: namesError } = await supabase
         .from("disciplinas_catalogo").select("id,nome")
@@ -577,6 +587,7 @@ export async function GET(request: Request) {
         reason: academicEligibility.reason,
         disciplina_ids_pendentes: academicEligibility.disciplinaIdsPendentes,
         disciplina_names: nomesPendentes,
+        disciplina_statuses: estadosPendentes,
         source: {
           matricula_id: matriculaOrigem.id,
           ano_letivo_ano: matriculaOrigem.ano_letivo,
