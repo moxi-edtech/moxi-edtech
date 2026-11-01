@@ -47,7 +47,8 @@ CREATE POLICY raa_indisciplina_school_read_v2 ON public.raa_indisciplina_eventos
   FOR SELECT TO authenticated USING (public.user_can_access_raa_school(escola_id));
 GRANT ALL ON public.raa_indisciplina_eventos TO anon, authenticated, service_role;
 INSERT INTO public.raa_indisciplina_eventos (id,escola_id,estado) VALUES
-  ('00000000-0000-4000-8000-000000000005','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','registado');
+  ('00000000-0000-4000-8000-000000000005','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','registado'),
+  ('00000000-0000-4000-8000-000000000006','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','registado');
 
 CREATE TABLE public.reapreciacao_pedidos (
   id uuid PRIMARY KEY, escola_id uuid NOT NULL,
