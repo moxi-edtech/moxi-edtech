@@ -78,11 +78,18 @@ test("missing official periods never invent a trimester", () => {
 test("status endpoint and UI use source-year data and restrict write actions", () => {
   const source = (path: string) => readFileSync(resolve(process.cwd(), "src", path), "utf8");
   const status = source("app/api/secretaria/balcao/rematriculas/status/route.ts");
+  const timelineServer = source("lib/rematricula/raa-balcao-timeline-server.ts");
   const chrome = source("components/secretaria/RematriculaWorkspaceChrome.tsx");
+  const writer = source("app/api/secretaria/balcao/rematriculas/route.ts");
+  const resultWriter = source("app/api/academico/exames/resultados/route.ts");
   const balcao = source("components/secretaria/BalcaoAtendimento.tsx");
   const panel = source("components/secretaria/RaaBalcaoResolutionPanel.tsx");
   const examContext = source("app/api/secretaria/balcao/raa/exam-context/route.ts");
-  assert.match(status, /ano_letivo_id", matriculaOrigem\.session_id/);
+  assert.match(timelineServer, /ano_letivo_id", matriculaOrigem\.session_id/);
+  assert.match(status, /loadRaaBalcaoAcademicTimeline/);
+  assert.match(status, /include_academic_timeline/);
+  assert.match(status, /DESTINATION_ENROLLED/);
+  assert.match(status, /academic_timeline_ano_letivo_ano/);
   assert.match(status, /destino_matricula_id: matriculaDestino\?\.id/);
   assert.match(status, /academic_permissions: \{ can_write_grades:/);
   assert.match(chrome, /Origem:/);
@@ -90,4 +97,6 @@ test("status endpoint and UI use source-year data and restrict write actions", (
   assert.match(balcao, /canLancarNota=\{rematriculaCanWriteGrades\}/);
   assert.match(panel, /examContext\.can_record_result/);
   assert.match(examContext, /can_record_result:/);
+  assert.match(resultWriter, /EXAM_NOT_STARTED/);
+  assert.match(writer, /REMATRICULA_TARGET_ALREADY_ENROLLED/);
 });
