@@ -13,17 +13,16 @@ export async function loadRaaBalcaoAcademicTimeline(
   let academicTimeline: RaaBalcaoTimeline | null = null;
   try {
     if (matriculaOrigem.session_id && matriculaOrigem.turma_id) {
-      const { data: sourceClass } = await supabase.from("turmas")
+      const { data: sourceClass, error: sourceClassError } = await supabase.from("turmas")
         .select("curso_id").eq("escola_id", escolaId)
         .eq("id", matriculaOrigem.turma_id).maybeSingle();
-      const { data: sourceOfferings } = sourceClass?.curso_id
-        ? await supabase.from("school_education_offerings").select("id")
-            .eq("escola_id", escolaId).eq("course_id", sourceClass.curso_id).limit(2)
-        : { data: null };
-      // Multiple offerings for the same course are ambiguous: do not display another
-      // offering's dates as authoritative for this student.
-      if (sourceOfferings && sourceOfferings.length > 1) return null;
-      const sourceOfferingId: string | null = sourceOfferings?.length === 1 ? sourceOfferings[0].id : null;
+      // Never present another course's timetable when the source offer is unknown.
+      if (sourceClassError || !sourceClass?.curso_id) return null;
+      const { data: sourceOfferings, error: sourceOfferingsError } = await supabase
+        .from("school_education_offerings").select("id")
+        .eq("escola_id", escolaId).eq("course_id", sourceClass.curso_id).limit(2);
+      if (sourceOfferingsError || sourceOfferings?.length !== 1) return null;
+      const sourceOfferingId: string = sourceOfferings[0].id;
       const offeringScope = sourceOfferingId
         ? "offering_id.is.null,offering_id.eq." + sourceOfferingId : "offering_id.is.null";
       const [periodsResult, eventsResult, examsResult, pautasResult, petitionsResult] = await Promise.all([
@@ -36,7 +35,7 @@ export async function loadRaaBalcaoAcademicTimeline(
           .eq("escola_id", escolaId).eq("ano_letivo_id", matriculaOrigem.session_id)
           .or(offeringScope)
           .in("tipo", ["PROVA_TRIMESTRAL", "EXAME_NACIONAL", "EXAME_ORAL", "EXAME_ESCRITO", "EXAME_EXTRAORDINARIO", "PUBLICACAO_PAUTA", "CONSELHO_CLASSE"])
-          .limit(100),
+          .limit(300),
         supabase.from("exame_sessoes")
           .select("id,estado,data_inicio,data_fim")
           .eq("escola_id", escolaId).eq("ano_letivo_id", matriculaOrigem.session_id)
@@ -48,7 +47,10 @@ export async function loadRaaBalcaoAcademicTimeline(
           .select("id", { count: "exact", head: true })
           .eq("escola_id", escolaId).eq("matricula_id", matriculaOrigem.id),
       ]);
-      if (!periodsResult.error && !eventsResult.error && !examsResult.error && !pautasResult.error) {
+      // A capped result must never be shown as a complete school timetable.
+      if (!periodsResult.error && !eventsResult.error && !examsResult.error && !pautasResult.error
+        && (periodsResult.data?.length ?? 0) < 100
+        && (eventsResult.data?.length ?? 0) < 300) {
         type PeriodRecord = { id: string; tipo: string; numero: number; data_inicio: string; data_fim: string; offering_id: string | null };
         type EventRecord = { tipo: string; nome: string | null; data_inicio: string; data_fim: string; offering_id: string | null; source_item_id: string | null };
         const sessoes = examsResult.data ?? [];
