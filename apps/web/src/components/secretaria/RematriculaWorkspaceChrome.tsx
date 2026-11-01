@@ -91,7 +91,10 @@ export function RematriculaWorkspaceHeader({
 }) {
   const baseDisplay = rematriculaDisplayState(status);
   const academicNext = nextAcademicActionForBalcao(status, timeline);
-  const subjectsNext = pendingSubjectsActionForBalcao(status, academic ?? null, canLancarNota, timeline);
+  // Calendar for the currently selected destination is not evidence of the
+  // origin's trimester. Avoid deriving missing-grade urgency from another year.
+  const timelineOrigem = timelineAno && anoOrigem && timelineAno === anoOrigem ? timeline : null;
+  const subjectsNext = pendingSubjectsActionForBalcao(status, academic ?? null, canLancarNota, timelineOrigem);
   const display = {
     ...baseDisplay,
     title: subjectsNext?.title ?? academicNext.title ?? baseDisplay.title,
