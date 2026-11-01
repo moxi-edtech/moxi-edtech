@@ -106,6 +106,10 @@ export function summarizeRaaBalcaoTimeline(input: {
   const upcoming = [
     ...(seguinte ? [{ date: seguinte.data_inicio, label: "Início do " + seguinte.numero + ".º trimestre" }] : []),
     ...(provaFutura ? [{ date: provaFutura.data_inicio, label: "Próxima prova" }] : []),
+    ...input.eventos.filter((e) => e.data_inicio > hoje &&
+      (e.tipo === "PUBLICACAO_PAUTA" || e.tipo === "CONSELHO_CLASSE"))
+      .map((e) => ({ date: e.data_inicio, label: e.tipo === "PUBLICACAO_PAUTA"
+        ? "Publicação da pauta prevista" : "Conselho de classe previsto" })),
     ...input.sessoes
       .filter((s) => s.data_inicio > hoje)
       .map((s) => ({ date: s.data_inicio, label: "Próximo exame" })),
