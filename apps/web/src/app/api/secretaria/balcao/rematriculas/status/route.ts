@@ -13,6 +13,7 @@ import { resolveRaaProgressionForMatricula } from "@/lib/academico/raa-progressi
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
+import { summarizeRaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
 import {
   resolveBalcaoRematriculaTargetYear,
   shouldBlockClosedRematriculaWindow,
@@ -135,34 +136,12 @@ export async function GET(request: Request) {
     );
     const rematriculaWindow = await resolveRematriculaWindow(supabase, escolaId, targetAnoLetivoAno);
 
-    if (shouldBlockClosedRematriculaWindow({
+    // A janela fechada impede novas rematrículas, mas não oculta o
+    // percurso académico nem operações existentes do aluno.
+    const novaOperacaoForaDaJanela = shouldBlockClosedRematriculaWindow({
       windowOpen: rematriculaWindow.open,
       hasExistingOperationForTarget: pedidosDoAno.length > 0,
-    })) {
-      return NextResponse.json({
-        ok: true,
-        status: "WINDOW_CLOSED",
-        service: null,
-        debt: { total: 0, count: 0 },
-        pedido: null,
-        comprovante: null,
-        ano_letivo: {
-          id: targetAnoLetivoId,
-          ano: targetAnoLetivoAno,
-          label: targetAnoLetivoLabel,
-        },
-        destino_turma_id: null,
-        reclassificacao: null,
-        reconciliation: null,
-        window: {
-          configured: rematriculaWindow.configured,
-          open: false,
-          data_inicio: rematriculaWindow.window?.data_inicio ?? null,
-          data_fim: rematriculaWindow.window?.data_fim ?? null,
-        },
-        context: academicContext,
-      });
-    }
+    });
 
     // ── A origem pode ser do ano anterior; a matrícula destino só nasce após o pagamento ──
     let { data: matriculaOrigem } = await supabase
@@ -224,7 +203,10 @@ export async function GET(request: Request) {
       if (!matriculaAnterior) {
         return NextResponse.json({
           ok: true,
-          status: "SOURCE_RECORD_REQUIRED",
+          status: Number(matriculaOrigem.ano_letivo) === targetAnoLetivoAno
+            ? "DESTINATION_ENROLLED" : "SOURCE_RECORD_REQUIRED",
+          destino_matricula_id: Number(matriculaOrigem.ano_letivo) === targetAnoLetivoAno
+            ? matriculaOrigem.id : null,
           service: null,
           debt: { total: 0, count: 0 },
           pedido: null,
@@ -301,6 +283,66 @@ export async function GET(request: Request) {
             : "Não foi possível confirmar o resultado académico desta matrícula.",
           disciplinaIdsPendentes: [],
         };
+      }
+    }
+
+    // Calendário e evidências do ANO DE ORIGEM, nunca do ano selecionado
+    // para a operação. Consultas de leitura apenas; ausência de dados não
+    // constitui decisão académica, prova realizada ou pauta publicada.
+    let academicTimeline: ReturnType<typeof summarizeRaaBalcaoTimeline> | null = null;
+    if (matriculaOrigem.session_id && matriculaOrigem.turma_id) {
+      const { data: sourceClass } = await supabase.from("turmas")
+        .select("curso_id").eq("escola_id", escolaId)
+        .eq("id", matriculaOrigem.turma_id).maybeSingle();
+      const { data: sourceOfferings } = sourceClass?.curso_id
+        ? await supabase.from("school_education_offerings").select("id")
+            .eq("escola_id", escolaId).eq("course_id", sourceClass.curso_id).limit(2)
+        : { data: null };
+      const sourceOfferingId = sourceOfferings?.length === 1 ? sourceOfferings[0].id : null;
+      const [periodsResult, eventsResult, examsResult, pautasResult, petitionsResult] = await Promise.all([
+        supabase.from("periodos_letivos")
+          .select("id,tipo,numero,data_inicio,data_fim,offering_id")
+          .eq("escola_id", escolaId).eq("ano_letivo_id", matriculaOrigem.session_id).limit(100),
+        supabase.from("calendario_eventos")
+          .select("tipo,data_inicio,data_fim,offering_id")
+          .eq("escola_id", escolaId).eq("ano_letivo_id", matriculaOrigem.session_id)
+          .in("tipo", ["PROVA_TRIMESTRAL", "EXAME_NACIONAL", "EXAME_ORAL", "EXAME_ESCRITO", "EXAME_EXTRAORDINARIO"])
+          .limit(100),
+        supabase.from("exame_sessoes")
+          .select("id,estado,data_inicio,data_fim")
+          .eq("escola_id", escolaId).eq("ano_letivo_id", matriculaOrigem.session_id)
+          .or("turma_id.is.null,turma_id.eq." + matriculaOrigem.turma_id).limit(40),
+        supabase.from("pautas_oficiais")
+          .select("status,pdf_path,periodo_letivo_id")
+          .eq("escola_id", escolaId).eq("turma_id", matriculaOrigem.turma_id).limit(100),
+        supabase.from("reapreciacao_pedidos")
+          .select("id", { count: "exact", head: true })
+          .eq("escola_id", escolaId).eq("matricula_id", matriculaOrigem.id),
+      ]);
+      if (!periodsResult.error && !eventsResult.error && !examsResult.error && !pautasResult.error) {
+        const pickOffering = <T extends { offering_id: string | null }>(items: T[] | null) => {
+          const specific = sourceOfferingId
+            ? (items ?? []).filter((item) => item.offering_id === sourceOfferingId) : [];
+          return specific.length > 0 ? specific : (items ?? []).filter((item) => item.offering_id == null);
+        };
+        const sessoes = examsResult.data ?? [];
+        const { data: resultados, error: resultsError } = sessoes.length
+          ? await supabase.from("exame_resultados")
+              .select("exame_sessao_id,nota,estado")
+              .eq("escola_id", escolaId).eq("matricula_id", matriculaOrigem.id)
+              .in("exame_sessao_id", sessoes.map((sessao: any) => sessao.id)).limit(200)
+          : { data: [], error: null };
+        if (!resultsError) {
+          academicTimeline = summarizeRaaBalcaoTimeline({
+            hoje: new Date().toLocaleDateString("sv-SE", { timeZone: "Africa/Luanda" }),
+            periodos: pickOffering(periodsResult.data),
+            eventos: pickOffering(eventsResult.data),
+            sessoes,
+            resultados: resultados ?? [],
+            pautas: pautasResult.data ?? [],
+            pedidosReapreciacao: petitionsResult.error ? null : petitionsResult.count ?? 0,
+          });
+        }
       }
     }
 
@@ -482,6 +524,8 @@ export async function GET(request: Request) {
                 : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
                   ? "ACADEMIC_CYCLE_COMPLETED"
                   : "ACADEMIC_NOT_APPROVED";
+    } else if (novaOperacaoForaDaJanela) {
+      status = "WINDOW_CLOSED";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
     } else if (matriculaDestino?.turma_id && !reclassificacao) {
@@ -503,6 +547,8 @@ export async function GET(request: Request) {
       ok: true,
       status,
       cicloVida,
+      academic_timeline: academicTimeline,
+      destino_matricula_id: matriculaDestino?.id ?? null,
       service: service
         ? {
             id: service.id,
@@ -526,6 +572,7 @@ export async function GET(request: Request) {
         disciplina_ids_pendentes: academicEligibility.disciplinaIdsPendentes,
         source: {
           matricula_id: matriculaOrigem.id,
+          ano_letivo_ano: matriculaOrigem.ano_letivo,
           turma_id: matriculaOrigem.turma_id ?? null,
           ano_letivo_id: matriculaOrigem.session_id ?? null,
           status: matriculaOrigem.status,
