@@ -53,6 +53,7 @@ export async function GET(request: Request) {
       return privateResponse({ ok: false, error: "Não autenticado." }, 401);
     }
 
+    const authorizedIds = ctx.alunoIds;
     const params = new URL(request.url).searchParams;
     const requestedId = params.get("studentId");
     // Não aceitar implicitamente outro educando quando o ID pedido não é autorizado.
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
     }
     const alunoId = resolveSelectedStudentId({
       selectedId: requestedId,
-      authorizedIds: ctx.alunoIds,
+      authorizedIds,
       fallbackId: ctx.alunoId,
     });
     if (!alunoId) {
