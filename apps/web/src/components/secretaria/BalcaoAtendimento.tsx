@@ -1724,6 +1724,20 @@ function Catalogo({
                 )}
               </div>
             ) : null}
+            {view === "reenrollment" && rematriculaState === "SOURCE_RECORD_REQUIRED" && (
+              <div role="status" className="mb-3 rounded-xl border border-border bg-muted/20 p-4">
+                <p className="text-sm font-semibold text-foreground">Matrícula de origem por confirmar</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Não há uma matrícula de origem confirmada nesta ficha. Consulte o vínculo do aluno antes de lançar notas ou iniciar uma rematrícula.
+                </p>
+                {rematriculaAcademic?.source?.matricula_id && (
+                  <button type="button" onClick={() => void onRefreshRematricula()}
+                    className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
+                    Verificar matrícula novamente
+                  </button>
+                )}
+              </div>
+            )}
             {view === "reenrollment" && rematriculaCanWriteGrades &&
               rematriculaAcademic?.source?.turma_id &&
               rematriculaAcademic?.source?.ano_letivo_id &&
@@ -3212,7 +3226,7 @@ export default function BalcaoAtendimento({
                   }
                   rematriculaState={
                     view === "reenrollment" || servicos.some(isServicoRematricula)
-                      ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
+                      ? !dossier.aluno.matricula_id ? "SOURCE_RECORD_REQUIRED" : rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
                       : null
                   }
                   rematriculaPrice={rematricula.service?.valor_base ?? null}
