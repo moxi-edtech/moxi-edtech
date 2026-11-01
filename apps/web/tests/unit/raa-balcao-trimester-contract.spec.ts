@@ -43,7 +43,8 @@ test("the attendance API resolves period via attendance ID, tenant and origin sc
 test("UI filters are declarative; no mutation changes the canonical trimester or progression", () => {
   const ui=read("components/secretaria/RaaBalcaoResolutionPanel.tsx");
   assert.match(ui,/Filtrar pendências por trimestre/);
-  assert.match(ui,/matchesRaaPeriodFilter\(item\.periodo, periodFilter\)/);
+  assert.match(ui,/matchesRaaPeriodFilter\(item\.periodo, effectivePeriodFilter\)/);
+  assert.match(ui,/const effectivePeriodFilter = hasTrimesterCases \? periodFilter : "todos"/);
   assert.match(ui,/setPeriodFilter\(next\)/);
   assert.match(ui,/goToSummary/);
   assert.match(ui,/iraaCasePeriodLabel|raaCasePeriodLabel\(item\.periodo\)/);
