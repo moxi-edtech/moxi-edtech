@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { requireRoleInSchool } from "@/lib/authz"
+import { hasExactRaaAcademicDecisionRole } from "@/lib/academico/raa-academic-decision-roles"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
-import { RAA_ACADEMIC_DECISION_ROLES } from "@/lib/academico/raa-academic-decision-roles"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -14,16 +13,15 @@ const bodySchema = z.object({
   decisao_motivo: z.string().trim().min(5).max(2000),
 })
 
-const decisionRoles = RAA_ACADEMIC_DECISION_ROLES
-
 export async function PATCH(request: Request) {
   const supabase = await supabaseServerTyped<any>()
   const { data: auth } = await supabase.auth.getUser()
   if (!auth.user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
   const escolaId = await resolveEscolaIdForUser(supabase, auth.user.id)
   if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 })
-  const authz = await requireRoleInSchool({ supabase, escolaId, roles: [...decisionRoles] })
-  if (authz.error) return authz.error
+  if (!await hasExactRaaAcademicDecisionRole(supabase, escolaId, auth.user.id)) {
+    return NextResponse.json({ ok: false, error: "A decisão académica exige autorização da direção." }, { status: 403 })
+  }
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})))
   if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" }, { status: 400 })
