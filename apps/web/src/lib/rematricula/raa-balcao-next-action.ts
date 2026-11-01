@@ -43,7 +43,7 @@ export function nextAcademicActionForBalcao(
   if (timeline.fase === "apos_fim") {
     return {
       title: "Resultado por confirmar",
-      message: "Consulte a pauta e aguarde a decisão académica final.",
+      message: "Aguardar publicação da pauta final.",
     };
   }
 
