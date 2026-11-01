@@ -1,11 +1,11 @@
--- RAA: school-scoped reading and filing, director-only academic decisions.
+-- RAA: school-scoped reading and filing, explicit authorized academic decision roles.
 -- The old permissive FOR ALL policy let any school member UPDATE/DELETE
 -- an academic appeal directly through PostgREST, bypassing the Next.js route.
 -- Run after 20271031001000_historico_transitado_academic_permissions_ssot_20261030.sql.
 BEGIN;
 
 -- Exact role check for academic decisions. The generic
--- user_has_role_in_school() expands admin to admin_financeiro: unsafe here.
+-- user_has_role_in_school() expands admin to other roles. Check the exact stored role.
 CREATE OR REPLACE FUNCTION public.raa_has_exact_school_role(
   p_escola_id uuid, p_roles text[]
 ) RETURNS boolean
@@ -50,7 +50,7 @@ CREATE POLICY reapreciacao_pedidos_staff_file
   WITH CHECK (
     public.user_can_access_raa_school(escola_id)
     AND public.raa_has_exact_school_role(
-      escola_id, ARRAY['admin','admin_escola','staff_admin','diretor','secretaria','professor']::text[]
+      escola_id, ARRAY['admin','admin_escola','staff_admin','diretor','secretaria','professor','admin_financeiro']::text[]
     )
     AND solicitado_por = (SELECT auth.uid())
     AND estado = 'pendente'
@@ -61,7 +61,7 @@ CREATE POLICY reapreciacao_pedidos_staff_file
     AND prazo_em > now()
   );
 
--- Only school academic directors may move a pending petition forward.
+-- Only the explicitly authorized roles may move a pending petition forward.
 -- An updated row cannot switch school or origin identifiers: authenticated
 -- users have UPDATE grants exclusively for the five decision columns above.
 CREATE POLICY reapreciacao_pedidos_director_decide
@@ -70,14 +70,14 @@ CREATE POLICY reapreciacao_pedidos_director_decide
   USING (
     public.user_can_access_raa_school(escola_id)
     AND public.raa_has_exact_school_role(
-      escola_id, ARRAY['admin','admin_escola','diretor']::text[]
+      escola_id, ARRAY['admin','admin_escola','diretor','admin_financeiro']::text[]
     )
     AND estado IN ('pendente','em_analise')
   )
   WITH CHECK (
     public.user_can_access_raa_school(escola_id)
     AND public.raa_has_exact_school_role(
-      escola_id, ARRAY['admin','admin_escola','diretor']::text[]
+      escola_id, ARRAY['admin','admin_escola','diretor','admin_financeiro']::text[]
     )
     AND (
       (estado = 'expirado' AND prazo_em <= now())
@@ -92,9 +92,9 @@ CREATE POLICY reapreciacao_pedidos_director_decide
   );
 
 COMMENT ON POLICY reapreciacao_pedidos_director_decide ON public.reapreciacao_pedidos
-  IS 'Only academic directors can decide petitions; web endpoint and PostgREST enforce the same roles.';
+  IS 'Exact school roles admin, admin_escola, diretor and admin_financeiro can decide; API and RLS enforce matching roles.';
 
--- The disciplinary decision table had the same alias bypass in UPDATE.
+-- Disciplinary decisions use the same explicit role allowlist (no alias expansion).
 -- Keep new event filing and school-scoped reading, but prevent client
 -- manipulation of the enrolment, school, classification and outcome evidence.
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.raa_indisciplina_eventos
@@ -108,12 +108,12 @@ CREATE POLICY raa_indisciplina_director_update_v2
   ON public.raa_indisciplina_eventos FOR UPDATE TO authenticated
   USING (
     public.user_can_access_raa_school(escola_id)
-    AND public.raa_has_exact_school_role(escola_id, ARRAY['admin','admin_escola','diretor']::text[])
+    AND public.raa_has_exact_school_role(escola_id, ARRAY['admin','admin_escola','diretor','admin_financeiro']::text[])
     AND estado IN ('registado','em_analise')
   )
   WITH CHECK (
     public.user_can_access_raa_school(escola_id)
-    AND public.raa_has_exact_school_role(escola_id, ARRAY['admin','admin_escola','diretor']::text[])
+    AND public.raa_has_exact_school_role(escola_id, ARRAY['admin','admin_escola','diretor','admin_financeiro']::text[])
     AND length(btrim(coalesce(decisao_motivo,''))) >= 15
     AND (
       (estado = 'em_analise' AND resolvido_por IS NULL AND resolvido_em IS NULL)
