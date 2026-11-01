@@ -63,7 +63,10 @@ test("a student without an associated enrollment gets an explicit non-writing st
   assert.match(workspace, /rematriculaState === "SOURCE_RECORD_REQUIRED"/);
   assert.match(workspace, /Matrícula de origem por confirmar/);
   assert.match(workspace, /Verificar matrícula novamente/);
-  assert.match(workspace, /rematriculaAcademic\?\.source\?\.matricula_id &&/);
+  assert.match(workspace, /onStartEnrollment=\{!dossier\.aluno\.matricula_id && onNavigateAction/);
+  assert.match(workspace, /onNavigateAction\("enrollment"\)/);
+  assert.match(workspace, /Abrir matrícula no Balcão/);
+  assert.match(workspace, /Verificar matrícula novamente/);
   const api = source("app/api/secretaria/notas/route.ts");
   assert.match(api, /ACTIVE_ENROLLMENT_REQUIRED/);
 });
