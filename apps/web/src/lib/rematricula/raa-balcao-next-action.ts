@@ -96,7 +96,7 @@ export function pendingSubjectsActionForBalcao(
     title: "Recurso por resolver",
     message: `${description} em revisão · Consulte os exames e recursos.`,
   };
-  if (academic.regime?.escala === "qualitativa") return {
+  if (academic?.regime?.escala === "qualitativa") return {
     title: "Pauta por completar",
     message: `${description} por regularizar · Verifique as classificações qualitativas.`,
   };
