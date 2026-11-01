@@ -91,12 +91,12 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
                     onTouchStart={() => handlePreload(item)}
                     className={`relative flex items-center gap-3 rounded-2xl p-3.5 border transition-all active:scale-95 ${
                       active
-                        ? "border-[#E3B23C] bg-[#FFF8E6] text-[#1F6B3B] shadow-sm"
+                        ? "border-klasse-gold bg-klasse-gold-50 text-klasse-green shadow-sm"
                         : "border-slate-100 bg-slate-50 text-slate-700 hover:bg-slate-100/80"
                     }`}
                   >
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                      active ? "bg-[#1F6B3B] text-white" : "bg-white text-slate-600 shadow-sm"
+                      active ? "bg-klasse-green text-white" : "bg-card text-muted-foreground shadow-sm"
                     }`}>
                       <Icon size={20} />
                     </div>
@@ -142,17 +142,17 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
                 onTouchStart={() => handlePreload(item)}
                 className={`relative flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 text-[10px] font-black transition-all duration-200 active:scale-90 ${
                   active
-                    ? "text-[#755819] font-black"
+                    ? "text-klasse-gold-700 font-black"
                     : "text-slate-400 hover:text-slate-600 font-bold"
                 }`}
                 aria-current={active ? "page" : undefined}
               >
                 <div className={`relative flex h-8 w-12 items-center justify-center rounded-xl transition-all ${
-                  active ? "bg-[#FFF8E6] text-[#755819] shadow-2xs" : "bg-transparent text-slate-500"
+                  active ? "bg-klasse-gold-50 text-klasse-gold-700 shadow-2xs" : "bg-transparent text-muted-foreground"
                 }`}>
                   <Icon className={`h-5 w-5 transition-transform duration-200 ${active ? "scale-110" : ""}`} />
                   {active && (
-                    <span className="absolute -bottom-1 h-1 w-3 rounded-full bg-[#E3B23C] animate-in fade-in zoom-in duration-200" />
+                    <span className="absolute -bottom-1 h-1 w-3 rounded-full bg-klasse-gold animate-in fade-in zoom-in duration-200" />
                   )}
                 </div>
                 <span className={`transition-opacity duration-200 mt-0.5 ${active ? "opacity-100" : "opacity-75"}`}>
@@ -173,16 +173,16 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
             onClick={() => setIsMoreOpen(true)}
             className={`relative flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 text-[10px] font-black transition-all duration-200 active:scale-90 ${
               isDrawerActive || isMoreOpen
-                ? "text-[#755819] font-black"
+                ? "text-klasse-gold-700 font-black"
                 : "text-slate-400 hover:text-slate-600 font-bold"
             }`}
           >
             <div className={`relative flex h-8 w-12 items-center justify-center rounded-xl transition-all ${
-              isDrawerActive || isMoreOpen ? "bg-[#FFF8E6] text-[#755819] shadow-2xs" : "bg-transparent text-slate-500"
+              isDrawerActive || isMoreOpen ? "bg-klasse-gold-50 text-klasse-gold-700 shadow-2xs" : "bg-transparent text-muted-foreground"
             }`}>
               <MoreHorizontal className={`h-5 w-5 transition-transform duration-200 ${isDrawerActive || isMoreOpen ? "scale-110" : ""}`} />
               {(isDrawerActive || isMoreOpen) && (
-                <span className="absolute -bottom-1 h-1 w-3 rounded-full bg-[#E3B23C] animate-in fade-in zoom-in duration-200" />
+                <span className="absolute -bottom-1 h-1 w-3 rounded-full bg-klasse-gold animate-in fade-in zoom-in duration-200" />
               )}
             </div>
             <span className={`transition-opacity duration-200 mt-0.5 ${isDrawerActive || isMoreOpen ? "opacity-100" : "opacity-75"}`}>

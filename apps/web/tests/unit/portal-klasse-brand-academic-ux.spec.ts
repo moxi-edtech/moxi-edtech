@@ -25,9 +25,9 @@ test("navegação e área académica explicitam contexto sem inventar estado", a
   ]);
   assert.match(academic, /descriptions\[activeTab\]/);
   assert.match(academic, /<PortalTabs items=\{sections\}/);
-  assert.match(tabs, /border-\[#E3B23C\]/);
-  assert.match(alunoNav, /#E3B23C/);
-  assert.match(profNav, /#E3B23C/);
+  assert.match(tabs, /border-klasse-gold/);
+  assert.match(alunoNav, /klasse-gold/);
+  assert.match(profNav, /klasse-gold/);
 });
 
 test("notas e decisões técnicas conservam ações sem poluir a interface", async () => {

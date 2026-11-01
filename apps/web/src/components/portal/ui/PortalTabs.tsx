@@ -58,7 +58,7 @@ export function PortalTabs<T extends string>({
           type="button"
           onClick={() => onChange(tab.id)}
           onKeyDown={(event) => onTabKeyDown(event, tab.id)}
-          className={`inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-sm font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-2 sm:px-4 ${value === tab.id ? "border-[#E3B23C] text-[#1F6B3B]" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          className={`inline-flex min-h-12 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-sm font-semibold transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-2 sm:px-4 ${value === tab.id ? "border-klasse-gold text-klasse-green" : "border-transparent text-muted-foreground hover:text-foreground"}`}
         >
           {tab.icon && <span aria-hidden="true" className="shrink-0">{tab.icon}</span>}
           {tab.label}

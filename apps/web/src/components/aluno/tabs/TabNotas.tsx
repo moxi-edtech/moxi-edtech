@@ -429,9 +429,9 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
             void abrirMelhoria(disc);
           } : undefined}
         />
-        {!safeIsLiberado ? <section aria-labelledby="boletim-locked" className="rounded-xl border border-border bg-card p-4 sm:p-5 border-l-4 border-l-[#E3B23C]">
+        {!safeIsLiberado ? <section aria-labelledby="boletim-locked" className="rounded-xl border border-border bg-card p-4 sm:p-5 border-l-4 border-l-klasse-gold">
           <div className="flex min-w-0 items-start gap-3">
-            <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FFF8E6] text-[#755819]">
+            <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-klasse-gold-50 text-klasse-gold-700">
               <LockIcon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1 space-y-2">
