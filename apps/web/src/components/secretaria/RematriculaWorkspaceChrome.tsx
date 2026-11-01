@@ -3,6 +3,7 @@
 import { CheckCircle2, ChevronRight, GraduationCap, LockKeyhole, CalendarDays } from "lucide-react";
 import type { RematriculaCardState, TurmaOption } from "@/hooks/useRematriculaBalcao";
 import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
+import { nextAcademicActionForBalcao } from "@/lib/rematricula/raa-balcao-next-action";
 
 export type RaaProgressSnapshot = {
   matriculaId: string;
@@ -81,8 +82,16 @@ export function RematriculaWorkspaceHeader({
   timeline: RaaBalcaoTimeline | null; timelineAno: string | null; destinoMatriculaId: string | null;
   temPendencias?: boolean;
 }) {
-  const display = rematriculaDisplayState(status);
+  const baseDisplay = rematriculaDisplayState(status);
+  const academicNext = nextAcademicActionForBalcao(status, timeline);
+  const display = {
+    ...baseDisplay,
+    title: academicNext.title ?? baseDisplay.title,
+    message: academicNext.message ?? baseDisplay.message,
+  };
   const count = progress && progress.total > 0 && !progress.loading ? progress : null;
+  const showPendingLink = temPendencias && (progress === null || progress.loading ||
+    progress.registados < progress.total);
   const reasonNeedsDetail = motivo && motivo.trim() && status !== "ACADEMIC_PENDING";
   return (
     <header className="space-y-3" aria-label="Resumo da situação académica">
@@ -108,7 +117,7 @@ export function RematriculaWorkspaceHeader({
         {destinoMatriculaId && status !== "ALREADY_COMPLETED" && (
           <p className="mt-2 text-xs font-medium text-foreground">Matrícula de destino identificada.</p>
         )}
-        {temPendencias && status !== "ALREADY_COMPLETED" && (
+        {showPendingLink && status !== "ALREADY_COMPLETED" && (
           <a href="#balcao-pendencias" className="mt-2 inline-flex min-h-10 items-center gap-1 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20">
             Ver e resolver pendências <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </a>
