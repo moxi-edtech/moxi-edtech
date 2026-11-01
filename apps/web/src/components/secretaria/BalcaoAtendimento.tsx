@@ -1441,7 +1441,7 @@ function Catalogo({
   rematriculaDestinoTurma: TurmaOption | null;
   raaMatriculaId: string | null;
   raaAlunoId: string | null;
-  onLancarNota: (trimestre?: 1 | 2 | 3 | null) => void;
+  onLancarNota: (trimestre?: 1 | 2 | 3 | null, disciplinaId?: string | null) => void;
   onDocumentos: () => void;
   raaDocumentsOpen: boolean;
   onCloseRaaDocuments: () => void;
@@ -1751,6 +1751,7 @@ function Catalogo({
             {view === "reenrollment" && rematriculaCanWriteGrades &&
               rematriculaAcademic?.source?.turma_id &&
               rematriculaAcademic?.source?.ano_letivo_id &&
+              !rematriculaAcademic?.disciplina_ids_pendentes?.length &&
               ["ativo", "ativa", "active"].includes((rematriculaAcademic.source.status ?? "").toLowerCase()) &&
               rematriculaAcademic?.regime?.escala !== "qualitativa" && (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
@@ -2821,7 +2822,7 @@ export default function BalcaoAtendimento({
   });
   const audit = useAuditTrail();
 
-  const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null; originAnoLetivoId?: string | null; initialTrimestre?: 1 | 2 | 3 | null } | null>(null);
+  const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null; originAnoLetivoId?: string | null; initialTrimestre?: 1 | 2 | 3 | null; initialDisciplinaId?: string | null } | null>(null);
   const [raaDocumentsOpen, setRaaDocumentsOpen] = useState(false);
   const [debtModalOpen, setDebtModalOpen] = useState(false);
   const hasOverdueDebt = useMemo(
@@ -3254,9 +3255,17 @@ export default function BalcaoAtendimento({
                   rematriculaDestinoTurma={rematricula.destinoTurma ?? null}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
-                  onLancarNota={(trimestre) => {
+                  onLancarNota={(trimestre, disciplinaId) => {
                     if (!rematricula.canWriteGrades) return;
                     const source = rematricula.academic?.source;
+                    if (source && !["ativo", "ativa", "active"].includes(source.status.toLowerCase())) {
+                      error("A matrícula de origem está encerrada. Solicite reabertura à direção.");
+                      return;
+                    }
+                    if (rematricula.academic?.regime?.escala === "qualitativa") {
+                      error("Esta turma usa classificações qualitativas; consulte a pauta.");
+                      return;
+                    }
                     if (!source?.turma_id || !source.ano_letivo_id) {
                       error("Não foi possível identificar a turma e o ano de origem.");
                       return;
@@ -3266,6 +3275,7 @@ export default function BalcaoAtendimento({
                       turmaId: source.turma_id,
                       originAnoLetivoId: source.ano_letivo_id,
                       initialTrimestre: trimestre ?? null,
+                      initialDisciplinaId: disciplinaId ?? null,
                     });
                   }}
                   onDocumentos={() => {
@@ -3407,6 +3417,7 @@ export default function BalcaoAtendimento({
           turmaId={postAction?.turmaId ?? null}
           originAnoLetivoId={postAction?.originAnoLetivoId ?? null}
           initialTrimestre={postAction?.initialTrimestre ?? null}
+          initialDisciplinaId={postAction?.initialDisciplinaId ?? null}
           onAcademicSaved={() => void rematricula.refreshStatus()}
           onPayment={() => {
             setPostAction(null);
