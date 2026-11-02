@@ -95,7 +95,7 @@ export function ProfessorContextView({
       )}
       {!semVinculos && !semHorario && !data.atribuicoes.length && !limited && (
         <p className="text-xs text-slate-600">
-          Horário sem disciplina atribuída · Rever vínculo.
+          Horário · atribuição de disciplina por confirmar.
         </p>
       )}
       {!semVinculos && semHorario && !limited && (
