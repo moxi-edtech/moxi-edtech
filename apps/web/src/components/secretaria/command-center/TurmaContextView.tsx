@@ -144,13 +144,12 @@ export function TurmaContextView({
     !visibleStudents.some((student) => student.id === selectedStudentId));
   const pages = Math.max(1, Math.ceil(alunos.total / alunos.pageSize));
   const occupancy = occupancyFromCapacity(turma.capacidade, alunos.total);
-  const disciplinasSemProfessor = disciplinas.filter((d) => !d.professores.length).length;
 
   return (
     <div className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       {returnWarning && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          O aluno selecionado não está nesta página ou nos filtros atuais. A seleção foi preservada; confirme a turma antes de continuar o atendimento.
+          Aluno fora desta lista. Confirme a turma.
         </p>
       )}
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -234,13 +233,6 @@ export function TurmaContextView({
         </div>
       )}
 
-      {!data.disciplinasLimitadas && disciplinasSemProfessor > 0 && (
-        <p className="text-xs text-slate-600">
-          {disciplinasSemProfessor === 1
-            ? "1 disciplina sem professor vinculado nesta visão."
-            : `${disciplinasSemProfessor} disciplinas sem professor vinculado nesta visão.`}
-        </p>
-      )}
 
       {activeTab === "alunos" && !turma.anoLetivo.historico && (
         <>
@@ -358,8 +350,8 @@ export function TurmaContextView({
                 {d.curriculumActive === false && (
                   <p className="mt-1 text-xs text-amber-800" role="status">
                     {turma.anoLetivo.historico
-                      ? "Currículo atualmente inativo. Consulte os dados do ano selecionado."
-                      : "Currículo inativo. Confirme esta disciplina na gestão académica."}
+                      ? "Currículo atualmente inativo"
+                      : "Currículo inativo · Rever na gestão académica"}
                   </p>
                 )}
                 <p className={`mt-1 text-xs ${d.professores.length ? "text-slate-500" : "text-amber-800"}`}>
@@ -374,7 +366,7 @@ export function TurmaContextView({
           {data.disciplinasLimitadas && (
             <p className="mt-2 flex gap-2 text-xs text-slate-600">
               <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-              Algumas disciplinas podem não aparecer. Consulte a página da turma.
+              Lista parcial de disciplinas.
             </p>
           )}
           <h4 className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
