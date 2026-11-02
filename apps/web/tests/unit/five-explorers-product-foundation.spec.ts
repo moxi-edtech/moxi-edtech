@@ -82,8 +82,8 @@ test("EX-002: metric semantics distinguish undefined capacity, totals and partia
 test("EX-003: historic notice explains actual read-only capability, never promising unavailable search", () => {
   const html = renderToStaticMarkup(createElement(ExplorerHistoricalScopeNotice, { roster: true }));
   assert.match(html, /Histórico/);
-  assert.match(html, /Pesquisa e exportação não estão disponíveis neste ano/);
-  assert.match(html, /navegue pelas páginas da lista/);
+  assert.match(html, /só consulta/);
+  assert.match(html, /Pesquisa e exportação indisponíveis/);
 });
 
 test("EX-003: both rosters await known non-historic year before calling operational search", () => {
