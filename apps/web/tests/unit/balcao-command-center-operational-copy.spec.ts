@@ -109,3 +109,14 @@ test("class and turma explorers show few primary metrics, keeping critical limit
  assert.match(controls,/<legend className="sr-only">/);
  assert.doesNotMatch(controls,/rounded-lg border border-slate-200 p-3/);
 });
+
+test("student identity uses one compact card without duplicate badges or success banners", () => {
+ const ui=source("components/secretaria/BalcaoAtendimento.tsx");
+ const block=ui.slice(ui.indexOf("function AlunoCard("),ui.indexOf("function CommandCenterOverview("));
+ assert.match(block,/aria-label="Aluno em atendimento"/);
+ assert.match(block,/<StatusPill status=\{aluno\.status_financeiro\}/);
+ assert.match(block,/aluno\.status_financeiro === "inadimplente"/);
+ assert.doesNotMatch(block,/Nenhuma mensalidade foi lancada/);
+ assert.doesNotMatch(block,/Situacao regular/);
+ assert.doesNotMatch(block,/<Tag>/);
+});
