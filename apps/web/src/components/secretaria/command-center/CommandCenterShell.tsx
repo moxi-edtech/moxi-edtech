@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { ArrowLeftRight, X } from "lucide-react";
 
 import { CommandCenterActionBar } from "@/components/secretaria/command-center/CommandCenterActionBar";
-import { getBalcaoAction, type BalcaoActionId } from "@/lib/balcao/action-registry";
+import { type BalcaoActionId } from "@/lib/balcao/action-registry";
 
 export type CommandCenterStudent = {
   id: string;
@@ -41,7 +41,7 @@ export function CommandCenterShell({
   aboveActions,
   children,
 }: Props) {
-  const action = getBalcaoAction(activeAction);
+  const studentSubtitle = student?.subtitle?.trim();
   const header = (
     <>
       <div className="flex items-start justify-between gap-4">
@@ -57,11 +57,11 @@ export function CommandCenterShell({
             <h1 className="mt-1 truncate text-lg font-black text-foreground">
               {activeAction === "enrollment" ? "Nova matrícula" : activeAction === "admissions" ? "Admissões" : (student?.label || "Atendimento")}
             </h1>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {(activeAction === "enrollment" || activeAction === "admissions" ? action.description : student?.subtitle) || (student || activeAction === "enrollment" || activeAction === "admissions"
-                ? action.description
-                : "Pesquise um aluno para iniciar um atendimento.")}
-            </p>
+            {(activeAction !== "enrollment" && activeAction !== "admissions" && studentSubtitle) ? (
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">{studentSubtitle}</p>
+            ) : !student && activeAction !== "enrollment" && activeAction !== "admissions" ? (
+              <p className="mt-0.5 text-xs text-muted-foreground">Selecione um aluno</p>
+            ) : null}
           </div>
         </div>
 
