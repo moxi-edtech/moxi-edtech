@@ -1,12 +1,12 @@
 {
   "contrato_versao": "2.0.0",
-  "run_id": "069d9a59-315d-4cb9-8a45-c28be752f334",
-  "run_timestamp": "2026-10-29T12:24:23.769686+00:00",
-  "commit": "5914e1c4665b0a88b64a0f93fa0f75f49fe41a81",
+  "run_id": "846c2480-2f5b-4227-be24-b654bf3b4557",
+  "run_timestamp": "2026-11-02T17:59:22.031680+00:00",
+  "commit": "0359a277f5787206c44e73cbee4924fc77a09213",
   "veredito": "FAIL",
   "can_merge": false,
   "summary": {
-    "critical": 3,
+    "critical": 4,
     "high": 0,
     "medium": 0,
     "low": 0,
@@ -40,7 +40,7 @@
       "excecao": null
     },
     {
-      "id": "SEC-003-23f395db",
+      "id": "SEC-003-1814c056",
       "regra": "SEC-003",
       "severidade": "CRITICAL",
       "status": "FAIL",
@@ -51,13 +51,26 @@
       "recomendacao": "Adicionar .eq('escola_id', userEscolaId) às consultas de anos_letivos e calendario_eventos antes da cópia.",
       "bloqueante": true,
       "excecao": null
+    },
+    {
+      "id": "SEC-002-7e446b7f",
+      "regra": "SEC-002",
+      "severidade": "CRITICAL",
+      "status": "FAIL",
+      "ficheiro": "apps/web/src/app/api/fiscal/saft/export/[exportId]/download/route.ts",
+      "linha": "57-63",
+      "evidencia": "function getSupabaseAdmin() {\n  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? \"\").trim();\n  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? \"\").trim();",
+      "impacto": "O endpoint humano cria getSupabaseAdmin para assinar downloads fiscais, contornando RLS do Storage, sem exceção documentada.",
+      "recomendacao": "Usar operação de domínio de máquina restrita ou sessão com política tenant-scoped aprovada, removendo o cliente privilegiado da rota humana.",
+      "bloqueante": true,
+      "excecao": null
     }
   ],
   "exceptions_applied": [
     "EXC-SEC-001-B:/api/webhooks/appypay",
     "EXC-SEC-002-A:/api/webhooks/appypay"
   ],
-  "scope": "AppyPay alterado + verificação de bloqueios globais; três violações confirmadas no legado, sem certificação dos demais candidatos",
+  "scope": "Reverificação de quatro blockers legados e implementação isolada WhatsApp/AppyPay sandbox. Auditoria global integral pendente.",
   "validation": {
     "unit_http_tests": 29,
     "local_postgresql_scenarios": 3,
@@ -74,39 +87,32 @@
     "local_service_sql_groups": 6,
     "local_postgresql_scenarios_previous_monthly": 3,
     "service_sql": "applied 20261029121743; approved exact SHA256; matching body MD5; invoker/privileges/indexes/RLS verified; nonexistent-reference probe passed; zero refs",
-    "production_state": "provider inactive; new service table and RPC absent; webhook list empty; no deploy or real charge",
-    "compiled_local_http": "passed: unsigned worker401, oversized worker413, invalid webhook400, unauthenticated student401; fixture config, no valid provider/db request"
+    "production_state": "APPYPAY_CONFIG sandbox guardado como Secret Production por confirmação explícita; APPYPAY_ENABLED=false. Fornecedor permanece inactive/production; Flow Meta é rascunho com endpoint pendente. Store privado aprovado e instalado; nenhum segredo Meta novo configurado. Nenhum envio nem deployment neste run.",
+    "compiled_local_http": "passed: unsigned worker401, oversized worker413, invalid webhook400, unauthenticated student401; fixture config, no valid provider/db request",
+    "whatsapp_flow": "39 tests passed, production lint passed, isolated and global apps/web typechecks exit 0. Private SQL approved and installed, no deployment or delivery.",
+    "whatsapp_session_sql": "Applied approved exact SHA c8148fd55bf05a8b34e5511e9fd3763ec3ea47e7796e133f35be49d0995e7c88 on 2026-11-02; RLS/grants/indexes verified; rolled-back service_role fixture insert/read/compare-and-set and invalid amount/school/expiry checks passed; no cross-connection concurrency proof."
   },
   "warnings": [
     "APY-003",
     "APY-004",
-    "APY-007"
+    "APY-007",
+    "APY-011"
   ],
   "regression_comparison": "REPORT_SCAN_LAST_PASS.json ausente; sem regressões a reportar",
   "legacy_scan": "Rerun 2026-10-29 in /private/tmp/appypay-scans-final; 0 critical/high/medium; 6 LOW VALIDATED markers, legacy perf gate PASS. Does not implement complete contract 2.0.0; not global PASS evidence.",
   "resolved_warnings": [
     "APY-001",
     "APY-002",
-    "APY-005"
+    "APY-005",
+    "APY-010"
   ],
   "tested_working_tree": true,
   "tested_source_hashes": {
-    "apps/web/src/lib/financeiro/servicosPagamento.ts": "b7674d046749d449e0663f2f65a6f53719e4a90d6522b105ae529df5c51037f7",
-    "apps/web/src/lib/server/payments/providers/appypay/portal-broker.ts": "22702a835500f5d43eef83612616dd1ed7ecb065c182824b0d7c76061e820892",
-    "apps/web/src/lib/server/payments/providers/appypay/portal-operations.ts": "ad9d1b613e0626c35169e69b3352691dc7cec39627a517ac9c3d9f5b10c9d926",
-    "apps/web/src/lib/server/payments/providers/appypay/core.ts": "d63eea061db09d7bc655916249f572c42d71eed8406b2a2953b3623cd58f7fcb",
-    "apps/web/src/lib/server/payments/providers/appypay/service.ts": "a55684744878d98b34b651f93002755407ba9c051d99d7fdd448334d2e430e60",
-    "apps/web/src/components/financeiro/AppyPayReferenceButton.tsx": "e5b41729975685b08858501da10221e20064a661ad0d4ffd8e58c0e6d5c6b6ed",
-    "apps/web/src/components/aluno/tabs/TabDocumentos.tsx": "cb0a47b645c9f007bc0fd9fdaed5033b4a79de78e32384b235d3cce9f442a9dd",
-    "apps/web/src/components/aluno/tabs/TabFinanceiro.tsx": "cc176dc325488a6de17daccbcb8e6c16a4f639901e0a27afe3ac052bea21eca4",
-    "apps/web/src/components/aluno/layout/ServicePaymentDrawer.tsx": "747de4c01a557003476e85c1c720d09851dcf890dd5cc4a4439f995670dd8144",
-    "apps/web/src/app/api/webhooks/appypay/route.ts": "df54a7764dde29291d9c63b830085718e7fe7589b9430ff77a3f180bfc9e2597",
-    "apps/web/src/app/api/jobs/appypay/portal/route.ts": "ea68c703ceec0d7af524e606dc6da8669c64ecf1fe7cf3b68797a43d468d56d6",
-    "apps/web/src/app/api/aluno/financeiro/route.ts": "6d2f3660bcd0bc2484fb35b89df45f17c9dfe7121efc89e1a15f0a42e31947f4",
-    "apps/web/src/app/api/aluno/financeiro/appypay/route.ts": "1e524e7f20a16c505da6ad5f12a8e14ecce7e036ea5bfb296d72d73514b72afd",
-    "apps/web/src/app/api/financeiro/appypay/reconcile/route.ts": "65190f05ff79813e210c2c922dde109ec96a28566f91c8140948b0400a719b5f",
-    "apps/web/src/app/api/financeiro/appypay/references/route.ts": "e0020a296cccf5965f12caa829c38903ec86358eb8e52bc6ea511f0e0f395c46",
-    "apps/web/src/app/api/financeiro/appypay/status/route.ts": "09423f2868adfa10d535c68fe3354b0cc8bf03875f36d2595ea4fce181a871a2"
+    "apps/web/src/lib/server/payments/providers/appypay/core.ts": "e47425ea92e1e9c5f8b946d2a3d803dbf6deb3018c6f574b6b8d617b07ee36ab",
+    "apps/web/src/lib/server/payments/providers/appypay/whatsapp-crypto.ts": "c38108b05cf0c33a3676af7ec83620578e04a5b96b7d19108a91fdd1b64be580",
+    "apps/web/src/lib/server/payments/providers/appypay/whatsapp-flow.ts": "741ec02e1bfba08e83d359b9d6331dc5467201746db2da132f1b05225cc325cd",
+    "apps/web/src/lib/server/payments/providers/appypay/whatsapp-store.ts": "a2b6c1bd8fcb749feafba5c808bbd391f0cc659f8ddd612e797833d8ee5a895d",
+    "apps/web/src/app/api/jobs/whatsapp/flows/appypay/route.ts": "7cba8d91ce09244ad336e55384bdaf3c72ec1c5487e827a7f145b5ffa498e5ce"
   },
   "legacy_gate_preflight": {
     "candidate_counts": {

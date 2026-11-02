@@ -58,3 +58,6 @@ can_merge: false
 
 ## Bloqueio de release após instalação SQL
 O SQL de serviços foi aprovado/aplicado e APY-005 está resolvido. A inspeção global confirmou três violações CRITICAL preexistentes em REPORT_SCAN.md. Mesmo com build e testes AppyPay aprovados, o contrato exige FAIL/can_merge=false; nenhuma liberação ou exceção foi aplicada. A matriz MV integral ainda requer certificação.
+
+## WhatsApp Flow — 2026-11-02
+Backend de teste com valor fixo, sem dashboards ou cálculo agregado. Handler jobs é force-dynamic/no-store e limitado a 32768 bytes; queries de sessão têm chave e escola/Flow/remetente/hash, transições CAS e expiração. 39 testes aprovados, typecheck global aprovado. Não implica certificação global: FAIL/can_merge=false mantido. SQL privado ainda proposto (APY-010), E2E publicado pendente (APY-011).

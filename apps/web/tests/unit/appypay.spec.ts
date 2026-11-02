@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AppyPayClient, configForSchool, newReference, verifiedCharge, type AppyPayConfig, type Charge } from '../../src/lib/server/payments/providers/appypay/core';
+import { AppyPayClient, lookupCharge, configForSchool, newReference, verifiedCharge, type AppyPayConfig, type Charge } from '../../src/lib/server/payments/providers/appypay/core';
 import { issueReference, reconcileCharge, recoverPendingReference } from '../../src/lib/server/payments/providers/appypay/service';
 
 const school = 'f406f5a7-a077-431c-b118-297224925726';
@@ -204,4 +205,38 @@ test('duplicate callback preserves the original paid_at timestamp', async () => 
   await reconcileCharge(db(store), clientFor(paid(r)), r);
   assert.equal(store.tables.payment_references[0].paid_at, '2026-10-01T09:00:00Z');
   assert.equal(store.confirms, 1);
+});
+
+const sandboxLookup = () => JSON.parse(readFileSync(new URL('../fixtures/appypay-lookup-sandbox.json', import.meta.url), 'utf8'));
+test('actual sandbox GET envelope reconciles once through authenticated lookup and rejects another charge', async () => {
+  const payload = sandboxLookup(), p = payload.payment;
+  const store = new Store(); store.tables.mensalidades[0].valor = p.amount;
+  const ref = { ...newReference(school, 'provider1', 'obligation1', p.amount), provider_reference_id: p.id,
+    provider_payload: { merchant_id: p.merchantTransactionId }, reference: p.reference.referenceNumber, status: 'active' };
+  store.tables.payment_references.push(ref);
+  let gets = 0;
+  const client = new AppyPayClient(config, (async (url: string, init: RequestInit) => {
+    if (url.includes('oauth2/token')) return Response.json({ access_token: 'fixture-token', expires_in: 3600 });
+    assert.equal(url, 'https://gwy-api-tst.appypay.co.ao/v2.0/charges/' + p.id);
+    assert.equal((init.headers as Record<string,string>).Authorization, 'Bearer fixture-token');
+    gets++; return Response.json(payload);
+  }) as typeof fetch);
+  await reconcileCharge(db(store), client, ref);
+  await reconcileCharge(db(store), client, ref);
+  assert.equal(store.confirms, 1); assert.equal(gets, 2);
+  await assert.rejects(reconcileCharge(db(store), client, { ...ref, amount: 101 }), /não corresponde/);
+  assert.equal(store.confirms, 1);
+});
+test('lookup never trusts payment status without correlated final event evidence', () => {
+  let x = sandboxLookup(); x.payment.transactionEvents.reverse();
+  assert.equal(lookupCharge(x).responseStatus.code, 100);
+  x = sandboxLookup(); x.payment.transactionEvents.pop();
+  assert.equal(lookupCharge(x).responseStatus.code, 101);
+  assert.equal(verifiedCharge(lookupCharge(x), { ...newReference(school,'p','o',100),provider_reference_id:x.payment.id,provider_payload:{merchant_id:x.payment.merchantTransactionId} }), 'pending');
+  x = sandboxLookup(); x.payment.transactionEvents[1].transactionId = 'foreign';
+  assert.throws(() => lookupCharge(x), /Histórico/);
+  x = sandboxLookup(); x.payment.transactionEvents[1].createdDate = x.payment.transactionEvents[0].createdDate;
+  assert.throws(() => lookupCharge(x), /ambíguo/);
+  x = sandboxLookup(); x.payment.transactionEvents = [];
+  assert.throws(() => lookupCharge(x), /Histórico/);
 });

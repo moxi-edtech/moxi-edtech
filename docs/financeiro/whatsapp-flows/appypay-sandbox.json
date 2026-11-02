@@ -1,0 +1,163 @@
+{
+  "version": "7.3",
+  "data_api_version": "3.0",
+  "routing_model": {
+    "START": [
+      "REFERENCE"
+    ],
+    "REFERENCE": [
+      "STATUS"
+    ],
+    "STATUS": []
+  },
+  "screens": [
+    {
+      "id": "START",
+      "title": "Pagamento de teste",
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "KLASSE · AppyPay"
+          },
+          {
+            "type": "TextBody",
+            "text": "Homologação: referência fictícia de 100,00 AOA. Não paga propinas nem movimenta dinheiro real."
+          },
+          {
+            "type": "Footer",
+            "label": "Gerar referência",
+            "on-click-action": {
+              "name": "data_exchange",
+              "payload": {
+                "action": "issue_test_reference"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "REFERENCE",
+      "title": "Referência AppyPay",
+      "data": {
+        "amount": {
+          "type": "string",
+          "__example__": "100,00 AOA"
+        },
+        "entity": {
+          "type": "string",
+          "__example__": "00348"
+        },
+        "reference": {
+          "type": "string",
+          "__example__": "123456789"
+        },
+        "expires_at": {
+          "type": "string",
+          "__example__": "Data devolvida pela AppyPay"
+        },
+        "charge_id": {
+          "type": "string",
+          "__example__": "identificador-da-cobranca"
+        },
+        "status": {
+          "type": "string",
+          "__example__": "Referência de teste emitida."
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Referência de homologação"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Valor"
+          },
+          {
+            "type": "TextBody",
+            "text": "${data.amount}"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Entidade"
+          },
+          {
+            "type": "TextBody",
+            "text": "${data.entity}"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Referência"
+          },
+          {
+            "type": "TextBody",
+            "text": "${data.reference}"
+          },
+          {
+            "type": "TextBody",
+            "text": "${data.expires_at}"
+          },
+          {
+            "type": "TextBody",
+            "text": "Concluir este formulário não confirma o pagamento. O estado será verificado na AppyPay."
+          },
+          {
+            "type": "TextBody",
+            "text": "${data.status}"
+          },
+          {
+            "type": "Footer",
+            "label": "Simular pagamento",
+            "on-click-action": {
+              "name": "data_exchange",
+              "payload": {
+                "action": "simulate_test_payment"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "STATUS",
+      "title": "Resultado do teste",
+      "terminal": true,
+      "success": true,
+      "data": {
+        "status": {
+          "type": "string",
+          "__example__": "Pagamento simulado confirmado. Nenhuma propina real foi alterada."
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Resultado AppyPay"
+          },
+          {
+            "type": "TextBody",
+            "text": "${data.status}"
+          },
+          {
+            "type": "Footer",
+            "label": "Concluir teste",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "kind": "sandbox_test"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
