@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import {
-  AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
+  ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
   GraduationCap, Loader2, RefreshCw, UsersRound,
 } from "lucide-react";
 
