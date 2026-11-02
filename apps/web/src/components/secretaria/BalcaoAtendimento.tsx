@@ -946,103 +946,103 @@ type OperacaoCopy = {
 const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> = {
   READY: {
     titulo: "Rematrícula escolar",
-    descricao: "O RAA autorizou a progressão e não há saldo em aberto. Selecione a turma destino e conclua.",
+    descricao: "Selecione a turma de destino.",
   },
   ACADEMIC_PENDING: {
-    titulo: "Notas ou dados académicos ainda pendentes",
-    descricao: "Conclua o fecho académico e verifique novamente.",
+    titulo: "Notas por concluir",
+    descricao: "Reveja as notas pendentes.",
   },
   ACADEMIC_REVIEW_REQUIRED: {
-    titulo: "Recurso académico pendente",
-    descricao: "O RAA exige concluir ou acompanhar o recurso antes de efetivar a rematrícula.",
+    titulo: "Recurso por resolver",
+    descricao: "Consulte o recurso pendente.",
   },
   ACADEMIC_CONDITIONAL_BLOCKED: {
-    titulo: "Inscrição condicional ainda bloqueada",
-    descricao: "O RAA reconhece a progressão condicional, mas a efetivação ainda depende da resolução indicada.",
+    titulo: "Inscrição condicional pendente",
+    descricao: "Consulte a pendência académica.",
   },
   ACADEMIC_ATTENDANCE_REVIEW_REQUIRED: {
-    titulo: "Retenção por faltas em validação",
-    descricao: "Reveja a frequência e a regra escolar antes de autorizar a nova matrícula na mesma classe.",
+    titulo: "Faltas por rever",
+    descricao: "Reveja a frequência do aluno.",
   },
   ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED: {
-    titulo: "Decisão disciplinar necessária",
-    descricao: "A retenção por indisciplina exige decisão administrativa antes de qualquer nova matrícula.",
+    titulo: "Decisão disciplinar pendente",
+    descricao: "Consulte a decisão da direção.",
   },
   ACADEMIC_NOT_APPROVED: {
-    titulo: "Decisão RAA não autoriza progressão",
-    descricao: "A decisão académica vigente não permite efetivar a rematrícula para a etapa seguinte.",
+    titulo: "Progressão indisponível",
+    descricao: "Consulte o resultado académico.",
   },
   ACADEMIC_CYCLE_COMPLETED: {
-    titulo: "Ciclo académico concluído",
-    descricao: "Não há rematrícula para a classe seguinte; siga para o fecho e documentos finais.",
+    titulo: "Ciclo concluído",
+    descricao: "Consulte os documentos finais.",
   },
   RECONFIRMATION_REQUIRED: {
     titulo: "Pagar taxa de rematrícula",
-    descricao: "O aluno já está matriculado; cobra-se apenas a taxa, sem alterar turma ou classe.",
+    descricao: "Conclua apenas a taxa de rematrícula.",
   },
   DOCUMENT_PENDING: {
-    titulo: "Emitir comprovativo pendente",
-    descricao: "O pagamento e o recibo já foram confirmados; falta apenas emitir o comprovativo.",
+    titulo: "Comprovativo por emitir",
+    descricao: "Emita o comprovativo.",
   },
   ACADEMIC_HISTORY_PENDING: {
-    titulo: "Reconciliar histórico académico",
-    descricao: "A matrícula e o pagamento estão concluídos. Falta apenas registar o fecho académico da matrícula de origem.",
+    titulo: "Histórico por concluir",
+    descricao: "Conclua o registo académico de origem.",
   },
   FINALIST_PENDING: {
-    titulo: "Finalista: decidir continuidade",
-    descricao: "Cobrar a taxa e escolher entre continuar os estudos ou concluir.",
+    titulo: "Continuidade por definir",
+    descricao: "Confirme o próximo percurso do aluno.",
   },
   CHECKING: {
-    titulo: "A verificar se o aluno pode ser rematriculado…",
-    descricao: "Aguarde alguns segundos; esta leitura é automática.",
+    titulo: "A verificar rematrícula…",
+    descricao: "",
   },
   ALREADY_COMPLETED: {
-    titulo: "Rematrícula já concluída neste ano letivo",
-    descricao: "Não há nada a cobrar — o aluno já está matriculado.",
+    titulo: "Rematrícula concluída",
+    descricao: "Sem nova cobrança.",
   },
   DEBT_BLOCKED: {
-    titulo: "Saldo em aberto impede a rematrícula",
-    descricao: "Regularize todos os saldos da matrícula de origem antes de continuar.",
+    titulo: "Saldo em atraso",
+    descricao: "Regularize o saldo antes de continuar.",
   },
   PRICE_NOT_CONFIGURED: {
-    titulo: "Taxa de rematrícula sem valor definido",
-    descricao: "Defina o valor da taxa nas configurações da escola para ativar esta operação.",
+    titulo: "Taxa por configurar",
+    descricao: "Defina o valor da taxa.",
   },
   DESTINATION_ENROLLED: {
-    titulo: "Matrícula do ano destino existente",
-    descricao: "O aluno já tem matrícula neste ano. Consulte a ficha antes de iniciar uma operação.",
+    titulo: "Já matriculado",
+    descricao: "Consulte a matrícula de destino.",
   },
   SOURCE_RECORD_REQUIRED: {
-    titulo: "Falta a matrícula de origem",
-    descricao: "Não se encontra a matrícula anterior deste aluno; regularize o vínculo de origem antes de continuar.",
+    titulo: "Matrícula anterior em falta",
+    descricao: "Confirme a matrícula de origem.",
   },
   WINDOW_CLOSED: {
-    titulo: "O período de rematrícula está fechado",
-    descricao: "O prazo deste ano letivo não está vigente. Resolva a janela aqui no atendimento, com autorização da direção.",
+    titulo: "Período encerrado",
+    descricao: "Reabertura pela direção.",
   },
   TARGET_YEAR_NOT_CONFIGURED: {
-    titulo: "Ano letivo de destino ainda não configurado",
-    descricao: "A escola precisa de criar o ano letivo seguinte antes de abrir a rematrícula. Os registos atuais serão preservados.",
+    titulo: "Ano de destino por configurar",
+    descricao: "Configure o ano e as turmas.",
   },
   PAYMENT_IN_PROGRESS: {
-    titulo: "Pagamento de rematrícula já iniciado",
-    descricao: "Não será criada nova cobrança; confirme a liquidação no aviso acima.",
+    titulo: "Pagamento em curso",
+    descricao: "Verifique a liquidação. Não cobrar novamente.",
   },
   PENDING_ORDER_REVIEW: {
-    titulo: "Pagamento iniciado mas não liquidado",
-    descricao: "Resolva o pedido pendente no aviso acima antes de cobrar.",
+    titulo: "Pagamento por confirmar",
+    descricao: "Verifique o pedido antes de nova cobrança.",
   },
   RECONCILIATION_REQUIRED: {
-    titulo: "Pagamento recebido — falta concluir a matrícula",
-    descricao: "Registe a decisão académica no aviso acima para concluir.",
+    titulo: "Pagamento confirmado · matrícula pendente",
+    descricao: "Conclua a matrícula sem nova cobrança.",
   },
   LEGACY_REVIEW_REQUIRED: {
-    titulo: "Pedido antigo por resolver",
-    descricao: "Resolva o pedido no aviso acima antes de iniciar a rematrícula.",
+    titulo: "Pedido anterior por resolver",
+    descricao: "Resolva o pedido anterior.",
   },
   ERROR: {
-    titulo: "Não foi possível verificar a rematrícula",
-    descricao: "Consulte a mensagem acima. Se o erro persistir, tente novamente mais tarde.",
+    titulo: "Situação académica indisponível",
+    descricao: "Tente novamente.",
   },
 };
 
@@ -1142,6 +1142,13 @@ function CommandCenterOverview({
 
   const rematriculaActionable = new Set<RematriculaCardState | "CHECKING">([
     "READY",
+    "ACADEMIC_PENDING",
+    "ACADEMIC_REVIEW_REQUIRED",
+    "ACADEMIC_CONDITIONAL_BLOCKED",
+    "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED",
+    "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED",
+    "ACADEMIC_NOT_APPROVED",
+    "ACADEMIC_CYCLE_COMPLETED",
     "RECONFIRMATION_REQUIRED",
     "DOCUMENT_PENDING",
     "ACADEMIC_HISTORY_PENDING",
@@ -1170,12 +1177,17 @@ function CommandCenterOverview({
             description: "",
             value: null,
             actionId: "reenrollment" as BalcaoActionId,
-            actionLabel: "Ver situação académica",
+            actionLabel: rematriculaState === "READY" ? "Continuar rematrícula"
+              : rematriculaState === "RECONFIRMATION_REQUIRED" ? "Ver taxa"
+              : rematriculaState === "DOCUMENT_PENDING" ? "Ver comprovativo"
+              : "Ver situação académica",
             tone: "attention" as const,
           }
         : {
             eyebrow: "Situação atual",
-            title: "Sem pendências prioritárias",
+            title: rematriculaState === "CHECKING" ? "A verificar situação…" :
+              rematriculaState === null ? "Situação académica indisponível" :
+              "Sem ação prioritária",
             description: "",
             value: null,
             actionId: null,
