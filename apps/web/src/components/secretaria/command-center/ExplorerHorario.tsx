@@ -26,8 +26,7 @@ export function ExplorerHorarioSemanal({
 
   if (!aulas.length) return (
     <p className="rounded-xl border border-slate-200 px-3 py-4 text-xs text-slate-600">
-      Nenhuma aula no horário publicado desta consulta.
-      {parcial ? " Podem existir outras aulas." : ""}
+      {parcial ? "Sem aulas nesta lista · Dados parciais." : "Sem aulas no horário publicado."}
     </p>
   );
 
@@ -72,8 +71,8 @@ export function ExplorerHorarioSemanal({
                             : "Professor não indicado")}
                       </p>
                     )}
-                    {!showTurma && <p className="mt-0.5 text-[11px] text-slate-500">
-                      {aula.salaNome ? "Sala " + aula.salaNome : "Sala não indicada no horário"}
+                    {!showTurma && aula.salaNome && <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Sala {aula.salaNome}
                     </p>}
                     {showTurma && aula.salaNome && <p className="mt-0.5 text-[11px] text-slate-500">
                       Sala {aula.salaNome}
@@ -88,7 +87,7 @@ export function ExplorerHorarioSemanal({
       {parcial && (
         <p role="status" className="flex items-start gap-2 text-xs text-amber-900">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Nem todas as aulas foram carregadas.
+          Horário parcial.
         </p>
       )}
     </div>
@@ -149,11 +148,8 @@ function HorarioResultado({
   if (query.data?.estado === "sem-publicacao") return (
     <div className="rounded-xl border border-slate-200 px-3 py-4">
       <span className="inline-flex rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-        Sem publicação
+        Horário por publicar
       </span>
-      <p role="status" className="mt-2 text-xs text-slate-600">
-        Esta turma ainda não tem horário publicado. Consulte a gestão de horários para verificar se está em preparação.
-      </p>
     </div>
   );
   if (query.data?.estado !== "publicado") return null;
@@ -167,11 +163,10 @@ function HorarioResultado({
         <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-900">
           Publicado
         </span>
-        <span className="text-xs text-slate-500">
-          Horário oficial
-          {query.data.publicadoEm
-            ? " · " + new Date(query.data.publicadoEm).toLocaleDateString("pt-AO") : ""}
-        </span>
+        {query.data.publicadoEm && <time className="text-xs text-muted-foreground"
+          dateTime={query.data.publicadoEm}>
+          {new Date(query.data.publicadoEm).toLocaleDateString("pt-AO")}
+        </time>}
       </div>
       <ExplorerHorarioSemanal aulas={aulas} parcial={query.data.parcial} />
       {disciplinaId && aulas.length === 0 && query.data.parcial && (
