@@ -59,12 +59,10 @@ export function CommandCenterActionBar({
 
   return (
     <div>
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-        {label}
-      </p>
+      <p className="sr-only">{label}</p>
       <div
         ref={scrollerRef}
-        className="flex min-w-0 flex-wrap gap-1 rounded-xl bg-slate-100 p-1 max-lg:flex-nowrap max-lg:overflow-x-auto"
+        className="flex min-w-0 flex-wrap gap-1 rounded-xl bg-muted p-1 max-lg:flex-nowrap max-lg:overflow-x-auto"
       >
         {getBalcaoWorkspaceActions()
           .filter((action) => hasStudent || !action.requiresStudent)
@@ -80,18 +78,15 @@ export function CommandCenterActionBar({
               aria-pressed={selected}
               aria-label={`${action.shortLabel}${pending ? ", alterações por guardar" : ""}`}
               className={[
-                "inline-flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E3B23C]",
+                "inline-flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber",
                 selected
-                  ? "bg-white text-slate-950 shadow-sm ring-1 ring-slate-200"
-                  : "text-slate-500 hover:bg-white/70 hover:text-slate-900",
+                  ? "bg-card text-foreground shadow-sm ring-1 ring-amber/30"
+                  : "text-muted-foreground hover:bg-card/70 hover:text-foreground",
               ].join(" ")}
-              title={action.description}
             >
               <Icon className={["h-3.5 w-3.5", selected ? "text-amber" : ""].join(" ")} />
               {action.shortLabel}
-              {pending ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800" aria-hidden="true">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />Por guardar
-              </span> : null}
+              {pending ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber" aria-hidden="true" /> : null}
             </button>
           );
         })}

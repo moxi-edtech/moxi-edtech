@@ -895,14 +895,6 @@ function StatusPill({ status }: { status: "em_dia" | "inadimplente" | "sem_matri
   );
 }
 
-function Tag({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
-      {children}
-    </span>
-  );
-}
-
 function SecaoLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 pl-1 font-mono">
@@ -920,9 +912,10 @@ function SecaoLabel({ children }: { children: React.ReactNode }) {
  */
 function CodigoEstado({ estado }: { estado: string }) {
   return (
-    <span className="mt-2 inline-block rounded bg-amber-100 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide text-amber-800">
-      {estado}
-    </span>
+    <details className="mt-2 text-[11px] text-amber-900">
+      <summary className="cursor-pointer font-medium">Detalhes para suporte</summary>
+      <code className="mt-1 block break-all font-mono text-[10px]">{estado}</code>
+    </details>
   );
 }
 
@@ -945,175 +938,136 @@ type OperacaoCopy = {
 const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> = {
   READY: {
     titulo: "Rematrícula escolar",
-    descricao: "O RAA autorizou a progressão e não há saldo em aberto. Selecione a turma destino e conclua.",
+    descricao: "Selecione a turma de destino.",
   },
   ACADEMIC_PENDING: {
-    titulo: "Notas ou dados académicos ainda pendentes",
-    descricao: "Conclua o fecho académico e verifique novamente.",
+    titulo: "Notas por concluir",
+    descricao: "Reveja as notas pendentes.",
   },
   ACADEMIC_REVIEW_REQUIRED: {
-    titulo: "Recurso académico pendente",
-    descricao: "O RAA exige concluir ou acompanhar o recurso antes de efetivar a rematrícula.",
+    titulo: "Recurso por resolver",
+    descricao: "Consulte o recurso pendente.",
   },
   ACADEMIC_CONDITIONAL_BLOCKED: {
-    titulo: "Inscrição condicional ainda bloqueada",
-    descricao: "O RAA reconhece a progressão condicional, mas a efetivação ainda depende da resolução indicada.",
+    titulo: "Inscrição condicional pendente",
+    descricao: "Consulte a pendência académica.",
   },
   ACADEMIC_ATTENDANCE_REVIEW_REQUIRED: {
-    titulo: "Retenção por faltas em validação",
-    descricao: "Reveja a frequência e a regra escolar antes de autorizar a nova matrícula na mesma classe.",
+    titulo: "Faltas por rever",
+    descricao: "Reveja a frequência do aluno.",
   },
   ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED: {
-    titulo: "Decisão disciplinar necessária",
-    descricao: "A retenção por indisciplina exige decisão administrativa antes de qualquer nova matrícula.",
+    titulo: "Decisão disciplinar pendente",
+    descricao: "Consulte a decisão da direção.",
   },
   ACADEMIC_NOT_APPROVED: {
-    titulo: "Decisão RAA não autoriza progressão",
-    descricao: "A decisão académica vigente não permite efetivar a rematrícula para a etapa seguinte.",
+    titulo: "Progressão indisponível",
+    descricao: "Consulte o resultado académico.",
   },
   ACADEMIC_CYCLE_COMPLETED: {
-    titulo: "Ciclo académico concluído",
-    descricao: "Não há rematrícula para a classe seguinte; siga para o fecho e documentos finais.",
+    titulo: "Ciclo concluído",
+    descricao: "Consulte os documentos finais.",
   },
   RECONFIRMATION_REQUIRED: {
     titulo: "Pagar taxa de rematrícula",
-    descricao: "O aluno já está matriculado; cobra-se apenas a taxa, sem alterar turma ou classe.",
+    descricao: "Conclua apenas a taxa de rematrícula.",
   },
   DOCUMENT_PENDING: {
-    titulo: "Emitir comprovativo pendente",
-    descricao: "O pagamento e o recibo já foram confirmados; falta apenas emitir o comprovativo.",
+    titulo: "Comprovativo por emitir",
+    descricao: "Emita o comprovativo.",
   },
   ACADEMIC_HISTORY_PENDING: {
-    titulo: "Reconciliar histórico académico",
-    descricao: "A matrícula e o pagamento estão concluídos. Falta apenas registar o fecho académico da matrícula de origem.",
+    titulo: "Histórico por concluir",
+    descricao: "Conclua o registo académico de origem.",
   },
   FINALIST_PENDING: {
-    titulo: "Finalista: decidir continuidade",
-    descricao: "Cobrar a taxa e escolher entre continuar os estudos ou concluir.",
+    titulo: "Continuidade por definir",
+    descricao: "Confirme o próximo percurso do aluno.",
   },
   CHECKING: {
-    titulo: "A verificar se o aluno pode ser rematriculado…",
-    descricao: "Aguarde alguns segundos; esta leitura é automática.",
+    titulo: "A verificar rematrícula…",
+    descricao: "",
   },
   ALREADY_COMPLETED: {
-    titulo: "Rematrícula já concluída neste ano letivo",
-    descricao: "Não há nada a cobrar — o aluno já está matriculado.",
+    titulo: "Rematrícula concluída",
+    descricao: "Sem nova cobrança.",
   },
   DEBT_BLOCKED: {
-    titulo: "Saldo em aberto impede a rematrícula",
-    descricao: "Regularize todos os saldos da matrícula de origem antes de continuar.",
+    titulo: "Saldo em atraso",
+    descricao: "Regularize o saldo antes de continuar.",
   },
   PRICE_NOT_CONFIGURED: {
-    titulo: "Taxa de rematrícula sem valor definido",
-    descricao: "Defina o valor da taxa nas configurações da escola para ativar esta operação.",
+    titulo: "Taxa por configurar",
+    descricao: "Defina o valor da taxa.",
   },
   DESTINATION_ENROLLED: {
-    titulo: "Matrícula do ano destino existente",
-    descricao: "O aluno já tem matrícula neste ano. Consulte a ficha antes de iniciar uma operação.",
+    titulo: "Já matriculado",
+    descricao: "Consulte a matrícula de destino.",
   },
   SOURCE_RECORD_REQUIRED: {
-    titulo: "Falta a matrícula de origem",
-    descricao: "Não se encontra a matrícula anterior deste aluno; regularize o vínculo de origem antes de continuar.",
+    titulo: "Matrícula anterior em falta",
+    descricao: "Confirme a matrícula de origem.",
   },
   WINDOW_CLOSED: {
-    titulo: "O período de rematrícula está fechado",
-    descricao: "O prazo deste ano letivo não está vigente. Resolva a janela aqui no atendimento, com autorização da direção.",
+    titulo: "Período encerrado",
+    descricao: "Reabertura pela direção.",
   },
   TARGET_YEAR_NOT_CONFIGURED: {
-    titulo: "Ano letivo de destino ainda não configurado",
-    descricao: "A escola precisa de criar o ano letivo seguinte antes de abrir a rematrícula. Os registos atuais serão preservados.",
+    titulo: "Ano de destino por configurar",
+    descricao: "Configure o ano e as turmas.",
   },
   PAYMENT_IN_PROGRESS: {
-    titulo: "Pagamento de rematrícula já iniciado",
-    descricao: "Não será criada nova cobrança; confirme a liquidação no aviso acima.",
+    titulo: "Pagamento em curso",
+    descricao: "Verifique a liquidação. Não cobrar novamente.",
   },
   PENDING_ORDER_REVIEW: {
-    titulo: "Pagamento iniciado mas não liquidado",
-    descricao: "Resolva o pedido pendente no aviso acima antes de cobrar.",
+    titulo: "Pagamento por confirmar",
+    descricao: "Verifique o pedido antes de nova cobrança.",
   },
   RECONCILIATION_REQUIRED: {
-    titulo: "Pagamento recebido — falta concluir a matrícula",
-    descricao: "Registe a decisão académica no aviso acima para concluir.",
+    titulo: "Pagamento confirmado · matrícula pendente",
+    descricao: "Conclua a matrícula sem nova cobrança.",
   },
   LEGACY_REVIEW_REQUIRED: {
-    titulo: "Pedido antigo por resolver",
-    descricao: "Resolva o pedido no aviso acima antes de iniciar a rematrícula.",
+    titulo: "Pedido anterior por resolver",
+    descricao: "Resolva o pedido anterior.",
   },
   ERROR: {
-    titulo: "Não foi possível verificar a rematrícula",
-    descricao: "Consulte a mensagem acima. Se o erro persistir, tente novamente mais tarde.",
+    titulo: "Situação académica indisponível",
+    descricao: "Tente novamente.",
   },
 };
 
 function AlunoCard({ aluno, onTrocarAluno }: { aluno: AlunoDossier; onTrocarAluno: () => void }) {
-  const inadimplente = aluno.status_financeiro === "inadimplente";
-  const semMatricula = aluno.status_financeiro === "sem_matricula";
-
   return (
-    <div className="xl:col-span-4 rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3.5 h-fit">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Avatar url={aluno.foto_url} nome={aluno.nome} size="lg" />
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5 font-mono">Situacao</span>
-            <StatusPill status={aluno.status_financeiro} />
-          </div>
+    <section aria-label="Aluno em atendimento"
+      className="xl:col-span-4 h-fit space-y-3 rounded-xl border border-border bg-card p-4">
+      <div className="flex items-start gap-3">
+        <Avatar url={aluno.foto_url} nome={aluno.nome} size="lg" />
+        <div className="min-w-0 flex-1">
+          <h2 className="break-words text-sm font-semibold text-foreground">{aluno.nome}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {[
+              aluno.numero_processo ? "Proc. " + aluno.numero_processo : null,
+              aluno.classe || null,
+              aluno.turma_codigo ? "Turma " + aluno.turma_codigo : null,
+            ].filter(Boolean).join(" · ")}
+          </p>
         </div>
+        <button type="button" onClick={onTrocarAluno}
+          className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl border border-border px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber">
+          <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden="true" /> Trocar
+        </button>
       </div>
-
-      <div className="pt-0.5">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-base font-black text-slate-900 leading-snug break-words">{aluno.nome}</h2>
-          <button
-            type="button"
-            onClick={onTrocarAluno}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-bold text-slate-500 hover:border-amber hover:text-slate-900"
-          >
-            <ArrowRightLeft className="h-3 w-3" />
-            Trocar
-          </button>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+        <StatusPill status={aluno.status_financeiro} />
+        {aluno.status_financeiro === "inadimplente" && (
+          <strong className="text-sm font-semibold tabular-nums text-rose-700">
+            {kwanza.format(aluno.divida_total)}
+          </strong>
+        )}
       </div>
-
-      <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
-        <Tag>Proc. {aluno.numero_processo}</Tag>
-        {aluno.turma_codigo && <Tag>Turma {aluno.turma_codigo}</Tag>}
-        {aluno.curso_codigo && <Tag>Curso {aluno.curso_codigo}</Tag>}
-        {aluno.classe && <Tag>Classe {aluno.classe}</Tag>}
-      </div>
-
-      {inadimplente ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3.5">
-          <div className="flex items-center gap-2 mb-1">
-            <AlertCircle className="h-4 w-4 text-rose-600" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600 font-mono">
-              Divida acumulada
-            </p>
-          </div>
-          <p className="text-2xl font-black text-rose-700 font-sora">{kwanza.format(aluno.divida_total)}</p>
-        </div>
-      ) : semMatricula ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 flex items-center gap-3">
-          <div className="p-2 rounded-full bg-slate-200">
-            <Info className="h-4 w-4 text-slate-600" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-slate-700">Sem matricula neste ano</p>
-            <p className="text-[11px] text-slate-500">Nenhuma mensalidade foi lancada.</p>
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-emerald/20 bg-emerald/5 p-3.5 flex items-center gap-3">
-          <div className="p-2 rounded-full bg-emerald/10">
-            <CheckCircle className="h-4 w-4 text-emerald" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-emerald">Situacao regular</p>
-            <p className="text-[11px] text-emerald/70">Nenhuma pendencia.</p>
-          </div>
-        </div>
-      )}
-    </div>
+    </section>
   );
 }
 
@@ -1141,6 +1095,13 @@ function CommandCenterOverview({
 
   const rematriculaActionable = new Set<RematriculaCardState | "CHECKING">([
     "READY",
+    "ACADEMIC_PENDING",
+    "ACADEMIC_REVIEW_REQUIRED",
+    "ACADEMIC_CONDITIONAL_BLOCKED",
+    "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED",
+    "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED",
+    "ACADEMIC_NOT_APPROVED",
+    "ACADEMIC_CYCLE_COMPLETED",
     "RECONFIRMATION_REQUIRED",
     "DOCUMENT_PENDING",
     "ACADEMIC_HISTORY_PENDING",
@@ -1156,26 +1117,32 @@ function CommandCenterOverview({
       ? {
           eyebrow: "Precisa de atenção",
           title: `${overdue.length} mensalidade${overdue.length === 1 ? "" : "s"} em atraso`,
-          description: "Regularize o saldo para evitar bloqueios em operações académicas.",
+          description: "",
           value: kwanza.format(overdueTotal),
           actionId: "payment" as BalcaoActionId,
-          actionLabel: "Regularizar",
+          actionLabel: "Ver mensalidades",
           tone: "danger" as const,
         }
       : rematriculaState && rematriculaActionable.has(rematriculaState)
         ? {
             eyebrow: "Próxima ação",
             title: rematriculaCopy?.titulo ?? "Rematrícula",
-            description: rematriculaCopy?.descricao ?? "Verifique o estado da rematrícula.",
+            description: "",
             value: null,
-            actionId: "reenrollment" as BalcaoActionId,
-            actionLabel: "Continuar",
+            actionId: (rematriculaState === "DEBT_BLOCKED" ? "payment" : "reenrollment") as BalcaoActionId,
+            actionLabel: rematriculaState === "DEBT_BLOCKED" ? "Ver saldo em atraso"
+              : rematriculaState === "READY" ? "Continuar rematrícula"
+              : rematriculaState === "RECONFIRMATION_REQUIRED" ? "Ver taxa"
+              : rematriculaState === "DOCUMENT_PENDING" ? "Ver comprovativo"
+              : "Ver situação académica",
             tone: "attention" as const,
           }
         : {
             eyebrow: "Situação atual",
-            title: "Nenhuma pendência crítica",
-            description: "O atendimento pode continuar normalmente.",
+            title: rematriculaState === "CHECKING" ? "A verificar situação…" :
+              rematriculaState === null ? "Situação académica indisponível" :
+              "Sem ação prioritária",
+            description: "",
             value: null,
             actionId: null,
             actionLabel: null,
@@ -1184,7 +1151,7 @@ function CommandCenterOverview({
 
   const financeValue =
     aluno.status_financeiro === "inadimplente"
-      ? kwanza.format(overdueTotal || aluno.divida_total)
+      ? (overdue.length > 0 ? "Em atraso" : kwanza.format(aluno.divida_total))
       : aluno.status_financeiro === "sem_matricula"
         ? "Sem matrícula"
         : "Em dia";
@@ -1222,113 +1189,67 @@ function CommandCenterOverview({
       description:
         overdue.length > 0
           ? `${overdue.length} cobrança${overdue.length === 1 ? "" : "s"} vencida${overdue.length === 1 ? "" : "s"}`
-          : "Nenhuma cobrança vencida",
+          : "",
       value: financeValue,
       tone: financeTone,
     },
     {
       id: "reenrollment",
       title: "Situação académica",
-      description: rematriculaCopy?.descricao ?? "Sem operação disponível neste momento.",
+      description: "",
       value: rematriculaValue,
       tone: rematriculaTone,
     },
     {
       id: "document",
       title: "Documentos",
-      description: "Emitir declarações e outros documentos do aluno",
+      description: "",
       value: documents.length > 0 ? `${documents.length} ${documents.length === 1 ? "disponível" : "disponíveis"}` : "Nenhum",
       tone: "neutral",
     },
   ];
-
-  const priorityClass =
-    priority.tone === "danger"
-      ? "border-rose-200 bg-rose-50/70"
-      : priority.tone === "attention"
-        ? "border-amber-200 bg-amber-50/70"
-        : "border-emerald-200 bg-emerald-50/60";
-
-  const priorityTitleClass =
-    priority.tone === "danger"
-      ? "text-rose-950"
-      : priority.tone === "attention"
-        ? "text-amber-950"
-        : "text-emerald-950";
+  const secondaryRows = rows.filter((row) => row.id !== priority.actionId);
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-            Visão geral
-          </p>
-          <h2 className="mt-1 text-lg font-black text-slate-900">
-            O que precisa de atenção agora
-          </h2>
-        </div>
-        <button
-          type="button"
-          onClick={onTrocarAluno}
-          className="shrink-0 text-xs font-bold text-slate-500 transition hover:text-slate-900"
-        >
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-foreground">Resumo</h2>
+        <button type="button" onClick={onTrocarAluno}
+          className="text-xs font-medium text-muted-foreground hover:text-foreground">
           Trocar aluno
         </button>
       </div>
 
-      <div className={`rounded-xl border p-4 sm:p-5 ${priorityClass}`}>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {priority.actionId && priority.actionLabel ? (
+        <section aria-label="Próxima ação" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
-              {priority.eyebrow}
-            </p>
-            <h3 className={`mt-1 text-base font-black ${priorityTitleClass}`}>
-              {priority.title}
-            </h3>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">
-              {priority.description}
-            </p>
+            <p className="text-xs font-medium text-muted-foreground">Próxima ação</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{priority.title}</p>
+            {priority.value && <p className="mt-1 text-sm font-medium tabular-nums text-foreground">{priority.value}</p>}
           </div>
+          <button type="button" onClick={() => onNavigate?.(priority.actionId!)}
+            className="min-h-10 rounded-xl bg-amber px-4 py-2.5 text-xs font-semibold text-white hover:brightness-95">
+            {priority.actionLabel}
+          </button>
+        </section>
+      ) : (
+        <p role="status" className="text-sm text-muted-foreground">{priority.title}</p>
+      )}
 
-          <div className="flex shrink-0 items-center gap-3">
-            {priority.value ? (
-              <strong className="text-base font-black text-slate-900">
-                {priority.value}
-              </strong>
-            ) : null}
-            {priority.actionId && priority.actionLabel ? (
-              <button
-                type="button"
-                onClick={() => onNavigate?.(priority.actionId!)}
-                className="rounded-xl bg-amber px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:brightness-95"
-              >
-                {priority.actionLabel}
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-          Situação do aluno
-        </p>
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          {rows.map((row, index) => (
+      <section aria-label="Áreas do atendimento">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          {secondaryRows.map((row, index) => (
             <button
               key={row.id}
               type="button"
               onClick={() => onNavigate?.(row.id)}
               className={[
-                "flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-slate-50 sm:px-5",
-                index > 0 ? "border-t border-slate-100" : "",
+                "flex min-h-12 w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber sm:px-5",
+                index > 0 ? "border-t border-border" : "",
               ].join(" ")}
             >
               <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-900">{row.title}</p>
-                <p className="mt-0.5 truncate text-xs text-slate-500">
-                  {row.description}
-                </p>
+                <p className="text-sm font-medium text-foreground">{row.title}</p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span
@@ -1343,29 +1264,17 @@ function CommandCenterOverview({
                 >
                   {row.value}
                 </span>
-                <span aria-hidden="true" className="text-slate-300">
-                  →
-                </span>
+                <span aria-hidden="true" className="text-muted-foreground">›</span>
               </div>
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-        <p className="text-xs text-slate-400">
-          Proc. {aluno.numero_processo}
-          {aluno.classe ? ` · ${aluno.classe}` : ""}
-          {aluno.turma_codigo ? ` · Turma ${aluno.turma_codigo}` : ""}
-        </p>
-        <button
-          type="button"
-          onClick={() => onNavigate?.("profile")}
-          className="text-xs font-bold text-emerald transition hover:underline"
-        >
-          Ver perfil completo →
-        </button>
-      </div>
+      <button type="button" onClick={() => onNavigate?.("profile")}
+        className="text-xs font-medium text-emerald hover:underline">
+        Abrir ficha do aluno
+      </button>
     </div>
   );
 }
@@ -1577,13 +1486,9 @@ function Catalogo({
             </div>
             {rematriculaState === "DEBT_BLOCKED" ? (
               <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-600">Bloqueio financeiro</p>
-                <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm font-black text-rose-950">Saldo vencido impede a rematrícula</p>
-                    <p className="mt-1 text-xs leading-5 text-rose-700">
-                      Regularize as mensalidades da matrícula de origem antes de escolher a turma destino.
-                    </p>
+                    <p className="text-sm font-black text-rose-950">Mensalidades vencidas</p>
                   </div>
                   <button
                     type="button"
@@ -1598,20 +1503,16 @@ function Catalogo({
 
             {rematriculaState === "PRICE_NOT_CONFIGURED" ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">Configuração necessária</p>
-                <p className="mt-1 text-sm font-black text-amber-950">Taxa de rematrícula sem valor definido</p>
-                <p className="mt-1 text-xs leading-5 text-amber-800">
-                  Defina o valor da taxa para a classe destino antes de iniciar uma nova cobrança.
-                </p>
+                <p className="text-sm font-bold text-amber-950">Taxa por configurar</p>
+                <p className="mt-1 text-xs text-amber-800">Defina o valor para a classe de destino.</p>
               </div>
             ) : null}
 
             {rematriculaState === "ALREADY_COMPLETED" ? (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald">Concluída</p>
-                <p className="mt-1 text-sm font-black text-emerald-950">Rematrícula já concluída</p>
-                <p className="mt-1 text-xs leading-5 text-emerald-800">
-                  O aluno já está matriculado em {rematriculaAnoLabel ?? "este ano letivo"}. Não faça uma nova cobrança.
+                <p className="text-sm font-bold text-emerald-950">Rematrícula concluída</p>
+                <p className="mt-1 text-xs text-emerald-800">
+                  {rematriculaAnoLabel ?? "Ano atual"} · Não cobrar novamente.
                 </p>
               </div>
             ) : null}
@@ -1620,9 +1521,8 @@ function Catalogo({
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
                 <strong className="block text-amber-950">Pedido antigo por resolver</strong>
                 <p className="mt-1">
-                  Existe um pedido de rematrícula anterior sem ano letivo associado. Vai ser ligado a{" "}
-                  {rematriculaAnoLabel ?? "o ano letivo atual"} e substituído por uma operação válida —
-                  o aluno <strong>não paga duas vezes</strong>.
+                  Pedido anterior sem ano letivo · Associe a{" "}
+                  {rematriculaAnoLabel ?? "o ano atual"}, sem cobrar novamente.
                 </p>
                 <CodigoEstado estado="LEGACY_REVIEW_REQUIRED" />
                 <button
@@ -1667,8 +1567,7 @@ function Catalogo({
                   <div>
                     <strong className="block">Pagamento iniciado mas não liquidado</strong>
                     <p className="mt-1 text-amber-900/80">
-                      Ficou uma tentativa de pagamento aberta, sem dinheiro recebido nem comprovativo.
-                      Cancele-a aqui e cobre de novo — <strong>o aluno não paga duas vezes</strong>.
+                      Tentativa de pagamento em aberto. Cancele-a antes de iniciar outra cobrança.
                     </p>
                     <CodigoEstado estado="PENDING_ORDER_REVIEW" />
                   </div>
@@ -1688,10 +1587,9 @@ function Catalogo({
                 <div className="flex items-start gap-2">
                   <Loader2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                   <div>
-                    <strong className="block">Pagamento de rematrícula já iniciado</strong>
+                    <strong className="block">Pagamento em curso</strong>
                     <p className="mt-1 text-amber-900/80">
-                      Já existe um pagamento a decorrer, por isso não se cria outro. Confirme aqui se
-                      o dinheiro entrou; se ainda não entrou, aguarde a validação.
+                      Confirme a liquidação antes de continuar. Não inicie nova cobrança.
                     </p>
                     <CodigoEstado estado="PAYMENT_IN_PROGRESS" />
                   </div>
@@ -1711,9 +1609,8 @@ function Catalogo({
               <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
                 <strong className="block">Ano letivo de destino não configurado</strong>
                 <p className="mt-1">
-                  O ano {rematriculaAnoLabel ?? "seguinte"} ainda não existe na configuração da escola.
-                  Solicite à administração que configure o ano e as turmas destino antes de iniciar a operação.
-                  Nenhuma matrícula nem cobrança foi criada.
+                  Configure {rematriculaAnoLabel ?? "o ano seguinte"} e as turmas na Administração.
+                  Nenhuma cobrança foi criada.
                 </p>
                 <CodigoEstado estado="TARGET_YEAR_NOT_CONFIGURED" />
               </div>
@@ -1722,8 +1619,7 @@ function Catalogo({
               <div className="mb-2 rounded-xl border border-slate-300 bg-slate-50 p-3.5 text-xs text-slate-700">
                 <strong className="block text-slate-900">Período de rematrícula fechado</strong>
                 <p className="mt-1">
-                  O período de rematrícula de{" "}
-                  {rematriculaAnoLabel ?? "este ano letivo"} não está vigente. A direção pode reabri-lo neste atendimento, sem mudar de aluno ou perder o trabalho em curso.
+                  {rematriculaAnoLabel ?? "Ano letivo atual"} · A direção pode reabrir o período aqui.
                 </p>
                 {rematriculaWindow?.data_fim ? (
                   <p className="mt-1">
@@ -1746,7 +1642,7 @@ function Catalogo({
               <div role="status" className="mb-3 rounded-xl border border-border bg-muted/20 p-4">
                 <p className="text-sm font-semibold text-foreground">Matrícula de origem por confirmar</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Não há uma matrícula de origem confirmada nesta ficha. Consulte o vínculo do aluno antes de lançar notas ou iniciar uma rematrícula.
+                  Confirme a matrícula de origem antes de lançar notas ou continuar.
                 </p>
                 {onStartEnrollment ? (
                   <button type="button" onClick={onStartEnrollment}
@@ -1769,7 +1665,6 @@ function Catalogo({
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
                   <div>
                     <p className="text-sm font-semibold text-foreground">Notas individuais</p>
-                    <p className="text-xs text-muted-foreground">Selecione o trimestre e registe a avaliação deste aluno.</p>
                   </div>
                   <button type="button" onClick={() => onLancarNota(null, rematriculaAcademic?.disciplina_ids_pendentes?.[0] ?? null)}
                     className="inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
@@ -2315,7 +2210,7 @@ function CarrinhoPanel({
               }}
               className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono"
             >
-              {audit.open ? "Fechar audit" : "Audit trail"}
+              {audit.open ? "Fechar histórico" : "Histórico"}
             </button>
             {itens.length > 0 && (
               <button onClick={limpar} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono">
@@ -2650,11 +2545,7 @@ function CarrinhoPanel({
         ) : null}
 
         {prontoParaPagar && !checkout.isSubmitting && (
-          <p className="mt-1.5 text-center text-[10px] font-medium text-slate-400">
-            ou <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">Ctrl</kbd>
-            {" + "}
-            <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">Enter</kbd>
-          </p>
+          <span className="sr-only">Atalho: Ctrl + Enter para confirmar.</span>
         )}
       </div>
       ) : null}
@@ -2735,7 +2626,6 @@ function BillingWindowRepairPanel({
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Período atual</p>
           <p className="mt-1 text-sm font-semibold text-amber-950">{issue.dataInicio || "—"} até {issue.dataFim || "—"}</p>
-          <p className="mt-2 text-xs leading-5 text-amber-800">Para permitir esta cobrança, a data final deve ser igual ou posterior à data final atual. A alteração fica registada na configuração da turma.</p>
         </div>
 
         <label className="mt-5 block text-sm font-bold text-slate-800" htmlFor="billing-window-end">Data final permitida</label>

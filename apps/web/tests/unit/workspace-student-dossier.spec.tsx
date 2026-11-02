@@ -73,7 +73,7 @@ test("modal and standalone workspace wire a protected student-switch callback", 
 test("the full profile is not replaced by an edit-only form", () => {
   assert.match(panel, /CommandCenterStudentDossier/);
   assert.match(panel, /Perfil integral do aluno/);
-  assert.match(panel, /Atualizar dados pessoais/);
+  assert.match(panel, /Editar dados pessoais/);
   assert.match(panel, /profileRefreshKey/);
   for (const section of [
     "DossierPerfilSection",

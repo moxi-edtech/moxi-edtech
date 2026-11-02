@@ -53,7 +53,7 @@ async function run(size, zoom) {
   const reset = async () => {
     await page.goto(base);
     await page.getByRole("heading", { name: "10.ª A" }).waitFor();
-    await page.getByText("Excedente de lotação").waitFor();
+    await page.getByText(/alunos acima da lotação/).waitFor();
   };
   const input = () => page.getByRole("searchbox", { name: "Nome ou processo" });
 

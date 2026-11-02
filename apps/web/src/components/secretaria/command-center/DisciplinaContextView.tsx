@@ -86,21 +86,20 @@ export function DisciplinaContextView({
       {limitado && (
         <p role="status" className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Nem todos os dados desta disciplina estão disponíveis. Os totais podem ser maiores.
+          Dados parciais · os totais podem ser superiores.
         </p>
       )}
       {!limitado && turmasSemProfessor > 0 && stats.turmas > 0 && (
         <p className="text-xs text-slate-600">
           {turmasSemProfessor === 1
-            ? "1 turma sem professor vinculado a esta disciplina nesta visão."
-            : `${turmasSemProfessor} turmas sem professor vinculado a esta disciplina nesta visão.`}
+            ? "1 turma sem professor identificado"
+            : `${turmasSemProfessor} turmas sem professor identificado`}
         </p>
       )}
 
       {data.unresolvedTeacherLinks > 0 && (
         <p role="status" className="text-xs text-amber-900">
-          Existem {data.unresolvedTeacherLinks} {data.unresolvedTeacherLinks === 1 ? "professor por identificar" : "professores por identificar"}.
-          Há atribuições registadas. Confirme os nomes na gestão académica.
+          {data.unresolvedTeacherLinks} {data.unresolvedTeacherLinks === 1 ? "professor por identificar" : "professores por identificar"} · Rever na gestão académica.
         </p>
       )}
 
@@ -182,9 +181,6 @@ export function DisciplinaContextView({
         <h3 id="disciplina-matriz-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
           <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Matriz curricular
         </h3>
-        <p className="mb-2 text-xs text-slate-600">
-          Disciplinas previstas por curso e classe. As turmas, os professores e os horários aparecem à parte.
-        </p>
         <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
           {curriculo.map((item) => (
             <div key={item.id}
@@ -212,7 +208,7 @@ export function DisciplinaContextView({
                 </span>
                 {item.ativo === false && (
                   <span className="mt-1 block text-amber-800">
-                    Esta versão está inativa hoje; pode ter sido usada no ano selecionado.
+                    Versão atualmente inativa
                   </span>
                 )}
                 {data.cobertura.filter((entry) => entry.matrizId === item.id).map((entry) => (
