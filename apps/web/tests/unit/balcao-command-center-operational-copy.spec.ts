@@ -64,6 +64,48 @@ test("explorers retain important incomplete-data states but hide explanatory dup
 test("student actions rely on the existing authorization API, not a visible permission lecture", () => {
   const ui = source("components/secretaria/command-center/ExplorerStudentActions.tsx");
   assert.match(ui, /\/student-capabilities\?/);
-  assert.match(ui, /disabled=\{!available\}/);
+  assert.match(ui, /EXPLORER_STUDENT_ACTION_IDS\.filter/);
+  assert.match(ui, /reply\.actions\?\.\[id\] === true/);
+  assert.match(ui, /Sem ações disponíveis/);
+  assert.match(ui, /loadCapabilities\(\)/);
   assert.doesNotMatch(ui, /Cada módulo confirma novamente a permissão/);
+});
+
+test("Balcão overview has a single next action and no repeated student-process footer", () => {
+ const ui=source("components/secretaria/BalcaoAtendimento.tsx");
+ const block=ui.slice(ui.indexOf("function CommandCenterOverview("),ui.indexOf("\nfunction Catalogo(",ui.indexOf("function CommandCenterOverview(")));
+ assert.match(block, /aria-label="Próxima ação"/);
+ assert.match(block, /Ver mensalidades/);
+ assert.match(block, /Continuar rematrícula/);
+ assert.match(block, /ACADEMIC_PENDING/);
+ assert.match(block, /A verificar situação…/);
+ assert.match(block, /aria-label="Áreas do atendimento"/);
+ assert.doesNotMatch(block, /O que precisa de atenção agora/);
+ assert.doesNotMatch(block, /Proc\. \{aluno\.numero_processo\}/);
+ assert.doesNotMatch(block, /priority\.description/);
+});
+test("command center navigation conveys state through selection, not repeated descriptive labels", () => {
+ const bar=source("components/secretaria/command-center/CommandCenterActionBar.tsx");
+ const shell=source("components/secretaria/command-center/CommandCenterShell.tsx");
+ assert.match(bar, /<p className="sr-only">\{label\}<\/p>/);
+ assert.match(bar, /aria-pressed=\{selected\}/);
+ assert.match(bar, /pendingActions\.includes\(action\.id\)/);
+ assert.doesNotMatch(bar, /Por guardar\s*<\/span>/);
+ assert.match(shell, /<h1 className="truncate text-lg font-semibold/);
+ assert.doesNotMatch(shell, /KLASSE · Central de atendimento\s*<\/p>/);
+ assert.match(shell, /aria-pressed=\{shortcuts\.enabled\}/);
+});
+test("class and turma explorers show few primary metrics, keeping critical limits and actions", () => {
+ const classe=source("components/secretaria/command-center/ClasseContextView.tsx");
+ const turma=source("components/secretaria/command-center/TurmaContextView.tsx");
+ const controls=source("components/secretaria/command-center/ExplorerRosterControls.tsx");
+ const classSection=classe.split('aria-label="Indicadores da classe"')[1].split('aria-labelledby="classe-alunos-heading"')[0];
+ const turmaSection=turma.split('aria-label="Indicadores da turma"')[1].split('aria-label="Vistas da turma"')[0];
+ assert.match(classSection,/ExplorerMetric label="Alunos"/);
+ assert.match(classSection,/ExplorerMetric label="Vagas"/);
+ assert.doesNotMatch(classSection,/ExplorerMetric label="Disciplinas"/);
+ assert.match(turmaSection,/ExplorerMetric label="Lotação"/);
+ assert.match(turma,/Rever lotação/);
+ assert.match(controls,/<legend className="sr-only">/);
+ assert.doesNotMatch(controls,/rounded-lg border border-slate-200 p-3/);
 });
