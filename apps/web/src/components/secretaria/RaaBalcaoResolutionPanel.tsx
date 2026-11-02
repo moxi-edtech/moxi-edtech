@@ -21,7 +21,7 @@ type EventoDisciplinar = {
 };
 type ExamContext = {
   source: { matricula_id: string; aluno_id: string; turma_id: string; ano_letivo_id: string; locked: boolean };
-  disciplinas: Array<{ id: string; avaliacao_disciplina_id: string | null }>;
+  disciplinas: Array<{ id: string; avaliacao_disciplina_id: string | null; nome: string | null }>;
   can_record_result: boolean;
   hoje_angola: string;
   sessoes: Array<{ id: string; tipo: "recurso" | "extraordinario"; estado: string; data_inicio: string; exame_componentes: Array<{ id: string; codigo: string; nota_max: number }> }>;
@@ -35,7 +35,7 @@ type Props = {
   matriculaId: string;
   alunoId: string;
   academic: Academic;
-  onLancarNota: (trimestre?: 1 | 2 | 3 | null) => void;
+  onLancarNota: (trimestre?: 1 | 2 | 3 | null, disciplinaId?: string | null) => void;
   onDocumentos: () => void;
   canLancarNota: boolean;
   onRecheck: () => Promise<unknown>;
@@ -132,21 +132,33 @@ export function RaaBalcaoResolutionPanel({
 
   useEffect(() => { void load(); }, [load]);
 
+  const nomesDisciplinas: Record<string, string> = { ...academic?.disciplina_names };
+  for (const disciplina of examContext?.disciplinas ?? []) {
+    if (disciplina.avaliacao_disciplina_id && disciplina.nome?.trim()) {
+      nomesDisciplinas[disciplina.avaliacao_disciplina_id] = disciplina.nome.trim();
+    }
+  }
   const cases = plan ? buildRaaBalcaoWorkspaceCases({
     primaryAction: planAction ?? "rever_resultado",
     title: plan.titulo,
     disciplinaIds: academic?.disciplina_ids_pendentes,
+    disciplinaNames: nomesDisciplinas,
+    disciplinaStatuses: academic?.disciplina_statuses,
     faltas, pedidos, eventos, sessoes: examContext?.sessoes,
   }) : [];
+  const origemEncerrada = Boolean(academic?.source?.status) &&
+    !["ativo", "ativa", "active"].includes(academic?.source?.status?.toLowerCase() ?? "");
+  const hasTrimesterCases = cases.some((item) => isRaaTrimestre(item.periodo));
   const progress = raaBalcaoProgress(cases);
-  const visibleCases = cases.filter((item) => matchesRaaPeriodFilter(item.periodo, periodFilter));
-  const visibleProgress = raaBalcaoProgress(visibleCases);
+  // An outdated trimester filter must never hide all notes after a new RAA read.
+  const effectivePeriodFilter = hasTrimesterCases ? periodFilter : "todos";
+  const visibleCases = cases.filter((item) => matchesRaaPeriodFilter(item.periodo, effectivePeriodFilter));
+  const onlySubjects = cases.length > 0 && cases.every((item) => item.kind === "nota");
   const activeCase = cases.find((item) => item.id === caseId) ?? null;
   const action = activeCase?.kind === "nota" ? "nota" :
     activeCase?.kind === "justificacao" ? "justificacao" :
     activeCase?.kind === "pedido" || activeCase?.kind === "exame" ? "reapreciacao" :
     activeCase?.kind === "disciplina" ? "disciplina" : planAction;
-  const hasEvidence = cases.some((item) => item.kind !== "orientacao");
   const canDecide = Boolean(selected) && !saving;
   useEffect(() => {
     onProgressChange?.({ matriculaId, total: progress.total, registados: progress.registados, loading });
@@ -450,40 +462,21 @@ export function RaaBalcaoResolutionPanel({
   return (
     <section id="balcao-pendencias" key={alunoId + ":" + matriculaId} className="space-y-3 scroll-mt-24" aria-label="Pendências do aluno no Balcão">
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-foreground">Pendências do processo</h3>
-        <span className="text-xs tabular-nums text-muted-foreground">
+        <h3 className="text-sm font-semibold text-foreground">{onlySubjects ? "Disciplinas" : "Pendências"}</h3>
+        {!onlySubjects && <span className="text-xs tabular-nums text-muted-foreground">
           {loading ? "A consultar…" : progress.total + " registo" + (progress.total === 1 ? "" : "s")}
-        </span>
+        </span>}
       </header>
-      <div className="space-y-4" aria-live="polite">
-        {regimeGuidance && (
-          <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4" aria-label="Orientação da classe">
-            <p className="text-sm font-medium text-foreground">{regimeGuidance.instrucao}</p>
-            <details className="mt-2 text-xs text-muted-foreground">
-              <summary className="cursor-pointer font-medium">Ver detalhes</summary>
-              <p className="mt-2 leading-5">{regimeGuidance.descricao}</p>
-
-              {regimeGuidance.origem === "sem_apuramento" && <p className="mt-1">Aguardando confirmação da regra desta classe.</p>}
-            </details>
-          </div>
-        )}
+      <div className="space-y-3" aria-live="polite">
+        {regimeGuidance && planAction !== "nota" && regimeGuidance.estado !== "informativo" ? (
+          <details className="rounded-xl border border-border bg-muted/30 p-3 text-sm text-foreground">
+            <summary className="cursor-pointer font-medium">{regimeGuidance.titulo}</summary>
+            <p className="mt-2 text-xs text-muted-foreground">{regimeGuidance.instrucao}</p>
+          </details>
+        ) : null}
         {(phase === "summary" || phase === "detail") && (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div>
-                <h4 className="text-sm font-semibold text-foreground">Registos e próximas ações</h4>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {loading ? "A consultar evidências oficiais..." : hasEvidence
-                    ? "Selecione um registo para continuar."
-                    : "Consulte a próxima ação abaixo."}
-                </p>
-              </div>
-              {hasEvidence && !loading && (
-                <span className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground">
-                  {progress.registados} de {progress.total} registos decididos
-                </span>
-              )}
-            </div>
+
             {incompleteSources.length > 0 && !loading && (
               <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs text-foreground">
                 Consulta parcial: não foi possível consultar {incompleteSources.join(", ")}. Atualize antes de concluir.
@@ -492,7 +485,7 @@ export function RaaBalcaoResolutionPanel({
             {loading && <p role="status" className="flex items-center gap-2 rounded-xl border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> A carregar as pendências...
             </p>}
-            <div role="group" aria-label="Filtrar pendências por trimestre"
+            {hasTrimesterCases && <div role="group" aria-label="Filtrar pendências por trimestre"
               className="flex flex-wrap gap-1.5">
               {([
                 ["todos", "Todos"],
@@ -508,39 +501,41 @@ export function RaaBalcaoResolutionPanel({
                   {label}
                 </button>
               ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {periodFilter === "todos" ? "Visão anual" : periodFilter === "outros" ?
-                "Outros registos" :
-                periodFilter + ".º trimestre"} · {visibleProgress.total} registo{visibleProgress.total === 1 ? "" : "s"}
-            </p>
+            </div>}
+
             {visibleCases.length === 0 && !loading && (
               <p role="status" className="rounded-xl border border-dashed border-border bg-muted/20 p-3 text-sm text-muted-foreground">
                 Sem registos neste trimestre. Veja «Outros» para situações sem período identificado.
               </p>
             )}
-            <div className="space-y-2">
+            <div className={onlySubjects ? "divide-y divide-border overflow-hidden rounded-xl border border-border bg-card" : "space-y-2"}>
               {visibleCases.map(item => (
                 <button type="button" key={item.id} onClick={() => chooseCase(item)}
                   disabled={saving || loading}
-                  className={"group flex w-full min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:opacity-60 sm:p-4 " + (activeCase?.id === item.id ? "border-amber bg-amber/5" : "border-border bg-background hover:border-amber/40 hover:bg-muted/40")}
+                  className={onlySubjects
+                    ? "group flex min-h-11 w-full min-w-0 items-center gap-3 p-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:opacity-60 " +
+                      (activeCase?.id === item.id ? "bg-amber/5" : "")
+                    : "group flex w-full min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber disabled:opacity-60 sm:p-4 " +
+                      (activeCase?.id === item.id ? "border-amber bg-amber/5" : "border-border bg-background hover:border-amber/40 hover:bg-muted/40")}
                   aria-label={"Abrir " + item.titulo}
                   aria-expanded={phase === "detail" && activeCase?.id === item.id}>
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                  {item.kind !== "nota" && <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                     {iconForCase(item.kind)}
-                  </span>
+                  </span>}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-foreground">{item.titulo}</span>
-                    <span className="mt-1 block line-clamp-2 text-xs leading-5 text-muted-foreground">{item.resumo}</span>
-                    <span className="mt-1 block text-[11px] font-medium text-muted-foreground">{raaCasePeriodLabel(item.periodo)}</span>
+                    {item.resumo && <span className="mt-0.5 block line-clamp-1 text-xs text-muted-foreground">{item.resumo}</span>}
+                    {item.kind !== "nota" && item.periodo !== "ano_letivo" && (
+                      <span className="mt-1 block text-[11px] font-medium text-muted-foreground">{raaCasePeriodLabel(item.periodo)}</span>
+                    )}
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-1.5">
-                    <span className={"rounded-md px-1.5 py-0.5 text-[10px] font-semibold " +
+                    {item.kind !== "nota" && <span className={"rounded-full px-2 py-0.5 text-[10px] font-semibold " +
                       (item.estado === "registado" ? "bg-emerald/10 text-emerald" :
                         item.estado === "em_analise" ? "bg-sky-500/10 text-sky-700 dark:text-sky-300" :
                           "bg-amber-500/10 text-amber-700 dark:text-amber-300")}>
                       {item.estado === "registado" ? "Decidido" : item.estado === "em_analise" ? "Em análise" : "Pendente"}
-                    </span>
+                    </span>}
                     {item.estado === "registado"
                       ? <CheckCircle2 className="h-4 w-4 text-emerald" aria-label="Decisão registada" />
                       : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" aria-hidden="true" />}
@@ -554,16 +549,13 @@ export function RaaBalcaoResolutionPanel({
                 <button type="button" onClick={onDocumentos} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white sm:w-auto">
                   <FileText className="h-4 w-4" aria-hidden="true" /> Emitir documentos <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
-              ) : phase === "summary" && visibleCases.length > 0 ? (
-                <button type="button" onClick={() => chooseCase(visibleCases[0])} disabled={loading || saving}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto">
-                  Analisar pendência <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                </button>
               ) : null}
-              <button type="button" onClick={() => void load()} disabled={loading || saving}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50 sm:w-auto">
-                <RefreshCw className={"h-4 w-4 " + (loading ? "animate-spin" : "")} aria-hidden="true" /> Atualizar lista
-              </button>
+              {(incompleteSources.length > 0 || error) && (
+                <button type="button" onClick={() => void load()} disabled={loading || saving}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-foreground disabled:opacity-50">
+                  <RefreshCw className={"h-4 w-4 " + (loading ? "animate-spin" : "")} aria-hidden="true" /> Tentar novamente
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -577,9 +569,10 @@ export function RaaBalcaoResolutionPanel({
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">{iconForCase(activeCase?.kind ?? "orientacao")}</span>
                 <h4 className="text-sm font-semibold text-foreground">{activeCase?.titulo ?? plan.titulo}</h4>
-                {activeCase && <span className="ml-auto text-xs font-medium text-muted-foreground">{raaCasePeriodLabel(activeCase.periodo)}</span>}
+                {activeCase && activeCase.kind !== "nota" && activeCase.periodo !== "ano_letivo" &&
+                  <span className="ml-auto text-xs font-medium text-muted-foreground">{raaCasePeriodLabel(activeCase.periodo)}</span>}
               </div>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">{activeCase?.resumo ?? plan.detalhe}</p>
+              {activeCase?.resumo && <p className="mt-1 text-sm leading-5 text-muted-foreground">{activeCase.resumo}</p>}
               {activeCase?.estado === "registado" && <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald">
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> A decisão deste registo já foi guardada.
               </p>}
@@ -588,25 +581,25 @@ export function RaaBalcaoResolutionPanel({
               {loading && <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> A consultar...</p>}
           {action === "nota" && (
             <div className="rounded-lg border border-border bg-card p-3">
-              <p className="text-xs text-foreground">
-                {academic?.disciplina_ids_pendentes?.length
-                  ? String(academic.disciplina_ids_pendentes.length) + " disciplinas com elementos pendentes."
-                  : "Conclua notas, fórmula e frequência no período académico autorizado."}
-              </p>
               {academic?.regime?.escala === "qualitativa" ? (
                 <p role="status" className="mt-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
                   Esta turma usa avaliação qualitativa. Complete a pauta correspondente.
                 </p>
               ) : !academic?.source?.turma_id || !academic.source.ano_letivo_id ? (
                 <p role="status" className="mt-2 text-sm text-muted-foreground">A confirmar a turma e o ano letivo de origem.</p>
-              ) : !["ativo", "ativa", "active"].includes(academic.source.status.toLowerCase()) ? (
-                <p role="status" className="mt-2 text-sm text-muted-foreground">Matrícula de origem encerrada. Peça a reabertura académica à direção.</p>
+              ) : origemEncerrada ? (
+                <p role="status" className="text-sm text-muted-foreground">Lançamento bloqueado pela matrícula de origem.</p>
+              ) : planAction === "reapreciacao" ? (
+                <p className="text-xs text-muted-foreground">Consulte o exame ou recurso desta disciplina.</p>
               ) : canLancarNota ? (
-                <button type="button" onClick={() => onLancarNota(activeCase && isRaaTrimestre(activeCase.periodo) ? activeCase.periodo : null)}
-                  className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
-                  Lançar nota nesta ficha
+                <button type="button"
+                  onClick={() => onLancarNota(activeCase && isRaaTrimestre(activeCase.periodo) ? activeCase.periodo : null, activeCase?.referenceId ?? null)}
+                  className="inline-flex min-h-10 items-center rounded-xl bg-amber px-3 py-2 text-xs font-semibold text-white hover:brightness-95">
+                  Rever nota desta disciplina
                 </button>
-              ) : null}
+              ) : (
+                <p className="text-xs text-muted-foreground">Revisão reservada a perfil autorizado.</p>
+              )}
 
             </div>
           )}
@@ -657,7 +650,7 @@ export function RaaBalcaoResolutionPanel({
                     <option value="">Selecionar disciplina</option>
                     {examContext.disciplinas
                       .filter((d) => !academic?.disciplina_ids_pendentes?.length || academic.disciplina_ids_pendentes.includes(d.avaliacao_disciplina_id ?? ""))
-                      .map((d) => <option key={d.id} value={d.id}>{d.avaliacao_disciplina_id ?? d.id}</option>)}
+                      .map((d) => <option key={d.id} value={d.id}>{d.nome ?? "Nome indisponível"}</option>)}
                   </select>
                   <label htmlFor="raa-exam-component" className="text-xs font-bold text-foreground">Componente do exame</label>
                   <select id="raa-exam-component" value={examComponentId} onChange={(event) => setExamComponentId(event.target.value)}
@@ -694,7 +687,8 @@ export function RaaBalcaoResolutionPanel({
                   <select id="raa-balcao-disciplina" className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm"
                     value={disciplinaId} onChange={(event) => setDisciplinaId(event.target.value)}>
                     <option value="">Selecionar disciplina</option>
-                    {(academic?.disciplina_ids_pendentes || []).map((id) => <option key={id} value={id}>{id}</option>)}
+                    {(academic?.disciplina_ids_pendentes || []).map((id) =>
+                       <option key={id} value={id}>{nomesDisciplinas[id] || "Nome indisponível"}</option>)}
                   </select>
                   <label className="mt-2 block text-xs font-bold text-foreground" htmlFor="raa-balcao-pedido-motivo">Fundamento do pedido</label>
                   <textarea id="raa-balcao-pedido-motivo" rows={2} className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm"
@@ -756,10 +750,7 @@ export function RaaBalcaoResolutionPanel({
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground disabled:opacity-50 sm:w-auto">
                 <RefreshCw className="h-4 w-4" aria-hidden="true" /> Verificar situação
               </button>
-              <button type="button" onClick={goToSummary} disabled={saving}
-                className="w-full rounded-xl px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50 sm:w-auto">
-                Voltar às pendências
-              </button>
+ 
             </div>
           </div>
         )}
@@ -819,7 +810,6 @@ export function RaaBalcaoResolutionPanel({
           </div>
         )}
 
-        <p className="text-xs text-muted-foreground">A rematrícula fica disponível quando a pendência for resolvida.</p>
       </div>
     </section>
   );

@@ -1,4 +1,5 @@
 import type { RaaBalcaoTimeline } from "./raa-balcao-timeline";
+import type { RaaBalcaoAcademic } from "./raa-balcao-regime-guidance";
 
 /**
  * Presentation-only guidance. The calendar never changes RAA eligibility,
@@ -43,7 +44,7 @@ export function nextAcademicActionForBalcao(
   if (timeline.fase === "apos_fim") {
     return {
       title: "Resultado por confirmar",
-      message: "Consulte a pauta e aguarde a decisão académica final.",
+      message: "Aguardar publicação da pauta final.",
     };
   }
 
@@ -59,4 +60,47 @@ export function nextAcademicActionForBalcao(
     title: "Ano em curso",
     message: next + " · aguarde a decisão final.",
   };
+}
+
+/**
+ * Headline for unresolved RAA subjects. This is informational: grade writes,
+ * reopenings and rematriculation remain subject to their official endpoints.
+ * Trimesters in progress are not treated as annual failures.
+ */
+export function pendingSubjectsActionForBalcao(
+  status: string | null,
+  academic: RaaBalcaoAcademic | null,
+  canLancarNota: boolean,
+  timeline: RaaBalcaoTimeline | null,
+): { title: string; message: string } | null {
+  if (!["ACADEMIC_PENDING", "ACADEMIC_REVIEW_REQUIRED", "ACADEMIC_CONDITIONAL_BLOCKED"].includes(status ?? "") ||
+      academic?.eligible === true) return null;
+  const count = academic?.disciplina_ids_pendentes?.length ?? 0;
+  if (!count) return null;
+  const description = count === 1 ? "1 disciplina" : `${count} disciplinas`;
+  const source = academic?.source;
+  if (!source?.turma_id || !source.ano_letivo_id) return {
+    title: "Dados por verificar",
+    message: `${description} por verificar · Verifique a matrícula de origem.`,
+  };
+  const sourceActive = ["ativo", "ativa", "active"].includes(source.status?.toLowerCase() ?? "");
+  if (!sourceActive) return {
+    title: "Regularização bloqueada",
+    message: `${description} por regularizar · Solicite a reabertura à direção.`,
+  };
+  if (timeline?.fase === "primeiro" || timeline?.fase === "segundo") return {
+    title: "Em acompanhamento",
+    message: `${description} em acompanhamento · A decisão anual ainda não está disponível.`,
+  };
+  if (status === "ACADEMIC_REVIEW_REQUIRED" || status === "ACADEMIC_CONDITIONAL_BLOCKED") return {
+    title: "Recurso por resolver",
+    message: `${description} em revisão · Consulte os exames e recursos.`,
+  };
+  if (academic?.regime?.escala === "qualitativa") return {
+    title: "Pauta por completar",
+    message: `${description} por regularizar · Verifique as classificações qualitativas.`,
+  };
+  return canLancarNota
+    ? { title: "Notas por regularizar", message: `${description} por regularizar · Reveja as avaliações pendentes.` }
+    : { title: "Revisão necessária", message: `${description} por regularizar · Solicite revisão a um perfil autorizado.` };
 }

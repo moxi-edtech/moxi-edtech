@@ -3,7 +3,8 @@
 import { CheckCircle2, ChevronRight, GraduationCap, LockKeyhole, CalendarDays } from "lucide-react";
 import type { RematriculaCardState, TurmaOption } from "@/hooks/useRematriculaBalcao";
 import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
-import { nextAcademicActionForBalcao } from "@/lib/rematricula/raa-balcao-next-action";
+import { nextAcademicActionForBalcao, pendingSubjectsActionForBalcao } from "@/lib/rematricula/raa-balcao-next-action";
+import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 
 export type RaaProgressSnapshot = {
   matriculaId: string;
@@ -80,21 +81,25 @@ function exameLabel(timeline: RaaBalcaoTimeline): string {
 }
 
 export function RematriculaWorkspaceHeader({
-  anoOrigem, anoDestino, status, motivo, progress, timeline, timelineAno, destinoMatriculaId, temPendencias = false,
+  anoOrigem, anoDestino, status, motivo, progress, timeline, timelineAno, academic, canLancarNota = false, temPendencias = false,
 }: {
   anoOrigem: string | null; anoDestino: string | null; status: Status;
   motivo: string | null; progress: RaaProgressSnapshot | null;
   timeline: RaaBalcaoTimeline | null; timelineAno: string | null; destinoMatriculaId: string | null;
+  academic?: RaaBalcaoAcademic | null; canLancarNota?: boolean;
   temPendencias?: boolean;
 }) {
   const baseDisplay = rematriculaDisplayState(status);
   const academicNext = nextAcademicActionForBalcao(status, timeline);
+  // Calendar for the currently selected destination is not evidence of the
+  // origin's trimester. Avoid deriving missing-grade urgency from another year.
+  const timelineOrigem = timelineAno && anoOrigem && timelineAno === anoOrigem ? timeline : null;
+  const subjectsNext = pendingSubjectsActionForBalcao(status, academic ?? null, canLancarNota, timelineOrigem);
   const display = {
     ...baseDisplay,
-    title: academicNext.title ?? baseDisplay.title,
-    message: academicNext.message ?? baseDisplay.message,
+    title: subjectsNext?.title ?? academicNext.title ?? baseDisplay.title,
+    message: subjectsNext?.message ?? academicNext.message ?? baseDisplay.message,
   };
-  const count = progress && progress.total > 0 && !progress.loading ? progress : null;
   const showPendingLink = temPendencias && (progress === null || progress.loading ||
     progress.registados < progress.total);
   const reasonNeedsDetail = motivo && motivo.trim() && status !== "ACADEMIC_PENDING";
@@ -113,39 +118,18 @@ export function RematriculaWorkspaceHeader({
           display.tone === "warning" ? "bg-amber/15 text-amber" : "bg-muted text-muted-foreground",
         ].join(" ")} role="status">{display.title}</span>
       </div>
-      <section className="rounded-xl border border-border bg-muted/25 p-3.5" aria-label="Elegibilidade académica">
-        <div className="flex items-center gap-2">
-          <ChevronRight className="h-4 w-4 text-emerald" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-foreground">Próxima ação</h3>
-        </div>
-        <p className="mt-1.5 text-sm text-muted-foreground">{display.message}</p>
-        {destinoMatriculaId && status !== "ALREADY_COMPLETED" && (
-          <p className="mt-2 text-xs font-medium text-foreground">Matrícula de destino identificada.</p>
-        )}
+      <section className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/20 p-3" aria-label="Próxima ação académica">
+        <p className="min-w-0 flex-1 text-sm text-foreground">{display.message}</p>
         {showPendingLink && status !== "ALREADY_COMPLETED" && (
-          <a href="#balcao-pendencias" className="mt-2 inline-flex min-h-10 items-center gap-1 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20">
-            Ver e resolver pendências <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          <a href="#balcao-pendencias" className="inline-flex min-h-10 items-center gap-1 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20">
+            Ver pendências <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </a>
         )}
         {reasonNeedsDetail && motivo !== display.message && (
-          <details className="mt-2 text-xs text-muted-foreground">
-            <summary className="cursor-pointer">Ver motivo</summary>
+          <details className="w-full text-xs text-muted-foreground">
+            <summary className="cursor-pointer">Motivo</summary>
             <p className="mt-1">{motivo}</p>
           </details>
-        )}
-        {count && (
-          <div className="mt-3 space-y-1.5">
-            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>Pendências analisadas</span>
-              <span className="tabular-nums">{count.registados} de {count.total}</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-border" role="progressbar"
-              aria-valuemin={0} aria-valuemax={count.total} aria-valuenow={count.registados}
-              aria-label="Registos das pendências analisados">
-              <div className="h-full bg-emerald transition-[width]"
-                style={{ width: count.total ? (count.registados / count.total * 100) + "%" : "0%" }} />
-            </div>
-          </div>
         )}
       </section>
       {!timeline && anoOrigem && status !== "CHECKING" && (
@@ -155,38 +139,25 @@ export function RematriculaWorkspaceHeader({
         </div>
       )}
       {timeline && (
-        <section className="rounded-xl border border-border bg-muted/20 p-3 sm:p-4" aria-label="Percurso académico do ano em curso">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <h3 className="text-sm font-semibold text-foreground">{timeline.faseLabel}{timelineAno ? " · " + timelineAno : ""}</h3>
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
-              <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-              {timeline.proximaEtapa}
-            </span>
-          </div>
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <p className="text-[11px] font-medium text-muted-foreground">Provas</p>
-              <p className="mt-1 text-xs font-semibold text-foreground">{provaLabel(timeline)}</p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium text-muted-foreground">Pautas</p>
-              <p className="mt-1 text-xs font-semibold text-foreground">
-                {timeline.pautaFinalPublicada ? "Pauta final publicada"
-                  : timeline.publicacaoPautaPrevistaEm
-                    ? "Publicação prevista · " + formatAcademicDate(timeline.publicacaoPautaPrevistaEm)
-                    : "Aguardando publicação"}
+        <details className="rounded-xl border border-border bg-muted/20 p-3" aria-label="Calendário de origem">
+          <summary className="cursor-pointer text-xs font-medium text-foreground">
+            Calendário {timelineAno ? "· " + timelineAno : ""} · {timeline.faseLabel}
+          </summary>
+          <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+            {timeline.provas !== "sem_calendario" && (
+              <p><span className="font-medium text-foreground">Provas:</span> {provaLabel(timeline)}</p>
+            )}
+            {(timeline.pautaFinalPublicada || timeline.publicacaoPautaPrevistaEm) && (
+              <p><span className="font-medium text-foreground">Pauta:</span> {timeline.pautaFinalPublicada
+                ? "Publicada" : "Prevista para " + formatAcademicDate(timeline.publicacaoPautaPrevistaEm!)}</p>
+            )}
+            {(timeline.exames !== "sem_sessao" || (timeline.pedidosReapreciacao ?? 0) > 0) && (
+              <p><span className="font-medium text-foreground">Exames:</span> {exameLabel(timeline)}
+                {(timeline.pedidosReapreciacao ?? 0) > 0 ? " · " + timeline.pedidosReapreciacao + " pedidos" : ""}
               </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium text-muted-foreground">Exames e recursos</p>
-              <p className="mt-1 text-xs font-semibold text-foreground">
-                {exameLabel(timeline)}
-                {timeline.pedidosReapreciacao != null && timeline.pedidosReapreciacao > 0
-                  ? " · " + timeline.pedidosReapreciacao + " pedido(s)" : ""}
-              </p>
-            </div>
+            )}
           </div>
-        </section>
+        </details>
       )}
 
     </header>
@@ -221,7 +192,7 @@ export function RematriculaAcademicDestination({
               destinationEnrolled ? "Matrícula de destino existente." :
               cycleCompleted ? "Consulte os documentos de conclusão." :
               status === "RECONFIRMATION_REQUIRED" ? "Confirmar a rematrícula sem alterar a turma." :
-              !canContinue ? "Aguardando condições para continuar." :
+              !canContinue ? "Disponível após regularização." :
               "Selecione a turma e confirme a operação."}
             {anoDestino && !completed && !cycleCompleted ? " · " + anoDestino : ""}
           </p>
@@ -230,7 +201,7 @@ export function RematriculaAcademicDestination({
           completed || destinationEnrolled ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald" aria-hidden="true" /> :
           <LockKeyhole className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
       </div>
-      {!completed && !destinationEnrolled && !cycleCompleted && (
+      {canContinue && !completed && !destinationEnrolled && !cycleCompleted && (
         <button type="button" onClick={onContinue} disabled={!canContinue}
           className={[
             "flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition",

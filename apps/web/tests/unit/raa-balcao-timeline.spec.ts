@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { selectApplicableCalendarRecords, selectApplicablePeriods, summarizeRaaBalcaoTimeline } from "../../src/lib/rematricula/raa-balcao-timeline";
-import { nextAcademicActionForBalcao } from "../../src/lib/rematricula/raa-balcao-next-action";
+import { nextAcademicActionForBalcao, pendingSubjectsActionForBalcao } from "../../src/lib/rematricula/raa-balcao-next-action";
 
 const periodos = [
   { id: "p1", tipo: "TRIMESTRE", numero: 1, data_inicio: "2026-09-01", data_fim: "2026-11-30" },
@@ -203,4 +203,33 @@ test("published pauta triggers verification, while unknown period asks to check 
   const unknown = summarizeRaaBalcaoTimeline({ ...base, hoje: "2027-07-17", periodos: [] });
   assert.match(nextAcademicActionForBalcao("ACADEMIC_PENDING", published).message ?? "", /Pauta publicada/);
   assert.equal(nextAcademicActionForBalcao("ACADEMIC_PENDING", unknown).title, "Calendário por confirmar");
+});
+
+test("closed origin with missing grades asks for director action, not a nonfunctional grade CTA", () => {
+  const academic = {
+    eligible: false,
+    disciplina_ids_pendentes: ["math", "port"],
+    source: { matricula_id: "m", turma_id: "t", ano_letivo_id: "a", status: "fechada" },
+  };
+  const action = pendingSubjectsActionForBalcao("ACADEMIC_PENDING", academic, true, null);
+  assert.equal(action?.title, "Regularização bloqueada");
+  assert.match(action?.message ?? "", /2 disciplinas/);
+  assert.match(action?.message ?? "", /direção/);
+});
+test("only an authorized active source gets the next step to review grades", () => {
+  const academic = {
+    eligible: false, disciplina_ids_pendentes: ["math"],
+    source: { matricula_id: "m", turma_id: "t", ano_letivo_id: "a", status: "ativo" },
+  };
+  assert.match(pendingSubjectsActionForBalcao("ACADEMIC_PENDING", academic, true, null)?.message ?? "", /Reveja as avaliações/);
+  assert.match(pendingSubjectsActionForBalcao("ACADEMIC_PENDING", academic, false, null)?.message ?? "", /perfil autorizado/);
+  assert.equal(pendingSubjectsActionForBalcao("READY", academic, true, null), null);
+});
+test("a trimester in progress is not presented as failed annual progression", () => {
+  const first = summarizeRaaBalcaoTimeline({ ...base, hoje: "2026-10-01" });
+  const academic = {
+    eligible: false, disciplina_ids_pendentes: ["math"],
+    source: { matricula_id: "m", turma_id: "t", ano_letivo_id: "a", status: "ativo" },
+  };
+  assert.equal(pendingSubjectsActionForBalcao("ACADEMIC_PENDING", academic, true, first)?.title, "Em acompanhamento");
 });

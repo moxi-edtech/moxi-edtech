@@ -14,6 +14,8 @@ export type RaaBalcaoAcademic = {
   eligible?: boolean;
   mode?: "regular" | "conditional" | "repeat" | null;
   disciplina_ids_pendentes?: string[];
+  disciplina_names?: Record<string, string>;
+  disciplina_statuses?: Record<string, string>;
   source?: {
     matricula_id: string;
     turma_id: string | null;
