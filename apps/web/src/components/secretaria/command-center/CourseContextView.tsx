@@ -137,7 +137,7 @@ export function CourseContextView({
           </p>
           <h2 className="mt-1 text-xl font-semibold text-slate-900">{data.curso.nome || data.curso.codigo || "Curso"}</h2>
           {data.curso.descricao && (
-            <details className="mt-1 max-w-2xl text-xs text-slate-600">
+            <details className="mt-1 max-w-2xl text-xs text-muted-foreground">
               <summary className="cursor-pointer font-medium">Descrição do curso</summary>
               <p className="mt-2 text-sm leading-5">{data.curso.descricao}</p>
             </details>
