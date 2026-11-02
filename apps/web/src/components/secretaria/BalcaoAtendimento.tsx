@@ -1287,7 +1287,7 @@ function CommandCenterOverview({
               {priority.title}
             </h3>
             {priority.description && (
-              <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">{priority.description}</p>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{priority.description}</p>
             )}
           </div>
 
@@ -1327,7 +1327,7 @@ function CommandCenterOverview({
             >
               <div className="min-w-0">
                 <p className="text-sm font-bold text-slate-900">{row.title}</p>
-                {row.description && <p className="mt-0.5 truncate text-xs text-slate-500">{row.description}</p>}
+                {row.description && <p className="mt-0.5 truncate text-xs text-muted-foreground">{row.description}</p>}
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span
