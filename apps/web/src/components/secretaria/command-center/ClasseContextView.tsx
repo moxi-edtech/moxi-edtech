@@ -155,10 +155,7 @@ export function ClasseContextView({
     onExplore({ id: entity.id, label: entity.nome, academicYearId: anoLetivo.id });
 
   const classOccupancy = occupancyFromCapacity(stats.capacidade, stats.alunos);
-  const turmasSemAlunos = turmas.filter((t) => t.alunos === 0).length;
-  // A class may have unknown capacities. These checks use only actual rows.
-  const turmasComVagas = turmas.filter((turma) =>
-    turma.capacidade != null && turma.alunos < turma.capacidade).length;
+  // Report only known capacity problems; missing values must not become zero.
   const turmasLotadas = turmas.filter((turma) =>
     turma.capacidade != null && turma.alunos >= turma.capacidade).length;
 
@@ -191,47 +188,19 @@ export function ClasseContextView({
 
       {data.anoLetivo.historico && <ExplorerHistoricalScopeNotice roster />}
 
-      <section aria-label="Indicadores da classe" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
-        <ExplorerMetric label="Alunos matriculados" value={stats.alunos} partial={limitado} />
-        <ExplorerMetric label="Turmas do ano" value={stats.turmas} partial={limitado} />
-        <ExplorerMetric
-          label="Capacidade"
-          value={stats.capacidade}
-          partial={limitado}
-          hint={stats.capacidade == null ? "Falta definir a capacidade de algumas turmas" : undefined}
-        />
-        <ExplorerMetric
-          label="Vagas disponíveis"
-          value={classOccupancy.available}
-          partial={limitado}
-          hint={stats.capacidade == null ? "Falta definir a capacidade de algumas turmas" : undefined}
-        />
-        {classOccupancy.overcapacity != null && classOccupancy.overcapacity > 0 && (
-          <ExplorerMetric
-            label="Excedente de lotação"
-            value={classOccupancy.overcapacity}
-            hint="Alunos acima da capacidade registada"
-          />
-        )}
-        <ExplorerMetric label="Disciplinas" value={stats.disciplinas} partial={limitado} />
-        <ExplorerMetric label="Professores" value={stats.professores} partial={limitado} />
-        {refreshing && (
-          <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>
-        )}
+      <section aria-label="Indicadores da classe" className="flex flex-wrap gap-x-8 gap-y-3 border-y border-border py-3">
+        <ExplorerMetric label="Alunos" value={stats.alunos} partial={limitado} />
+        <ExplorerMetric label="Turmas" value={stats.turmas} partial={limitado} />
+        <ExplorerMetric label="Vagas" value={classOccupancy.available} partial={limitado}
+          hint={stats.capacidade == null ? "Lotação por definir" : undefined} />
+        {refreshing && <span role="status" className="self-center text-xs text-muted-foreground">A atualizar…</span>}
       </section>
-
-      {limitado && (
-        <p role="status" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Dados parciais · os totais podem ser superiores.
+      {(turmasLotadas > 0 || limitado) && (
+        <p role="status" className="text-xs text-muted-foreground">
+          {turmasLotadas > 0 ? `${turmasLotadas} ${turmasLotadas === 1 ? "turma lotada" : "turmas lotadas"}` : ""}
+          {turmasLotadas > 0 && limitado ? " · " : ""}
+          {limitado ? "Dados parciais" : ""}
         </p>
-      )}
-      {turmas.length > 0 && (
-        <div role="status" className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600">
-          <span><strong className="tabular-nums text-emerald-800">{turmasComVagas}</strong> turmas com vagas conhecidas</span>
-          <span><strong className="tabular-nums text-slate-800">{turmasLotadas}</strong> lotadas ou acima da capacidade</span>
-          <span><strong className="tabular-nums text-slate-800">{turmasSemAlunos}</strong> sem alunos do ano</span>
-        </div>
       )}
 
       <section className="min-w-0" aria-labelledby="classe-alunos-heading">
