@@ -123,22 +123,12 @@ export function CommandCenterStudentDossier({
         </div>
       )}
       <div inert={notConfirmed} aria-disabled={notConfirmed} className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-slate-900">{aluno.perfil.nome}</p>
-          <p className="text-xs text-slate-500">
-            {aluno.perfil.numero_processo ? "Processo " + aluno.perfil.numero_processo : "Ficha do aluno"}
-            {aluno.matricula_atual?.turma ? " · " + aluno.matricula_atual.turma : ""}
-          </p>
-        </div>
+      <div className="flex justify-end">
         <Link
           href={"/escola/" + encodeURIComponent(escolaId) + "/operacoes/alunos/" + encodeURIComponent(alunoId)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald hover:underline"
-        >
-          Abrir ficha completa
-          <ExternalLink className="h-3.5 w-3.5" />
+          target="_blank" rel="noopener noreferrer"
+          className="inline-flex min-h-9 items-center gap-1.5 text-xs font-medium text-emerald hover:underline">
+          Abrir ficha completa <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
       </div>
       <DossierTabs
