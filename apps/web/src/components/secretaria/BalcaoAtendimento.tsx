@@ -895,14 +895,6 @@ function StatusPill({ status }: { status: "em_dia" | "inadimplente" | "sem_matri
   );
 }
 
-function Tag({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
-      {children}
-    </span>
-  );
-}
-
 function SecaoLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 pl-1 font-mono">
@@ -1047,74 +1039,35 @@ const ESTADO_OPERACAO: Record<RematriculaCardState | "CHECKING", OperacaoCopy> =
 };
 
 function AlunoCard({ aluno, onTrocarAluno }: { aluno: AlunoDossier; onTrocarAluno: () => void }) {
-  const inadimplente = aluno.status_financeiro === "inadimplente";
-  const semMatricula = aluno.status_financeiro === "sem_matricula";
-
   return (
-    <div className="xl:col-span-4 rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3.5 h-fit">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Avatar url={aluno.foto_url} nome={aluno.nome} size="lg" />
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5 font-mono">Situacao</span>
-            <StatusPill status={aluno.status_financeiro} />
-          </div>
+    <section aria-label="Aluno em atendimento"
+      className="xl:col-span-4 h-fit space-y-3 rounded-xl border border-border bg-card p-4">
+      <div className="flex items-start gap-3">
+        <Avatar url={aluno.foto_url} nome={aluno.nome} size="lg" />
+        <div className="min-w-0 flex-1">
+          <h2 className="break-words text-sm font-semibold text-foreground">{aluno.nome}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {[
+              aluno.numero_processo ? "Proc. " + aluno.numero_processo : null,
+              aluno.classe || null,
+              aluno.turma_codigo ? "Turma " + aluno.turma_codigo : null,
+            ].filter(Boolean).join(" · ")}
+          </p>
         </div>
+        <button type="button" onClick={onTrocarAluno}
+          className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl border border-border px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber">
+          <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden="true" /> Trocar
+        </button>
       </div>
-
-      <div className="pt-0.5">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-base font-black text-slate-900 leading-snug break-words">{aluno.nome}</h2>
-          <button
-            type="button"
-            onClick={onTrocarAluno}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-bold text-slate-500 hover:border-amber hover:text-slate-900"
-          >
-            <ArrowRightLeft className="h-3 w-3" />
-            Trocar
-          </button>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+        <StatusPill status={aluno.status_financeiro} />
+        {aluno.status_financeiro === "inadimplente" && (
+          <strong className="text-sm font-semibold tabular-nums text-rose-700">
+            {kwanza.format(aluno.divida_total)}
+          </strong>
+        )}
       </div>
-
-      <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100">
-        <Tag>Proc. {aluno.numero_processo}</Tag>
-        {aluno.turma_codigo && <Tag>Turma {aluno.turma_codigo}</Tag>}
-        {aluno.curso_codigo && <Tag>Curso {aluno.curso_codigo}</Tag>}
-        {aluno.classe && <Tag>Classe {aluno.classe}</Tag>}
-      </div>
-
-      {inadimplente ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3.5">
-          <div className="flex items-center gap-2 mb-1">
-            <AlertCircle className="h-4 w-4 text-rose-600" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600 font-mono">
-              Divida acumulada
-            </p>
-          </div>
-          <p className="text-2xl font-black text-rose-700 font-sora">{kwanza.format(aluno.divida_total)}</p>
-        </div>
-      ) : semMatricula ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 flex items-center gap-3">
-          <div className="p-2 rounded-full bg-slate-200">
-            <Info className="h-4 w-4 text-slate-600" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-slate-700">Sem matricula neste ano</p>
-            <p className="text-[11px] text-slate-500">Nenhuma mensalidade foi lancada.</p>
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-emerald/20 bg-emerald/5 p-3.5 flex items-center gap-3">
-          <div className="p-2 rounded-full bg-emerald/10">
-            <CheckCircle className="h-4 w-4 text-emerald" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-emerald">Situacao regular</p>
-            <p className="text-[11px] text-emerald/70">Nenhuma pendencia.</p>
-          </div>
-        </div>
-      )}
-    </div>
+    </section>
   );
 }
 
