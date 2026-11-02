@@ -99,3 +99,6 @@ Mantidas apenas as exceções AppyPay já documentadas no repositório. Endpoint
 
 ## Verificação WhatsApp Flow
 39 testes AppyPay/Flow/HTTP aprovados. Lint dos módulos de produção alterados sem erros; typecheck isolado e global apps/web aprovados. Sem build Next completo novo. Handler default off, sandbox apenas, HMAC Meta antes de RSA/AES, token vinculado e expirável, limite de corpo e no-store. Store fictício separado das propinas reais, transições CAS e nenhum retry de POST incerto. SQL ainda proposto; nenhuma execução Postgres alegada. Pendências APY-010/APY-011 registadas. Publicação permanece bloqueada pelo gate global e por falta de SQL/segredos/validação no telefone.
+
+## Seguimento SQL aprovado — 2026-11-02
+APY-010 resolvido: migração privada instalada com SHA aprovado; RLS, privilégios, índices e testes de fixture revertidos passaram. Meta App Secret/token continuam ausentes; nenhuma mensagem ou publicação. Quatro blockers legados e can_merge=false mantidos; esta verificação não é nova certificação global.

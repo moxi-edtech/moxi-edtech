@@ -87,15 +87,15 @@
     "local_service_sql_groups": 6,
     "local_postgresql_scenarios_previous_monthly": 3,
     "service_sql": "applied 20261029121743; approved exact SHA256; matching body MD5; invoker/privileges/indexes/RLS verified; nonexistent-reference probe passed; zero refs",
-    "production_state": "APPYPAY_CONFIG sandbox guardado como Secret Production por confirmação explícita; APPYPAY_ENABLED=false. Fornecedor permanece inactive/production; Flow Meta é rascunho com endpoint pendente. Store privado novo ausente, SQL proposto apenas. Nenhum envio nem deployment neste run.",
+    "production_state": "APPYPAY_CONFIG sandbox guardado como Secret Production por confirmação explícita; APPYPAY_ENABLED=false. Fornecedor permanece inactive/production; Flow Meta é rascunho com endpoint pendente. Store privado aprovado e instalado; nenhum segredo Meta novo configurado. Nenhum envio nem deployment neste run.",
     "compiled_local_http": "passed: unsigned worker401, oversized worker413, invalid webhook400, unauthenticated student401; fixture config, no valid provider/db request",
-    "whatsapp_flow": "39 tests passed, production lint passed, isolated and global apps/web typechecks exit 0. SQL proposed only, no deployment or delivery."
+    "whatsapp_flow": "39 tests passed, production lint passed, isolated and global apps/web typechecks exit 0. Private SQL approved and installed, no deployment or delivery.",
+    "whatsapp_session_sql": "Applied approved exact SHA c8148fd55bf05a8b34e5511e9fd3763ec3ea47e7796e133f35be49d0995e7c88 on 2026-11-02; RLS/grants/indexes verified; rolled-back service_role fixture insert/read/compare-and-set and invalid amount/school/expiry checks passed; no cross-connection concurrency proof."
   },
   "warnings": [
     "APY-003",
     "APY-004",
     "APY-007",
-    "APY-010",
     "APY-011"
   ],
   "regression_comparison": "REPORT_SCAN_LAST_PASS.json ausente; sem regressões a reportar",
@@ -103,7 +103,8 @@
   "resolved_warnings": [
     "APY-001",
     "APY-002",
-    "APY-005"
+    "APY-005",
+    "APY-010"
   ],
   "tested_working_tree": true,
   "tested_source_hashes": {

@@ -19,7 +19,6 @@ APY-005 resolvido em 2026-10-29: aprovação cf8dc48d-6b39-47d3-af87-410afcf95dd
 ## WhatsApp Flow — implementação final pendente de instalação
 | WARN ID | Regra | Ficheiro | Ticket | Responsável | Prazo |
 |---|---|---|---|---|---|
-| APY-010 | Contrato SQL e privilégios privados | docs/financeiro/whatsapp-flows/session-store.proposed.sql | PR #318 | Engenharia / proprietário | Antes da ativação |
 | APY-011 | E2E/segredos/publicação Meta | docs/financeiro/whatsapp-flows/README.md | PR #318 | Engenharia / proprietário | Antes do teste em telefone |
 
-APY-010: store privado proposto, não instalado nem testado em Postgres. APY-011: App Secret/token Meta ausentes nos ficheiros privados, chave pública/URI/app/healthcheck ainda pendentes, nenhuma mensagem enviada. APY-004 continua a bloquear release global; nenhum PASS parcial emitido.
+APY-010 RESOLVIDO em 2026-11-02: aprovação 8bdcf683-0dfe-4ac8-9b0c-3a2fd5e1d840; migração privada aplicada, privilégios e CHECKs verificados em transação revertida. APY-011: App Secret/token Meta ausentes nos ficheiros privados, chave pública/URI/app/healthcheck ainda pendentes, nenhuma mensagem enviada. APY-004 continua a bloquear release global; nenhum PASS parcial emitido.

@@ -1,7 +1,7 @@
 # Aprovação necessária — Agent 3
 run_id: 8bdcf683-0dfe-4ac8-9b0c-3a2fd5e1d840
 timestamp: 2026-11-02T18:04:26.873819+00:00
-status: PENDENTE; nenhum SQL aplicado
+status: APROVADO E APLICADO em 2026-11-02; commit de aprovação f2a70226b
 
 ## Acção proposta
 Criar a tabela privada public.whatsapp_appypay_test_sessions no projeto KLASSE wjtifcpxxxotsbmvbgoq, exclusiva para sessões fictícias sandbox de 100 AOA da Escola KLASSE, deste Flow e do remetente FEXA. Sem FK, trigger, atualização de propinas, alunos ou tabelas financeiras existentes. RLS habilitado sem políticas de clientes; apenas o servidor tem SELECT/INSERT/UPDATE. Sessões expiram para uso após no máximo 30 minutos; respostas incertas não repetem POST.
@@ -65,3 +65,6 @@ O proprietário pode confirmar essa mensagem nesta conversa para registar o comm
 Commit com mensagem: `REJECT: 8bdcf683-0dfe-4ac8-9b0c-3a2fd5e1d840 [motivo]`
 
 A aprovação cf8dc48d-6b39-47d3-af87-410afcf95ddb anterior continua aplicada à migração de serviços; não autoriza este novo SQL. O gate global mantém can_merge=false e não foi contornado.
+
+## Execução verificada — 2026-11-02
+Migração local 20261102184224_whatsapp_appypay_test_sessions.sql, bytes idênticos ao SHA aprovado; apply_migration retornou success=true no projeto KLASSE. RLS=true, zero políticas; anon/authenticated sem privilégios; service_role apenas SELECT/INSERT/UPDATE, sem DELETE. Transação de fixture executada como service_role e revertida: insert/read/claim inicial aceites, segundo claim não atualiza, valor 200 AOA/escola divergente/expiração de 32 minutos rejeitados por CHECK. Não prova concorrência entre conexões. Advisor INFO rls_enabled_no_policy é esperado neste store exclusivamente de servidor; nenhum grant de cliente foi adicionado. Segredos Meta continuam ausentes; sem deployment/mensagem. Gate global continua FAIL.
