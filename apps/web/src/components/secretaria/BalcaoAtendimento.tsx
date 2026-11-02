@@ -1160,7 +1160,7 @@ function CommandCenterOverview({
           description: "",
           value: kwanza.format(overdueTotal),
           actionId: "payment" as BalcaoActionId,
-          actionLabel: "Regularizar",
+          actionLabel: "Ver mensalidades",
           tone: "danger" as const,
         }
       : rematriculaState && rematriculaActionable.has(rematriculaState)
@@ -1170,12 +1170,12 @@ function CommandCenterOverview({
             description: "",
             value: null,
             actionId: "reenrollment" as BalcaoActionId,
-            actionLabel: "Continuar",
+            actionLabel: "Ver situação académica",
             tone: "attention" as const,
           }
         : {
             eyebrow: "Situação atual",
-            title: "Nenhuma pendência crítica",
+            title: "Sem pendências prioritárias",
             description: "",
             value: null,
             actionId: null,
@@ -1185,7 +1185,7 @@ function CommandCenterOverview({
 
   const financeValue =
     aluno.status_financeiro === "inadimplente"
-      ? kwanza.format(overdueTotal || aluno.divida_total)
+      ? (overdue.length > 0 ? "Em atraso" : kwanza.format(aluno.divida_total))
       : aluno.status_financeiro === "sem_matricula"
         ? "Sem matrícula"
         : "Em dia";
@@ -1243,91 +1243,47 @@ function CommandCenterOverview({
     },
   ];
 
-  const priorityClass =
-    priority.tone === "danger"
-      ? "border-rose-200 bg-rose-50/70"
-      : priority.tone === "attention"
-        ? "border-amber-200 bg-amber-50/70"
-        : "border-emerald-200 bg-emerald-50/60";
-
-  const priorityTitleClass =
-    priority.tone === "danger"
-      ? "text-rose-950"
-      : priority.tone === "attention"
-        ? "text-amber-950"
-        : "text-emerald-950";
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-            Visão geral
-          </p>
-          <h2 className="mt-1 text-lg font-black text-slate-900">
-            O que precisa de atenção agora
-          </h2>
-        </div>
-        <button
-          type="button"
-          onClick={onTrocarAluno}
-          className="shrink-0 text-xs font-bold text-slate-500 transition hover:text-slate-900"
-        >
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-foreground">Resumo</h2>
+        <button type="button" onClick={onTrocarAluno}
+          className="text-xs font-medium text-muted-foreground hover:text-foreground">
           Trocar aluno
         </button>
       </div>
 
-      <div className={`rounded-xl border p-4 sm:p-5 ${priorityClass}`}>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {priority.actionId && priority.actionLabel ? (
+        <section aria-label="Próxima ação" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
-              {priority.eyebrow}
-            </p>
-            <h3 className={`mt-1 text-base font-black ${priorityTitleClass}`}>
-              {priority.title}
-            </h3>
-            {priority.description && (
-              <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{priority.description}</p>
-            )}
+            <p className="text-xs font-medium text-muted-foreground">Próxima ação</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{priority.title}</p>
+            {priority.value && <p className="mt-1 text-sm font-medium tabular-nums text-foreground">{priority.value}</p>}
           </div>
+          <button type="button" onClick={() => onNavigate?.(priority.actionId!)}
+            className="min-h-10 rounded-xl bg-amber px-4 py-2.5 text-xs font-semibold text-white hover:brightness-95">
+            {priority.actionLabel}
+          </button>
+        </section>
+      ) : (
+        <p role="status" className="text-sm text-muted-foreground">{priority.title}</p>
+      )}
 
-          <div className="flex shrink-0 items-center gap-3">
-            {priority.value ? (
-              <strong className="text-base font-black text-slate-900">
-                {priority.value}
-              </strong>
-            ) : null}
-            {priority.actionId && priority.actionLabel ? (
-              <button
-                type="button"
-                onClick={() => onNavigate?.(priority.actionId!)}
-                className="rounded-xl bg-amber px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:brightness-95"
-              >
-                {priority.actionLabel}
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-          Situação do aluno
-        </p>
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <section aria-label="Áreas do atendimento">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
           {rows.map((row, index) => (
             <button
               key={row.id}
               type="button"
               onClick={() => onNavigate?.(row.id)}
               className={[
-                "flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-slate-50 sm:px-5",
-                index > 0 ? "border-t border-slate-100" : "",
+                "flex min-h-12 w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber sm:px-5",
+                index > 0 ? "border-t border-border" : "",
               ].join(" ")}
             >
               <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-900">{row.title}</p>
-                {row.description && <p className="mt-0.5 truncate text-xs text-muted-foreground">{row.description}</p>}
+                <p className="text-sm font-medium text-foreground">{row.title}</p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span
@@ -1342,29 +1298,17 @@ function CommandCenterOverview({
                 >
                   {row.value}
                 </span>
-                <span aria-hidden="true" className="text-slate-300">
-                  →
-                </span>
+                <span aria-hidden="true" className="text-muted-foreground">›</span>
               </div>
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-        <p className="text-xs text-slate-400">
-          Proc. {aluno.numero_processo}
-          {aluno.classe ? ` · ${aluno.classe}` : ""}
-          {aluno.turma_codigo ? ` · Turma ${aluno.turma_codigo}` : ""}
-        </p>
-        <button
-          type="button"
-          onClick={() => onNavigate?.("profile")}
-          className="text-xs font-bold text-emerald transition hover:underline"
-        >
-          Ver perfil completo →
-        </button>
-      </div>
+      <button type="button" onClick={() => onNavigate?.("profile")}
+        className="text-xs font-medium text-emerald hover:underline">
+        Abrir ficha do aluno
+      </button>
     </div>
   );
 }
