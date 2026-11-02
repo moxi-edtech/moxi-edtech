@@ -59,3 +59,23 @@ test("missing grades retain direct student-scoped grade entry, governed by exist
   assert.match(balc, /if \(!rematricula\.canWriteGrades\) return/);
   assert.match(balc, /if \(rematricula\.academic\?\.regime\?\.escala === "qualitativa"\)/);
 });
+
+test("reconciliation API never silently accepts a different turma or year", () => {
+  const api=read("app/api/secretaria/balcao/rematriculas/reconcile/route.ts");
+  assert.match(api,/matriculaDestinoExistente\.turma_id \?\? ""\) !== destinoTurmaId/);
+  assert.match(api,/matriculaDestinoExistente\.ano_letivo\) !== destinoAno/);
+  assert.match(api,/RECONCILIATION_DESTINATION_MISMATCH/);
+  assert.match(api,/\.in\("status", \["pending_payment", "granted"\]\)/);
+  assert.match(api,/if \(linkError \|\| !linkedPedido/);
+  assert.match(api,/emitirComprovanteMatricula/);
+});
+test("verified absence-justification decisions provide an in-place action, without fabricating attendance", () => {
+  const panel=read("components/secretaria/RaaBalcaoResolutionPanel.tsx");
+  assert.match(panel,/pendingJustification = cases\.find/);
+  assert.match(panel,/item\.kind === "justificacao"/);
+  assert.match(panel,/chooseCase\(pendingJustification\)/);
+  assert.match(panel,/Rever faltas/);
+  const source=read("app/api/secretaria/faltas/justificacoes/route.ts");
+  assert.match(source,/requireRoleInSchool/);
+  assert.match(source,/\.eq\("matricula_id", matriculaId\)/);
+});
