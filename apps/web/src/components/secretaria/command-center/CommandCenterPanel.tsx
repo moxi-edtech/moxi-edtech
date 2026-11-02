@@ -99,9 +99,6 @@ export function CommandCenterPanel({
     return (
       <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
         <p className="text-sm font-black text-foreground">Selecione um aluno</p>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Pesquise um aluno no atendimento para continuar esta operação.
-        </p>
       </div>
     );
   }
@@ -111,9 +108,6 @@ export function CommandCenterPanel({
       <section className="min-w-0 space-y-3" aria-label="Perfil integral do aluno">
         <div>
           <h2 className="text-sm font-bold text-foreground">Perfil integral do aluno</h2>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Consulte dados pessoais, financeiro, histórico académico e documentos no mesmo atendimento.
-          </p>
         </div>
         <CommandCenterStudentDossier
           key={alunoId}
