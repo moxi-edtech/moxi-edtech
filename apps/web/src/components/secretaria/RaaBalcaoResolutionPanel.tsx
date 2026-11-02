@@ -154,6 +154,8 @@ export function RaaBalcaoResolutionPanel({
   const effectivePeriodFilter = hasTrimesterCases ? periodFilter : "todos";
   const visibleCases = cases.filter((item) => matchesRaaPeriodFilter(item.periodo, effectivePeriodFilter));
   const onlySubjects = cases.length > 0 && cases.every((item) => item.kind === "nota");
+  const pendingJustification = cases.find((item) =>
+    item.kind === "justificacao" && item.estado !== "registado") ?? null;
   const activeCase = cases.find((item) => item.id === caseId) ?? null;
   const action = activeCase?.kind === "nota" ? "nota" :
     activeCase?.kind === "justificacao" ? "justificacao" :
@@ -463,9 +465,16 @@ export function RaaBalcaoResolutionPanel({
     <section id="balcao-pendencias" key={alunoId + ":" + matriculaId} className="space-y-3 scroll-mt-24" aria-label="Pendências do aluno no Balcão">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">{onlySubjects ? "Disciplinas" : "Pendências"}</h3>
-        {!onlySubjects && <span className="text-xs tabular-nums text-muted-foreground">
-          {loading ? "A consultar…" : progress.total + " registo" + (progress.total === 1 ? "" : "s")}
-        </span>}
+        {pendingJustification && phase === "summary" && !loading ? (
+          <button type="button" onClick={() => chooseCase(pendingJustification)} disabled={saving}
+            className="min-h-9 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber">
+            Rever faltas
+          </button>
+        ) : !onlySubjects ? (
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {loading ? "A consultar…" : progress.total + " registo" + (progress.total === 1 ? "" : "s")}
+          </span>
+        ) : null}
       </header>
       <div className="space-y-3" aria-live="polite">
         {regimeGuidance && planAction !== "nota" && regimeGuidance.estado !== "informativo" ? (
