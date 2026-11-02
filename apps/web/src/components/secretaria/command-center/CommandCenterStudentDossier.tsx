@@ -85,7 +85,7 @@ export function CommandCenterStudentDossier({
     return (
       <div role="status" className="flex min-h-40 items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
         <Loader2 className="h-4 w-4 animate-spin" />
-        A carregar perfil, financeiro, histórico e documentos...
+        A carregar ficha do aluno...
       </div>
     );
   }
@@ -110,15 +110,18 @@ export function CommandCenterStudentDossier({
   const notConfirmed = loading || Boolean(error);
   return (
     <div className="space-y-3" aria-busy={loading}>
-      <div role={error ? "alert" : "status"} aria-live="polite"
-        className="min-h-8 flex flex-wrap items-center gap-2 rounded-lg bg-slate-100 px-3 py-1 text-xs text-slate-700">
-        {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Atualizando dados...</> : error
-          ? "Não foi possível confirmar dados recentes. Ações estão temporariamente indisponíveis."
-          : "Dados atualizados"}
-        {lastConfirmedAt ? <time dateTime={lastConfirmedAt.toISOString()}>
-          Última atualização: {lastConfirmedAt.toLocaleTimeString("pt-PT", {hour:"2-digit",minute:"2-digit",second:"2-digit"})}
-        </time> : null}
-      </div>
+      {(loading || error) && (
+        <div role={error ? "alert" : "status"} aria-live="polite"
+          className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-700">
+          {loading
+            ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> A atualizar ficha…</>
+            : <>Atualização indisponível · Ações suspensas.
+              {lastConfirmedAt && <time dateTime={lastConfirmedAt.toISOString()}>
+                Última confirmação: {lastConfirmedAt.toLocaleTimeString("pt-PT", { hour:"2-digit", minute:"2-digit" })}
+              </time>}
+            </>}
+        </div>
+      )}
       <div inert={notConfirmed} aria-disabled={notConfirmed} className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
         <div className="min-w-0">
