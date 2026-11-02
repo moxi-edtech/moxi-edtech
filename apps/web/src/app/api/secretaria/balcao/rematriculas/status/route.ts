@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { canLinkPaidOrderToExistingEnrollment } from "@/lib/rematricula/reconciliation-existing-enrollment";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
@@ -399,6 +400,7 @@ export async function GET(request: Request) {
     // Pedido pendente sem intent nem pagamento associado é uma operação
     // abandonada, não um pagamento em andamento.
     let pedidoTemPagamentoAssociado = false;
+    let pedidoPagamentoLiquidado = false;
     if (pedidoExistente?.status === "pending_payment") {
       const { data: intents, error: intentsError } = await supabase
         .from("pagamento_intents")
@@ -408,7 +410,7 @@ export async function GET(request: Request) {
         .limit(1);
       const { data: pagamentos, error: pagamentosError } = await supabase
         .from("pagamentos")
-        .select("id, meta")
+        .select("id, status, meta")
         .eq("escola_id", escolaId)
         .eq("aluno_id", aluno_id)
         .limit(50);
@@ -423,6 +425,10 @@ export async function GET(request: Request) {
       const pagamentosDoPedido = (pagamentos ?? []).filter((pagamento: any) =>
         pagamento.meta?.pedido_id === pedidoExistente.id ||
         pagamento.meta?.servico_pedido_id === pedidoExistente.id,
+      );
+      pedidoPagamentoLiquidado = pagamentosDoPedido.some((pagamento: any) =>
+        ["settled", "confirmed", "paid", "succeeded", "confirmado", "recebido", "pago"]
+          .includes(String(pagamento.status ?? "").toLowerCase()),
       );
       const tentativaReiniciavel = Boolean((intents ?? []).length) && (intents ?? []).every((intent: any) =>
         String(intent.status).toLowerCase() === "draft" &&
@@ -491,7 +497,7 @@ export async function GET(request: Request) {
     } else if (pedidoExistente?.status === "pending_payment") {
       status = pedidoLegado
         ? "LEGACY_REVIEW_REQUIRED"
-        : pedidoExistente.reason_code === "REMATRICULA_RECONCILIATION_REQUIRED" && pedidoTemPagamentoAssociado
+        : pedidoPagamentoLiquidado
           ? "RECONCILIATION_REQUIRED"
         : !pedidoTemPagamentoAssociado
           ? "PENDING_ORDER_REVIEW"
@@ -525,6 +531,20 @@ export async function GET(request: Request) {
     } else if (reclassificacao) {
       status = "FINALIST_PENDING";
     }
+
+    // A paid order already pointing at an enrolled destination is not a
+    // missing-class problem. This hint only exposes the existing POST path.
+    const podeAssociarMatriculaExistente = status === "RECONCILIATION_REQUIRED" &&
+      canLinkPaidOrderToExistingEnrollment({
+        requestStatus: pedidoExistente?.status,
+        paymentSettled: pedidoPagamentoLiquidado,
+        requestTargetYearId: pedidoExistente?.contexto?.ano_letivo_id,
+        selectedTargetYearId: targetAnoLetivoId,
+        requestTurmaId: pedidoExistente?.contexto?.destino_turma_id,
+        existingEnrollmentId: matriculaDestino?.id,
+        existingTurmaId: matriculaDestino?.turma_id,
+        sourceEnrollmentId: matriculaOrigem.id,
+      });
 
     // ── Extract turma_id from granted pedido contexto ─────────────────────
     const pedidoTurmaId =
@@ -627,9 +647,13 @@ export async function GET(request: Request) {
           }
         : pedidoExistente?.reason_code === "REMATRICULA_RECONCILIATION_REQUIRED"
           ? {
-              can_cancel: true,
+              can_cancel: !pedidoPagamentoLiquidado,
+              can_link_existing_enrollment: podeAssociarMatriculaExistente,
               reason: pedidoExistente.reason_detail ?? "A matrícula precisa de reconciliação",
             }
+        : status === "RECONCILIATION_REQUIRED"
+          ? { can_cancel: false, can_link_existing_enrollment: podeAssociarMatriculaExistente,
+              reason: "Pagamento confirmado; regularizar matrícula de destino." }
         : status === "PENDING_ORDER_REVIEW"
           ? {
               can_cancel: true,
