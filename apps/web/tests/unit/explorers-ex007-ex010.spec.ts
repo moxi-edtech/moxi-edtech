@@ -46,7 +46,8 @@ test("EX-008: Class prioritizes contextual student action before academic direct
   const roster = classView.indexOf('aria-labelledby="classe-alunos-heading"');
   const academic = classView.indexOf('aria-labelledby="classe-turmas-heading"');
   assert.ok(roster > 0 && academic > 0 && roster < academic);
-  assert.match(classView, /turmasComVagas/);
+  assert.match(classView, /classOccupancy\.available/);
+  assert.match(classView, /turmasLotadas/);
   assert.match(classView, /turma\.capacidade != null/);
   assert.match(classView, /onStudentAction/);
   assert.match(courseView, /onExploreClasse/);
