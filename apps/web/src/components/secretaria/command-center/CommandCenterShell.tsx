@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowLeftRight, X } from "lucide-react";
+import { ArrowLeftRight, Keyboard, X } from "lucide-react";
 
 import { CommandCenterActionBar } from "@/components/secretaria/command-center/CommandCenterActionBar";
 import { type BalcaoActionId } from "@/lib/balcao/action-registry";
@@ -48,13 +48,7 @@ export function CommandCenterShell({
         <div className="flex min-w-0 items-start gap-3">
           {leading}
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                KLASSE · Central de atendimento
-              </p>
-            </div>
-            <h1 className="mt-1 truncate text-lg font-black text-foreground">
+            <h1 className="truncate text-lg font-semibold text-foreground">
               {activeAction === "enrollment" ? "Nova matrícula" : activeAction === "admissions" ? "Admissões" : (student?.label || "Atendimento")}
             </h1>
             {(activeAction !== "enrollment" && activeAction !== "admissions" && studentSubtitle) ? (
@@ -66,6 +60,17 @@ export function CommandCenterShell({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {shortcuts && (
+            <button type="button" onClick={() => shortcuts.setEnabled(!shortcuts.enabled)}
+              aria-pressed={shortcuts.enabled}
+              aria-label={shortcuts.enabled ? "Desativar atalhos do Balcão" : "Ativar atalhos do Balcão"}
+              title="Ctrl+Alt+Shift+F: pesquisar aluno · Ctrl+Alt+Shift+T: trocar aluno"
+              className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber">
+              <Keyboard className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Atalhos {shortcuts.enabled ? "ligados" : "desligados"}</span>
+              <span className="sm:hidden">Atalhos</span>
+            </button>
+          )}
           {student && activeAction !== "enrollment" && activeAction !== "admissions" && onSwitchStudent ? (
             <button
               type="button"
@@ -93,19 +98,7 @@ export function CommandCenterShell({
       </div>
 
       {aboveActions}
-      {shortcuts ? (
-        <details className="text-[11px] text-muted-foreground">
-          <summary className="cursor-pointer select-none font-medium" aria-label="Ajuda de atalhos de teclado do Balcão">Atalhos do Balcão</summary>
-          <div className="flex flex-wrap items-center gap-2 py-1">
-            <span><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd>: pesquisar aluno</span>
-            <span><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd>: trocar aluno</span>
-            <button type="button" className="rounded border px-2 py-1 focus-visible:outline-2" aria-pressed={shortcuts.enabled}
-              onClick={() => shortcuts.setEnabled(!shortcuts.enabled)}>
-              {shortcuts.enabled ? "Desativar atalhos" : "Ativar atalhos"}
-            </button>
-          </div>
-        </details>
-      ) : null}
+
 
       <CommandCenterActionBar
         value={activeAction}
