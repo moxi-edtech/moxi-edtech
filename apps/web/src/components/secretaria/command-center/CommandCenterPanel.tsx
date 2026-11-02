@@ -106,9 +106,6 @@ export function CommandCenterPanel({
   if (action.panel === "profile") {
     return (
       <section className="min-w-0 space-y-3" aria-label="Perfil integral do aluno">
-        <div>
-          <h2 className="text-sm font-bold text-foreground">Perfil integral do aluno</h2>
-        </div>
         <CommandCenterStudentDossier
           key={alunoId}
           escolaId={escolaId}
@@ -117,7 +114,7 @@ export function CommandCenterPanel({
         />
         <details className="group min-w-0 rounded-xl border border-border bg-card">
           <summary className="cursor-pointer px-4 py-3 text-xs font-semibold text-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber sm:px-5">
-            Atualizar dados pessoais
+            Editar dados pessoais
           </summary>
           <div className="min-w-0 border-t border-border p-3 sm:p-5">
             <AlunoProfilePanel alunoId={alunoId} onSuccess={handleProfileSuccess} />
