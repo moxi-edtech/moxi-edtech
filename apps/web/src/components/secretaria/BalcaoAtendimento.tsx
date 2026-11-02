@@ -1207,7 +1207,7 @@ function CommandCenterOverview({
       tone: "neutral",
     },
   ];
-
+  const secondaryRows = rows.filter((row) => row.id !== priority.actionId);
 
   return (
     <div className="space-y-4">
@@ -1237,7 +1237,7 @@ function CommandCenterOverview({
 
       <section aria-label="Áreas do atendimento">
         <div className="overflow-hidden rounded-xl border border-border bg-card">
-          {rows.map((row, index) => (
+          {secondaryRows.map((row, index) => (
             <button
               key={row.id}
               type="button"
