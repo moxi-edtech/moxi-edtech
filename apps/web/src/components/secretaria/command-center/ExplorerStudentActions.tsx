@@ -39,9 +39,17 @@ export function ExplorerStudentActions({
     if (dialogRef.current?.open) dialogRef.current.close();
   }, []);
 
-  async function toggle() {
-    if (expanded) { setExpanded(false); return; }
+  const availableActions = reply?.ok && reply.actions
+    ? EXPLORER_STUDENT_ACTION_IDS.filter((id) => reply.actions?.[id] === true)
+    : [];
+
+  function toggle() {
+    if (expanded) { controller.current?.abort(); setExpanded(false); return; }
     setExpanded(true);
+    void loadCapabilities();
+  }
+
+  async function loadCapabilities() {
     setReply(null);
     setLoading(true);
     controller.current?.abort();
@@ -59,10 +67,10 @@ export function ExplorerStudentActions({
       if (abort.signal.aborted) return;
       const body = (await response.json().catch(() => null)) as Reply | null;
       setReply(response.ok && body?.ok ? body : { ok: false,
-        error: body?.error || "Não foi possível verificar as permissões. Tente novamente." });
+        error: body?.error || "Ações indisponíveis. Tente novamente." });
     } catch {
       if (!abort.signal.aborted) setReply({
-        ok: false, error: "Não foi possível verificar as permissões. Tente novamente.",
+        ok: false, error: "Ações indisponíveis. Tente novamente.",
       });
     } finally {
       if (!abort.signal.aborted) setLoading(false);
@@ -81,8 +89,7 @@ export function ExplorerStudentActions({
         className="w-[min(94vw,450px)] max-h-[min(85dvh,660px)] rounded-xl border border-slate-200 bg-white p-5 text-slate-900 shadow-xl backdrop:bg-slate-900/40">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold">Operações do aluno</h3>
-            <p className="mt-1 break-words text-sm text-slate-700">{alunoNome}</p>
+            <h3 className="break-words text-base font-semibold">Ações · {alunoNome}</h3>
           </div>
           <button type="button" onClick={() => setExpanded(false)}
             aria-label={`Fechar ações de ${alunoNome}`}
@@ -90,29 +97,31 @@ export function ExplorerStudentActions({
             Fechar
           </button>
         </div>
-        {loading && <p role="status" className="text-sm text-slate-700">A verificar permissões…</p>}
+        {loading && <p role="status" className="text-sm text-muted-foreground">A carregar ações…</p>}
         {!loading && (!reply?.ok || !reply.actions) && (
-          <p role="alert" className="text-sm text-rose-700">
-            {reply?.error || "As permissões não estão disponíveis."}
-          </p>
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 text-sm text-rose-700">
+            <span>{reply?.error || "Ações indisponíveis."}</span>
+            <button type="button" onClick={() => void loadCapabilities()}
+              className="min-h-9 rounded-xl border border-border px-3 text-xs font-semibold text-foreground hover:bg-muted">
+              Tentar novamente
+            </button>
+          </div>
         )}
         {!loading && reply?.ok && reply.actions && (
-          <div role="group" aria-label="Ações autorizadas"
-            className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {EXPLORER_STUDENT_ACTION_IDS.map((id) => {
-              const available = reply.actions?.[id] === true;
-              const action = getBalcaoAction(id);
-              return (
-                <button type="button" key={id} disabled={!available}
-                  title={available ? action.description : "Sem permissão neste perfil"}
-                  aria-label={available ? `Abrir ${action.label}` : `${action.label}: sem permissão`}
-                  onClick={() => onAction(id)}
-                  className="rounded-lg border border-slate-200 px-3 py-3 text-left text-sm font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">
-                  {action.label}
-                </button>
-              );
-            })}
-          </div>
+          availableActions.length ? (
+            <div role="group" aria-label="Ações disponíveis" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {availableActions.map((id) => {
+                const action = getBalcaoAction(id);
+                return (
+                  <button type="button" key={id}
+                    aria-label={`Abrir ${action.label}`} onClick={() => onAction(id)}
+                    className="min-h-10 rounded-xl border border-border px-3 py-3 text-left text-sm font-medium text-foreground hover:border-amber/40 hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-amber">
+                    {action.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : <p role="status" className="text-sm text-muted-foreground">Sem ações disponíveis.</p>
         )}
       </dialog>
     </div>
