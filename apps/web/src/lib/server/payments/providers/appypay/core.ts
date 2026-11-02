@@ -26,6 +26,32 @@ export type Charge = {
     reference?: { referenceNumber: string; entity: string; dueDate: string };
   };
 };
+// GET /charges/{id} returns a payment envelope in the actual sandbox API.
+// Require correlated event evidence as well as payment status; status alone is not proof.
+export function lookupCharge(payload: unknown): Charge {
+  const envelope = payload as { payment?: {
+    id: string; type: string; status: string; merchantTransactionId?: string; amount?: number; currency?: string;
+    reference?: Charge['reference'];
+    transactionEvents: { transactionId: string; type: string; createdDate: string; responseStatus: Charge['responseStatus'] }[];
+  } };
+  if (!envelope?.payment) return payload as Charge;
+  const p = envelope.payment;
+  if (p.type !== 'Charge' || typeof p.id !== 'string' || typeof p.status !== 'string' ||
+      !Array.isArray(p.transactionEvents) || !p.transactionEvents.length || p.transactionEvents.some(e =>
+        e.transactionId !== p.id || e.type !== 'Charge' || !Number.isFinite(Date.parse(e.createdDate)))) {
+    throw new PaymentError(502, 'Histórico AppyPay inválido');
+  }
+  const events = [...p.transactionEvents].sort((a, b) => Date.parse(b.createdDate) - Date.parse(a.createdDate));
+  if (events.length > 1 && Date.parse(events[0].createdDate) === Date.parse(events[1].createdDate)) {
+    throw new PaymentError(502, 'Histórico AppyPay ambíguo');
+  }
+  const evidence = events[0].responseStatus;
+  if (!evidence || typeof evidence.code !== 'number' || typeof evidence.successful !== 'boolean') {
+    throw new PaymentError(502, 'Histórico AppyPay inválido');
+  }
+  return { id: p.id, merchantTransactionId: p.merchantTransactionId, amount: p.amount, currency: p.currency,
+    reference: p.reference, responseStatus: { ...evidence, status: p.status } };
+}
 const endpoints = {
   production: { api: 'https://gwy-api.appypay.co.ao/v2.0', token: 'https://login.microsoftonline.com/appypay.co.ao/oauth2/token', resource: 'bee57785-7a19-4f1c-9c8d-aa03f2f0e333' },
   sandbox: { api: 'https://gwy-api-tst.appypay.co.ao/v2.0', token: 'https://login.microsoftonline.com/appypaydev.onmicrosoft.com/oauth2/token', resource: '2aed7612-de64-46b5-9e59-1f48f8902d14' },
@@ -48,12 +74,13 @@ export class AppyPayClient {
     this.token = { value: data.access_token, until: Date.now() + (Number(data.expires_in) - 60) * 1000 };
     return this.token.value;
   }
-  private async request(path: string, init: RequestInit = {}): Promise<Charge> {
+  private async request(path: string, init: RequestInit = {}, lookup = false): Promise<Charge> {
     const token = await this.authenticate();
     const response = await this.send(endpoints[this.config.environment].api + path, { ...init,
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' } });
     if (!response.ok) throw new PaymentError(502, `AppyPay devolveu HTTP ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    const data = lookup ? lookupCharge(raw) : raw;
     if (!data || typeof data.id !== 'string' || !data.responseStatus || typeof data.responseStatus.code !== 'number') throw new PaymentError(502, 'Resposta AppyPay inválida');
     return data;
   }
@@ -66,7 +93,7 @@ export class AppyPayClient {
   }
   getCharge(id: string) {
     if (!/^[a-f0-9-]{36}$/i.test(id)) throw new PaymentError(400, 'Identificador inválido');
-    return this.request(`/charges/${encodeURIComponent(id)}`);
+    return this.request(`/charges/${encodeURIComponent(id)}`, {}, true);
   }
 }
 export type Reference = {
