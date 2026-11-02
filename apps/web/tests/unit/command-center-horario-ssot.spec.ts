@@ -42,7 +42,7 @@ test("EX-015: no professor key is not inferred from an academic allocation", () 
   }));
   assert.match(html, /Professor não indicado/);
   assert.match(html, /Professor por identificar/);
-  assert.match(html, /Sala não indicada no horário/);
+  assert.doesNotMatch(html, /Sala não indicada no horário/);
   assert.doesNotMatch(html, /sem professor vinculado à turma/i);
 });
 
@@ -61,7 +61,8 @@ test("EX-015: incomplete timetable is not presented as an empty official week", 
   const html = renderToStaticMarkup(React.createElement(ExplorerHorarioSemanal, {
     aulas: [], parcial: true,
   }));
-  assert.match(html, /Podem existir outras aulas/);
+  assert.match(html, /Dados parciais/);
+  assert.doesNotMatch(html, /Sem aulas no horário publicado/);
 });
 
 test("EX-015: only opening the section starts a scoped read", () => {
@@ -142,6 +143,6 @@ test("EX-015: Classe compares two authorized turma schedules only after explicit
   assert.match(horario, /Comparar com \(opcional\)/);
   assert.match(horario, /enabled: expanded && Boolean\(effectiveCompare\)/);
   assert.match(horario, /item\.id !== effectiveTurma/);
-  assert.match(horario, /Sem publicação/);
-  assert.match(horario, /Horário oficial/);
+  assert.match(horario, /Horário por publicar/);
+  assert.match(horario, /query\.data\.publicadoEm/);
 });
