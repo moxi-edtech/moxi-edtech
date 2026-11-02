@@ -36,7 +36,7 @@ test("EX-007: page cache and request preserve school, year, class and literal se
   assert.match(courseRoute, /requireRoleInSchool/);
   assert.match(courseRoute, /command_center_course_turmas_page/);
   assert.match(courseView, /window\.data\?\.hasMore/);
-  assert.match(courseView, /Pesquisar turmas deste curso/);
+  assert.match(courseView, /Pesquisar turmas/);
   // The parent return-context must clear a turma when the page/search changes.
   assert.match(courseView, /onTurmaChange\?\.\(id\)/);
   assert.doesNotMatch(courseView, /data\.turmas\.map\(/);
@@ -46,7 +46,8 @@ test("EX-008: Class prioritizes contextual student action before academic direct
   const roster = classView.indexOf('aria-labelledby="classe-alunos-heading"');
   const academic = classView.indexOf('aria-labelledby="classe-turmas-heading"');
   assert.ok(roster > 0 && academic > 0 && roster < academic);
-  assert.match(classView, /turmasComVagas/);
+  assert.match(classView, /classOccupancy\.available/);
+  assert.match(classView, /turmasLotadas/);
   assert.match(classView, /turma\.capacidade != null/);
   assert.match(classView, /onStudentAction/);
   assert.match(courseView, /onExploreClasse/);
@@ -122,7 +123,9 @@ test("EX-010: year-scoped curriculum coverage separates actual turma, teacher an
   assert.match(disciplineRoute, /origem: "turma_disciplinas"/);
   assert.match(disciplineRoute, /origem: "horario_publicado"/);
   assert.match(disciplineView, /data\.cobertura/);
-  assert.match(disciplineView, /As turmas, os professores e os horários aparecem à parte/);
+  assert.match(disciplineView, /id="disciplina-turmas-heading"/);
+  assert.match(disciplineView, /id="disciplina-professores-heading"/);
+  assert.match(disciplineView, /ExplorerHorarioTurma/);
 });
 
 
