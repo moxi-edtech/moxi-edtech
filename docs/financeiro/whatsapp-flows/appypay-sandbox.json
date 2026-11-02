@@ -5,7 +5,10 @@
     "START": [
       "REFERENCE"
     ],
-    "REFERENCE": []
+    "REFERENCE": [
+      "STATUS"
+    ],
+    "STATUS": []
   },
   "screens": [
     {
@@ -39,8 +42,6 @@
     {
       "id": "REFERENCE",
       "title": "Referência AppyPay",
-      "terminal": true,
-      "success": true,
       "data": {
         "amount": {
           "type": "string",
@@ -61,6 +62,10 @@
         "charge_id": {
           "type": "string",
           "__example__": "identificador-da-cobranca"
+        },
+        "status": {
+          "type": "string",
+          "__example__": "Referência de teste emitida."
         }
       },
       "layout": {
@@ -103,12 +108,51 @@
             "text": "Concluir este formulário não confirma o pagamento. O estado será verificado na AppyPay."
           },
           {
+            "type": "TextBody",
+            "text": "${data.status}"
+          },
+          {
             "type": "Footer",
-            "label": "Fechar referência",
+            "label": "Simular pagamento",
+            "on-click-action": {
+              "name": "data_exchange",
+              "payload": {
+                "action": "simulate_test_payment"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "STATUS",
+      "title": "Resultado do teste",
+      "terminal": true,
+      "success": true,
+      "data": {
+        "status": {
+          "type": "string",
+          "__example__": "Pagamento simulado confirmado. Nenhuma propina real foi alterada."
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Resultado AppyPay"
+          },
+          {
+            "type": "TextBody",
+            "text": "${data.status}"
+          },
+          {
+            "type": "Footer",
+            "label": "Concluir teste",
             "on-click-action": {
               "name": "complete",
               "payload": {
-                "charge_id": "${data.charge_id}"
+                "kind": "sandbox_test"
               }
             }
           }

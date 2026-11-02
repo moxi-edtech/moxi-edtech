@@ -91,6 +91,16 @@ export class AppyPayClient {
       description: input.description ?? 'Pagamento KLASSE', merchantTransactionId: input.merchantId, paymentMethod: this.config.paymentMethod,
       paymentInfo: { referenceNumber: input.reference, dueDate: input.expiresAt } }) });
   }
+  async simulateReference(entity: string, referenceNumber: string) {
+    if (this.config.environment !== 'sandbox') throw new PaymentError(403, 'Simulação apenas em homologação');
+    if (!/^\d{3,10}$/.test(entity) || !/^\d{9}$/.test(referenceNumber)) throw new PaymentError(400, 'Referência inválida');
+    const token = await this.authenticate();
+    const response = await this.send(endpoints.sandbox.api + '/mocks/referenceProcessing', { method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ entity, referenceNumber }) });
+    // The real simulator may return an empty successful body. Never retry this POST.
+    if (!response.ok) throw new PaymentError(502, 'Simulação requer verificação');
+  }
   getCharge(id: string) {
     if (!/^[a-f0-9-]{36}$/i.test(id)) throw new PaymentError(400, 'Identificador inválido');
     return this.request(`/charges/${encodeURIComponent(id)}`, {}, true);
