@@ -83,10 +83,6 @@ export function FuncionarioContextView({
         </dl>
       </section>
 
-      <p className="text-xs text-slate-500">
-        Consulta operacional. Dados de contacto, credenciais e permissões detalhadas
-        não são apresentados neste explorador.
-      </p>
     </div>
   );
 }
