@@ -120,3 +120,11 @@ test("student identity uses one compact card without duplicate badges or success
  assert.doesNotMatch(block,/Situacao regular/);
  assert.doesNotMatch(block,/<Tag>/);
 });
+
+test("Balcão debt blocker leads to finance, not a misleading academic CTA", () => {
+ const ui=source("components/secretaria/BalcaoAtendimento.tsx");
+ const overview=ui.slice(ui.indexOf("function CommandCenterOverview("),ui.indexOf("function Catalogo("));
+ assert.match(overview,/rematriculaState === "DEBT_BLOCKED" \? "payment" : "reenrollment"/);
+ assert.match(overview,/Ver saldo em atraso/);
+ assert.match(overview,/secondaryRows = rows\.filter\(\(row\) => row\.id !== priority\.actionId\)/);
+});
