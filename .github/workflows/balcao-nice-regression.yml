@@ -66,6 +66,8 @@ jobs:
           PERF_MEMORY_OUTPUT: /tmp/klasse-nice-memory-ci.json
         run: node apps/web/scripts/performance/balcao-memory.mjs
       - name: React/TypeScript and ESLint
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
           pnpm -C apps/web typecheck
           pnpm -C apps/web lint
