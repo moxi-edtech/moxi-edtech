@@ -143,7 +143,7 @@ test("EX-004: command palette owns Turma scrolling; restoration waits for roster
   assert.match(roster, /const querySettled = debounced === search\.trim\(\)/);
   assert.match(turma, /roster\.querySettled \? roster\.items : \[\]/);
   assert.match(turma, /!roster\.querySettled/);
-  assert.match(turma, /O aluno selecionado não está nesta página ou nos filtros atuais/);
+  assert.match(turma, /Aluno fora desta lista\. Confirme a turma/);
   assert.match(palette, /<ClasseContextView scrollContainerRef=\{contextualScrollRef\}/);
   assert.match(classe, /scrollContainerRef\?\.current/);
   assert.match(classe, /scrollRestored\.current/);
