@@ -114,9 +114,6 @@ export function ExplorerStudentActions({
             })}
           </div>
         )}
-        <p className="mt-4 text-xs text-slate-600">
-          Cada módulo confirma novamente a permissão e a situação do aluno antes de guardar alterações.
-        </p>
       </dialog>
     </div>
   );
