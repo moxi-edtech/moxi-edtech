@@ -137,7 +137,10 @@ export function CourseContextView({
           </p>
           <h2 className="mt-1 text-xl font-semibold text-slate-900">{data.curso.nome || data.curso.codigo || "Curso"}</h2>
           {data.curso.descricao && (
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">{data.curso.descricao}</p>
+            <details className="mt-1 max-w-2xl text-xs text-slate-600">
+              <summary className="cursor-pointer font-medium">Descrição do curso</summary>
+              <p className="mt-2 text-sm leading-5">{data.curso.descricao}</p>
+            </details>
           )}
         </div>
         <span className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600">
@@ -225,7 +228,7 @@ export function CourseContextView({
           </h3>
           <div className="border-b border-slate-100 p-3">
             <label htmlFor="curso-turmas-search" className="mb-1.5 block text-xs font-medium text-slate-600">
-              Pesquisar turmas deste curso
+              Pesquisar turmas
             </label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" aria-hidden />
@@ -237,7 +240,7 @@ export function CourseContextView({
             <p role="status" className="mt-2 text-xs text-slate-600">
               {window.busy ? "A consultar turmas…" : window.error
                 ? "Não foi possível carregar as turmas." :
-                `${window.data?.total ?? 0} turmas encontradas · Página ${page} de ${lastPage}`}
+                `${window.data?.total ?? 0} turmas`}
             </p>
           </div>
           <div className="p-2">
@@ -335,12 +338,6 @@ export function CourseContextView({
         turmas={visibleTurmas} listaParcial={Boolean(window.data?.hasMore) || Boolean(window.error) || window.busy}
       />
 
-      {window.error && (
-        <p className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          Não foi possível carregar todas as turmas. Tente novamente.
-        </p>
-      )}
     </div>
   );
 }
