@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight, GraduationCap,
+  ArrowUpRight, BookOpen, ChevronLeft, ChevronRight, GraduationCap,
   Loader2, RefreshCw, Search, UsersRound,
 } from "lucide-react";
 
