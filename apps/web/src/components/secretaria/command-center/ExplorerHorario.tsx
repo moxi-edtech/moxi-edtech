@@ -71,7 +71,7 @@ export function ExplorerHorarioSemanal({
                             : "Professor não indicado")}
                       </p>
                     )}
-                    {!showTurma && aula.salaNome && <p className="mt-0.5 text-[11px] text-slate-500">
+                    {!showTurma && aula.salaNome && <p className="mt-0.5 text-[11px] text-muted-foreground">
                       Sala {aula.salaNome}
                     </p>}
                     {showTurma && aula.salaNome && <p className="mt-0.5 text-[11px] text-slate-500">
@@ -163,7 +163,7 @@ function HorarioResultado({
         <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-900">
           Publicado
         </span>
-        {query.data.publicadoEm && <time className="text-xs text-slate-500"
+        {query.data.publicadoEm && <time className="text-xs text-muted-foreground"
           dateTime={query.data.publicadoEm}>
           {new Date(query.data.publicadoEm).toLocaleDateString("pt-AO")}
         </time>}
