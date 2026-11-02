@@ -1129,8 +1129,9 @@ function CommandCenterOverview({
             title: rematriculaCopy?.titulo ?? "Rematrícula",
             description: "",
             value: null,
-            actionId: "reenrollment" as BalcaoActionId,
-            actionLabel: rematriculaState === "READY" ? "Continuar rematrícula"
+            actionId: (rematriculaState === "DEBT_BLOCKED" ? "payment" : "reenrollment") as BalcaoActionId,
+            actionLabel: rematriculaState === "DEBT_BLOCKED" ? "Ver saldo em atraso"
+              : rematriculaState === "READY" ? "Continuar rematrícula"
               : rematriculaState === "RECONFIRMATION_REQUIRED" ? "Ver taxa"
               : rematriculaState === "DOCUMENT_PENDING" ? "Ver comprovativo"
               : "Ver situação académica",
