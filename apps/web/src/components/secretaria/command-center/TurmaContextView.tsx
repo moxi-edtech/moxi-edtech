@@ -179,24 +179,13 @@ export function TurmaContextView({
 
       {turma.anoLetivo.historico && <ExplorerHistoricalScopeNotice roster />}
 
-      <section aria-label="Indicadores da turma" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
-        <ExplorerMetric label="Alunos matriculados" value={alunos.total} />
-        <ExplorerMetric
-          label="Capacidade"
-          value={turma.capacidade ?? null}
-          hint={turma.capacidade == null ? "Não definida nesta turma" : undefined}
-        />
-        <ExplorerMetric
-          label="Vagas disponíveis"
-          value={occupancy.available}
-          hint={turma.capacidade == null ? "Defina a capacidade da turma" : undefined}
-        />
-        {occupancy.overcapacity != null && occupancy.overcapacity > 0 && (
-          <ExplorerMetric label="Excedente de lotação" value={occupancy.overcapacity} hint="Acima da capacidade registada" />
-        )}
-        <ExplorerMetric label="Disciplinas" value={disciplinas.length} partial={data.disciplinasLimitadas} />
-        <ExplorerMetric label="Professores vinculados" value={data.professoresDetalhes?.length ?? professores.length} partial={data.disciplinasLimitadas} />
-        {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
+      <section aria-label="Indicadores da turma" className="flex flex-wrap gap-x-8 gap-y-3 border-y border-border py-3">
+        <ExplorerMetric label="Alunos" value={alunos.total} />
+        <ExplorerMetric label="Lotação" value={turma.capacidade ?? null} />
+        {turma.capacidade != null && <ExplorerMetric label="Vagas" value={occupancy.available} />}
+        <ExplorerMetric label="Professores" value={data.professoresDetalhes?.length ?? professores.length}
+          partial={data.disciplinasLimitadas} />
+        {refreshing && <span role="status" className="self-center text-xs text-muted-foreground">A atualizar…</span>}
       </section>
 
       <div role="tablist" aria-label="Vistas da turma"
@@ -226,9 +215,9 @@ export function TurmaContextView({
 
       {occupancy.overcapacity != null && occupancy.overcapacity > 0 && (
         <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-          <span>Há {occupancy.overcapacity} alunos acima da capacidade desta turma.</span>
+          <span>{occupancy.overcapacity} {occupancy.overcapacity === 1 ? "aluno" : "alunos"} acima da lotação</span>
           <button type="button" onClick={openExisting} className="font-semibold underline focus-visible:outline-2 focus-visible:outline-emerald-600">
-            Abrir gestão da turma
+            Rever lotação
           </button>
         </div>
       )}
