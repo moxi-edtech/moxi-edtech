@@ -85,22 +85,22 @@ export function ProfessorContextView({
       {limited && (
         <p role="status" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Nem todos os dados deste professor estão disponíveis. Os totais podem ser maiores.
+          Dados parciais · os totais podem ser superiores.
         </p>
       )}
       {semVinculos && !limited && (
         <p className="text-xs text-slate-600">
-          Nenhuma turma ou disciplina atribuída neste ano.
+          Sem turmas ou disciplinas atribuídas.
         </p>
       )}
       {!semVinculos && !semHorario && !data.atribuicoes.length && !limited && (
         <p className="text-xs text-slate-600">
-          Há aulas no horário, mas a disciplina não tem atribuição confirmada.
+          Horário sem disciplina atribuída · Rever vínculo.
         </p>
       )}
       {!semVinculos && semHorario && !limited && (
         <p className="text-xs text-slate-600">
-          Há atribuições, mas sem horário publicado neste ano letivo.
+          Atribuições sem horário publicado.
         </p>
       )}
 
@@ -108,9 +108,6 @@ export function ProfessorContextView({
         <h3 id="professor-atribuicoes-heading" className="mb-1 flex items-center gap-2 font-semibold text-slate-900">
           <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Turmas e disciplinas
         </h3>
-        <p className="mb-2 text-xs text-slate-600">
-          Disciplinas atribuídas a este professor no ano selecionado.
-        </p>
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
           {data.atribuicoes.map((atribuicao) => (
             <div key={`${atribuicao.turmaId}:${atribuicao.disciplinaId}`}
@@ -166,11 +163,6 @@ export function ProfessorContextView({
                     {[turma.cursoNome, turma.classeNome, turma.turno].filter(Boolean).join(" · ")
                       || "Sem detalhes académicos"}
                   </span>
-                  {turma.disciplinas.length > 0 && (
-                    <span className="mt-1 block break-words text-xs text-slate-600">
-                      {turma.disciplinas.map((d) => d.nome).join(", ")}
-                    </span>
-                  )}
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               </button>
