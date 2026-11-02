@@ -17,10 +17,10 @@ test("academic situation uses the existing reenrollment route, preserving studen
 
 test("individual grade action is not dependent on RAA pending cases and respects permission", () => {
   const workspace = source("components/secretaria/BalcaoAtendimento.tsx");
-  assert.match(workspace, /view === "reenrollment" && rematriculaCanWriteGrades/);
+  assert.match(workspace, /view === "reenrollment" && !paidExistingDestination && rematriculaCanWriteGrades/);
   assert.match(workspace, /rematriculaAcademic\?\.source\?\.turma_id/);
   assert.match(workspace, /rematriculaAcademic\?\.source\?\.ano_letivo_id/);
-  assert.match(workspace, /onClick=\{\(\) => onLancarNota\(null\)\}/);
+  assert.match(workspace, /onLancarNota\(null, rematriculaAcademic\?\.disciplina_ids_pendentes\?\.\[0\] \?\? null\)/);
   assert.match(workspace, /if \(!rematricula.canWriteGrades\) return/);
 });
 

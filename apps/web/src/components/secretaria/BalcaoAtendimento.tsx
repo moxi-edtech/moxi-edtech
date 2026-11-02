@@ -1395,6 +1395,7 @@ function Catalogo({
   rematriculaOrigemAno,
   rematriculaDestinoMatriculaId,
   rematriculaCanWriteGrades,
+  rematriculaReconciliation,
   rematriculaDestinoTurma,
   raaMatriculaId,
   raaAlunoId,
@@ -1438,6 +1439,7 @@ function Catalogo({
   rematriculaOrigemAno: number | null;
   rematriculaDestinoMatriculaId: string | null;
   rematriculaCanWriteGrades: boolean;
+  rematriculaReconciliation?: { can_link_existing_enrollment?: boolean } | null;
   rematriculaDestinoTurma: TurmaOption | null;
   raaMatriculaId: string | null;
   raaAlunoId: string | null;
@@ -1486,6 +1488,11 @@ function Catalogo({
     }`;
 
   const operacaoCopy = rematriculaState ? ESTADO_OPERACAO[rematriculaState] : null;
+  // Settled payment plus an already enrolled destination is a linkage task,
+  // not an invitation to choose another turma or force academic grades.
+  const paidExistingDestination = view === "reenrollment" &&
+    rematriculaState === "RECONCILIATION_REQUIRED" &&
+    rematriculaReconciliation?.can_link_existing_enrollment === true;
   const selectedCount = selectedItemKeys.size;
   const [raaProgress, setRaaProgress] = useState<RaaProgressSnapshot | null>(null);
   // A progress snapshot must never leak into the next selected student's case.
@@ -1508,6 +1515,10 @@ function Catalogo({
               Rever pagamento · {kwanza.format(selectedTotal)} →
             </a>
           ) : null}
+        </div>
+      ) : view === "reenrollment" && paidExistingDestination ? (
+        <div role="status" className="text-sm font-medium text-foreground">
+          Matrícula de destino identificada · {rematriculaAnoLabel}
         </div>
       ) : view === "reenrollment" ? (
         <RematriculaWorkspaceHeader
@@ -1629,11 +1640,12 @@ function Catalogo({
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                   <div>
-                    <strong className="block">Pagamento recebido — falta concluir a matrícula</strong>
-                    <p className="mt-1 text-amber-900/80">
-                      Não cobre novamente. Escolha a turma/classe de destino e conclua a matrícula
-                      neste mesmo atendimento.
-                    </p>
+                    <strong className="block">{paidExistingDestination
+                      ? "Pagamento confirmado · matrícula existente"
+                      : "Pagamento confirmado · matrícula por concluir"}</strong>
+                    <p className="mt-1 text-amber-900/80">{paidExistingDestination
+                      ? "Associar o pagamento à matrícula existente, sem nova cobrança."
+                      : "Resolva as pendências para concluir, sem cobrar novamente."}</p>
                     <CodigoEstado estado="RECONCILIATION_REQUIRED" />
                   </div>
                 </div>
@@ -1643,7 +1655,8 @@ function Catalogo({
                   disabled={reconcilingPedido}
                   className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
                 >
-                  {reconcilingPedido ? "A concluir a matrícula…" : "Registar decisão e concluir a matrícula"}
+                  {reconcilingPedido ? "A reconciliar…" :
+                    paidExistingDestination ? "Associar pagamento à matrícula" : "Resolver pendências e concluir"}
                 </button>
               </div>
             ) : null}
@@ -1748,10 +1761,9 @@ function Catalogo({
                 ) : null}
               </div>
             )}
-            {view === "reenrollment" && rematriculaCanWriteGrades &&
+            {view === "reenrollment" && !paidExistingDestination && rematriculaCanWriteGrades &&
               rematriculaAcademic?.source?.turma_id &&
               rematriculaAcademic?.source?.ano_letivo_id &&
-              !rematriculaAcademic?.disciplina_ids_pendentes?.length &&
               ["ativo", "ativa", "active"].includes((rematriculaAcademic.source.status ?? "").toLowerCase()) &&
               rematriculaAcademic?.regime?.escala !== "qualitativa" && (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
@@ -1759,14 +1771,14 @@ function Catalogo({
                     <p className="text-sm font-semibold text-foreground">Notas individuais</p>
                     <p className="text-xs text-muted-foreground">Selecione o trimestre e registe a avaliação deste aluno.</p>
                   </div>
-                  <button type="button" onClick={() => onLancarNota(null)}
+                  <button type="button" onClick={() => onLancarNota(null, rematriculaAcademic?.disciplina_ids_pendentes?.[0] ?? null)}
                     className="inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
-                    Lançar nota
+                    {rematriculaAcademic?.disciplina_ids_pendentes?.length ? "Rever notas pendentes" : "Lançar nota"}
                   </button>
                 </div>
               )}
             {/* All seven non-standard academic cases are resolved in-place. */}
-            {raaMatriculaId && raaAlunoId ? (
+            {!paidExistingDestination && raaMatriculaId && raaAlunoId ? (
               <RaaBalcaoResolutionPanel
                 key={raaMatriculaId}
                 status={rematriculaState}
@@ -1805,7 +1817,7 @@ function Catalogo({
                 </div>
               </button>
             ) : null}
-            {view === "reenrollment" && (
+            {view === "reenrollment" && !paidExistingDestination && (
               <RematriculaAcademicDestination
                 status={rematriculaState}
                 anoDestino={rematriculaAnoLabel}
@@ -3252,6 +3264,7 @@ export default function BalcaoAtendimento({
                   rematriculaOrigemAno={rematricula.academic?.source?.ano_letivo_ano ?? null}
                   rematriculaDestinoMatriculaId={rematricula.destinoMatriculaId}
                   rematriculaCanWriteGrades={rematricula.canWriteGrades}
+                  rematriculaReconciliation={rematricula.reconciliation}
                   rematriculaDestinoTurma={rematricula.destinoTurma ?? null}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
@@ -3289,7 +3302,9 @@ export default function BalcaoAtendimento({
                   reconcilingPedido={rematricula.reconciling}
                   rematriculaError={rematricula.apiError}
                   onResolverPedido={rematricula.resolveLegacyPedido}
-                  onResolverReconciliacao={rematricula.openReconciliationModal}
+                  onResolverReconciliacao={rematricula.reconciliation?.can_link_existing_enrollment
+                    ? rematricula.resolveReconciliation
+                    : rematricula.openReconciliationModal}
                   onCancelPendingPedido={rematricula.cancelPendingPedido}
                   onRefreshRematricula={rematricula.refreshStatus}
                   onStartEnrollment={!dossier.aluno.matricula_id && onNavigateAction ? () => onNavigateAction("enrollment") : undefined}

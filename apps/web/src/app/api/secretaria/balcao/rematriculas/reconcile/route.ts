@@ -234,6 +234,16 @@ export async function POST(request: Request) {
         .limit(1)
         .maybeSingle();
       if (matriculaDestinoExistente && String(matriculaDestinoExistente.id) !== matriculaOrigemId) {
+        // A request cannot silently relink payment to a different class or
+        // year. This is especially important when the UI skips turma choice.
+        if (String(matriculaDestinoExistente.turma_id ?? "") !== destinoTurmaId ||
+            Number(matriculaDestinoExistente.ano_letivo) !== destinoAno ||
+            (pedido.contexto?.ano_letivo_id &&
+              String(pedido.contexto.ano_letivo_id) !== academicContext.anoLetivoId)) {
+          return NextResponse.json({ ok: false,
+            error: "A turma ou o ano do pedido não corresponde à matrícula existente. Reveja o pedido.",
+            code: "RECONCILIATION_DESTINATION_MISMATCH" }, { status: 409 });
+        }
         if (decisaoAdministrativa) {
           if (parsed.data.decisao_resultado === "concluido") {
             return NextResponse.json({ ok: false, error: "Há uma matrícula destino preparada. Reveja-a antes de concluir o ciclo do aluno.", code: "CONCLUSION_DESTINATION_REVIEW_REQUIRED" }, { status: 409 });
@@ -269,7 +279,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ ok: false, error: "Não foi possível registar a decisão académica.", code: "ACADEMIC_RESULT_RECONCILIATION_REQUIRED" }, { status: 409 });
           }
         }
-        await supabase.from("servico_pedidos").update({
+        const { data: linkedPedido, error: linkError } = await supabase.from("servico_pedidos").update({
           status: "granted",
           matricula_id: matriculaDestinoExistente.id,
           contexto: {
@@ -279,7 +289,14 @@ export async function POST(request: Request) {
             destino_turma_id: matriculaDestinoExistente.turma_id ?? destinoTurmaId,
             reconciliado_com_matricula_existente: true,
           },
-        }).eq("id", pedido.id).eq("escola_id", escolaId);
+        }).eq("id", pedido.id).eq("escola_id", escolaId)
+          .in("status", ["pending_payment", "granted"])
+          .select("id,status").maybeSingle();
+        if (linkError || !linkedPedido || linkedPedido.status !== "granted") {
+          return NextResponse.json({ ok: false,
+            error: "Não foi possível associar o pagamento à matrícula. Tente novamente.",
+            code: "RECONCILIATION_UPDATE_REQUIRED" }, { status: 409 });
+        }
 
         const comprovante = await emitirComprovanteMatricula({
           supabase,

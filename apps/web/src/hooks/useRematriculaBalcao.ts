@@ -177,7 +177,11 @@ interface StatusResponse {
     status: string;
     destino_turma_id?: string | null;
   } | null;
-  reconciliation?: { can_cancel: boolean; reason: string } | null;
+  reconciliation?: {
+    can_cancel: boolean;
+    reason: string;
+    can_link_existing_enrollment?: boolean;
+  } | null;
   cohort?: { codigo: string; nome: string; modo: string } | null;
   window?: {
     configured: boolean;
@@ -281,6 +285,7 @@ export function useRematriculaBalcao(opts: {
   const [destinoTurma, setDestinoTurma] = useState<StatusResponse["destino_turma"]>(null);
   const [reconciling, setReconciling] = useState(false);
   const [cohort, setCohort] = useState<StatusResponse["cohort"]>(null);
+  const [reconciliation, setReconciliation] = useState<StatusResponse["reconciliation"]>(null);
 
   // ── Turmas ──────────────────────────────────────────────────────────────
   const [turmas, setTurmas] = useState<TurmaOption[]>([]);
@@ -340,6 +345,7 @@ export function useRematriculaBalcao(opts: {
     setDestinoTurmaId(null);
     setDestinoTurma(null);
     setCohort(null);
+    setReconciliation(null);
   }, []);
 
   // ────────────────────────────────────────────────────────────────────────
@@ -391,6 +397,7 @@ export function useRematriculaBalcao(opts: {
         setDestinoTurmaId(data.destino_turma_id ?? null);
         setDestinoTurma(data.destino_turma ?? null);
         setCohort(data.cohort ?? null);
+        setReconciliation(data.reconciliation ?? null);
       } else {
         clearStatusSnapshot();
         setCardState("ERROR");
@@ -870,6 +877,7 @@ export function useRematriculaBalcao(opts: {
     destinoTurmaId,
     destinoTurma,
     cohort,
+    reconciliation,
     reconciling,
     resolveLegacyPedido,
     resolveReconciliation,
