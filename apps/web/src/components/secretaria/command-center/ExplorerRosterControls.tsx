@@ -21,7 +21,7 @@ export function ExplorerRosterControls({
 }) {
   return (
     <fieldset className="min-w-0 space-y-3 rounded-lg border border-slate-200 p-3">
-      <legend className="px-1 text-xs font-semibold text-slate-700">Localizar alunos desta lista</legend>
+      <legend className="px-1 text-xs font-semibold text-slate-700">Alunos</legend>
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
         <div className="min-w-0">
           <label className="mb-1 block text-xs font-semibold text-slate-700" htmlFor="cc-roster-search">
@@ -38,7 +38,7 @@ export function ExplorerRosterControls({
         </div>
         <div>
           <label htmlFor="cc-roster-filter" className="mb-1 block text-xs font-semibold text-slate-700">
-            Situação verificada
+            Filtrar
           </label>
           <select id="cc-roster-filter" value={filter}
             onChange={(event) => onFilterChange(event.target.value as RosterFilter)}
@@ -47,12 +47,11 @@ export function ExplorerRosterControls({
             <option value="documentos_sinalizados">Documentos sinalizados</option>
             <option value="propinas_vencidas">Propinas vencidas</option>
             <option value="ambos">Documentos e propinas</option>
-            <option value="matricula_incompleta" disabled>Matrícula incompleta · por configurar</option>
           </select>
         </div>
         <div>
           <label htmlFor="cc-roster-sort" className="mb-1 block text-xs font-semibold text-slate-700">
-            Ordenar alunos
+            Ordenar
           </label>
           <select id="cc-roster-sort" value={sort}
             onChange={(event) => onSortChange(event.target.value as RosterSort)}
@@ -63,10 +62,8 @@ export function ExplorerRosterControls({
           </select>
         </div>
       </div>
-      <p id="cc-roster-filter-note" className="text-xs text-slate-600">
-        A pesquisa começa com dois caracteres. Documentos: sinalização explícita da Secretaria na candidatura.
-        Propinas: saldo vencido, sem confundir comprovativos com pagamentos liquidados.
-        A ordenação é aplicada antes da paginação. O filtro de matrícula incompleta está indisponível: a escola deve aprovar os documentos obrigatórios e os estados académicos por classe e tipo de aluno.
+      <p id="cc-roster-filter-note" className="sr-only">
+        Pesquise com pelo menos dois caracteres. Os filtros mostram apenas situações confirmadas.
       </p>
     </fieldset>
   );
