@@ -920,9 +920,10 @@ function SecaoLabel({ children }: { children: React.ReactNode }) {
  */
 function CodigoEstado({ estado }: { estado: string }) {
   return (
-    <span className="mt-2 inline-block rounded bg-amber-100 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide text-amber-800">
-      {estado}
-    </span>
+    <details className="mt-2 text-[11px] text-amber-900">
+      <summary className="cursor-pointer font-medium">Detalhes para suporte</summary>
+      <code className="mt-1 block break-all font-mono text-[10px]">{estado}</code>
+    </details>
   );
 }
 
@@ -1156,7 +1157,7 @@ function CommandCenterOverview({
       ? {
           eyebrow: "Precisa de atenção",
           title: `${overdue.length} mensalidade${overdue.length === 1 ? "" : "s"} em atraso`,
-          description: "Regularize o saldo para evitar bloqueios em operações académicas.",
+          description: "",
           value: kwanza.format(overdueTotal),
           actionId: "payment" as BalcaoActionId,
           actionLabel: "Regularizar",
@@ -1166,7 +1167,7 @@ function CommandCenterOverview({
         ? {
             eyebrow: "Próxima ação",
             title: rematriculaCopy?.titulo ?? "Rematrícula",
-            description: rematriculaCopy?.descricao ?? "Verifique o estado da rematrícula.",
+            description: "",
             value: null,
             actionId: "reenrollment" as BalcaoActionId,
             actionLabel: "Continuar",
@@ -1175,7 +1176,7 @@ function CommandCenterOverview({
         : {
             eyebrow: "Situação atual",
             title: "Nenhuma pendência crítica",
-            description: "O atendimento pode continuar normalmente.",
+            description: "",
             value: null,
             actionId: null,
             actionLabel: null,
@@ -1222,21 +1223,21 @@ function CommandCenterOverview({
       description:
         overdue.length > 0
           ? `${overdue.length} cobrança${overdue.length === 1 ? "" : "s"} vencida${overdue.length === 1 ? "" : "s"}`
-          : "Nenhuma cobrança vencida",
+          : "",
       value: financeValue,
       tone: financeTone,
     },
     {
       id: "reenrollment",
       title: "Situação académica",
-      description: rematriculaCopy?.descricao ?? "Sem operação disponível neste momento.",
+      description: "",
       value: rematriculaValue,
       tone: rematriculaTone,
     },
     {
       id: "document",
       title: "Documentos",
-      description: "Emitir declarações e outros documentos do aluno",
+      description: "",
       value: documents.length > 0 ? `${documents.length} ${documents.length === 1 ? "disponível" : "disponíveis"}` : "Nenhum",
       tone: "neutral",
     },
@@ -1285,9 +1286,9 @@ function CommandCenterOverview({
             <h3 className={`mt-1 text-base font-black ${priorityTitleClass}`}>
               {priority.title}
             </h3>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">
-              {priority.description}
-            </p>
+            {priority.description && (
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">{priority.description}</p>
+            )}
           </div>
 
           <div className="flex shrink-0 items-center gap-3">
@@ -1326,9 +1327,7 @@ function CommandCenterOverview({
             >
               <div className="min-w-0">
                 <p className="text-sm font-bold text-slate-900">{row.title}</p>
-                <p className="mt-0.5 truncate text-xs text-slate-500">
-                  {row.description}
-                </p>
+                {row.description && <p className="mt-0.5 truncate text-xs text-slate-500">{row.description}</p>}
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span
@@ -1564,13 +1563,9 @@ function Catalogo({
             </div>
             {rematriculaState === "DEBT_BLOCKED" ? (
               <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-600">Bloqueio financeiro</p>
-                <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm font-black text-rose-950">Saldo vencido impede a rematrícula</p>
-                    <p className="mt-1 text-xs leading-5 text-rose-700">
-                      Regularize as mensalidades da matrícula de origem antes de escolher a turma destino.
-                    </p>
+                    <p className="text-sm font-black text-rose-950">Mensalidades vencidas</p>
                   </div>
                   <button
                     type="button"
@@ -1585,20 +1580,16 @@ function Catalogo({
 
             {rematriculaState === "PRICE_NOT_CONFIGURED" ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700">Configuração necessária</p>
-                <p className="mt-1 text-sm font-black text-amber-950">Taxa de rematrícula sem valor definido</p>
-                <p className="mt-1 text-xs leading-5 text-amber-800">
-                  Defina o valor da taxa para a classe destino antes de iniciar uma nova cobrança.
-                </p>
+                <p className="text-sm font-bold text-amber-950">Taxa por configurar</p>
+                <p className="mt-1 text-xs text-amber-800">Defina o valor para a classe de destino.</p>
               </div>
             ) : null}
 
             {rematriculaState === "ALREADY_COMPLETED" ? (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald">Concluída</p>
-                <p className="mt-1 text-sm font-black text-emerald-950">Rematrícula já concluída</p>
-                <p className="mt-1 text-xs leading-5 text-emerald-800">
-                  O aluno já está matriculado em {rematriculaAnoLabel ?? "este ano letivo"}. Não faça uma nova cobrança.
+                <p className="text-sm font-bold text-emerald-950">Rematrícula concluída</p>
+                <p className="mt-1 text-xs text-emerald-800">
+                  {rematriculaAnoLabel ?? "Ano atual"} · Não cobrar novamente.
                 </p>
               </div>
             ) : null}
@@ -1607,9 +1598,8 @@ function Catalogo({
               <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
                 <strong className="block text-amber-950">Pedido antigo por resolver</strong>
                 <p className="mt-1">
-                  Existe um pedido de rematrícula anterior sem ano letivo associado. Vai ser ligado a{" "}
-                  {rematriculaAnoLabel ?? "o ano letivo atual"} e substituído por uma operação válida —
-                  o aluno <strong>não paga duas vezes</strong>.
+                  Pedido anterior sem ano letivo · Associe a{" "}
+                  {rematriculaAnoLabel ?? "o ano atual"}, sem cobrar novamente.
                 </p>
                 <CodigoEstado estado="LEGACY_REVIEW_REQUIRED" />
                 <button
@@ -1629,8 +1619,7 @@ function Catalogo({
                   <div>
                     <strong className="block">Pagamento recebido — falta concluir a matrícula</strong>
                     <p className="mt-1 text-amber-900/80">
-                      Não cobre novamente. Escolha a turma/classe de destino e conclua a matrícula
-                      neste mesmo atendimento.
+                      Sem nova cobrança. Selecione a turma e conclua a matrícula.
                     </p>
                     <CodigoEstado estado="RECONCILIATION_REQUIRED" />
                   </div>
@@ -1652,8 +1641,7 @@ function Catalogo({
                   <div>
                     <strong className="block">Pagamento iniciado mas não liquidado</strong>
                     <p className="mt-1 text-amber-900/80">
-                      Ficou uma tentativa de pagamento aberta, sem dinheiro recebido nem comprovativo.
-                      Cancele-a aqui e cobre de novo — <strong>o aluno não paga duas vezes</strong>.
+                      Tentativa de pagamento em aberto. Cancele-a antes de iniciar outra cobrança.
                     </p>
                     <CodigoEstado estado="PENDING_ORDER_REVIEW" />
                   </div>
@@ -1673,10 +1661,9 @@ function Catalogo({
                 <div className="flex items-start gap-2">
                   <Loader2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                   <div>
-                    <strong className="block">Pagamento de rematrícula já iniciado</strong>
+                    <strong className="block">Pagamento em curso</strong>
                     <p className="mt-1 text-amber-900/80">
-                      Já existe um pagamento a decorrer, por isso não se cria outro. Confirme aqui se
-                      o dinheiro entrou; se ainda não entrou, aguarde a validação.
+                      Confirme a liquidação antes de continuar. Não inicie nova cobrança.
                     </p>
                     <CodigoEstado estado="PAYMENT_IN_PROGRESS" />
                   </div>
@@ -1696,9 +1683,8 @@ function Catalogo({
               <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950">
                 <strong className="block">Ano letivo de destino não configurado</strong>
                 <p className="mt-1">
-                  O ano {rematriculaAnoLabel ?? "seguinte"} ainda não existe na configuração da escola.
-                  Solicite à administração que configure o ano e as turmas destino antes de iniciar a operação.
-                  Nenhuma matrícula nem cobrança foi criada.
+                  Configure {rematriculaAnoLabel ?? "o ano seguinte"} e as turmas na Administração.
+                  Nenhuma cobrança foi criada.
                 </p>
                 <CodigoEstado estado="TARGET_YEAR_NOT_CONFIGURED" />
               </div>
@@ -1707,8 +1693,7 @@ function Catalogo({
               <div className="mb-2 rounded-xl border border-slate-300 bg-slate-50 p-3.5 text-xs text-slate-700">
                 <strong className="block text-slate-900">Período de rematrícula fechado</strong>
                 <p className="mt-1">
-                  O período de rematrícula de{" "}
-                  {rematriculaAnoLabel ?? "este ano letivo"} não está vigente. A direção pode reabri-lo neste atendimento, sem mudar de aluno ou perder o trabalho em curso.
+                  {rematriculaAnoLabel ?? "Ano letivo atual"} · A direção pode reabrir o período aqui.
                 </p>
                 {rematriculaWindow?.data_fim ? (
                   <p className="mt-1">
@@ -1731,7 +1716,7 @@ function Catalogo({
               <div role="status" className="mb-3 rounded-xl border border-border bg-muted/20 p-4">
                 <p className="text-sm font-semibold text-foreground">Matrícula de origem por confirmar</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Não há uma matrícula de origem confirmada nesta ficha. Consulte o vínculo do aluno antes de lançar notas ou iniciar uma rematrícula.
+                  Confirme a matrícula de origem antes de lançar notas ou continuar.
                 </p>
                 {onStartEnrollment ? (
                   <button type="button" onClick={onStartEnrollment}
@@ -1754,7 +1739,6 @@ function Catalogo({
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
                   <div>
                     <p className="text-sm font-semibold text-foreground">Notas individuais</p>
-                    <p className="text-xs text-muted-foreground">Selecione o trimestre e registe a avaliação deste aluno.</p>
                   </div>
                   <button type="button" onClick={() => onLancarNota(null)}
                     className="inline-flex min-h-10 items-center rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
@@ -2300,7 +2284,7 @@ function CarrinhoPanel({
               }}
               className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono"
             >
-              {audit.open ? "Fechar audit" : "Audit trail"}
+              {audit.open ? "Fechar histórico" : "Histórico"}
             </button>
             {itens.length > 0 && (
               <button onClick={limpar} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono">
@@ -2635,11 +2619,7 @@ function CarrinhoPanel({
         ) : null}
 
         {prontoParaPagar && !checkout.isSubmitting && (
-          <p className="mt-1.5 text-center text-[10px] font-medium text-slate-400">
-            ou <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">Ctrl</kbd>
-            {" + "}
-            <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">Enter</kbd>
-          </p>
+          <span className="sr-only">Atalho: Ctrl + Enter para confirmar.</span>
         )}
       </div>
       ) : null}
@@ -2720,7 +2700,6 @@ function BillingWindowRepairPanel({
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Período atual</p>
           <p className="mt-1 text-sm font-semibold text-amber-950">{issue.dataInicio || "—"} até {issue.dataFim || "—"}</p>
-          <p className="mt-2 text-xs leading-5 text-amber-800">Para permitir esta cobrança, a data final deve ser igual ou posterior à data final atual. A alteração fica registada na configuração da turma.</p>
         </div>
 
         <label className="mt-5 block text-sm font-bold text-slate-800" htmlFor="billing-window-end">Data final permitida</label>
