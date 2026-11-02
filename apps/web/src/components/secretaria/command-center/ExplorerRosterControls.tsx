@@ -20,8 +20,8 @@ export function ExplorerRosterControls({
   onFilterChange: (next: RosterFilter) => void;
 }) {
   return (
-    <fieldset className="min-w-0 space-y-3 rounded-lg border border-slate-200 p-3">
-      <legend className="px-1 text-xs font-semibold text-foreground">Alunos</legend>
+    <fieldset className="min-w-0 space-y-2">
+      <legend className="sr-only">Pesquisar e filtrar alunos</legend>
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
         <div className="min-w-0">
           <label className="mb-1 block text-xs font-semibold text-slate-700" htmlFor="cc-roster-search">
@@ -31,7 +31,7 @@ export function ExplorerRosterControls({
             <Search className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
             <input id="cc-roster-search" type="search" value={value}
               onChange={(event) => onChange(event.target.value)} maxLength={90}
-              placeholder="Procurar aluno" autoComplete="off"
+              placeholder="Pesquisar" autoComplete="off"
               className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none"
               aria-describedby="cc-roster-filter-note" />
           </div>
