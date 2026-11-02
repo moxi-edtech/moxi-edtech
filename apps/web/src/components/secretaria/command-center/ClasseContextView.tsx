@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import {
-  AlertCircle, ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
+  ArrowUpRight, BookOpen, ChevronLeft, ChevronRight,
   GraduationCap, Loader2, RefreshCw, UsersRound,
 } from "lucide-react";
 
@@ -155,10 +155,7 @@ export function ClasseContextView({
     onExplore({ id: entity.id, label: entity.nome, academicYearId: anoLetivo.id });
 
   const classOccupancy = occupancyFromCapacity(stats.capacidade, stats.alunos);
-  const turmasSemAlunos = turmas.filter((t) => t.alunos === 0).length;
-  // A class may have unknown capacities. These checks use only actual rows.
-  const turmasComVagas = turmas.filter((turma) =>
-    turma.capacidade != null && turma.alunos < turma.capacidade).length;
+  // Report only known capacity problems; missing values must not become zero.
   const turmasLotadas = turmas.filter((turma) =>
     turma.capacidade != null && turma.alunos >= turma.capacidade).length;
 
@@ -166,7 +163,7 @@ export function ClasseContextView({
     <div className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       {returnWarning && (
         <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          O aluno selecionado não aparece nesta lista. Confirme a turma antes de continuar o atendimento.
+          Aluno fora desta lista. Confirme a turma.
         </p>
       )}
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -191,62 +188,21 @@ export function ClasseContextView({
 
       {data.anoLetivo.historico && <ExplorerHistoricalScopeNotice roster />}
 
-      <section aria-label="Indicadores da classe" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
-        <ExplorerMetric label="Alunos matriculados" value={stats.alunos} partial={limitado} />
-        <ExplorerMetric label="Turmas do ano" value={stats.turmas} partial={limitado} />
-        <ExplorerMetric
-          label="Capacidade"
-          value={stats.capacidade}
-          partial={limitado}
-          hint={stats.capacidade == null ? "Falta definir a capacidade de algumas turmas" : undefined}
-        />
-        <ExplorerMetric
-          label="Vagas disponíveis"
-          value={classOccupancy.available}
-          partial={limitado}
-          hint={stats.capacidade == null ? "Falta definir a capacidade de algumas turmas" : undefined}
-        />
-        {classOccupancy.overcapacity != null && classOccupancy.overcapacity > 0 && (
-          <ExplorerMetric
-            label="Excedente de lotação"
-            value={classOccupancy.overcapacity}
-            hint="Alunos acima da capacidade registada"
-          />
-        )}
-        <ExplorerMetric label="Disciplinas" value={stats.disciplinas} partial={limitado} />
-        <ExplorerMetric label="Professores" value={stats.professores} partial={limitado} />
-        {refreshing && (
-          <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>
-        )}
+      <section aria-label="Indicadores da classe" className="flex flex-wrap gap-x-8 gap-y-3 border-y border-border py-3">
+        <ExplorerMetric label="Alunos" value={stats.alunos} partial={limitado} />
+        <ExplorerMetric label="Turmas" value={stats.turmas} partial={limitado} />
+        <ExplorerMetric label="Vagas" value={classOccupancy.available} partial={limitado}
+          hint={stats.capacidade == null ? "Lotação por definir" : undefined} />
+        {refreshing && <span role="status" className="self-center text-xs text-muted-foreground">A atualizar…</span>}
       </section>
-
-      {stats.capacidade === null && (
-        <p className="text-xs text-slate-500">
-          Para ver a capacidade total e as vagas, defina a lotação das turmas em falta.
+      {(turmasLotadas > 0 || limitado) && (
+        <p role="status" className="text-xs text-muted-foreground">
+          {turmasLotadas > 0 ? `${turmasLotadas} ${turmasLotadas === 1 ? "turma lotada" : "turmas lotadas"}` : ""}
+          {turmasLotadas > 0 && limitado ? " · " : ""}
+          {limitado ? "Dados parciais" : ""}
         </p>
       )}
-      {limitado && (
-        <p role="status" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-          Nem todos os dados desta classe estão disponíveis. Os totais podem ser maiores.
-        </p>
-      )}
-      {turmas.length > 0 && (
-        <div role="status" className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600">
-          <span><strong className="tabular-nums text-emerald-800">{turmasComVagas}</strong> turmas com vagas conhecidas</span>
-          <span><strong className="tabular-nums text-slate-800">{turmasLotadas}</strong> lotadas ou acima da capacidade</span>
-          <span><strong className="tabular-nums text-slate-800">{turmasSemAlunos}</strong> sem alunos do ano</span>
-          <span className="text-muted-foreground">{limitado ? "Dados incompletos" : "Turmas sem capacidade definida ficam fora da lotação"}</span>
-        </div>
-      )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-800">Atendimento</p>
-          <p className="text-sm text-slate-600">Localizar o aluno e continuar no Balcão, sem perder o contexto.</p>
-        </div>
-        <span className="text-xs text-muted-foreground">Ano {anoLetivo.ano}</span>
-      </div>
       <section className="min-w-0" aria-labelledby="classe-alunos-heading">
         {!anoLetivo.historico && (
           <>
@@ -345,12 +301,6 @@ export function ClasseContextView({
         )}
         {rosterReady && roster.hasMore && <button type="button" onClick={() => void roster.loadMore()} className="mt-3 rounded-lg border px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-600">Carregar mais alunos</button>}
       </section>
-      <div className="border-t border-slate-100 pt-3">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-800">Coordenação académica</p>
-        <p className="mt-1 text-xs text-slate-600">
-          Abrir turmas, consultar a matriz e conferir docentes sem presumir atribuições.
-        </p>
-      </div>
       <ExplorerHorarioTurma key={[context.escolaId, context.id, anoLetivo.id].join(":")}
         escolaId={context.escolaId} anoLetivoId={anoLetivo.id}
         turmas={turmas} listaParcial={limitado} allowCompare />
@@ -373,9 +323,6 @@ export function ClasseContextView({
                   <span className="mt-1 block text-xs tabular-nums text-slate-600">
                     {turmaOccupancyLabel(turma.alunos, turma.capacidade)}
                   </span>
-                  {turma.alunos === 0 && (
-                    <span className="mt-1 block text-[11px] text-amber-800">Sem alunos neste ano</span>
-                  )}
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               </button>
@@ -411,9 +358,6 @@ export function ClasseContextView({
               <p className="px-3 py-5 text-muted-foreground">{limitado ? "Não aparecem disciplinas nesta lista. Podem existir outras." : "Nenhuma disciplina vinculada."}</p>
             )}
           </div>
-          <p className="mt-2 text-xs text-slate-500">
-            Matriz curricular é referência; não implica professor ou turma atribuídos neste ano.
-          </p>
         </section>
       </div>
 
