@@ -68,7 +68,7 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20261029181554_preserve_legacy_2025_calendar_provenance_compatibility.sql",
   // PR #320: one audited, role-scoped and atomic school-class transfer RPC.
   // Keep the general migration guard and fiscal/AGT/SAF-T scanner enforced.
-  "20261104133500_bulk_turma_transfer_atomic.sql",
+  "20271031003000_bulk_turma_transfer_atomic.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
