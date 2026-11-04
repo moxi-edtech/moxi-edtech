@@ -189,6 +189,33 @@ RESET ROLE;
 SELECT pg_temp.assert_unchanged();
 ROLLBACK;
 
+BEGIN;
+INSERT INTO public.melhoria_nota_pedidos (id,escola_id,matricula_id) VALUES ('00000000-0000-4000-8000-000000000041','00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000021');
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.expect_secondary_p1050();
+SELECT pg_temp.expect_secondary_bulk_p1050();
+RESET ROLE;
+SELECT pg_temp.assert_unchanged();
+ROLLBACK;
+
+BEGIN;
+INSERT INTO public.dependencias_academicas_transicao (id,escola_id,matricula_origem_id,matricula_destino_id) VALUES ('00000000-0000-4000-8000-000000000041','00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000021',NULL);
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.expect_secondary_p1050();
+SELECT pg_temp.expect_secondary_bulk_p1050();
+RESET ROLE;
+SELECT pg_temp.assert_unchanged();
+ROLLBACK;
+
+BEGIN;
+INSERT INTO public.promocoes_com_pendencias (id,escola_id,matricula_origem_id,matricula_destino_id) VALUES ('00000000-0000-4000-8000-000000000041','00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000021',NULL);
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.expect_secondary_p1050();
+SELECT pg_temp.expect_secondary_bulk_p1050();
+RESET ROLE;
+SELECT pg_temp.assert_unchanged();
+ROLLBACK;
+
 -- Artifacts attached to the *source class* must block even when a pupil
 -- has no notes yet. Signed PDF and unsent batch are equally historical.
 BEGIN;
