@@ -12,6 +12,7 @@ export type RaaBalcaoAcademic = {
   reason?: string;
   decision?: string | null;
   eligible?: boolean;
+  code?: string | null;
   mode?: "regular" | "conditional" | "repeat" | null;
   disciplina_ids_pendentes?: string[];
   disciplina_names?: Record<string, string>;
