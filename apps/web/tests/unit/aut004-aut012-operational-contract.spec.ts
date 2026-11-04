@@ -57,3 +57,28 @@ test("AUT-010/011/012: transfer preflight uses grade evidence and admission capa
   assert.match(list, /action: "reenrollment"/);
   assert.match(list, /alunoId: selectedMatricula.aluno_id/);
 });
+
+test("AUT-005/010: paid destination and exceptional RAA states have contextual next steps, never another checkout", () => {
+  const chrome = read("components/secretaria/RematriculaWorkspaceChrome.tsx");
+  const actionable = chrome.slice(chrome.indexOf("const ACTIONABLE:"), chrome.indexOf("export function rematriculaDisplayState"));
+  assert.doesNotMatch(actionable, /DOCUMENT_PENDING|ACADEMIC_HISTORY_PENDING/);
+  for (const status of [
+    "ACADEMIC_HISTORY_PENDING", "DOCUMENT_PENDING", "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED",
+    "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED", "ACADEMIC_NOT_APPROVED",
+    "DEBT_BLOCKED", "PRICE_NOT_CONFIGURED", "PENDING_ORDER_REVIEW",
+    "LEGACY_REVIEW_REQUIRED", "TARGET_YEAR_NOT_CONFIGURED",
+  ]) {
+    assert.ok(chrome.includes('status === "' + status + '"'), status);
+  }
+  assert.match(chrome, /Boolean\(raaBalcaoPlan\(status\)\)/);
+});
+
+test("AUT-009: official general grade PDF reads every matching note, never the first PostgREST page", () => {
+  const pauta = read("lib/pedagogico/pauta-geral.ts");
+  assert.match(pauta, /avaliacoes!inner/);
+  assert.match(pauta, /const pageSize = 500/);
+  assert.match(pauta, /\.order\("id", \{ ascending: true \}\)/);
+  assert.match(pauta, /\.range\(offset, offset \+ pageSize - 1\)/);
+  assert.match(pauta, /if \(\(notasRows\?\.length \?\? 0\) < pageSize\) break/);
+  assert.match(pauta, /offset >= maxGradeRows/);
+});
