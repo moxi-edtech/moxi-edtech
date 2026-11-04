@@ -954,6 +954,14 @@ export default function MatriculasListClient() {
               currentTurmaId={selectedMatricula.turma_id}
               anoLetivo={anoLetivoAtivo}
               anoLetivoId={sessions.find((s) => s.ano_resolvido === anoLetivoAtivo)?.id ?? null}
+              onResolveAcademic={() => {
+                setShowTransferForm(false);
+                const query = new URLSearchParams({
+                  alunoId: selectedMatricula.aluno_id,
+                  action: "reenrollment",
+                });
+                router.push(`${secretariaBase}/balcao?${query.toString()}`);
+              }}
               onSuccess={() => {
                 setShowTransferForm(false);
                 load(page);
