@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { buildRaaBalcaoWorkspaceCases, raaBalcaoProgress } from "@/lib/rematricula/raa-balcao-cases";
 import { isRaaTrimestre, matchesRaaPeriodFilter, raaCasePeriodLabel } from "@/lib/rematricula/raa-balcao-temporal-context";
@@ -85,12 +85,24 @@ export function RaaBalcaoResolutionPanel({
   const [examTurmaDisciplinaId, setExamTurmaDisciplinaId] = useState("");
   const [examNote, setExamNote] = useState("");
   const [incompleteSources, setIncompleteSources] = useState<string[]>([]);
+  const loadControllerRef = useRef<AbortController | null>(null);
+  // Reuse the same key when a response is lost after the server accepted the
+  // request; generating a fresh key on each retry could create duplicates.
+  const reapreciacaoKeyRef = useRef<string | null>(null);
 
 
   const load = useCallback(async () => {
+    loadControllerRef.current?.abort();
     if (!planAction || !matriculaId) return;
+    const controller = new AbortController();
+    loadControllerRef.current = controller;
     setLoading(true);
     setError(null);
+    setIncompleteSources([]);
+    setFaltas([]);
+    setPedidos([]);
+    setEventos([]);
+    setExamContext(null);
     setCanDecideReapreciacao(false);
     setCanReviewDisciplina(false);
     const query = new URLSearchParams({ matricula_id: matriculaId }).toString();
@@ -99,11 +111,13 @@ export function RaaBalcaoResolutionPanel({
     // are tenant-scoped by their canonical endpoints; a failure is explicit,
     // never misrepresented as "zero pending cases".
     const results = await Promise.allSettled([
-      readJson("/api/secretaria/faltas/justificacoes?" + query),
-      readJson("/api/academico/raa/reapreciacao?" + query),
-      readJson("/api/secretaria/balcao/raa/exam-context?" + query),
-      readJson("/api/academico/raa/indisciplina?" + query),
+      readJson("/api/secretaria/faltas/justificacoes?" + query, { signal: controller.signal }),
+      readJson("/api/academico/raa/reapreciacao?" + query, { signal: controller.signal }),
+      readJson("/api/secretaria/balcao/raa/exam-context?" + query, { signal: controller.signal }),
+      readJson("/api/academico/raa/indisciplina?" + query, { signal: controller.signal }),
     ]);
+    // Never display an old student's evidence or permissions after a new read.
+    if (controller.signal.aborted) return;
     const loaded = (index: number) => {
       const item = results[index];
       return item?.status === "fulfilled" ? item.value : null;
@@ -130,7 +144,10 @@ export function RaaBalcaoResolutionPanel({
     setLoading(false);
   }, [planAction, matriculaId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    return () => { loadControllerRef.current?.abort(); };
+  }, [load]);
 
   const nomesDisciplinas: Record<string, string> = { ...academic?.disciplina_names };
   for (const disciplina of examContext?.disciplinas ?? []) {
@@ -220,6 +237,7 @@ export function RaaBalcaoResolutionPanel({
     // Moving between cases must not silently discard an unfinished decision.
     if (phase === "detail" && hasUnsavedForm &&
         !window.confirm("Existem alterações ainda não guardadas. Deseja mudar de pendência e descartá-las?")) return;
+    reapreciacaoKeyRef.current = null;
     setCaseId(item.id);
     setSelected("");
     setDecision("");
@@ -394,12 +412,13 @@ export function RaaBalcaoResolutionPanel({
           ano_letivo_id: anoOrigemId,
           disciplina_id: disciplinaId,
           motivo: motivo.trim(),
-          idempotency_key: crypto.randomUUID(),
+          idempotency_key: reapreciacaoKeyRef.current ??= crypto.randomUUID(),
         }),
       });
       setNotice(json.duplicate
         ? "Já existe um pedido. Consulte o estado abaixo."
         : "Solicitação realizada. Aguardando análise da autoridade competente.");
+      reapreciacaoKeyRef.current = null;
       setDisciplinaId("");
       setMotivo("");
       await load();
@@ -694,14 +713,16 @@ export function RaaBalcaoResolutionPanel({
                 <div className="rounded-lg border border-border bg-card p-3">
                   <label className="block text-xs font-bold text-foreground" htmlFor="raa-balcao-disciplina">Disciplina para reapreciação</label>
                   <select id="raa-balcao-disciplina" className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm"
-                    value={disciplinaId} onChange={(event) => setDisciplinaId(event.target.value)}>
+                    value={disciplinaId} onChange={(event) => {
+                       reapreciacaoKeyRef.current = null; setDisciplinaId(event.target.value);
+                     }}> 
                     <option value="">Selecionar disciplina</option>
                     {(academic?.disciplina_ids_pendentes || []).map((id) =>
                        <option key={id} value={id}>{nomesDisciplinas[id] || "Nome indisponível"}</option>)}
                   </select>
                   <label className="mt-2 block text-xs font-bold text-foreground" htmlFor="raa-balcao-pedido-motivo">Fundamento do pedido</label>
                   <textarea id="raa-balcao-pedido-motivo" rows={2} className="mt-1 w-full rounded-lg border border-border bg-background p-2 text-sm"
-                    value={motivo} onChange={(event) => setMotivo(event.target.value)} />
+                    value={motivo} onChange={(event) => { reapreciacaoKeyRef.current = null; setMotivo(event.target.value); }} />
                   <button type="button" disabled={saving} onClick={() => prepareConfirmation("pedido")} className="mt-2 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground">
                     Rever pedido de reapreciação
                   </button>
