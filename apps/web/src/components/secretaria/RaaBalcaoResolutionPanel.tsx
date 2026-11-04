@@ -7,7 +7,7 @@ import { isRaaTrimestre, matchesRaaPeriodFilter, raaCasePeriodLabel } from "@/li
 import { buildRaaBalcaoRegimeGuidance, type RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 import { CheckCircle2, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardList, FileText, GraduationCap, CalendarDays, Scale, CircleAlert, ShieldCheck } from "lucide-react";
 import type { RematriculaCardState } from "@/hooks/useRematriculaBalcao";
-import { raaBalcaoPlan } from "@/lib/rematricula/raa-balcao-resolution";
+import { raaBalcaoPlan, raaBalcaoEffectiveStatus } from "@/lib/rematricula/raa-balcao-resolution";
 import type { RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
 
 type PeticaoFalta = { id: string; data_falta: string; motivo: string; status: string; trimestre?: 1 | 2 | 3 | null };
@@ -57,7 +57,7 @@ async function readJson(url: string, init?: RequestInit) {
 export function RaaBalcaoResolutionPanel({
   status, matriculaId, alunoId, academic, onLancarNota, onDocumentos, canLancarNota, onRecheck, onProgressChange,
 }: Props) {
-  const plan = raaBalcaoPlan(status);
+  const plan = raaBalcaoPlan(raaBalcaoEffectiveStatus(status, academic));
   const planAction = plan?.acao;
   const regimeGuidance = buildRaaBalcaoRegimeGuidance(academic);
   const conditionalReady = status === "READY" && academic?.eligible === true &&
