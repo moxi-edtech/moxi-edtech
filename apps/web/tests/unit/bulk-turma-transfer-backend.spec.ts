@@ -85,11 +85,11 @@ test("academic evidence acquisition serializes with turma transfer and honors te
 });
 
 test("individual turma transfer uses the same restricted, atomic transfer contract", () => {
-  assert.match(migration, /CREATE OR REPLACE FUNCTION public\\.transferir_aluno_turma/);
-  assert.match(migration, /v_target\\.capacidade_maxima IS NULL OR v_target\\.capacidade_maxima<=0/);
-  assert.match(migration, /v_source\\.session_id IS DISTINCT FROM v_target\\.session_id/);
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.transferir_aluno_turma/);
+  assert.match(migration, /v_target\.capacidade_maxima IS NULL OR v_target\.capacidade_maxima<=0/);
+  assert.match(migration, /v_source\.session_id IS DISTINCT FROM v_target\.session_id/);
   assert.match(migration, /GET DIAGNOSTICS v_changed = ROW_COUNT/);
-  assert.match(migration, /REVOKE ALL ON FUNCTION public\\.transferir_aluno_turma\\(uuid,uuid,text\\) FROM PUBLIC,anon/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\.transferir_aluno_turma\(uuid,uuid,text\) FROM PUBLIC,anon/);
 });
 
 test("route invokes one RPC call after tenant, calendar and role authorization", () => {
