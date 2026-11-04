@@ -151,7 +151,7 @@ test("admissions decree RPC provenance migrations are audited without fiscal act
 });
 
 test("only audited atomic turma transfer migration passes the unchanged fiscal scanner", () => {
-  const name = "20261104133500_bulk_turma_transfer_atomic.sql";
+  const name = "20271031003000_bulk_turma_transfer_atomic.sql";
   const path = "supabase/migrations/" + name;
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
   // Inspect the real migration rather than trusting a simulated harmless SQL string.
