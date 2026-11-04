@@ -1,0 +1,670 @@
+{
+  "captured_date": "2026-11-04",
+  "scope": "PR #320 AUT-003 read-only migration ledger reconciliation; NOT authoritative deployment approval",
+  "remote_project_ref": "wjtifcpxxxotsbmvbgoq",
+  "source_branch": "fix/autonomia-operacional-backend-20261104",
+  "counts": {
+    "local_sql_files": 944,
+    "remote_versions": 705,
+    "local_not_in_remote": 307,
+    "remote_not_in_local": 68,
+    "conflicting_names": 1,
+    "remote_missing_name": 58
+  },
+  "remote_latest_version": "20271031002000",
+  "transfer_migration": {
+    "file": "20271031003000_bulk_turma_transfer_atomic.sql",
+    "version": "20271031003000",
+    "remote_applied": false
+  },
+  "local_without_remote_version": [
+    "20260510000006_create_wizard_processos.sql",
+    "20260510000007_rpc_fix_academic_session_ids.sql",
+    "20260510000008_rpc_clone_academic_structure.sql",
+    "20260510000009_engine_temporal_cockpit.sql",
+    "20260510000010_rpc_cutover_ano_letivo.sql",
+    "20260510000011_fix_ledger_trigger_signature.sql",
+    "20260510000012_rpc_cutover_ano_letivo_v2.sql",
+    "20260510000013_rpc_remediate_cutover_gaps.sql",
+    "20260510000014_rpc_cutover_ano_letivo_v3.sql",
+    "20260520000000_create_marketing_leads.sql",
+    "20260520001000_add_afiliado_to_leads.sql",
+    "20260520002000_rpc_afiliado_stats.sql",
+    "20260520003000_add_marketing_leads_metadata.sql",
+    "20260520004000_create_afiliados_portal.sql",
+    "20260520004001_create_marketing_assets.sql",
+    "20260520005000_add_afiliados_email_and_admin_rpcs.sql",
+    "20260523000000_fix_afiliados_permissions_and_audit.sql",
+    "20260523001000_add_trend_to_afiliado_portal.sql",
+    "20260523002000_add_afiliados_rls_policy.sql",
+    "20260523003000_fix_pgcrypto_schema_resolution.sql",
+    "20260523004000_rename_afiliados_functions_technical.sql",
+    "20260528120000_reduce_disk_io_cron_pressure.sql",
+    "20260528123000_fix_sidebar_badges_and_boletim_mv.sql",
+    "20260528124500_drop_legacy_broken_refresh_functions.sql",
+    "20260601000000_update_admissao_approve_async.sql",
+    "20260604121000_cleanup_audit_logs_retention.sql",
+    "20260604123000_admin_force_refresh_financial_mvs.sql",
+    "20260604124000_automatic_receipts_backend.sql",
+    "20260604125000_enable_automatic_receipts_worker.sql",
+    "20260604130000_fix_secretaria_produtividade_rpc.sql",
+    "20260626120000_create_ai_actions.sql",
+    "20260627120000_whatsapp_inbox_v2.1.sql",
+    "20260702120000_fix_partner_crm_audit_user_fk.sql",
+    "20260709123000_fix_quadro_docente_alocacao_catalog_bridge.sql",
+    "20260718123000_security_invoker_and_public_rls_hardening.sql",
+    "20260718124000_fix_active_rpc_lint_batch_1.sql",
+    "20260718124100_revert_increment_documento_print_batch_1.sql",
+    "20260718125000_fix_active_rpc_lint_batch_2.sql",
+    "20260718125100_revert_failed_rpc_lint_batch_2.sql",
+    "20260718131000_repair_frequencias_unique_constraints_and_upsert.sql",
+    "20260718132000_fix_finance_rpc_enum_lint.sql",
+    "20260718132100_revert_failed_finance_rpc_lint_batch_4.sql",
+    "20260718133000_fix_finance_rpc_lint_complete.sql",
+    "20260718133100_revert_confirmar_conciliacao_batch_5.sql",
+    "20260718134000_fix_confirmar_conciliacao_complete.sql",
+    "20260718135000_fix_partner_audit_user_uuid.sql",
+    "20260718140000_fix_search_functions_extension_path.sql",
+    "20260718140100_revert_failed_search_cursor_path_batch_8.sql",
+    "20260804230000_fix_rollover_matricula_numbers.sql",
+    "20260804260000_reclassify_rollover_student.sql",
+    "20260805013000_auto_assign_k12_calendar_on_install.sql",
+    "20260806100000_allow_finance_admin_resolve_finalists.sql",
+    "20260806103000_pos_cutover_pending_read_model.sql",
+    "20260806120000_seed_servico_rematricula.sql",
+    "20260807150000_enforce_mensalidade_matricula_scope.sql",
+    "20260807160000_fix_contextual_dossier_academic_year.sql",
+    "20260807170000_fix_dashboard_operational_year_scope.sql",
+    "20260807180000_finalize_balcao_rematricula_transaction.sql",
+    "20260807190000_add_rematricula_integrity_audit.sql",
+    "20260807200000_backfill_legacy_rematricula_links.sql",
+    "20260808090000_financeiro_fluxo_caixa_por_ano.sql",
+    "20260808100000_fix_estado_academico_calendar_boundaries.sql",
+    "20260808110000_ensure_servico_rematricula_all_schools.sql",
+    "20260809100000_fix_pos_virada_matricula_scoped_balance.sql",
+    "20260809101000_fix_pos_virada_promotion_balance_scope.sql",
+    "20260809102000_allow_operational_certificate_emission.sql",
+    "20260809110000_financeiro_reconciliacao_e_read_models_ano.sql",
+    "20260809120000_reconciliacao_mensalidades_assistida.sql",
+    "20260809130000_promote_after_payment_select_target.sql",
+    "20260810100000_harden_balcao_rematricula_number.sql",
+    "20260810120000_historico_transitado_ano_letivo_id.sql",
+    "20260811120000_block_balcao_rematricula_with_origin_debt.sql",
+    "20260811143000_align_bulk_rematricula_debt_guard.sql",
+    "20260813120000_professor_aula_operacional.sql",
+    "20260813133000_planos_aula_professor.sql",
+    "20260813140000_link_activities_to_lesson_plans.sql",
+    "20260814120000_add_anotacoes_alunos_avaliados_planos_aula.sql",
+    "20260814150000_professor_ponto_fechamento_mensal.sql",
+    "20260815140000_academic_regime_resolver.sql",
+    "20260815150000_raa_exam_sessions_model.sql",
+    "20260815170000_raa_result_status_ssot.sql",
+    "20260815180000_raa_exam_mfd_ssot.sql",
+    "20260815190000_raa_reapreciacao_pedidos.sql",
+    "20260815200000_raa_indisciplina_events.sql",
+    "20260815210000_raa_indisciplina_result_ssot.sql",
+    "20260815220000_raa_progression_policy.sql",
+    "20260815230000_raa_progression_rpc_ssot.sql",
+    "20260815232000_raa_progression_guard_promote.sql",
+    "20260815233000_raa_progression_guard_promote_target.sql",
+    "20260815235000_raa_progression_guard_balcao.sql",
+    "20260816000000_raa_progression_guard_bulk.sql",
+    "20260816010000_raa_decreto_sql_ssot.sql",
+    "20260816011000_raa_decreto_pending_without_policy.sql",
+    "20260816012000_raa_decreto_note_bands.sql",
+    "20260816013000_raa_reapreciacao_publication_source.sql",
+    "20260816120000_financeiro_missing_pricing_current_year.sql",
+    "20260818090000_add_confirmacao_por_classe.sql",
+    "20260818130000_emitir_recibo_servicos_balcao.sql",
+    "20260818150000_financeiro_caixa_total_dashboard.sql",
+    "20260818170000_desconto_familiar_irmaos.sql",
+    "20260818180000_agregados_familiares_explicitos.sql",
+    "20260819130000_balcao_historical_open_mensalidades.sql",
+    "20260819190000_rematricula_reserva_antes_taxa.sql",
+    "20260820123000_allow_transferred_matricula_number.sql",
+    "20260821120000_dedupe_professor_assignments.sql",
+    "20260821120001_portal_rematricula_transacao_consolidada.sql",
+    "20260821140000_school_operating_profile_foundation.sql",
+    "20260821150000_school_profile_audit_logs.sql",
+    "20260821160000_school_operating_profile_admin_rpc.sql",
+    "20260821170000_assessment_document_foundations.sql",
+    "20260821180000_curriculo_publish_pedagogical_roles.sql",
+    "20260827170001_fix_assignment_disciplina_ambiguity.sql",
+    "20260829100000_whatsapp_agent_inbox_queue.sql",
+    "20260924000000_fix_registrar_pagamento_ledger_pago.sql",
+    "20260924010000_fix_gerar_mensalidades_preco_zero.sql",
+    "20260927232530_klasse_chatgpt_readonly_rpcs.sql",
+    "20261007193000_fix_batch_payment_academic_year_type.sql",
+    "20261011133652_outbox_receipt_retry_gate.sql",
+    "20261201000000_curriculo_publish_rpc_roles.sql",
+    "20261202000000_curriculo_publish_legacy_roles.sql",
+    "20261203000000_curriculo_publish_overload_roles.sql",
+    "20261205010000_importar_alunos_turma_parts_fallback.sql",
+    "20261213000000_fluxo_solicitacao_reabertura_notas.sql",
+    "20261214000000_auditoria_excecoes_pauta_p0.sql",
+    "20261218100001_seed_default_raa_policy.sql",
+    "20270507160000_add_aluno_acesso_bloqueio.sql",
+    "20270509000000_calendario_eventos_med_686_25.sql",
+    "20270509000001_update_upsert_bulk_periodos_peso.sql",
+    "20270509000002_create_vw_eventos_unificados.sql",
+    "20270509000003_harden_rematricula_with_calendar_guards.sql",
+    "20270509000004_create_calendario_templates.sql",
+    "20270509000005_create_clone_academic_structure_rpc.sql",
+    "20270511090000_fix_can_manage_school_roles.sql",
+    "20270511093000_fix_outbox_events_insert_policy.sql",
+    "20270511095000_expand_outbox_events_insert_roles.sql",
+    "20270511100500_add_secretario_role_alias.sql",
+    "20270511103000_fix_pagamento_outbox_trigger_security.sql",
+    "20270511112000_fix_emitir_recibo_outbox_columns.sql",
+    "20270511130000_create_school_branding_bucket.sql",
+    "20270511143000_financeiro_cobranca_cases_events.sql",
+    "20270511170000_pagamentos_recentes_humanized_view_and_index.sql",
+    "20270511174500_fix_refresh_mv_admin_matriculas_por_mes_schema.sql",
+    "20270511183000_fix_financeiro_kpis_mes_remove_active_year_filter.sql",
+    "20270511184500_financeiro_kpis_mes_enforce_active_year.sql",
+    "20270511193000_create_vw_mensalidades_status_ano_ativo.sql",
+    "20270511195000_create_vw_mensalidades_operacional_status_ano_ativo.sql",
+    "20270512000000_enhance_recibo_snapshot_with_student_and_class_data.sql",
+    "20270512102000_fix_admissao_convert_reuse_existing_aluno.sql",
+    "20270514110000_set_turmas_capacidade_default_70.sql",
+    "20270516093000_fix_transferir_aluno_turma_schema_drift.sql",
+    "20270516103000_assign_numero_chamada_consistently.sql",
+    "20270516113000_k12_composite_role_inheritance.sql",
+    "20270517113000_extend_pautas_lote_jobs_for_nominal_and_attendance.sql",
+    "20270518093000_fix_escolas_identity_update_policy.sql",
+    "20270518195000_create_get_escola_document_branding_rpc.sql",
+    "20270519113000_preserve_existing_role_on_professor_create.sql",
+    "20270519121500_relax_teacher_skill_requirement_on_assignment.sql",
+    "20270519133000_extend_financeiro_propinas_read_models.sql",
+    "20270519150000_align_can_manage_school_with_role_inheritance.sql",
+    "20270519152000_align_financeiro_propinas_views_with_portal_access.sql",
+    "20270519161000_align_has_access_to_escola_with_portal_contract.sql",
+    "20270521090000_documentos_emitidos_print_tracking.sql",
+    "20270521101500_align_k12_admin_role_inheritance.sql",
+    "20270521162000_block_future_mensalidade_payment_when_prior_open.sql",
+    "20270522090000_unify_registrar_pagamento_overloads.sql",
+    "20270522100000_fix_cross_year_mensalidade_competencia_root_cause.sql",
+    "20270523120000_align_admin_financeiro_with_admin_role_inheritance.sql",
+    "20270526120000_relatorio_financeiro_escolar_phase2_mvs.sql",
+    "20270528120000_relatorio_financeiro_escolar_phase3_captacao.sql",
+    "20270529100000_admissoes_p1_indexes_and_mv_refresh.sql",
+    "20270529110000_admissoes_p15_normalized_columns.sql",
+    "20270529113000_admissoes_p16_unique_partial_indexes.sql",
+    "20270529120000_admissoes_public_protocol_lookup_rpc.sql",
+    "20270529123000_admissoes_public_protocol_and_vault_rate_limit.sql",
+    "20270602120000_admissoes_capacidade_hard_gate_override.sql",
+    "20270602123000_admissoes_diretor_override_role.sql",
+    "20270602124000_admissoes_diretor_convert_permission.sql",
+    "20270602125000_admissoes_reupload_documento_pendente_rpc.sql",
+    "20270602125500_admissoes_turma_ocupacao_inclui_reservas.sql",
+    "20270602130000_admissoes_gargalos_kpis_view.sql",
+    "20270603112000_secretaria_alunos_search_unaccent.sql",
+    "20270603113000_secretaria_alunos_search_indexed.sql",
+    "20270603114000_secretaria_alunos_search_generated_vector.sql",
+    "20270603115000_admissoes_lookup_usa_protocolo_publico.sql",
+    "20270603120000_admissoes_protocolo_curto_por_ano.sql",
+    "20270603123000_admissoes_reserva_expiracao_configuravel.sql",
+    "20270603124500_admissoes_marcar_pendencias_documentos.sql",
+    "20270603130000_admissoes_documentos_reenviados_status.sql",
+    "20270603131500_admissoes_catalogo_sla_revisao_documental.sql",
+    "20270614120000_guard_pre_candidatura_sem_turma.sql",
+    "20270614121000_admissao_promover_pre_candidatura.sql",
+    "20270616130000_fix_financeiro_kpis_mes_competencia.sql",
+    "20270616133000_financeiro_kpis_mes_pago_competencia.sql",
+    "20270618100000_historico_transitado_foundation.sql",
+    "20270618123000_certificado_snapshot_modelo_nona_classe.sql",
+    "20270619164500_fix_aluno_encarregados_rls_recursion.sql",
+    "20270623123000_enforce_onboarding_upload_owner_type.sql",
+    "20270623130000_influencer_portal_opaque_sessions.sql",
+    "20270624093000_fix_pagamento_outbox_trigger_definer.sql",
+    "20270625104500_grant_insert_ai_school_settings.sql",
+    "20270628130000_partner_commission_activation_and_trial.sql",
+    "20270628131000_onboarding_planilhas_shared_owner.sql",
+    "20270629100000_partner_portal_team_management.sql",
+    "20270629103000_crm_lead_responsavel_membro.sql",
+    "20270629110000_crm_lead_conversion_guards_and_commercial_edit.sql",
+    "20270629113000_crm_lead_proposal_acceptance.sql",
+    "20270629120000_onboarding_implantation_checklist_foundation.sql",
+    "20270629123000_onboarding_acceptance_term_gate.sql",
+    "20270629124000_partner_portal_acceptance_fields.sql",
+    "20270629130000_partner_support_tickets_l1.sql",
+    "20270630100000_partner_document_triage_sprint4.sql",
+    "20270630113000_partner_commission_payouts_sprint7.sql",
+    "20270630122000_partner_payout_reopen_unique_index.sql",
+    "20270630133000_partner_school_360_filters_risk_fk.sql",
+    "20270630143000_partner_tasks_and_commercial_proposals.sql",
+    "20270630153000_link_marketing_leads_to_crm.sql",
+    "20270702150000_add_curriculum_preset_to_onboarding.sql",
+    "20270703120000_add_organization_contacts_to_onboarding.sql",
+    "20270704100000_organic_turmas_importation_evolution.sql",
+    "20270705120000_delete_influencer_member_by_session.sql",
+    "20270708120000_align_admin_financeiro_with_secretaria_inheritance.sql",
+    "20270709100000_exam_classes_final_month_billing.sql",
+    "20270713100000_super_admin_reclassificar_aluno_turma.sql",
+    "20270713102000_search_global_allow_school_access.sql",
+    "20270714103000_global_search_fast_path_indexes.sql",
+    "20270714112000_harden_radar_inadimplencia_grants.sql",
+    "20270718120000_restore_required_mv_cron_jobs.sql",
+    "20270718123000_create_ai_insights.sql",
+    "20270718123500_harden_ai_insights_grants.sql",
+    "20270718130000_harden_public_function_default_privileges.sql",
+    "20270718131000_revoke_client_execute_from_trigger_functions.sql",
+    "20270718132000_harden_internal_mv_refresh_grants.sql",
+    "20270718133000_harden_boletim_refresh_grant.sql",
+    "20270718134000_fix_remaining_function_search_paths.sql",
+    "20270718135000_revoke_public_anon_admin_function_execute.sql",
+    "20270718140000_guard_admin_health_functions.sql",
+    "20270718141000_remove_public_bucket_listing_policies.sql",
+    "20270718142000_remove_permissive_crm_leads_write_policies.sql",
+    "20270718143000_harden_formacao_funnel_insert_policies.sql",
+    "20270718144000_harden_formacao_leads_insert_policy.sql",
+    "20270718145000_optimize_formacao_funnel_auth_initplan.sql",
+    "20270718151000_harden_internal_outbox_function_grants.sql",
+    "20270718152000_remove_public_marketing_leads_insert_policy.sql",
+    "20270718153000_revoke_anon_backoffice_function_execute.sql",
+    "20270718154000_revoke_anon_financial_function_execute.sql",
+    "20270718155000_revoke_anon_admissions_function_execute.sql",
+    "20270718160000_revoke_anon_academic_admin_execute.sql",
+    "20270718161000_revoke_anon_pedagogical_operations_execute.sql",
+    "20270718162000_revoke_anon_formacao_backoffice_execute.sql",
+    "20270718163000_revoke_anon_super_admin_execute.sql",
+    "20270718164000_harden_internal_trigger_maintenance_execute.sql",
+    "20270718165000_revoke_anon_remaining_admin_operations.sql",
+    "20270718170000_revoke_anon_sensitive_operational_reads.sql",
+    "20270718171000_revoke_anon_student_and_auxiliary_execute.sql",
+    "20270718172000_harden_diagnostic_utility_execute.sql",
+    "20270718173000_revoke_anon_unreferenced_auth_helpers.sql",
+    "20270718174000_harden_internal_generator_execute.sql",
+    "20270718175000_harden_school_utility_execute.sql",
+    "20270718180000_harden_influencer_portal_session_login.sql",
+    "20270718181000_guard_formacao_self_service_user_identity.sql",
+    "20270718182000_harden_formacao_self_service_precheck.sql",
+    "20270718183000_restore_onboarding_public_handoff_grants.sql",
+    "20270718184000_add_token_bound_onboarding_public_handoff.sql",
+    "20270718185000_revoke_anon_generic_onboarding_handoff.sql",
+    "20270718190000_harden_onboarding_tracking_payload.sql",
+    "20270718191000_revoke_anon_internal_auth_helpers.sql",
+    "20270718192000_remove_public_inherited_execute_from_public_rpcs.sql",
+    "20270718193000_add_token_bound_onboarding_doubt_rpc.sql",
+    "20270718194000_close_onboarding_doubts_direct_insert.sql",
+    "20270718195000_restrict_generic_public_rate_limit_helper.sql",
+    "20270718196000_restrict_internal_maintenance_rpcs.sql",
+    "20270718197000_restrict_admin_recalc_all_aggregates.sql",
+    "20270720120000_fix_audit_request_context_execute.sql",
+    "20270720121500_harden_audit_dml_trigger_execution.sql",
+    "20270726110500_fix_radar_inadimplencia_authenticated_access.sql",
+    "20270726111500_harden_radar_inadimplencia_finance_roles.sql",
+    "20270726115000_create_pedagogical_risk_radar.sql",
+    "20270730230000_create_operacoes_dashboard_work_mv.sql",
+    "20270802090000_create_financeiro_carteira_alunos_mv.sql",
+    "20270802091000_fix_financeiro_carteira_risk_balance.sql",
+    "20270803130000_complete_k12_rollover.sql",
+    "20270803131000_seed_calendarios_k12_2026_2027.sql",
+    "20270815100000_exam_class_billing_windows.sql",
+    "20270815110000_single_source_turma_billing_window.sql",
+    "20270815120000_allow_professor_assignment_across_turnos.sql",
+    "20270815130000_set_default_professor_max_hours_24.sql",
+    "20270822120000_align_portal_rematricula_historical_sources.sql",
+    "20270822121000_restore_rematricula_transition_contracts.sql",
+    "20270823143100_align_portal_rematricula_class_pricing.sql",
+    "20270823231000_backfill_curriculum_weekly_hours_from_presets.sql",
+    "20270824080000_garantir_vinculo_financeiro_rematricula.sql",
+    "20270824120000_klasse_assisted_transition_cohort.sql",
+    "20270826128000_rematricula_contract_parity.sql",
+    "20270826129000_rematricula_retention_repeat.sql",
+    "20270826130000_fix_global_search_runtime.sql",
+    "20270826131000_harden_lancar_notas_batch_authz_scale.sql",
+    "20271026120000_grant_receipt_worker_rpc_service_role.sql",
+    "20271026121500_freeze_unhomologated_fiscal_issuance.sql",
+    "20271027120000_lifecycle_ssot_post_replay_guard.sql",
+    "20271029100000_lifecycle_reconciliation_evidence_guards.sql",
+    "20271029110000_curtume_class_metadata_and_transition_lineage.sql",
+    "20271029120000_curtume_legal_history_destination_guard.sql",
+    "20271029130000_curtume_turma_classe_number_consistency.sql",
+    "20271029140000_global_academic_class_metadata_contract.sql",
+    "20271029150000_enrollment_context_atomic_authorized_create.sql",
+    "20271029151000_enrollment_view_academic_year_ssot.sql",
+    "20271031003000_bulk_turma_transfer_atomic.sql"
+  ],
+  "remote_without_local_file": [
+    {
+      "version": "20260927135510",
+      "name": "bill_001_005_fiscal_hardening"
+    },
+    {
+      "version": "20260927135620",
+      "name": "bill_002_event_integrity"
+    },
+    {
+      "version": "20260927140841",
+      "name": "bill_001_003_least_privilege"
+    },
+    {
+      "version": "20260927141627",
+      "name": "bill_003_004_rpc_lockdown"
+    },
+    {
+      "version": "20260927143108",
+      "name": "bill_005_enforce_agt_series_db"
+    },
+    {
+      "version": "20260927145117",
+      "name": "bill_006_agt_submissions"
+    },
+    {
+      "version": "20260927150057",
+      "name": "bill_006_auto_outbox_on_emit"
+    },
+    {
+      "version": "20260927150441",
+      "name": "bill_006_track_receipts_in_outbox"
+    },
+    {
+      "version": "20260927151123",
+      "name": "bill_006_submission_audit_events"
+    },
+    {
+      "version": "20260927153607",
+      "name": "bill_007_payment_allocations_and_ledger_hardening"
+    },
+    {
+      "version": "20260927154626",
+      "name": "bill_007_canonical_payment_application"
+    },
+    {
+      "version": "20260927155157",
+      "name": "bill_007_fiscal_receipt_sources"
+    },
+    {
+      "version": "20260927162049",
+      "name": "bill_007_partial_source_and_legacy_worker_lockdown"
+    },
+    {
+      "version": "20260927163125",
+      "name": "bill_007_legacy_receipt_shutdown_and_intent_bridge"
+    },
+    {
+      "version": "20260927163407",
+      "name": "bill_007_multi_invoice_allocation"
+    },
+    {
+      "version": "20260927163412",
+      "name": "bill_007_fix_rc_company_aggregation"
+    },
+    {
+      "version": "20260927163627",
+      "name": "bill_007_guard_direct_settled_insert"
+    },
+    {
+      "version": "20260927164023",
+      "name": "bill_007_reversal_fiscal_handoff"
+    },
+    {
+      "version": "20260927164359",
+      "name": "bill_007_indexes_and_rls_performance"
+    },
+    {
+      "version": "20260927164422",
+      "name": "bill_007_indexes_and_rls_initplan"
+    },
+    {
+      "version": "20260927164521",
+      "name": "bill_007_wrapper_security_invoker"
+    },
+    {
+      "version": "20260927164848",
+      "name": "bill_007_student_partial_receipt_guard"
+    },
+    {
+      "version": "20260927171437",
+      "name": "bill_008_saft_document_signature_chain"
+    },
+    {
+      "version": "20260927171531",
+      "name": "bill_008_saft_signature_rollout_compatibility"
+    },
+    {
+      "version": "20260927172254",
+      "name": "bill_008_saft_validated_series_boundary"
+    },
+    {
+      "version": "20260927172749",
+      "name": "bill_008_saft_export_evidence_immutability"
+    },
+    {
+      "version": "20260927172931",
+      "name": "bill_008_saft_invoice_identity_guard"
+    },
+    {
+      "version": "20260927173123",
+      "name": "bill_008_saft_hash_scope_guard"
+    },
+    {
+      "version": "20260927181109",
+      "name": "bill_009_tax_profiles_and_item_semantics"
+    },
+    {
+      "version": "20260927181334",
+      "name": "bill_009_financial_catalog_tax_profiles"
+    },
+    {
+      "version": "20260927181708",
+      "name": "bill_009_tax_compute_function"
+    },
+    {
+      "version": "20260927181922",
+      "name": "bill_009_wire_tax_engine_to_emitter"
+    },
+    {
+      "version": "20260927182435",
+      "name": "bill_009_catalog_fiscal_classification"
+    },
+    {
+      "version": "20260927182915",
+      "name": "bill_009_tuition_tax_profile_default"
+    },
+    {
+      "version": "20260927183018",
+      "name": "bill_009_preserve_reserved_agt_invoice_no"
+    },
+    {
+      "version": "20260927185100",
+      "name": "bill_009_tax_profile_temporal_governance"
+    },
+    {
+      "version": "20260927185604",
+      "name": "bill_009_persist_tax_profile_version"
+    },
+    {
+      "version": "20260927190709",
+      "name": "bill_009_education_vat_eligibility_guard"
+    },
+    {
+      "version": "20260927191357",
+      "name": "bill_009_resolve_education_tax_profile"
+    },
+    {
+      "version": "20260927191520",
+      "name": "bill_009_tax_profile_resolver_server_only"
+    },
+    {
+      "version": "20260927192036",
+      "name": "bill_009_vat_regime_governance"
+    },
+    {
+      "version": "20260927194402",
+      "name": "bill_009_remove_implicit_education_tax_profile"
+    },
+    {
+      "version": "20260927195400",
+      "name": "bill_009_school_fiscal_engine_opt_in_gate"
+    },
+    {
+      "version": "20260927202623",
+      "name": "restore_operational_receipts_compat"
+    },
+    {
+      "version": "20260927210453",
+      "name": "bill_010_document_lifecycle_core"
+    },
+    {
+      "version": "20260927211022",
+      "name": "bill_010_document_lifecycle_invariants"
+    },
+    {
+      "version": "20260927211031",
+      "name": "bill_010_agt_result_backend_guard"
+    },
+    {
+      "version": "20260927211210",
+      "name": "bill_010_agt_lifecycle_event_types"
+    },
+    {
+      "version": "20260927211445",
+      "name": "bill_010_reconcile_lifecycle_guard"
+    },
+    {
+      "version": "20260927211718",
+      "name": "bill_010_reconcile_document_lifecycle_guards"
+    },
+    {
+      "version": "20260927212200",
+      "name": "bill_010_lifecycle_source_alignment"
+    },
+    {
+      "version": "20260927212211",
+      "name": "bill_010_series_boundary_and_reversal_gate"
+    },
+    {
+      "version": "20260927212653",
+      "name": "bill_010_financial_reversal_after_fiscal_correction"
+    },
+    {
+      "version": "20260927213601",
+      "name": "bill_010_lifecycle_reference_indexes"
+    },
+    {
+      "version": "20260927225413",
+      "name": "fiscal_key_custody_primitives"
+    },
+    {
+      "version": "20260927234215",
+      "name": "fiscal_agt_re_document_type"
+    },
+    {
+      "version": "20260927234322",
+      "name": "payment_intents_idempotency_key"
+    },
+    {
+      "version": "20260927234645",
+      "name": "fiscal_contingency_state_machine"
+    },
+    {
+      "version": "20260927235044",
+      "name": "fiscal_agt_retry_budget_dlq"
+    },
+    {
+      "version": "20260928000122",
+      "name": "fiscal_origin_idempotency_race_guard"
+    },
+    {
+      "version": "20261021214136",
+      "name": "command_center_course_overview"
+    },
+    {
+      "version": "20261026104025",
+      "name": "grant_receipt_worker_rpc_service_role_20261026"
+    },
+    {
+      "version": "20261026105253",
+      "name": "freeze_unhomologated_fiscal_issuance_20261026"
+    },
+    {
+      "version": "20261027215409",
+      "name": "matriculas_preservar_numero_em_estados_historicos"
+    },
+    {
+      "version": "20261028102053",
+      "name": "preserve_financial_start_on_same_year_turma_transfer"
+    },
+    {
+      "version": "20261028102450",
+      "name": "exclude_archived_turmas_from_matricula_and_pending_lists"
+    },
+    {
+      "version": "20261030102120",
+      "name": "reconcile_klasse_2026_med_calendar_preserve_academic_ids"
+    },
+    {
+      "version": "20261102184232",
+      "name": "whatsapp_appypay_test_sessions"
+    }
+  ],
+  "name_conflicts": [
+    {
+      "local": "20261201123000_isencao_notas_e_reabertura_pauta_auditada.sql",
+      "remote": "pautas_lote_start_job_rpc"
+    }
+  ],
+  "same_version_missing_remote_description": [
+    "20260225000001_academic_integrity_fixes.sql",
+    "20260225000002_eventos_notificacoes.sql",
+    "20260310000010_allow_professor_curriculo_select.sql",
+    "20260310000011_get_professor_atribuicoes.sql",
+    "20260310000012_fix_matricula_counter_floor.sql",
+    "20260310000013_refactor_login_prefix.sql",
+    "20260310000014_use_numero_processo_login.sql",
+    "20260310000015_profile_login_refactor.sql",
+    "20260310000016_update_login_rpcs.sql",
+    "20260310000017_drop_profiles_numero_login.sql",
+    "20260310000018_update_search_views.sql",
+    "20260310000019_fix_login_functions.sql",
+    "20260310000020_fix_admissao_convert_to_matricula.sql",
+    "20260310000021_fix_mensalidade_vencimento.sql",
+    "20260310000022_safe_auth_uid.sql",
+    "20260310000023_fix_turma_parse_admissao.sql",
+    "20260310000024_update_safe_auth_uid.sql",
+    "20260310000025_fix_admissao_return.sql",
+    "20260310000026_fix_gerar_carnet_conflict.sql",
+    "20260310000027_fix_refresh_mv_turmas.sql",
+    "20260320000000_curriculo_publish_preflight_audit.sql",
+    "20260320000001_guard_periodo_fechado_notas.sql",
+    "20260320000002_turma_fecho_status_rpc.sql",
+    "20260320000003_turma_fecho_admin_only.sql",
+    "20260320000004_update_boletim_conta_para_media.sql",
+    "20260320000005_curriculum_presets_admin_rpc.sql",
+    "20260320000006_academic_status_contract.sql",
+    "20260507120000_fase_2_turma_pedagogico_stats.sql",
+    "20260507130000_fase_4_turma_admissao_stats.sql",
+    "20260507140000_fase_4_substituicoes_professores.sql",
+    "20260507150000_fase_4_turma_occupancy_history.sql",
+    "20260508000001_optimized_global_search.sql",
+    "20260508133000_fix_get_turmas_pedagogico_stats_alias.sql",
+    "20260510000000_financeiro_ledger_foundation.sql",
+    "20260510000001_financeiro_ledger_backfill.sql",
+    "20260510000002_outbox_recibo_pagamento_auto.sql",
+    "20260510000003_view_reconciliacao_ledger.sql",
+    "20260510000004_harden_setup_active_ano_letivo.sql",
+    "20260510000005_backfill_session_ids.sql",
+    "20260701112000_create_school_operational_readiness.sql",
+    "20260701113000_align_partner_portal_onboarding_setup_lifecycle.sql",
+    "20260701114200_create_auto_assign_teachers.sql",
+    "20260701120000_fix_seed_onboarding_steps_v2_codes.sql",
+    "20260701171000_fix_crm_lead_audit_trigger_type.sql",
+    "20260804220000_restore_required_mv_refresh_crons.sql",
+    "20261219083000_create_get_aluno_timeline_360_rpc.sql",
+    "20261219110000_admin_activity_feed.sql",
+    "20270621183000_create_afiliado_membros.sql",
+    "20270621190000_partner_member_login.sql",
+    "20270621193000_onboarding_upload_member_audit.sql",
+    "20270621200000_migrate_onboarding_workflow_to_7_steps.sql",
+    "20270621203000_manage_afiliado_membros_admin.sql",
+    "20270621210000_onboarding_step_started_at.sql",
+    "20270623100000_pedagogico_cockpit_and_conselho.sql",
+    "20270623110000_log_onboarding_call_followup.sql",
+    "20270623120000_update_influencer_portal_rpc_for_drawer.sql",
+    "20270623140000_create_crm_pre_sales_pipeline.sql",
+    "20270624100000_add_role_to_afiliado_membros.sql"
+  ],
+  "policy": "No migration repair metadata updates or replay; never mark local pending as applied without schema and effects evidence"
+}
