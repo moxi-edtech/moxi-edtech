@@ -110,20 +110,25 @@ function KpiCard({
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    ativa: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70",
+    ativo: "bg-emerald/10 text-emerald ring-1 ring-emerald/20",
     pendente: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70",
-    cancelada: "bg-red-50 text-red-700 ring-1 ring-red-200/70",
-    transferida: "bg-sky-50 text-sky-700 ring-1 ring-sky-200/70",
+    anulado: "bg-red-500/10 text-red-700 dark:text-red-300 ring-1 ring-red-500/20",
+    transferido: "bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-1 ring-sky-500/20",
   };
 
+  const labels: Record<string, string> = {
+    rascunho: "Rascunho", pendente: "Pendente", ativo: "Ativo",
+    concluido: "Concluído", transferido: "Transferido", anulado: "Anulado",
+    trancado: "Trancado", desistente: "Desistente",
+  };
   const key = (status || "").toLowerCase();
   const style = styles[key] ?? "bg-muted text-foreground ring-1 ring-border/70";
 
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold capitalize", style)}>
-      {key === "ativa" && <CheckCircle2 className="h-3.5 w-3.5" />}
-      {key === "cancelada" && <XCircle className="h-3.5 w-3.5" />}
-      {status}
+      {key === "ativo" && <CheckCircle2 className="h-3.5 w-3.5" />}
+      {key === "anulado" && <XCircle className="h-3.5 w-3.5" />}
+      {labels[key] ?? status}
     </span>
   );
 }
@@ -185,6 +190,9 @@ export default function MatriculasListClient() {
   const [pageSize] = useState(20);
   const [items, setItems] = useState<Item[]>([]);
   const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState({ ativos: 0, pendentes: 0 });
+  const [listError, setListError] = useState<string | null>(null);
+  const [sessionsReady, setSessionsReady] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const activeRequestRef = useRef(0);
@@ -224,7 +232,12 @@ export default function MatriculasListClient() {
     return match ? Number(match[0]) : null;
   };
 
-  const anoLetivoAtivo = useMemo(() => selectedAno ?? new Date().getFullYear(), [selectedAno]);
+  const anoLetivoAtivo = selectedAno;
+  const selectedSessions = useMemo(
+    () => sessions.filter((item) => item.ano_resolvido === anoLetivoAtivo),
+    [sessions, anoLetivoAtivo],
+  );
+  const selectedSessionId = selectedSessions.length === 1 ? selectedSessions[0].id : null;
 
   // --- LÓGICA (INTACTA) ---
   const fetchSessions = useCallback(async () => {
@@ -248,10 +261,13 @@ export default function MatriculasListClient() {
         const activeSession = resolved.find((s) => s.status === "ativa" && s.ano_resolvido);
         const firstWithAno = resolved.find((s) => s.ano_resolvido);
 
-        setSelectedAno((prev) => prev ?? activeSession?.ano_resolvido ?? firstWithAno?.ano_resolvido ?? new Date().getFullYear());
+        setSelectedAno((prev) => prev ?? activeSession?.ano_resolvido ?? firstWithAno?.ano_resolvido ?? null);
       }
     } catch (error) {
       console.error("Failed to fetch sessions", error);
+      setListError("Não foi possível carregar os anos letivos.");
+    } finally {
+      setSessionsReady(true);
     }
   }, []);
 
@@ -353,14 +369,26 @@ export default function MatriculasListClient() {
     abortRef.current = controller;
 
     setLoading(true);
+    setListError(null);
+    if (!anoLetivoAtivo || !selectedSessionId) {
+      setItems([]);
+      setTotal(0);
+      setSummary({ ativos: 0, pendentes: 0 });
+      setListError(!sessionsReady ? null :
+        selectedSessions.length > 1
+          ? "Existem anos letivos duplicados. Corrija a configuração para evitar mistura de matrículas."
+          : "Selecione um ano letivo oficial antes de consultar.");
+      setLoading(false);
+      return;
+    }
     try {
       const params = new URLSearchParams({
         q,
         page: String(p),
         pageSize: String(pageSize),
+        ano: String(anoLetivoAtivo),
+        ano_letivo_id: selectedSessionId,
       });
-
-      if (anoLetivoAtivo) params.set("ano", String(anoLetivoAtivo));
 
       if (selectedTurma) params.set("turma_id", selectedTurma);
       else if (showPendentes) params.set("turma_id", "null");
@@ -377,20 +405,33 @@ export default function MatriculasListClient() {
         signal: controller.signal,
       });
       const json = await res.json();
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar matrículas");
-
-      if (activeRequestRef.current === requestId) {
-        setItems(Array.isArray(json.items) ? json.items : []);
-        setTotal(json.total || 0);
+      if (!res.ok || json?.ok !== true ||
+        !Array.isArray(json.items) || !Number.isInteger(json.total) ||
+        !Number.isInteger(json.summary?.ativos) || !Number.isInteger(json.summary?.pendentes)) {
+        throw new Error(json?.error || "Não foi possível confirmar as matrículas.");
+      }
+      if (!controller.signal.aborted && activeRequestRef.current === requestId) {
+        setItems(json.items);
+        setTotal(json.total);
+        setSummary({ ativos: json.summary.ativos, pendentes: json.summary.pendentes });
       }
     } catch (error: unknown) {
       if (controller.signal.aborted) return;
       console.error(error);
+      if (activeRequestRef.current === requestId) {
+        setItems([]);
+        setTotal(0);
+        setSummary({ ativos: 0, pendentes: 0 });
+        setListError(error instanceof Error ? error.message : "Falha ao consultar matrículas.");
+      }
     } finally {
       if (activeRequestRef.current === requestId) setLoading(false);
     }
   }, [
     anoLetivoAtivo,
+    selectedSessionId,
+    selectedSessions.length,
+    sessionsReady,
     pageSize,
     q,
     selectedClasse,
@@ -409,23 +450,14 @@ export default function MatriculasListClient() {
   }, []);
 
   useEffect(() => {
-    load(1);
     setPage(1);
-  }, [load, selectedAno]);
+  }, [load]);
   useEffect(() => {
-    load(page);
+    void load(page);
   }, [load, page]);
 
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    items.forEach((item) => {
-      counts[item.status] = (counts[item.status] || 0) + 1;
-    });
-    return counts;
-  }, [items]);
-
   const turmasUnicas = useMemo(
-    () => new Set(items.map((item) => item.turma_nome).filter(Boolean)),
+    () => new Set(items.map((item) => item.turma_id).filter(Boolean)),
     [items]
   );
 
@@ -474,10 +506,20 @@ export default function MatriculasListClient() {
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Total Matrículas" value={total} icon={Users} tone="slate" />
-        <KpiCard title="Matrículas Ativas" value={statusCounts["ativa"] || 0} icon={UserCheck} tone="emerald" />
-        <KpiCard title="Pendentes (a ativar)" value={statusCounts["pendente"] || 0} icon={Clock} tone="amber" />
-        <KpiCard title="Turmas Envolvidas" value={turmasUnicas.size} icon={BookOpen} tone="violet" />
+        <KpiCard title="Matrículas Ativas" value={summary.ativos} icon={UserCheck} tone="emerald" />
+        <KpiCard title="Pendentes (a ativar)" value={summary.pendentes} icon={Clock} tone="amber" />
+        <KpiCard title="Turmas nesta página" value={turmasUnicas.size} icon={BookOpen} tone="violet" />
       </div>
+
+      {listError && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-foreground">
+          <span>{listError}</span>
+          <button type="button" onClick={() => void load(page)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 font-semibold hover:bg-muted">
+            <RefreshCw className="h-4 w-4" /> Tentar novamente
+          </button>
+        </div>
+      )}
 
       {/* Card Principal */}
       <div className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border">
@@ -746,7 +788,7 @@ export default function MatriculasListClient() {
                   const fichaHref = m.aluno_id ? `${secretariaBase}/alunos/${m.aluno_id}` : null;
                   const statusKey = (m.status || "").toLowerCase();
                   const numeroMatriculaVisivel =
-                    statusKey === "ativa" && m.numero_matricula
+                    statusKey === "ativo" && m.numero_matricula
                       ? m.numero_matricula
                       : "Gerado ao ativar";
 
@@ -785,9 +827,9 @@ export default function MatriculasListClient() {
                             </span>
                           ) : null}
 
-                          {statusKey !== "ativa" && (
+                          {statusKey !== "ativo" && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 ring-1 ring-amber-200/70">
-                              Número só é gerado em status ativa
+                              Número atribuído após ativação
                             </span>
                           )}
                         </div>
