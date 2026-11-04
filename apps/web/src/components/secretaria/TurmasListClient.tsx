@@ -1759,7 +1759,7 @@ export default function TurmasListClient({
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <div>
-                <h3 className="font-bold text-lg text-slate-800">Transferir alunos entre turmas</h3>
+                <h3 className="font-bold text-lg text-foreground">Transferir alunos entre turmas</h3>
                 <p className="text-sm text-slate-500 mt-1">
                   Origem: <span className="font-semibold text-slate-700">{selectedTurmaForTransfer.nome ?? selectedTurmaForTransfer.turma_codigo}</span>
                   {" "}· {selectedTurmaForTransfer.ocupacao_atual ?? "—"} matrícula(s)
@@ -1797,7 +1797,7 @@ export default function TurmasListClient({
                   const target = transferTargetOptions.find((t) => t.id === transferTargetTurmaId);
                   if (!target) return null;
                   const free = (target.capacidade_maxima ?? 0) - (target.ocupacao_atual ?? 0);
-                  return <p className="mt-2 text-xs text-slate-600">
+                  return <p className="mt-2 text-xs text-muted-foreground">
                     Vagas previstas: {Math.max(free, 0)}. A capacidade será novamente validada ao confirmar.
                   </p>;
                 })()}
@@ -1814,7 +1814,7 @@ export default function TurmasListClient({
                 />
               </div>
 
-              <label className="flex items-start gap-2 text-sm text-slate-700">
+              <label className="flex items-start gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
                   checked={transferConfirmed}
