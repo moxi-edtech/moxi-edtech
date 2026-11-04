@@ -39,6 +39,16 @@ EXCEPTION
   WHEN SQLSTATE 'P1050' THEN NULL;
 END $$;
 
+CREATE OR REPLACE FUNCTION pg_temp.expect_secondary_direct_p1050()
+RETURNS void LANGUAGE plpgsql AS $
+BEGIN
+  UPDATE public.matriculas
+    SET turma_id='00000000-0000-4000-8000-000000000012'
+    WHERE id='00000000-0000-4000-8000-000000000021';
+  RAISE EXCEPTION 'Direct UPDATE unexpectedly bypassed academic guard';
+EXCEPTION WHEN SQLSTATE 'P1050' THEN NULL;
+END $;
+
 CREATE OR REPLACE FUNCTION pg_temp.assert_unchanged()
 RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -190,6 +200,7 @@ SET LOCAL ROLE authenticated;
 SELECT pg_temp.expect_secondary_p1050();
 SELECT pg_temp.expect_secondary_bulk_p1050();
 RESET ROLE;
+SELECT pg_temp.expect_secondary_direct_p1050();
 SELECT pg_temp.assert_unchanged();
 ROLLBACK;
 
