@@ -505,10 +505,10 @@ export default function MatriculasListClient() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard title="Total Matrículas" value={total} icon={Users} tone="slate" />
-        <KpiCard title="Matrículas Ativas" value={summary.ativos} icon={UserCheck} tone="emerald" />
-        <KpiCard title="Pendentes (a ativar)" value={summary.pendentes} icon={Clock} tone="amber" />
-        <KpiCard title="Turmas nesta página" value={turmasUnicas.size} icon={BookOpen} tone="violet" />
+        <KpiCard title="Total Matrículas" value={listError ? "—" : total} icon={Users} tone="slate" />
+        <KpiCard title="Matrículas Ativas" value={listError ? "—" : summary.ativos} icon={UserCheck} tone="emerald" />
+        <KpiCard title="Pendentes (a ativar)" value={listError ? "—" : summary.pendentes} icon={Clock} tone="amber" />
+        <KpiCard title="Turmas nesta página" value={listError ? "—" : turmasUnicas.size} icon={BookOpen} tone="violet" />
       </div>
 
       {listError && (
@@ -769,6 +769,12 @@ export default function MatriculasListClient() {
                     </td>
                   </tr>
                 ))
+              ) : listError ? (
+                <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+                  <td colSpan={5} className="p-12 text-center text-muted-foreground">
+                    Dados indisponíveis. Verifique o erro acima e tente novamente.
+                  </td>
+                </tr>
               ) : items.length === 0 ? (
                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <td colSpan={5} className="p-12 text-center text-muted-foreground">
@@ -787,10 +793,7 @@ export default function MatriculasListClient() {
 
                   const fichaHref = m.aluno_id ? `${secretariaBase}/alunos/${m.aluno_id}` : null;
                   const statusKey = (m.status || "").toLowerCase();
-                  const numeroMatriculaVisivel =
-                    statusKey === "ativo" && m.numero_matricula
-                      ? m.numero_matricula
-                      : "Gerado ao ativar";
+                  const numeroMatriculaVisivel = m.numero_matricula || "Atribuído ao ativar";
 
                   return (
                     <tr
@@ -827,9 +830,9 @@ export default function MatriculasListClient() {
                             </span>
                           ) : null}
 
-                          {statusKey !== "ativo" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 ring-1 ring-amber-200/70">
-                              Número atribuído após ativação
+                          {!m.numero_matricula && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber/10 px-2 py-0.5 font-semibold text-amber-800 dark:text-amber-300 ring-1 ring-amber/20">
+                              Número pendente de atribuição
                             </span>
                           )}
                         </div>
