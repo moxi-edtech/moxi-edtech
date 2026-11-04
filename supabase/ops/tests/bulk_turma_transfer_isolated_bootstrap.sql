@@ -76,6 +76,11 @@ CREATE TABLE public.historico_anos(id uuid PRIMARY KEY, escola_id uuid, matricul
 CREATE TABLE public.reapreciacao_pedidos(id uuid PRIMARY KEY, escola_id uuid, matricula_id uuid);
 CREATE TABLE public.raa_indisciplina_eventos(id uuid PRIMARY KEY, escola_id uuid, matricula_id uuid);
 CREATE TABLE public.aluno_falta_justificacoes(id uuid PRIMARY KEY, escola_id uuid, matricula_id uuid);
+CREATE TABLE public.melhoria_nota_pedidos(id uuid PRIMARY KEY, escola_id uuid, matricula_id uuid);
+CREATE TABLE public.dependencias_academicas_transicao(
+  id uuid PRIMARY KEY, escola_id uuid, matricula_origem_id uuid, matricula_destino_id uuid);
+CREATE TABLE public.promocoes_com_pendencias(
+  id uuid PRIMARY KEY, escola_id uuid, matricula_origem_id uuid, matricula_destino_id uuid);
 CREATE TABLE public.pautas_oficiais(id uuid PRIMARY KEY, escola_id uuid, turma_id uuid);
 CREATE TABLE public.pautas_lote_jobs(id uuid PRIMARY KEY, escola_id uuid);
 CREATE TABLE public.pautas_lote_itens(id uuid PRIMARY KEY, job_id uuid, turma_id uuid);
