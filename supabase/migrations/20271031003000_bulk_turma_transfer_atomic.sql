@@ -317,4 +317,127 @@ CREATE TRIGGER a_00_lock_matricula_academic_evidence
 -- O trigger anterior em public.frequencias (tabela particionada) já
 -- serializa as presenças antes de qualquer transferência.
 
+
+-- A RPC unitária anterior aceitava lotação NULL/zero e não aplicava os
+-- mesmos estados e contexto que a RPC em lote. A guarda de evidências
+-- instalada acima também dispara para a operação individual.
+CREATE OR REPLACE FUNCTION public.transferir_aluno_turma(
+  p_matricula_origem_id uuid,
+  p_turma_destino_id uuid,
+  p_motivo text DEFAULT NULL::text
+) RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $single$
+DECLARE
+  v_actor uuid := auth.uid();
+  v_school uuid := public.current_tenant_escola_id();
+  v_enrollment public.matriculas%ROWTYPE;
+  v_source public.turmas%ROWTYPE;
+  v_target public.turmas%ROWTYPE;
+  v_reason text := nullif(btrim(p_motivo),'');
+  v_locked integer := 0;
+  v_occupancy integer := 0;
+  v_changed integer := 0;
+BEGIN
+  IF v_actor IS NULL OR v_school IS NULL OR NOT coalesce(
+    public.user_has_role_in_school(
+      v_school,ARRAY['secretaria','admin','admin_escola','staff_admin']
+    ),FALSE) THEN
+    RAISE EXCEPTION 'AUTH: Permissão negada.';
+  END IF;
+  IF p_matricula_origem_id IS NULL OR p_turma_destino_id IS NULL
+     OR v_reason IS NULL OR char_length(v_reason) NOT BETWEEN 10 AND 300 THEN
+    RAISE EXCEPTION 'DATA: Informe matrícula, turma destino e motivo de 10 a 300 caracteres.';
+  END IF;
+
+  -- Apenas descobrir a origem; não bloquear matrícula antes das turmas.
+  SELECT * INTO v_enrollment FROM public.matriculas
+  WHERE id=p_matricula_origem_id AND escola_id=v_school;
+  IF NOT FOUND OR v_enrollment.turma_id IS NULL
+     OR v_enrollment.ativo IS DISTINCT FROM TRUE
+     OR public.canonicalize_matricula_status_text(v_enrollment.status) <> 'ativo' THEN
+    RAISE EXCEPTION 'DATA: Matrícula não encontrada ou inativa.';
+  END IF;
+  IF v_enrollment.turma_id=p_turma_destino_id THEN
+    RAISE EXCEPTION 'DATA: Escolha uma turma de destino diferente.';
+  END IF;
+
+  PERFORM 1 FROM public.turmas t
+  WHERE t.escola_id=v_school
+    AND t.id IN (v_enrollment.turma_id,p_turma_destino_id)
+  ORDER BY t.id FOR UPDATE;
+  GET DIAGNOSTICS v_locked = ROW_COUNT;
+  IF v_locked<>2 THEN
+    RAISE EXCEPTION 'DATA: Turmas não encontradas nesta escola.';
+  END IF;
+
+  SELECT * INTO v_source FROM public.turmas
+  WHERE id=v_enrollment.turma_id AND escola_id=v_school;
+  SELECT * INTO v_target FROM public.turmas
+  WHERE id=p_turma_destino_id AND escola_id=v_school;
+  IF v_source.status_validacao IS DISTINCT FROM 'ativo'
+    OR v_target.status_validacao IS DISTINCT FROM 'ativo'
+    OR v_source.status_fecho IS DISTINCT FROM 'ABERTO'
+    OR v_target.status_fecho IS DISTINCT FROM 'ABERTO' THEN
+    RAISE EXCEPTION 'DATA: As turmas devem estar ativas e abertas.';
+  END IF;
+  IF v_source.session_id IS NULL
+    OR v_source.session_id IS DISTINCT FROM v_target.session_id
+    OR v_source.ano_letivo_id IS DISTINCT FROM v_source.session_id
+    OR v_target.ano_letivo_id IS DISTINCT FROM v_target.session_id
+    OR v_source.ano_letivo IS DISTINCT FROM v_target.ano_letivo
+    OR v_source.curso_id IS DISTINCT FROM v_target.curso_id
+    OR v_source.classe_id IS DISTINCT FROM v_target.classe_id THEN
+    RAISE EXCEPTION 'DATA: Ano letivo, curso ou classe incompatível.';
+  END IF;
+
+  SELECT * INTO v_enrollment FROM public.matriculas
+  WHERE id=p_matricula_origem_id AND escola_id=v_school
+    AND turma_id=v_source.id AND session_id=v_source.session_id
+    AND ano_letivo=v_source.ano_letivo AND ativo IS TRUE
+    AND public.canonicalize_matricula_status_text(status)='ativo'
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'CONFLICT: Matrícula alterada; atualize antes de repetir.';
+  END IF;
+  IF v_target.capacidade_maxima IS NULL OR v_target.capacidade_maxima<=0 THEN
+    RAISE EXCEPTION 'DATA: Configure a capacidade da turma de destino.';
+  END IF;
+  SELECT count(*) INTO v_occupancy
+  FROM public.matriculas m
+  WHERE m.escola_id=v_school AND m.turma_id=v_target.id
+    AND m.session_id=v_target.session_id AND m.ativo IS TRUE
+    AND public.canonicalize_matricula_status_text(m.status)='ativo';
+  IF v_occupancy>=v_target.capacidade_maxima THEN
+    RAISE EXCEPTION 'DATA: Turma destino sem vagas.';
+  END IF;
+
+  -- O BEFORE UPDATE global rejeita presença, exame e notas existentes,
+  -- preservando a matrícula e todas as obrigações financeiras associadas.
+  UPDATE public.matriculas
+  SET turma_id=v_target.id,updated_at=now(),updated_by=v_actor
+  WHERE id=v_enrollment.id AND escola_id=v_school
+    AND turma_id=v_source.id AND session_id=v_source.session_id AND ativo IS TRUE;
+  GET DIAGNOSTICS v_changed = ROW_COUNT;
+  IF v_changed<>1 THEN
+    RAISE EXCEPTION 'CONFLICT: Matrícula modificada durante a operação.';
+  END IF;
+  INSERT INTO public.audit_logs(
+    escola_id,actor_id,action,entity,entity_id,portal,details,before,after
+  ) VALUES(
+    v_school,v_actor,'MATRICULA_TRANSFERIDA','matriculas',
+    v_enrollment.id::text,'secretaria',
+    jsonb_build_object('motivo',v_reason,'tipo','correcao_turma'),
+    jsonb_build_object('turma_id',v_source.id,'session_id',v_source.session_id),
+    jsonb_build_object('turma_id',v_target.id,'session_id',v_target.session_id)
+  );
+  RETURN v_enrollment.id;
+END;
+$single$;
+
+REVOKE ALL ON FUNCTION public.transferir_aluno_turma(uuid,uuid,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.transferir_aluno_turma(uuid,uuid,text) TO authenticated;
+
 COMMIT;
