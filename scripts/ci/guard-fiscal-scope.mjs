@@ -66,9 +66,14 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // #299: decree provenance RPCs already applied independently; no fiscal/AGT changes.
   "20261029181138_official_decree_period_provenance_guard.sql",
   "20261029181554_preserve_legacy_2025_calendar_provenance_compatibility.sql",
-  // PR #320: one audited, role-scoped and atomic school-class transfer RPC.
-  // Keep the general migration guard and fiscal/AGT/SAF-T scanner enforced.
+  // PR #320: exact audited school-class transfer migrations. The legacy
+  // transfer RPC is revoked; the additional academic evidence guard is
+  // additive and contains no pupil-grade or fiscal data migration.
+  // Retain explicit filenames: never allow *transfer*.sql wildcards.
+  // Every listed file is still scanned for executable fiscal/AGT/SAF-T SQL.
   "20271031003000_bulk_turma_transfer_atomic.sql",
+  "20271031004000_disable_legacy_transferir_matricula.sql",
+  "20271031005000_guard_secondary_academic_transfer_evidence.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
