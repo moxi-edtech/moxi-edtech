@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Search,
-  Download,
   UserPlus,
   ArrowLeft,
   Users,
@@ -130,26 +129,6 @@ function StatusBadge({ status }: { status: string }) {
       {key === "anulado" && <XCircle className="h-3.5 w-3.5" />}
       {labels[key] ?? status}
     </span>
-  );
-}
-
-function ToolbarButton({
-  href,
-  label,
-}: {
-  href: string;
-  label: string;
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      className="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-bold text-foreground ring-1 ring-border hover:bg-muted"
-      rel="noreferrer"
-    >
-      <Download className="h-4 w-4 text-muted-foreground" />
-      {label}
-    </a>
   );
 }
 
@@ -566,17 +545,12 @@ export default function MatriculasListClient() {
             </select>
           </div>
 
-          {/* Exports */}
-          <div className="flex gap-2">
-            <ToolbarButton
-              href={`${secretariaBase}/admissoes/matriculas/export?format=csv&ano=${anoLetivoAtivo}&q=${q}`}
-              label="CSV"
-            />
-            <ToolbarButton
-              href={`${secretariaBase}/admissoes/matriculas/export?format=json&ano=${anoLetivoAtivo}&q=${q}`}
-              label="JSON"
-            />
-          </div>
+          {/* Schoolwide CSV/JSON endpoints intentionally return 501; never
+              advertise an action that cannot succeed or bypass the authorized
+              per-class/per-turma roster export policy. */}
+          <p className="max-w-xs text-xs leading-5 text-muted-foreground">
+            Exportação disponível nas listas de turma ou classe autorizadas.
+          </p>
         </div>
 
         {/* Cascading Filters */}
