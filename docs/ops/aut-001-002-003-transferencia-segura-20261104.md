@@ -51,3 +51,16 @@ Após aplicação, confirmou-se por consultas ao catálogo: ambas as RPCs instal
 **Transferência com notas não se resolve alterando apenas `matriculas.turma_id`.** Exige um modelo temporal imutável de turmas por matrícula, associação de notas/avaliações ao período e disciplina original, apresentação correcta de pautas históricas e atuais, e reconciliação da decisão final do RAA. Até existir este contrato e homologação, o caminho seguro é recusar a movimentação (código `P1050`) e mostrar uma ação contextual de resolução.
 
 Status: **RPCs individual e em lote aplicadas no Supabase, integração isolada e catálogo pós-deploy aprovados; transferência com notas continua bloqueada, E2E HTTP autenticado e reconciliação global do ledger ainda pendentes. A PR segue draft e sem merge na main.**
+
+
+## Auditoria complementar — 04/11/2026
+
+**Descoberta crítica**: a RPC legada `public.transferir_matricula(uuid,uuid,uuid)` ainda era executável por `authenticated`. Esta RPC cria outra matrícula com o estado obsoleto `ativa`, deriva o ano com `LIMIT 1` e marca a origem como transferida, sem o contrato atómico das RPCs seguras. Não foi encontrado consumidor ativo no código pesquisado (apenas SQL de migração e tipos legados), mas a superfície de chamada direta permanecia exposta.
+
+**Correção aplicada à base real, sem branch Supabase:** migração `20271031004000_disable_legacy_transferir_matricula.sql`. A execução removeu `EXECUTE` de `PUBLIC`, `anon` e `authenticated` somente da RPC legada. As RPCs `transferir_aluno_turma` e `transferir_turma_em_lote` continuam executáveis por `authenticated`, com autorização interna e bloqueio `P1050`. A entrada única de histórico remoto foi reconciliada de `20261104182632` para `20271031004000` sob validação de privilégios e do SQL aplicado. Nenhuma matrícula, nota, frequência ou cobrança foi alterada.
+
+**Integridade dos dados verificada em leitura:** 949 notas; zero divergências entre turma da avaliação e turma da matrícula, zero divergências de escola; zero resultados de exames e zero linhas de `frequencia_status_periodo` na consulta. `supabase/ops/tests/aut001_003_transfer_integrity_readonly.sql` repete a verificação de forma somente-leitura e falha se encontrar divergências ou reexposição da RPC legada.
+
+**AUT-002 continua NÃO encerrado**: transferir um aluno que já tenha notas exigiria histórico temporal de vínculos a turmas e consumidores de pautas/RAA/portais conscientes da origem. Sem esse contrato, as RPCs devem continuar a devolver `P1050` (sem atualização parcial). Não autorizar transferência com notas com base apenas na ausência de divergências no snapshot.
+
+**AUT-003**: integração sintética PostgreSQL 16 previamente aprovada; auditoria de catálogo e integridade em produção aprovada em leitura. E2E autenticado em ambiente representativo continua obrigatório antes de certificar fluxos com evidência académica. A reconciliação global do ledger de migrações permanece independente.
