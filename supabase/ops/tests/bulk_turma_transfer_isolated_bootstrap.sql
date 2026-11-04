@@ -60,10 +60,11 @@ CREATE TABLE public.frequencia_status_periodo(
   id uuid PRIMARY KEY, escola_id uuid NOT NULL,
   matricula_id uuid REFERENCES public.matriculas(id)
 );
-CREATE TABLE public.presencas(
-  id uuid PRIMARY KEY, escola_id uuid NOT NULL,
-  aluno_id uuid, turma_id uuid
-);
+-- Na produção presencas é uma view derivada da frequência e matrícula.
+CREATE VIEW public.presencas AS
+SELECT f.id,f.escola_id,m.aluno_id,m.turma_id
+FROM public.frequencias f
+JOIN public.matriculas m ON m.id=f.matricula_id;
 CREATE TABLE public.audit_logs(
   id bigserial PRIMARY KEY, escola_id uuid, actor_id uuid, action text, entity text,
   entity_id text, portal text, details jsonb, before jsonb, after jsonb,
