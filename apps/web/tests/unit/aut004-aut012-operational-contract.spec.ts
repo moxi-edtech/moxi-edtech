@@ -1,0 +1,59 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const read = (path: string) => readFileSync(resolve(process.cwd(), "src", path), "utf8");
+
+test("AUT-004/005: pending RAA decisions remain server-side and grade entry stays in the selected student's workspace", () => {
+  const panel = read("components/secretaria/RaaBalcaoResolutionPanel.tsx");
+  const workspace = read("components/secretaria/BalcaoAtendimento.tsx");
+  assert.match(panel, /onLancarNota\(activeCase && isRaaTrimestre\(activeCase.periodo\)/);
+  assert.match(panel, /await readJson\("\/api\/secretaria\/faltas\/justificacoes"/);
+  assert.match(panel, /await readJson\("\/api\/academico\/raa\/reapreciacao\/decisao"/);
+  assert.match(panel, /await readJson\("\/api\/academico\/raa\/indisciplina"/);
+  assert.match(panel, /await readJson\("\/api\/academico\/exames\/resultados"/);
+  assert.match(panel, /await refreshAfterSave\(\)/);
+  assert.match(workspace, /originAnoLetivoId: source.ano_letivo_id/);
+});
+
+test("AUT-006/011: stale academic reads are aborted, unknown data is not treated as absence and appeals reuse retry keys", () => {
+  const panel = read("components/secretaria/RaaBalcaoResolutionPanel.tsx");
+  assert.match(panel, /loadControllerRef\.current\?\.abort\(\)/);
+  assert.match(panel, /signal: controller.signal/);
+  assert.match(panel, /if \(controller.signal.aborted\) return/);
+  assert.match(panel, /setIncompleteSources\(missing\)/);
+  assert.match(panel, /reapreciacaoKeyRef\.current \?\?= crypto.randomUUID\(\)/);
+  assert.match(panel, /reapreciacaoKeyRef\.current = null/);
+});
+
+test("AUT-007/009: PDF reads active enrollments and matches source grades by enrollment ID, never pupil ID", () => {
+  const pauta = read("lib/pedagogico/pauta-geral.ts");
+  assert.match(pauta, /ACTIVE_MATRICULA_STATUSES/);
+  assert.match(pauta, /matriculaIdPorAluno\.set\(aluno.id, row.id\)/);
+  assert.match(pauta, /matriculaIdPorAluno\.get\(alunoId\)/);
+  assert.match(pauta, /const key = `\$\{matriculaId\}:\$\{disciplina.id\}:\$\{trimestre\}`/);
+  assert.doesNotMatch(pauta, /const key = `\$\{alunoId\}:\$\{disciplina.id\}:\$\{trimestre\}`/);
+});
+
+test("AUT-010/011/012: transfer preflight uses grade evidence and admission capacity, with same RBAC as the mutation", () => {
+  const preview = read("app/api/secretaria/matriculas/[matriculaId]/check-transfer/route.ts");
+  const rectification = read("app/api/secretaria/matriculas/[matriculaId]/rectify-class/route.ts");
+  const writer = read("app/api/secretaria/matriculas/[matriculaId]/transfer/route.ts");
+  const form = read("components/secretaria/TransferForm.tsx");
+  const list = read("components/secretaria/MatriculasListClient.tsx");
+  assert.match(preview, /requireRoleInSchool/);
+  assert.match(preview, /resolveEscolaIdForUser/);
+  for (const table of ["notas", "exame_resultados", "frequencias", "frequencia_status_periodo"]) {
+    assert.ok(preview.includes('"' + table + '"'), table);
+  }
+  assert.match(preview, /allow: blockers.length === 0/);
+  assert.match(preview, /TRANSFER_ACADEMIC_RECONCILIATION_REQUIRED/);
+  assert.match(rectification, /requerConciliacaoAcademica/);
+  assert.match(rectification, /if \(requerConciliacaoAcademica\) blockers.push/);
+  assert.match(writer, /rpcError.code === "P1050"/);
+  assert.match(form, /controller.signal.aborted/);
+  assert.match(form, /onResolveAcademic/);
+  assert.match(list, /action: "reenrollment"/);
+  assert.match(list, /alunoId: selectedMatricula.aluno_id/);
+});
