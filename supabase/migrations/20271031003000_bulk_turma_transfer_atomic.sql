@@ -323,6 +323,10 @@ BEGIN
     AND m.turma_id = NEW.turma_id
     AND m.ativo IS TRUE
   ORDER BY m.id FOR SHARE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P1053',
+      MESSAGE = 'Presença sem matrícula ativa nesta turma; use a retificação académica autorizada.';
+  END IF;
   RETURN NEW;
 END;
 $lock$;
