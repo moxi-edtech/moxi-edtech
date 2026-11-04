@@ -45,6 +45,7 @@ test("bulk transfer refuses academic records before any mutation", () => {
     const index = migration.indexOf(relation);
     assert.ok(index > 0 && index < firstUpdate, `${relation} must be guarded before UPDATE`);
   }
+  assert.match(migration, /ERRCODE = 'P1050'/);
   assert.match(migration, /conciliação académica para preservar as pautas/);
 });
 
@@ -64,6 +65,7 @@ test("route invokes one RPC call after tenant, calendar and role authorization",
   assert.match(route, /requireRoleInSchool/);
   assert.match(route, /\.rpc\("transferir_turma_em_lote"/);
   assert.match(route, /p_ano_letivo_id: academicContext\.anoLetivoId/);
+  assert.match(route, /BULK_TRANSFER_ACADEMIC_RECORDS/);
   assert.doesNotMatch(route, /for \(const .*\.rpc\(/);
   assert.doesNotMatch(route, /temporariamente indisponível: use a transferência individual/);
 });
