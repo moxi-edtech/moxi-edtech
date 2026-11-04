@@ -104,7 +104,7 @@ CREATE TRIGGER trg_guard_turma_transfer_secondary_evidence
 CREATE OR REPLACE FUNCTION public.turma_transfer_academic_evidence_v1(
   p_matricula_id uuid
 ) RETURNS jsonb
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
 AS $preflight$
 DECLARE
   v_actor uuid := auth.uid();
