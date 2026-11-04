@@ -866,6 +866,7 @@ export default function TurmasListClient({
   const [transferReason, setTransferReason] = useState("");
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
+  const [transferErrorCode, setTransferErrorCode] = useState<string | null>(null);
   const [transferCandidates, setTransferCandidates] = useState<TurmaItem[]>([]);
   const [transferCandidatesLoading, setTransferCandidatesLoading] = useState(false);
   const [transferConfirmed, setTransferConfirmed] = useState(false);
@@ -989,6 +990,7 @@ export default function TurmasListClient({
     setTransferTargetTurmaId("");
     setTransferReason("");
     setTransferError(null);
+    setTransferErrorCode(null);
     setTransferCandidates([]);
     setTransferConfirmed(false);
     setShowTransferModal(true);
@@ -1193,6 +1195,7 @@ export default function TurmasListClient({
         !selectedTurmaForTransfer?.session_id || transferReason.trim().length < 10) return;
     setTransferLoading(true);
     setTransferError(null);
+    setTransferErrorCode(null);
     try {
       const res = await fetch(`/api/secretaria/turmas/${transferSourceTurmaId}/transferir`, {
         method: "POST",
@@ -1205,6 +1208,7 @@ export default function TurmasListClient({
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
+        setTransferErrorCode(json?.code ?? null);
         throw new Error(json?.error || "Falha ao transferir turma.");
       }
       success("Transferência concluída", `${json.transferred ?? 0} matrícula(s) movida(s) com sucesso.`);
@@ -1830,7 +1834,7 @@ export default function TurmasListClient({
               {transferError && (
                 <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {transferError}
-                  {transferError.includes("conciliação académica") && transferSourceTurmaId && (
+                  {transferErrorCode === "BULK_TRANSFER_ACADEMIC_RECORDS" && transferSourceTurmaId && (
                     <Link
                       href={`${detailHrefBase}/${transferSourceTurmaId}`}
                       target="_blank"
