@@ -127,7 +127,9 @@ BEGIN
       AND p.turma_id = p_turma_origem_id
       AND m.id = ANY(v_matriculas)
   ) THEN
-    RAISE EXCEPTION 'DATA: Existem notas, exames ou frequência na turma de origem. A transferência em massa requer conciliação académica para preservar as pautas.';
+    RAISE EXCEPTION USING
+      ERRCODE = 'P1050',
+      MESSAGE = 'Existem notas, exames ou frequência na turma de origem. A transferência em massa requer conciliação académica para preservar as pautas.';
   END IF;
 
   IF v_destino.capacidade_maxima IS NULL OR v_destino.capacidade_maxima <= 0 THEN
