@@ -4,7 +4,7 @@ import { CheckCircle2, ChevronRight, GraduationCap, LockKeyhole, CalendarDays } 
 import type { RematriculaCardState, TurmaOption } from "@/hooks/useRematriculaBalcao";
 import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
 import { nextAcademicActionForBalcao, pendingSubjectsActionForBalcao } from "@/lib/rematricula/raa-balcao-next-action";
-import { raaBalcaoPlan } from "@/lib/rematricula/raa-balcao-resolution";
+import { raaBalcaoPlan, raaBalcaoEffectiveStatus } from "@/lib/rematricula/raa-balcao-resolution";
 import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 
 export type RaaProgressSnapshot = {
@@ -132,19 +132,31 @@ export function RematriculaWorkspaceHeader({
   temPendencias?: boolean;
 }) {
   const baseDisplay = rematriculaDisplayState(status);
-  const academicNext = nextAcademicActionForBalcao(status, timeline);
+  const academicStatus = raaBalcaoEffectiveStatus(status, academic);
+  const academicPlan = raaBalcaoPlan(academicStatus);
+  const academicNext = nextAcademicActionForBalcao(academicStatus, timeline);
   // Calendar for the currently selected destination is not evidence of the
   // origin's trimester. Avoid deriving missing-grade urgency from another year.
   const timelineOrigem = timelineAno && anoOrigem && timelineAno === anoOrigem ? timeline : null;
-  const subjectsNext = pendingSubjectsActionForBalcao(status, academic ?? null, canLancarNota, timelineOrigem);
+  const subjectsNext = pendingSubjectsActionForBalcao(academicStatus, academic ?? null, canLancarNota, timelineOrigem);
+  const paymentAlreadyStarted = [
+    "RECONCILIATION_REQUIRED", "PAYMENT_IN_PROGRESS", "ACADEMIC_HISTORY_PENDING",
+    "DOCUMENT_PENDING", "PENDING_ORDER_REVIEW", "LEGACY_REVIEW_REQUIRED",
+  ].includes(status ?? "");
+  const academicMessage = academicStatus !== status && academicPlan
+    ? subjectsNext?.message ?? academicNext.message ?? academicPlan.detalhe
+    : null;
   const display = {
     ...baseDisplay,
-    title: subjectsNext?.title ?? academicNext.title ?? baseDisplay.title,
-    message: subjectsNext?.message ?? academicNext.message ?? baseDisplay.message,
+    title: paymentAlreadyStarted ? baseDisplay.title
+      : subjectsNext?.title ?? academicNext.title ?? baseDisplay.title,
+    message: academicMessage
+      ? baseDisplay.message + " " + academicMessage
+      : subjectsNext?.message ?? academicNext.message ?? baseDisplay.message,
   };
   // The canonical RAA may still be blocked after every visible item is
   // decided. Keep the resolution link until the server changes the status.
-  const showPendingLink = temPendencias && (Boolean(raaBalcaoPlan(status)) ||
+  const showPendingLink = temPendencias && (Boolean(academicPlan) ||
     (status !== "ALREADY_COMPLETED" && progress !== null &&
       progress.total > progress.registados));
   const reasonNeedsDetail = motivo && motivo.trim() && status !== "ACADEMIC_PENDING";
