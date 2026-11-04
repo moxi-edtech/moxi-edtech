@@ -3,7 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
-import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,8 @@ const BodySchema = z.object({
   ano_letivo_id: z.string().uuid(),
 });
 
-const ALLOWED_ROLES = K12_SECRETARIA_OPERACIONAL_ROLE_GROUP;
+// Must exactly match the role contract enforced by the SECURITY DEFINER RPC.
+const ALLOWED_ROLES = ["secretaria", "admin", "admin_escola", "staff_admin"] as const;
 
 export async function PUT(request: Request, { params }: { params: Promise<{ matriculaId: string }> }) {
   try {
@@ -94,8 +95,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
         p_matricula_origem_id: matriculaId,
         p_turma_destino_id: parsed.data.turma_id,
         p_motivo: parsed.data.motivo,
-      })
-      .single();
+      });
 
     if (rpcError) {
       const academicEvidence = rpcError.code === "P1050";
@@ -103,12 +103,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
         ok: false,
         code: academicEvidence ? "TRANSFER_ACADEMIC_RECONCILIATION_REQUIRED" : rpcError.code,
         error: academicEvidence
-          ? "Existem notas, exames ou frequência nesta matrícula. Resolva a situação académica antes de transferir."
+          ? "Há histórico académico, pautas ou decisões da turma de origem. A transferência exige conciliação temporal; os registos não foram alterados."
           : rpcError.message,
       }, { status: academicEvidence ? 409 : 400 });
     }
 
-    if (!newMatriculaId) {
+    if (typeof newMatriculaId !== "string" || !z.string().uuid().safeParse(newMatriculaId).success) {
       return NextResponse.json({ ok: false, error: 'Formato de resposta inesperado do RPC.' }, { status: 500 });
     }
 
