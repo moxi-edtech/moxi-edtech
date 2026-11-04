@@ -1,0 +1,47 @@
+name: KLASSE Atomic Turma Transfer Integration
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20271031003000_bulk_turma_transfer_atomic.sql"
+      - "supabase/ops/tests/bulk_turma_transfer_isolated_**"
+      - ".github/workflows/klasse-bulk-turma-transfer-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-isolated-transfer:
+    name: Atomic transfer — RLS, grades, audit, capacity and concurrent writes
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: klasse_transfer_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d klasse_transfer_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_transfer_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check isolated database tooling
+        run: |
+          command -v psql
+          psql --version
+          psql "$PGURL" -v ON_ERROR_STOP=1 -Atqc "SELECT version()"
+      - name: Validate academic transfer in empty, disposable PostgreSQL
+        run: bash supabase/ops/tests/bulk_turma_transfer_isolated_verify.sh
