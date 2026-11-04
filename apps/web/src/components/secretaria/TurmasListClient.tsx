@@ -1830,6 +1830,16 @@ export default function TurmasListClient({
               {transferError && (
                 <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {transferError}
+                  {transferError.includes("conciliação académica") && transferSourceTurmaId && (
+                    <Link
+                      href={`${detailHrefBase}/${transferSourceTurmaId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex text-sm font-semibold underline underline-offset-2"
+                    >
+                      Abrir turma e consultar os registos académicos
+                    </Link>
+                  )}
                 </div>
               )}
 
