@@ -53,7 +53,7 @@ export async function GET(
     }
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
-    if (!escolaId) return NextResponse.json({ ok: true, turmaId: null, total: 0, alunos: [] }, { headers });
+    if (!escolaId) return NextResponse.json({ ok: false, error: "Utilizador não vinculado a uma escola." }, { status: 403 });
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
@@ -115,7 +115,7 @@ export async function GET(
       .eq("ativo", true)
       .in("status", ACTIVE_MATRICULA_STATUSES);
       
-    query = applyKf2ListInvariants(query);
+    query = applyKf2ListInvariants(query, { defaultLimit: 200, maxLimit: 200 });
 
     const { data, error } = await query;
 
