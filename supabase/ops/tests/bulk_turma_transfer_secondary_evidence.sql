@@ -9,7 +9,14 @@ CREATE OR REPLACE FUNCTION pg_temp.expect_secondary_p1050(
   p_source uuid DEFAULT '00000000-0000-4000-8000-000000000011',
   p_target uuid DEFAULT '00000000-0000-4000-8000-000000000012'
 ) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  v_evidence jsonb;
 BEGIN
+  SELECT public.turma_transfer_academic_evidence_v1(p_enrollment)
+    INTO v_evidence;
+  IF (v_evidence->>'has_evidence') IS DISTINCT FROM 'true' THEN
+    RAISE EXCEPTION 'Preflight advertised transfer despite academic evidence';
+  END IF;
   PERFORM public.transferir_aluno_turma(
     p_enrollment, p_target, 'Conciliação documental pendente em teste'
   );
@@ -44,6 +51,31 @@ BEGIN
     RAISE EXCEPTION 'Registos, capacidade ou auditoria mudaram após P1050';
   END IF;
 END $$;
+
+-- The preflight is an authenticated, tenant-authorized boolean, never a
+-- general purpose student-history lookup.
+SET ROLE authenticated;
+DO $smoke$
+DECLARE v jsonb;
+BEGIN
+  v := public.turma_transfer_academic_evidence_v1(
+    '00000000-0000-4000-8000-000000000021');
+  IF v->>'has_evidence' IS DISTINCT FROM 'false' THEN
+    RAISE EXCEPTION 'Preflight should permit a history-free transfer';
+  END IF;
+END $smoke$;
+RESET ROLE;
+SET test.actor='00000000-0000-4000-8000-000000000033';
+SET ROLE authenticated;
+DO $deny$
+BEGIN
+  PERFORM public.turma_transfer_academic_evidence_v1(
+    '00000000-0000-4000-8000-000000000021');
+  RAISE EXCEPTION 'Unexpected unauthorized academic disclosure';
+EXCEPTION WHEN insufficient_privilege THEN NULL;
+END $deny$;
+RESET ROLE;
+SET test.actor='00000000-0000-4000-8000-000000000031';
 
 -- Row-bound secondary evidence: the single RPC, batch RPC and plain UPDATE
 -- all must fail before any enrollment, grade, receipt or audit mutation.
@@ -221,6 +253,14 @@ SELECT pg_temp.assert_unchanged();
 -- a PUBLIC/anon executable SECURITY DEFINER entrypoint.
 DO $$
 BEGIN
+  IF has_function_privilege('anon',
+       'public.turma_transfer_academic_evidence_v1(uuid)', 'EXECUTE')
+    OR NOT has_function_privilege('authenticated',
+       'public.turma_transfer_academic_evidence_v1(uuid)', 'EXECUTE')
+    OR has_function_privilege('authenticated',
+       'public.turma_transfer_has_secondary_evidence_v1(uuid,uuid,uuid,uuid,integer)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'SECURITY: preflight RPC or helper has incorrect grants';
+  END IF;
   IF has_function_privilege('anon',
        'public.guard_turma_transfer_secondary_evidence_v1()', 'EXECUTE')
     OR has_function_privilege('authenticated',
