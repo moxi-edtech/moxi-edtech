@@ -121,16 +121,27 @@ export async function buildPautaGeralPayload({
   >()
 
   if (matriculaIds.length > 0 && turmaDisciplinaIds.length > 0) {
-    const { data: notasRows, error: notasError } = await supabase
-      .from("notas")
-      .select("valor, matricula_id, avaliacoes ( trimestre, tipo, turma_disciplina_id )")
-      .eq("escola_id", escolaId)
-      .in("matricula_id", matriculaIds)
-      .in("avaliacoes.turma_disciplina_id", turmaDisciplinaIds)
+    // A pauta completa não pode depender do limite implícito de 1.000 linhas
+    // do PostgREST: 25 alunos × 8 disciplinas × 6 avaliações já o excede.
+    // O join INNER filtra na base, não após a paginação. Ordem estável por PK.
+    const pageSize = 500
+    const maxGradeRows = 30000
+    for (let offset = 0; ; offset += pageSize) {
+      if (offset >= maxGradeRows) {
+        throw new Error("Pauta demasiado extensa para emissão segura; divida a consulta.")
+      }
+      const { data: notasRows, error: notasError } = await supabase
+        .from("notas")
+        .select("id, valor, matricula_id, avaliacoes!inner ( trimestre, tipo, turma_disciplina_id )")
+        .eq("escola_id", escolaId)
+        .in("matricula_id", matriculaIds)
+        .in("avaliacoes.turma_disciplina_id", turmaDisciplinaIds)
+        .order("id", { ascending: true })
+        .range(offset, offset + pageSize - 1)
 
-    if (notasError) throw new Error(notasError.message)
+      if (notasError) throw new Error("Não foi possível consultar todas as notas da pauta.")
 
-    for (const row of (notasRows || []) as any[]) {
+      for (const row of (notasRows ?? []) as any[]) {
       const avaliacao = Array.isArray(row.avaliacoes) ? row.avaliacoes[0] : row.avaliacoes
       const trimestre = avaliacao?.trimestre as 1 | 2 | 3 | null
       if (!trimestre) continue
@@ -147,6 +158,8 @@ export async function buildPautaGeralPayload({
       if (tipo === "NPT") entry.npt.push(row.valor)
       }
       gradesMap.set(key, entry)
+      }
+      if ((notasRows?.length ?? 0) < pageSize) break
     }
   }
 
