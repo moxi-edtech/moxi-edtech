@@ -65,6 +65,24 @@ CREATE VIEW public.presencas AS
 SELECT f.id,f.escola_id,m.aluno_id,m.turma_id
 FROM public.frequencias f
 JOIN public.matriculas m ON m.id=f.matricula_id;
+-- Minimal synthetic surrogates for secondary history sources. No real
+-- student data or financial records enter the disposable test database.
+CREATE TABLE public.notas_avaliacoes(id uuid PRIMARY KEY, matricula_id uuid,
+  aluno_id uuid, avaliacao_id uuid);
+CREATE TABLE public.lancamentos(id uuid PRIMARY KEY, escola_id uuid, matricula_id uuid);
+CREATE TABLE public.historico_snapshot_locks(id uuid PRIMARY KEY, escola_id uuid, matricula_id uuid);
+CREATE TABLE public.historico_anos(id uuid PRIMARY KEY, escola_id uuid, matricula_id uuid,
+  aluno_id uuid, turma_id uuid, ano_letivo integer);
+CREATE TABLE public.reapreciacao_pedidos(id uuid PRIMARY KEY, escola_id uuid, matricula_id uuid);
+CREATE TABLE public.raa_indisciplina_eventos(id uuid PRIMARY KEY, escola_id uuid, matricula_id uuid);
+CREATE TABLE public.aluno_falta_justificacoes(id uuid PRIMARY KEY, escola_id uuid, matricula_id uuid);
+CREATE TABLE public.pautas_oficiais(id uuid PRIMARY KEY, escola_id uuid, turma_id uuid);
+CREATE TABLE public.pautas_lote_jobs(id uuid PRIMARY KEY, escola_id uuid);
+CREATE TABLE public.pautas_lote_itens(id uuid PRIMARY KEY, job_id uuid, turma_id uuid);
+CREATE TABLE public.excecoes_pauta(id uuid PRIMARY KEY, escola_id uuid, turma_id uuid);
+CREATE TABLE public.presencas_deprecated(id uuid PRIMARY KEY, escola_id uuid,
+  aluno_id uuid, turma_id uuid);
+
 CREATE TABLE public.audit_logs(
   id bigserial PRIMARY KEY, escola_id uuid, actor_id uuid, action text, entity text,
   entity_id text, portal text, details jsonb, before jsonb, after jsonb,
