@@ -165,7 +165,7 @@ test("only audited atomic turma transfer migration passes the unchanged fiscal s
     "CREATE TABLE public.saft_export (id uuid);",
   ]) {
     assert.match(checkFiscalAndSchemaScope([path], () => sql)[0] ?? "",
-      /Fiscal\\/AGT activation marker/);
+      /Fiscal\/AGT activation marker/);
   }
 });
 
