@@ -13,6 +13,17 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   IF SQLERRM = 'UNEXPECTED_BULK_SUCCESS' THEN RAISE; END IF;
 END $$;
+CREATE OR REPLACE FUNCTION pg_temp.expect_rejected_single(
+  p_matricula uuid, p_dest uuid
+) RETURNS void LANGUAGE plpgsql AS $singleTest$
+BEGIN
+  PERFORM public.transferir_aluno_turma(p_matricula,p_dest,
+    'Transferência individual protegida por histórico');
+  RAISE EXCEPTION 'UNEXPECTED_SINGLE_SUCCESS';
+EXCEPTION WHEN OTHERS THEN
+  IF SQLERRM='UNEXPECTED_SINGLE_SUCCESS' THEN RAISE; END IF;
+END
+$singleTest$;
 CREATE OR REPLACE FUNCTION pg_temp.expect_direct_guard(p_matricula uuid, p_dest uuid)
 RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -50,6 +61,26 @@ BEGIN
 END $$;
 ROLLBACK;
 
+-- RPC individual: mesma capacidade, escola, role, ano e auditoria.
+RESET ROLE;
+BEGIN;
+SET ROLE authenticated;
+SELECT public.transferir_aluno_turma(
+  '00000000-0000-4000-8000-000000000023',
+  '00000000-0000-4000-8000-000000000012',
+  'Correção individual validada sem perder histórico'
+);
+DO $individualtest$
+BEGIN
+  IF (SELECT turma_id FROM public.matriculas
+      WHERE id='00000000-0000-4000-8000-000000000023')
+      IS DISTINCT FROM '00000000-0000-4000-8000-000000000012'::uuid
+    OR (SELECT count(*) FROM public.audit_logs WHERE action='MATRICULA_TRANSFERIDA')<>1
+  THEN RAISE EXCEPTION 'Individual transfer not atomic/audited'; END IF;
+END
+$individualtest$;
+ROLLBACK;
+
 -- Caso idempotente (nenhuma matrícula de origem): falha sem efeitos secundários.
 SELECT pg_temp.expect_rejected_bulk(
   '00000000-0000-4000-8000-000000000012',
@@ -76,6 +107,12 @@ BEGIN;
 INSERT INTO public.notas VALUES('00000000-0000-4000-8000-000000000041','00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000021',17);
 SET ROLE authenticated;
 SELECT pg_temp.expect_rejected_bulk('00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000012','00000000-0000-4000-8000-000000000006');
+RESET ROLE;
+SET ROLE authenticated;
+SELECT pg_temp.expect_rejected_single(
+  '00000000-0000-4000-8000-000000000021',
+  '00000000-0000-4000-8000-000000000012'
+);
 RESET ROLE;
 SELECT pg_temp.expect_direct_guard('00000000-0000-4000-8000-000000000021','00000000-0000-4000-8000-000000000012');
 ROLLBACK;
