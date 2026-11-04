@@ -104,6 +104,32 @@ BEGIN
     RAISE EXCEPTION 'DATA: A turma não possui matrículas ativas para transferir.';
   END IF;
 
+  -- Notas, exames e frequência podem referir avaliações/disciplina/turma
+  -- antigas. O vínculo da matrícula sozinho não reconcilia esses registos.
+  -- Até existir uma transferência académica específica, falhar sem escrita.
+  IF EXISTS (
+    SELECT 1 FROM public.notas n
+    WHERE n.escola_id = v_escola_id AND n.matricula_id = ANY(v_matriculas)
+  ) OR EXISTS (
+    SELECT 1 FROM public.exame_resultados er
+    WHERE er.escola_id = v_escola_id AND er.matricula_id = ANY(v_matriculas)
+  ) OR EXISTS (
+    SELECT 1 FROM public.frequencias f
+    WHERE f.escola_id = v_escola_id AND f.matricula_id = ANY(v_matriculas)
+  ) OR EXISTS (
+    SELECT 1 FROM public.frequencia_status_periodo fp
+    WHERE fp.escola_id = v_escola_id AND fp.matricula_id = ANY(v_matriculas)
+  ) OR EXISTS (
+    SELECT 1 FROM public.presencas p
+    JOIN public.matriculas m ON m.aluno_id = p.aluno_id
+       AND m.escola_id = p.escola_id
+    WHERE p.escola_id = v_escola_id
+      AND p.turma_id = p_turma_origem_id
+      AND m.id = ANY(v_matriculas)
+  ) THEN
+    RAISE EXCEPTION 'DATA: Existem notas, exames ou frequência na turma de origem. A transferência em massa requer conciliação académica para preservar as pautas.';
+  END IF;
+
   IF v_destino.capacidade_maxima IS NULL OR v_destino.capacidade_maxima <= 0 THEN
     RAISE EXCEPTION 'DATA: Defina uma capacidade válida para a turma de destino.';
   END IF;
