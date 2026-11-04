@@ -204,7 +204,8 @@ DO $locks$
 DECLARE v_table text;
 BEGIN
   FOREACH v_table IN ARRAY ARRAY[
-    'pautas_oficiais', 'pautas_lote_itens', 'excecoes_pauta'
+    'pautas_oficiais', 'pautas_lote_itens', 'excecoes_pauta',
+    'presencas_deprecated'
   ] LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS a_00_lock_turma_academic_artifact ON public.%I', v_table);
     EXECUTE format(
@@ -215,4 +216,30 @@ BEGIN
   END LOOP;
 END;
 $locks$;
+
+-- Older snapshots may predate an enrollment FK. Lock their original turma
+-- only when matricula_id is absent; for ordinary snapshots the existing
+-- enrollment lock is used, avoiding reverse lock-order deadlocks.
+CREATE OR REPLACE FUNCTION public.lock_legacy_historico_turma_v1()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $fn$
+BEGIN
+  IF NEW.matricula_id IS NULL AND NEW.turma_id IS NOT NULL THEN
+    PERFORM 1 FROM public.turmas t
+    WHERE t.id = NEW.turma_id AND t.escola_id = NEW.escola_id
+    FOR SHARE;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION USING ERRCODE='23503',
+        MESSAGE='Turma de origem do histórico não encontrada nesta escola.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$fn$;
+REVOKE ALL ON FUNCTION public.lock_legacy_historico_turma_v1()
+  FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS a_00_lock_legacy_historico_turma ON public.historico_anos;
+CREATE TRIGGER a_00_lock_legacy_historico_turma
+  BEFORE INSERT OR UPDATE ON public.historico_anos
+  FOR EACH ROW EXECUTE FUNCTION public.lock_legacy_historico_turma_v1();
 COMMIT;
