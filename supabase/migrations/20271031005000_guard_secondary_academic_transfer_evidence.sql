@@ -11,7 +11,7 @@ BEGIN;
 CREATE OR REPLACE FUNCTION public.turma_transfer_has_secondary_evidence_v1(
   p_escola_id uuid, p_matricula_id uuid, p_turma_origem_id uuid,
   p_aluno_id uuid, p_ano_letivo integer
-) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+) RETURNS boolean LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = ''
 AS $check$
   SELECT
   EXISTS (
@@ -69,6 +69,15 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  -- Covers even a direct UPDATE from a privileged legacy writer. Artifact
+  -- publication takes the same class lock before writing its source record;
+  -- evaluate the evidence under a fresh READ COMMITTED snapshot afterwards.
+  PERFORM 1 FROM public.turmas t
+  WHERE t.id = OLD.turma_id AND t.escola_id = OLD.escola_id FOR SHARE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE='P1052',
+      MESSAGE='Turma de origem da matrícula não encontrada.';
+  END IF;
   -- Grades from superseded writers must remain anchored to their real class.
   -- Historical and officially published evidence cannot be safely moved
   -- merely by overwriting matriculas.turma_id.
