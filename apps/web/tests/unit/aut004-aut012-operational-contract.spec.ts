@@ -44,9 +44,10 @@ test("AUT-010/011/012: transfer preflight uses grade evidence and admission capa
   const list = read("components/secretaria/MatriculasListClient.tsx");
   assert.match(preview, /requireRoleInSchool/);
   assert.match(preview, /resolveEscolaIdForUser/);
-  for (const table of ["notas", "exame_resultados", "frequencias", "frequencia_status_periodo"]) {
-    assert.ok(preview.includes('"' + table + '"'), table);
-  }
+  // Preflight and the database guard share the exact same canonical evidence
+  // predicate, including historical notes, official pautas and RAA decisions.
+  assert.match(preview, /\.rpc\("turma_transfer_academic_evidence_v1"/);
+  assert.match(preview, /typeof evidence\.data\?\.has_evidence !== "boolean"/);
   assert.match(preview, /allow: blockers.length === 0/);
   assert.match(preview, /TRANSFER_ACADEMIC_RECONCILIATION_REQUIRED/);
   assert.match(rectification, /requerConciliacaoAcademica/);
