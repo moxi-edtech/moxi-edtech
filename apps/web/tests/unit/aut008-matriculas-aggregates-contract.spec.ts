@@ -28,8 +28,8 @@ test("AUT-008 counts come from exact filtered server queries, never the current 
   assert.match(route, /summary: \{ ativos: active\.count, pendentes: pending\.count \}/);
   assert.match(route, /\.range\(\(filter\.page - 1\) \* filter\.pageSize, filter\.page \* filter\.pageSize - 1\)/);
   assert.doesNotMatch(ui, /items\.forEach\(\(item\) => \{\s*counts\[item.status\]/);
-  assert.match(ui, /value=\{summary\.ativos\}/);
-  assert.match(ui, /value=\{summary\.pendentes\}/);
+  assert.match(ui, /value=\{listError \? "—" : summary\.ativos\}/);
+  assert.match(ui, /value=\{listError \? "—" : summary\.pendentes\}/);
   assert.match(ui, /Turmas nesta página/);
 });
 
@@ -37,7 +37,7 @@ test("AUT-007/012 canonical statuses and fail-closed stale/ambiguous loading", (
   assert.match(route, /"rascunho", "pendente", "ativo", "concluido", "transferido", "anulado"/);
   assert.match(route, /status_in/);
   assert.match(route, /"Estado da matrícula inválido\."/);
-  assert.match(ui, /statusKey === "ativo"/);
+  assert.match(ui, /ativo: "Ativo"/);
   assert.doesNotMatch(ui, /statusKey === "ativa"/);
   assert.match(ui, /selectedSessions\.length === 1/);
   assert.match(ui, /ano_letivo_id: selectedSessionId/);
