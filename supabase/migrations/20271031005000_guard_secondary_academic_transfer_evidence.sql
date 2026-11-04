@@ -5,6 +5,59 @@
 -- Must apply only after disposable PG16 regression and catalog comparison.
 BEGIN;
 
+-- Canonical predicate is used by BOTH the guard trigger and the
+-- authenticated preflight. Keeping a single definition prevents the UI
+-- from advertising a transfer which the database will reject.
+CREATE OR REPLACE FUNCTION public.turma_transfer_has_secondary_evidence_v1(
+  p_escola_id uuid, p_matricula_id uuid, p_turma_origem_id uuid,
+  p_aluno_id uuid, p_ano_letivo integer
+) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $check$
+  SELECT
+  EXISTS (
+    SELECT 1 FROM public.notas_avaliacoes n
+    WHERE n.matricula_id = p_matricula_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.lancamentos l
+    WHERE l.matricula_id = p_matricula_id AND l.escola_id = p_escola_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.historico_snapshot_locks h
+    WHERE h.matricula_id = p_matricula_id AND h.escola_id = p_escola_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.historico_anos h
+    WHERE h.escola_id = p_escola_id
+      AND (h.matricula_id = p_matricula_id OR (
+        h.matricula_id IS NULL AND h.aluno_id = p_aluno_id
+        AND h.turma_id = p_turma_origem_id
+        AND h.ano_letivo = p_ano_letivo))
+  ) OR EXISTS (
+    SELECT 1 FROM public.reapreciacao_pedidos p
+    WHERE p.matricula_id = p_matricula_id AND p.escola_id = p_escola_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.raa_indisciplina_eventos d
+    WHERE d.matricula_id = p_matricula_id AND d.escola_id = p_escola_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.aluno_falta_justificacoes f
+    WHERE f.matricula_id = p_matricula_id AND f.escola_id = p_escola_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.pautas_oficiais p
+    WHERE p.turma_id = p_turma_origem_id AND p.escola_id = p_escola_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.pautas_lote_itens i
+    JOIN public.pautas_lote_jobs j ON j.id = i.job_id
+    WHERE i.turma_id = p_turma_origem_id AND j.escola_id = p_escola_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.excecoes_pauta e
+    WHERE e.turma_id = p_turma_origem_id AND e.escola_id = p_escola_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.presencas_deprecated p
+    WHERE p.aluno_id = p_aluno_id
+      AND p.turma_id = p_turma_origem_id AND p.escola_id = p_escola_id
+  );
+$check$;
+REVOKE ALL ON FUNCTION public.turma_transfer_has_secondary_evidence_v1(
+  uuid,uuid,uuid,uuid,integer) FROM PUBLIC, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.guard_turma_transfer_secondary_evidence_v1()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -19,45 +72,8 @@ BEGIN
   -- Grades from superseded writers must remain anchored to their real class.
   -- Historical and officially published evidence cannot be safely moved
   -- merely by overwriting matriculas.turma_id.
-  IF EXISTS (
-    SELECT 1 FROM public.notas_avaliacoes n
-    WHERE n.matricula_id = OLD.id
-  ) OR EXISTS (
-    SELECT 1 FROM public.lancamentos l
-    WHERE l.matricula_id = OLD.id AND l.escola_id = OLD.escola_id
-  ) OR EXISTS (
-    SELECT 1 FROM public.historico_snapshot_locks h
-    WHERE h.matricula_id = OLD.id AND h.escola_id = OLD.escola_id
-  ) OR EXISTS (
-    SELECT 1 FROM public.historico_anos h
-    WHERE h.escola_id = OLD.escola_id
-      AND (h.matricula_id = OLD.id OR (
-        h.matricula_id IS NULL AND h.aluno_id = OLD.aluno_id
-        AND h.turma_id = OLD.turma_id
-        AND h.ano_letivo = OLD.ano_letivo))
-  ) OR EXISTS (
-    SELECT 1 FROM public.reapreciacao_pedidos p
-    WHERE p.matricula_id = OLD.id AND p.escola_id = OLD.escola_id
-  ) OR EXISTS (
-    SELECT 1 FROM public.raa_indisciplina_eventos d
-    WHERE d.matricula_id = OLD.id AND d.escola_id = OLD.escola_id
-  ) OR EXISTS (
-    SELECT 1 FROM public.aluno_falta_justificacoes f
-    WHERE f.matricula_id = OLD.id AND f.escola_id = OLD.escola_id
-  ) OR EXISTS (
-    SELECT 1 FROM public.pautas_oficiais p
-    WHERE p.turma_id = OLD.turma_id AND p.escola_id = OLD.escola_id
-  ) OR EXISTS (
-    SELECT 1 FROM public.pautas_lote_itens i
-    JOIN public.pautas_lote_jobs j ON j.id = i.job_id
-    WHERE i.turma_id = OLD.turma_id AND j.escola_id = OLD.escola_id
-  ) OR EXISTS (
-    SELECT 1 FROM public.excecoes_pauta e
-    WHERE e.turma_id = OLD.turma_id AND e.escola_id = OLD.escola_id
-  ) OR EXISTS (
-    SELECT 1 FROM public.presencas_deprecated p
-    WHERE p.aluno_id = OLD.aluno_id
-      AND p.turma_id = OLD.turma_id AND p.escola_id = OLD.escola_id
+  IF public.turma_transfer_has_secondary_evidence_v1(
+    OLD.escola_id, OLD.id, OLD.turma_id, OLD.aluno_id, OLD.ano_letivo
   ) THEN
     RAISE EXCEPTION USING ERRCODE = 'P1050',
       MESSAGE = 'Existe histórico, pauta ou decisão académica ligada à turma de origem. Não alterar a matrícula sem conciliação temporal certificada.';
@@ -73,6 +89,52 @@ CREATE TRIGGER trg_guard_turma_transfer_secondary_evidence
   BEFORE UPDATE OF turma_id ON public.matriculas
   FOR EACH ROW
   EXECUTE FUNCTION public.guard_turma_transfer_secondary_evidence_v1();
+
+-- Authenticated, tenant-scoped read-only contract for transfer previews.
+-- No record counts, school identifiers or academic details are exposed.
+CREATE OR REPLACE FUNCTION public.turma_transfer_academic_evidence_v1(
+  p_matricula_id uuid
+) RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+AS $preflight$
+DECLARE
+  v_actor uuid := auth.uid();
+  v_escola uuid := public.current_tenant_escola_id();
+  v_m public.matriculas%ROWTYPE;
+  v_blocked boolean;
+BEGIN
+  IF v_actor IS NULL OR v_escola IS NULL OR NOT coalesce(
+    public.user_has_role_in_school(
+      v_escola, ARRAY['secretaria','admin','admin_escola','staff_admin']
+    ), false
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE='42501',
+      MESSAGE='Sem permissão para consultar transferências académicas.';
+  END IF;
+  SELECT * INTO v_m FROM public.matriculas
+    WHERE id=p_matricula_id AND escola_id=v_escola;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE='P0002',
+      MESSAGE='Matrícula não encontrada nesta escola.';
+  END IF;
+  SELECT (
+    EXISTS (SELECT 1 FROM public.notas WHERE escola_id=v_escola AND matricula_id=v_m.id)
+    OR EXISTS (SELECT 1 FROM public.exame_resultados WHERE escola_id=v_escola AND matricula_id=v_m.id)
+    OR EXISTS (SELECT 1 FROM public.frequencias WHERE escola_id=v_escola AND matricula_id=v_m.id)
+    OR EXISTS (SELECT 1 FROM public.frequencia_status_periodo WHERE escola_id=v_escola AND matricula_id=v_m.id)
+    OR public.turma_transfer_has_secondary_evidence_v1(
+         v_escola, v_m.id, v_m.turma_id, v_m.aluno_id, v_m.ano_letivo)
+  ) INTO v_blocked;
+  RETURN jsonb_build_object(
+    'has_evidence', v_blocked,
+    'requires_reconciliation', v_blocked
+  );
+END;
+$preflight$;
+REVOKE ALL ON FUNCTION public.turma_transfer_academic_evidence_v1(uuid)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.turma_transfer_academic_evidence_v1(uuid)
+  TO authenticated;
 
 -- Serialise new secondary evidence with the enrollment row lock of the
 -- supported individual and batch transfer RPCs. A repeated migration is safe.
