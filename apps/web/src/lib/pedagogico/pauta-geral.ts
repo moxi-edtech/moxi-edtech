@@ -100,15 +100,18 @@ export async function buildPautaGeralPayload({
     string,
     { numero: number; nome: string; idade: number | "-"; sexo: string }
   >()
+  // As notas são indexadas pela matrícula, não pelo aluno: nunca misturar IDs.
+  const matriculaIdPorAluno = new Map<string, string>()
   matriculaRows.forEach((row: any, index: number) => {
     const aluno = row.alunos
     const numero = row.numero_chamada ?? index + 1
     const sexoRaw = (aluno?.sexo ?? "").toString().toUpperCase()
+    matriculaIdPorAluno.set(aluno.id, row.id)
     alunoInfo.set(aluno.id, {
       numero,
       nome: aluno?.nome ?? "Sem nome",
       idade: calculateAge(aluno?.data_nascimento ?? null),
-      sexo: sexoRaw === "F" ? "F" : "M",
+      sexo: sexoRaw === "F" ? "F" : sexoRaw === "M" ? "M" : "-",
     })
   })
 
@@ -151,8 +154,9 @@ export async function buildPautaGeralPayload({
   for (const [alunoId, info] of alunoInfo.entries()) {
     for (const disciplina of disciplinas) {
       for (const trimestre of [1, 2, 3] as const) {
-        const key = `${alunoId}:${disciplina.id}:${trimestre}`
-          const entry = gradesMap.get(key)
+        const matriculaId = matriculaIdPorAluno.get(alunoId)
+        const key = `${matriculaId}:${disciplina.id}:${trimestre}`
+        const entry = matriculaId ? gradesMap.get(key) : undefined
         rawGrades.push({
           aluno_id: alunoId,
           aluno_nome: info.nome,
