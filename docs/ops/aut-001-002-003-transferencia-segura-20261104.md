@@ -64,3 +64,19 @@ Status: **RPCs individual e em lote aplicadas no Supabase, integração isolada 
 **AUT-002 continua NÃO encerrado**: transferir um aluno que já tenha notas exigiria histórico temporal de vínculos a turmas e consumidores de pautas/RAA/portais conscientes da origem. Sem esse contrato, as RPCs devem continuar a devolver `P1050` (sem atualização parcial). Não autorizar transferência com notas com base apenas na ausência de divergências no snapshot.
 
 **AUT-003**: integração sintética PostgreSQL 16 previamente aprovada; auditoria de catálogo e integridade em produção aprovada em leitura. E2E autenticado em ambiente representativo continua obrigatório antes de certificar fluxos com evidência académica. A reconciliação global do ledger de migrações permanece independente.
+
+
+## Reforço AUT-001/002/003 — evidências secundárias e pré-validação canónica
+
+A migração aditiva `20271031005000_guard_secondary_academic_transfer_evidence.sql` protege evidências académicas historicamente omitidas pelo guard principal: `notas_avaliacoes` (legado), `lancamentos` académicos, `historico_anos`, `historico_snapshot_locks`, `reapreciacao_pedidos`, `raa_indisciplina_eventos`, `aluno_falta_justificacoes`, `pautas_oficiais`, `pautas_lote_itens`, `excecoes_pauta` e `presencas_deprecated`. Um vínculo académico ou uma pauta oficial da turma de origem impede a mudança com `P1050`, sem afetar a matrícula, a cobrança ou as notas.
+
+**Condição de segurança:** `presencas` é uma *view* derivada da `matriculas.turma_id` atual. Ainda não há fonte temporal imutável capaz de provar a turma do aluno à data da aula/avaliação. Logo, **continuar a negar transferências com histórico e não tratar uma confirmação manual como conciliação**. O desenho de reconciliação definitiva exigirá histórico temporal de alocação, fonte de dados por semestre/trimestre e adaptação de pautas, RAA, aluno e professor.
+
+- `turma_transfer_has_secondary_evidence_v1`: predicado comum (helper privado, sem `EXECUTE` para `authenticated` ou `anon`).
+- `turma_transfer_academic_evidence_v1(uuid)`: pré-validação autenticada que confere `auth.uid()`, escola e papel em servidor; retorna **só booleanos** e nega consulta fora do tenant. Os endpoints do Balcão consomem este RPC em vez de presumirem ausência por consultas RLS incompletas.
+- O trigger `trg_guard_turma_transfer_secondary_evidence` protege inclusive `UPDATE` direto; os escritores de evidências obtêm `FOR SHARE` na matrícula ou na turma antes de alterar notas, decisões ou artefactos. Uma inserção de pauta concorrente impede a transferência, sem escrita parcial.
+- A rota de pré-validação foi corrigida para ler `public.turmas` com `session_id` e `ano_letivo_id` explícitos. A RPC individual foi corrigida para consumir a resposta UUID escalar sem `.single()`. As permissões de API estão alinhadas com as da própria RPC.
+
+**Testes sintéticos:** o workflow `KLASSE Atomic Turma Transfer Integration` executa a migração duas vezes na base PostgreSQL 16 descartável, inclui 12 fontes de histórico, compara o RPC de pré-validação ao trigger, verifica isolamento por escola/papel e uma corrida entre publicação de pauta e transferência em lote. Os testes não usam registos de escolas reais e verificam matrícula, lotação e auditoria sem alterações após `P1050`.
+
+**Release gate:** aplicar **apenas** a migração `20271031005000` no projeto Supabase depois de CI verde, consultar o catálogo/grants/triggers, comparar ledger e executar smoke *read-only*. Não fazer `db push` geral nem reexecutar migrações `03000`/`04000`. Não permitir o bypass com histórico até à homologação do contrato temporal.
