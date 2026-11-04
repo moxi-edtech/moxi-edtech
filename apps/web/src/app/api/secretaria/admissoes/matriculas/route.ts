@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { requireCommandCenterSchoolWideAccess } from "@/lib/command-center/school-wide-scope";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ function searchPattern(value: string) {
   return value.replace(/[\\%_]/g, "\\$&").replace(/[(),"]/g, "").trim();
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const search = new URL(request.url).searchParams;
     const parsed = Filters.safeParse(Object.fromEntries(search.entries()));
@@ -67,6 +68,12 @@ export async function GET(request: Request) {
       supabase, escolaId, roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
     });
     if (role.error) return role.error;
+    // A user restricted to one polo must never receive whole-school rosters.
+    // Never rely on a browser-supplied school or cached role for this check.
+    const schoolWide = await requireCommandCenterSchoolWideAccess(
+      supabase, user.id, escolaId, request,
+    );
+    if (schoolWide) return schoolWide;
 
     // Never derive an academic year from the wall clock or silently select
     // between duplicate school years. The UI supplies the official year UUID.
