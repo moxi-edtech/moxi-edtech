@@ -40,6 +40,19 @@ AS $check$
     SELECT 1 FROM public.aluno_falta_justificacoes f
     WHERE f.matricula_id = p_matricula_id AND f.escola_id = p_escola_id
   ) OR EXISTS (
+    SELECT 1 FROM public.melhoria_nota_pedidos m
+    WHERE m.escola_id = p_escola_id AND m.matricula_id = p_matricula_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.dependencias_academicas_transicao d
+    WHERE d.escola_id = p_escola_id
+      AND (d.matricula_origem_id = p_matricula_id
+        OR d.matricula_destino_id = p_matricula_id)
+  ) OR EXISTS (
+    SELECT 1 FROM public.promocoes_com_pendencias d
+    WHERE d.escola_id = p_escola_id
+      AND (d.matricula_origem_id = p_matricula_id
+        OR d.matricula_destino_id = p_matricula_id)
+  ) OR EXISTS (
     SELECT 1 FROM public.pautas_oficiais p
     WHERE p.turma_id = p_turma_origem_id AND p.escola_id = p_escola_id
   ) OR EXISTS (
@@ -154,7 +167,7 @@ BEGIN
   FOREACH v_table IN ARRAY ARRAY[
     'lancamentos', 'historico_snapshot_locks', 'historico_anos',
     'reapreciacao_pedidos', 'raa_indisciplina_eventos',
-    'aluno_falta_justificacoes'
+    'aluno_falta_justificacoes', 'melhoria_nota_pedidos'
   ] LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS a_00_lock_matricula_academic_evidence ON public.%I', v_table);
     EXECUTE format(
@@ -163,6 +176,51 @@ BEGIN
        FOR EACH ROW EXECUTE FUNCTION public.lock_matricula_for_academic_evidence_v1()',
       v_table
     );
+  END LOOP;
+END;
+$locks$;
+
+-- RAA carryovers can depend on BOTH origin and destination enrollment.
+-- Lock both keys in ascending UUID order, matching the batch writer's
+-- enrollment lock order so races do not create a half-synchronised decision.
+CREATE OR REPLACE FUNCTION public.lock_academic_transition_enrollments_v1()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $fn$
+DECLARE
+  v_ids uuid[];
+  v_found integer;
+BEGIN
+  SELECT coalesce(array_agg(DISTINCT ids.id ORDER BY ids.id), '{}'::uuid[])
+    INTO v_ids
+    FROM unnest(ARRAY[NEW.matricula_origem_id, NEW.matricula_destino_id]) AS ids(id)
+    WHERE ids.id IS NOT NULL;
+  IF cardinality(v_ids) > 0 THEN
+    PERFORM 1 FROM public.matriculas m
+    WHERE m.id = ANY(v_ids) AND m.escola_id = NEW.escola_id
+    ORDER BY m.id FOR SHARE;
+    GET DIAGNOSTICS v_found = ROW_COUNT;
+    IF v_found <> cardinality(v_ids) THEN
+      RAISE EXCEPTION USING ERRCODE='23503',
+        MESSAGE='Matrícula de origem ou destino da dependência não encontrada nesta escola.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$fn$;
+REVOKE ALL ON FUNCTION public.lock_academic_transition_enrollments_v1()
+  FROM PUBLIC, anon, authenticated;
+DO $locks$
+DECLARE v_table text;
+BEGIN
+  FOREACH v_table IN ARRAY ARRAY[
+    'dependencias_academicas_transicao', 'promocoes_com_pendencias'
+  ] LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS a_00_lock_academic_transition_enrollments ON public.%I', v_table);
+    EXECUTE format(
+      'CREATE TRIGGER a_00_lock_academic_transition_enrollments
+       BEFORE INSERT OR UPDATE ON public.%I
+       FOR EACH ROW EXECUTE FUNCTION public.lock_academic_transition_enrollments_v1()',
+      v_table);
   END LOOP;
 END;
 $locks$;
