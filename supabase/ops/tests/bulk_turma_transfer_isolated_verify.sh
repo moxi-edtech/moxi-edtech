@@ -23,7 +23,12 @@ fi
 
 psql "$PGURL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/ops/tests/bulk_turma_transfer_isolated_bootstrap.sql"
 psql "$PGURL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/migrations/20271031003000_bulk_turma_transfer_atomic.sql"
+psql "$PGURL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/migrations/20271031005000_guard_secondary_academic_transfer_evidence.sql"
+# Secondary migration must be rerunnable without new grants or duplicate triggers.
+psql "$PGURL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/migrations/20271031005000_guard_secondary_academic_transfer_evidence.sql"
 psql "$PGURL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/ops/tests/bulk_turma_transfer_isolated_regression.sql"
+psql "$PGURL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/ops/tests/bulk_turma_transfer_secondary_evidence.sql"
+bash "$ROOT/supabase/ops/tests/bulk_turma_transfer_secondary_race.sh"
 
 # A e C concorrem pela mesma turma destino; apenas uma cabe.
 log_a="$(mktemp)" log_b="$(mktemp)"
