@@ -36,6 +36,18 @@ test("bulk transfer validates year, course, class, occupancy and expected update
   assert.ok(sourceCheck >= 0 && sourceCheck < capacityCheck && capacityCheck < firstUpdate);
 });
 
+test("bulk transfer refuses academic records before any mutation", () => {
+  const firstUpdate = migration.indexOf("UPDATE public.matriculas");
+  for (const relation of [
+    "public.notas", "public.exame_resultados", "public.frequencias",
+    "public.frequencia_status_periodo", "public.presencas",
+  ]) {
+    const index = migration.indexOf(relation);
+    assert.ok(index > 0 && index < firstUpdate, `${relation} must be guarded before UPDATE`);
+  }
+  assert.match(migration, /conciliação académica para preservar as pautas/);
+});
+
 test("bulk transfer updates original matriculas and records per-student audit in same transaction", () => {
   assert.match(migration, /UPDATE public\.matriculas m[\s\S]*SET turma_id = p_turma_destino_id/);
   assert.doesNotMatch(migration, /INSERT INTO public\.matriculas/);
