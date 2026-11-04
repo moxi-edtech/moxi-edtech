@@ -192,4 +192,146 @@ REVOKE ALL ON FUNCTION public.transferir_turma_em_lote(uuid,uuid,uuid,text)
 GRANT EXECUTE ON FUNCTION public.transferir_turma_em_lote(uuid,uuid,uuid,text)
   TO authenticated;
 
+-- Defesa de integridade adicional: a RPC individual existente também altera
+-- matriculas.turma_id. Proteger TODOS os writers, incluindo chamadas diretas
+-- à RPC individual, para nunca ocultar notas/assiduidade em outra turma.
+CREATE OR REPLACE FUNCTION public.guard_turma_transfer_academic_evidence_v1()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $guard$
+BEGIN
+  IF NEW.turma_id IS NOT DISTINCT FROM OLD.turma_id THEN
+    RETURN NEW;
+  END IF;
+
+  -- Nenhuma turma histórica pode ser movimentada em operação administrativa
+  -- ordinária, mesmo que o caller evite a rota Next.js.
+  IF OLD.session_id IS NULL
+     OR OLD.session_id IS DISTINCT FROM NEW.session_id
+     OR NOT EXISTS (
+       SELECT 1 FROM public.anos_letivos y
+       WHERE y.id = OLD.session_id AND y.escola_id = OLD.escola_id
+         AND y.ativo IS TRUE
+     ) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P1051',
+      MESSAGE = 'Ano letivo histórico ou inativo; usar o fluxo académico autorizado.';
+  END IF;
+
+  IF NOT EXISTS (
+     SELECT 1
+     FROM public.turmas source
+     JOIN public.turmas target ON target.id = NEW.turma_id
+     WHERE source.id = OLD.turma_id
+       AND source.escola_id = OLD.escola_id
+       AND target.escola_id = OLD.escola_id
+       AND source.session_id = target.session_id
+       AND source.session_id = OLD.session_id
+       AND source.curso_id IS NOT DISTINCT FROM target.curso_id
+       AND source.classe_id IS NOT DISTINCT FROM target.classe_id
+       AND source.status_validacao = 'ativo'
+       AND target.status_validacao = 'ativo'
+       AND source.status_fecho = 'ABERTO'
+       AND target.status_fecho = 'ABERTO'
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P1052',
+      MESSAGE = 'Turmas incompatíveis, encerradas ou de outra escola.';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.notas n
+    WHERE n.escola_id = OLD.escola_id AND n.matricula_id = OLD.id
+  ) OR EXISTS (
+    SELECT 1 FROM public.exame_resultados er
+    WHERE er.escola_id = OLD.escola_id AND er.matricula_id = OLD.id
+  ) OR EXISTS (
+    SELECT 1 FROM public.frequencias fr
+    WHERE fr.escola_id = OLD.escola_id AND fr.matricula_id = OLD.id
+  ) OR EXISTS (
+    SELECT 1 FROM public.frequencia_status_periodo fp
+    WHERE fp.escola_id = OLD.escola_id AND fp.matricula_id = OLD.id
+  ) OR EXISTS (
+    SELECT 1 FROM public.presencas p
+    WHERE p.escola_id = OLD.escola_id
+      AND p.aluno_id = OLD.aluno_id
+      AND p.turma_id = OLD.turma_id
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P1050',
+      MESSAGE = 'Existem notas, exames ou frequência na turma de origem. A transferência em massa requer conciliação académica para preservar as pautas.';
+  END IF;
+
+  RETURN NEW;
+END;
+$guard$;
+REVOKE ALL ON FUNCTION public.guard_turma_transfer_academic_evidence_v1()
+  FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS trg_guard_turma_transfer_academic_evidence
+  ON public.matriculas;
+CREATE TRIGGER trg_guard_turma_transfer_academic_evidence
+  BEFORE UPDATE OF turma_id ON public.matriculas
+  FOR EACH ROW EXECUTE FUNCTION public.guard_turma_transfer_academic_evidence_v1();
+
+-- Serializar a chegada de evidências académicas com as transferências:
+-- as RPCs de transferência travam a matrícula FOR UPDATE; a escrita das
+-- evidências toma FOR SHARE ANTES dos guards de contexto já instalados.
+CREATE OR REPLACE FUNCTION public.lock_matricula_for_academic_evidence_v1()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $lock$
+BEGIN
+  IF NEW.matricula_id IS NOT NULL THEN
+    PERFORM 1 FROM public.matriculas m
+    WHERE m.id = NEW.matricula_id AND m.escola_id = NEW.escola_id
+    FOR SHARE;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION USING ERRCODE = '23503',
+        MESSAGE = 'Matrícula não encontrada nesta escola.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$lock$;
+REVOKE ALL ON FUNCTION public.lock_matricula_for_academic_evidence_v1()
+  FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS a_00_lock_matricula_academic_evidence ON public.notas;
+CREATE TRIGGER a_00_lock_matricula_academic_evidence
+  BEFORE INSERT OR UPDATE ON public.notas
+  FOR EACH ROW EXECUTE FUNCTION public.lock_matricula_for_academic_evidence_v1();
+
+DROP TRIGGER IF EXISTS a_00_lock_matricula_academic_evidence ON public.exame_resultados;
+CREATE TRIGGER a_00_lock_matricula_academic_evidence
+  BEFORE INSERT OR UPDATE ON public.exame_resultados
+  FOR EACH ROW EXECUTE FUNCTION public.lock_matricula_for_academic_evidence_v1();
+
+DROP TRIGGER IF EXISTS a_00_lock_matricula_academic_evidence ON public.frequencias;
+CREATE TRIGGER a_00_lock_matricula_academic_evidence
+  BEFORE INSERT OR UPDATE ON public.frequencias
+  FOR EACH ROW EXECUTE FUNCTION public.lock_matricula_for_academic_evidence_v1();
+
+DROP TRIGGER IF EXISTS a_00_lock_matricula_academic_evidence ON public.frequencia_status_periodo;
+CREATE TRIGGER a_00_lock_matricula_academic_evidence
+  BEFORE INSERT OR UPDATE ON public.frequencia_status_periodo
+  FOR EACH ROW EXECUTE FUNCTION public.lock_matricula_for_academic_evidence_v1();
+
+-- Legacy presencas possui aluno_id/turma_id em vez de matricula_id.
+CREATE OR REPLACE FUNCTION public.lock_matricula_for_legacy_presenca_v1()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $lock$
+BEGIN
+  PERFORM 1 FROM public.matriculas m
+  WHERE m.escola_id = NEW.escola_id
+    AND m.aluno_id = NEW.aluno_id
+    AND m.turma_id = NEW.turma_id
+    AND m.ativo IS TRUE
+  ORDER BY m.id FOR SHARE;
+  RETURN NEW;
+END;
+$lock$;
+REVOKE ALL ON FUNCTION public.lock_matricula_for_legacy_presenca_v1()
+  FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS a_00_lock_matricula_legacy_presenca ON public.presencas;
+CREATE TRIGGER a_00_lock_matricula_legacy_presenca
+  BEFORE INSERT OR UPDATE ON public.presencas
+  FOR EACH ROW EXECUTE FUNCTION public.lock_matricula_for_legacy_presenca_v1();
+
 COMMIT;
