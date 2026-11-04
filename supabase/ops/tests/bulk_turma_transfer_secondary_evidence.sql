@@ -40,14 +40,14 @@ EXCEPTION
 END $$;
 
 CREATE OR REPLACE FUNCTION pg_temp.expect_secondary_direct_p1050()
-RETURNS void LANGUAGE plpgsql AS $
+RETURNS void LANGUAGE plpgsql AS $direct$
 BEGIN
   UPDATE public.matriculas
     SET turma_id='00000000-0000-4000-8000-000000000012'
     WHERE id='00000000-0000-4000-8000-000000000021';
   RAISE EXCEPTION 'Direct UPDATE unexpectedly bypassed academic guard';
 EXCEPTION WHEN SQLSTATE 'P1050' THEN NULL;
-END $;
+END $direct$;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_unchanged()
 RETURNS void LANGUAGE plpgsql AS $$
