@@ -25,7 +25,7 @@ async function context(matriculaId: string) {
 }
 
 async function preview(supabase: any, matricula: any, escolaId: string, turmaId: string) {
-  const [origin, target, notes, assessments, appeals, official, payments, charges, monthly, contracts, entries, exams, attendance, frequency] = await Promise.all([
+  const [origin, target, notes, assessments, appeals, official, payments, charges, monthly, contracts, entries, exams, attendance, frequency, academicEvidence] = await Promise.all([
     supabase.from("turmas").select("id,classe_id,curso_id,ano_letivo,session_id,turno").eq("id",matricula.turma_id).eq("escola_id",escolaId).maybeSingle(),
     supabase.from("vw_turmas_para_matricula").select("id,classe_id,curso_id,ano_letivo,turno,capacidade_maxima,ocupacao_atual").eq("id",turmaId).eq("escola_id",escolaId).maybeSingle(),
     supabase.from("notas").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
@@ -40,8 +40,10 @@ async function preview(supabase: any, matricula: any, escolaId: string, turmaId:
     supabase.from("exame_resultados").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
     supabase.from("frequencia_status_periodo").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id).eq("escola_id",escolaId),
     supabase.from("frequencias").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id).eq("escola_id",escolaId),
+    supabase.rpc("turma_transfer_academic_evidence_v1", {p_matricula_id:matricula.id}),
   ]);
-  const errors = [origin,target,notes,assessments,appeals,official,payments,charges,monthly,contracts,entries,exams,attendance,frequency].filter(x=>x.error).map(x=>x.error.message);
+  const errors = [origin,target,notes,assessments,appeals,official,payments,charges,monthly,contracts,entries,exams,attendance,frequency,academicEvidence].filter(x=>x.error).map(x=>x.error.message);
+  if (typeof academicEvidence.data?.has_evidence !== "boolean") errors.push("Histórico académico sem validação canónica");
   if (errors.length) throw new Error(`Não foi possível verificar todos os impactos: ${errors.join('; ')}`);
   if (!origin.data || !target.data) throw new Error("Turma de origem ou destino não encontrada.");
   const o=origin.data, t=target.data;
@@ -51,13 +53,14 @@ async function preview(supabase: any, matricula: any, escolaId: string, turmaId:
   const avisos:string[]=[];
   if(o.classe_id===t.classe_id) blockers.push("Para a mesma classe, utilize Trocar turma.");
   if(o.ano_letivo!==t.ano_letivo || o.curso_id!==t.curso_id || o.session_id!==targetSession.session_id) blockers.push("Ano letivo, sessão ou curso incompatível.");
-  const requerConciliacaoAcademica = (notes.count||0)+(assessments.count||0)
-    +(appeals.count||0)+(exams.count||0)+(attendance.count||0)+(frequency.count||0)>0;
+  const requerConciliacaoAcademica = academicEvidence.data.has_evidence === true ||
+    (notes.count||0)+(assessments.count||0)+(appeals.count||0)
+    +(exams.count||0)+(attendance.count||0)+(frequency.count||0)>0;
   if (requerConciliacaoAcademica) blockers.push(
     "A matrícula possui notas, avaliações, exames ou frequência. A retificação exige conciliação académica antes de alterar a turma."
   );
-  if ((official.count||0)>0) avisos.push(
-    "Existem pautas oficiais na turma de origem. Confirme os vínculos oficiais antes de qualquer retificação."
+  if ((official.count||0)>0) blockers.push(
+    "A turma de origem possui pautas oficiais; não é seguro retificar a classe sem preservar o documento histórico."
   );
   if((payments.count||0)+(charges.count||0)+(monthly.count||0)+(contracts.count||0)+(entries.count||0)>0) avisos.push("Pagamentos, recibos e cobranças existentes serão preservados; confira a tabela de preços da nova classe.");
   const capacidade=Number(t.capacidade_maxima??0);
