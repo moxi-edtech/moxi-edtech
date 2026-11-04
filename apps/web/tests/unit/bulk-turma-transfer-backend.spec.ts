@@ -77,10 +77,11 @@ test("academic evidence acquisition serializes with turma transfer and honors te
   for (const relation of ["notas", "exame_resultados", "frequencias", "frequencia_status_periodo"]) {
     assert.match(migration, new RegExp("BEFORE INSERT OR UPDATE ON public\\." + relation));
   }
-  assert.match(migration, /BEFORE INSERT OR UPDATE ON public\.presencas/);
-  assert.match(migration, /ORDER BY m\.id FOR SHARE/);
+  // presencas is a VIEW; its source, frequencias, owns the locking trigger.
+  assert.doesNotMatch(migration, /BEFORE INSERT OR UPDATE ON public\.presencas/);
+  assert.match(migration, /FOR SHARE/);
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.lock_matricula_for_academic_evidence_v1\(\)/);
-  assert.match(migration, /REVOKE ALL ON FUNCTION public\.lock_matricula_for_legacy_presenca_v1\(\)/);
+  assert.doesNotMatch(migration, /CREATE TRIGGER a_00_lock_matricula_legacy_presenca/);
 });
 
 test("route invokes one RPC call after tenant, calendar and role authorization", () => {
