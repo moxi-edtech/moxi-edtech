@@ -26,7 +26,7 @@ END $$;
 DO $$
 BEGIN
   IF has_function_privilege('anon','public.transferir_turma_em_lote(uuid,uuid,uuid,text)','EXECUTE')
-    OR has_function_privilege('PUBLIC','public.guard_turma_transfer_academic_evidence_v1()','EXECUTE') THEN
+    OR has_function_privilege('anon','public.guard_turma_transfer_academic_evidence_v1()','EXECUTE') THEN
     RAISE EXCEPTION 'Public/anon execution was granted';
   END IF;
 END $$;
