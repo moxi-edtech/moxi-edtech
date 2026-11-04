@@ -22,7 +22,7 @@ if [[ "$EXISTING" != "0" ]]; then
 fi
 
 psql "$PGURL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/ops/tests/bulk_turma_transfer_isolated_bootstrap.sql"
-psql "$PGURL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/migrations/20261104133500_bulk_turma_transfer_atomic.sql"
+psql "$PGURL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/migrations/20271031003000_bulk_turma_transfer_atomic.sql"
 psql "$PGURL" -v ON_ERROR_STOP=1 -f "$ROOT/supabase/ops/tests/bulk_turma_transfer_isolated_regression.sql"
 
 # A e C concorrem pela mesma turma destino; apenas uma cabe.
