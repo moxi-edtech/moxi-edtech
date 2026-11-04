@@ -234,7 +234,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
       <div>
         <label htmlFor="motivo-transferencia" className="block text-sm font-medium text-slate-700">Motivo da correcção ou transferência</label>
         <textarea id="motivo-transferencia" value={motivo} onChange={(e) => { setMotivo(e.target.value); setConfirming(false); }} minLength={10} maxLength={300} required placeholder="Explique o motivo (mínimo 10 caracteres)" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20" rows={3} />
-        <p className="mt-1 text-xs text-slate-500">A matrícula e os pagamentos mantêm os identificadores. Se existirem notas, exames ou frequência, a operação será bloqueada até à conciliação académica.</p>
+        <p className="mt-1 text-xs text-muted-foreground">A matrícula e os pagamentos mantêm os identificadores. Se existirem notas, exames ou frequência, a operação será bloqueada até à conciliação académica.</p>
       </div>
       {!anoLetivoId && <p className="text-sm text-amber-700">Não foi possível identificar o ano letivo académico. Selecione o ano letivo antes de continuar.</p>}
       {(impacto?.requer_conciliacao_academica || academicConflict) && (
@@ -243,7 +243,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
           <p>Existem notas, exames ou frequência vinculados à turma de origem. Pode rever o processo no Balcão, mas a transferência exige conciliação formal do histórico; não basta confirmar a pendência. Nenhuma matrícula foi modificada.</p>
           {onResolveAcademic && (
             <button type="button" onClick={onResolveAcademic}
-              className="inline-flex min-h-10 items-center rounded-xl bg-[#E3B23C] px-4 py-2 font-semibold text-white hover:brightness-95">
+              className="inline-flex min-h-10 items-center rounded-xl bg-amber px-4 py-2 font-semibold text-foreground hover:brightness-95">
               Abrir situação académica do aluno
             </button>
           )}
