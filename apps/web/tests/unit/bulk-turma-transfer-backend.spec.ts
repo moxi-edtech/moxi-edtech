@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 const source = (path: string) =>
   readFileSync(new URL("../../src/" + path, import.meta.url), "utf8");
 const migration = readFileSync(
-  new URL("../../../../supabase/migrations/20261104133500_bulk_turma_transfer_atomic.sql", import.meta.url),
+  new URL("../../../../supabase/migrations/20271031003000_bulk_turma_transfer_atomic.sql", import.meta.url),
   "utf8",
 );
 
