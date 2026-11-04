@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 45);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 46);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -147,6 +147,25 @@ test("admissions decree RPC provenance migrations are audited without fiscal act
     assert.deepEqual(checkFiscalAndSchemaScope([path]), [], name);
     assert.match(checkFiscalAndSchemaScope([path], () =>
       "CREATE TABLE public.fiscal_controls (id uuid)")[0] ?? "", /Fiscal\/AGT activation/);
+  }
+});
+
+test("only audited atomic turma transfer migration passes the unchanged fiscal scanner", () => {
+  const name = "20261104133500_bulk_turma_transfer_atomic.sql";
+  const path = "supabase/migrations/" + name;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
+  // Inspect the real migration rather than trusting a simulated harmless SQL string.
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20261104133501_bulk_turma_transfer_unreviewed.sql",
+  ])[0] ?? "", /Unapproved database migration/);
+  for (const sql of [
+    "CREATE TABLE public.fiscal_ativacao (id uuid);",
+    "CREATE OR REPLACE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $ SELECT 1 $;",
+    "CREATE TABLE public.saft_export (id uuid);",
+  ]) {
+    assert.match(checkFiscalAndSchemaScope([path], () => sql)[0] ?? "",
+      /Fiscal\\/AGT activation marker/);
   }
 });
 
