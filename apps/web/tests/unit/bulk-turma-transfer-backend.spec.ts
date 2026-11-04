@@ -57,6 +57,32 @@ test("bulk transfer updates original matriculas and records per-student audit in
   assert.match(migration, /transferred/);
 });
 
+test("database trigger protects individual RPC and any direct change of matricula turma", () => {
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.guard_turma_transfer_academic_evidence_v1/);
+  assert.match(migration, /BEFORE UPDATE OF turma_id ON public\.matriculas/);
+  assert.match(migration, /CREATE TRIGGER trg_guard_turma_transfer_academic_evidence/);
+  assert.match(migration, /OLD\.session_id IS DISTINCT FROM NEW\.session_id/);
+  assert.match(migration, /y\.ativo IS TRUE/);
+  assert.match(migration, /source\.classe_id IS NOT DISTINCT FROM target\.classe_id/);
+  assert.match(migration, /source\.curso_id IS NOT DISTINCT FROM target\.curso_id/);
+  assert.match(migration, /ERRCODE = 'P1050'/);
+  assert.match(migration, /ERRCODE = 'P1051'/);
+  assert.match(migration, /ERRCODE = 'P1052'/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\.guard_turma_transfer_academic_evidence_v1\(\)/);
+});
+
+test("academic evidence acquisition serializes with turma transfer and honors tenant", () => {
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.lock_matricula_for_academic_evidence_v1/);
+  assert.match(migration, /WHERE m\.id = NEW\.matricula_id AND m\.escola_id = NEW\.escola_id\s+FOR SHARE/);
+  for (const relation of ["notas", "exame_resultados", "frequencias", "frequencia_status_periodo"]) {
+    assert.match(migration, new RegExp("BEFORE INSERT OR UPDATE ON public\\." + relation));
+  }
+  assert.match(migration, /BEFORE INSERT OR UPDATE ON public\.presencas/);
+  assert.match(migration, /ORDER BY m\.id FOR SHARE/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\.lock_matricula_for_academic_evidence_v1\(\)/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\.lock_matricula_for_legacy_presenca_v1\(\)/);
+});
+
 test("route invokes one RPC call after tenant, calendar and role authorization", () => {
   const route = source("app/api/secretaria/turmas/[id]/transferir/route.ts");
   assert.match(route, /resolveAcademicYearContext/);
