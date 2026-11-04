@@ -126,7 +126,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .in('status', ACTIVE_MATRICULA_STATUSES)
       .order('numero_chamada', { ascending: true });
 
-    alunosQuery = applyKf2ListInvariants(alunosQuery, { defaultLimit: 50 });
+    alunosQuery = applyKf2ListInvariants(alunosQuery, { defaultLimit: 200, maxLimit: 200 });
 
     const { data: alunosData, error: alunosError } = await alunosQuery;
 
