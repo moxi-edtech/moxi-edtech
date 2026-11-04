@@ -17,8 +17,8 @@ async function openAcademicSituation(page: Page, alunoId: string) {
 
   const params = new URLSearchParams({ alunoId, action: "reenrollment" });
   await page.goto(`/escola/${encodeURIComponent(slug!)}/secretaria/balcao?${params.toString()}`);
-  await expect(page.getByRole("region", { name: "Resumo da situação académica" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Próxima ação académica" })).toBeVisible();
+  await expect(page.locator('[aria-label="Resumo da situação académica"]')).toBeVisible();
+  await expect(page.locator('[aria-label="Próxima ação académica"]')).toBeVisible();
   // The selected pupil must remain in the current workspace when inspecting
   // academic issues; this suite intentionally performs no POST/PATCH/PUT.
   expect(new URL(page.url()).searchParams.get("alunoId")).toBe(alunoId);
@@ -37,7 +37,7 @@ test.describe("AUT-006 academic-cycle exception cases (staging, read-only)", () 
       const alunoId = process.env[item.env];
       test.skip(!alunoId, `Requires staging fixture ${item.env}.`);
       await openAcademicSituation(page, alunoId!);
-      const summary = page.getByRole("region", { name: "Resumo da situação académica" });
+      const summary = page.locator('[aria-label="Resumo da situação académica"]');
       await expect(summary).toContainText(item.status);
       await expect(page.getByRole("link", { name: /Ver pendências/i })).toBeVisible();
       await page.getByRole("link", { name: /Ver pendências/i }).click();
