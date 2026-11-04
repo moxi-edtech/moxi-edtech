@@ -12,6 +12,8 @@ test("AUT-001: the secondary transfer gate is fail closed for all official and l
     "notas_avaliacoes", "lancamentos", "historico_snapshot_locks",
     "historico_anos", "reapreciacao_pedidos", "raa_indisciplina_eventos",
     "aluno_falta_justificacoes", "pautas_oficiais", "pautas_lote_itens",
+    "melhoria_nota_pedidos", "dependencias_academicas_transicao",
+    "promocoes_com_pendencias",
     "excecoes_pauta", "presencas_deprecated",
   ]) {
     assert.ok(sql.includes("public." + table), "Missing academic source " + table);
