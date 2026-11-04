@@ -98,7 +98,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
       .single();
 
     if (rpcError) {
-      return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 });
+      const academicEvidence = rpcError.code === "P1050";
+      return NextResponse.json({
+        ok: false,
+        code: academicEvidence ? "TRANSFER_ACADEMIC_RECONCILIATION_REQUIRED" : rpcError.code,
+        error: academicEvidence
+          ? "Existem notas, exames ou frequência nesta matrícula. Resolva a situação académica antes de transferir."
+          : rpcError.message,
+      }, { status: academicEvidence ? 409 : 400 });
     }
 
     if (!newMatriculaId) {
