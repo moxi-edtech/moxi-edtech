@@ -70,7 +70,7 @@ test("AUT-005/010: paid destination and exceptional RAA states have contextual n
   ]) {
     assert.ok(chrome.includes('status === "' + status + '"'), status);
   }
-  assert.match(chrome, /Boolean\(raaBalcaoPlan\(status\)\)/);
+  assert.match(chrome, /Boolean\(academicPlan\)/);
 });
 
 test("AUT-009: official general grade PDF reads every matching note, never the first PostgREST page", () => {
