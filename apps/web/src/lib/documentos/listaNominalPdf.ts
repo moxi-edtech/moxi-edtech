@@ -264,6 +264,13 @@ export async function renderListaNominalPdfBuffer({
     throw new Error("Escopo inválido para lista nominal");
   }
 
+  // O ano civil do mapa de frequência não define a matrícula académica.
+  // As turmas impressas devem pertencer a uma única sessão válida.
+  const sessionIds = new Set([...turmaById.values()].map((item) => item.session_id));
+  if (sessionIds.size !== 1 || !turma.session_id || sessionIds.has(null)) {
+    throw new Error("As turmas selecionadas não possuem um único ano letivo válido.");
+  }
+
   const [escolaRes, classeRes, sessaoRes, extraDataRes] = await Promise.all([
     supabase
       .from("escolas")
@@ -329,6 +336,7 @@ export async function renderListaNominalPdfBuffer({
     `
     )
     .eq("escola_id", escolaId)
+    .eq("session_id", turma.session_id)
     .order("numero_chamada", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
 
@@ -339,7 +347,9 @@ export async function renderListaNominalPdfBuffer({
   }
 
   if (!includeAllStatus) {
-    matriculasQuery = matriculasQuery.in("status", ["ativo", "ativa"]);
+    matriculasQuery = matriculasQuery
+      .eq("ativo", true)
+      .in("status", ["ativo", "ativa", "active"]);
   }
 
   matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 1000 });
