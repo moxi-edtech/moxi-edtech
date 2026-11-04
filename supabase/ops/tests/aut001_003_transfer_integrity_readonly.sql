@@ -23,6 +23,26 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'AUT-001 FAIL: transfer academic evidence guard missing';
   END IF;
+  -- Version 05000 is a strict schema/additive guard release gate.
+  -- It must be installed before the application uses its preflight endpoint.
+  IF to_regprocedure('public.turma_transfer_academic_evidence_v1(uuid)') IS NULL
+     OR to_regprocedure('public.turma_transfer_has_secondary_evidence_v1(uuid,uuid,uuid,uuid,integer)') IS NULL
+     OR NOT EXISTS (
+       SELECT 1 FROM pg_trigger t
+       WHERE t.tgrelid='public.matriculas'::regclass
+         AND t.tgname='trg_guard_turma_transfer_secondary_evidence'
+         AND t.tgenabled='O'
+     ) THEN
+    RAISE EXCEPTION 'AUT-001 FAIL: secondary academic gate missing';
+  END IF;
+  IF has_function_privilege(
+       'anon','public.turma_transfer_academic_evidence_v1(uuid)','EXECUTE')
+     OR has_function_privilege(
+       'authenticated','public.turma_transfer_has_secondary_evidence_v1(uuid,uuid,uuid,uuid,integer)','EXECUTE')
+     OR NOT has_function_privilege(
+       'authenticated','public.turma_transfer_academic_evidence_v1(uuid)','EXECUTE') THEN
+    RAISE EXCEPTION 'AUT-003 FAIL: preflight/guard function grants unsafe';
+  END IF;
   SELECT count(*),
          count(*) FILTER (WHERE td.turma_id IS DISTINCT FROM m.turma_id),
          count(*) FILTER (WHERE n.escola_id IS DISTINCT FROM m.escola_id
