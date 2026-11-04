@@ -240,7 +240,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
       {(impacto?.requer_conciliacao_academica || academicConflict) && (
         <div role="status" className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
           <p className="font-semibold">Histórico académico por conciliar</p>
-          <p>O Balcão precisa confirmar as notas, exames e frequência antes de permitir esta alteração. Nenhuma matrícula foi modificada.</p>
+          <p>Existem notas, exames ou frequência vinculados à turma de origem. Pode rever o processo no Balcão, mas a transferência exige conciliação formal do histórico; não basta confirmar a pendência. Nenhuma matrícula foi modificada.</p>
           {onResolveAcademic && (
             <button type="button" onClick={onResolveAcademic}
               className="inline-flex min-h-10 items-center rounded-xl bg-[#E3B23C] px-4 py-2 font-semibold text-white hover:brightness-95">
