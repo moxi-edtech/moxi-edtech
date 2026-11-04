@@ -11,6 +11,8 @@ test("AUT-008 endpoint requires authenticated tenant + secretary role and explic
   assert.match(route, /supabase.auth.getUser\(\)/);
   assert.match(route, /resolveEscolaIdForUser\(supabase, user.id\)/);
   assert.match(route, /requireRoleInSchool\(/);
+  assert.match(route, /requireCommandCenterSchoolWideAccess\(/);
+  assert.match(route, /if \(schoolWide\) return schoolWide/);
   assert.match(route, /K12_SECRETARIA_OPERACIONAL_ROLE_GROUP/);
   assert.match(route, /requestedAcademicYearId: filter\.ano_letivo_id/);
   assert.match(route, /year\.escolaId !== escolaId/);
