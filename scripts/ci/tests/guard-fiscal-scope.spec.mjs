@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 46);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 48);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -166,6 +166,34 @@ test("only audited atomic turma transfer migration passes the unchanged fiscal s
   ]) {
     assert.match(checkFiscalAndSchemaScope([path], () => sql)[0] ?? "",
       /Fiscal\/AGT activation marker/);
+  }
+});
+
+test("audited transfer revocation and secondary history guard are narrowly allowlisted, not fiscal bypasses", () => {
+  const approved = [
+    "20271031004000_disable_legacy_transferir_matricula.sql",
+    "20271031005000_guard_secondary_academic_transfer_evidence.sql",
+  ];
+  for (const name of approved) {
+    const path = "supabase/migrations/" + name;
+    assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name), name);
+    // Validate actual SQL, not only a synthetic comment or fixture.
+    assert.deepEqual(checkFiscalAndSchemaScope([path]), [], name);
+    for (const statement of [
+      "CREATE TABLE public.fiscal_config(enabled boolean);",
+      "CREATE OR REPLACE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $ SELECT 1 $;",
+      "CREATE TABLE public.saft_export(id uuid);",
+    ]) {
+      assert.match(checkFiscalAndSchemaScope([path], () => statement)[0] ?? "",
+        /Fiscal\/AGT activation marker/, name);
+    }
+  }
+  for (const unreviewed of [
+    "20271031005001_guard_secondary_academic_transfer_evidence.sql",
+    "20271031006000_unreviewed_transfer.sql",
+  ]) {
+    assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + unreviewed])[0] ?? "",
+      /Unapproved database migration/);
   }
 });
 
