@@ -110,7 +110,8 @@ export async function POST(
     }
 
     const result = data as { transferred?: number; target_turma_id?: string } | null;
-    if (!result || !Number.isInteger(result.transferred) || result.transferred <= 0) {
+    const transferred = result?.transferred;
+    if (typeof transferred !== "number" || !Number.isInteger(transferred) || transferred <= 0) {
       return NextResponse.json({
         ok: false,
         code: "BULK_TRANSFER_INVALID_RESPONSE",
@@ -120,10 +121,10 @@ export async function POST(
 
     return NextResponse.json({
       ok: true,
-      transferred: result.transferred,
+      transferred,
       source_turma_id: sourceTurmaId,
       target_turma_id: parsed.data.target_turma_id,
-      message: `${result.transferred} matrícula(s) transferida(s) com sucesso.`,
+      message: `${transferred} matrícula(s) transferida(s) com sucesso.`,
     });
 
   } catch (e) {
