@@ -100,9 +100,12 @@ export async function POST(
 
     if (transferError) {
       const missingRpc = transferError.code === "PGRST202" || transferError.code === "42883";
+      const academicBlock = transferError.code === "P1050";
       return NextResponse.json({
         ok: false,
-        code: missingRpc ? "BULK_TRANSFER_NOT_DEPLOYED" : "BULK_TRANSFER_REJECTED",
+        code: missingRpc
+          ? "BULK_TRANSFER_NOT_DEPLOYED"
+          : academicBlock ? "BULK_TRANSFER_ACADEMIC_RECORDS" : "BULK_TRANSFER_REJECTED",
         error: missingRpc
           ? "Transferência em lote indisponível nesta instalação. Utilize a transferência individual."
           : transferError.message,
