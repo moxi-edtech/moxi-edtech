@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "supabase/migrations/20271031003000_bulk_turma_transfer_atomic.sql"
+      - "supabase/migrations/20271031005000_guard_secondary_academic_transfer_evidence.sql"
       - "supabase/ops/tests/bulk_turma_transfer_isolated_**"
       - ".github/workflows/klasse-bulk-turma-transfer-integration.yml"
   workflow_dispatch:
