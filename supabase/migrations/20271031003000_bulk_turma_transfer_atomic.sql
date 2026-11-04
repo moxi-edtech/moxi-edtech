@@ -312,30 +312,9 @@ CREATE TRIGGER a_00_lock_matricula_academic_evidence
   BEFORE INSERT OR UPDATE ON public.frequencia_status_periodo
   FOR EACH ROW EXECUTE FUNCTION public.lock_matricula_for_academic_evidence_v1();
 
--- Legacy presencas possui aluno_id/turma_id em vez de matricula_id.
-CREATE OR REPLACE FUNCTION public.lock_matricula_for_legacy_presenca_v1()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
-AS $lock$
-BEGIN
-  PERFORM 1 FROM public.matriculas m
-  WHERE m.escola_id = NEW.escola_id
-    AND m.aluno_id = NEW.aluno_id
-    AND m.turma_id = NEW.turma_id
-    AND m.ativo IS TRUE
-  ORDER BY m.id FOR SHARE;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION USING ERRCODE = 'P1053',
-      MESSAGE = 'Presença sem matrícula ativa nesta turma; use a retificação académica autorizada.';
-  END IF;
-  RETURN NEW;
-END;
-$lock$;
-REVOKE ALL ON FUNCTION public.lock_matricula_for_legacy_presenca_v1()
-  FROM PUBLIC, anon, authenticated;
-
-DROP TRIGGER IF EXISTS a_00_lock_matricula_legacy_presenca ON public.presencas;
-CREATE TRIGGER a_00_lock_matricula_legacy_presenca
-  BEFORE INSERT OR UPDATE ON public.presencas
-  FOR EACH ROW EXECUTE FUNCTION public.lock_matricula_for_legacy_presenca_v1();
+-- O catálogo real do Supabase define public.presencas como VIEW sobre
+-- frequencias + matriculas. Não pode receber triggers BEFORE/AFTER.
+-- O trigger anterior em public.frequencias (tabela particionada) já
+-- serializa as presenças antes de qualquer transferência.
 
 COMMIT;
