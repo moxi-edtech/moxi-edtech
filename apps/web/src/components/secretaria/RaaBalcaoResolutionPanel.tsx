@@ -486,7 +486,7 @@ export function RaaBalcaoResolutionPanel({
 
   return (
     <section id="balcao-pendencias" key={alunoId + ":" + matriculaId} className="space-y-3 scroll-mt-24" aria-label="Pendências do aluno no Balcão">
-      <BalcaoAcademicOperations key={matriculaId} matriculaId={matriculaId} onRecheck={async () => { await load(); return onRecheck(); }} onLancarNota={onLancarNota} />
+      <BalcaoAcademicOperations key={matriculaId} matriculaId={matriculaId} preferredDisciplineId={academic?.disciplina_ids_pendentes?.[0]} initiallyEligible={academic?.eligible === true} onRecheck={async () => { await load(); return onRecheck(); }} onLancarNota={onLancarNota} />
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">{onlySubjects ? "Disciplinas" : "Pendências"}</h3>
         {pendingJustification && phase === "summary" && !loading ? (
@@ -646,7 +646,7 @@ export function RaaBalcaoResolutionPanel({
                     Rever notas da turma
                   </button>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Peça a revisão à direção e volte a verificar.</p>
+                  <p className="text-xs text-muted-foreground">Use «Resolver operação académica aqui» para conferir as permissões e continuar nesta ficha.</p>
                 )}
             </div>
           )}
@@ -665,7 +665,7 @@ export function RaaBalcaoResolutionPanel({
               ) : !examContext.can_record_result ? (
                 <p className="text-xs text-muted-foreground">Exames disponíveis para consulta neste perfil.</p>
               ) : examContext.sessoes.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Sem sessão de exame disponível. Solicite a abertura à direção.</p>
+                <p className="text-xs text-muted-foreground">Sem sessão de exame disponível. Abra a sessão em «Resolver operação académica aqui», nesta ficha.</p>
               ) : (
                 <div className="grid gap-2">
                   <label htmlFor="raa-exam-session" className="text-xs font-bold text-foreground">Sessão oficial</label>

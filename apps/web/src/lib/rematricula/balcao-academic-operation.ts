@@ -6,6 +6,11 @@ const base = { matricula_id: uuid, motivo };
 export const balcaoAcademicOperation = z.discriminatedUnion("acao", [
   z.object({ ...base, acao: z.literal("registar_eja"), disciplina_id: uuid,
     suficiente: z.boolean(), documento_fonte: z.string().trim().min(5).max(1000), expected_id: uuid.nullable() }).strict(),
+  z.object({ ...base, acao: z.literal("registar_frequencia_eja"), periodo_id: uuid,
+    aulas_previstas: z.number().int().min(1).max(10000), presencas: z.number().int().min(0).max(10000),
+    documento_fonte: z.string().trim().min(5).max(1000), expected_version: z.string().regex(/^[a-f0-9]{32}$/) }).strict(),
+  z.object({ ...base, acao: z.literal("lancar_exame"), sessao_id: uuid, componente_id: uuid,
+    turma_disciplina_id: uuid, nota: z.number().finite().min(0).max(100) }).strict(),
   z.object({ ...base, acao: z.literal("reabrir_periodo"), disciplina_id: uuid, periodo_id: uuid }).strict(),
   z.object({ ...base, acao: z.literal("validar_exame"), resultado_id: uuid }).strict(),
   z.object({ ...base, acao: z.literal("publicar_exame"), sessao_id: uuid }).strict(),

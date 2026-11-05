@@ -6,7 +6,7 @@ on:
       - "apps/web/tests/unit/*raa*"
       - "apps/web/tests/balcao-actions-ui-postgres.integration.ts"
       - "apps/web/tests/fixtures/balcao-postgres-adapter.ts"
-      - "apps/web/tests/unit/balcao-academic-operation.spec.ts"
+      - "apps/web/tests/unit/balcao-academic-*.spec.ts"
       - "supabase/migrations/2027110500*balcao*.sql"
       - "supabase/ops/tests/balcao_academic_resolution/**"
       - ".github/workflows/balcao-academic-operations.yml"
@@ -59,7 +59,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Academic and paid-rematricula regressions
         working-directory: apps/web
-        run: node --test --import tsx tests/unit/balcao-academic-operation.spec.ts tests/unit/raa-*.spec.ts tests/unit/aut004-paid-academic-dual-axis.spec.ts tests/unit/aut004-aut012-operational-contract.spec.ts
+        run: node --test --import tsx tests/unit/balcao-academic-*.spec.ts tests/unit/raa-*.spec.ts tests/unit/aut004-paid-academic-dual-axis.spec.ts tests/unit/aut004-aut012-operational-contract.spec.ts
       - name: Typecheck
         run: pnpm --filter web exec tsc --noEmit --incremental false
 
@@ -97,7 +97,9 @@ jobs:
         run: |
           psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/audit_fixture.sql
           psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271105002000_balcao_secretaria_actions_audit.sql
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271105003000_balcao_guided_resolution_attendance.sql
           psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/audit_effects.sql
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/guided_effects.sql
       - name: Click the actual React forms against the disposable database
         working-directory: apps/web
         run: TEST_JSDOM_MODULE="$RUNNER_TEMP/balcao-dom/node_modules/jsdom/lib/api.js" node --test --import tsx tests/balcao-actions-ui-postgres.integration.ts

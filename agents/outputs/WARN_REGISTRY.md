@@ -22,3 +22,5 @@ APY-005 resolvido em 2026-10-29: aprovação cf8dc48d-6b39-47d3-af87-410afcf95dd
 |---|---|---|---|---|---|
 | AUT006-HOSTED | Contrato de PASS: prova autenticada | apps/web/tests/balcao-actions-ui-postgres.integration.ts | docs/ops/auditoria-balcao-secretaria-20261105.md#tickets-de-validação-pendentes | Engenharia | Antes do release |
 | AUT006-LINT | Qualidade: lint do escopo | apps/web/src/hooks/useRematriculaBalcao.ts | docs/ops/auditoria-balcao-secretaria-20261105.md#tickets-de-validação-pendentes | Engenharia | Antes do gate global |
+
+AUT006-HOSTED: o percurso guiado e a frequência EJA foram exercidos localmente em `docs/ops/balcao-experiencia-guiada-20261105.md`; mantém-se pendente a sessão autenticada hospedada e o ciclo pagamento → rematrícula → recibo. Lint deste novo escopo: cinco ficheiros de produção, zero avisos; AUT006-LINT anterior mantém o restante escopo legado.

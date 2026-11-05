@@ -2,6 +2,10 @@
 
 Data: 2026-11-05. Base auditada: `a9f2573fd`. Escopo dirigido ao Balcão e ao motor de elegibilidade; sem declaração de PASS global ou autorização de merge/release. O utilizador autorizou explicitamente a execução pela secretaria e a auditoria no pedido atual.
 
+## Evolução posterior
+
+As lacunas de navegação e conferência da frequência EJA foram tratadas na [experiência guiada](balcao-experiencia-guiada-20261105.md), com novas provas de cliques. Este relatório conserva o estado da auditoria na sua base; o ticket de homologação autenticada continua ativo.
+
 ## Resultado
 
 Os botões tinham operações reais, mas o conjunto não completava a resolução: a secretaria era recusada nas decisões excecionais; validar exame não publicava a sessão; a reavaliação TypeScript podia voltar a usar nota antiga; auditoria de decisões antigas podia falhar após a gravação. Corrigidos no código e na migration complementar `20271105002000_balcao_secretaria_actions_audit.sql`.

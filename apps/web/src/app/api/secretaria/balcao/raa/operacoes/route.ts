@@ -53,20 +53,23 @@ export async function GET(req: NextRequest) {
       readVerifiedAcademicTrimesters(db, { escolaId, anoLetivoId: source.session_id, yearBase: Number(year.anoLetivoLabel.split("/")[0]) }),
       db.from("turma_disciplinas").select("id,avaliacao_disciplina_id,periodos_ativos")
         .eq("escola_id", escolaId).eq("turma_id", source.turma_id).order("id").limit(50),
-      db.from("exame_resultados").select("id,nota,estado,exame_sessao_id,turma_disciplina_id")
+      db.from("exame_resultados").select("id,nota,estado,exame_sessao_id,exame_componente_id,turma_disciplina_id")
         .eq("escola_id", escolaId).eq("matricula_id", source.id).in("estado", ["submetido", "validado"]).order("id").limit(50),
       canManage ? db.from("vw_raa_eja_avaliacoes_atuais").select("id,disciplina_id,suficiente,registado_em")
         .eq("escola_id", escolaId).eq("matricula_id", source.id).order("registado_em", { ascending: false }).order("id", { ascending: false }).limit(50)
         : Promise.resolve({ data: [], error: null }),
-      db.from("exame_sessoes").select("id,tipo,estado,data_inicio,data_fim")
-        .eq("escola_id", escolaId).eq("ano_letivo_id", source.session_id).eq("turma_id", source.turma_id)
-        .in("estado", ["aberta", "publicada"]).order("data_inicio").order("id").limit(50),
+      canManage ? db.rpc("balcao_exam_progress", { p_escola_id: escolaId, p_matricula_id: source.id })
+        : Promise.resolve({ data: [], error: null }),
     ]);
     if (links.error || results.error || evidence.error || sessions.error) throw links.error || results.error || evidence.error || sessions.error;
     const ids = [...new Set((links.data ?? []).map((d: any) => d.avaliacao_disciplina_id).filter(Boolean))];
     const names = ids.length ? await db.from("disciplinas_catalogo").select("id,nome").eq("escola_id", escolaId).in("id", ids).limit(50) : { data: [], error: null };
     if (names.error) throw names.error;
-    return json({ ok: true, can_manage: canManage, source, regime, ano_ativo: year.status === "ACTIVE",
+    const frequencies = canManage && regime.escala === "qualitativa"
+      ? await db.rpc("balcao_eja_frequencias", { p_escola_id: escolaId, p_matricula_id: source.id }) : { data: [], error: null };
+    if (frequencies.error) throw frequencies.error;
+    return json({ ok: true, hoje_angola: new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Luanda" }),
+      frequencias: frequencies.data ?? [], turma_disciplinas: links.data ?? [], can_manage: canManage, source, regime, ano_ativo: year.status === "ACTIVE",
       periodos: periods, disciplinas: names.data ?? [], resultados: (results.data ?? []).map((r: { turma_disciplina_id: string }) => {
         const link = (links.data ?? []).find((d: { id: string }) => d.id === r.turma_disciplina_id);
         return { ...r, disciplina_nome: (names.data ?? []).find((d: { id: string }) => d.id === link?.avaliacao_disciplina_id)?.nome ?? null };
@@ -96,7 +99,10 @@ export async function POST(req: NextRequest) {
     if (error) {
       const code = error.message?.match(/\b(?:ACADEMIC_[A-Z_]+|EJA_[A-Z_]+|EXAM_[A-Z_]+|RAA_LEGAL_LOCK|IDEMPOTENCY_CONFLICT|TURMA_NOT_EXAM_REGIME)\b/)?.[0];
       return json({ ok: false, code: code ?? "ACADEMIC_OPERATION_FAILED",
-        error: code === "EJA_VERSION_CONFLICT" ? "A avaliação mudou noutro atendimento. Atualize antes de retificar."
+        error: code === "EJA_VERSION_CONFLICT" ? "A avaliação ou frequência mudou noutro atendimento. Atualize os dados antes de retificar."
+          : code === "EJA_ATTENDANCE_PERIOD_NOT_FINISHED" ? "Este trimestre ainda está a decorrer. A frequência completa só pode ser conferida depois da data de fim."
+          : code === "EXAM_COMPONENTS_NOT_VALIDATED" ? "Ainda há componentes por lançar ou validar. Continue nas etapas do exame antes de publicar."
+          : code === "EXAM_SESSION_NOT_WRITABLE" ? "A sessão ainda não começou ou já foi encerrada. Atualize o contexto do exame."
           : code === "RAA_LEGAL_LOCK" ? "Esta matrícula possui fecho legal. A exceção de período não altera esse fecho."
           : "Não foi possível autorizar esta operação no contexto atual. Atualize a situação e confira os dados." }, error.code === "42501" ? 403 : 409);
     }

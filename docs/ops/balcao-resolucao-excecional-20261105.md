@@ -59,3 +59,5 @@ Metas, ainda não medidas: feedback local <50ms, consulta contextual p95 ≤500m
 3. Publicar a aplicação somente após esses testes e autorização de release.
 
 A auditoria e as provas após a autorização complementar estão em [auditoria dos botões](auditoria-balcao-secretaria-20261105.md).
+
+O percurso foi completado com lançamento guiado de componentes e frequência EJA no próprio atendimento. Ver [experiência guiada e provas](balcao-experiencia-guiada-20261105.md).
