@@ -120,7 +120,7 @@ const chunkRows = <T,>(rows: T[], size: number) => {
 
 const toPercent = (value: number) => `${value.toFixed(2)}%`
 
-export function PautaAnualV1({ metadata, disciplinas, alunos }: Props) {
+export function PautaAnualV1({ metadata, disciplinas, alunos, qualitativa = false }: Props) {
   const fixedWidth = 6 + 28 + 5 + 4 + 10
   const disciplinaWidth = disciplinas.length > 0 ? (100 - fixedWidth) / disciplinas.length : 0
   const pages = chunkRows(alunos, ROWS_PER_PAGE)
@@ -165,14 +165,14 @@ export function PautaAnualV1({ metadata, disciplinas, alunos }: Props) {
                       "MT1",
                       "MT2",
                       "MT3",
-                      "MFD",
+                      qualitativa ? "S / NS" : "MFD",
                     ].map((label) => (
                       <View
                         key={`${disciplina.id}-${label}`}
                         style={[
                           s.gradeCell,
                           { flex: 1 },
-                          label === "MFD" ? { borderRightWidth: 0 } : {},
+                          (label === "MFD" || label === "S / NS") ? { borderRightWidth: 0 } : {},
                         ]}
                       >
                         <Text style={[s.cellHeader, s.cellCenter]}>{label}</Text>

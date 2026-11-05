@@ -72,3 +72,8 @@ A evolução da pesquisa para um modal de exploração **Curso → Classe → Tu
 - [Issue de auditoria e plano #224](https://github.com/moxi-edtech/moxi-edtech/issues/224)
 
 **Nota de estado:** os tipos pesquisáveis por portal não significam automaticamente uma vista contextual disponível ou autorização de detalhe. O documento oficial diferencia código em branch, testes pendentes, homologação e produção. As métricas de desempenho citadas neste roadmap original devem ser novamente medidas para o modal contextual; não constituem comprovação de SLA desta nova funcionalidade.
+
+
+### Balcão — resolução académica excecional (2026-11-05)
+
+Implementação e limites: [registo operacional](ops/balcao-resolucao-excecional-20261105.md). Metas ainda não medidas: feedback local de mutação <50ms; consulta contextual p95 ≤500ms; primeira apresentação da pauta <300ms com skeleton. A geração integral do PDF é uma operação separada com progresso, sem promessa de conclusão nesse prazo.

@@ -122,7 +122,11 @@ export function resolveRaaDecretoEligibility(input: RaaDecretoInput): RaaDecreto
   const ejaPrimary = (input.regime === "eja_modulo_1" || input.regime === "eja_modulo_2" || input.regime === "eja_modulo_3") && !ejaModulo3Numerico
   if (ejaPrimary) {
     const frequency = input.frequenciaAnual
-    if (!frequency || frequency.aulasPrevistas <= 0 || frequency.aulasFrequentadas / frequency.aulasPrevistas < 2 / 3) {
+    if (!frequency || !Number.isFinite(frequency.aulasPrevistas) || !Number.isFinite(frequency.aulasFrequentadas) ||
+      frequency.aulasPrevistas <= 0 || frequency.aulasFrequentadas < 0 || frequency.aulasFrequentadas > frequency.aulasPrevistas) {
+      return pending(input, "Frequência anual oficial incompleta: verificar os registos antes da decisão.")
+    }
+    if (frequency.aulasFrequentadas * 3 < frequency.aulasPrevistas * 2) {
       return result(input, { decision: "reprovado_por_faltas", motivo: "frequencia_eja", baseLegal: "Art. 26.º/2/b.", efetivacaoMatriculaBloqueada: true })
     }
     const negatives = input.disciplinas.filter((d) => isNegative(d, true))

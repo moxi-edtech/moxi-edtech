@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { canScheduleRaaExam } from "@/lib/academico/raa-exam-session-policy";
 import { resolveRegimeAcademico } from "@/lib/academico/regime-academico";
 
 export const dynamic = "force-dynamic";
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "A turma não pertence ao ano letivo selecionado.", code: "EXAM_TURMA_ACADEMIC_YEAR_MISMATCH" }, { status: 409 });
     }
     const regime = await resolveRegimeAcademico(supabase, body.turma_id);
-    if (!regime.eh_classe_exame) return NextResponse.json({ ok: false, error: "A turma não está abrangida por um regime de exame.", code: "TURMA_NOT_EXAM_REGIME" }, { status: 409 });
+    if (!canScheduleRaaExam(regime, body.tipo)) return NextResponse.json({ ok: false, error: "A turma não está abrangida por um regime de exame.", code: "TURMA_NOT_EXAM_REGIME" }, { status: 409 });
   }
 
   const { componentes: _componentes, ...sessionData } = body;

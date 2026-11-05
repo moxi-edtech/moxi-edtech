@@ -162,6 +162,13 @@ export async function resolveDecretoDecision(
   regime: RegimeAcademico,
   disciplinaIds: string[],
 ) {
+  if (regime?.nivel_ensino === "eja" && regime.escala === "qualitativa") {
+    const { data, error } = await supabase.rpc("resolve_raa_eja_oficial", {
+      p_escola_id: escolaId, p_matricula_id: matriculaId,
+    })
+    if (error || !data?.decreto) throw new Error("Não foi possível confirmar a avaliação qualitativa oficial.")
+    return data.decreto as RaaDecretoResult
+  }
   const codigoRegime = decretoRegime(regime)
   if (!codigoRegime || disciplinaIds.length === 0) return null
 

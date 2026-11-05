@@ -1,0 +1,62 @@
+name: Balcao academic operations
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/**"
+      - "apps/web/tests/unit/*raa*"
+      - "apps/web/tests/unit/balcao-academic-operation.spec.ts"
+      - "supabase/migrations/20271105001000_balcao_academic_resolution.sql"
+      - "supabase/ops/tests/balcao_academic_resolution/**"
+      - ".github/workflows/balcao-academic-operations.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  database:
+    name: Academic operations — RLS, retries, exams and publications
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: balcao_academic_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d balcao_academic_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/balcao_academic_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate only in disposable PostgreSQL
+        run: |
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/fixture.sql
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/regression.sql
+          python3 supabase/ops/tests/balcao_academic_resolution/concurrency.py
+  web:
+    name: Academic operations — web regression and typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COREPACK_ENABLE_AUTO_PIN: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Academic and paid-rematricula regressions
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/balcao-academic-operation.spec.ts tests/unit/raa-*.spec.ts tests/unit/aut004-paid-academic-dual-axis.spec.ts tests/unit/aut004-aut012-operational-contract.spec.ts
+      - name: Typecheck
+        run: pnpm --filter web exec tsc --noEmit --incremental false

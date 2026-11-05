@@ -8,7 +8,7 @@ export type PautaAnualDisciplinaNotas = {
   mt1: number | "-"
   mt2: number | "-"
   mt3: number | "-"
-  mfd: number | "-"
+  mfd: number | "-" | "S" | "NS"
 }
 
 export type PautaAnualAlunoRow = {
@@ -37,6 +37,7 @@ export type PautaAnualMetadata = {
 }
 
 export type PautaAnualPayload = {
+  qualitativa?: boolean
   metadata: PautaAnualMetadata
   disciplinas: PautaAnualDisciplina[]
   alunos: PautaAnualAlunoRow[]

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { buildRaaBalcaoWorkspaceCases, raaBalcaoProgress } from "@/lib/rematricula/raa-balcao-cases";
@@ -9,6 +10,8 @@ import { CheckCircle2, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardL
 import type { RematriculaCardState } from "@/hooks/useRematriculaBalcao";
 import { raaBalcaoPlan, raaBalcaoEffectiveStatus } from "@/lib/rematricula/raa-balcao-resolution";
 import type { RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
+
+const BalcaoAcademicOperations = dynamic(() => import("./BalcaoAcademicOperations").then((m) => m.BalcaoAcademicOperations));
 
 type PeticaoFalta = { id: string; data_falta: string; motivo: string; status: string; trimestre?: 1 | 2 | 3 | null };
 type PedidoReapreciacao = {
@@ -317,7 +320,8 @@ export function RaaBalcaoResolutionPanel({
 
   async function refreshAfterSave() {
     try {
-      await onRecheck();
+      const refreshed = await onRecheck() as { ok?: boolean } | undefined;
+      if (refreshed?.ok === false) throw new Error("Revalidação pendente");
     } catch {
       // The write was already committed. A refresh error must never make it
       // look as though the save failed and invite a duplicate submission.
@@ -482,6 +486,7 @@ export function RaaBalcaoResolutionPanel({
 
   return (
     <section id="balcao-pendencias" key={alunoId + ":" + matriculaId} className="space-y-3 scroll-mt-24" aria-label="Pendências do aluno no Balcão">
+      <BalcaoAcademicOperations key={matriculaId} matriculaId={matriculaId} onRecheck={onRecheck} onLancarNota={onLancarNota} />
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">{onlySubjects ? "Disciplinas" : "Pendências"}</h3>
         {pendingJustification && phase === "summary" && !loading ? (
