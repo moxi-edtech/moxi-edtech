@@ -9,7 +9,7 @@ import { resolveRaaTrimestre, type RaaTrimestre } from "@/lib/rematricula/raa-ba
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-const roles: Array<"diretor" | (typeof K12_SECRETARIA_OPERACIONAL_ROLE_GROUP)[number]> = ["diretor", ...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP];
+const roles: Array<"diretor" | "admin_secretaria" | (typeof K12_SECRETARIA_OPERACIONAL_ROLE_GROUP)[number]> = ["diretor", "admin_secretaria", ...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP];
 const Decision = z.object({
   id: z.string().uuid(),
   decision: z.enum(["approved", "rejected"]),

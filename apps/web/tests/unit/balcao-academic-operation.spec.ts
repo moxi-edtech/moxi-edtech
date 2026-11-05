@@ -21,8 +21,8 @@ test("caller cannot choose a school, writer, administrative state or approval ro
   for (const extra of [{ escola_id: source }, { registado_por: source }, { status: "ativo" }, { service_role: true }, { papel: "diretor" }]) {
     assert.equal(balcaoAcademicOperation.safeParse({ ...evidence, ...extra }).success, false);
   }
-  for (const role of [null, "professor", "secretaria", "financeiro", "admin_financeiro", "staff_admin", "super_admin", { papel: "diretor" }]) assert.equal(canManageBalcaoAcademic(role), false);
-  for (const role of ["diretor", "admin", "admin_escola"]) assert.equal(canManageBalcaoAcademic(role), true);
+  for (const role of [null, "professor", "financeiro", "admin_financeiro", "staff_admin", "super_admin", { papel: "diretor" }]) assert.equal(canManageBalcaoAcademic(role), false);
+  for (const role of ["diretor", "admin", "admin_escola", "secretaria", "admin_secretaria", "secretaria_financeiro"]) assert.equal(canManageBalcaoAcademic(role), true);
 });
 
 test("a new evidence and a rectification both require source, reason and expected version", () => {
@@ -54,4 +54,13 @@ test("extraordinary exams can be scheduled for the conditional classes already s
   }
   assert.equal(canScheduleRaaExam({ classe_num: null, nivel_ensino: "eja", ano_numero: 1, eh_classe_exame: false, exames_aplicaveis: [] }, "extraordinario"), true);
   assert.equal(canScheduleRaaExam({ classe_num: 5, nivel_ensino: "primario", ano_numero: null, eh_classe_exame: false, exames_aplicaveis: [] }, "extraordinario"), false);
+});
+
+
+test("primary and numeric EJA module 3 preserve the canonical zero-to-ten cutoff", () => {
+  for (const regime of ["classe_6", "eja_modulo_3"] as const) {
+    const input = { regime, dadosCompletos: true, disciplinas: [{ id: discipline, nome: "Português", notaFinal: 5 }] };
+    assert.equal(resolveRaaDecretoEligibility(input).decision, "concluiu");
+    assert.notEqual(resolveRaaDecretoEligibility({ ...input, disciplinas: [{ ...input.disciplinas[0], notaFinal: 4 }] }).decision, "concluiu");
+  }
 });

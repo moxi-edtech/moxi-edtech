@@ -7,9 +7,9 @@ Aprovação: `APPROVE: f6bf391c-3b44-4d47-8d06-eaf3e996cea3`, fornecida pelo uti
 
 Na ficha Rematrícula, «Resolver operação académica aqui» abre formulários de sessão de exame, validação de resultados submetidos, exceção temporária de notas, publicação/republicação de pauta e avaliação qualitativa EJA. Confirmação mostra os dados e o alcance da operação, incluindo quando afeta toda a turma.
 
-A direção/administração académica confirma com fundamento; a autorização é revalidada no servidor e no PostgreSQL pelo vínculo atual de escola. Secretaria/professor não recebem permissões de decisão excecional. A correção de notas usa a exceção existente por utilizador, turma, disciplina, trimestre e ano, durante 24h, com acesso ao formulário canónico no mesmo atendimento.
+A secretaria e a direção/administração académica confirmam com fundamento; a autorização é revalidada no servidor e no PostgreSQL pelo vínculo atual de escola. Papéis autorizados: admin, admin_escola, diretor, secretaria, admin_secretaria e secretaria_financeiro. Professor não recebe permissão de decisão excecional. A correção de notas usa a exceção existente por utilizador, turma, disciplina, trimestre e ano, durante 24h, com acesso ao formulário canónico no mesmo atendimento.
 
-As novas escritas são transacionais e idempotentes, com auditoria. Retificação EJA acrescenta evidência e exige a versão anterior esperada. Sessão e componentes são criados juntos. A validação de exame preserva a nota submetida, sem alterar resultados existentes silenciosamente.
+As novas escritas são transacionais e idempotentes, com auditoria. Retificação EJA acrescenta evidência e exige a versão anterior esperada. Sessão e componentes são criados juntos. A validação de exame preserva a nota submetida. A ação separada de encerrar e publicar exige todos os componentes dos participantes validados; só então a sessão fica encerrada e o resultado passa a ser consumido pelo RAA.
 
 Pautas usam os builders e o Storage existentes, com reserva de publicação, token por tentativa e caminho novo para cada versão. Confirmação de sucesso exige o objeto PDF no Storage e a transição oficial persistida. O PDF anterior fica referenciado na auditoria e uma tentativa falhada preserva a última publicação válida. Tentativas concorrentes recebem estado de processamento; reserva interrompida pode ser recuperada após 15 minutos. O workflow de teste usa um fixture de Storage, não o serviço real.
 
@@ -27,7 +27,7 @@ Após guardar, o painel reconsulta a rematrícula e mantém a ficha e o pagament
 ## Evidência de validação local
 
 - 132 testes Node: contratos académicos, EJA, rematrícula paga e operações novas.
-- PostgreSQL 17 descartável: migration instalada desde zero sobre fixture explícito; isolamento de duas escolas, permissão de direção versus secretaria, retificação obsoleta, idempotência, sessão sem órfãos, validação de exame, exceção expirada, fecho legal, publicação sem PDF, token obsoleto, recuperação e preservação de versão anterior.
+- PostgreSQL 17 descartável: migration instalada desde zero sobre fixture explícito; isolamento de duas escolas, restrições da migration original, antes da autorização complementar à secretaria, retificação obsoleta, idempotência, sessão sem órfãos, validação de exame, exceção expirada, fecho legal, publicação sem PDF, token obsoleto, recuperação e preservação de versão anterior.
 - Duas sessões PostgreSQL simultâneas: uma única evidência, operação e auditoria para a mesma chave.
 - Verificação de tipos do projeto web.
 
@@ -57,3 +57,5 @@ Metas, ainda não medidas: feedback local <50ms, consulta contextual p95 ≤500m
 1. Rever o diff e executar o workflow do GitHub.
 2. Aplicar a migration num ambiente de homologação equivalente ao real e executar o Balcão autenticado por papel, com fixtures seguras, incluindo pedido já pago.
 3. Publicar a aplicação somente após esses testes e autorização de release.
+
+A auditoria e as provas após a autorização complementar estão em [auditoria dos botões](auditoria-balcao-secretaria-20261105.md).

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   if (!auth.user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
   const escolaId = await resolveEscolaIdForUser(supabase, auth.user.id);
   if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
-  const authz = await requireRoleInSchool({ supabase, escolaId, roles: ["professor", "secretaria", "admin", "admin_escola", "staff_admin", "diretor"] });
+  const authz = await requireRoleInSchool({ supabase, escolaId, roles: ["professor", "secretaria", "admin_secretaria", "secretaria_financeiro", "admin", "admin_escola", "staff_admin", "diretor"] });
   if (authz.error) return authz.error;
   const parsed = resultSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" }, { status: 400 });

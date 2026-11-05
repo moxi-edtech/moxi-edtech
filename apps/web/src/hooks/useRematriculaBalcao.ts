@@ -399,7 +399,7 @@ export function useRematriculaBalcao(opts: {
         setDestinoTurma(data.destino_turma ?? null);
         setCohort(data.cohort ?? null);
         setReconciliation(data.reconciliation ?? null);
-        return { ok: true, status: data.status };
+        return { ok: true, status: data.status, academic: data.academic };
       } else {
         clearStatusSnapshot();
         setCardState("ERROR");

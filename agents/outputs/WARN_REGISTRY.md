@@ -15,3 +15,10 @@ APY-001: aprovação a1338163-1df9-4a14-9f79-ff677e5f3e84; SQL aplicado e verifi
 APY-002: em 2026-10-29, build completo Next.js com validação de tipos e 182 páginas aprovado. Lint separado e 19 testes aprovados. Sem alterações no lockfile. Não substitui o fluxo publicado com provedor.
 
 APY-005 resolvido em 2026-10-29: aprovação cf8dc48d-6b39-47d3-af87-410afcf95ddb, commit 5914e1c46, migration 20261029121743 aplicada e verificada. APY-004 agora inclui o bloqueio global confirmado em REPORT_SCAN.md, além dos candidatos ainda não certificados.
+
+## Auditoria dirigida do Balcão — 2026-11-05
+
+| WARN ID | Regra | Ficheiro | Ticket | Responsável | Prazo |
+|---|---|---|---|---|---|
+| AUT006-HOSTED | Contrato de PASS: prova autenticada | apps/web/tests/balcao-actions-ui-postgres.integration.ts | docs/ops/auditoria-balcao-secretaria-20261105.md#tickets-de-validação-pendentes | Engenharia | Antes do release |
+| AUT006-LINT | Qualidade: lint do escopo | apps/web/src/hooks/useRematriculaBalcao.ts | docs/ops/auditoria-balcao-secretaria-20261105.md#tickets-de-validação-pendentes | Engenharia | Antes do gate global |

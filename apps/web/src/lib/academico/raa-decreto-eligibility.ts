@@ -80,9 +80,9 @@ function hasBadAttendance(discipline: RaaDecretoDisciplina): boolean {
   return (discipline.faltasInjustificadasPorTrimestre ?? []).some((faltas) => faltas >= threshold)
 }
 
-function isNegative(discipline: RaaDecretoDisciplina, ejaPrimary: boolean): boolean {
+function isNegative(discipline: RaaDecretoDisciplina, ejaPrimary: boolean, cutoff = 10): boolean {
   if (ejaPrimary) return discipline.suficiente === false
-  return discipline.notaFinal != null && discipline.notaFinal < 10
+  return discipline.notaFinal != null && discipline.notaFinal < cutoff
 }
 
 function legalNotes(negatives: RaaDecretoDisciplina[], min: number, max: number): boolean {
@@ -101,7 +101,7 @@ function result(input: RaaDecretoInput, values: Partial<RaaDecretoResult> & Pick
     elegivelRecurso: values.elegivelRecurso ?? false,
     exameExtraordinario: values.exameExtraordinario ?? false,
     efetivacaoMatriculaBloqueada: values.efetivacaoMatriculaBloqueada ?? false,
-    disciplinasNegativas: values.disciplinasNegativas ?? input.disciplinas.filter((d) => isNegative(d, input.regime.startsWith("eja_modulo"))).map((d) => d.id),
+    disciplinasNegativas: values.disciplinasNegativas ?? input.disciplinas.filter((d) => isNegative(d, input.regime.startsWith("eja_modulo") && d.notaFinal == null, input.regime === "classe_6" || input.regime === "eja_modulo_3" ? 5 : 10)).map((d) => d.id),
     disciplinasPendentes: values.disciplinasPendentes ?? [],
   }
 }
@@ -138,10 +138,10 @@ export function resolveRaaDecretoEligibility(input: RaaDecretoInput): RaaDecreto
     return result(input, { decision: "reprovado_por_faltas", motivo: "faltas", baseLegal: "Arts. 23.º/7/a-c e 24.º/15/a-c.", efetivacaoMatriculaBloqueada: true })
   }
 
-  const negatives = input.disciplinas.filter((d) => isNegative(d, false))
+  const negatives = input.disciplinas.filter((d) => isNegative(d, false, input.regime === "classe_6" || input.regime === "eja_modulo_3" ? 5 : 10))
   const regime = input.regime
   const transition = regime === "classe_7" || regime === "classe_8" || regime === "classe_10" || regime === "classe_11" || regime === "eja_ano_1"
-  const terminal = regime === "classe_6" || regime === "classe_9" || regime === "classe_12" || regime === "eja_ano_2"
+  const terminal = regime === "classe_6" || regime === "classe_9" || regime === "classe_12" || regime === "eja_ano_2" || regime === "eja_modulo_3"
 
   if (negatives.length === 0) {
     return result(input, { decision: terminal ? "concluiu" : "transitou", motivo: "sem_pendencias", baseLegal: "Arts. 23.º/1/6/9/14 e 26.º/4/8.", efetivacaoMatriculaBloqueada: false })

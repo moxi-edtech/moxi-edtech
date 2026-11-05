@@ -20,7 +20,7 @@ export async function PATCH(request: Request) {
   const escolaId = await resolveEscolaIdForUser(supabase, auth.user.id)
   if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 })
   if (!await hasExactRaaAcademicDecisionRole(supabase, escolaId, auth.user.id)) {
-    return NextResponse.json({ ok: false, error: "A decisão académica exige autorização da direção." }, { status: 403 })
+    return NextResponse.json({ ok: false, error: "A decisão académica exige um perfil autorizado da secretaria ou direção." }, { status: 403 })
   }
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})))

@@ -332,7 +332,7 @@ export function RaaBalcaoResolutionPanel({
   const submit = async () => {
     if ((action === "reapreciacao" && !canDecideReapreciacao) ||
         (action === "disciplina" && !canReviewDisciplina)) {
-      setError("Esta decisão exige autorização da direção.");
+      setError("Esta decisão exige um perfil autorizado da secretaria ou direção.");
       return;
     }
     if (saving || !selected || motivo.trim().length < (action === "disciplina" ? 15 : action === "reapreciacao" ? 5 : decision === "rejected" ? 8 : 0)) return;
@@ -486,7 +486,7 @@ export function RaaBalcaoResolutionPanel({
 
   return (
     <section id="balcao-pendencias" key={alunoId + ":" + matriculaId} className="space-y-3 scroll-mt-24" aria-label="Pendências do aluno no Balcão">
-      <BalcaoAcademicOperations key={matriculaId} matriculaId={matriculaId} onRecheck={onRecheck} onLancarNota={onLancarNota} />
+      <BalcaoAcademicOperations key={matriculaId} matriculaId={matriculaId} onRecheck={async () => { await load(); return onRecheck(); }} onLancarNota={onLancarNota} />
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">{onlySubjects ? "Disciplinas" : "Pendências"}</h3>
         {pendingJustification && phase === "summary" && !loading ? (
@@ -745,7 +745,7 @@ export function RaaBalcaoResolutionPanel({
             ((action === "reapreciacao" && !canDecideReapreciacao) ||
               (action === "disciplina" && !canReviewDisciplina)) && (
               <p role="status" className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-                Disponível para consulta. A decisão exige um perfil autorizado.
+                Disponível para consulta. A decisão exige um perfil autorizado da secretaria ou direção.
               </p>
             )}
           {!!selected && activeCase?.estado !== "registado" &&

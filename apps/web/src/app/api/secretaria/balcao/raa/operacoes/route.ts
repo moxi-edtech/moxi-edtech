@@ -28,7 +28,7 @@ async function context(req: NextRequest, matriculaId: string) {
   ]);
   if (membershipError || sourceError) return { response: json({ ok: false, error: "Não foi possível confirmar o contexto." }, 503) };
   if (!source?.turma_id || !source.session_id) return { response: json({ ok: false, error: "Matrícula de origem indisponível." }, 404) };
-  return { db, escolaId, source, canManage: canManageBalcaoAcademic(member?.papel) };
+  return { db, escolaId, source, userId: auth.user.id, canManage: canManageBalcaoAcademic(member?.papel) };
 }
 function failed(error: unknown) {
   const e = error as { code?: string; status?: number; message?: string };
@@ -45,26 +45,32 @@ export async function GET(req: NextRequest) {
     if (ctx.response) return ctx.response;
     const { db, escolaId, source, canManage } = ctx;
     const year = await resolveAcademicYearContext(db, {
-      userId: (await db.auth.getUser()).data.user!.id, requestedAcademicYearId: source.session_id, operation: "READ",
+      userId: ctx.userId, requestedAcademicYearId: source.session_id, operation: "READ",
     });
     await assertAcademicYearEntity(db, { table: "turmas", entityId: source.turma_id, escolaId, anoLetivoId: source.session_id });
-    const [regime, periods, links, results, evidence] = await Promise.all([
+    const [regime, periods, links, results, evidence, sessions] = await Promise.all([
       resolveRegimeAcademico(db, source.turma_id),
       readVerifiedAcademicTrimesters(db, { escolaId, anoLetivoId: source.session_id, yearBase: Number(year.anoLetivoLabel.split("/")[0]) }),
       db.from("turma_disciplinas").select("id,avaliacao_disciplina_id,periodos_ativos")
         .eq("escola_id", escolaId).eq("turma_id", source.turma_id).order("id").limit(50),
       db.from("exame_resultados").select("id,nota,estado,exame_sessao_id,turma_disciplina_id")
-        .eq("escola_id", escolaId).eq("matricula_id", source.id).eq("estado", "submetido").order("id").limit(50),
+        .eq("escola_id", escolaId).eq("matricula_id", source.id).in("estado", ["submetido", "validado"]).order("id").limit(50),
       canManage ? db.from("vw_raa_eja_avaliacoes_atuais").select("id,disciplina_id,suficiente,registado_em")
         .eq("escola_id", escolaId).eq("matricula_id", source.id).order("registado_em", { ascending: false }).order("id", { ascending: false }).limit(50)
         : Promise.resolve({ data: [], error: null }),
+      db.from("exame_sessoes").select("id,tipo,estado,data_inicio,data_fim")
+        .eq("escola_id", escolaId).eq("ano_letivo_id", source.session_id).eq("turma_id", source.turma_id)
+        .in("estado", ["aberta", "publicada"]).order("data_inicio").order("id").limit(50),
     ]);
-    if (links.error || results.error || evidence.error) throw links.error || results.error || evidence.error;
+    if (links.error || results.error || evidence.error || sessions.error) throw links.error || results.error || evidence.error || sessions.error;
     const ids = [...new Set((links.data ?? []).map((d: any) => d.avaliacao_disciplina_id).filter(Boolean))];
     const names = ids.length ? await db.from("disciplinas_catalogo").select("id,nome").eq("escola_id", escolaId).in("id", ids).limit(50) : { data: [], error: null };
     if (names.error) throw names.error;
     return json({ ok: true, can_manage: canManage, source, regime, ano_ativo: year.status === "ACTIVE",
-      periodos: periods, disciplinas: names.data ?? [], resultados: results.data ?? [], evidencias: evidence.data ?? [] });
+      periodos: periods, disciplinas: names.data ?? [], resultados: (results.data ?? []).map((r: { turma_disciplina_id: string }) => {
+        const link = (links.data ?? []).find((d: { id: string }) => d.id === r.turma_disciplina_id);
+        return { ...r, disciplina_nome: (names.data ?? []).find((d: { id: string }) => d.id === link?.avaliacao_disciplina_id)?.nome ?? null };
+      }), evidencias: evidence.data ?? [], sessoes: sessions.data ?? [] });
   } catch (error) { return failed(error); }
 }
 
@@ -77,7 +83,7 @@ export async function POST(req: NextRequest) {
     const ctx = await context(req, body.matricula_id);
     if (ctx.response) return ctx.response;
     const { db, escolaId, source, canManage } = ctx;
-    if (!canManage) return json({ ok: false, code: "ACADEMIC_FORBIDDEN", error: "Esta operação exige direção ou administração académica." }, 403);
+    if (!canManage) return json({ ok: false, code: "ACADEMIC_FORBIDDEN", error: "Esta operação exige um funcionário autorizado da secretaria ou direção." }, 403);
     if (body.acao === "publicar_pauta") {
       const { publishBalcaoPauta } = await import("@/lib/pedagogico/balcao-pauta-publication");
       return json(await publishBalcaoPauta({ db, escolaId, source, body, key: key.data }));

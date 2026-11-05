@@ -19,7 +19,7 @@ const postSchema = z.object({
   ano_letivo_id: z.string().uuid().optional(),
 })
 
-const roles = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "professor", "admin_financeiro"] as const
+const roles = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "admin_secretaria", "secretaria_financeiro", "professor", "admin_financeiro"] as const
 
 async function resolveContext(request: Request) {
   const supabase = await supabaseServerTyped<any>()

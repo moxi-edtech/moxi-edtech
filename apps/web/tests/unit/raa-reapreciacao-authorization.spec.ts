@@ -8,7 +8,7 @@ const api=(path:string)=>readFileSync(resolve(process.cwd(),"src",path),"utf8");
 const migration=()=>readFileSync(resolve(process.cwd(),"../../supabase/migrations/20271031002000_raa_reapreciacao_decision_permission_fix.sql"),"utf8");
 
 test("academic appeal and disciplinary decisions include admin_financeiro explicitly",()=>{
-  assert.deepEqual([...RAA_ACADEMIC_DECISION_ROLES],["admin","admin_escola","diretor","admin_financeiro"]);
+  assert.deepEqual([...RAA_ACADEMIC_DECISION_ROLES],["admin","admin_escola","diretor","admin_financeiro","secretaria","admin_secretaria","secretaria_financeiro"]);
   const appeal=api("app/api/academico/raa/reapreciacao/decisao/route.ts");
   const discipline=api("app/api/academico/raa/indisciplina/route.ts");
   assert.match(appeal,/hasExactRaaAcademicDecisionRole\(supabase, escolaId, auth\.user\.id\)/);
@@ -56,7 +56,7 @@ test("academic decisions allow exact roles without broadening via aliases", asyn
       maybeSingle: async () => ({ data: papel === null ? null : { papel }, error: null }),
     }) }) }) }),
   });
-  for (const papel of ["secretaria", "staff_admin", "professor", "secretaria_financeiro"]) {
+  for (const papel of ["staff_admin", "professor", "financeiro", "aluno"]) {
     assert.equal(await hasExactRaaAcademicDecisionRole(mockFor(papel) as any, "school", "user"), false, papel);
   }
   for (const papel of RAA_ACADEMIC_DECISION_ROLES) {

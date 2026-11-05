@@ -24,7 +24,7 @@ const sessionSchema = z.object({
   })).max(3).optional(),
 });
 
-const sessionRoles = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "professor"] as const;
+const sessionRoles = ["admin", "admin_escola", "staff_admin", "diretor", "secretaria", "admin_secretaria", "secretaria_financeiro", "professor"] as const;
 
 export async function GET(request: Request) {
   const supabase = await supabaseServerTyped<any>();
