@@ -1,213 +1,186 @@
-Aqui vai o Design Tokens Doc (Markdown) da KLASSE, pronto pra virar docs/design-tokens.md no repo.
+# KLASSE — tema de produto
 
-⸻
+> **Escopo deste documento:** identidade visual do KLASSE.
+> As fundações, a anatomia dos componentes e os patterns partilhados entre produtos
+> são definidos em `docs/design-system/MOXI_UI_SYSTEM_V1.md`. O pacote
+> `@moxi/design-tokens` é a SSOT executável.
+>
+> Este ficheiro **não** deve criar regras próprias de radius, elevação, spacing ou
+> hierarquia que contradigam o Moxi UI.
 
-KLASSE Design Tokens
+## 1. Brand core
 
-Objetivo: consistência visual e velocidade de desenvolvimento.
-Regra: UI enterprise (limpa), com identidade local (verde + dourado) sem poluição.
+### Verde — marca
 
-1) Brand Core
+- `--klasse-green-500: #1F6B3B`
+- `--klasse-green-700: #124329`
+- `--klasse-green-900: #061B15`
 
-Cores oficiais
+Uso:
+- marca;
+- headings de identidade quando necessário;
+- elementos institucionais;
+- navegação de marca.
 
-Primary (Verde Bandeira)
-	•	--klasse-green-500: #1F6B3B
-	•	--klasse-green-700: #124329
-	•	--klasse-green-900: #061B15
+Verde de marca não substitui automaticamente o estado semântico `success`.
 
-Accent (Dourado Institucional)
-	•	--klasse-gold-400: #E3B23C
-	•	--klasse-gold-500: #C79A2F
-	•	--klasse-gold-700: #755819
+### Dourado — ação
 
-Neutros (UI)
-	•	--slate-50: #f8fafc
-	•	--slate-200: #e2e8f0
-	•	--slate-500: #64748b
-	•	--slate-800: #1e293b
-	•	--slate-900: #0f172a
-	•	--slate-950: #020617
+- `--klasse-gold-400: #E3B23C`
+- `--klasse-gold-500: #C79A2F`
+- `--klasse-gold-700: #755819`
 
-Uso recomendado
-	•	Sidebar/Navigation: slate-950 + slate-900 (itens)
-	•	CTA primário: klasse-gold-400
-	•	Acento/ativo: klasse-gold-400 (ícone, ring, underline)
-	•	Marca (títulos/links): klasse-green-500
+Uso:
+- CTA primário;
+- item ativo;
+- foco;
+- seleção.
 
-Regras anti-bagunça
-	•	Dourado = ação/destaque, não fundo de tela.
-	•	Verde = marca, não cor de alert.
-	•	Padrão angolano = branding only (login, capa, hero, impressos), não em tabelas.
+Dourado não é fundo de página nem decoração genérica.
 
-⸻
+### Neutros
 
-2) Typography
+O KLASSE usa a escala Slate partilhada pela camada Moxi para texto, superfície,
+bordas e navegação escura.
 
-Fonte oficial
-	•	Sans: Sora
-	•	Mono: Geist Mono (ou fallback monospace)
+- `slate-50: #f8fafc`
+- `slate-200: #e2e8f0`
+- `slate-500: #64748b`
+- `slate-800: #1e293b`
+- `slate-900: #0f172a`
+- `slate-950: #020617`
 
-Escala recomendada (UI)
-	•	text-xs (12px): hints, labels fracos
-	•	text-sm (14px): corpo, tabelas
-	•	text-base (16px): formulários
-	•	text-lg (18px): headings pequenos
-	•	text-2xl (24px): títulos de página
+## 2. Tipografia
 
-Peso
-	•	Body: 400
-	•	Subhead: 500
-	•	Títulos: 600
-	•	Destaques: 700 (uso raro)
+- Sans: **Sora**
+- Mono: **Geist Mono** ou fallback monospace
 
-⸻
+A escala de UI segue os papéis do Moxi UI:
 
-3) Layout & Spacing
+- caption: 12px;
+- body-sm: 14px;
+- body: 16px;
+- title-sm: 18px;
+- title: 24px;
+- display: 32px quando realmente necessário.
 
-Grid / container
-	•	Page padding: p-4 md:p-6
-	•	Max content: max-w-[1200px] (quando centralizar)
+Pesos preferidos:
+- corpo: 400;
+- apoio/subhead: 500;
+- títulos: 600;
+- 700 apenas para ênfase real.
 
-Sidebar
-	•	Expanded: 256px
-	•	Collapsed: 80px
+`font-black` não deve ser usado como mecanismo normal de hierarquia.
 
-Tokens CSS (layout)
+## 3. Navegação
 
-:root {
-  --sidebar-expanded: 256px;
-  --sidebar-collapsed: 80px;
-}
+Sidebar expandida: 256px.
+Sidebar recolhida: 80px.
 
+Tema:
+- fundo: slate-950;
+- hover: slate-900/70;
+- ativo: slate-900 + ring dourado;
+- ícone normal: slate-400;
+- ícone ativo: dourado.
 
-⸻
+A anatomia e comportamento da navegação seguem o pattern Moxi; estes valores apenas
+definem o tema KLASSE.
 
-4) Radius / Shapes
+## 4. Botão primário KLASSE
 
-Radius padrão
-	•	Cards/Inputs: rounded-xl
-	•	Botões grandes: rounded-xl
-	•	Chips/Badges: rounded-full
-	•	Modals: rounded-2xl
+O botão `primary` do Moxi UI mapeia para:
 
-Regra: evite rounded-md (parece genérico).
+- background: klasse-gold-400;
+- texto: branco;
+- hover: klasse-gold-500 / brightness equivalente;
+- focus: dourado com halo acessível.
 
-⸻
+Só deve existir uma ação primária por região/tarefa.
 
-5) Borders / Rings (Enterprise look)
+## 5. Focus
 
-Borda padrão
-	•	Light UI: border-slate-200/70
-	•	Dark UI: border-slate-800/80
+O foco KLASSE usa a cor de ação, mas segue o contrato de acessibilidade Moxi:
 
-Focus ring padrão (acessível)
-	•	focus:ring-4 focus:ring-klasse-gold/20
-	•	Inputs: focus:border-klasse-gold
+- sempre visível para navegação por teclado;
+- não depender apenas de mudança de cor;
+- não ser removido por feature code.
 
-Ativo (sidebar)
-	•	ring-1 ring-klasse-gold/25
+## 6. Iconografia
 
-⸻
+Biblioteca do produto: **Lucide React**.
 
-6) Shadows
+Tamanhos recomendados:
+- navegação: 20px;
+- botão: 16px;
+- cards/áreas de apoio: 16–20px conforme densidade.
 
-Use pouco.
-	•	Cards: shadow-sm
-	•	Modals: shadow-xl (raro)
+No desktop, ações importantes não usam ícone isolado sem label acessível.
 
-Evitar sombras fortes em sidebar/table.
+## 7. Branding angolano
 
-⸻
+Elementos culturais/padrões podem aparecer em branding, campanhas, login, capas,
+hero e materiais de comunicação.
 
-7) Buttons
+Não usar padrões decorativos em:
+- tabelas;
+- formulários;
+- cards operacionais;
+- dashboards;
+- fluxos financeiros/académicos.
 
-Primary (CTA)
-	•	Background: klasse-gold-400
-	•	Text: white
-	•	Hover: brightness-95
-	•	Focus ring: gold 20%
+## 8. Radius, cards e sombras
 
-Exemplo:
+Estas decisões **não são mais específicas do KLASSE**.
 
-className="bg-klasse-gold text-white hover:brightness-95 focus:ring-4 focus:ring-klasse-gold/20"
+Usar os papéis Moxi:
+- compact;
+- control;
+- surface;
+- surface-large;
+- overlay;
+- pill.
 
-Secondary
-	•	Background: white
-	•	Border: slate-200
-	•	Text: slate-900
+Card estático é flat por padrão. Hover com elevação só existe em superfície
+interativa.
 
-Ghost
-	•	Background: transparent
-	•	Hover: slate-50 (light) / slate-900/70 (dark)
+Os antigos recipes `klasseSurface.*` continuam exportados apenas para
+compatibilidade durante a migração. Código novo deve preferir `moxiSurface.*`.
 
-Destructive
-	•	bg-red-600 text-white hover:bg-red-700
+## 9. Motion
 
-⸻
+Motion de produto deve ser curto, funcional e respeitar
+`prefers-reduced-motion`.
 
-8) Inputs
+Usar a escala Moxi:
+- fast: 120ms;
+- standard: 180ms;
+- slow: 260ms.
 
-Padrão:
-	•	rounded-xl
-	•	border-slate-200
-	•	focus:ring-4 focus:ring-klasse-gold/20
-	•	focus:border-klasse-gold
+Animações de marketing podem ter regras próprias fora da UI operacional.
 
-⸻
+## 10. Regras de produto
 
-9) Navigation (Sidebar)
-	•	Base: bg-slate-950 text-slate-100
-	•	Item hover: bg-slate-900/70
-	•	Item active: bg-slate-900 ring-1 ring-klasse-gold/25
-	•	Icon default: text-slate-400
-	•	Icon active/hover: text-klasse-gold
+### Fazer
 
-⸻
+- preservar alto contraste e leitura rápida;
+- usar dourado para ação/seleção;
+- usar verde para identidade;
+- usar estados semânticos para sucesso, aviso e erro;
+- reutilizar patterns Moxi antes de criar composição local.
 
-10) Icons
+### Não fazer
 
-Biblioteca oficial
-	•	Lucide
+- introduzir uma nova cor apenas para um componente;
+- criar radius arbitrário em feature code;
+- criar sombra decorativa;
+- usar várias ações primárias na mesma tarefa;
+- misturar Inter/Poppins/Sora dentro da UI operacional;
+- transformar cada grupo de conteúdo num card.
 
-Tamanhos:
-	•	Sidebar: h-5 w-5
-	•	Botões: h-4 w-4
-	•	Cards: h-6 w-6
+## 11. Referências canónicas
 
-Cores:
-	•	Default: text-slate-400
-	•	Active/hover: text-klasse-gold
-
-⸻
-
-11) Motion (Animação enterprise)
-
-Princípios:
-	•	Curta (400–650ms)
-	•	Pequeno deslocamento (8–14px)
-	•	Respeitar prefers-reduced-motion
-
-Tokens:
-	•	klasse-fade-in
-	•	klasse-fade-up
-
-⸻
-
-12) Do / Don’t
-
-✅ Fazer
-	•	UI limpa, muito espaço, poucos acentos
-	•	Dourado só em CTA e ativo
-	•	Verde em headings e marca
-
-❌ Não fazer
-	•	Padrão africano em tabelas/cards
-	•	Dourado como fundo de página
-	•	Misturar fontes (Inter/Poppins) no app
-
-⸻
-
-Implementação rápida (Tailwind)
-	•	tailwind.config.js: tokens klasse.green, klasse.gold
-	•	next/font: carregar Sora e aplicar no body
+- `docs/design-system/MOXI_UI_SYSTEM_V1.md`
+- `docs/design-system/MOXI_UI_INVENTORY_2026-10-06.md`
+- `docs/design-system/MOXI_UI_MIGRATION_PLAN.md`
+- `packages/design-tokens/src/index.ts`
