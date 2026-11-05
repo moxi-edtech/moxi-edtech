@@ -15,7 +15,6 @@ const BodySchema = z.object({
 });
 
 const ALLOWED_ROLES = ["secretaria", "admin", "admin_escola", "staff_admin"] as const;
-const ACTIVE_STATUSES = ["ativo", "ativa", "matriculado"] as const;
 
 export async function POST(
   request: Request,
@@ -90,42 +89,46 @@ export async function POST(
     });
     if (authError) return authError;
 
-    const [{ data: targetTurma, error: targetError }, { data: sourceRows, error: matriculasError }] =
-      await Promise.all([
-        supabase
-          .from("vw_turmas_para_matricula")
-          .select("id, escola_id, turma_nome, ano_letivo, capacidade_maxima, ocupacao_atual")
-          .eq("escola_id", escolaId)
-          .eq("id", parsed.data.target_turma_id)
-          .maybeSingle(),
-        supabase
-          .from("matriculas")
-          .select("id, status")
-          .eq("escola_id", escolaId)
-          .eq("turma_id", sourceTurmaId)
-          .in("status", [...ACTIVE_STATUSES]),
-      ]);
+    // Uma única chamada RPC garante que o lote é confirmado ou revertido
+    // integralmente, preservando as referências financeiras e académicas.
+    const { data, error: transferError } = await supabase.rpc("transferir_turma_em_lote", {
+      p_turma_origem_id: sourceTurmaId,
+      p_turma_destino_id: parsed.data.target_turma_id,
+      p_ano_letivo_id: academicContext.anoLetivoId,
+      p_motivo: parsed.data.motivo,
+    });
 
-    if (targetError || !targetTurma) {
-      return NextResponse.json({ ok: false, error: "Turma destino não encontrada." }, { status: 404 });
+    if (transferError) {
+      const missingRpc = transferError.code === "PGRST202" || transferError.code === "42883";
+      const academicBlock = transferError.code === "P1050";
+      return NextResponse.json({
+        ok: false,
+        code: missingRpc
+          ? "BULK_TRANSFER_NOT_DEPLOYED"
+          : academicBlock ? "BULK_TRANSFER_ACADEMIC_RECORDS" : "BULK_TRANSFER_REJECTED",
+        error: missingRpc
+          ? "Transferência em lote indisponível nesta instalação. Utilize a transferência individual."
+          : transferError.message,
+      }, { status: 409 });
     }
 
-    if (Number(targetTurma.ano_letivo ?? sourceTurma.ano_letivo) !== Number(sourceTurma.ano_letivo)) {
-      return NextResponse.json(
-        { ok: false, error: "A transferência em massa exige turmas do mesmo ano letivo." },
-        { status: 400 }
-      );
+    const result = data as { transferred?: number; target_turma_id?: string } | null;
+    const transferred = result?.transferred;
+    if (typeof transferred !== "number" || !Number.isInteger(transferred) || transferred <= 0) {
+      return NextResponse.json({
+        ok: false,
+        code: "BULK_TRANSFER_INVALID_RESPONSE",
+        error: "Não foi possível confirmar o resultado da transferência.",
+      }, { status: 502 });
     }
 
-    if (matriculasError) {
-      return NextResponse.json({ ok: false, error: matriculasError.message }, { status: 400 });
-    }
-
-    const matriculasAtivas = sourceRows ?? [];
-    // A sequência de RPCs não é uma transacção única. Bloquear a operação
-    // antes de qualquer escrita até existir RPC de lote atómica e testada.
-    return NextResponse.json({ ok: false, error: "Transferência em massa temporariamente indisponível: use a transferência individual para evitar alterações parciais." }, { status: 409 });
-
+    return NextResponse.json({
+      ok: true,
+      transferred,
+      source_turma_id: sourceTurmaId,
+      target_turma_id: parsed.data.target_turma_id,
+      message: `${transferred} matrícula(s) transferida(s) com sucesso.`,
+    });
 
   } catch (e) {
     if (e instanceof AcademicYearContextError) {

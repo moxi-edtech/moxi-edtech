@@ -17,7 +17,10 @@ test("academic situation uses the existing reenrollment route, preserving studen
 
 test("individual grade action is not dependent on RAA pending cases and respects permission", () => {
   const workspace = source("components/secretaria/BalcaoAtendimento.tsx");
-  assert.match(workspace, /view === "reenrollment" && !paidExistingDestination && rematriculaCanWriteGrades/);
+  // A verified academic blocker must stay actionable after settlement.
+  assert.match(workspace, /view === "reenrollment" && showAcademicResolution && rematriculaCanWriteGrades/);
+  assert.match(workspace, /const showAcademicResolution = !paidExistingDestination \|\| Boolean\(academicBlocker\)/);
+  assert.match(workspace, /showAcademicResolution && raaMatriculaId && raaAlunoId/);
   assert.match(workspace, /rematriculaAcademic\?\.source\?\.turma_id/);
   assert.match(workspace, /rematriculaAcademic\?\.source\?\.ano_letivo_id/);
   assert.match(workspace, /onLancarNota\(null, rematriculaAcademic\?\.disciplina_ids_pendentes\?\.\[0\] \?\? null\)/);

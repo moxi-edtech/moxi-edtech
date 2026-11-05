@@ -4,6 +4,7 @@ import { CheckCircle2, ChevronRight, GraduationCap, LockKeyhole, CalendarDays } 
 import type { RematriculaCardState, TurmaOption } from "@/hooks/useRematriculaBalcao";
 import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
 import { nextAcademicActionForBalcao, pendingSubjectsActionForBalcao } from "@/lib/rematricula/raa-balcao-next-action";
+import { raaBalcaoPlan, raaBalcaoEffectiveStatus } from "@/lib/rematricula/raa-balcao-resolution";
 import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 
 export type RaaProgressSnapshot = {
@@ -15,8 +16,7 @@ export type RaaProgressSnapshot = {
 
 type Status = RematriculaCardState | "CHECKING" | null;
 const ACTIONABLE: ReadonlySet<string> = new Set([
-  "READY", "RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING",
-  "ACADEMIC_HISTORY_PENDING", "FINALIST_PENDING",
+  "READY", "RECONFIRMATION_REQUIRED", "FINALIST_PENDING",
 ]);
 
 export function rematriculaDisplayState(status: Status): {
@@ -31,6 +31,18 @@ export function rematriculaDisplayState(status: Status): {
   if (status === "RECONFIRMATION_REQUIRED") return {
     title: "Taxa por confirmar", message: "Confirme a taxa pendente. A turma já está atribuída.", tone: "warning",
   };
+  // The server reports these only after a paid order with a verified
+  // destination enrollment. Never show a CTA to charge or enroll again.
+  if (status === "ACADEMIC_HISTORY_PENDING") return {
+    title: "Histórico por conciliar",
+    message: "A matrícula e o pagamento já existem. Regularize o histórico sem criar outra cobrança.",
+    tone: "warning",
+  };
+  if (status === "DOCUMENT_PENDING") return {
+    title: "Comprovativo pendente",
+    message: "A matrícula e o pagamento já estão confirmados. Consulte ou recupere o comprovativo.",
+    tone: "warning",
+  };
   if (status && ACTIONABLE.has(status)) return {
     title: "Pode continuar", message: "Confirme a turma e o pagamento para concluir.", tone: "success",
   };
@@ -43,6 +55,21 @@ export function rematriculaDisplayState(status: Status): {
   if (status === "ACADEMIC_REVIEW_REQUIRED" || status === "ACADEMIC_CONDITIONAL_BLOCKED") return {
     title: "Recurso pendente", message: "Consulte os exames e pedidos antes de continuar.", tone: "warning",
   };
+  if (status === "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED") return {
+    title: "Faltas por rever",
+    message: "Analise as faltas e as justificações pendentes antes de revalidar a decisão oficial.",
+    tone: "warning",
+  };
+  if (status === "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED") return {
+    title: "Revisão disciplinar",
+    message: "Reveja a ocorrência e registe a decisão com o perfil autorizado.",
+    tone: "warning",
+  };
+  if (status === "ACADEMIC_NOT_APPROVED") return {
+    title: "Resultado não aprovado",
+    message: "Consulte a decisão académica e o destino permitido; não avance sem validação.",
+    tone: "warning",
+  };
   if (status === "ACADEMIC_CYCLE_COMPLETED") return {
     title: "Ciclo concluído", message: "Consulte os documentos de conclusão.", tone: "success",
   };
@@ -51,6 +78,21 @@ export function rematriculaDisplayState(status: Status): {
   };
   if (status === "PAYMENT_IN_PROGRESS") return {
     title: "Pagamento em curso", message: "Consulte a cobrança já iniciada e confirme a liquidação antes de concluir.", tone: "warning",
+  };
+  if (status === "DEBT_BLOCKED") return {
+    title: "Dívida por regularizar", message: "Consulte os valores em aberto e regularize o pagamento existente.", tone: "warning",
+  };
+  if (status === "PRICE_NOT_CONFIGURED") return {
+    title: "Taxa por configurar", message: "Configure o serviço de rematrícula antes de iniciar uma cobrança.", tone: "warning",
+  };
+  if (status === "PENDING_ORDER_REVIEW" || status === "LEGACY_REVIEW_REQUIRED") return {
+    title: "Pedido por verificar", message: "Consulte o pedido existente e reconcilie-o antes de iniciar outro pagamento.", tone: "warning",
+  };
+  if (status === "TARGET_YEAR_NOT_CONFIGURED") return {
+    title: "Ano de destino por configurar", message: "Verifique o ano letivo oficial e as turmas de destino.", tone: "warning",
+  };
+  if (status === "ERROR") return {
+    title: "Consulta indisponível", message: "Não foi possível confirmar a operação. Verifique novamente antes de continuar.", tone: "warning",
   };
   if (status === "WINDOW_CLOSED") return {
     title: "Período fechado", message: "A direção pode reabrir o período neste atendimento.", tone: "warning",
@@ -90,18 +132,33 @@ export function RematriculaWorkspaceHeader({
   temPendencias?: boolean;
 }) {
   const baseDisplay = rematriculaDisplayState(status);
-  const academicNext = nextAcademicActionForBalcao(status, timeline);
+  const academicStatus = raaBalcaoEffectiveStatus(status, academic);
+  const academicPlan = raaBalcaoPlan(academicStatus);
+  const academicNext = nextAcademicActionForBalcao(academicStatus, timeline);
   // Calendar for the currently selected destination is not evidence of the
   // origin's trimester. Avoid deriving missing-grade urgency from another year.
   const timelineOrigem = timelineAno && anoOrigem && timelineAno === anoOrigem ? timeline : null;
-  const subjectsNext = pendingSubjectsActionForBalcao(status, academic ?? null, canLancarNota, timelineOrigem);
+  const subjectsNext = pendingSubjectsActionForBalcao(academicStatus, academic ?? null, canLancarNota, timelineOrigem);
+  const paymentAlreadyStarted = [
+    "RECONCILIATION_REQUIRED", "PAYMENT_IN_PROGRESS", "ACADEMIC_HISTORY_PENDING",
+    "DOCUMENT_PENDING", "PENDING_ORDER_REVIEW", "LEGACY_REVIEW_REQUIRED",
+  ].includes(status ?? "");
+  const academicMessage = academicStatus !== status && academicPlan
+    ? subjectsNext?.message ?? academicNext.message ?? academicPlan.detalhe
+    : null;
   const display = {
     ...baseDisplay,
-    title: subjectsNext?.title ?? academicNext.title ?? baseDisplay.title,
-    message: subjectsNext?.message ?? academicNext.message ?? baseDisplay.message,
+    title: paymentAlreadyStarted ? baseDisplay.title
+      : subjectsNext?.title ?? academicNext.title ?? baseDisplay.title,
+    message: academicMessage
+      ? baseDisplay.message + " " + academicMessage
+      : subjectsNext?.message ?? academicNext.message ?? baseDisplay.message,
   };
-  const showPendingLink = temPendencias && (progress === null || progress.loading ||
-    progress.registados < progress.total);
+  // The canonical RAA may still be blocked after every visible item is
+  // decided. Keep the resolution link until the server changes the status.
+  const showPendingLink = temPendencias && (Boolean(academicPlan) ||
+    (status !== "ALREADY_COMPLETED" && progress !== null &&
+      progress.total > progress.registados));
   const reasonNeedsDetail = motivo && motivo.trim() && status !== "ACADEMIC_PENDING";
   return (
     <header className="space-y-3" aria-label="Resumo da situação académica">

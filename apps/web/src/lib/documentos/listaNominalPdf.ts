@@ -264,6 +264,13 @@ export async function renderListaNominalPdfBuffer({
     throw new Error("Escopo inválido para lista nominal");
   }
 
+  // O ano civil do mapa de frequência não define a matrícula académica.
+  // As turmas impressas devem pertencer a uma única sessão válida.
+  const sessionIds = new Set([...turmaById.values()].map((item) => item.session_id));
+  if (sessionIds.size !== 1 || !turma.session_id || sessionIds.has(null)) {
+    throw new Error("As turmas selecionadas não possuem um único ano letivo válido.");
+  }
+
   const [escolaRes, classeRes, sessaoRes, extraDataRes] = await Promise.all([
     supabase
       .from("escolas")
@@ -303,49 +310,66 @@ export async function renderListaNominalPdfBuffer({
   const disciplinaNome = (extraDataRes?.[0] as any)?.data?.nome || "";
   const professorNome = (extraDataRes?.[1] as any)?.data?.professores?.profiles?.nome || "";
 
-  let matriculasQuery = supabase
-    .from("matriculas")
-    .select(
-      `
-      id,
-      turma_id,
-      numero_chamada,
-      status,
-      alunos (
+  // Não truncar listas com mais de 50 alunos. A paginação utiliza uma
+  // ordenação estável para não omitir nem repetir matrículas entre páginas.
+  const matriculasData: MatriculaRow[] = [];
+  const pageSize = 500;
+  const maxRoster = 10000;
+  for (let offset = 0; offset < maxRoster; offset += pageSize) {
+    let pageQuery = supabase
+      .from("matriculas")
+      .select(`
         id,
-        nome,
-        bi_numero,
-        sexo,
-        data_nascimento,
-        naturalidade,
-        provincia,
-        telefone,
-        responsavel,
-        telefone_responsavel,
-        profiles!alunos_profile_id_fkey (
-          avatar_url
+        turma_id,
+        numero_chamada,
+        status,
+        alunos (
+          id,
+          nome,
+          bi_numero,
+          sexo,
+          data_nascimento,
+          naturalidade,
+          provincia,
+          telefone,
+          responsavel,
+          telefone_responsavel,
+          profiles!alunos_profile_id_fkey (
+            avatar_url
+          )
         )
-      )
-    `
-    )
-    .eq("escola_id", escolaId)
-    .order("numero_chamada", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: true });
+      `)
+      .eq("escola_id", escolaId)
+      .eq("session_id", turma.session_id)
+      .order("numero_chamada", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true });
 
-  if (isClasseScope) {
-    matriculasQuery = matriculasQuery.in("turma_id", turmaIds);
-  } else if (turmaId) {
-    matriculasQuery = matriculasQuery.eq("turma_id", turmaId);
+    if (isClasseScope) {
+      pageQuery = pageQuery.in("turma_id", turmaIds);
+    } else if (turmaId) {
+      pageQuery = pageQuery.eq("turma_id", turmaId);
+    }
+
+    if (!includeAllStatus) {
+      pageQuery = pageQuery
+        .eq("ativo", true)
+        .in("status", ["ativo", "ativa", "active"]);
+    }
+
+    pageQuery = applyKf2ListInvariants(pageQuery, {
+      limit: pageSize,
+      maxLimit: pageSize,
+      offset,
+      order: [{ column: "id", ascending: true }],
+    });
+    const { data: page, error: pageError } = await pageQuery;
+    if (pageError) throw new Error(pageError.message);
+    matriculasData.push(...((page ?? []) as unknown as MatriculaRow[]));
+    if ((page?.length ?? 0) < pageSize) break;
+    if (offset + pageSize >= maxRoster) {
+      throw new Error("A lista excede o limite seguro de emissão. Filtre por turma.");
+    }
   }
-
-  if (!includeAllStatus) {
-    matriculasQuery = matriculasQuery.in("status", ["ativo", "ativa"]);
-  }
-
-  matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 1000 });
-
-  const { data: matriculasData, error: matriculasError } = await matriculasQuery;
-  if (matriculasError) throw new Error(matriculasError.message);
 
   let attendanceData: FrequenciaRow[] = [];
   if (month && normalizedYear) {

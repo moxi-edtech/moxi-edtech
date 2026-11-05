@@ -25,7 +25,7 @@ async function context(matriculaId: string) {
 }
 
 async function preview(supabase: any, matricula: any, escolaId: string, turmaId: string) {
-  const [origin, target, notes, assessments, appeals, official, payments, charges, monthly, contracts, entries, exams, attendance] = await Promise.all([
+  const [origin, target, notes, assessments, appeals, official, payments, charges, monthly, contracts, entries, exams, attendance, frequency, academicEvidence] = await Promise.all([
     supabase.from("turmas").select("id,classe_id,curso_id,ano_letivo,session_id,turno").eq("id",matricula.turma_id).eq("escola_id",escolaId).maybeSingle(),
     supabase.from("vw_turmas_para_matricula").select("id,classe_id,curso_id,ano_letivo,turno,capacidade_maxima,ocupacao_atual").eq("id",turmaId).eq("escola_id",escolaId).maybeSingle(),
     supabase.from("notas").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
@@ -38,9 +38,12 @@ async function preview(supabase: any, matricula: any, escolaId: string, turmaId:
     supabase.from("financeiro_contratos").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
     supabase.from("financeiro_lancamentos").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
     supabase.from("exame_resultados").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
-    supabase.from("frequencia_status_periodo").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id),
+    supabase.from("frequencia_status_periodo").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id).eq("escola_id",escolaId),
+    supabase.from("frequencias").select("id",{count:"exact",head:true}).eq("matricula_id",matricula.id).eq("escola_id",escolaId),
+    supabase.rpc("turma_transfer_academic_evidence_v1", {p_matricula_id:matricula.id}),
   ]);
-  const errors = [origin,target,notes,assessments,appeals,official,payments,charges,monthly,contracts,entries,exams,attendance].filter(x=>x.error).map(x=>x.error.message);
+  const errors = [origin,target,notes,assessments,appeals,official,payments,charges,monthly,contracts,entries,exams,attendance,frequency,academicEvidence].filter(x=>x.error).map(x=>x.error.message);
+  if (typeof academicEvidence.data?.has_evidence !== "boolean") errors.push("Histórico académico sem validação canónica");
   if (errors.length) throw new Error(`Não foi possível verificar todos os impactos: ${errors.join('; ')}`);
   if (!origin.data || !target.data) throw new Error("Turma de origem ou destino não encontrada.");
   const o=origin.data, t=target.data;
@@ -50,11 +53,24 @@ async function preview(supabase: any, matricula: any, escolaId: string, turmaId:
   const avisos:string[]=[];
   if(o.classe_id===t.classe_id) blockers.push("Para a mesma classe, utilize Trocar turma.");
   if(o.ano_letivo!==t.ano_letivo || o.curso_id!==t.curso_id || o.session_id!==targetSession.session_id) blockers.push("Ano letivo, sessão ou curso incompatível.");
-  if((notes.count||0)+(assessments.count||0)+(appeals.count||0)+(official.count||0)+(exams.count||0)+(attendance.count||0)>0) avisos.push("As notas e pautas anteriores serão preservadas, sem transferência automática para a nova classe.");
+  const requerConciliacaoAcademica = academicEvidence.data.has_evidence === true ||
+    (notes.count||0)+(assessments.count||0)+(appeals.count||0)
+    +(exams.count||0)+(attendance.count||0)+(frequency.count||0)>0;
+  if (requerConciliacaoAcademica) blockers.push(
+    "A matrícula possui notas, avaliações, exames ou frequência. A retificação exige conciliação académica antes de alterar a turma."
+  );
+  if ((official.count||0)>0) blockers.push(
+    "A turma de origem possui pautas oficiais; não é seguro retificar a classe sem preservar o documento histórico."
+  );
   if((payments.count||0)+(charges.count||0)+(monthly.count||0)+(contracts.count||0)+(entries.count||0)>0) avisos.push("Pagamentos, recibos e cobranças existentes serão preservados; confira a tabela de preços da nova classe.");
-  const lotada=Number(t.capacidade_maxima)>0 && Number(t.ocupacao_atual)>=Number(t.capacidade_maxima);
-  if(lotada) blockers.push("Turma destino sem vagas.");
-  return { allow:blockers.length===0, blockers, avisos, requer_confirmacao_historico:avisos.length>0, lotada, vagas_restantes:Math.max(0,Number(t.capacidade_maxima)-Number(t.ocupacao_atual)), mudanca_turno:o.turno!==t.turno, financeiro:{altera_valor:false,valor_antigo:0,valor_novo:0,diferenca:0,mensagem:"A correção de classe não recalcula mensalidades automaticamente. Confirme a tabela de preços da classe destino."} };
+  const capacidade=Number(t.capacidade_maxima??0);
+  const lotada=capacidade<=0 || Number(t.ocupacao_atual)>=capacidade;
+  if (capacidade<=0) blockers.push("Configure a capacidade da turma destino.");
+  else if(lotada) blockers.push("Turma destino sem vagas.");
+  return { allow:blockers.length===0,
+    code: requerConciliacaoAcademica ? "TRANSFER_ACADEMIC_RECONCILIATION_REQUIRED" : null,
+    requer_conciliacao_academica: requerConciliacaoAcademica,
+    blockers, avisos, requer_confirmacao_historico:avisos.length>0, lotada, vagas_restantes:Math.max(0,Number(t.capacidade_maxima)-Number(t.ocupacao_atual)), mudanca_turno:o.turno!==t.turno, financeiro:{altera_valor:false,valor_antigo:0,valor_novo:0,diferenca:0,mensagem:"A correção de classe não recalcula mensalidades automaticamente. Confirme a tabela de preços da classe destino."} };
 }
 
 export async function GET(request:Request,{params}:{params:Promise<{matriculaId:string}>}) {
@@ -76,7 +92,10 @@ export async function PUT(request:Request,{params}:{params:Promise<{matriculaId:
  if(impact.requer_confirmacao_historico && !parsed.data.confirmar_historico)return NextResponse.json({ok:false,error:"Confirme a preservação do histórico antes de avançar.",impact},{status:409});
  if(!impact.allow)return NextResponse.json({ok:false,error:impact.blockers.join(" "),impact},{status:409});
  const {data,error}=await ctx.supabase.rpc("retificar_classe_matricula",{p_matricula_id:matriculaId,p_turma_destino_id:parsed.data.turma_id,p_motivo:parsed.data.motivo,p_confirmar_historico:parsed.data.confirmar_historico});
- if(error)return NextResponse.json({ok:false,error:error.message},{status:409});
+ if(error)return NextResponse.json({
+    ok:false, error:error.message,
+    code: error.code === "P1050" ? "TRANSFER_ACADEMIC_RECONCILIATION_REQUIRED" : error.code,
+  },{status:409});
  return NextResponse.json({ok:true,matricula_id:data});
  }catch(e){if(e instanceof AcademicYearContextError)return NextResponse.json({ok:false,error:e.message,code:e.code},{status:e.status});return NextResponse.json({ok:false,error:e instanceof Error?e.message:String(e)},{status:500});}
 }

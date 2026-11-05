@@ -49,3 +49,36 @@ const BLOCKED: Partial<Record<RematriculaCardState, RaaBalcaoPlan>> = {
 export function raaBalcaoPlan(status: RematriculaCardState | "CHECKING" | null): RaaBalcaoPlan | null {
   return status ? BLOCKED[status as RematriculaCardState] ?? null : null;
 }
+
+/**
+ * Keep the academic and payment axes independent. A paid order can be pending
+ * destination reconciliation while the *origin* still needs grades, appeals
+ * or attendance decisions. The server's eligibility remains authoritative.
+ *
+ * This is presentation-only: the returned status is NEVER persisted and
+ * cannot authorize an enrollment, invoice, exam or grade write.
+ */
+const ACADEMIC_REASON_STATUS: Readonly<Record<string, RematriculaCardState>> = {
+  ACADEMIC_RESULT_PENDING: "ACADEMIC_PENDING",
+  ACADEMIC_PENDING: "ACADEMIC_PENDING",
+  ACADEMIC_REVIEW_REQUIRED: "ACADEMIC_REVIEW_REQUIRED",
+  ACADEMIC_CONDITIONAL_BLOCKED: "ACADEMIC_CONDITIONAL_BLOCKED",
+  ACADEMIC_ATTENDANCE_REVIEW_REQUIRED: "ACADEMIC_ATTENDANCE_REVIEW_REQUIRED",
+  ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED: "ACADEMIC_DISCIPLINARY_REVIEW_REQUIRED",
+  ACADEMIC_CYCLE_COMPLETED: "ACADEMIC_CYCLE_COMPLETED",
+  ACADEMIC_NOT_APPROVED: "ACADEMIC_NOT_APPROVED",
+};
+
+export function raaBalcaoEffectiveStatus(
+  operationalStatus: RematriculaCardState | "CHECKING" | null,
+  academic: { eligible?: boolean; code?: string | null } | null | undefined,
+): RematriculaCardState | "CHECKING" | null {
+  // An already completed enrollment must never acquire a second action from
+  // the origin's historical verdict. An existing destination is also not a
+  // pretext to generate a duplicate rematrícula.
+  if (operationalStatus === "ALREADY_COMPLETED" ||
+      operationalStatus === "DESTINATION_ENROLLED" ||
+      academic?.eligible !== false) return operationalStatus;
+  const verified = academic.code && ACADEMIC_REASON_STATUS[academic.code];
+  return verified || operationalStatus;
+}

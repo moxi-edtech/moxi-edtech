@@ -4,6 +4,7 @@ import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status";
 
 type AlunoTurmaRow = {
   matricula_id: string;
@@ -52,7 +53,7 @@ export async function GET(
     }
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
-    if (!escolaId) return NextResponse.json({ ok: true, turmaId: null, total: 0, alunos: [] }, { headers });
+    if (!escolaId) return NextResponse.json({ ok: false, error: "Utilizador não vinculado a uma escola." }, { status: 403 });
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
@@ -61,6 +62,22 @@ export async function GET(
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
 
     const { id: turmaId } = await params;
+    const { data: turma, error: turmaError } = await supabase
+      .from("turmas")
+      .select("id, session_id")
+      .eq("id", turmaId)
+      .eq("escola_id", escolaId)
+      .maybeSingle();
+    if (turmaError || !turma) {
+      return NextResponse.json({ ok: false, error: "Turma não encontrada." }, { status: 404 });
+    }
+    if (!turma.session_id) {
+      return NextResponse.json({
+        ok: false,
+        code: "TURMA_SEM_ANO_LETIVO",
+        error: "A turma não tem ano letivo associado. Regularize a configuração académica.",
+      }, { status: 409 });
+    }
 
     let query = supabase
       .from("matriculas")
@@ -93,9 +110,12 @@ export async function GET(
       `
       )
       .eq("turma_id", turmaId)
-      .eq("escola_id", escolaId);
+      .eq("escola_id", escolaId)
+      .eq("session_id", turma.session_id)
+      .eq("ativo", true)
+      .in("status", ACTIVE_MATRICULA_STATUSES);
       
-    query = applyKf2ListInvariants(query);
+    query = applyKf2ListInvariants(query, { defaultLimit: 200, maxLimit: 200 });
 
     const { data, error } = await query;
 

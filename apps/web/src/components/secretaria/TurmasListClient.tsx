@@ -866,6 +866,10 @@ export default function TurmasListClient({
   const [transferReason, setTransferReason] = useState("");
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
+  const [transferErrorCode, setTransferErrorCode] = useState<string | null>(null);
+  const [transferCandidates, setTransferCandidates] = useState<TurmaItem[]>([]);
+  const [transferCandidatesLoading, setTransferCandidatesLoading] = useState(false);
+  const [transferConfirmed, setTransferConfirmed] = useState(false);
 
   const fetchProfessors = useCallback(async () => {
     if (!escolaId || professors.length > 0) return;
@@ -927,21 +931,68 @@ export default function TurmasListClient({
     [items, transferSourceTurmaId]
   );
 
+  // Turmas de destino não podem depender apenas da página atual da listagem.
+  // Carregar todas as candidatas para a sessão de origem, mantendo o tenant.
+  useEffect(() => {
+    if (!showTransferModal || !escolaId || !selectedTurmaForTransfer?.session_id) return;
+    const abort = new AbortController();
+    const loadCandidates = async () => {
+      setTransferCandidatesLoading(true);
+      setTransferCandidates([]);
+      setTransferError(null);
+      try {
+        const all: TurmaItem[] = [];
+        let cursor: string | null = null;
+        for (let page = 0; page < 20; page += 1) {
+          const params = new URLSearchParams({
+            ano_letivo_id: selectedTurmaForTransfer.session_id!,
+            limit: "200",
+          });
+          if (cursor) params.set("cursor", cursor);
+          const res = await fetch(buildEscolaUrl(escolaId, "/turmas", params), {
+            signal: abort.signal,
+          });
+          const body = await res.json();
+          if (!res.ok || body.ok !== true) {
+            throw new Error(body.error || "Falha ao carregar turmas de destino.");
+          }
+          all.push(...(Array.isArray(body.items) ? body.items : []));
+          cursor = body.next_cursor ?? null;
+          if (!cursor) break;
+          if (page === 19) throw new Error("Demasiadas turmas. Refine a pesquisa.");
+        }
+        if (!abort.signal.aborted) setTransferCandidates(all);
+      } catch (cause) {
+        if (!abort.signal.aborted) {
+          setTransferError(cause instanceof Error ? cause.message : "Falha ao carregar destinos.");
+        }
+      } finally {
+        if (!abort.signal.aborted) setTransferCandidatesLoading(false);
+      }
+    };
+    void loadCandidates();
+    return () => abort.abort();
+  }, [showTransferModal, escolaId, selectedTurmaForTransfer?.id, selectedTurmaForTransfer?.session_id]);
+
   const transferTargetOptions = useMemo(() => {
     if (!selectedTurmaForTransfer) return [];
-    return items.filter((turma) =>
+    return transferCandidates.filter((turma) =>
       turma.id !== selectedTurmaForTransfer.id &&
-      Number(turma.ano_letivo ?? 0) === Number(selectedTurmaForTransfer.ano_letivo ?? 0) &&
+      turma.session_id === selectedTurmaForTransfer.session_id &&
+      turma.status_validacao === "ativo" &&
       turma.curso_id === selectedTurmaForTransfer.curso_id &&
       turma.classe_id === selectedTurmaForTransfer.classe_id
     );
-  }, [items, selectedTurmaForTransfer]);
+  }, [transferCandidates, selectedTurmaForTransfer]);
 
   const openTransferModal = useCallback((turmaId: string) => {
     setTransferSourceTurmaId(turmaId);
     setTransferTargetTurmaId("");
     setTransferReason("");
     setTransferError(null);
+    setTransferErrorCode(null);
+    setTransferCandidates([]);
+    setTransferConfirmed(false);
     setShowTransferModal(true);
   }, []);
 
@@ -1140,20 +1191,24 @@ export default function TurmasListClient({
   }, [fetchData, nextCursor, loadingMore]);
 
   const submitTransfer = useCallback(async () => {
-    if (!transferSourceTurmaId || !transferTargetTurmaId) return;
+    if (!transferSourceTurmaId || !transferTargetTurmaId || !transferConfirmed ||
+        !selectedTurmaForTransfer?.session_id || transferReason.trim().length < 10) return;
     setTransferLoading(true);
     setTransferError(null);
+    setTransferErrorCode(null);
     try {
       const res = await fetch(`/api/secretaria/turmas/${transferSourceTurmaId}/transferir`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           target_turma_id: transferTargetTurmaId,
-          motivo: transferReason.trim() || null,
+          ano_letivo_id: selectedTurmaForTransfer.session_id,
+          motivo: transferReason.trim(),
         }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
+        setTransferErrorCode(json?.code ?? null);
         throw new Error(json?.error || "Falha ao transferir turma.");
       }
       success("Transferência concluída", `${json.transferred ?? 0} matrícula(s) movida(s) com sucesso.`);
@@ -1165,7 +1220,8 @@ export default function TurmasListClient({
     } finally {
       setTransferLoading(false);
     }
-  }, [fetchData, transferReason, transferSourceTurmaId, transferTargetTurmaId, success]);
+  }, [fetchData, transferReason, transferSourceTurmaId, transferTargetTurmaId,
+    transferConfirmed, selectedTurmaForTransfer?.session_id, success]);
 
   // ── Financeiro fetch — stable on itemIds ──────────────────────────────────
   const itemIds = useMemo(() => items.map((i) => i.id).join(","), [items]);
@@ -1707,9 +1763,10 @@ export default function TurmasListClient({
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <div>
-                <h3 className="font-bold text-lg text-slate-800">Transferir turma</h3>
+                <h3 className="font-bold text-lg text-foreground">Transferir alunos entre turmas</h3>
                 <p className="text-sm text-slate-500 mt-1">
                   Origem: <span className="font-semibold text-slate-700">{selectedTurmaForTransfer.nome ?? selectedTurmaForTransfer.turma_codigo}</span>
+                  {" "}· {selectedTurmaForTransfer.ocupacao_atual ?? "—"} matrícula(s)
                 </p>
               </div>
               <button
@@ -1725,32 +1782,68 @@ export default function TurmasListClient({
                 <label className="block text-sm font-medium text-slate-700 mb-2">Turma destino</label>
                 <select
                   value={transferTargetTurmaId}
-                  onChange={(e) => setTransferTargetTurmaId(e.target.value)}
+                  onChange={(e) => { setTransferTargetTurmaId(e.target.value); setTransferConfirmed(false); }}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#E3B23C]"
                 >
-                  <option value="">Selecione a turma destino</option>
+                  <option value="">{transferCandidatesLoading ? "A carregar destinos..." : "Selecione a turma destino"}</option>
                   {transferTargetOptions.map((turma) => (
                     <option key={turma.id} value={turma.id}>
                       {turma.nome ?? turma.turma_codigo}
                     </option>
                   ))}
                 </select>
+                {!transferCandidatesLoading && transferTargetOptions.length === 0 && (
+                  <p role="status" className="mt-2 text-xs text-amber-800">
+                    Nenhuma turma compatível. Verifique o curso, classe, ano letivo e a abertura das turmas.
+                  </p>
+                )}
+                {transferTargetTurmaId && (() => {
+                  const target = transferTargetOptions.find((t) => t.id === transferTargetTurmaId);
+                  if (!target) return null;
+                  const free = (target.capacidade_maxima ?? 0) - (target.ocupacao_atual ?? 0);
+                  return <p className="mt-2 text-xs text-muted-foreground">
+                    Vagas previstas: {Math.max(free, 0)}. A capacidade será novamente validada ao confirmar.
+                  </p>;
+                })()}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Motivo</label>
                 <textarea
                   value={transferReason}
-                  onChange={(e) => setTransferReason(e.target.value)}
+                  onChange={(e) => { setTransferReason(e.target.value); setTransferConfirmed(false); }}
                   rows={3}
                   placeholder="Ex.: não existe 8ª classe no período da manhã."
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#E3B23C]"
                 />
               </div>
 
+              <label className="flex items-start gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={transferConfirmed}
+                  onChange={(e) => setTransferConfirmed(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  Confirmo a transferência de todas as matrículas ativas da turma,
+                  preservando o histórico e os pagamentos. Esta operação será auditada.
+                </span>
+              </label>
+
               {transferError && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {transferError}
+                  {transferErrorCode === "BULK_TRANSFER_ACADEMIC_RECORDS" && transferSourceTurmaId && (
+                    <Link
+                      href={`${detailHrefBase}/${transferSourceTurmaId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex text-sm font-semibold underline underline-offset-2"
+                    >
+                      Abrir turma e consultar os registos académicos
+                    </Link>
+                  )}
                 </div>
               )}
 
@@ -1763,10 +1856,13 @@ export default function TurmasListClient({
                 </button>
                 <button
                   onClick={submitTransfer}
-                  disabled={transferLoading || !transferTargetTurmaId}
+                  disabled={transferLoading || transferCandidatesLoading || !transferTargetTurmaId ||
+                    !transferConfirmed || transferReason.trim().length < 10 ||
+                    !selectedTurmaForTransfer.session_id ||
+                    (selectedTurmaForTransfer.ocupacao_atual ?? 0) <= 0}
                   className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold disabled:opacity-60"
                 >
-                  {transferLoading ? "Transferindo..." : "Transferir"}
+                  {transferLoading ? "A transferir..." : "Confirmar transferência"}
                 </button>
               </div>
             </div>
@@ -1827,7 +1923,7 @@ export default function TurmasListClient({
                 className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-xl transition-colors text-sm font-bold group"
               >
                 <ArrowUpDown size={16} className="text-slate-400 group-hover:text-white transition-colors" />
-                Transferir
+                Mover alunos
               </button>
             )}
             <button

@@ -28,6 +28,7 @@ import { createClient } from "@/lib/supabaseClient";
 import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem, type TurmaOption } from "@/hooks/useRematriculaBalcao";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
 import { RaaBalcaoResolutionPanel } from "@/components/secretaria/RaaBalcaoResolutionPanel";
+import { raaBalcaoEffectiveStatus, raaBalcaoPlan } from "@/lib/rematricula/raa-balcao-resolution";
 import { RematriculaWorkspaceHeader, RematriculaAcademicDestination, type RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
 import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
@@ -1402,6 +1403,12 @@ function Catalogo({
   const paidExistingDestination = view === "reenrollment" &&
     rematriculaState === "RECONCILIATION_REQUIRED" &&
     rematriculaReconciliation?.can_link_existing_enrollment === true;
+  // A paid or pre-enrolled destination must never hide a separate origin
+  // academic blocker. This changes presentation, not RAA eligibility.
+  const academicBlocker = raaBalcaoPlan(
+    raaBalcaoEffectiveStatus(rematriculaState, rematriculaAcademic),
+  );
+  const showAcademicResolution = !paidExistingDestination || Boolean(academicBlocker);
   const selectedCount = selectedItemKeys.size;
   const [raaProgress, setRaaProgress] = useState<RaaProgressSnapshot | null>(null);
   // A progress snapshot must never leak into the next selected student's case.
@@ -1425,7 +1432,7 @@ function Catalogo({
             </a>
           ) : null}
         </div>
-      ) : view === "reenrollment" && paidExistingDestination ? (
+      ) : view === "reenrollment" && paidExistingDestination && !academicBlocker ? (
         <div role="status" className="text-sm font-medium text-foreground">
           Matrícula de destino identificada · {rematriculaAnoLabel}
         </div>
@@ -1657,7 +1664,7 @@ function Catalogo({
                 ) : null}
               </div>
             )}
-            {view === "reenrollment" && !paidExistingDestination && rematriculaCanWriteGrades &&
+            {view === "reenrollment" && showAcademicResolution && rematriculaCanWriteGrades &&
               rematriculaAcademic?.source?.turma_id &&
               rematriculaAcademic?.source?.ano_letivo_id &&
               ["ativo", "ativa", "active"].includes((rematriculaAcademic.source.status ?? "").toLowerCase()) &&
@@ -1673,7 +1680,7 @@ function Catalogo({
                 </div>
               )}
             {/* All seven non-standard academic cases are resolved in-place. */}
-            {!paidExistingDestination && raaMatriculaId && raaAlunoId ? (
+            {showAcademicResolution && raaMatriculaId && raaAlunoId ? (
               <RaaBalcaoResolutionPanel
                 key={raaMatriculaId}
                 status={rematriculaState}

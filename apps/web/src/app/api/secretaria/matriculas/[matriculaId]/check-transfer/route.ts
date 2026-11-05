@@ -3,7 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
-import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ matr
 
     const { data: matricula, error: matriculaError } = await supabase
       .from("matriculas")
-      .select("id, aluno_id, turma_id, escola_id, status")
+      .select("id, aluno_id, turma_id, escola_id, status, ativo, session_id, ano_letivo")
       .eq("id", matriculaId)
       .maybeSingle();
 
@@ -70,20 +70,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ matr
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId: resolvedEscolaId,
-      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
+      roles: ["secretaria", "admin", "admin_escola", "staff_admin"],
     });
     if (authError) return authError;
 
     const [originView, targetView] = await Promise.all([
       supabase
-        .from("vw_turmas_para_matricula")
-        .select("id, turno, capacidade_maxima, ocupacao_atual, curso_id, classe_id, ano_letivo")
+        .from("turmas")
+        .select("id, turno, capacidade_maxima, curso_id, classe_id, ano_letivo, session_id, ano_letivo_id, status_validacao, status_fecho")
         .eq("escola_id", resolvedEscolaId)
         .eq("id", matricula.turma_id)
         .maybeSingle(),
       supabase
-        .from("vw_turmas_para_matricula")
-        .select("id, turno, capacidade_maxima, ocupacao_atual, curso_id, classe_id, ano_letivo")
+        .from("turmas")
+        .select("id, turno, capacidade_maxima, curso_id, classe_id, ano_letivo, session_id, ano_letivo_id, status_validacao, status_fecho")
         .eq("escola_id", resolvedEscolaId)
         .eq("id", targetTurmaId)
         .maybeSingle(),
@@ -128,23 +128,78 @@ export async function GET(request: Request, { params }: { params: Promise<{ matr
       );
     }
 
+    if (origin.session_id == null || origin.session_id !== target.session_id
+      || origin.ano_letivo_id !== origin.session_id
+      || target.ano_letivo_id !== target.session_id
+      || matricula.session_id !== origin.session_id
+      || matricula.ano_letivo !== origin.ano_letivo) {
+      return NextResponse.json({ ok: false,
+        error: "A matrícula e as turmas não pertencem ao mesmo ano letivo validado.",
+        code: "TRANSFER_ACADEMIC_YEAR_MISMATCH" }, { status: 409 });
+    }
+    if (matricula.status !== "ativo" || matricula.ativo !== true) {
+      return NextResponse.json({ ok: false,
+        error: "A transferência exige uma matrícula ativa.",
+        code: "TRANSFER_ENROLLMENT_INACTIVE" }, { status: 409 });
+    }
+    if (origin.status_validacao !== "ativo" || target.status_validacao !== "ativo"
+      || origin.status_fecho !== "ABERTO" || target.status_fecho !== "ABERTO") {
+      return NextResponse.json({ ok: false,
+        error: "As turmas precisam estar ativas e abertas.",
+        code: "TRANSFER_CLASS_CLOSED" }, { status: 409 });
+    }
+
+    // The installed Postgres predicate also checks legal snapshots, legacy
+    // grade writers, signed pautas, reapreciações and disciplinary history.
+    // Never try to recreate that authorization rule from browser-visible rows.
+    const [occupancy, evidence, year] = await Promise.all([
+      supabase.from("matriculas").select("id", { count: "exact", head: true })
+        .eq("escola_id", resolvedEscolaId).eq("turma_id", target.id)
+        .eq("session_id", target.session_id).eq("ativo", true).eq("status", "ativo"),
+      supabase.rpc("turma_transfer_academic_evidence_v1", {
+        p_matricula_id: matricula.id,
+      }),
+      supabase.from("anos_letivos").select("id,ativo")
+        .eq("escola_id", resolvedEscolaId).eq("id", origin.session_id).maybeSingle(),
+    ]);
+    if (occupancy.error || evidence.error || year.error ||
+      typeof evidence.data?.has_evidence !== "boolean") {
+      return NextResponse.json({
+        ok: false, error: "Não foi possível verificar lotação e histórico académico. Tente novamente.",
+        code: "TRANSFER_PREFLIGHT_UNAVAILABLE",
+      }, { status: 503 });
+    }
+    if (!year.data?.ativo) {
+      return NextResponse.json({
+        ok: false, error: "O ano letivo de origem está encerrado.",
+        code: "TRANSFER_YEAR_INACTIVE",
+      }, { status: 409 });
+    }
     const capacidade = Number(target.capacidade_maxima ?? 0);
-    const ocupacao = Number(target.ocupacao_atual ?? 0);
+    const ocupacao = Number(occupancy.count ?? 0);
     const vagasRestantes = capacidade > 0 ? Math.max(0, capacidade - ocupacao) : 0;
-    const lotada = capacidade > 0 && ocupacao >= capacidade;
+    const lotada = capacidade <= 0 || ocupacao >= capacidade;
+    const requiresAcademicReconciliation = evidence.data.has_evidence;
+    const blockers = [
+      ...(capacidade <= 0 ? ["A turma destino precisa de capacidade configurada."] : []),
+      ...(capacidade > 0 && ocupacao >= capacidade ? ["A turma destino não possui vagas."] : []),
+      ...(requiresAcademicReconciliation
+        ? ["Existem notas, pautas, frequência ou decisões académicas na origem. A transferência exige conciliação temporal autorizada."]
+        : []),
+    ];
     const mudancaTurno = Boolean(origin?.turno && target.turno && origin.turno !== target.turno);
 
     const [origTabela, destTabela] = await Promise.all([
       resolveTabelaPreco(supabase as any, {
         escolaId: resolvedEscolaId,
-        anoLetivo: origin?.ano_letivo ?? target.ano_letivo ?? new Date().getFullYear(),
+        anoLetivo: origin.ano_letivo,
         cursoId: origin?.curso_id ?? null,
         classeId: origin?.classe_id ?? null,
         allowMensalidadeFallback: true,
       }),
       resolveTabelaPreco(supabase as any, {
         escolaId: resolvedEscolaId,
-        anoLetivo: target.ano_letivo ?? new Date().getFullYear(),
+        anoLetivo: target.ano_letivo,
         cursoId: target.curso_id ?? null,
         classeId: target.classe_id ?? null,
         allowMensalidadeFallback: true,
@@ -158,7 +213,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ matr
     const diferenca = valorDestino - valorOrigem;
 
     return NextResponse.json({
-      allow: !lotada,
+      allow: blockers.length === 0,
+      code: requiresAcademicReconciliation ? "TRANSFER_ACADEMIC_RECONCILIATION_REQUIRED" : null,
+      requer_conciliacao_academica: requiresAcademicReconciliation,
+      blockers,
       lotada,
       vagas_restantes: vagasRestantes,
       mudanca_turno: mudancaTurno,

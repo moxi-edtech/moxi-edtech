@@ -99,9 +99,33 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Falha ao carregar matrículas" }, { status: 500 });
     }
 
+    // O total é calculado no banco com os mesmos filtros, sem limite de página.
+    // vw_matriculas_validas é security_invoker e continua sujeita ao RLS.
+    const buildCountQuery = () => {
+      let countQuery = supabase
+        .from("vw_matriculas_validas")
+        .select("id", { count: "exact", head: true })
+        .eq("escola_id", resolvedEscolaId)
+        .eq("session_id", anoLetivoId);
+      if (scope === "pending") countQuery = countQuery.eq("status", "pendente");
+      if (scope === "turma" && turmaId) countQuery = countQuery.eq("turma_id", turmaId);
+      if (classeId) countQuery = countQuery.eq("classe_id", classeId);
+      if (courseId) countQuery = countQuery.eq("curso_id", courseId);
+      return countQuery;
+    };
+
+    const [totalCount, pendingCount] = await Promise.all([
+      buildCountQuery(),
+      buildCountQuery().eq("status", "pendente"),
+    ]);
+    if (totalCount.error || pendingCount.error) {
+      console.error("[matriculas:count]", totalCount.error ?? pendingCount.error);
+      return NextResponse.json({ ok: false, error: "Falha ao calcular totais das matrículas" }, { status: 500 });
+    }
+
     const rows = data || [];
-    const total = rows.length;
-    const pendentes = rows.filter((row) => row.status === "pendente").length;
+    const total = totalCount.count ?? 0;
+    const pendentes = pendingCount.count ?? 0;
 
     const matriculas = rows.map((row: any) => ({
       id: row.id,
@@ -132,7 +156,7 @@ export async function GET(
     return NextResponse.json({
       ok: true,
       filters: { escolaId: resolvedEscolaId, anoLetivoId, classeId, courseId: courseId ?? null, scope, turmaId: turmaId ?? null },
-      meta: { total, pendentes },
+      meta: { total, pendentes, pageTotal: rows.length },
       matriculas,
     });
   } catch (error) {

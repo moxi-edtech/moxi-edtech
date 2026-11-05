@@ -49,4 +49,8 @@ jobs:
         working-directory: apps/web
         run: node --test --import tsx tests/unit/decree-calendar-sync-health.spec.ts
       - name: Validate affected Next.js TypeScript routes
+        env:
+          # The repository-wide tsc exceeded Node's ~2 GiB default heap.
+          # Scope the larger heap to typecheck, not the entire workflow.
+          NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm -C apps/web typecheck

@@ -3,6 +3,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status";
 import type { Database } from "~types/supabase";
 
 export const dynamic = 'force-dynamic';
@@ -39,6 +40,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         nome,
         turma_codigo,
         ano_letivo,
+        session_id,
         turno,
         sala,
         capacidade_maxima,
@@ -54,6 +56,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (turmaError || !turmaResult) {
       console.error('Error fetching turma:', turmaError);
       return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404 });
+    }
+
+    if (!turmaResult.session_id) {
+      return NextResponse.json({
+        ok: false, code: "TURMA_SEM_ANO_LETIVO",
+        error: "A turma não tem ano letivo associado. Regularize a configuração académica.",
+      }, { status: 409 });
     }
 
     // 2. Ocupação da turma
@@ -112,10 +121,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       `)
       .eq('turma_id', turmaId)
       .eq('escola_id', escolaId)
-      .in('status', ['ativa', 'ativo', 'concluida', 'concluido', 'transferida', 'transferido'])
+      .eq('session_id', turmaResult.session_id)
+      .eq('ativo', true)
+      .in('status', ACTIVE_MATRICULA_STATUSES)
       .order('numero_chamada', { ascending: true });
 
-    alunosQuery = applyKf2ListInvariants(alunosQuery, { defaultLimit: 50 });
+    alunosQuery = applyKf2ListInvariants(alunosQuery, { defaultLimit: 200, maxLimit: 200 });
 
     const { data: alunosData, error: alunosError } = await alunosQuery;
 

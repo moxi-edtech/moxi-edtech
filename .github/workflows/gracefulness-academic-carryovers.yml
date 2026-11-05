@@ -54,6 +54,11 @@ jobs:
           cd apps/web
           node --test --import tsx             tests/unit/dependencias-transicao.spec.ts             tests/unit/rematricula-result.spec.ts
       - name: Typecheck
+        # The full Next.js 15 monorepo type graph exceeds Node's default
+        # ~2 GiB heap on the GitHub runner. This is still the complete tsc
+        # --noEmit check; do not exclude packages or suppress diagnostics.
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm -C apps/web typecheck
       - name: Focused ESLint
         run: |
