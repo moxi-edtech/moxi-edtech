@@ -1798,7 +1798,7 @@ function TurmaCleanupModal({
       <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 px-6 py-4">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Arquivar turmas excedentes</h3>
+            <h3 className="text-base font-bold text-foreground">Arquivar turmas excedentes</h3>
             <p className="text-xs text-slate-500 mt-0.5">
               Curso: <span className="font-bold text-slate-700">{courseName || "—"}</span>
             </p>

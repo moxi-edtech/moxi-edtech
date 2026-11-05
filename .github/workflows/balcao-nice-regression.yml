@@ -19,7 +19,8 @@ permissions:
   contents: read
 jobs:
   balcao-nice-fixtures:
-    runs-on: ubuntu-latest
+    # Playwright 1.57.0 does not support Chromium on ubuntu-26.04 (ubuntu-latest).
+    runs-on: ubuntu-24.04
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
