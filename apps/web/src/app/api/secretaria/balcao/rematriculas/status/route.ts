@@ -1,3 +1,4 @@
+import { authorizeBalcaoAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
 import { NextResponse } from "next/server";
 import { canLinkPaidOrderToExistingEnrollment } from "@/lib/rematricula/reconciliation-existing-enrollment";
 import { requireRoleInSchool } from "@/lib/authz";
@@ -321,7 +322,8 @@ export async function GET(request: Request) {
     const academicTimelineAno = academicTimeline ? timelineMatricula.ano_letivo : null;
 
     const trimestreInicialEmCurso = await isSourceYearStillInEarlyTrimester(supabase, escolaId, matriculaOrigem);
-    const gradePermissions = await authorizeTurmasManage(supabase, escolaId, user.id)
+    const gradePermissions = await authorizeBalcaoAcademicWrite(supabase, escolaId, user.id)
+      ? { allowed: true } : await authorizeTurmasManage(supabase, escolaId, user.id)
       .catch(() => ({ allowed: false }));
 
     // A matrícula destino criada pela promoção é a matrícula operacional do

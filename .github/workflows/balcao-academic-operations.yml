@@ -1,0 +1,106 @@
+name: Balcao academic operations
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/**"
+      - "apps/web/tests/unit/*raa*"
+      - "apps/web/tests/balcao-actions-ui-postgres.integration.ts"
+      - "apps/web/tests/fixtures/balcao-postgres-adapter.ts"
+      - "apps/web/tests/unit/balcao-academic-*.spec.ts"
+      - "apps/web/tests/unit/turmas-archive-security.spec.ts"
+      - "supabase/migrations/2027110500*balcao*.sql"
+      - "supabase/ops/tests/balcao_academic_resolution/**"
+      - ".github/workflows/balcao-academic-operations.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  database:
+    name: Academic operations — RLS, retries, exams and publications
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: balcao_academic_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d balcao_academic_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/balcao_academic_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate only in disposable PostgreSQL
+        run: |
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/fixture.sql
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/regression.sql
+          python3 supabase/ops/tests/balcao_academic_resolution/concurrency.py
+  web:
+    name: Academic operations — web regression and typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COREPACK_ENABLE_AUTO_PIN: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Academic and paid-rematricula regressions
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/balcao-academic-*.spec.ts tests/unit/raa-*.spec.ts tests/unit/aut004-paid-academic-dual-axis.spec.ts tests/unit/aut004-aut012-operational-contract.spec.ts tests/unit/turmas-archive-security.spec.ts
+      - name: Typecheck
+        run: pnpm --filter web exec tsc --noEmit --incremental false
+
+  secretary-actions:
+    name: Secretary buttons — real SQL effects and atomic audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: balcao_actions_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d balcao_actions_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/balcao_actions_test
+      COREPACK_ENABLE_AUTO_PIN: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install temporary DOM test fixture
+        run: npm install --prefix "$RUNNER_TEMP/balcao-dom" --no-save --ignore-scripts jsdom@26.1.0
+      - name: Permission, eligibility and audit regressions
+        run: |
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/audit_fixture.sql
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271105002000_balcao_secretaria_actions_audit.sql
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271105003000_balcao_guided_resolution_attendance.sql
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/audit_effects.sql
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/guided_effects.sql
+      - name: Click the actual React forms against the disposable database
+        working-directory: apps/web
+        run: TEST_JSDOM_MODULE="$RUNNER_TEMP/balcao-dom/node_modules/jsdom/lib/api.js" node --test --import tsx tests/balcao-actions-ui-postgres.integration.ts

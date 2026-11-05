@@ -58,3 +58,11 @@ can_merge: false
 
 ## Bloqueio de release após instalação SQL
 O SQL de serviços foi aprovado/aplicado e APY-005 está resolvido. A inspeção global confirmou três violações CRITICAL preexistentes em REPORT_SCAN.md. Mesmo com build e testes AppyPay aprovados, o contrato exige FAIL/can_merge=false; nenhuma liberação ou exceção foi aplicada. A matriz MV integral ainda requer certificação.
+
+## Revalidação de merge — 2026-11-05T15:08:08.306099+00:00
+
+Commit de fonte: `73203326085a1728e51bb2a72f870d37ea7a07f4`. PR #322. `can_merge: false` mantém-se: REPORT_SCAN.json confirma SEC-001 e SEC-002 CRITICAL ainda presentes na main e nesta branch. SEC-003 da cópia de calendário foi corrigido. Não foi feita certificação global nova da matriz de MVs neste run e os testes dirigidos do Balcão não substituem essa certificação. Nenhuma regra de performance é marcada como FAIL sem a evidência obrigatória.
+
+## Reavaliação após correção de SEC-001/SEC-002 — 2026-11-05T15:30:38.023844+00:00
+
+As duas rotas de risco foram corrigidas na PR #322; cinco testes de contrato e 148 regressões académicas aprovados. O scanner genérico não certifica integralmente MV-001/MV-002/MV-003/CACHE-002 nem o replay remoto. **can_merge: false permanece** até haver evidência global e homologação autenticada exigidas pelo contrato.

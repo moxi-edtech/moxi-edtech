@@ -1306,7 +1306,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           });
           const json = await res.json().catch(() => null);
           if (!res.ok || json?.ok === false) {
-            throw new Error(json?.error || "Falha ao excluir turma.");
+            throw new Error(json?.error || "Falha ao arquivar turma.");
           }
           return turmaId;
         })
@@ -1316,12 +1316,12 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       const failed = results.filter((r) => r.status === "rejected").length;
 
       if (removed > 0) {
-        success(`${removed} turma(s) excluída(s) com sucesso.`);
+        success(`${removed} turma(s) arquivada(s) com sucesso.`);
       }
       if (failed > 0) {
         warning(
-          "Algumas turmas não foram excluídas",
-          `${failed} exclusão(ões) falharam. Revise permissões e vínculos restantes.`
+          "Algumas turmas não foram arquivadas",
+          `${failed} arquivamento(s) falharam. Revise permissões e matrículas vinculadas.`
         );
       }
 
@@ -1334,7 +1334,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         setDetails(refreshedDetails);
       }
     } catch (e: any) {
-      error(e?.message || "Falha ao excluir turmas selecionadas.");
+      error(e?.message || "Falha ao arquivar turmas selecionadas.");
     } finally {
       setTurmaCleanupRunning(false);
     }
@@ -1687,7 +1687,7 @@ function CourseCard({
             size="icon"
             onClick={onCleanup}
             className="h-8 w-8 text-slate-400 hover:text-slate-900"
-            title="Excluir turmas excedentes"
+            title="Arquivar turmas excedentes"
           >
             <Eraser className="w-4 h-4" />
           </Button>
@@ -1798,7 +1798,7 @@ function TurmaCleanupModal({
       <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 px-6 py-4">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Excluir turmas excedentes</h3>
+            <h3 className="text-base font-bold text-foreground">Arquivar turmas excedentes</h3>
             <p className="text-xs text-slate-500 mt-0.5">
               Curso: <span className="font-bold text-slate-700">{courseName || "—"}</span>
             </p>
@@ -1812,7 +1812,7 @@ function TurmaCleanupModal({
           <Alert className="bg-blue-50 border-blue-100 text-blue-800 py-3">
             <Info className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-xs font-medium">
-              Selecione apenas as turmas que foram criadas por engano. Turmas com alunos ativos (<Users className="inline w-3 h-3 mb-0.5" />) não podem ser excluídas por segurança.
+              O arquivamento preserva o histórico escolar. Turmas com alunos ativos (<Users className="inline w-3 h-3 mb-0.5" />) ficam bloqueadas. Turmas com matrículas históricas também não podem ser arquivadas.
             </AlertDescription>
           </Alert>
 
@@ -1898,10 +1898,10 @@ function TurmaCleanupModal({
               onClick={onConfirm}
               disabled={!canConfirm}
               loading={running}
-              tone="red"
+              tone="gold"
               className="rounded-full px-8 h-10 shadow-md"
             >
-              Excluir selecionadas
+              Arquivar selecionadas
             </Button>
           </div>
         </div>

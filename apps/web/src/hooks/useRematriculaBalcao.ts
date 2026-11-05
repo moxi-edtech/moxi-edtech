@@ -374,6 +374,7 @@ export function useRematriculaBalcao(opts: {
 
       const res = await fetch(
         `/api/secretaria/balcao/rematriculas/status?${params.toString()}`,
+        { cache: "no-store" },
       );
       const data: StatusResponse = await res.json();
       if (requestGeneration !== statusRequestGeneration.current) return;
@@ -398,10 +399,12 @@ export function useRematriculaBalcao(opts: {
         setDestinoTurma(data.destino_turma ?? null);
         setCohort(data.cohort ?? null);
         setReconciliation(data.reconciliation ?? null);
+        return { ok: true, status: data.status, academic: data.academic };
       } else {
         clearStatusSnapshot();
         setCardState("ERROR");
         setApiError((data as any)?.error ?? "Não foi possível verificar a elegibilidade da matrícula.");
+        return { ok: false };
       }
     } catch (e) {
       if (requestGeneration !== statusRequestGeneration.current) return;
@@ -409,6 +412,7 @@ export function useRematriculaBalcao(opts: {
       clearStatusSnapshot();
       setCardState("ERROR");
       setApiError("Não foi possível atualizar o estado da rematrícula. Verifique a ligação e tente novamente.");
+      return { ok: false };
     } finally {
       if (requestGeneration === statusRequestGeneration.current) setLoading(false);
     }

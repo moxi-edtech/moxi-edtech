@@ -1,5 +1,4 @@
 import type { RaaAcademicStatus } from "@/lib/academico/raa-eligibility"
-import { isUnjustifiedRaaAbsence } from "@/lib/academico/raa-attendance-justification"
 import { resolveRaaProgression, type RaaProgressionResult } from "@/lib/academico/raa-progression"
 import { resolveRegimeAcademico, type RegimeAcademico } from "@/lib/academico/regime-academico"
 import { resolveRaaDecretoEligibility, type RaaDecretoRegime, type RaaDecretoResult } from "@/lib/academico/raa-decreto-eligibility"
@@ -162,16 +161,24 @@ export async function resolveDecretoDecision(
   regime: RegimeAcademico,
   disciplinaIds: string[],
 ) {
+  if (regime?.nivel_ensino === "eja" && regime.escala === "qualitativa") {
+    const { data, error } = await supabase.rpc("resolve_raa_eja_oficial", {
+      p_escola_id: escolaId, p_matricula_id: matriculaId,
+    })
+    if (error || !data?.decreto) throw new Error("Não foi possível confirmar a avaliação qualitativa oficial.")
+    return data.decreto as RaaDecretoResult
+  }
   const codigoRegime = decretoRegime(regime)
   if (!codigoRegime || disciplinaIds.length === 0) return null
 
-  const [{ data: pauta, error: pautaError }, { data: links, error: linksError }, { data: catalogo, error: catalogoError }] = await Promise.all([
-    supabase
-      .from("vw_boletim_por_matricula")
-      .select("disciplina_id, disciplina_nome, nota_final")
-      .eq("escola_id", escolaId)
-      .eq("matricula_id", matriculaId)
-      .in("disciplina_id", disciplinaIds),
+  const [canonical, { data: links, error: linksError }, { data: catalogo, error: catalogoError }] = await Promise.all([
+    Promise.all(disciplinaIds.map(async (disciplinaId) => {
+      const { data, error } = await supabase.rpc("resolve_estado_resultado", {
+        p_matricula_id: matriculaId, p_disciplina_id: disciplinaId,
+      })
+      if (error || !data?.status || !canonicalStatuses.has(data.status)) throw new Error("Não foi possível confirmar o resultado oficial da disciplina.")
+      return { disciplina_id: disciplinaId, nota_final: data.nota ?? null, status: data.status }
+    })),
     supabase
       .from("turma_disciplinas")
       .select("id, avaliacao_disciplina_id, carga_horaria_semanal, classificacao, curso_matriz_id")
@@ -185,48 +192,16 @@ export async function resolveDecretoDecision(
       .in("id", disciplinaIds),
   ])
 
-  if (pautaError || linksError || catalogoError) return null
+  if (linksError || catalogoError) throw new Error("Não foi possível confirmar o currículo da matrícula.")
 
   const linkRows = (links ?? []) as Array<{ id?: string; avaliacao_disciplina_id?: string; carga_horaria_semanal?: number | null; classificacao?: string | null; curso_matriz_id?: string | null }>
-  const turmaDisciplinaIds = linkRows.map((row) => row.id).filter((id): id is string => Boolean(id))
-  const { data: aulas } = turmaDisciplinaIds.length > 0
-    ? await supabase.from("aulas").select("id, turma_disciplina_id").eq("escola_id", escolaId).in("turma_disciplina_id", turmaDisciplinaIds)
-    : { data: [] }
-  const aulaRows = (aulas ?? []) as Array<{ id: string; turma_disciplina_id: string }>
-  const aulaIds = aulaRows.map((row) => row.id)
-  const { data: frequencias } = aulaIds.length > 0
-    ? await supabase.from("frequencias").select("id, aula_id, periodo_letivo_id, status").eq("escola_id", escolaId).eq("matricula_id", matriculaId).in("aula_id", aulaIds)
-    : { data: [] }
-  const frequenciaRows = (frequencias ?? []) as Array<{ id: string; aula_id: string; periodo_letivo_id: string | null; status: string }>;
-  // Keep the original frequency row immutable, but distinguish a formally
-  // justified absence from an unjustified one for the decree's legal threshold.
-  const { data: justificacoes, error: justificacoesError } = await supabase
-    .from("aluno_falta_justificacoes")
-    .select("frequencia_id")
-    .eq("escola_id", escolaId).eq("matricula_id", matriculaId)
-    .eq("status", "approved").limit(5000);
-  // Absence decisions are not optional evidence: never infer an approval when
-  // RLS, the migration or the database is unavailable.
-  if (justificacoesError) return null;
-  const justified = new Set<string>((justificacoes ?? []).map((item: { frequencia_id: string }) => item.frequencia_id));
-  const periodoIds = Array.from(new Set(frequenciaRows.map((row) => row.periodo_letivo_id).filter((id): id is string => Boolean(id))))
-  const { data: periodos } = periodoIds.length > 0
-    ? await supabase.from("periodos_letivos").select("id, numero, tipo").eq("escola_id", escolaId).in("id", periodoIds)
-    : { data: [] }
-  const periodoNumero = new Map<string, number>((periodos ?? []).map((row: any) => [String(row.id), Number(row.numero)]))
-  const aulaDisciplina = new Map<string, string>(aulaRows.map((row) => [row.id, row.turma_disciplina_id]))
-  const faltasPorTurmaDisciplina = new Map<string, number[]>()
-  for (const row of frequenciaRows) {
-    if (!isUnjustifiedRaaAbsence(row, justified)) continue
-    const turmaDisciplinaId = aulaDisciplina.get(row.aula_id)
-    const trimestre = row.periodo_letivo_id ? periodoNumero.get(row.periodo_letivo_id) : null
-    if (!turmaDisciplinaId || !trimestre || trimestre < 1 || trimestre > 3) continue
-    const faltas = faltasPorTurmaDisciplina.get(turmaDisciplinaId) ?? [0, 0, 0]
-    faltas[trimestre - 1] += 1
-    faltasPorTurmaDisciplina.set(turmaDisciplinaId, faltas)
-  }
+  const { data: absences, error: absencesError } = await supabase.rpc("raa_faltas_atuais", {
+    p_escola_id: escolaId, p_matricula_id: matriculaId,
+  })
+  if (absencesError || !absences?.faltas_por_turma_disciplina) throw new Error("Não foi possível confirmar as faltas e justificações oficiais.")
+  const faltasPorTurmaDisciplina = new Map<string, number[]>(Object.entries(absences.faltas_por_turma_disciplina))
 
-  const pautaById = new Map<string, any>((pauta ?? []).map((row: any) => [String(row.disciplina_id), row]))
+  const pautaById = new Map<string, any>(canonical.map((row: any) => [String(row.disciplina_id), row]))
   const linkById = new Map<string, any>(linkRows.map((row) => [String(row.avaliacao_disciplina_id), row]))
   const catalogoById = new Map<string, any>((catalogo ?? []).map((row: any) => [String(row.id), row]))
   const disciplinas = disciplinaIds.map((id) => {
@@ -251,7 +226,8 @@ export async function resolveDecretoDecision(
   const legal = resolveRaaDecretoEligibility({
     regime: codigoRegime,
     disciplinas,
-    dadosCompletos: disciplinas.every((d) => d.notaFinal != null),
+    dadosCompletos: disciplinas.every((d) => d.notaFinal != null) && canonical.every((d) => !["pendente_dados", "pendente_formula"].includes(d.status)),
+    indisciplinaGrave: canonical.some((d) => d.status === "reprovado_por_indisciplina"),
   })
   return legal
 }

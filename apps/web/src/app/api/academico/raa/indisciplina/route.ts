@@ -10,7 +10,7 @@ import { hasExactRaaAcademicDecisionRole } from "@/lib/academico/raa-academic-de
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-const roles = ["admin", "admin_escola", "staff_admin", "admin_financeiro", "diretor", "secretaria", "professor"] as const
+const roles = ["admin", "admin_escola", "staff_admin", "admin_financeiro", "diretor", "secretaria", "admin_secretaria", "secretaria_financeiro", "professor"] as const
 const createSchema = z.object({
   matricula_id: z.string().uuid(),
   gravidade: z.enum(["grave", "muito_grave"]),
@@ -106,7 +106,7 @@ export async function PATCH(request: Request) {
   const context = await resolveContext()
   if (context.error || !context.auth || !context.escolaId) return context.error
   if (!await hasExactRaaAcademicDecisionRole(context.supabase, context.escolaId, context.auth.user.id)) {
-    return NextResponse.json({ ok: false, error: "A decisão disciplinar exige autorização da direção." }, { status: 403 })
+    return NextResponse.json({ ok: false, error: "A decisão disciplinar exige um perfil autorizado da secretaria ou direção." }, { status: 403 })
   }
   const parsed = reviewSchema.safeParse(await request.json().catch(() => ({})))
   if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Decisão inválida." }, { status: 400 })

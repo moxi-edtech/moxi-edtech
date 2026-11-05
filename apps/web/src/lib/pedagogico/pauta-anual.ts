@@ -6,6 +6,7 @@ import { applyKf2ListInvariants } from "@/lib/kf2"
 import { resolveModeloAvaliacao } from "@/lib/academico/avaliacao-utils"
 import { calculateMfdTransicao } from "@/lib/academico/raa-formulas"
 import { resolveTransitionRules } from "@/lib/pedagogico/transition-engine"
+import { resolveRegimeAcademico } from "@/lib/academico/regime-academico"
 import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status"
 import type {
   PautaAnualPayload,
@@ -97,12 +98,16 @@ export async function buildPautaAnualPayload({
     .in("status", ACTIVE_MATRICULA_STATUSES)
     .order("numero_chamada", { ascending: true, nullsFirst: false })
 
-  matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 1000 })
-
-  const { data: matriculas, error: matriculasError } = await matriculasQuery
-  if (matriculasError) throw new Error(matriculasError.message)
-
-  const matriculaRows = (matriculas || []).filter((row: any) => row?.alunos)
+  // Official output must include every enrolment, including classes exceeding
+  // a single REST page. Fail explicitly rather than emitting a truncated pauta.
+  const matriculaRows: any[] = []
+  for (let offset = 0; ; offset += 50) {
+    const { data, error } = await matriculasQuery.order("id", { ascending: true }).range(offset, offset + 49)
+    if (error) throw new Error(error.message)
+    matriculaRows.push(...(data ?? []).filter((row: any) => row?.alunos))
+    if ((data?.length ?? 0) < 50) break
+    if (offset >= 9950) throw new Error("Turma excede o limite de emissão síncrona. Solicite emissão em lote.")
+  }
   const matriculaIds = matriculaRows.map((row: any) => row.id)
 
   const alunoInfo = new Map<
@@ -120,6 +125,32 @@ export async function buildPautaAnualPayload({
       sexo: sexoRaw === "F" ? "F" : "M",
     })
   })
+
+  const regime = await resolveRegimeAcademico(supabase, turmaId)
+  if (regime.nivel_ensino === "eja" && regime.escala === "qualitativa") {
+    const alunos: PautaAnualAlunoRow[] = []
+    // Bounded concurrency: this is an official class document, not a dashboard.
+    for (let offset = 0; offset < matriculaRows.length; offset += 5) {
+      const batch = await Promise.all(matriculaRows.slice(offset, offset + 5).map(async (row: any) => {
+        const { data, error } = await (supabase as any).rpc("resolve_raa_eja_oficial", {
+          p_escola_id: escolaId, p_matricula_id: row.id,
+        })
+        if (error || !data || data.decision === "pendente") throw new Error("A pauta EJA exige avaliação qualitativa e frequência oficial completas para todos os alunos.")
+        const info = alunoInfo.get(row.alunos.id)!
+        const notas: Record<string, PautaAnualDisciplinaNotas> = {}
+        for (const discipline of disciplinas) {
+          const evidence = data.disciplinas?.find((item: any) => item.disciplina_id === discipline.id)
+          if (typeof evidence?.suficiente !== "boolean") throw new Error("Avaliação EJA incompleta. A pauta não foi publicada.")
+          notas[discipline.id] = { mt1: "-", mt2: "-", mt3: "-", mfd: evidence.suficiente ? "S" : "NS" }
+        }
+        const titles: Record<string, string> = { transitou: "TRANSITOU", concluiu: "CONCLUIU", retido: "RETIDO", retido_por_faltas: "RETIDO POR FALTAS", retido_por_indisciplina: "RETIDO POR INDISCIPLINA" }
+        return { aluno_id: row.alunos.id, ...info, disciplinas: notas, resultado_final: titles[data.decision] ?? "PENDENTE" }
+      }))
+      alunos.push(...batch)
+    }
+    if (!alunos.length) throw new Error("Não existem matrículas para publicar a pauta.")
+    return { metadata, disciplinas, alunos, qualitativa: true }
+  }
 
   const disciplinaIds = disciplinas.map((d) => d.id)
   const boletimByAlunoDisc = new Map<string, { t1: number | null; t2: number | null; t3: number | null }>()

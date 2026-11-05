@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * Do not rely on generic admin role aliases, which can include other roles
  * not authorized to conclude academic reviews.
  */
-export const RAA_ACADEMIC_DECISION_ROLES = ["admin", "admin_escola", "diretor", "admin_financeiro"] as const;
+export const RAA_ACADEMIC_DECISION_ROLES = ["admin", "admin_escola", "diretor", "admin_financeiro", "secretaria", "admin_secretaria", "secretaria_financeiro"] as const;
 
 export async function hasExactRaaAcademicDecisionRole(
   supabase: SupabaseClient<any>, escolaId: string, userId: string,

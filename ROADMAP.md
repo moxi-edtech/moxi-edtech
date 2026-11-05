@@ -102,3 +102,8 @@ Nada entra sem:
 - `agents/specs/performance.md`
 
 KLASSE não cresce em cima de gambiarra.
+
+
+### Balcão — resolução académica excecional (2026-11-05)
+
+Implementação e limites: [registo operacional](docs/ops/balcao-resolucao-excecional-20261105.md). Metas ainda não medidas: feedback local de mutação <50ms; consulta contextual p95 ≤500ms; primeira apresentação da pauta <300ms com skeleton. A geração integral do PDF é uma operação separada com progresso, sem promessa de conclusão nesse prazo.

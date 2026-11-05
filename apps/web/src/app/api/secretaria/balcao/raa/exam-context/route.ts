@@ -9,8 +9,8 @@ export const revalidate = 0;
 
 // Only existing official sessions and curriculum assignments are returned.
 // The source enrolment (not the target enrolment year) anchors the context.
-const roles = ["professor", "secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin", "diretor"] as const;
-const resultWriterRoles = ["professor", "secretaria", "admin", "admin_escola", "staff_admin", "diretor"] as const;
+const roles = ["professor", "secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin", "diretor"] as const;
+const resultWriterRoles = ["professor", "secretaria", "admin_secretaria", "secretaria_financeiro", "admin", "admin_escola", "staff_admin", "diretor"] as const;
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;

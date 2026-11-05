@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBalcaoDraftForm } from "@/components/secretaria/command-center/BalcaoDraftState";
 import { buildRaaBalcaoWorkspaceCases, raaBalcaoProgress } from "@/lib/rematricula/raa-balcao-cases";
@@ -9,6 +10,8 @@ import { CheckCircle2, Loader2, RefreshCw, ChevronLeft, ChevronRight, ClipboardL
 import type { RematriculaCardState } from "@/hooks/useRematriculaBalcao";
 import { raaBalcaoPlan, raaBalcaoEffectiveStatus } from "@/lib/rematricula/raa-balcao-resolution";
 import type { RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
+
+const BalcaoAcademicOperations = dynamic(() => import("./BalcaoAcademicOperations").then((m) => m.BalcaoAcademicOperations));
 
 type PeticaoFalta = { id: string; data_falta: string; motivo: string; status: string; trimestre?: 1 | 2 | 3 | null };
 type PedidoReapreciacao = {
@@ -317,7 +320,8 @@ export function RaaBalcaoResolutionPanel({
 
   async function refreshAfterSave() {
     try {
-      await onRecheck();
+      const refreshed = await onRecheck() as { ok?: boolean } | undefined;
+      if (refreshed?.ok === false) throw new Error("Revalidação pendente");
     } catch {
       // The write was already committed. A refresh error must never make it
       // look as though the save failed and invite a duplicate submission.
@@ -328,7 +332,7 @@ export function RaaBalcaoResolutionPanel({
   const submit = async () => {
     if ((action === "reapreciacao" && !canDecideReapreciacao) ||
         (action === "disciplina" && !canReviewDisciplina)) {
-      setError("Esta decisão exige autorização da direção.");
+      setError("Esta decisão exige um perfil autorizado da secretaria ou direção.");
       return;
     }
     if (saving || !selected || motivo.trim().length < (action === "disciplina" ? 15 : action === "reapreciacao" ? 5 : decision === "rejected" ? 8 : 0)) return;
@@ -482,6 +486,7 @@ export function RaaBalcaoResolutionPanel({
 
   return (
     <section id="balcao-pendencias" key={alunoId + ":" + matriculaId} className="space-y-3 scroll-mt-24" aria-label="Pendências do aluno no Balcão">
+      <BalcaoAcademicOperations key={matriculaId} matriculaId={matriculaId} preferredDisciplineId={academic?.disciplina_ids_pendentes?.[0]} initiallyEligible={academic?.eligible === true} onRecheck={async () => { await load(); return onRecheck(); }} onLancarNota={onLancarNota} />
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-foreground">{onlySubjects ? "Disciplinas" : "Pendências"}</h3>
         {pendingJustification && phase === "summary" && !loading ? (
@@ -641,7 +646,7 @@ export function RaaBalcaoResolutionPanel({
                     Rever notas da turma
                   </button>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Peça a revisão à direção e volte a verificar.</p>
+                  <p className="text-xs text-muted-foreground">Use «Resolver operação académica aqui» para conferir as permissões e continuar nesta ficha.</p>
                 )}
             </div>
           )}
@@ -660,7 +665,7 @@ export function RaaBalcaoResolutionPanel({
               ) : !examContext.can_record_result ? (
                 <p className="text-xs text-muted-foreground">Exames disponíveis para consulta neste perfil.</p>
               ) : examContext.sessoes.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Sem sessão de exame disponível. Solicite a abertura à direção.</p>
+                <p className="text-xs text-muted-foreground">Sem sessão de exame disponível. Abra a sessão em «Resolver operação académica aqui», nesta ficha.</p>
               ) : (
                 <div className="grid gap-2">
                   <label htmlFor="raa-exam-session" className="text-xs font-bold text-foreground">Sessão oficial</label>
@@ -740,7 +745,7 @@ export function RaaBalcaoResolutionPanel({
             ((action === "reapreciacao" && !canDecideReapreciacao) ||
               (action === "disciplina" && !canReviewDisciplina)) && (
               <p role="status" className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-                Disponível para consulta. A decisão exige um perfil autorizado.
+                Disponível para consulta. A decisão exige um perfil autorizado da secretaria ou direção.
               </p>
             )}
           {!!selected && activeCase?.estado !== "registado" &&
