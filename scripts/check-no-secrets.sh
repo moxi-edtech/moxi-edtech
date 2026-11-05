@@ -71,7 +71,14 @@ while read -r commit; do
       continue
     fi
 
-    if git show "${commit}:${path}" | LC_ALL=C grep -nE "$SECRET_REGEX" | LC_ALL=C grep -Ev "$ALLOWLIST_REGEX" >"$tmpdir/current.txt"; then
+    # EXC-SECRET-BALCAO-LOCAL: only the complete PGURL line of the two
+    # disposable PostgreSQL services in this exact workflow. Extra text,
+    # other credentials, hosts, ports, databases or paths remain blocked.
+    fixture_allowlist='^$'
+    if [[ "$path" == ".github/workflows/balcao-academic-operations.yml" ]]; then
+      fixture_allowlist='^[0-9]+:[[:space:]]*PGURL: postgresql://postgres:postgres@127\.0\.0\.1:5432/balcao_(academic|actions)_test[[:space:]]*$'
+    fi
+    if git show "${commit}:${path}" | LC_ALL=C grep -nE "$SECRET_REGEX" | LC_ALL=C grep -Ev "$ALLOWLIST_REGEX" | LC_ALL=C grep -Ev "$fixture_allowlist" >"$tmpdir/current.txt"; then
       while read -r line; do
         printf '%s:%s:%s\n' "$commit" "$path" "$line" >>"$matches_file"
       done <"$tmpdir/current.txt"
