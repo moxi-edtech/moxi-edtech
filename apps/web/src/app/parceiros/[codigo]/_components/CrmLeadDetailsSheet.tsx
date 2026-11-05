@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { PROPOSAL_LEVEL_OPTIONS, PROPOSAL_PRESET_OPTIONS } from "@/lib/crm/commercial-proposal";
 import {
   CRM_STAGES,
   CRM_PLAN_OPTIONS,
@@ -15,19 +16,7 @@ import {
   type PartnerLoginMember,
 } from "./partner-dashboard-model";
 
-export const CRM_PRESET_OPTIONS = [
-  { value: "pre_escolar", label: "Educação Pré-Escolar" },
-  { value: "primario_generico", label: "Ensino Primário (1ª à 6ª Classe)" },
-  { value: "esg_ciclo1", label: "Iº Ciclo do Ensino Secundário (7ª à 9ª Classe)" },
-  { value: "esg_puniv_cfb", label: "PUNIV - Ciências Físicas e Biológicas" },
-  { value: "esg_puniv_cej", label: "PUNIV - Ciências Económicas e Jurídicas" },
-  { value: "esg_puniv_cch", label: "PUNIV - Ciências Sociais e Humanas" },
-  { value: "tec_informatica", label: "Técnico de Informática" },
-  { value: "tec_contabilidade", label: "Técnico de Contabilidade" },
-  { value: "tec_informatica_gestao", label: "Técnico de Informática de Gestão" },
-  { value: "tec_saude_enfermagem", label: "Técnico de Enfermagem" },
-  { value: "tec_saude_analises", label: "Técnico de Análises Clínicas" },
-];
+export const CRM_PRESET_OPTIONS = PROPOSAL_PRESET_OPTIONS;
 
 type CrmLeadDetailsSheetProps = {
   open: boolean;
@@ -354,12 +343,7 @@ export function CrmLeadDetailsSheet({
                 <div className="space-y-2 pt-2 border-t border-zinc-200/40">
                   <label className="text-[9px] font-semibold uppercase text-zinc-400 tracking-wider">Níveis de Ensino</label>
                   <div className="grid grid-cols-2 gap-2 mt-1">
-                    {[
-                      { value: "primario", label: "Ensino Primário" },
-                      { value: "ciclo1", label: "Iº Ciclo Secundário" },
-                      { value: "puniv", label: "PUNIV / Geral" },
-                      { value: "tecnico", label: "Ensino Técnico" },
-                    ].map((nivel) => {
+                    {PROPOSAL_LEVEL_OPTIONS.map((nivel) => {
                       const isChecked = (commercialNiveisEnsino || []).includes(nivel.value);
                       return (
                         <label key={nivel.value} className="flex items-center gap-2 text-xs text-zinc-700 cursor-pointer">
@@ -511,25 +495,27 @@ export function CrmLeadDetailsSheet({
                             trial: String(commercialTrialDays),
                             taxa: String(commercialTaxaAtivacao),
                             mensalidade: String(commercialMensalidade),
-                            preset: commercialPreset,
                             niveis: (commercialNiveisEnsino || []).join(","),
-                            sec_nome: commercialSecretaria?.nome || "",
-                            sec_email: commercialSecretaria?.email || "",
-                            sec_tel: commercialSecretaria?.telefone || "",
-                            fin_nome: commercialFinanceiro?.nome || "",
-                            fin_email: commercialFinanceiro?.email || "",
-                            fin_tel: commercialFinanceiro?.telefone || "",
-                            ped_nome: commercialPedagogico?.nome || "",
-                            ped_email: commercialPedagogico?.email || "",
-                            ped_tel: commercialPedagogico?.telefone || "",
+                            preset: commercialPreset,
+                            secretaria_nome: commercialSecretaria?.nome || "",
+                            secretaria_email: commercialSecretaria?.email || "",
+                            secretaria_telefone: commercialSecretaria?.telefone || "",
+                            financeiro_nome: commercialFinanceiro?.nome || "",
+                            financeiro_email: commercialFinanceiro?.email || "",
+                            financeiro_telefone: commercialFinanceiro?.telefone || "",
+                            pedagogico_nome: commercialPedagogico?.nome || "",
+                            pedagogico_email: commercialPedagogico?.email || "",
+                            pedagogico_telefone: commercialPedagogico?.telefone || "",
                           });
-                          window.open(`/crm/proposta/preview?${params.toString()}`, '_blank');
+                          // O fragmento não é enviado ao servidor em pedidos HTTP nem em Referer.
+                          // Continua a ser uma prévia local, não um contrato assinado.
+                          window.open(`/crm/proposta/preview#${params.toString()}`, "_blank", "noopener,noreferrer");
                         }}
                         variant="outline"
                         className="h-9 rounded-lg border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 flex items-center gap-1"
                       >
                         <ExternalLink size={11} className="text-zinc-400" />
-                        Preview
+                        Pré-visualizar proposta
                       </Button>
                       {selectedCrmLead.proposal_file_name ? (
                         <Button
