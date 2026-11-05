@@ -1,17 +1,35 @@
 {
   "contrato_versao": "2.0.0",
-  "run_id": "510adf7d-65a8-4abf-8050-486309cda21e",
-  "run_timestamp": "2026-11-05T15:08:08.306099+00:00",
-  "commit": "73203326085a1728e51bb2a72f870d37ea7a07f4",
-  "veredito": "FAIL",
+  "run_id": "79e5f5a4-79a8-461f-a127-6878b19f883f",
+  "run_timestamp": "2026-11-05T15:30:38.023844+00:00",
+  "commit": "1b0ce246f4bb682cf657992a6df93eb22aeef0ef",
+  "veredito": "WARN",
   "can_merge": false,
   "summary": {
-    "critical": 2,
+    "critical": 0,
     "high": 0,
     "medium": 0,
     "regressions": 0
   },
-  "findings": [
+  "findings": [],
+  "exceptions_applied": [],
+  "scope": "Revalidação dirigida SEC-001 e SEC-002 após mudanças locais na PR #322. Não é certificação global de todas as rotas, RLS ou performance (AGENTS.md).",
+  "resolved_previous": [
+    "SEC-003-23f395db: copiar-eventos contém filtro de escola nas queries de anos e calendário; não repetido como finding.",
+    "SEC-001: /api/teste-rpc/route.ts removido; nenhum endpoint de diagnóstico exposto.",
+    "SEC-002: exclusão em cascata eliminada; endpoint autenticado usa RLS, verifica escola/permissão e arquiva turma com status_validacao=arquivado."
+  ],
+  "regression_comparison": "REPORT_SCAN_LAST_PASS.json ausente; sem baseline certificável.",
+  "validation": {
+    "new_security_contract_tests": "5/5 passed",
+    "academic_regression_tests": "148/148 passed",
+    "local_targeted_scan": "0 critical; 6 LOW. Scanner parcial não cobre AGENTS.md integral",
+    "typescript": "passed (pnpm --filter web exec tsc --noEmit --incremental false)",
+    "lint": "0 errors; 24 warnings preexisting in StructureMarketplace.tsx",
+    "hosted_authenticated_AUT006": "pending",
+    "global_performance_certification": "pending, can_merge=false"
+  },
+  "historical_resolved_findings": [
     {
       "id": "SEC-001-b2dab294",
       "regra": "SEC-001",
@@ -38,22 +56,5 @@
       "bloqueante": true,
       "excecao": null
     }
-  ],
-  "exceptions_applied": [],
-  "scope": "Revalidação dirigida dos três bloqueios globais do relatório anterior; não certifica todas as rotas ou o gate de performance. Os dois ficheiros bloqueantes são idênticos a origin/main 89cdaca62.",
-  "resolved_previous": [
-    "SEC-003-23f395db: copiar-eventos contém filtro de escola nas queries de anos e calendário; não repetido como finding."
-  ],
-  "regression_comparison": "REPORT_SCAN_LAST_PASS.json ausente; sem REGRESSION reportável.",
-  "validation": {
-    "local_academic_tests": 148,
-    "react_postgres_integration": "passed with explicit auth/transport/Storage fixtures",
-    "local_atomic_audit_scenarios": "passed",
-    "secret_scanner_tests": 11,
-    "global_types": "passed",
-    "latest_scope_lint": "passed, five production files, no warnings",
-    "github_pr": "https://github.com/moxi-edtech/moxi-edtech/pull/322",
-    "ci": "in_progress at report time",
-    "hosted_authenticated_AUT006": "pending"
-  }
+  ]
 }

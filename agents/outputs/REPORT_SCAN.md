@@ -1,3 +1,25 @@
+# KLASSE — Revalidação dirigida de segurança PR #322
+
+Run: 2026-11-05T15:30:38.023844+00:00 | Fonte: 1b0ce246f | Resultado: WARN | can_merge: false
+
+## Corrigido no código desta PR
+- **SEC-001:** eliminada a rota pública de diagnóstico `/api/teste-rpc`, que expunha dados, URL de Supabase e stack traces.
+- **SEC-002:** eliminadas service role e exclusões em cascata. A API utiliza a sessão, resolução de escola, autorização de gestão e RLS, e arquiva a turma sem apagar matrículas, notas ou frequência. Um trigger auditável existente regista o UPDATE atomicamente.
+- SEC-003 da cópia de calendário já estava corrigido.
+
+## Verificações
+- 5 testes de contrato de segurança e 148 regressões académicas aprovados.
+- O scanner local genérico reportou 0 CRITICAL, 0 HIGH, 6 LOW, mas NÃO certifica todas as regras AGENTS.md.
+- Endpoints hospedados e efeito real com auth/RLS ainda não homologados; três migrações da PR continuam por aplicar.
+- A matriz global de MVs, cache, REFRESH CONCURRENTLY e as rotas obrigatórias ainda não estão certificadas.
+
+## Gate
+**WARN / can_merge=false** — não tratar os testes dirigidos como aprovação de merge.
+
+---
+
+## Relatório anterior (histórico, sem certificação vigente)
+
 # KLASSE — Codex Scan Report
 contrato_versao: 2.0.0
 run_timestamp: 2026-11-05T15:08:08.306099+00:00
