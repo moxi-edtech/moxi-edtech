@@ -13,6 +13,52 @@ const canonicalStatuses = new Set<RaaAcademicStatus>([
   "pendente_formula",
 ])
 
+type CanonicalRaaLink = {
+  id: string
+  disciplina_id: string
+  carga_horaria_semanal: number | null
+  classificacao: string | null
+}
+
+/** inherit_school leaves avaliacao_disciplina_id empty by design.
+ * Resolve the subject from the curriculum matrix, as the grade writer does.
+ * Missing curriculum links must fail closed, never skip assessed subjects.
+ */
+async function loadCanonicalRaaLinks(
+  supabase: any, escolaId: string, turmaId: string,
+): Promise<CanonicalRaaLink[]> {
+  const { data: links, error: linksError } = await supabase
+    .from("turma_disciplinas")
+    .select("id,avaliacao_disciplina_id,curso_matriz_id,carga_horaria_semanal,classificacao,conta_para_media_med")
+    .eq("escola_id", escolaId).eq("turma_id", turmaId).limit(150)
+  if (linksError) throw new Error("Não foi possível carregar as disciplinas da turma.")
+  const matrixIds = Array.from(new Set((links ?? [])
+    .map((row: any) => row.curso_matriz_id).filter(Boolean))) as string[]
+  const { data: matrices, error: matricesError } = matrixIds.length
+    ? await supabase.from("curso_matriz")
+        .select("id,disciplina_id,avaliacao_disciplina_id,conta_para_media_med")
+        .eq("escola_id", escolaId).in("id", matrixIds)
+    : { data: [], error: null }
+  if (matricesError) throw new Error("Não foi possível confirmar a matriz curricular.")
+  const matrixById = new Map<string, any>((matrices ?? [])
+    .map((row: any) => [row.id, row]))
+  return (links ?? []).flatMap((row: any): CanonicalRaaLink[] => {
+    const matrix = matrixById.get(row.curso_matriz_id)
+    if (!matrix) throw new Error("Matriz curricular em falta para a disciplina.")
+    if (row.conta_para_media_med === false ||
+        (row.conta_para_media_med == null && matrix.conta_para_media_med === false)) return []
+    const canonicalId = row.avaliacao_disciplina_id ??
+      matrix.avaliacao_disciplina_id ?? matrix.disciplina_id
+    if (!canonicalId) throw new Error("Disciplina curricular sem identificador canónico.")
+    return [{
+      id: row.id,
+      disciplina_id: String(canonicalId),
+      carga_horaria_semanal: row.carga_horaria_semanal,
+      classificacao: row.classificacao,
+    }]
+  })
+}
+
 export class RaaProgressionUnavailableError extends Error {
   readonly code: "RAA_PROGRESSION_POLICY_NOT_CONFIGURED" | "ACADEMIC_RESULT_INVALID"
 
@@ -171,7 +217,7 @@ export async function resolveDecretoDecision(
   const codigoRegime = decretoRegime(regime)
   if (!codigoRegime || disciplinaIds.length === 0) return null
 
-  const [canonical, { data: links, error: linksError }, { data: catalogo, error: catalogoError }] = await Promise.all([
+  const [canonical, linkRows, { data: catalogo, error: catalogoError }] = await Promise.all([
     Promise.all(disciplinaIds.map(async (disciplinaId) => {
       const { data, error } = await supabase.rpc("resolve_estado_resultado", {
         p_matricula_id: matriculaId, p_disciplina_id: disciplinaId,
@@ -179,12 +225,7 @@ export async function resolveDecretoDecision(
       if (error || !data?.status || !canonicalStatuses.has(data.status)) throw new Error("Não foi possível confirmar o resultado oficial da disciplina.")
       return { disciplina_id: disciplinaId, nota_final: data.nota ?? null, status: data.status }
     })),
-    supabase
-      .from("turma_disciplinas")
-      .select("id, avaliacao_disciplina_id, carga_horaria_semanal, classificacao, curso_matriz_id")
-      .eq("escola_id", escolaId)
-      .eq("turma_id", turmaId)
-      .in("avaliacao_disciplina_id", disciplinaIds),
+    loadCanonicalRaaLinks(supabase, escolaId, turmaId),
     supabase
       .from("disciplinas_catalogo")
       .select("id, nome, area, carga_horaria_semana")
@@ -192,9 +233,7 @@ export async function resolveDecretoDecision(
       .in("id", disciplinaIds),
   ])
 
-  if (linksError || catalogoError) throw new Error("Não foi possível confirmar o currículo da matrícula.")
-
-  const linkRows = (links ?? []) as Array<{ id?: string; avaliacao_disciplina_id?: string; carga_horaria_semanal?: number | null; classificacao?: string | null; curso_matriz_id?: string | null }>
+  if (catalogoError) throw new Error("Não foi possível confirmar o currículo da matrícula.")
   const { data: absences, error: absencesError } = await supabase.rpc("raa_faltas_atuais", {
     p_escola_id: escolaId, p_matricula_id: matriculaId,
   })
@@ -202,7 +241,7 @@ export async function resolveDecretoDecision(
   const faltasPorTurmaDisciplina = new Map<string, number[]>(Object.entries(absences.faltas_por_turma_disciplina))
 
   const pautaById = new Map<string, any>(canonical.map((row: any) => [String(row.disciplina_id), row]))
-  const linkById = new Map<string, any>(linkRows.map((row) => [String(row.avaliacao_disciplina_id), row]))
+  const linkById = new Map<string, CanonicalRaaLink>(linkRows.map((row) => [row.disciplina_id, row]))
   const catalogoById = new Map<string, any>((catalogo ?? []).map((row: any) => [String(row.id), row]))
   const disciplinas = disciplinaIds.map((id) => {
     const row = pautaById.get(id)
@@ -313,14 +352,8 @@ export async function resolveRaaProgressionForMatricula(
     throw databaseError
   }
 
-  const [{ data: links, error: linksError }, { data: config, error: configError }] = await Promise.all([
-    supabase
-      .from("turma_disciplinas")
-      .select("avaliacao_disciplina_id")
-      .eq("escola_id", escolaId)
-      .eq("turma_id", matricula.turma_id)
-      .not("avaliacao_disciplina_id", "is", null)
-      .limit(100),
+  const [links, { data: config, error: configError }] = await Promise.all([
+    loadCanonicalRaaLinks(supabase, escolaId, matricula.turma_id),
     supabase
       .from("configuracoes_pedagogicas")
       .select("permitir_inscricao_condicional, permitir_progressao_com_recurso")
@@ -328,7 +361,6 @@ export async function resolveRaaProgressionForMatricula(
       .maybeSingle(),
   ])
 
-  if (linksError) throw new Error("Não foi possível carregar as disciplinas da turma.")
   if (configError || !config) {
     throw new RaaProgressionUnavailableError(
       "RAA_PROGRESSION_POLICY_NOT_CONFIGURED",
@@ -336,7 +368,7 @@ export async function resolveRaaProgressionForMatricula(
     )
   }
 
-  const disciplinaIds = Array.from(new Set((links ?? []).map((row: any) => row.avaliacao_disciplina_id).filter(Boolean))) as string[]
+  const disciplinaIds = Array.from(new Set(links.map((row) => row.disciplina_id)))
   const canonicalResults = await Promise.all(
     disciplinaIds.map(async (disciplinaId) => {
       const { data, error } = await supabase.rpc("resolve_estado_resultado", {
