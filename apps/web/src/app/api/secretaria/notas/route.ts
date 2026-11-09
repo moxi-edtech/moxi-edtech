@@ -1,4 +1,4 @@
-import { authorizeBalcaoAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
+import { authorizeBalcaoAcademicWrite, authorizeBalcaoPendingAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { gradePeriodState } from '@/lib/academico/grade-period-context'
@@ -51,8 +51,11 @@ export async function POST(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
-    const canWritePendingGrades = await authorizeBalcaoAcademicWrite(supabase, escolaId, user.id)
-    const authz = canWritePendingGrades
+    const [canWriteAcademic, canWritePendingGrades] = await Promise.all([
+      authorizeBalcaoAcademicWrite(supabase, escolaId, user.id),
+      authorizeBalcaoPendingAcademicWrite(supabase, escolaId, user.id),
+    ])
+    const authz = canWriteAcademic
       ? { allowed: true } : await authorizeTurmasManage(supabase, escolaId, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
 
