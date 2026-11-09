@@ -28,7 +28,14 @@ AS $func$
        AND y.ativo=false AND y.ano=m.ano_letivo
        AND NOT EXISTS (
          SELECT 1 FROM public.historico_anos h
-         WHERE h.escola_id=m.escola_id AND h.matricula_id=m.id
+         WHERE h.escola_id=m.escola_id
+           AND (h.matricula_id=m.id OR
+             (h.aluno_id=m.aluno_id AND h.ano_letivo=m.ano_letivo))
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM public.historico_snapshot_locks l
+         WHERE l.escola_id=m.escola_id AND l.matricula_id=m.id
+           AND l.ano_letivo_id=m.session_id AND l.status='fechado'
        )
    );
 $func$;
@@ -723,8 +730,14 @@ BEGIN
      USING ERRCODE='23514';
  END IF;
  IF EXISTS (SELECT 1 FROM public.historico_anos h
-            WHERE h.escola_id=p_escola_id AND h.matricula_id=v_m.id) THEN
-   RAISE EXCEPTION 'HISTORIC_GRADE_LEGAL_LOCKED: histórico já publicado' USING ERRCODE='23514';
+            WHERE h.escola_id=p_escola_id
+              AND (h.matricula_id=v_m.id OR
+                (h.aluno_id=v_m.aluno_id AND h.ano_letivo=v_m.ano_letivo)))
+    OR EXISTS (SELECT 1 FROM public.historico_snapshot_locks l
+               WHERE l.escola_id=p_escola_id AND l.matricula_id=v_m.id
+                 AND l.ano_letivo_id=v_m.session_id AND l.status='fechado') THEN
+   RAISE EXCEPTION 'HISTORIC_GRADE_LEGAL_LOCKED: histórico ou lock legal já publicado'
+     USING ERRCODE='23514';
  END IF;
  SELECT cm.disciplina_id INTO v_disciplina_id
  FROM public.turma_disciplinas td
