@@ -30,7 +30,11 @@ LANGUAGE sql STABLE AS $$SELECT regime FROM public.turmas WHERE id=p_turma_id$$;
 CREATE TABLE public.matriculas(id uuid PRIMARY KEY,escola_id uuid,aluno_id uuid,turma_id uuid,
  session_id uuid,ano_letivo int,status text,ativo boolean,status_fecho_origem text,
  created_at timestamptz DEFAULT now());
-CREATE TABLE public.historico_anos(id uuid PRIMARY KEY,escola_id uuid,matricula_id uuid,resultado_final text);
+CREATE TABLE public.historico_anos(
+ id uuid PRIMARY KEY,escola_id uuid,matricula_id uuid,aluno_id uuid,ano_letivo int,
+ resultado_final text);
+CREATE TABLE public.historico_snapshot_locks(
+ escola_id uuid,matricula_id uuid,ano_letivo_id uuid,status text);
 CREATE TABLE public.curso_matriz(id uuid PRIMARY KEY,escola_id uuid,disciplina_id uuid);
 CREATE TABLE public.turma_disciplinas(id uuid PRIMARY KEY,escola_id uuid,turma_id uuid,
  curso_matriz_id uuid,professor_id uuid,periodos_ativos int[]);
