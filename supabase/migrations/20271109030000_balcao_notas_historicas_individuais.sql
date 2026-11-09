@@ -24,7 +24,7 @@ AS $func$
      WHERE x.escola_id=p_escola_id AND x.matricula_id=p_matricula_id
        AND x.actor_id=p_actor_id AND x.expires_at>now()
        AND m.status='pendente' AND m.ativo=false
-       AND m.status_fecho_origem IS NOT DISTINCT FROM 'manual'
+       AND (m.status_fecho_origem IS NULL OR m.status_fecho_origem='manual')
        AND y.ativo=false AND y.ano=m.ano_letivo
        AND NOT EXISTS (
          SELECT 1 FROM public.historico_anos h
@@ -712,7 +712,7 @@ BEGIN
  FOR UPDATE OF m;
  IF NOT FOUND OR v_m.year_active=true
     OR v_m.status<>'pendente' OR v_m.ativo IS DISTINCT FROM false
-    OR v_m.status_fecho_origem IS DISTINCT FROM 'manual' THEN
+    OR NOT (v_m.status_fecho_origem IS NULL OR v_m.status_fecho_origem='manual') THEN
    RAISE EXCEPTION 'HISTORIC_GRADE_SOURCE_INVALID: origem pendente do ano encerrado obrigatória'
      USING ERRCODE='23514';
  END IF;
