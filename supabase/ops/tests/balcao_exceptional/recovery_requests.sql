@@ -2,6 +2,20 @@
 -- Extends the minimal fixture with the history status used by the request RPC.
 ALTER TABLE public.historico_anos ADD COLUMN IF NOT EXISTS snapshot_status text;
 GRANT SELECT ON public.escola_users TO authenticated;
+CREATE TYPE public.evento_tipo AS ENUM ('sistema.funcionalidade');
+CREATE TYPE public.notificacao_prioridade AS ENUM ('info','aviso','urgente');
+CREATE TABLE public.eventos (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),escola_id uuid,tipo public.evento_tipo,
+ payload jsonb,actor_id uuid,actor_role text,entidade_tipo text,entidade_id uuid
+);
+CREATE TABLE public.notificacoes (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),escola_id uuid,evento_id uuid,
+ destinatario_id uuid,titulo text,corpo text,prioridade public.notificacao_prioridade,
+ action_label text,action_url text,
+ UNIQUE(evento_id,destinatario_id)
+);
+INSERT INTO public.escola_users(escola_id,user_id,papel) VALUES
+ ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000004','admin_escola');
 \ir ../../../migrations/20271109040000_balcao_historic_recovery_requests.sql
 
 BEGIN;
@@ -31,6 +45,11 @@ BEGIN
  END IF;
  IF (SELECT count(*) FROM public.notas)<>0 THEN
    RAISE EXCEPTION 'FAIL: request fabricated grades';
+ END IF;
+ IF (SELECT count(*) FROM public.notificacoes
+     WHERE destinatario_id='10000000-0000-4000-8000-000000000004'
+       AND action_url='/secretaria/balcao?alunoId=50000000-0000-4000-8000-000000000001')<>1 THEN
+   RAISE EXCEPTION 'FAIL: school director did not receive one actionable notification';
  END IF;
  IF has_function_privilege('anon','public.solicitar_regularizacao_historica_balcao(uuid,uuid,text)','EXECUTE') THEN
    RAISE EXCEPTION 'FAIL: anonymous can request';
