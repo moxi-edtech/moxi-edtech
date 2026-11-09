@@ -241,7 +241,7 @@ export function BalcaoHistoricalAcademicRecovery({
         <>
           <p className="text-xs text-muted-foreground">Ano de origem: {snapshot.origem_ano} · Regularização individual</p>
           {snapshot.permite_notas_historicas && (stage === "decisao" || stage === "notas") && (
-            <button type="button" onClick={onLancarNotaHistorica}
+            <button type="button" onClick={() => onLancarNotaHistorica()}
               className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white">
               Lançar notas do ano anterior
             </button>
