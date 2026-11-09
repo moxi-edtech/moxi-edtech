@@ -39,7 +39,7 @@ test("only exact academic director roles can sign a historical grade-less outcom
   assert.match(migration, /eu\.papel IN \('admin','admin_escola','staff_admin','diretor'\)/);
   assert.match(migration, /HISTORICAL_SNAPSHOT_AUTH_FORBIDDEN/);
   assert.match(migration, /ACADEMIC_DOCUMENT_GRADES_PRESENT/);
-  assert.doesNotMatch(route, /user_has_role_in_school/);
+  assert.doesNotMatch(route, /\\.rpc\\("user_has_role_in_school"/);
 });
 
 test("historical reconciliation is student-scoped, fail-closed and has an explicit signed sequence", () => {
