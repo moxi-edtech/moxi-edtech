@@ -483,7 +483,7 @@ export async function GET(request: Request) {
         "tem_autorizacao_rematricula_fora_prazo" as any, {
           p_escola_id: escolaId,
           p_matricula_origem_id: matriculaOrigem.id,
-          p_ano_destino_id: targetAnoLetivo.id,
+          p_ano_destino_id: targetAnoLetivoId,
         } as any,
       );
       if (authError) throw authError;
