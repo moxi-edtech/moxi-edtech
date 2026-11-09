@@ -72,11 +72,20 @@ export async function POST(req: Request) {
         error: 'Apenas a secretaria académica ou a direção pode regularizar notas de anos anteriores.' }, { status: 403 })
     }
 
-    const academicContext = await resolveAcademicYearContext(supabase, {
-      userId: user.id,
-      requestedAcademicYearId: body.ano_letivo_id,
-      operation: historical ? 'READ' : 'WRITE',
-    })
+    // The normal academic writer keeps the canonical WRITE gate.
+    // Historical edits resolve source entities READ-only and are authorized
+    // separately by the exact one-student audited PostgreSQL RPC.
+    const academicContext = historical
+      ? await resolveAcademicYearContext(supabase, {
+          userId: user.id,
+          requestedAcademicYearId: body.ano_letivo_id,
+          operation: 'READ',
+        })
+      : await resolveAcademicYearContext(supabase, {
+          userId: user.id,
+          requestedAcademicYearId: body.ano_letivo_id,
+          operation: 'WRITE',
+        })
     await assertAcademicYearEntity(supabase, {
       table: 'turmas',
       entityId: body.turma_id,
