@@ -32,6 +32,9 @@ async function loadCanonicalRaaLinks(
     .select("id,avaliacao_disciplina_id,curso_matriz_id,carga_horaria_semanal,classificacao,conta_para_media_med")
     .eq("escola_id", escolaId).eq("turma_id", turmaId).limit(150)
   if (linksError) throw new Error("Não foi possível carregar as disciplinas da turma.")
+  if ((links ?? []).length >= 150) {
+    throw new Error("A turma excede o limite de disciplinas verificáveis; revise o currículo antes da decisão.")
+  }
   const matrixIds = Array.from(new Set((links ?? [])
     .map((row: any) => row.curso_matriz_id).filter(Boolean))) as string[]
   const { data: matrices, error: matricesError } = matrixIds.length
@@ -44,11 +47,14 @@ async function loadCanonicalRaaLinks(
     .map((row: any) => [row.id, row]))
   return (links ?? []).flatMap((row: any): CanonicalRaaLink[] => {
     const matrix = matrixById.get(row.curso_matriz_id)
-    if (!matrix) throw new Error("Matriz curricular em falta para a disciplina.")
+    // Legacy links with an explicit assessment subject do not require a matrix.
+    if (!matrix && !row.avaliacao_disciplina_id) {
+      throw new Error("Matriz curricular em falta para a disciplina.")
+    }
     if (row.conta_para_media_med === false ||
-        (row.conta_para_media_med == null && matrix.conta_para_media_med === false)) return []
+        (row.conta_para_media_med == null && matrix?.conta_para_media_med === false)) return []
     const canonicalId = row.avaliacao_disciplina_id ??
-      matrix.avaliacao_disciplina_id ?? matrix.disciplina_id
+      matrix?.avaliacao_disciplina_id ?? matrix?.disciplina_id
     if (!canonicalId) throw new Error("Disciplina curricular sem identificador canónico.")
     return [{
       id: row.id,
