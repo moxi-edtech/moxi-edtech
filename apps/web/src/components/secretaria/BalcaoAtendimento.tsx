@@ -28,6 +28,7 @@ import { createClient } from "@/lib/supabaseClient";
 import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem, type TurmaOption } from "@/hooks/useRematriculaBalcao";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
 import { RaaBalcaoResolutionPanel } from "@/components/secretaria/RaaBalcaoResolutionPanel";
+import { BalcaoHistoricalAcademicRecovery } from "@/components/secretaria/BalcaoHistoricalAcademicRecovery";
 import { raaBalcaoEffectiveStatus, raaBalcaoPlan } from "@/lib/rematricula/raa-balcao-resolution";
 import { RematriculaWorkspaceHeader, RematriculaAcademicDestination, type RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
 import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
@@ -1307,6 +1308,7 @@ function Catalogo({
   rematriculaCanWriteGrades,
   rematriculaReconciliation,
   rematriculaDestinoTurma,
+  rematriculaCohort,
   raaMatriculaId,
   raaAlunoId,
   onLancarNota,
@@ -1351,6 +1353,7 @@ function Catalogo({
   rematriculaCanWriteGrades: boolean;
   rematriculaReconciliation?: { can_link_existing_enrollment?: boolean } | null;
   rematriculaDestinoTurma: TurmaOption | null;
+  rematriculaCohort: { codigo: string; nome: string; modo: string } | null;
   raaMatriculaId: string | null;
   raaAlunoId: string | null;
   onLancarNota: (trimestre?: 1 | 2 | 3 | null, disciplinaId?: string | null) => void;
@@ -1409,6 +1412,10 @@ function Catalogo({
     raaBalcaoEffectiveStatus(rematriculaState, rematriculaAcademic),
   );
   const showAcademicResolution = !paidExistingDestination || Boolean(academicBlocker);
+  const historicalRecovery = rematriculaCohort?.modo === "virada_assistida_sem_notas" &&
+    rematriculaOrigemAno !== null && rematriculaContextYear !== null &&
+    rematriculaOrigemAno < rematriculaContextYear.ano &&
+    Boolean(raaMatriculaId);
   const selectedCount = selectedItemKeys.size;
   const [raaProgress, setRaaProgress] = useState<RaaProgressSnapshot | null>(null);
   // A progress snapshot must never leak into the next selected student's case.
@@ -1667,7 +1674,7 @@ function Catalogo({
             {view === "reenrollment" && showAcademicResolution && rematriculaCanWriteGrades &&
               rematriculaAcademic?.source?.turma_id &&
               rematriculaAcademic?.source?.ano_letivo_id &&
-              ["ativo", "ativa", "active"].includes((rematriculaAcademic.source.status ?? "").toLowerCase()) &&
+              ["ativo", "ativa", "active", "pendente"].includes((rematriculaAcademic.source.status ?? "").toLowerCase()) &&
               rematriculaAcademic?.regime?.escala !== "qualitativa" && (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
                   <div>
@@ -1679,8 +1686,15 @@ function Catalogo({
                   </button>
                 </div>
               )}
-            {/* All seven non-standard academic cases are resolved in-place. */}
-            {showAcademicResolution && raaMatriculaId && raaAlunoId ? (
+            {historicalRecovery && raaMatriculaId && (
+              <BalcaoHistoricalAcademicRecovery
+                key={raaMatriculaId}
+                matriculaId={raaMatriculaId}
+                onRecheck={onRefreshRematricula}
+              />
+            )}
+            {/* Ordinary RAA actions never reopen a legally closed source year. */}
+            {showAcademicResolution && !historicalRecovery && raaMatriculaId && raaAlunoId ? (
               <RaaBalcaoResolutionPanel
                 key={raaMatriculaId}
                 status={rematriculaState}
@@ -3163,6 +3177,7 @@ export default function BalcaoAtendimento({
                   rematriculaCanWriteGrades={rematricula.canWriteGrades}
                   rematriculaReconciliation={rematricula.reconciliation}
                   rematriculaDestinoTurma={rematricula.destinoTurma ?? null}
+                  rematriculaCohort={rematricula.cohort}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
                   onLancarNota={(trimestre, disciplinaId) => {
