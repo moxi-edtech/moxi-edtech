@@ -30,22 +30,23 @@ for (const migration of migrations.filter((file) => file > finalName)) {
   const source = readFileSync(join(dir, migration), "utf8");
   if (migration === historicBridge) {
     const mandatory = [
-      /CREATE OR REPLACE FUNCTION public\\.finalizar_origem_academica/,
-      /CREATE OR REPLACE FUNCTION public\\.ratificar_resultado_historico_escola/,
-      /CREATE OR REPLACE FUNCTION public\\.resolve_raa_progression_for_matricula/,
-      /CREATE OR REPLACE FUNCTION public\\.historico_set_snapshot_state/,
-      /ACADEMIC_DOCUMENT_GRADES_PRESENT/,
-      /HISTORICAL_SNAPSHOT_AUTH_FORBIDDEN/,
-      /'ratificacao',true/,
-      /'papel_autorizado'/,
-      /h\\.snapshot_status='fechado'/,
-      /sl\\.historico_ano_id=h\\.id/,
-      /'fonte_decisao','historico_documental_ratificado'/,
-      /public\\.current_tenant_escola_id\\(\\)/,
-      /REVOKE ALL ON FUNCTION public\\.finalizar_origem_academica/,
+      "CREATE OR REPLACE FUNCTION public.finalizar_origem_academica",
+      "CREATE OR REPLACE FUNCTION public.ratificar_resultado_historico_escola",
+      "CREATE OR REPLACE FUNCTION public.resolve_raa_progression_for_matricula",
+      "CREATE OR REPLACE FUNCTION public.historico_set_snapshot_state",
+      "ACADEMIC_DOCUMENT_GRADES_PRESENT",
+      "HISTORICAL_SNAPSHOT_AUTH_FORBIDDEN",
+      "'ratificacao',true",
+      "'papel_autorizado'",
+      "h.snapshot_status='fechado'",
+      "sl.historico_ano_id=h.id",
+      "'fonte_decisao','historico_documental_ratificado'",
+      "public.current_tenant_escola_id()",
+      "REVOKE ALL ON FUNCTION public.finalizar_origem_academica",
     ];
     for (const contract of mandatory) {
-      assert.match(source, contract, "Historical lifecycle bridge missing reviewed guard: " + contract);
+      assert.ok(source.includes(contract),
+        "Historical lifecycle bridge missing reviewed guard: " + contract);
     }
     for (const file of [
       "supabase/ops/tests/raa_historico/fixture.sql",
