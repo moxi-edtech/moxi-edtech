@@ -207,11 +207,20 @@ export async function POST(request: Request) {
         Number(academicContext.anoLetivoLabel.slice(0, 4)),
       );
       if (!rematriculaWindow.open) {
-        return NextResponse.json({
-          ok: false,
-          error: "O período de rematrícula não está aberto para este ano letivo.",
-          code: "REMATRICULA_WINDOW_CLOSED",
-        }, { status: 409 });
+        const { data: authorized, error: permissionError } = await supabase.rpc(
+          "tem_autorizacao_rematricula_fora_prazo" as any, {
+            p_escola_id: escolaId,
+            p_matricula_origem_id: body.matricula_id,
+            p_ano_destino_id: body.ano_letivo_id,
+          } as any,
+        );
+        if (permissionError || authorized !== true) {
+          return NextResponse.json({
+            ok: false,
+            error: "Período encerrado. Registe o motivo e autorize esta rematrícula no Balcão.",
+            code: "REMATRICULA_WINDOW_CLOSED",
+          }, { status: 409 });
+        }
       }
     } catch (error) {
       return errorResponse(error);
