@@ -82,14 +82,32 @@ async function registrarHistoricoOrigem(
     matriculaOrigemId: string;
     conditional: boolean;
     disciplinaIdsPendentes: string[];
+    resultadoEsperado: "aprovado" | "reprovado";
   },
 ) {
-  const { error } = await supabase.rpc("finalizar_origem_academica", {
+  // The ratified legal history has already closed the academic source.
+  // Never call the RAA closure RPC on it again: doing so would attempt to
+  // reopen a frozen snapshot, or overwrite a documentary decision.
+  const { data: history, error: lookupError } = await supabase
+    .from("historico_anos")
+    .select("matricula_id,ano_letivo_id,resultado_final,snapshot_status")
+    .eq("escola_id", input.escolaId)
+    .eq("matricula_id", input.matriculaOrigemId)
+    .maybeSingle();
+  if (lookupError) return { ok: false as const, error: lookupError.message };
+  if (history?.snapshot_status === "fechado") {
+    if (history.matricula_id !== input.matriculaOrigemId ||
+        history.resultado_final !== input.resultadoEsperado) {
+      return { ok: false as const, error: "Histórico legal fechado com resultado divergente." };
+    }
+    return { ok: true as const };
+  }
+  const { data, error } = await supabase.rpc("finalizar_origem_academica", {
     p_escola_id: input.escolaId,
     p_matricula_id: input.matriculaOrigemId,
     // historico_anos mantém o contrato físico legado; a nuance condicional
     // vive no snapshot RAA + lifecycle das dependências académicas.
-    p_resultado_final: "aprovado",
+    p_resultado_final: input.resultadoEsperado,
     p_fonte: "raa",
     p_motivo: input.conditional
       ? "Progressão condicional autorizada pelo RAA"
@@ -99,8 +117,8 @@ async function registrarHistoricoOrigem(
       : null,
   });
 
-  if (error) {
-    return { ok: false as const, error: error.message };
+  if (error || data?.ok === false) {
+    return { ok: false as const, error: error?.message ?? data?.error ?? "Falha no registo académico da origem." };
   }
   return { ok: true as const };
 }
@@ -169,6 +187,7 @@ export async function POST(request: Request) {
     }
 
     let academicContext;
+    let requiresLateAuthorization = false;
     try {
       academicContext = await resolveAcademicYearContext(supabase as any, {
         userId: user.id,
@@ -188,13 +207,7 @@ export async function POST(request: Request) {
         escolaId,
         Number(academicContext.anoLetivoLabel.slice(0, 4)),
       );
-      if (!rematriculaWindow.open) {
-        return NextResponse.json({
-          ok: false,
-          error: "O período de rematrícula não está aberto para este ano letivo.",
-          code: "REMATRICULA_WINDOW_CLOSED",
-        }, { status: 409 });
-      }
+      requiresLateAuthorization = !rematriculaWindow.open;
     } catch (error) {
       return errorResponse(error);
     }
@@ -261,6 +274,24 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: "Não foi possível identificar a matrícula anterior para esta operação.", code: "REMATRICULA_SOURCE_INVALID" }, { status: 409 });
       }
       matricula = matriculaAnterior;
+    }
+    // Use the canonical ORIGIN enrollment, not a potentially selected
+    // destination enrollment, to validate the exact out-of-window permit.
+    if (requiresLateAuthorization) {
+      const { data: authorized, error: permissionError } = await supabase.rpc(
+        "tem_autorizacao_rematricula_fora_prazo" as any, {
+          p_escola_id: escolaId,
+          p_matricula_origem_id: matricula.id,
+          p_ano_destino_id: academicContext.anoLetivoId,
+        } as any,
+      );
+      if (permissionError || authorized !== true) {
+        return NextResponse.json({
+          ok: false,
+          error: "Período encerrado. Registe o motivo e autorize esta rematrícula no Balcão.",
+          code: "REMATRICULA_WINDOW_CLOSED",
+        }, { status: 409 });
+      }
     }
     if (await isSourceYearStillInEarlyTrimester(supabase, escolaId, matricula)) {
       return NextResponse.json({
@@ -649,6 +680,7 @@ export async function POST(request: Request) {
           matriculaOrigemId: origemMatriculaId,
           conditional: academicEligibility.mode === "conditional",
           disciplinaIdsPendentes: academicEligibility.disciplinaIdsPendentes,
+          resultadoEsperado: academicEligibility.mode === "repeat" ? "reprovado" : "aprovado",
         });
         if (!historico.ok) {
           return NextResponse.json({
@@ -1067,6 +1099,7 @@ export async function POST(request: Request) {
         matriculaOrigemId: origemMatriculaId,
         conditional: academicEligibility.mode === "conditional",
         disciplinaIdsPendentes: academicEligibility.disciplinaIdsPendentes,
+        resultadoEsperado: academicEligibility.mode === "repeat" ? "reprovado" : "aprovado",
       });
       if (!historico.ok) {
         const contextoAtual = {

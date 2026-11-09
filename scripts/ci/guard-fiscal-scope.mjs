@@ -74,6 +74,13 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271031003000_bulk_turma_transfer_atomic.sql",
   "20271031004000_disable_legacy_transferir_matricula.sql",
   "20271031005000_guard_secondary_academic_transfer_evidence.sql",
+  // PR #323: strictly scoped documentary RAA bridge (no fiscal writes).
+  // Both are reviewed by the dedicated lifecycle guard and disposable PG tests.
+  "20271109000000_raa_pendentes_via_academica.sql",
+  "20271109010000_raa_historico_documental_ratificado.sql",
+  "20271109015000_balcao_rematricula_fora_prazo_individual.sql",
+  "20271109030000_balcao_notas_historicas_individuais.sql",
+  "20271109020000_rematricula_preserva_origem_legal_fechada.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;

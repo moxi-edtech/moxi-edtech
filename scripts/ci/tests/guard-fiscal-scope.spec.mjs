@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 48);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 53);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -237,4 +237,24 @@ test("allows documentary comments but blocks actual fiscal activation SQL", () =
   const migration = "supabase/migrations/20271029100000_lifecycle_reconciliation_evidence_guards.sql";
   assert.deepEqual(checkFiscalAndSchemaScope([migration], () => "-- Fiscal functions unchanged\nCREATE VIEW academic_history AS SELECT 1;"), []);
   assert.ok(checkFiscalAndSchemaScope([migration], () => "-- academic reconciliation\nCREATE TABLE public.fiscal_documentos (id uuid);").length > 0);
+});
+
+test("documentary RAA migrations are individually allowed but cannot activate fiscal scope", () => {
+  const approved = [
+    "20271109000000_raa_pendentes_via_academica.sql",
+    "20271109010000_raa_historico_documental_ratificado.sql",
+    "20271109015000_balcao_rematricula_fora_prazo_individual.sql",
+    "20271109030000_balcao_notas_historicas_individuais.sql",
+    "20271109020000_rematricula_preserva_origem_legal_fechada.sql",
+  ];
+  for (const name of approved) {
+    const path = "supabase/migrations/" + name;
+    assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name), name);
+    assert.deepEqual(checkFiscalAndSchemaScope([path]), [], name);
+    assert.match(checkFiscalAndSchemaScope([path], () =>
+      "CREATE TABLE public.fiscal_ativacao (id uuid);")[0] ?? "", /Fiscal\/AGT activation marker/);
+  }
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271109010001_unreviewed_history.sql",
+  ])[0] ?? "", /Unapproved database migration/);
 });

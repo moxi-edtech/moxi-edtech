@@ -1,4 +1,4 @@
-import { authorizeBalcaoAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
+import { authorizeBalcaoAcademicWrite, authorizeBalcaoPendingAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { gradePeriodState } from '@/lib/academico/grade-period-context'
@@ -20,6 +20,10 @@ const Body = z.object({
   trimestre: z.number().int().min(1).max(3),
   tipo_avaliacao: z.string().trim().min(2).max(40).optional(),
   is_isento: z.boolean().optional().default(false),
+  // Extraordinary correction for the selected previous-year enrollment only.
+  // The reason is written atomically with the real grade in PostgreSQL.
+  historical_matricula_id: z.string().uuid().optional(),
+  historical_motivo: z.string().trim().min(12).max(500).optional(),
   notas: z.array(z.object({
     aluno_id: z.string().uuid(),
     // Não aceitar notas em branco: public.notas.valor é NOT NULL.
@@ -44,6 +48,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: parsed.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
     }
     const body = parsed.data
+    const historical = Boolean(body.historical_matricula_id)
+    if (historical && (!body.historical_motivo || body.notas.length !== 1 || body.is_isento)) {
+      return NextResponse.json({ ok: false, code: 'HISTORIC_GRADE_REASON_REQUIRED',
+        error: 'A correção do ano anterior exige um aluno e um motivo auditável.' }, { status: 400 })
+    }
     if (!body.disciplina_id || !body.turma_disciplina_id) {
       return NextResponse.json({ ok: false, error: 'Disciplina inválida para lançamento.' }, { status: 400 })
     }
@@ -51,15 +60,32 @@ export async function POST(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
-    const authz = await authorizeBalcaoAcademicWrite(supabase, escolaId, user.id)
+    const [canWriteAcademic, canWritePendingGrades] = await Promise.all([
+      authorizeBalcaoAcademicWrite(supabase, escolaId, user.id),
+      authorizeBalcaoPendingAcademicWrite(supabase, escolaId, user.id),
+    ])
+    const authz = canWriteAcademic
       ? { allowed: true } : await authorizeTurmasManage(supabase, escolaId, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
+    if (historical && !canWritePendingGrades) {
+      return NextResponse.json({ ok: false, code: 'HISTORIC_GRADE_FORBIDDEN',
+        error: 'Apenas a secretaria académica ou a direção pode regularizar notas de anos anteriores.' }, { status: 403 })
+    }
 
-    const academicContext = await resolveAcademicYearContext(supabase, {
-      userId: user.id,
-      requestedAcademicYearId: body.ano_letivo_id,
-      operation: 'WRITE',
-    })
+    // The normal academic writer keeps the canonical WRITE gate.
+    // Historical edits resolve source entities READ-only and are authorized
+    // separately by the exact one-student audited PostgreSQL RPC.
+    const academicContext = historical
+      ? await resolveAcademicYearContext(supabase, {
+          userId: user.id,
+          requestedAcademicYearId: body.ano_letivo_id,
+          operation: 'READ',
+        })
+      : await resolveAcademicYearContext(supabase, {
+          userId: user.id,
+          requestedAcademicYearId: body.ano_letivo_id,
+          operation: 'WRITE',
+        })
     await assertAcademicYearEntity(supabase, {
       table: 'turmas',
       entityId: body.turma_id,
@@ -121,29 +147,65 @@ export async function POST(req: Request) {
           : 'As datas do trimestre precisam de ser confirmadas.',
       }, { status: 409 })
     }
+    // Closed-year writes are never delegated to the normal batch RPC.
+    // The special RPC checks the exact enrollment, year, school, actor, status,
+    // real grade and audited reason in one database transaction.
+    if (historical) {
+      const { data: original, error: originalError } = await supabase
+        .from('matriculas')
+        .select('id,aluno_id,session_id,turma_id')
+        .eq('escola_id', escolaId)
+        .eq('id', body.historical_matricula_id!)
+        .eq('turma_id', body.turma_id)
+        .eq('session_id', academicContext.anoLetivoId)
+        .eq('aluno_id', body.notas[0].aluno_id)
+        .maybeSingle()
+      if (originalError) throw originalError
+      if (!original) return NextResponse.json({ ok: false, error: 'Matrícula histórica não encontrada nesta escola e turma.' }, { status: 404 })
+      const { data, error } = await supabase.rpc('lancar_nota_historica_individual' as any, {
+        p_escola_id: escolaId,
+        p_matricula_id: original.id,
+        p_turma_disciplina_id: body.turma_disciplina_id,
+        p_trimestre: body.trimestre,
+        p_tipo_avaliacao: body.tipo_avaliacao || 'MAC',
+        p_valor: body.notas[0].valor,
+        p_motivo: body.historical_motivo!,
+      } as any)
+      if (error || (data as any)?.ok !== true) {
+        return NextResponse.json({ ok: false, code: error?.code ?? 'HISTORIC_GRADE_WRITE_FAILED',
+          error: error?.message ?? 'Não foi possível registar a nota histórica.' }, { status: error?.code === '42501' ? 403 : 409 })
+      }
+      return NextResponse.json({ ok: true, data }, { headers: { 'Cache-Control': 'no-store' } })
+    }
+
     // Past/locked writes are adjudicated by the database trigger and its
     // formally authorized pauta-reopening exception; never bypass it here.
 
     const alunoIds = Array.from(new Set(body.notas.map((nota) => nota.aluno_id)))
     const { data: activeMatriculas, error: matriculasError } = await supabase
       .from('matriculas')
-      .select('aluno_id')
+      .select('aluno_id,ativo,status,status_fecho_origem')
       .eq('escola_id', escolaId)
       .eq('turma_id', body.turma_id)
       .eq('session_id', academicContext.anoLetivoId)
-      .eq('ativo', true)
       .in('aluno_id', alunoIds)
 
     if (matriculasError) {
       return NextResponse.json({ ok: false, error: matriculasError.message }, { status: 400 })
     }
 
-    const activeAlunoIds = new Set((activeMatriculas ?? []).map((row) => String(row.aluno_id)))
-    const invalidAlunoId = alunoIds.find((alunoId) => !activeAlunoIds.has(alunoId))
+    // A origem pendente pode receber notas pela secretaria quando ainda não
+    // foi encerrada; professores continuam limitados às matrículas ativas.
+    const eligibleAlunoIds = new Set((activeMatriculas ?? [])
+      .filter((row) => row.ativo === true ||
+        (canWritePendingGrades && row.ativo === false &&
+          row.status === 'pendente' && row.status_fecho_origem == null))
+      .map((row) => String(row.aluno_id)))
+    const invalidAlunoId = alunoIds.find((alunoId) => !eligibleAlunoIds.has(alunoId))
     if (invalidAlunoId) {
       return NextResponse.json({
         ok: false,
-        error: 'Um ou mais alunos não possuem matrícula ativa nesta turma e ano letivo.',
+        error: 'Um ou mais alunos não possuem matrícula ativa ou pendente elegível nesta turma e ano letivo.',
         code: 'ACTIVE_ENROLLMENT_REQUIRED',
       }, { status: 409 })
     }

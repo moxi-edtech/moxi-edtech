@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { authorizeBalcaoPendingAcademicWrite } from '@/lib/academico/authorize-balcao-academic-write'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import {
   buildComponentesAtivos,
@@ -49,6 +50,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
+
+    // Pending enrolments are shown only for a specific student, never in a
+    // full-class grade grid, and only to academic staff.
+    const canPreviewPending = Boolean(parsed.data.alunoId) &&
+      await authorizeBalcaoPendingAcademicWrite(supabase as any, escolaId, user.id)
 
     const academicContext = parsed.data.anoLetivoId
       ? await resolveAcademicYearContext(supabase as any, {
@@ -187,7 +193,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (academicContext) {
       matriculasQuery = matriculasQuery.eq('session_id', academicContext.anoLetivoId)
       if (academicContext.mode === 'CURRENT') {
-        matriculasQuery = matriculasQuery.eq('ativo', true)
+        matriculasQuery = canPreviewPending
+          ? matriculasQuery.or('ativo.eq.true,and(status.eq.pendente,ativo.eq.false,status_fecho_origem.is.null)')
+          : matriculasQuery.eq('ativo', true)
       } else {
         matriculasQuery = matriculasQuery.in('status', [
           ...ACTIVE_MATRICULA_STATUSES,
@@ -195,6 +203,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           'reprovado',
           'encerrada',
           'transferido',
+          ...(canPreviewPending ? ['pendente'] : []),
         ])
       }
     } else {

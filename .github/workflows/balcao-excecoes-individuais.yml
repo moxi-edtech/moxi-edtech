@@ -1,0 +1,45 @@
+name: Balcao Exceptional Academic and Renewal Permissions
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20271109015000_balcao_rematricula_fora_prazo_individual.sql"
+      - "supabase/migrations/20271109020000_rematricula_preserva_origem_legal_fechada.sql"
+      - "supabase/migrations/20271109030000_balcao_notas_historicas_individuais.sql"
+      - "supabase/ops/tests/balcao_exceptional/**"
+      - "apps/web/src/app/api/secretaria/balcao/rematriculas/**"
+      - "apps/web/src/app/api/secretaria/notas/route.ts"
+      - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/src/components/secretaria/EnrollmentPostActionModal.tsx"
+      - "apps/web/src/components/secretaria/BalcaoLateRematriculaAuthorization.tsx"
+      - "apps/web/tests/unit/balcao-excecoes-individuais.spec.ts"
+      - ".github/workflows/balcao-excecoes-individuais.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  exceptional-balcao:
+    name: Individual historical grade and late reenrollment (PostgreSQL 17)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: balcao_exception_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d balcao_exception_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/balcao_exception_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install isolated database fixtures
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/fixture.sql
+      - name: Regression: grades, audit, tenant and closed enrollment window
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/regression.sql
