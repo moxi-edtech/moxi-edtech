@@ -24,6 +24,8 @@ DECLARE
   v_decisao_origem text;
   v_retido boolean := false;
   v_actor_id uuid := public.safe_auth_uid();
+  v_late_authorization uuid;
+  v_late_reason text;
   v_jwt_role text := coalesce(
     nullif(current_setting('request.jwt.claim.role', true), ''),
     nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'
@@ -80,6 +82,25 @@ BEGIN
   FOR UPDATE;
   IF v_origem.id IS NULL THEN RAISE EXCEPTION 'Matrícula de origem não encontrada'; END IF;
   IF v_origem.ano_letivo IS NULL OR v_origem.ano_letivo >= v_ano_destino THEN RAISE EXCEPTION 'Matrícula de origem não é de um ano anterior'; END IF;
+
+  -- Verified under the same transaction as the payment and destination.
+  -- The closed-window exception never changes the global opening dates.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.rematricula_janelas j
+    WHERE j.escola_id=p_escola_id AND j.ano_letivo=v_ano_destino
+      AND j.ativa=true AND now() BETWEEN j.data_inicio AND j.data_fim
+  ) THEN
+    SELECT a.id,a.motivo INTO v_late_authorization,v_late_reason
+    FROM public.balcao_late_reenroll_authorizations a
+    WHERE a.escola_id=p_escola_id AND a.matricula_origem_id=v_origem.id
+      AND a.ano_destino_id=p_ano_letivo_id AND a.actor_id=v_actor_id
+      AND a.used_at IS NULL AND a.expires_at>now()
+    FOR UPDATE;
+    IF v_late_authorization IS NULL THEN
+      RAISE EXCEPTION 'REMATRICULA_WINDOW_CLOSED: autorização individual auditada necessária'
+        USING ERRCODE='23514';
+    END IF;
+  END IF;
 
   SELECT m.* INTO v_destino
   FROM public.matriculas m
@@ -228,6 +249,23 @@ BEGIN
     -- The verified and legally locked documentary origin is immutable.
     -- The canonical RAA bridge already validated tenant, result and signature.
     AND COALESCE(v_raa->>'fonte_decisao','') <> 'historico_documental_ratificado';
+
+  -- Consumption, enrollment and evidence journal must be one atomic commit.
+  IF v_late_authorization IS NOT NULL THEN
+    UPDATE public.balcao_late_reenroll_authorizations
+       SET used_at=now()
+     WHERE id=v_late_authorization AND used_at IS NULL
+       AND actor_id=v_actor_id AND expires_at>now();
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'REMATRICULA_LATE_AUTH_ALREADY_USED' USING ERRCODE='23514';
+    END IF;
+    INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details)
+    VALUES(p_escola_id,v_actor_id,'BALCAO_REMATRICULA_FORA_PRAZO_CONCLUIDA',
+      'matriculas',v_origem.id::text,'secretaria',
+      jsonb_build_object('autorizacao_id',v_late_authorization,
+        'motivo',v_late_reason,'matricula_destino_id',v_destino.id,
+        'ano_destino_id',p_ano_letivo_id,'pedido_id',p_pedido_id));
+  END IF;
 
   UPDATE public.servico_pedidos
      SET status = 'granted', matricula_id = v_destino.id,
