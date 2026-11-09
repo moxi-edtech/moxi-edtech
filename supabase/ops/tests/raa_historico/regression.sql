@@ -89,6 +89,20 @@ BEGIN
  END IF;
 END $before_ratification$;
 
+-- A director cannot bypass documentary ratification via the generic
+-- historical snapshot RPC after registering a grade-less decision.
+DO $unratified_close$
+BEGIN
+ BEGIN
+  PERFORM public.historico_set_snapshot_state(
+   '20000000-0000-4000-8000-000000000001',
+   ARRAY['60000000-0000-4000-8000-000000000001'::uuid],
+   '30000000-0000-4000-8000-000000000001',
+   'fechado','Tentativa de fecho sem ratificação não autorizada',NULL);
+  RAISE EXCEPTION 'FAIL: director bypassed missing ratification';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+END $unratified_close$;
+
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',false);
 DO $finance_ratification$
 BEGIN
