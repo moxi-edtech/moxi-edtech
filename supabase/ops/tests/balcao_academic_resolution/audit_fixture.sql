@@ -36,6 +36,8 @@ GRANT SELECT,UPDATE ON public.aluno_falta_justificacoes TO authenticated;
 -- Metadata consumed by the real TypeScript RAA adapter (empty attendance is
 -- intentional for the numerical exam pathway; EJA uses official summaries).
 ALTER TABLE public.turma_disciplinas ADD COLUMN carga_horaria_semanal numeric DEFAULT 2;
+-- Align this disposable fixture with the current curriculum contract.
+ALTER TABLE public.turma_disciplinas ADD COLUMN conta_para_media_med boolean DEFAULT true;
 ALTER TABLE public.disciplinas_catalogo ADD COLUMN carga_horaria_semana numeric DEFAULT 2;
 CREATE TABLE public.aulas(id uuid,escola_id uuid,turma_disciplina_id uuid);
 CREATE TABLE public.frequencias(id uuid,escola_id uuid,matricula_id uuid,aula_id uuid,periodo_letivo_id uuid,status text);
