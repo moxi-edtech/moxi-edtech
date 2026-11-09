@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, FileCheck2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 
-type HistoricStage = "decisao" | "ratificacao" | "fecho" | "concluido" | "indisponivel";
+type HistoricStage = "decisao" | "notas" | "ratificacao" | "fecho" | "concluido" | "indisponivel";
 type HistoricalResult = "aprovado" | "reprovado" | "concluido";
 type Snapshot = {
   ok: true;
@@ -91,7 +91,7 @@ export function BalcaoHistoricalAcademicRecovery({
   };
 
   const stage = snapshot?.estado;
-  const canAct = Boolean(snapshot?.permite_escrita && stage && !["indisponivel", "concluido"].includes(stage));
+  const canAct = Boolean(snapshot?.permite_escrita && stage && !["indisponivel", "concluido", "notas"].includes(stage));
   const selectedResult = stage === "decisao" ? result : snapshot?.resultado_confirmado;
   const documentReady = stage === "fecho"
     ? reason.trim().length >= 12
@@ -140,7 +140,7 @@ export function BalcaoHistoricalAcademicRecovery({
     } finally { setSaving(false); }
   };
 
-  const step = stage === "decisao" ? 1 : stage === "ratificacao" ? 2 : stage === "fecho" ? 3 : 4;
+  const step = ["decisao", "notas"].includes(stage ?? "") ? 1 : stage === "ratificacao" ? 2 : stage === "fecho" ? 3 : 4;
   return (
     <section aria-label="Regularização académica histórica" className="mb-4 space-y-3 rounded-xl border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -159,7 +159,7 @@ export function BalcaoHistoricalAcademicRecovery({
       {snapshot && (
         <>
           <p className="text-xs text-muted-foreground">Ano de origem: {snapshot.origem_ano} · Regularização individual</p>
-          {snapshot.permite_notas_historicas && stage === "decisao" && (
+          {snapshot.permite_notas_historicas && (stage === "decisao" || stage === "notas") && (
             <button type="button" onClick={onLancarNotaHistorica}
               className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white">
               Lançar notas do ano anterior
@@ -171,6 +171,11 @@ export function BalcaoHistoricalAcademicRecovery({
           {stage === "concluido" ? (
             <p role="status" className="flex items-center gap-2 text-sm font-medium text-emerald">
               <CheckCircle2 className="h-4 w-4" /> Decisão ratificada e histórico fechado: {snapshot.resultado_confirmado ? labels[snapshot.resultado_confirmado] : "Resultado por confirmar"}.
+            </p>
+          ) : stage === "notas" ? (
+            <p role="status" className="text-sm text-foreground">
+              Notas do ano anterior em lançamento. Continue pelas disciplinas pendentes e verifique a situação académica.
+              A decisão documental deixa de estar disponível quando já existem notas reais.
             </p>
           ) : stage === "indisponivel" ? (
             <p role="status" className="text-sm text-muted-foreground">
