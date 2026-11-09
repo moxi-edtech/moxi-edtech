@@ -268,6 +268,13 @@ export function BalcaoHistoricalAcademicRecovery({
                 </ul>
               </details>
             )}
+          {snapshot.pedido_regularizacao && snapshot.permite_escrita && stage !== "concluido" && (
+            <div role="status" className="space-y-1 rounded-xl border border-amber/40 bg-amber/5 p-3">
+              <p className="text-xs font-semibold text-foreground">Pedido académico recebido neste processo</p>
+              <p className="text-xs text-muted-foreground">{snapshot.pedido_regularizacao.motivo}</p>
+              <p className="text-xs text-muted-foreground">Registe ou valide o resultado comprovado usando a ação abaixo.</p>
+            </div>
+          )}
           {needsIntervention && (
             <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-3">
               <p className="text-sm font-semibold text-foreground">Pedir regularização à direção</p>
