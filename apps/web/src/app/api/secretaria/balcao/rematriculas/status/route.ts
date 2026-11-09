@@ -154,7 +154,7 @@ export async function GET(request: Request) {
     // ── A origem pode ser do ano anterior; a matrícula destino só nasce após o pagamento ──
     let { data: matriculaOrigem } = await supabase
       .from("matriculas")
-      .select("id, ano_letivo, status, turma_id, session_id")
+      .select("id, ano_letivo, status, turma_id, session_id, status_fecho_origem")
       .eq("escola_id", escolaId)
       .eq("id", matricula_id)
       .eq("aluno_id", aluno_id)
@@ -175,7 +175,7 @@ export async function GET(request: Request) {
     if (Number(matriculaOrigem.ano_letivo ?? 0) >= targetAnoLetivoAno) {
       const { data: matriculaAnteriorPorAno } = await supabase
         .from("matriculas")
-        .select("id, ano_letivo, status, turma_id, session_id")
+        .select("id, ano_letivo, status, turma_id, session_id, status_fecho_origem")
         .eq("escola_id", escolaId)
         .eq("aluno_id", aluno_id)
         .lt("ano_letivo", targetAnoLetivoAno)
@@ -202,7 +202,7 @@ export async function GET(request: Request) {
       const { data: matriculaAnteriorPorCohort } = cohortOrigin?.matricula_origem_id
         ? await supabase
             .from("matriculas")
-            .select("id, ano_letivo, status, turma_id, session_id")
+            .select("id, ano_letivo, status, turma_id, session_id, status_fecho_origem")
             .eq("escola_id", escolaId)
             .eq("aluno_id", aluno_id)
             .eq("id", cohortOrigin.matricula_origem_id)
@@ -322,13 +322,22 @@ export async function GET(request: Request) {
     const academicTimelineAno = academicTimeline ? timelineMatricula.ano_letivo : null;
 
     const trimestreInicialEmCurso = await isSourceYearStillInEarlyTrimester(supabase, escolaId, matriculaOrigem);
-    const canWriteSourceGrades = matriculaOrigem.status === "pendente"
+    const { data: originYear, error: originYearError } = await supabase
+      .from("anos_letivos").select("ativo")
+      .eq("escola_id", escolaId).eq("id", matriculaOrigem.session_id).maybeSingle();
+    if (originYearError) throw originYearError;
+    // A legally closed source is read-only regardless of staff permissions.
+    const sourceWritable = originYear?.ativo === true &&
+      matriculaOrigem.status_fecho_origem == null &&
+      ["ativo", "ativa", "active", "pendente"].includes(matriculaOrigem.status.toLowerCase());
+    const canWriteSourceGrades = sourceWritable && (matriculaOrigem.status === "pendente"
       ? await authorizeBalcaoPendingAcademicWrite(supabase, escolaId, user.id)
-      : await authorizeBalcaoAcademicWrite(supabase, escolaId, user.id);
-    const gradePermissions = canWriteSourceGrades
-      ? { allowed: true } : matriculaOrigem.status === "pendente"
-        ? { allowed: false } : await authorizeTurmasManage(supabase, escolaId, user.id)
-        .catch(() => ({ allowed: false }));
+      : await authorizeBalcaoAcademicWrite(supabase, escolaId, user.id));
+    const gradePermissions = !sourceWritable
+      ? { allowed: false } : canWriteSourceGrades
+        ? { allowed: true } : matriculaOrigem.status === "pendente"
+          ? { allowed: false } : await authorizeTurmasManage(supabase, escolaId, user.id)
+          .catch(() => ({ allowed: false }));
 
     // A matrícula destino criada pela promoção é a matrícula operacional do
     // aluno. No Balcão ela é preservada: a operação seguinte cobra somente a
