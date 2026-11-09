@@ -133,6 +133,7 @@ CREATE FUNCTION public.confirmar_matricula_core(uuid,int,uuid,uuid)
   RETURN 2026001;
  END $$;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
+GRANT SELECT ON public.matriculas,public.servico_pedidos TO authenticated;
 INSERT INTO public.classes VALUES
 ('c0000000-0000-4000-8000-000000000001',7,'7ª classe'),
 ('c0000000-0000-4000-8000-000000000002',8,'8ª classe');
