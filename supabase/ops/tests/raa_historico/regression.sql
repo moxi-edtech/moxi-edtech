@@ -149,10 +149,14 @@ BEGIN
 END $approved$;
 
 -- A grade discovered later blocks documentary override until review.
+-- Fixture grade injection is never performed as a school actor.
+RESET ROLE;
 INSERT INTO public.notas(escola_id,matricula_id) VALUES (
  '20000000-0000-4000-8000-000000000001',
  '60000000-0000-4000-8000-000000000001'
 );
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',false);
 DO $existing_grades$
 BEGIN
  IF (public.resolve_raa_progression_for_matricula(
@@ -161,7 +165,10 @@ BEGIN
    RAISE EXCEPTION 'FAIL: documented bypass over actual grades';
  END IF;
 END $existing_grades$;
+RESET ROLE;
 DELETE FROM public.notas;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',false);
 
 -- Source with a retained result must repeat the same grade.
 SELECT public.finalizar_origem_academica(
