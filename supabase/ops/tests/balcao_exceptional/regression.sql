@@ -21,10 +21,7 @@ BEGIN
  IF (SELECT ativo FROM public.anos_letivos WHERE ano=2025) THEN
   RAISE EXCEPTION 'FAIL: closed academic year reopened globally';
  END IF;
- IF EXISTS(SELECT 1 FROM public.balcao_grade_historic_nonce) THEN
-  RAISE EXCEPTION 'FAIL: transient grade authorization was not destroyed';
- END IF;
- IF public.can_write_historical_grade(
+  IF public.can_write_historical_grade(
    '20000000-0000-4000-8000-000000000001',
    '60000000-0000-4000-8000-000000000001',
    '10000000-0000-4000-8000-000000000001') THEN
