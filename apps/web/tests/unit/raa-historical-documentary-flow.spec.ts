@@ -10,6 +10,7 @@ const ui = read("../../src/components/secretaria/BalcaoHistoricalAcademicRecover
 const balc = read("../../src/components/secretaria/BalcaoAtendimento.tsx");
 const status = read("../../src/app/api/secretaria/balcao/rematriculas/status/route.ts");
 const rematricula = read("../../src/app/api/secretaria/balcao/rematriculas/route.ts");
+const finalizacao = read("../../../../supabase/migrations/20271109020000_rematricula_preserva_origem_legal_fechada.sql");
 
 test("a coorte alone never authorizes reenrollment without signed documentary evidence", () => {
   assert.match(migration, /h\.snapshot_status='fechado'/);
@@ -64,4 +65,11 @@ test("closed origin remains read-only; no global reactivation of 2025 or synthet
   assert.match(balc, /rematriculaCohort\?\.modo === "virada_assistida_sem_notas"/);
   assert.doesNotMatch(migration, /UPDATE public\.anos_letivos SET ativo\s*=\s*true/i);
   assert.doesNotMatch(migration, /INSERT INTO public\.notas/i);
+});
+
+test("destination activation keeps previously locked origin unchanged", () => {
+  assert.match(finalizacao, /CREATE OR REPLACE FUNCTION public\.finalizar_rematricula_balcao/);
+  assert.match(finalizacao, /AND COALESCE\(v_raa->>'fonte_decisao',''\) <> 'historico_documental_ratificado'/);
+  assert.match(finalizacao, /AND v_decision IN \('transitou','retido'\)/);
+  assert.match(finalizacao, /'REMATRICULA_ACADEMIC_BLOCKED'/);
 });
