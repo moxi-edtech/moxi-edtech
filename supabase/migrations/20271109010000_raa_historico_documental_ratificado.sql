@@ -308,7 +308,6 @@ BEGIN
         SELECT 1 FROM public.historico_snapshot_locks sl
         WHERE sl.escola_id=p_escola_id AND sl.matricula_id=m.id
           AND sl.ano_letivo_id=m.session_id AND sl.status='fechado'
-          AND sl.historico_ano_id IS NOT DISTINCT FROM h.id
       )
       AND EXISTS (
         SELECT 1 FROM public.academic_transition_cohort_members cm
