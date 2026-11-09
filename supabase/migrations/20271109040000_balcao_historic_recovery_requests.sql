@@ -46,6 +46,7 @@ DECLARE
   v_actor uuid := auth.uid();
   v_aluno uuid;
   v_request_id uuid;
+  v_event_id uuid;
   v_created boolean := false;
 BEGIN
   IF v_actor IS NULL OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id THEN
@@ -97,11 +98,41 @@ BEGIN
 
   IF v_request_id IS NOT NULL THEN
     v_created := true;
+    -- Use the existing school notification channel. The generic event type
+    -- does not broadcast to unrelated roles (trg_despachar_evento ignores it).
+    INSERT INTO public.eventos(
+      escola_id,tipo,payload,actor_id,actor_role,entidade_tipo,entidade_id)
+    VALUES (
+      p_escola_id,'sistema.funcionalidade'::public.evento_tipo,
+      jsonb_build_object('subtipo','pedido_regularizacao_historica',
+                         'pedido_id',v_request_id,'matricula_id',p_matricula_id,
+                         'aluno_id',v_aluno),
+      v_actor,
+      (SELECT eu.papel FROM public.escola_users eu
+       WHERE eu.escola_id=p_escola_id AND eu.user_id=v_actor LIMIT 1),
+      'matriculas',p_matricula_id
+    )
+    RETURNING id INTO v_event_id;
+    INSERT INTO public.notificacoes (
+      escola_id,evento_id,destinatario_id,titulo,corpo,prioridade,
+      action_label,action_url
+    )
+    SELECT p_escola_id,v_event_id,eu.user_id,
+      'Regularização académica pendente',
+      'Há um pedido de regularização de origem deste aluno: ' || left(btrim(p_motivo),280),
+      'aviso'::public.notificacao_prioridade,
+      'Abrir ficha no Balcão',
+      '/secretaria/balcao?alunoId=' || v_aluno::text
+    FROM public.escola_users eu
+    WHERE eu.escola_id=p_escola_id AND eu.user_id<>v_actor
+      AND eu.papel IN ('admin','admin_escola','staff_admin','diretor')
+    ON CONFLICT (evento_id,destinatario_id) DO NOTHING;
+
     INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details)
     VALUES (p_escola_id,v_actor,'BALCAO_REGULARIZACAO_ACADEMICA_SOLICITADA',
       'matriculas',p_matricula_id::text,'secretaria',
       jsonb_build_object('pedido_id',v_request_id,'aluno_id',v_aluno,
-                         'motivo',btrim(p_motivo)));
+                         'motivo',btrim(p_motivo),'evento_id',v_event_id));
   ELSE
     SELECT id INTO v_request_id FROM public.balcao_historic_recovery_requests
     WHERE escola_id=p_escola_id AND matricula_id=p_matricula_id
