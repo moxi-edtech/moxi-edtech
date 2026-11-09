@@ -82,14 +82,32 @@ async function registrarHistoricoOrigem(
     matriculaOrigemId: string;
     conditional: boolean;
     disciplinaIdsPendentes: string[];
+    resultadoEsperado: "aprovado" | "reprovado";
   },
 ) {
-  const { error } = await supabase.rpc("finalizar_origem_academica", {
+  // The ratified legal history has already closed the academic source.
+  // Never call the RAA closure RPC on it again: doing so would attempt to
+  // reopen a frozen snapshot, or overwrite a documentary decision.
+  const { data: history, error: lookupError } = await supabase
+    .from("historico_anos")
+    .select("matricula_id,ano_letivo_id,resultado_final,snapshot_status")
+    .eq("escola_id", input.escolaId)
+    .eq("matricula_id", input.matriculaOrigemId)
+    .maybeSingle();
+  if (lookupError) return { ok: false as const, error: lookupError.message };
+  if (history?.snapshot_status === "fechado") {
+    if (history.matricula_id !== input.matriculaOrigemId ||
+        history.resultado_final !== input.resultadoEsperado) {
+      return { ok: false as const, error: "Histórico legal fechado com resultado divergente." };
+    }
+    return { ok: true as const };
+  }
+  const { data, error } = await supabase.rpc("finalizar_origem_academica", {
     p_escola_id: input.escolaId,
     p_matricula_id: input.matriculaOrigemId,
     // historico_anos mantém o contrato físico legado; a nuance condicional
     // vive no snapshot RAA + lifecycle das dependências académicas.
-    p_resultado_final: "aprovado",
+    p_resultado_final: input.resultadoEsperado,
     p_fonte: "raa",
     p_motivo: input.conditional
       ? "Progressão condicional autorizada pelo RAA"
@@ -99,8 +117,8 @@ async function registrarHistoricoOrigem(
       : null,
   });
 
-  if (error) {
-    return { ok: false as const, error: error.message };
+  if (error || data?.ok === false) {
+    return { ok: false as const, error: error?.message ?? data?.error ?? "Falha no registo académico da origem." };
   }
   return { ok: true as const };
 }
@@ -649,6 +667,7 @@ export async function POST(request: Request) {
           matriculaOrigemId: origemMatriculaId,
           conditional: academicEligibility.mode === "conditional",
           disciplinaIdsPendentes: academicEligibility.disciplinaIdsPendentes,
+          resultadoEsperado: academicEligibility.mode === "repeat" ? "reprovado" : "aprovado",
         });
         if (!historico.ok) {
           return NextResponse.json({
@@ -1067,6 +1086,7 @@ export async function POST(request: Request) {
         matriculaOrigemId: origemMatriculaId,
         conditional: academicEligibility.mode === "conditional",
         disciplinaIdsPendentes: academicEligibility.disciplinaIdsPendentes,
+        resultadoEsperado: academicEligibility.mode === "repeat" ? "reprovado" : "aprovado",
       });
       if (!historico.ok) {
         const contextoAtual = {
