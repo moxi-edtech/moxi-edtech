@@ -143,10 +143,14 @@ export async function GET(request: Request) {
         ((history.snapshot_status === "fechado" &&
           (!hasRatification || lock?.status !== "fechado")) ||
          !["aberto", "fechado"].includes(String(history.snapshot_status ?? ""))));
+      const temNotasLancadas = (existingNotes ?? []).length > 0;
       const eligible = Boolean(cohort && isClosedSourceYear &&
-        (existingNotes ?? []).length === 0 && sourceConsistent && !legalConflict);
+        sourceConsistent && !legalConflict);
+      // Once real grades start being entered, keep the grade editor available
+      // for the remaining subjects. Documentary ratification is no longer
+      // possible and must never replace actual grade calculation.
       const state = !eligible ? "indisponivel"
-        : !history?.resultado_final ? "decisao"
+        : !history?.resultado_final ? (temNotasLancadas ? "notas" : "decisao")
         : !hasRatification ? "ratificacao"
         : history.snapshot_status === "aberto" ? "fecho"
         : "concluido";
@@ -156,13 +160,13 @@ export async function GET(request: Request) {
         permite_notas_historicas: Boolean(permiteNotasHistoricas) &&
           origin.status === "pendente" && academicYear?.ativo === false &&
           (origin.status_fecho_origem === "manual" || origin.status_fecho_origem == null) &&
-          (existingNotes ?? []).length >= 0 && !history &&
+          !history &&
           (Number(origin.ano_letivo) + 1 === new Date().getFullYear() || Boolean(cohort)),
         origem_ano: origin.ano_letivo,
         origem_status: origin.status, resultado_confirmado: history?.resultado_final ?? null,
         coorte: cohort?.record?.codigo ?? null,
         mensagem: !isClosedSourceYear ? "Este ano de origem ainda não está encerrado; utilize a avaliação académica normal."
-          : (existingNotes ?? []).length > 0 ? "Existem notas nesta matrícula. Não é permitido substituir a apuração por uma decisão documental."
+          : temNotasLancadas ? "Continue a lançar as notas reais em falta. A decisão será calculada pelo RAA."
           : !cohort ? "Não existe uma coorte histórica assistida válida para esta origem."
           : legalConflict ? "O histórico foi fechado ou reaberto sem a ratificação necessária; a direção deve rever o fecho legal."
           : !eligible ? "Há divergência na origem ou no histórico; a direção deve rever o vínculo."
