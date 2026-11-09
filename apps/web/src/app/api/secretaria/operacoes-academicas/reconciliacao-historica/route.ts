@@ -74,6 +74,8 @@ export async function GET(request: Request) {
   try {
     const { supabase, escolaId, error } = await schoolSession();
     if (error || !escolaId) return error!;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const permiteEscrita = await canWriteHistoricalDecision(supabase, escolaId);
     const permiteNotasHistoricas = await authorizeBalcaoPendingAcademicWrite(supabase, escolaId, user.id);
     const { searchParams } = new URL(request.url);
@@ -87,11 +89,14 @@ export async function GET(request: Request) {
       if (originError) throw originError;
       if (!origin) return NextResponse.json({ ok: false, error: "Matrícula não encontrada nesta escola." }, { status: 404 });
       const [{ data: academicYear, error: yearError },
+        { data: currentYear, error: currentYearError },
         { data: cohorts, error: cohortError },
         { data: history, error: historyError },
         { data: existingNotes, error: notesError }] = await Promise.all([
         supabase.from("anos_letivos").select("id,ativo,ano").eq("escola_id", escolaId)
           .eq("id", origin.session_id).maybeSingle(),
+        supabase.from("anos_letivos").select("id,ano").eq("escola_id", escolaId)
+          .eq("ativo", true).maybeSingle(),
         supabase.from("academic_transition_cohort_members")
           .select("status,cohort:academic_transition_cohorts!inner(codigo,modo,ativo,ano_origem,ano_destino,expira_em)")
           .eq("escola_id", escolaId).eq("matricula_origem_id", origin.id)
@@ -103,8 +108,8 @@ export async function GET(request: Request) {
         supabase.from("notas").select("id").eq("escola_id", escolaId)
           .eq("matricula_id", origin.id).limit(1),
       ]);
-      if (yearError || cohortError || historyError || notesError)
-        throw yearError ?? cohortError ?? historyError ?? notesError;
+      if (yearError || currentYearError || cohortError || historyError || notesError)
+        throw yearError ?? currentYearError ?? cohortError ?? historyError ?? notesError;
       const isClosedSourceYear = academicYear?.ativo === false &&
         academicYear?.id === origin.session_id &&
         Number(academicYear?.ano) === Number(origin.ano_letivo);
@@ -144,30 +149,34 @@ export async function GET(request: Request) {
           (!hasRatification || lock?.status !== "fechado")) ||
          !["aberto", "fechado"].includes(String(history.snapshot_status ?? ""))));
       const temNotasLancadas = (existingNotes ?? []).length > 0;
-      const eligible = Boolean(cohort && isClosedSourceYear &&
+      const gradeSourceEligible = Boolean(isClosedSourceYear &&
+        Number(currentYear?.ano) === Number(origin.ano_letivo) + 1 &&
+        origin.status === "pendente" && origin.ativo === false &&
+        (origin.status_fecho_origem === "manual" || origin.status_fecho_origem == null) &&
+        !history && !legalConflict);
+      const documentaryEligible = Boolean(cohort && isClosedSourceYear &&
         sourceConsistent && !legalConflict);
-      // Once real grades start being entered, keep the grade editor available
-      // for the remaining subjects. Documentary ratification is no longer
-      // possible and must never replace actual grade calculation.
-      const state = !eligible ? "indisponivel"
-        : !history?.resultado_final ? (temNotasLancadas ? "notas" : "decisao")
-        : !hasRatification ? "ratificacao"
-        : history.snapshot_status === "aberto" ? "fecho"
-        : "concluido";
+      // Real grade correction is available to every school, not just a school
+      // with an exceptional documentary cohort. Once notes exist, the
+      // documentary alternative disappears to preserve the true RAA outcome.
+      const state = !history?.resultado_final
+        ? gradeSourceEligible && (temNotasLancadas || !documentaryEligible) ? "notas"
+          : documentaryEligible ? "decisao" : "indisponivel"
+        : !documentaryEligible ? "indisponivel"
+          : !hasRatification ? "ratificacao"
+          : history.snapshot_status === "aberto" ? "fecho"
+          : "concluido";
+      const eligible = gradeSourceEligible || documentaryEligible;
       return NextResponse.json({
         ok: true, matricula_id: origin.id, estado: state,
         permite_escrita: permiteEscrita,
-        permite_notas_historicas: Boolean(permiteNotasHistoricas) &&
-          origin.status === "pendente" && academicYear?.ativo === false &&
-          (origin.status_fecho_origem === "manual" || origin.status_fecho_origem == null) &&
-          !history &&
-          (Number(origin.ano_letivo) + 1 === new Date().getFullYear() || Boolean(cohort)),
+        permite_notas_historicas: Boolean(permiteNotasHistoricas) && gradeSourceEligible,
         origem_ano: origin.ano_letivo,
         origem_status: origin.status, resultado_confirmado: history?.resultado_final ?? null,
         coorte: cohort?.record?.codigo ?? null,
         mensagem: !isClosedSourceYear ? "Este ano de origem ainda não está encerrado; utilize a avaliação académica normal."
           : temNotasLancadas ? "Continue a lançar as notas reais em falta. A decisão será calculada pelo RAA."
-          : !cohort ? "Não existe uma coorte histórica assistida válida para esta origem."
+          : !cohort && !gradeSourceEligible ? "A origem não está elegível para regularização documental nem lançamento retroativo."
           : legalConflict ? "O histórico foi fechado ou reaberto sem a ratificação necessária; a direção deve rever o fecho legal."
           : !eligible ? "Há divergência na origem ou no histórico; a direção deve rever o vínculo."
           : null,
