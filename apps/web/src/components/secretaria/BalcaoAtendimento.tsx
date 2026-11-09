@@ -1415,9 +1415,9 @@ function Catalogo({
     raaBalcaoEffectiveStatus(rematriculaState, rematriculaAcademic),
   );
   const showAcademicResolution = !paidExistingDestination || Boolean(academicBlocker);
-  const historicalRecovery = rematriculaCohort?.modo === "virada_assistida_sem_notas" &&
-    rematriculaOrigemAno !== null && rematriculaContextYear !== null &&
-    rematriculaOrigemAno < rematriculaContextYear.ano &&
+  const historicalRecovery = rematriculaOrigemAno !== null &&
+    rematriculaContextYear !== null &&
+    rematriculaOrigemAno === rematriculaContextYear.ano - 1 &&
     Boolean(raaMatriculaId);
   const selectedCount = selectedItemKeys.size;
   const [raaProgress, setRaaProgress] = useState<RaaProgressSnapshot | null>(null);
