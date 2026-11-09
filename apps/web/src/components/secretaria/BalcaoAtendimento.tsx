@@ -3168,8 +3168,8 @@ export default function BalcaoAtendimento({
                   onLancarNota={(trimestre, disciplinaId) => {
                     if (!rematricula.canWriteGrades) return;
                     const source = rematricula.academic?.source;
-                    if (source && !["ativo", "ativa", "active"].includes(source.status.toLowerCase())) {
-                      error("A matrícula de origem está encerrada. Solicite reabertura à direção.");
+                    if (source && !["ativo", "ativa", "active", "pendente"].includes(source.status.toLowerCase())) {
+                      error("A matrícula de origem está encerrada academicamente. Solicite revisão à direção.");
                       return;
                     }
                     if (rematricula.academic?.regime?.escala === "qualitativa") {
