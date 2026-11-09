@@ -1312,6 +1312,7 @@ function Catalogo({
   raaMatriculaId,
   raaAlunoId,
   onLancarNota,
+  onLancarNotaHistorica,
   onDocumentos,
   raaDocumentsOpen,
   onCloseRaaDocuments,
@@ -1357,6 +1358,7 @@ function Catalogo({
   raaMatriculaId: string | null;
   raaAlunoId: string | null;
   onLancarNota: (trimestre?: 1 | 2 | 3 | null, disciplinaId?: string | null) => void;
+  onLancarNotaHistorica: () => void;
   onDocumentos: () => void;
   raaDocumentsOpen: boolean;
   onCloseRaaDocuments: () => void;
@@ -1691,6 +1693,7 @@ function Catalogo({
                 key={raaMatriculaId}
                 matriculaId={raaMatriculaId}
                 onRecheck={onRefreshRematricula}
+                onLancarNotaHistorica={onLancarNotaHistorica}
               />
             )}
             {/* Ordinary RAA actions never reopen a legally closed source year. */}
@@ -2745,7 +2748,7 @@ export default function BalcaoAtendimento({
   });
   const audit = useAuditTrail();
 
-  const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null; originAnoLetivoId?: string | null; initialTrimestre?: 1 | 2 | 3 | null; initialDisciplinaId?: string | null } | null>(null);
+  const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null; originAnoLetivoId?: string | null; historicalMatriculaId?: string | null; initialTrimestre?: 1 | 2 | 3 | null; initialDisciplinaId?: string | null } | null>(null);
   const [raaDocumentsOpen, setRaaDocumentsOpen] = useState(false);
   const [debtModalOpen, setDebtModalOpen] = useState(false);
   const hasOverdueDebt = useMemo(
@@ -3180,6 +3183,19 @@ export default function BalcaoAtendimento({
                   rematriculaCohort={rematricula.cohort ?? null}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
+                  onLancarNotaHistorica={() => {
+                    const source = rematricula.academic?.source;
+                    if (!source?.matricula_id || !source.turma_id || !source.ano_letivo_id) {
+                      error("Não foi possível identificar a matrícula histórica.");
+                      return;
+                    }
+                    setPostAction({
+                      action: "notas",
+                      turmaId: source.turma_id,
+                      originAnoLetivoId: source.ano_letivo_id,
+                      historicalMatriculaId: source.matricula_id,
+                    });
+                  }}
                   onLancarNota={(trimestre, disciplinaId) => {
                     if (!rematricula.canWriteGrades) return;
                     const source = rematricula.academic?.source;
@@ -3343,6 +3359,7 @@ export default function BalcaoAtendimento({
           alunoNome={dossier.aluno.nome}
           turmaId={postAction?.turmaId ?? null}
           originAnoLetivoId={postAction?.originAnoLetivoId ?? null}
+          historicalMatriculaId={postAction?.historicalMatriculaId ?? null}
           initialTrimestre={postAction?.initialTrimestre ?? null}
           initialDisciplinaId={postAction?.initialDisciplinaId ?? null}
           onAcademicSaved={() => void rematricula.refreshStatus()}
