@@ -1269,7 +1269,7 @@ BEGIN
   FOR v_disciplina_id IN
     SELECT DISTINCT COALESCE(td.avaliacao_disciplina_id, cm.avaliacao_disciplina_id, cm.disciplina_id)
     FROM public.turma_disciplinas td
-    JOIN public.curso_matriz cm ON cm.id = td.curso_matriz_id
+    LEFT JOIN public.curso_matriz cm ON cm.id = td.curso_matriz_id
       AND cm.escola_id = td.escola_id
     WHERE td.escola_id = p_escola_id
       AND td.turma_id = v_matricula.turma_id
