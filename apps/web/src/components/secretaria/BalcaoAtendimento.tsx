@@ -1694,7 +1694,7 @@ function Catalogo({
               />
             )}
             {/* Ordinary RAA actions never reopen a legally closed source year. */}
-            {showAcademicResolution && !historicalRecovery && raaMatriculaId && raaAlunoId ? (
+            {showAcademicResolution && raaMatriculaId && raaAlunoId && !historicalRecovery ? (
               <RaaBalcaoResolutionPanel
                 key={raaMatriculaId}
                 status={rematriculaState}
@@ -3177,7 +3177,7 @@ export default function BalcaoAtendimento({
                   rematriculaCanWriteGrades={rematricula.canWriteGrades}
                   rematriculaReconciliation={rematricula.reconciliation}
                   rematriculaDestinoTurma={rematricula.destinoTurma ?? null}
-                  rematriculaCohort={rematricula.cohort}
+                  rematriculaCohort={rematricula.cohort ?? null}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
                   onLancarNota={(trimestre, disciplinaId) => {
