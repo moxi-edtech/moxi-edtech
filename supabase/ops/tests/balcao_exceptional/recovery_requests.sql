@@ -29,9 +29,6 @@ BEGIN
  IF (SELECT count(*) FROM public.balcao_historic_recovery_requests)<>1 THEN
    RAISE EXCEPTION 'FAIL: duplicate request for same student';
  END IF;
- IF (SELECT count(*) FROM public.audit_logs WHERE action='BALCAO_REGULARIZACAO_ACADEMICA_SOLICITADA')<>1 THEN
-   RAISE EXCEPTION 'FAIL: missing or duplicated audit';
- END IF;
  IF (SELECT count(*) FROM public.notas)<>0 THEN
    RAISE EXCEPTION 'FAIL: request fabricated grades';
  END IF;
@@ -75,5 +72,13 @@ BEGIN
   RAISE EXCEPTION 'FAIL: invalid source accepted';
  EXCEPTION WHEN check_violation THEN NULL; END;
 END $secretary$;
+RESET ROLE;
+DO $audit$
+BEGIN
+ IF (SELECT count(*) FROM public.audit_logs
+     WHERE action='BALCAO_REGULARIZACAO_ACADEMICA_SOLICITADA')<>1 THEN
+   RAISE EXCEPTION 'FAIL: missing or duplicated audit';
+ END IF;
+END $audit$;
 ROLLBACK;
 SELECT 'BALCAO_HISTORIC_REQUEST_ACTIONABILITY_PASS' AS result;
