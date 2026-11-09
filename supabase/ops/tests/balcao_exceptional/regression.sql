@@ -29,6 +29,21 @@ BEGIN
  END IF;
 END $grade$;
 
+-- An academic secretary must be able to finish the remaining assessments
+-- after the first note, without reopening the school year or issuing another
+-- documentary decision.
+SELECT public.lancar_nota_historica_individual(
+  '20000000-0000-4000-8000-000000000001',
+  '60000000-0000-4000-8000-000000000001',
+  '80000000-0000-4000-8000-000000000001',
+  1,'NPP',14.0,'Segunda avaliação real lançada na mesma origem encerrada.');
+
+DO $second_grade$
+BEGIN
+ IF (SELECT count(*) FROM public.notas)=2 THEN RETURN; END IF;
+ RAISE EXCEPTION 'FAIL: second real historical grade was blocked';
+END $second_grade$;
+
 -- Failed range validation rolls back the whole write (grade and journal).
 DO $invalid_grade$
 BEGIN
@@ -42,7 +57,7 @@ BEGIN
  EXCEPTION WHEN OTHERS THEN
   IF SQLERRM LIKE 'FAIL:%' THEN RAISE; END IF;
  END;
- IF (SELECT count(*) FROM public.notas)<>1 THEN
+ IF (SELECT count(*) FROM public.notas)<>2 THEN
   RAISE EXCEPTION 'FAIL: invalid grade produced a write';
  END IF;
 END $invalid_grade$;
@@ -108,7 +123,7 @@ DO $audit$
 BEGIN
  IF (SELECT count(*) FROM public.audit_logs
    WHERE action='BALCAO_NOTA_HISTORICA_LANCADA'
-    AND details->>'motivo' IS NOT NULL)<>1 THEN
+    AND details->>'motivo' IS NOT NULL)<>2 THEN
   RAISE EXCEPTION 'FAIL: real grade has no atomic reason/actor audit';
  END IF;
  IF (SELECT count(*) FROM public.audit_logs
