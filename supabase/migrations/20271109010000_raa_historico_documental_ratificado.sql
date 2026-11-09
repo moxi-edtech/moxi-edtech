@@ -74,6 +74,13 @@ BEGIN
     IF NOT v_cohort_exists THEN
       RAISE EXCEPTION 'ASSISTED_TRANSITION_COHORT_REQUIRED: a decisão sem notas exige coorte assistida válida' USING ERRCODE='23514';
     END IF;
+    IF EXISTS (
+      SELECT 1 FROM public.notas n
+      WHERE n.escola_id=p_escola_id AND n.matricula_id=p_matricula_id
+    ) THEN
+      RAISE EXCEPTION 'ACADEMIC_DOCUMENT_GRADES_PRESENT: não substituir notas lançadas por decisão documental'
+        USING ERRCODE='23514';
+    END IF;
   ELSE
     v_raa := public.resolve_raa_progression_for_matricula(p_escola_id,p_matricula_id);
     v_decision := lower(coalesce(v_raa->>'decision',''));
