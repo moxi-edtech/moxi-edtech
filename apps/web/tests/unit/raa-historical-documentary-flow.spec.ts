@@ -55,7 +55,7 @@ test("historical reconciliation is student-scoped, fail-closed and has an explic
   assert.match(ui, /matricula_id: matriculaId/);
   assert.match(ui, /onRecheck\(\)/);
   assert.match(balc, /<BalcaoHistoricalAcademicRecovery/);
-  assert.match(balc, /!historicalRecovery && raaMatriculaId/);
+  assert.match(balc, /showAcademicResolution && raaMatriculaId && raaAlunoId && !historicalRecovery/);
 });
 
 test("closed origin remains read-only; no global reactivation of 2025 or synthetic marks", () => {
