@@ -159,7 +159,7 @@ export function BalcaoHistoricalAcademicRecovery({
           <p className="text-xs text-muted-foreground">Ano de origem: {snapshot.origem_ano} · Regularização individual</p>
           {stage === "concluido" ? (
             <p role="status" className="flex items-center gap-2 text-sm font-medium text-[#1F6B3B]">
-              <CheckCircle2 className="h-4 w-4" /> Decisão ratificada e histórico fechado: {labels[snapshot.resultado_confirmado ?? "aprovado"]}.
+              <CheckCircle2 className="h-4 w-4" /> Decisão ratificada e histórico fechado: {snapshot.resultado_confirmado ? labels[snapshot.resultado_confirmado] : "Resultado por confirmar"}.
             </p>
           ) : stage === "indisponivel" ? (
             <p role="status" className="text-sm text-muted-foreground">
@@ -192,7 +192,7 @@ export function BalcaoHistoricalAcademicRecovery({
                       </select>
                     </label>
                   ) : <p className="text-sm font-medium text-foreground">
-                    Resultado registado: {labels[snapshot.resultado_confirmado ?? "aprovado"]}
+                    Resultado registado: {snapshot.resultado_confirmado ? labels[snapshot.resultado_confirmado] : "Resultado por confirmar"}
                   </p>}
                   {stage !== "fecho" && (
                     <label className="block space-y-1 text-xs font-medium text-foreground">
