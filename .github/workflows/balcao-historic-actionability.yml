@@ -1,0 +1,41 @@
+name: Balcao Historic Regularization Actions
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20271109040000_balcao_historic_recovery_requests.sql"
+      - "supabase/ops/tests/balcao_exceptional/recovery_requests.sql"
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/route.ts"
+      - "apps/web/src/components/secretaria/BalcaoHistoricalAcademicRecovery.tsx"
+      - "apps/web/src/components/secretaria/BalcaoAtendimento.tsx"
+      - "apps/web/tests/unit/balcao-historic-actionability.spec.ts"
+      - ".github/workflows/balcao-historic-actionability.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  historical-request:
+    name: Audited historic academic requests — PostgreSQL 17
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: balcao_request_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d balcao_request_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/balcao_request_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load synthetic source, existing writer, and new request migration
+        run: |
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/fixture.sql
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/recovery_requests.sql

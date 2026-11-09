@@ -9,7 +9,7 @@ import { compareNextYearEnrollment, confirmedOutcomeFitsDestination } from "@/li
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ReadRoles = ["secretaria", "admin", "admin_escola", "staff_admin", "diretor"] as const;
+const ReadRoles = ["secretaria", "admin_secretaria", "admin", "admin_escola", "staff_admin", "diretor", "admin_financeiro", "secretaria_financeiro"] as const;
 const WriteRoles = ["admin", "admin_escola", "staff_admin", "diretor"] as const;
 const ExactHistoricalDecisionRoles = new Set(["admin", "admin_escola", "staff_admin", "diretor"]);
 
@@ -30,6 +30,11 @@ const Evidence = {
 };
 
 const ActionSchema = z.discriminatedUnion("acao", [
+  z.object({
+    acao: z.literal("solicitar_intervencao"),
+    matricula_id: z.string().uuid(),
+    motivo: z.string().trim().min(12).max(500),
+  }),
   z.object({
     acao: z.literal("registar_decisao"),
     ...Evidence,
@@ -156,6 +161,13 @@ export async function GET(request: Request) {
         !history && !legalConflict);
       const documentaryEligible = Boolean(cohort && isClosedSourceYear &&
         sourceConsistent && !legalConflict);
+      const { data: recoveryRequest, error: recoveryRequestError } = await supabase
+        .from("balcao_historic_recovery_requests")
+        .select("id,created_at,motivo")
+        .eq("escola_id", escolaId)
+        .eq("matricula_id", origin.id).eq("status", "pendente")
+        .maybeSingle();
+      if (recoveryRequestError) throw recoveryRequestError;
       // Real grade correction is available to every school, not just a school
       // with an exceptional documentary cohort. Once notes exist, the
       // documentary alternative disappears to preserve the true RAA outcome.
@@ -171,6 +183,11 @@ export async function GET(request: Request) {
         ok: true, matricula_id: origin.id, estado: state,
         permite_escrita: permiteEscrita,
         permite_notas_historicas: Boolean(permiteNotasHistoricas) && gradeSourceEligible,
+        permite_pedir_intervencao: eligible && (state === "decisao" || state === "notas" ||
+          state === "ratificacao" || state === "fecho"),
+        pedido_regularizacao: recoveryRequest
+          ? { id: recoveryRequest.id, criado_em: recoveryRequest.created_at, motivo: recoveryRequest.motivo }
+          : null,
         origem_ano: origin.ano_letivo,
         origem_status: origin.status, resultado_confirmado: history?.resultado_final ?? null,
         coorte: cohort?.record?.codigo ?? null,
@@ -337,19 +354,36 @@ export async function POST(request: Request) {
   try {
     const { supabase, escolaId, error } = await schoolSession();
     if (error || !escolaId) return error!;
+    const parsed = ActionSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, code: "EVIDENCIA_OBRIGATORIA",
+        error: "Indique uma fundamentação válida. Para uma decisão escolar, anexe a referência documental e confirme o resultado." },
+      { status: 400 });
+    }
+    const body = parsed.data;
+    if (body.acao === "solicitar_intervencao") {
+      // Finance operators may request academic work, but cannot sign a result
+      // or write marks. The RPC verifies the exact tenant/role/source and
+      // deduplicates concurrent requests for the same student.
+      const { data, error: requestError } = await supabase.rpc(
+        "solicitar_regularizacao_historica_balcao" as any,
+        { p_escola_id: escolaId, p_matricula_id: body.matricula_id, p_motivo: body.motivo } as any,
+      );
+      if (requestError || (data as any)?.ok !== true) {
+        return NextResponse.json({ ok: false,
+          code: requestError?.code ?? "HISTORICAL_RECOVERY_REQUEST_FAILED",
+          error: requestError?.message ?? "Não foi possível registar o pedido à direção." },
+        { status: requestError?.code === "42501" ? 403 : 409 });
+      }
+      return NextResponse.json({ ok: true, mensagem: "Solicitação registada no processo para a direção académica.", pedido: data },
+        { headers: { "Cache-Control": "no-store" } });
+    }
     const allowed = await requireRoleInSchool({ supabase, escolaId, roles: [...WriteRoles] });
     if (allowed.error) return allowed.error;
     if (!(await canWriteHistoricalDecision(supabase, escolaId))) {
       return NextResponse.json({ ok: false, code: "HISTORICAL_DECISION_FORBIDDEN",
         error: "A decisão escolar histórica exige direção autorizada nesta escola." }, { status: 403 });
     }
-    const parsed = ActionSchema.safeParse(await request.json().catch(() => null));
-    if (!parsed.success) {
-      return NextResponse.json({ ok: false, code: "EVIDENCIA_OBRIGATORIA",
-        error: "Indique o resultado, a referência documental e o motivo. Para fechar o histórico, confirme explicitamente o fecho legal." },
-      { status: 400 });
-    }
-    const body = parsed.data;
     let data: any = null;
     let rpcError: any = null;
     if (body.acao === "registar_decisao") {

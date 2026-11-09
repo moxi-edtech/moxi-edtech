@@ -14,6 +14,8 @@ type Snapshot = {
   permite_escrita: boolean;
   resultado_confirmado: HistoricalResult | null;
   permite_notas_historicas: boolean;
+  permite_pedir_intervencao: boolean;
+  pedido_regularizacao: { id: string; criado_em: string; motivo: string } | null;
   coorte: string | null;
   mensagem: string | null;
 };
@@ -37,11 +39,13 @@ async function readResponse(response: Response) {
  * or writes synthetic marks. The school must choose and sign its real outcome.
  */
 export function BalcaoHistoricalAcademicRecovery({
-  matriculaId, onRecheck, onLancarNotaHistorica,
+  matriculaId, turmaId, disciplinasPendentes, onRecheck, onLancarNotaHistorica,
 }: {
   matriculaId: string;
+  turmaId: string | null;
+  disciplinasPendentes: string[];
   onRecheck: () => Promise<unknown>;
-  onLancarNotaHistorica: () => void;
+  onLancarNotaHistorica: (disciplinaId?: string | null) => void;
 }) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +56,8 @@ export function BalcaoHistoricalAcademicRecovery({
   const [acknowledged, setAcknowledged] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [requestReason, setRequestReason] = useState("");
+  const [disciplines, setDisciplines] = useState<Array<{ id: string; nome: string }>>([]);
 
   const load = useCallback(async (signal?: AbortSignal) => {
     const data = await readResponse(await fetch(
@@ -71,6 +77,8 @@ export function BalcaoHistoricalAcademicRecovery({
     setReference("");
     setReason("");
     setAcknowledged(false);
+    setRequestReason("");
+    setDisciplines([]);
     setLoading(true);
     void load(controller.signal)
       .catch((cause) => {
@@ -97,6 +105,34 @@ export function BalcaoHistoricalAcademicRecovery({
     return () => window.removeEventListener("klasse:historic-grade-saved", onGradeSaved);
   }, [load, matriculaId]);
 
+  // Only consult class disciplines for an operator who can really enter
+  // historical grades. IDs come from the source class's authorized endpoint.
+  useEffect(() => {
+    if (!snapshot?.permite_notas_historicas || !turmaId ||
+        !["decisao", "notas"].includes(snapshot.estado)) {
+      setDisciplines([]);
+      return;
+    }
+    const controller = new AbortController();
+    void fetch(`/api/secretaria/turmas/${encodeURIComponent(turmaId)}/disciplinas`,
+      { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Disciplinas indisponíveis");
+        return response.json();
+      })
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        const list = (Array.isArray(data?.items) ? data.items : [])
+          .filter((entry: any) => typeof entry.disciplina?.id === "string" &&
+            typeof entry.disciplina?.nome === "string")
+          .map((entry: any) => ({ id: String(entry.disciplina.id), nome: String(entry.disciplina.nome) }));
+        setDisciplines(list.filter((item: { id: string }) =>
+          !disciplinasPendentes.length || disciplinasPendentes.includes(item.id)));
+      })
+      .catch(() => { if (!controller.signal.aborted) setDisciplines([]); });
+    return () => controller.abort();
+  }, [snapshot?.permite_notas_historicas, snapshot?.estado, turmaId, disciplinasPendentes.join("|")]);
+
   const refresh = async () => {
     setLoading(true);
     setError("");
@@ -110,11 +146,39 @@ export function BalcaoHistoricalAcademicRecovery({
   const stage = snapshot?.estado;
   const canAct = Boolean(snapshot?.permite_escrita && stage && !["indisponivel", "concluido", "notas"].includes(stage));
   const selectedResult = stage === "decisao" ? result : snapshot?.resultado_confirmado;
+  const needsIntervention = Boolean(snapshot?.permite_pedir_intervencao &&
+    ((stage === "notas" && !snapshot?.permite_notas_historicas) ||
+     (stage !== "notas" && stage !== "concluido" && !snapshot?.permite_escrita)));
   const documentReady = stage === "fecho"
     ? reason.trim().length >= 12
     : reference.trim().length >= 8 && reason.trim().length >= 12;
   const canSubmit = canAct && !saving && !loading && acknowledged &&
     documentReady && Boolean(selectedResult);
+
+  const requestIntervention = async () => {
+    if (!snapshot?.permite_pedir_intervencao || snapshot.pedido_regularizacao ||
+        requestReason.trim().length < 12 || saving || loading) return;
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      const saved = await readResponse(await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acao: "solicitar_intervencao",
+          matricula_id: matriculaId,
+          motivo: requestReason.trim(),
+        }),
+      }));
+      setRequestReason("");
+      setNotice(saved.mensagem || "Solicitação registada para a direção.");
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao solicitar a intervenção.");
+      try { await load(); } catch { setSnapshot(null); }
+    } finally { setSaving(false); }
+  };
 
   const submit = async () => {
     if (!canSubmit || !stage || !snapshot || !selectedResult) return;
@@ -177,13 +241,66 @@ export function BalcaoHistoricalAcademicRecovery({
         <>
           <p className="text-xs text-muted-foreground">Ano de origem: {snapshot.origem_ano} · Regularização individual</p>
           {snapshot.permite_notas_historicas && (stage === "decisao" || stage === "notas") && (
-            <button type="button" onClick={onLancarNotaHistorica}
+            <button type="button" onClick={() => onLancarNotaHistorica()}
               className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white">
               Lançar notas do ano anterior
             </button>
           )}
           {stage === "decisao" && (
-            <p className="text-xs text-muted-foreground">A escola pode lançar as notas reais de {snapshot.origem_ano} ou regularizar por decisão documental comprovada. Não é necessário reabrir o ano inteiro.</p>
+            <p className="text-xs text-muted-foreground">Notas reais de {snapshot.origem_ano} pela secretaria académica, ou decisão documental comprovada pela direção. Sem reabrir o ano inteiro.</p>
+          )}
+          {snapshot.permite_notas_historicas && disciplines.length > 0 &&
+            (stage === "decisao" || stage === "notas") && (
+              <details className="rounded-xl border border-border bg-background/60 p-3">
+                <summary className="cursor-pointer text-sm font-semibold text-foreground">
+                  Disciplinas da origem ({disciplines.length})
+                </summary>
+                <ul className="mt-3 space-y-2">
+                  {disciplines.map((item) => (
+                    <li key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2">
+                      <span className="min-w-0 text-xs font-medium text-foreground">{item.nome}</span>
+                      <button type="button" onClick={() => onLancarNotaHistorica(item.id)}
+                        className="shrink-0 rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-muted">
+                        Lançar nota
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          {snapshot.pedido_regularizacao && snapshot.permite_escrita && stage !== "concluido" && (
+            <div role="status" className="space-y-1 rounded-xl border border-amber/40 bg-amber/5 p-3">
+              <p className="text-xs font-semibold text-foreground">Pedido académico recebido neste processo</p>
+              <p className="text-xs text-muted-foreground">{snapshot.pedido_regularizacao.motivo}</p>
+              <p className="text-xs text-muted-foreground">Registe ou valide o resultado comprovado usando a ação abaixo.</p>
+            </div>
+          )}
+          {needsIntervention && (
+            <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-3">
+              <p className="text-sm font-semibold text-foreground">Pedir regularização à direção</p>
+              {snapshot.pedido_regularizacao ? (
+                <p role="status" className="text-xs text-muted-foreground">
+                  Solicitação registada neste processo em {new Date(snapshot.pedido_regularizacao.criado_em).toLocaleDateString("pt-AO")}.
+                  A direção pode concluir a decisão nesta mesma ficha; a secretaria pode lançar as notas reais.
+                </p>
+              ) : (
+                <>
+                  <label className="block space-y-1 text-xs font-medium text-foreground">
+                    Motivo do encaminhamento
+                    <textarea rows={2} maxLength={500} value={requestReason}
+                      onChange={(event) => setRequestReason(event.target.value)}
+                      placeholder="Indique as disciplinas ou a decisão escolar que precisam de regularização"
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" />
+                  </label>
+                  <button type="button" onClick={() => void requestIntervention()}
+                    disabled={saving || loading || requestReason.trim().length < 12}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                    Registar pedido à direção
+                  </button>
+                </>
+              )}
+            </div>
           )}
           {stage === "concluido" ? (
             <p role="status" className="flex items-center gap-2 text-sm font-medium text-emerald">
@@ -191,7 +308,9 @@ export function BalcaoHistoricalAcademicRecovery({
             </p>
           ) : stage === "notas" ? (
             <p role="status" className="text-sm text-foreground">
-              Notas do ano anterior em lançamento. Continue pelas disciplinas pendentes e verifique a situação académica.
+              {snapshot.permite_notas_historicas
+                ? "Continue a lançar as notas reais por disciplina e verifique a situação académica."
+                : "As notas reais devem ser concluídas pela secretaria académica ou direção."}
               A decisão documental deixa de estar disponível quando já existem notas reais.
             </p>
           ) : stage === "indisponivel" ? (
@@ -209,7 +328,9 @@ export function BalcaoHistoricalAcademicRecovery({
               </div>
               {!snapshot.permite_escrita ? (
                 <p role="status" className="text-sm text-muted-foreground">
-                  Aguarda a direção para {step === 1 ? "confirmar o resultado" : step === 2 ? "ratificar a decisão" : "fechar o histórico"}.
+                  {step === 1 ? "A decisão documental exige direção autorizada." :
+                    step === 2 ? "A ratificação exige direção autorizada." :
+                      "O fecho legal exige direção autorizada."}
                 </p>
               ) : (
                 <div className="space-y-3">

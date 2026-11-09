@@ -1359,7 +1359,7 @@ function Catalogo({
   raaMatriculaId: string | null;
   raaAlunoId: string | null;
   onLancarNota: (trimestre?: 1 | 2 | 3 | null, disciplinaId?: string | null) => void;
-  onLancarNotaHistorica: () => void;
+  onLancarNotaHistorica: (disciplinaId?: string | null) => void;
   onDocumentos: () => void;
   raaDocumentsOpen: boolean;
   onCloseRaaDocuments: () => void;
@@ -1700,6 +1700,8 @@ function Catalogo({
               <BalcaoHistoricalAcademicRecovery
                 key={raaMatriculaId}
                 matriculaId={raaMatriculaId}
+                turmaId={rematriculaAcademic?.source?.turma_id ?? null}
+                disciplinasPendentes={rematriculaAcademic?.disciplina_ids_pendentes ?? []}
                 onRecheck={onRefreshRematricula}
                 onLancarNotaHistorica={onLancarNotaHistorica}
               />
@@ -3191,7 +3193,7 @@ export default function BalcaoAtendimento({
                   rematriculaCohort={rematricula.cohort ?? null}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
-                  onLancarNotaHistorica={() => {
+                  onLancarNotaHistorica={(disciplinaId) => {
                     const source = rematricula.academic?.source;
                     if (!source?.matricula_id || !source.turma_id || !source.ano_letivo_id) {
                       error("Não foi possível identificar a matrícula histórica.");
@@ -3202,6 +3204,7 @@ export default function BalcaoAtendimento({
                       turmaId: source.turma_id,
                       originAnoLetivoId: source.ano_letivo_id,
                       historicalMatriculaId: source.matricula_id,
+                      initialDisciplinaId: disciplinaId ?? null,
                     });
                   }}
                   onLancarNota={(trimestre, disciplinaId) => {
