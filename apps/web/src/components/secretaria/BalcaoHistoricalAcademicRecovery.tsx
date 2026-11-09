@@ -143,7 +143,7 @@ export function BalcaoHistoricalAcademicRecovery({
     <section aria-label="Regularização académica histórica" className="mb-4 space-y-3 rounded-xl border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <FileCheck2 className="h-5 w-5 text-[#1F6B3B]" aria-hidden="true" />
+          <FileCheck2 className="h-5 w-5 text-emerald" aria-hidden="true" />
           <h3 className="font-sora text-sm font-semibold text-foreground">Regularizar resultado de origem</h3>
         </div>
         <button type="button" onClick={() => void refresh()} disabled={saving || loading}
@@ -158,7 +158,7 @@ export function BalcaoHistoricalAcademicRecovery({
         <>
           <p className="text-xs text-muted-foreground">Ano de origem: {snapshot.origem_ano} · Regularização individual</p>
           {stage === "concluido" ? (
-            <p role="status" className="flex items-center gap-2 text-sm font-medium text-[#1F6B3B]">
+            <p role="status" className="flex items-center gap-2 text-sm font-medium text-emerald">
               <CheckCircle2 className="h-4 w-4" /> Decisão ratificada e histórico fechado: {snapshot.resultado_confirmado ? labels[snapshot.resultado_confirmado] : "Resultado por confirmar"}.
             </p>
           ) : stage === "indisponivel" ? (
@@ -208,13 +208,13 @@ export function BalcaoHistoricalAcademicRecovery({
                   </label>
                   <label className="flex items-start gap-2 text-xs text-muted-foreground">
                     <input type="checkbox" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)}
-                      className="mt-0.5 accent-[#E3B23C]" />
+                      className="mt-0.5 accent-amber" />
                     {stage === "fecho"
                       ? "Confirmo o fecho legal do histórico com base na decisão ratificada."
                       : "Confirmo que consultei a documentação escolar original e que este resultado não é presumido pelo sistema."}
                   </label>
                   <button type="button" disabled={!canSubmit} onClick={() => void submit()}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-2.5 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50">
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50">
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                     {stage === "decisao" ? "Registar decisão" : stage === "ratificacao" ? "Ratificar decisão" : "Fechar histórico"}
                   </button>
@@ -224,7 +224,7 @@ export function BalcaoHistoricalAcademicRecovery({
           )}
         </>
       )}
-      {notice && <p role="status" className="text-xs text-[#1F6B3B]">{notice}</p>}
+      {notice && <p role="status" className="text-xs text-emerald">{notice}</p>}
       {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
     </section>
   );
