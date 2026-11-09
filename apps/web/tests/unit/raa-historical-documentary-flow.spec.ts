@@ -62,7 +62,7 @@ test("historical reconciliation is student-scoped, fail-closed and has an explic
 test("closed origin remains read-only; no global reactivation of 2025 or synthetic marks", () => {
   assert.match(status, /originYear\?\.ativo === true/);
   assert.match(status, /matriculaOrigem\.status_fecho_origem == null/);
-  assert.match(balc, /rematriculaCohort\?\.modo === "virada_assistida_sem_notas"/);
+  assert.match(balc, /rematriculaOrigemAno === rematriculaContextYear\.ano - 1/);
   assert.doesNotMatch(migration, /UPDATE public\.anos_letivos SET ativo\s*=\s*true/i);
   assert.doesNotMatch(migration, /INSERT INTO public\.notas/i);
 });
