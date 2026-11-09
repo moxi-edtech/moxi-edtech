@@ -457,6 +457,43 @@ BEGIN
       USING ERRCODE='42501';
   END IF;
 
+  -- Even a director cannot call the generic snapshot RPC to close an
+  -- unratified override_admin decision. Enforce this in PostgreSQL, not only
+  -- in the Balcão API. Fail closed if grades were recorded meanwhile.
+  IF v_new_status='fechado' AND EXISTS (
+    SELECT 1 FROM public.matriculas m
+    JOIN public.historico_anos h
+      ON h.escola_id=m.escola_id AND h.matricula_id=m.id
+      AND h.aluno_id=m.aluno_id AND h.ano_letivo=m.ano_letivo
+      AND h.ano_letivo_id=p_ano_letivo_id
+    WHERE m.escola_id=p_escola_id AND m.id=ANY(p_matricula_ids)
+      AND m.status_fecho_origem='override_admin'
+      AND (
+        h.resultado_final NOT IN ('aprovado','reprovado','concluido')
+        OR EXISTS (
+          SELECT 1 FROM public.notas n
+          WHERE n.escola_id=m.escola_id AND n.matricula_id=m.id
+        )
+        OR NOT EXISTS (
+          SELECT 1 FROM public.audit_logs a
+          WHERE a.escola_id=m.escola_id AND a.entity_id=m.id::text
+            AND a.actor_id IS NOT NULL
+            AND a.action='MATRICULA_ORIGEM_RESULTADO_ACADEMICO_REGISTADO'
+            AND a.details->>'historico_ano_id'=h.id::text
+            AND a.details->>'resultado_final'=h.resultado_final
+            AND a.details->>'fonte'='declaracao_administrativa_escola'
+            AND a.details->>'ratificacao'='true'
+            AND a.details->>'papel_autorizado'
+              IN ('admin','admin_escola','staff_admin','diretor')
+            AND length(btrim(coalesce(a.details->>'referencia_documental','')))>=8
+            AND length(btrim(coalesce(a.details->>'motivo','')))>=12
+        )
+      )
+  ) THEN
+    RAISE EXCEPTION 'HISTORICAL_RATIFICATION_REQUIRED: fecho exige decisão documental ratificada e sem notas divergentes'
+      USING ERRCODE='23514';
+  END IF;
+
   FOR v_row IN
     SELECT m.id AS matricula_id, m.aluno_id
     FROM public.matriculas m
