@@ -30,7 +30,7 @@ LANGUAGE sql STABLE AS $$SELECT regime FROM public.turmas WHERE id=p_turma_id$$;
 CREATE TABLE public.matriculas(id uuid PRIMARY KEY,escola_id uuid,aluno_id uuid,turma_id uuid,
  session_id uuid,ano_letivo int,status text,ativo boolean,status_fecho_origem text,
  created_at timestamptz DEFAULT now());
-CREATE TABLE public.historico_anos(id uuid PRIMARY KEY,escola_id uuid,matricula_id uuid);
+CREATE TABLE public.historico_anos(id uuid PRIMARY KEY,escola_id uuid,matricula_id uuid,resultado_final text);
 CREATE TABLE public.curso_matriz(id uuid PRIMARY KEY,escola_id uuid,disciplina_id uuid);
 CREATE TABLE public.turma_disciplinas(id uuid PRIMARY KEY,escola_id uuid,turma_id uuid,
  curso_matriz_id uuid,professor_id uuid,periodos_ativos int[]);
@@ -63,6 +63,7 @@ CREATE TABLE public.turma_disciplinas_professores(escola_id uuid,turma_id uuid,d
 \ir ../../../migrations/20271109020000_rematricula_preserva_origem_legal_fechada.sql
 \ir ../../../migrations/20271109030000_balcao_notas_historicas_individuais.sql
 
+GRANT SELECT ON public.notas,public.anos_letivos,public.rematricula_janelas TO authenticated;
 CREATE TRIGGER grade_year_guard BEFORE INSERT OR UPDATE ON public.notas FOR EACH ROW
  EXECUTE FUNCTION public.guard_grade_period_source_and_window();
 CREATE TRIGGER grade_date_guard BEFORE INSERT OR UPDATE ON public.notas FOR EACH ROW
