@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRoleInSchool } from "@/lib/authz";
+import { authorizeBalcaoPendingAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { compareNextYearEnrollment, confirmedOutcomeFitsDestination } from "@/lib/rematricula/compare-next-year-enrollment";
@@ -74,6 +75,7 @@ export async function GET(request: Request) {
     const { supabase, escolaId, error } = await schoolSession();
     if (error || !escolaId) return error!;
     const permiteEscrita = await canWriteHistoricalDecision(supabase, escolaId);
+    const permiteNotasHistoricas = await authorizeBalcaoPendingAcademicWrite(supabase, escolaId, user.id);
     const { searchParams } = new URL(request.url);
     const requestedEnrollment = searchParams.get("matricula_id");
     if (requestedEnrollment !== null) {
@@ -150,7 +152,13 @@ export async function GET(request: Request) {
         : "concluido";
       return NextResponse.json({
         ok: true, matricula_id: origin.id, estado: state,
-        permite_escrita: permiteEscrita, origem_ano: origin.ano_letivo,
+        permite_escrita: permiteEscrita,
+        permite_notas_historicas: Boolean(permiteNotasHistoricas) &&
+          origin.status === "pendente" && academicYear?.ativo === false &&
+          (origin.status_fecho_origem === "manual" || origin.status_fecho_origem == null) &&
+          (existingNotes ?? []).length >= 0 && !history &&
+          (Number(origin.ano_letivo) + 1 === new Date().getFullYear() || Boolean(cohort)),
+        origem_ano: origin.ano_letivo,
         origem_status: origin.status, resultado_confirmado: history?.resultado_final ?? null,
         coorte: cohort?.record?.codigo ?? null,
         mensagem: !isClosedSourceYear ? "Este ano de origem ainda não está encerrado; utilize a avaliação académica normal."
