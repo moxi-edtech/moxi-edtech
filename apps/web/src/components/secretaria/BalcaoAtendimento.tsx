@@ -34,6 +34,7 @@ import { RematriculaWorkspaceHeader, RematriculaAcademicDestination, type RaaPro
 import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
 import { RematriculaWindowRecovery } from "@/components/secretaria/RematriculaWindowRecovery";
+import { BalcaoLateRematriculaAuthorization } from "@/components/secretaria/BalcaoLateRematriculaAuthorization";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
 import { PagamentoDividaModal } from "@/components/secretaria/PagamentoDividaModal";
@@ -1635,7 +1636,7 @@ function Catalogo({
               <div className="mb-2 rounded-xl border border-slate-300 bg-slate-50 p-3.5 text-xs text-slate-700">
                 <strong className="block text-slate-900">Período de rematrícula fechado</strong>
                 <p className="mt-1">
-                  {rematriculaAnoLabel ?? "Ano letivo atual"} · A direção pode reabrir o período aqui.
+                  {rematriculaAnoLabel ?? "Ano letivo atual"} · É possível autorizar este aluno fora do prazo sem abrir a janela da escola.
                 </p>
                 {rematriculaWindow?.data_fim ? (
                   <p className="mt-1">
@@ -1644,14 +1645,21 @@ function Catalogo({
                   </p>
                 ) : null}
                 <CodigoEstado estado="WINDOW_CLOSED" />
-                {rematriculaContextYear && (
+                {rematriculaContextYear && raaMatriculaId ? (
+                  <BalcaoLateRematriculaAuthorization
+                    key={raaMatriculaId + ":" + rematriculaContextYear.id}
+                    matriculaId={raaMatriculaId}
+                    anoLetivoId={rematriculaContextYear.id}
+                    onRecheck={onRefreshRematricula}
+                  />
+                ) : rematriculaContextYear ? (
                   <RematriculaWindowRecovery
                     key={rematriculaContextYear.id}
                     anoLetivo={rematriculaContextYear}
                     escolaId={rematriculaSchoolId}
                     onRecheck={onRefreshRematricula}
                   />
-                )}
+                ) : null}
               </div>
             ) : null}
             {view === "reenrollment" && rematriculaState === "SOURCE_RECORD_REQUIRED" && (
