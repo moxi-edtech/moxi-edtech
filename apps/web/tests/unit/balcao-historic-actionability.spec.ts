@@ -12,6 +12,9 @@ test("financial staff can request academic action but cannot gain power to write
   assert.match(migration, /solicitar_regularizacao_historica_balcao/);
   assert.match(migration, /admin_financeiro/);
   assert.match(migration, /BALCAO_REGULARIZACAO_ACADEMICA_SOLICITADA/);
+  assert.match(migration, /INSERT INTO public\.notificacoes/);
+  assert.match(migration, /'\/secretaria\/balcao\?alunoId='/);
+  assert.match(migration, /eu\.papel IN \('admin','admin_escola','staff_admin','diretor'\)/);
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
   assert.match(migration, /REVOKE ALL ON public.balcao_historic_recovery_requests/);
   assert.match(migration, /ON CONFLICT \(escola_id,matricula_id\) WHERE status='pendente' DO NOTHING/);
