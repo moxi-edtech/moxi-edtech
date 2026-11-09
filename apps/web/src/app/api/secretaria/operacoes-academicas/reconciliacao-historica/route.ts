@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const ReadRoles = ["secretaria", "admin", "admin_escola", "staff_admin", "diretor"] as const;
+const WriteRoles = ["admin", "admin_escola", "staff_admin", "diretor"] as const;
 const ExactHistoricalDecisionRoles = new Set(["admin", "admin_escola", "staff_admin", "diretor"]);
 
 async function canWriteHistoricalDecision(supabase: any, escolaId: string): Promise<boolean> {
@@ -315,6 +316,8 @@ export async function POST(request: Request) {
   try {
     const { supabase, escolaId, error } = await schoolSession();
     if (error || !escolaId) return error!;
+    const allowed = await requireRoleInSchool({ supabase, escolaId, roles: [...WriteRoles] });
+    if (allowed.error) return allowed.error;
     if (!(await canWriteHistoricalDecision(supabase, escolaId))) {
       return NextResponse.json({ ok: false, code: "HISTORICAL_DECISION_FORBIDDEN",
         error: "A decisão escolar histórica exige direção autorizada nesta escola." }, { status: 403 });
