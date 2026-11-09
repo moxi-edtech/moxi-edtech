@@ -13,6 +13,7 @@ type Snapshot = {
   estado: HistoricStage;
   permite_escrita: boolean;
   resultado_confirmado: HistoricalResult | null;
+  permite_notas_historicas: boolean;
   coorte: string | null;
   mensagem: string | null;
 };
@@ -36,10 +37,11 @@ async function readResponse(response: Response) {
  * or writes synthetic marks. The school must choose and sign its real outcome.
  */
 export function BalcaoHistoricalAcademicRecovery({
-  matriculaId, onRecheck,
+  matriculaId, onRecheck, onLancarNotaHistorica,
 }: {
   matriculaId: string;
   onRecheck: () => Promise<unknown>;
+  onLancarNotaHistorica: () => void;
 }) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,6 +159,15 @@ export function BalcaoHistoricalAcademicRecovery({
       {snapshot && (
         <>
           <p className="text-xs text-muted-foreground">Ano de origem: {snapshot.origem_ano} · Regularização individual</p>
+          {snapshot.permite_notas_historicas && stage === "decisao" && (
+            <button type="button" onClick={onLancarNotaHistorica}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2.5 text-sm font-semibold text-white">
+              Lançar notas do ano anterior
+            </button>
+          )}
+          {stage === "decisao" && (
+            <p className="text-xs text-muted-foreground">A escola pode lançar as notas reais de {snapshot.origem_ano} ou regularizar por decisão documental comprovada. Não é necessário reabrir o ano inteiro.</p>
+          )}
           {stage === "concluido" ? (
             <p role="status" className="flex items-center gap-2 text-sm font-medium text-emerald">
               <CheckCircle2 className="h-4 w-4" /> Decisão ratificada e histórico fechado: {snapshot.resultado_confirmado ? labels[snapshot.resultado_confirmado] : "Resultado por confirmar"}.
