@@ -103,3 +103,61 @@ INSERT INTO public.periodos_letivos(id,escola_id,ano_letivo_id,tipo,numero,
 INSERT INTO public.rematricula_janelas VALUES
 ('b0000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001',
  2026,true,'2026-07-01 00:00+00','2026-09-06 22:30+00');
+
+-- Synthetic end-to-end late renewal writer dependencies. The actual
+-- production finalizar_rematricula_balcao function is not mocked.
+ALTER TABLE public.turmas ADD COLUMN capacidade_maxima integer;
+ALTER TABLE public.turmas ADD COLUMN classe_id uuid;
+ALTER TABLE public.turmas ADD COLUMN curso_id uuid;
+ALTER TABLE public.matriculas ADD COLUMN numero_matricula bigint;
+ALTER TABLE public.matriculas ADD COLUMN data_matricula date;
+ALTER TABLE public.matriculas ADD COLUMN data_inicio_financeiro date;
+ALTER TABLE public.matriculas ADD COLUMN origem_transicao_matricula_id uuid;
+ALTER TABLE public.matriculas ADD COLUMN motivo_fecho text;
+ALTER TABLE public.matriculas ADD COLUMN data_fecho timestamptz;
+ALTER TABLE public.matriculas ADD COLUMN updated_at timestamptz;
+CREATE TABLE public.classes(id uuid PRIMARY KEY,numero int,nome text);
+CREATE TABLE public.servico_pedidos(
+ id uuid PRIMARY KEY,escola_id uuid,aluno_id uuid,servico_codigo text,
+ status text,matricula_id uuid,contexto jsonb);
+CREATE FUNCTION public.canonicalize_matricula_status_text(p text)
+ RETURNS text LANGUAGE sql IMMUTABLE AS $$ SELECT p $$;
+CREATE FUNCTION public.resolve_raa_progression_for_matricula(uuid,uuid)
+ RETURNS jsonb LANGUAGE sql STABLE
+ AS $$ SELECT '{"decision":"transitou","destino":"proxima_etapa","efetivacao_matricula_bloqueada":false}'::jsonb $$;
+CREATE FUNCTION public.confirmar_matricula_core(uuid,int,uuid,uuid)
+ RETURNS bigint LANGUAGE plpgsql SECURITY DEFINER SET search_path='pg_catalog','public'
+ AS $$
+ BEGIN
+  UPDATE public.matriculas SET numero_matricula=2026001 WHERE id=$4;
+  RETURN 2026001;
+ END $$;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
+INSERT INTO public.classes VALUES
+('c0000000-0000-4000-8000-000000000001',7,'7ª classe'),
+('c0000000-0000-4000-8000-000000000002',8,'8ª classe');
+UPDATE public.turmas SET capacidade_maxima=35,
+ classe_id='c0000000-0000-4000-8000-000000000001',
+ curso_id='d0000000-0000-4000-8000-000000000001'
+WHERE id='40000000-0000-4000-8000-000000000001';
+INSERT INTO public.turmas(id,escola_id,session_id,ano_letivo,status_fecho,regime,
+ capacidade_maxima,classe_id,curso_id) VALUES
+('40000000-0000-4000-8000-000000000002',
+ '20000000-0000-4000-8000-000000000001',
+ '30000000-0000-4000-8000-000000000002',
+ 2026,'ABERTO','{}',35,
+ 'c0000000-0000-4000-8000-000000000002',
+ 'd0000000-0000-4000-8000-000000000001');
+INSERT INTO public.matriculas(id,escola_id,aluno_id,turma_id,session_id,ano_letivo,
+ status,ativo,status_fecho_origem,created_at) VALUES
+('60000000-0000-4000-8000-000000000002',
+ '20000000-0000-4000-8000-000000000001',
+ '50000000-0000-4000-8000-000000000002',
+ '40000000-0000-4000-8000-000000000001',
+ '30000000-0000-4000-8000-000000000001',
+ 2025,'concluido',false,'override_admin',now()-interval '1 year');
+INSERT INTO public.servico_pedidos VALUES(
+ 'e0000000-0000-4000-8000-000000000001',
+ '20000000-0000-4000-8000-000000000001',
+ '50000000-0000-4000-8000-000000000002',
+ 'SERV_REMATRICULA','pending_payment',NULL,'{}');
