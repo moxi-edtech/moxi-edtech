@@ -80,6 +80,23 @@ export function BalcaoHistoricalAcademicRecovery({
     return () => controller.abort();
   }, [load]);
 
+  useEffect(() => {
+    const onGradeSaved = (event: Event) => {
+      const detail = (event as CustomEvent<{ matriculaId: string }>).detail;
+      if (detail?.matriculaId !== matriculaId) return;
+      setLoading(true);
+      setError("");
+      void load()
+        .catch((cause) => {
+          setSnapshot(null);
+          setError(cause instanceof Error ? cause.message : "Não foi possível atualizar o histórico.");
+        })
+        .finally(() => setLoading(false));
+    };
+    window.addEventListener("klasse:historic-grade-saved", onGradeSaved);
+    return () => window.removeEventListener("klasse:historic-grade-saved", onGradeSaved);
+  }, [load, matriculaId]);
+
   const refresh = async () => {
     setLoading(true);
     setError("");
