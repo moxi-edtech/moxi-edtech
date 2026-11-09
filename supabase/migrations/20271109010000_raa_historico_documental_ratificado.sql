@@ -308,6 +308,7 @@ BEGIN
         SELECT 1 FROM public.historico_snapshot_locks sl
         WHERE sl.escola_id=p_escola_id AND sl.matricula_id=m.id
           AND sl.ano_letivo_id=m.session_id AND sl.status='fechado'
+          AND sl.historico_ano_id=h.id
       )
       AND EXISTS (
         SELECT 1 FROM public.academic_transition_cohort_members cm
@@ -400,10 +401,152 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.historico_set_snapshot_state(p_escola_id uuid, p_matricula_ids uuid[], p_ano_letivo_id uuid, p_novo_estado text, p_motivo text, p_run_id uuid DEFAULT NULL::uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_actor_id uuid := auth.uid();
+  v_escola_id uuid := public.current_tenant_escola_id();
+  v_has_permission boolean;
+  v_row record;
+  v_updated int := 0;
+  v_new_status text := lower(trim(p_novo_estado));
+  v_current_lock record;
+BEGIN
+  IF v_escola_id IS NULL OR p_escola_id IS DISTINCT FROM v_escola_id THEN
+    RAISE EXCEPTION 'AUTH: escola_id inválido.';
+  END IF;
+
+  SELECT public.user_has_role_in_school(v_escola_id, ARRAY['admin', 'admin_escola', 'staff_admin', 'secretaria'])
+    INTO v_has_permission;
+  IF NOT v_has_permission THEN
+    RAISE EXCEPTION 'AUTH: Permissão negada para alterar estado de snapshot histórico.';
+  END IF;
+
+  IF v_new_status NOT IN ('aberto', 'fechado', 'reaberto') THEN
+    RAISE EXCEPTION 'LOGIC: estado inválido (%). Use aberto|fechado|reaberto.', p_novo_estado;
+  END IF;
+
+  IF v_new_status = 'reaberto' AND (p_motivo IS NULL OR btrim(p_motivo) = '') THEN
+    RAISE EXCEPTION 'LOGIC: motivo é obrigatório para reabertura.';
+  END IF;
+
+  -- A verified documentary legal lock cannot be reopened or closed by
+  -- financial aliases or ordinary secretariat staff through a direct RPC.
+  IF EXISTS (
+    SELECT 1 FROM public.matriculas m
+    WHERE m.escola_id=p_escola_id
+      AND m.id=ANY(p_matricula_ids)
+      AND m.status_fecho_origem='override_admin'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM public.escola_users eu
+    WHERE eu.escola_id=p_escola_id AND eu.user_id=v_actor_id
+      AND eu.papel IN ('admin','admin_escola','staff_admin','diretor')
+  ) THEN
+    RAISE EXCEPTION 'HISTORICAL_SNAPSHOT_AUTH_FORBIDDEN: decisão histórica exige direção'
+      USING ERRCODE='42501';
+  END IF;
+
+  FOR v_row IN
+    SELECT m.id AS matricula_id, m.aluno_id
+    FROM public.matriculas m
+    WHERE m.escola_id = v_escola_id
+      AND m.id = ANY(p_matricula_ids)
+  LOOP
+    SELECT * INTO v_current_lock
+    FROM public.historico_snapshot_locks hsl
+    WHERE hsl.escola_id = v_escola_id
+      AND hsl.ano_letivo_id = p_ano_letivo_id
+      AND hsl.matricula_id = v_row.matricula_id
+    FOR UPDATE;
+
+    INSERT INTO public.historico_snapshot_locks (
+      escola_id,
+      ano_letivo_id,
+      matricula_id,
+      status,
+      lock_run_id,
+      lock_job_id,
+      lock_step,
+      lock_reason,
+      locked_at,
+      reopened_at,
+      reopened_by,
+      reopened_reason,
+      allow_reopen
+    )
+    VALUES (
+      v_escola_id,
+      p_ano_letivo_id,
+      v_row.matricula_id,
+      v_new_status,
+      p_run_id,
+      p_run_id,
+      CASE WHEN v_new_status = 'fechado' THEN 'GENERATING_HISTORY' ELSE NULL END,
+      CASE WHEN v_new_status = 'fechado' THEN p_motivo ELSE NULL END,
+      CASE WHEN v_new_status = 'fechado' THEN now() ELSE v_current_lock.locked_at END,
+      CASE WHEN v_new_status = 'reaberto' THEN now() ELSE NULL END,
+      CASE WHEN v_new_status = 'reaberto' THEN v_actor_id ELSE NULL END,
+      CASE WHEN v_new_status = 'reaberto' THEN p_motivo ELSE NULL END,
+      CASE WHEN v_new_status = 'reaberto' THEN true ELSE false END
+    )
+    ON CONFLICT (escola_id, ano_letivo_id, matricula_id)
+    DO UPDATE SET
+      status = EXCLUDED.status,
+      lock_run_id = EXCLUDED.lock_run_id,
+      lock_job_id = EXCLUDED.lock_job_id,
+      lock_step = EXCLUDED.lock_step,
+      lock_reason = COALESCE(EXCLUDED.lock_reason, public.historico_snapshot_locks.lock_reason),
+      locked_at = COALESCE(EXCLUDED.locked_at, public.historico_snapshot_locks.locked_at),
+      reopened_at = EXCLUDED.reopened_at,
+      reopened_by = EXCLUDED.reopened_by,
+      reopened_reason = EXCLUDED.reopened_reason,
+      allow_reopen = EXCLUDED.allow_reopen,
+      updated_at = now();
+
+    UPDATE public.historico_anos ha
+      SET snapshot_status = v_new_status,
+          snapshot_lock_run_id = p_run_id,
+          snapshot_locked_at = CASE WHEN v_new_status = 'fechado' THEN now() ELSE ha.snapshot_locked_at END,
+          snapshot_reopened_at = CASE WHEN v_new_status = 'reaberto' THEN now() ELSE ha.snapshot_reopened_at END,
+          snapshot_reopened_by = CASE WHEN v_new_status = 'reaberto' THEN v_actor_id ELSE ha.snapshot_reopened_by END,
+          snapshot_reopen_reason = CASE WHEN v_new_status = 'reaberto' THEN p_motivo ELSE ha.snapshot_reopen_reason END
+    WHERE ha.escola_id = v_escola_id
+      AND ha.ano_letivo_id = p_ano_letivo_id
+      AND ha.matricula_id = v_row.matricula_id;
+
+    INSERT INTO public.audit_logs (escola_id, actor_id, action, entity, entity_id, portal, details)
+    VALUES (
+      v_escola_id,
+      v_actor_id,
+      CASE WHEN v_new_status = 'reaberto' THEN 'HISTORICO_SNAPSHOT_REABERTO' ELSE 'HISTORICO_SNAPSHOT_ESTADO_ALTERADO' END,
+      'historico_snapshot_locks',
+      v_row.matricula_id::text,
+      'secretaria',
+      jsonb_build_object(
+        'ano_letivo_id', p_ano_letivo_id,
+        'matricula_id', v_row.matricula_id,
+        'novo_estado', v_new_status,
+        'run_id', p_run_id,
+        'motivo', p_motivo
+      )
+    );
+
+    v_updated := v_updated + 1;
+  END LOOP;
+
+  RETURN jsonb_build_object('ok', true, 'updated', v_updated, 'novo_estado', v_new_status);
+END;
+$function$;
+
 -- Preserve existing privileges for the replaced function signatures.
 -- SECURITY DEFINER handlers authorize both tenant and exact direction role.
 REVOKE ALL ON FUNCTION public.finalizar_origem_academica(uuid,uuid,text,text,text,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.ratificar_resultado_historico_escola(uuid,uuid,text,text,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.resolve_raa_progression_for_matricula(uuid,uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.historico_set_snapshot_state(uuid,uuid[],uuid,text,text,uuid) FROM PUBLIC, anon;
 
 COMMIT;
