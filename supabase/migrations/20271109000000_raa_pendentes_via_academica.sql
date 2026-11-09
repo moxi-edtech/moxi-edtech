@@ -104,9 +104,12 @@ BEGIN
 
     -- The existing staff set includes financial roles. Those roles must
     -- NOT gain new powers over a pending academic record.
-    v_can_write_pending := public.user_has_role_in_school(
-      p_escola_id,
-      ARRAY['secretaria','admin_secretaria','admin','admin_escola','staff_admin','diretor']
+    -- user_has_role_in_school expands 'secretaria' to financial roles.
+    -- For an exceptional pending-grade write we intentionally use exact roles.
+    v_can_write_pending := EXISTS (
+      SELECT 1 FROM public.escola_users eu
+      WHERE eu.escola_id = p_escola_id AND eu.user_id = v_actor_id
+        AND eu.papel IN ('secretaria','admin_secretaria','admin','admin_escola','staff_admin','diretor')
     );
 
     IF NOT v_is_staff THEN
@@ -448,9 +451,12 @@ BEGIN
          AND v.matricula_origin_closed IS NULL
          AND auth.uid() IS NOT NULL
          AND public.current_tenant_escola_id() = NEW.escola_id
-         AND public.user_has_role_in_school(NEW.escola_id,
-           ARRAY['secretaria','admin_secretaria',
-                 'admin','admin_escola','staff_admin','diretor'])
+         AND EXISTS (
+           SELECT 1 FROM public.escola_users eu
+           WHERE eu.escola_id = NEW.escola_id AND eu.user_id = auth.uid()
+             AND eu.papel IN ('secretaria','admin_secretaria','admin',
+                              'admin_escola','staff_admin','diretor')
+         )
          AND NOT EXISTS (
            SELECT 1 FROM public.historico_anos h
            WHERE h.escola_id = NEW.escola_id AND h.matricula_id = NEW.matricula_id
