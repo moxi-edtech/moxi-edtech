@@ -11,7 +11,7 @@ const sql = readFileSync(
 
 test("RAA resolves inherit_school subjects from the curriculum instead of dropping them", () => {
   const server = web("lib/academico/raa-progression-server.ts");
-  assert.match(server, /matrix\.disciplina_id/);
+  assert.match(server, /matrix\?\.disciplina_id/);
   assert.match(server, /row\.avaliacao_disciplina_id/);
   assert.match(server, /loadCanonicalRaaLinks\(supabase, escolaId, turmaId\)/);
   assert.match(sql, /COALESCE\(td\.avaliacao_disciplina_id, cm\.avaliacao_disciplina_id, cm\.disciplina_id\)/);
