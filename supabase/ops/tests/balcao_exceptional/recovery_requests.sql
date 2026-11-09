@@ -46,11 +46,7 @@ BEGIN
  IF (SELECT count(*) FROM public.notas)<>0 THEN
    RAISE EXCEPTION 'FAIL: request fabricated grades';
  END IF;
- IF (SELECT count(*) FROM public.notificacoes
-     WHERE destinatario_id='10000000-0000-4000-8000-000000000004'
-       AND action_url='/secretaria/balcao?alunoId=50000000-0000-4000-8000-000000000001')<>1 THEN
-   RAISE EXCEPTION 'FAIL: school director did not receive one actionable notification';
- END IF;
+
  IF has_function_privilege('anon','public.solicitar_regularizacao_historica_balcao(uuid,uuid,text)','EXECUTE') THEN
    RAISE EXCEPTION 'FAIL: anonymous can request';
  END IF;
@@ -97,6 +93,11 @@ BEGIN
  IF (SELECT count(*) FROM public.audit_logs
      WHERE action='BALCAO_REGULARIZACAO_ACADEMICA_SOLICITADA')<>1 THEN
    RAISE EXCEPTION 'FAIL: missing or duplicated audit';
+ END IF;
+ IF (SELECT count(*) FROM public.notificacoes
+     WHERE destinatario_id='10000000-0000-4000-8000-000000000004'
+       AND action_url='/secretaria/balcao?alunoId=50000000-0000-4000-8000-000000000001')<>1 THEN
+   RAISE EXCEPTION 'FAIL: school director did not receive one actionable notification';
  END IF;
 END $audit$;
 ROLLBACK;
