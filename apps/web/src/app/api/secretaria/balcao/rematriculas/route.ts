@@ -187,6 +187,7 @@ export async function POST(request: Request) {
     }
 
     let academicContext;
+    let requiresLateAuthorization = false;
     try {
       academicContext = await resolveAcademicYearContext(supabase as any, {
         userId: user.id,
@@ -206,22 +207,7 @@ export async function POST(request: Request) {
         escolaId,
         Number(academicContext.anoLetivoLabel.slice(0, 4)),
       );
-      if (!rematriculaWindow.open) {
-        const { data: authorized, error: permissionError } = await supabase.rpc(
-          "tem_autorizacao_rematricula_fora_prazo" as any, {
-            p_escola_id: escolaId,
-            p_matricula_origem_id: body.matricula_id,
-            p_ano_destino_id: body.ano_letivo_id,
-          } as any,
-        );
-        if (permissionError || authorized !== true) {
-          return NextResponse.json({
-            ok: false,
-            error: "Período encerrado. Registe o motivo e autorize esta rematrícula no Balcão.",
-            code: "REMATRICULA_WINDOW_CLOSED",
-          }, { status: 409 });
-        }
-      }
+      requiresLateAuthorization = !rematriculaWindow.open;
     } catch (error) {
       return errorResponse(error);
     }
@@ -288,6 +274,24 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: "Não foi possível identificar a matrícula anterior para esta operação.", code: "REMATRICULA_SOURCE_INVALID" }, { status: 409 });
       }
       matricula = matriculaAnterior;
+    }
+    // Use the canonical ORIGIN enrollment, not a potentially selected
+    // destination enrollment, to validate the exact out-of-window permit.
+    if (requiresLateAuthorization) {
+      const { data: authorized, error: permissionError } = await supabase.rpc(
+        "tem_autorizacao_rematricula_fora_prazo" as any, {
+          p_escola_id: escolaId,
+          p_matricula_origem_id: matricula.id,
+          p_ano_destino_id: academicContext.anoLetivoId,
+        } as any,
+      );
+      if (permissionError || authorized !== true) {
+        return NextResponse.json({
+          ok: false,
+          error: "Período encerrado. Registe o motivo e autorize esta rematrícula no Balcão.",
+          code: "REMATRICULA_WINDOW_CLOSED",
+        }, { status: 409 });
+      }
     }
     if (await isSourceYearStillInEarlyTrimester(supabase, escolaId, matricula)) {
       return NextResponse.json({
