@@ -83,7 +83,19 @@ export function EnrollmentPostActionModal({
     setNotaMaxima(null);
     setNotaContextError(null);
     setResult(null);
-  }, [action, alunoId, escolaId, turmaId, originAnoLetivoId, historicalMatriculaId, open]);
+  }, [action, alunoId, escolaId, turmaId, originAnoLetivoId, open]);
+
+  useEffect(() => {
+    // Switching to another historic enrollment cannot reuse a previous
+    // student's selected grade, discipline or reason.
+    setPeriodo("");
+    setNota("");
+    setMotivoHistorico("");
+    setGradeReceipt(null);
+    setDisciplinaId("");
+    setTurmaDisciplinaId("");
+    setNotaMaxima(null);
+  }, [historicalMatriculaId]);
 
   const title = action === "portal" ? "Liberar portal" : action === "notas" ? historicalMatriculaId ? "Lançar nota do ano anterior" : "Lançar nota" : "Pagar mensalidade";
   const Icon = action === "portal" ? KeyRound : action === "notas" ? GraduationCap : Wallet;
