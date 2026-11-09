@@ -81,6 +81,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271109015000_balcao_rematricula_fora_prazo_individual.sql",
   "20271109030000_balcao_notas_historicas_individuais.sql",
   "20271109020000_rematricula_preserva_origem_legal_fechada.sql",
+  // PR #324: exact audited student-scoped recovery request; fiscal scope stays frozen.
+  "20271109040000_balcao_historic_recovery_requests.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
