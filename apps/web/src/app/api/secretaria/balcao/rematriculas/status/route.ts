@@ -1,4 +1,4 @@
-import { authorizeBalcaoAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
+import { authorizeBalcaoAcademicWrite, authorizeBalcaoPendingAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
 import { NextResponse } from "next/server";
 import { canLinkPaidOrderToExistingEnrollment } from "@/lib/rematricula/reconciliation-existing-enrollment";
 import { requireRoleInSchool } from "@/lib/authz";
@@ -322,9 +322,13 @@ export async function GET(request: Request) {
     const academicTimelineAno = academicTimeline ? timelineMatricula.ano_letivo : null;
 
     const trimestreInicialEmCurso = await isSourceYearStillInEarlyTrimester(supabase, escolaId, matriculaOrigem);
-    const gradePermissions = await authorizeBalcaoAcademicWrite(supabase, escolaId, user.id)
-      ? { allowed: true } : await authorizeTurmasManage(supabase, escolaId, user.id)
-      .catch(() => ({ allowed: false }));
+    const canWriteSourceGrades = matriculaOrigem.status === "pendente"
+      ? await authorizeBalcaoPendingAcademicWrite(supabase, escolaId, user.id)
+      : await authorizeBalcaoAcademicWrite(supabase, escolaId, user.id);
+    const gradePermissions = canWriteSourceGrades
+      ? { allowed: true } : matriculaOrigem.status === "pendente"
+        ? { allowed: false } : await authorizeTurmasManage(supabase, escolaId, user.id)
+        .catch(() => ({ allowed: false }));
 
     // A matrícula destino criada pela promoção é a matrícula operacional do
     // aluno. No Balcão ela é preservada: a operação seguinte cobra somente a
