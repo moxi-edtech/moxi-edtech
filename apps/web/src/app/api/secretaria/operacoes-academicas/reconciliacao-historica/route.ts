@@ -8,8 +8,19 @@ import { compareNextYearEnrollment, confirmedOutcomeFitsDestination } from "@/li
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ReadRoles = ["secretaria", "admin", "admin_escola", "staff_admin"] as const;
-const WriteRoles = ["admin", "admin_escola", "staff_admin"] as const;
+const ReadRoles = ["secretaria", "admin", "admin_escola", "staff_admin", "diretor"] as const;
+const WriteRoles = ["admin", "admin_escola", "staff_admin", "diretor"] as const;
+const ExactHistoricalDecisionRoles = new Set(["admin", "admin_escola", "staff_admin", "diretor"]);
+
+async function canWriteHistoricalDecision(supabase: any, escolaId: string): Promise<boolean> {
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return false;
+  // The generic user_has_role_in_school RPC expands financial aliases to
+  // admin. A historical outcome can only be signed by an exact school role.
+  const { data, error } = await supabase.from("escola_users")
+    .select("papel").eq("escola_id", escolaId).eq("user_id", user.id).maybeSingle();
+  return !error && ExactHistoricalDecisionRoles.has(String(data?.papel ?? ""));
+}
 const AcademicResult = z.enum(["aprovado", "reprovado", "concluido"]);
 const Evidence = {
   matricula_id: z.string().uuid(),
@@ -62,9 +73,87 @@ export async function GET(request: Request) {
   try {
     const { supabase, escolaId, error } = await schoolSession();
     if (error || !escolaId) return error!;
-    const writeScope = await requireRoleInSchool({ supabase, escolaId, roles: [...WriteRoles] });
-    const permiteEscrita = !writeScope.error;
-    const parsed = Params.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+    const permiteEscrita = await canWriteHistoricalDecision(supabase, escolaId);
+    const { searchParams } = new URL(request.url);
+    const requestedEnrollment = searchParams.get("matricula_id");
+    if (requestedEnrollment !== null) {
+      const parsedId = z.string().uuid().safeParse(requestedEnrollment);
+      if (!parsedId.success) return NextResponse.json({ ok: false, error: "Matrícula inválida." }, { status: 400 });
+      const { data: origin, error: originError } = await supabase.from("matriculas")
+        .select("id,aluno_id,ano_letivo,session_id,status,ativo,status_fecho_origem,turma_id")
+        .eq("escola_id", escolaId).eq("id", parsedId.data).maybeSingle();
+      if (originError) throw originError;
+      if (!origin) return NextResponse.json({ ok: false, error: "Matrícula não encontrada nesta escola." }, { status: 404 });
+      const [{ data: academicYear, error: yearError },
+        { data: cohorts, error: cohortError },
+        { data: history, error: historyError },
+        { data: existingNotes, error: notesError }] = await Promise.all([
+        supabase.from("anos_letivos").select("id,ativo,ano").eq("escola_id", escolaId)
+          .eq("id", origin.session_id).maybeSingle(),
+        supabase.from("academic_transition_cohort_members")
+          .select("status,cohort:academic_transition_cohorts!inner(codigo,modo,ativo,ano_origem,ano_destino,expira_em)")
+          .eq("escola_id", escolaId).eq("matricula_origem_id", origin.id)
+          .eq("aluno_id", origin.aluno_id).limit(20),
+        supabase.from("historico_anos")
+          .select("id,resultado_final,snapshot_status,ano_letivo_id,matricula_id")
+          .eq("escola_id", escolaId).eq("aluno_id", origin.aluno_id)
+          .eq("ano_letivo", origin.ano_letivo).maybeSingle(),
+        supabase.from("notas").select("id").eq("escola_id", escolaId)
+          .eq("matricula_id", origin.id).limit(1),
+      ]);
+      if (yearError || cohortError || historyError || notesError)
+        throw yearError ?? cohortError ?? historyError ?? notesError;
+      const isClosedSourceYear = academicYear?.ativo === false &&
+        academicYear?.id === origin.session_id &&
+        Number(academicYear?.ano) === Number(origin.ano_letivo);
+      const cohort = (cohorts ?? []).map((row: any) =>
+        ({ status: row.status, record: first(row.cohort) })).find(({ status, record }: any) =>
+          status === "elegivel" && record?.ativo === true &&
+          record?.modo === "virada_assistida_sem_notas" &&
+          Number(record?.ano_origem) === Number(origin.ano_letivo) &&
+          Number(record?.ano_destino) === Number(origin.ano_letivo) + 1 &&
+          (!record?.expira_em || new Date(record.expira_em + "T23:59:59+01:00").getTime() >= Date.now()));
+      const [{ data: ratifications, error: ratificationError }, { data: lock, error: lockError }] = await Promise.all([
+        history ? supabase.from("audit_logs")
+          .select("actor_id,details").eq("escola_id", escolaId)
+          .eq("entity_id", origin.id).eq("action", "MATRICULA_ORIGEM_RESULTADO_ACADEMICO_REGISTADO")
+          .order("id", { ascending: false }).limit(50)
+          : Promise.resolve({ data: [], error: null }),
+        history ? supabase.from("historico_snapshot_locks")
+          .select("status").eq("escola_id", escolaId)
+          .eq("matricula_id", origin.id).eq("ano_letivo_id", origin.session_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+      if (ratificationError || lockError) throw ratificationError ?? lockError;
+      const hasRatification = (ratifications ?? []).some((row: any) =>
+        Boolean(row.actor_id) && row.details?.ratificacao === true &&
+        ExactHistoricalDecisionRoles.has(String(row.details?.papel_autorizado ?? "")) &&
+        row.details?.fonte === "declaracao_administrativa_escola" &&
+        row.details?.historico_ano_id === history?.id &&
+        row.details?.resultado_final === history?.resultado_final &&
+        String(row.details?.referencia_documental ?? "").trim().length >= 8 &&
+        String(row.details?.motivo ?? "").trim().length >= 12);
+      const eligible = Boolean(cohort && isClosedSourceYear &&
+        (existingNotes ?? []).length === 0 &&
+        (!history || history.matricula_id === origin.id));
+      const state = !eligible ? "indisponivel"
+        : !history?.resultado_final ? (origin.status === "pendente" ? "decisao" : "indisponivel")
+        : !hasRatification ? "ratificacao"
+        : history.snapshot_status !== "fechado" || lock?.status !== "fechado" ? "fecho"
+        : "concluido";
+      return NextResponse.json({
+        ok: true, matricula_id: origin.id, estado: state,
+        permite_escrita: permiteEscrita, origem_ano: origin.ano_letivo,
+        origem_status: origin.status, resultado_confirmado: history?.resultado_final ?? null,
+        coorte: cohort?.record?.codigo ?? null,
+        mensagem: !isClosedSourceYear ? "Este ano de origem ainda não está encerrado; utilize a avaliação académica normal."
+          : (existingNotes ?? []).length > 0 ? "Existem notas nesta matrícula. Não é permitido substituir a apuração por uma decisão documental."
+          : !cohort ? "Não existe uma coorte histórica assistida válida para esta origem."
+          : !eligible ? "Há divergência na origem ou no histórico; a direção deve rever o vínculo."
+          : null,
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
+    const parsed = Params.safeParse(Object.fromEntries(searchParams));
     if (!parsed.success) return NextResponse.json({ ok: false, error: "Filtro inválido" }, { status: 400 });
 
     const { data: current, error: currentError } = await supabase
@@ -187,7 +276,8 @@ export async function GET(request: Request) {
     if (origins.error || audit.error) throw origins.error ?? audit.error;
     const sourceById = new Map<string, any>((origins.data ?? []).map((m: any): [string, any] => [String(m.id), m]));
     const signed = new Set((audit.data ?? [])
-      .filter((a: any) => Boolean(a.actor_id) && Boolean(a.details?.motivo))
+      .filter((a: any) => Boolean(a.actor_id) && a.details?.ratificacao === true &&
+        ExactHistoricalDecisionRoles.has(String(a.details?.papel_autorizado ?? "")))
       .map((a: any) => String(a.entity_id)));
     return NextResponse.json({
       ok: true, tipo: "historicos", ano, pagina, total: count ?? 0, permite_escrita: permiteEscrita,
@@ -218,8 +308,10 @@ export async function POST(request: Request) {
   try {
     const { supabase, escolaId, error } = await schoolSession();
     if (error || !escolaId) return error!;
-    const allowed = await requireRoleInSchool({ supabase, escolaId, roles: [...WriteRoles] });
-    if (allowed.error) return allowed.error;
+    if (!(await canWriteHistoricalDecision(supabase, escolaId))) {
+      return NextResponse.json({ ok: false, code: "HISTORICAL_DECISION_FORBIDDEN",
+        error: "A decisão escolar histórica exige direção autorizada nesta escola." }, { status: 403 });
+    }
     const parsed = ActionSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json({ ok: false, code: "EVIDENCIA_OBRIGATORIA",
@@ -281,6 +373,30 @@ export async function POST(request: Request) {
         p_motivo: body.motivo,
       }));
     } else {
+      // Only a properly signed documentary record can be legally closed.
+      const { data: historical, error: historicalError } = await supabase
+        .from("historico_anos").select("id,resultado_final,snapshot_status,matricula_id")
+        .eq("escola_id", escolaId).eq("matricula_id", body.matricula_id).maybeSingle();
+      if (historicalError) throw historicalError;
+      if (!historical?.resultado_final || historical.snapshot_status !== "aberto") {
+        return NextResponse.json({ ok: false, code: "HISTORICAL_DECISION_NOT_READY",
+          error: "Registe e ratifique uma decisão documental antes do fecho." }, { status: 409 });
+      }
+      const { data: signatures, error: signatureError } = await supabase.from("audit_logs")
+        .select("actor_id,details").eq("escola_id", escolaId)
+        .eq("entity_id", body.matricula_id).eq("action", "MATRICULA_ORIGEM_RESULTADO_ACADEMICO_REGISTADO")
+        .order("id", { ascending: false }).limit(100);
+      if (signatureError) throw signatureError;
+      const signed = (signatures ?? []).some((row: any) =>
+        Boolean(row.actor_id) && row.details?.ratificacao === true &&
+        ExactHistoricalDecisionRoles.has(String(row.details?.papel_autorizado ?? "")) &&
+        row.details?.fonte === "declaracao_administrativa_escola" &&
+        row.details?.historico_ano_id === historical.id &&
+        row.details?.resultado_final === historical.resultado_final &&
+        String(row.details?.referencia_documental ?? "").trim().length >= 8 &&
+        String(row.details?.motivo ?? "").trim().length >= 12);
+      if (!signed) return NextResponse.json({ ok: false, code: "HISTORICAL_RATIFICATION_REQUIRED",
+        error: "A direção deve ratificar a decisão documental antes do fecho legal." }, { status: 409 });
       const { data: enrollment, error: lookupError } = await supabase
         .from("matriculas").select("id,session_id").eq("escola_id", escolaId)
         .eq("id", body.matricula_id).maybeSingle();
