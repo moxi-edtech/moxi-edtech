@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 50);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 51);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
@@ -243,6 +243,7 @@ test("documentary RAA migrations are individually allowed but cannot activate fi
   const approved = [
     "20271109000000_raa_pendentes_via_academica.sql",
     "20271109010000_raa_historico_documental_ratificado.sql",
+    "20271109020000_rematricula_preserva_origem_legal_fechada.sql",
   ];
   for (const name of approved) {
     const path = "supabase/migrations/" + name;
