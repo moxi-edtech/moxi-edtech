@@ -25,7 +25,7 @@ DECLARE
   v_motivo text;
 BEGIN
   IF v_actor_id IS NULL OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
-    OR NOT public.user_has_role_in_school(p_escola_id, ARRAY['admin','admin_escola','staff_admin','secretaria']::text[]) THEN
+    OR NOT public.user_has_role_in_school(p_escola_id, ARRAY['admin','admin_escola','staff_admin','secretaria','diretor']::text[]) THEN
     RAISE EXCEPTION 'AUTH: escola ou utilizador sem autorização' USING ERRCODE='42501';
   END IF;
 
@@ -180,7 +180,7 @@ DECLARE
 BEGIN
   IF v_actor_id IS NULL OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
      OR NOT public.user_has_role_in_school(p_escola_id,
-       ARRAY['admin','admin_escola','staff_admin']::text[]) THEN
+       ARRAY['admin','admin_escola','staff_admin','diretor']::text[]) THEN
     RAISE EXCEPTION 'RATIFICATION_AUTH_FORBIDDEN: ratificação de históricos exige direção da escola'
       USING ERRCODE='42501';
   END IF;
@@ -427,7 +427,7 @@ BEGIN
     RAISE EXCEPTION 'AUTH: escola_id inválido.';
   END IF;
 
-  SELECT public.user_has_role_in_school(v_escola_id, ARRAY['admin', 'admin_escola', 'staff_admin', 'secretaria'])
+  SELECT public.user_has_role_in_school(v_escola_id, ARRAY['admin', 'admin_escola', 'staff_admin', 'secretaria', 'diretor'])
     INTO v_has_permission;
   IF NOT v_has_permission THEN
     RAISE EXCEPTION 'AUTH: Permissão negada para alterar estado de snapshot histórico.';
