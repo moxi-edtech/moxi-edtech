@@ -20,6 +20,7 @@ DECLARE
   v_claims jsonb := '{}'::jsonb;
   v_is_service_role boolean := false;
   v_is_staff boolean := false;
+  v_can_write_pending boolean := false;
   v_professor_id uuid;
   v_turma record;
   v_turma_disciplina record;
@@ -99,6 +100,13 @@ BEGIN
         'staff_admin',
         'diretor'
       ]
+    );
+
+    -- The existing staff set includes financial roles. Those roles must
+    -- NOT gain new powers over a pending academic record.
+    v_can_write_pending := public.user_has_role_in_school(
+      p_escola_id,
+      ARRAY['secretaria','admin_secretaria','admin','admin_escola','staff_admin','diretor']
     );
 
     IF NOT v_is_staff THEN
@@ -286,7 +294,7 @@ BEGIN
       AND (
         m.ativo IS TRUE
         OR (
-          v_is_staff
+          v_can_write_pending
           AND m.status = 'pendente'
           AND m.ativo IS FALSE
           AND m.status_fecho_origem IS NULL
@@ -441,7 +449,7 @@ BEGIN
          AND auth.uid() IS NOT NULL
          AND public.current_tenant_escola_id() = NEW.escola_id
          AND public.user_has_role_in_school(NEW.escola_id,
-           ARRAY['secretaria','secretaria_financeiro','admin_secretaria',
+           ARRAY['secretaria','admin_secretaria',
                  'admin','admin_escola','staff_admin','diretor'])
          AND NOT EXISTS (
            SELECT 1 FROM public.historico_anos h
