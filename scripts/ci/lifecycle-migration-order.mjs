@@ -22,8 +22,41 @@ for (const required of prerequisites) {
 // Future migrations are permitted, but cannot silently overwrite the
 // stabilized lifecycle RPCs, SSOT view, or role policies.
 const protectedWriters = /(?:CREATE\s+OR\s+REPLACE\s+(?:FUNCTION|VIEW)\s+public\.(?:gradeengine_calcular_situacao|finalizar_origem_academica|ratificar_resultado_historico_escola|lifecycle_validate_historico_legal_lock|finalizar_matricula_blindada|gerar_historico_anual|sync_historico_anos_compat|lifecycle_sync_matricula_ativo|activate_aluno_after_matricula|v_student_lifecycle_ssot_v1)\b|(?:DROP|CREATE)\s+POLICY\s+lifecycle_matriculas_)/i;
+// A single explicit lifecycle protocol upgrade, backed by disposable-PG
+// contract tests. Later migrations may not redefine these protected writers
+// without another reviewed protocol update and a matching isolated regression.
+const historicBridge = "20271109010000_raa_historico_documental_ratificado.sql";
 for (const migration of migrations.filter((file) => file > finalName)) {
   const source = readFileSync(join(dir, migration), "utf8");
+  if (migration === historicBridge) {
+    const mandatory = [
+      /CREATE OR REPLACE FUNCTION public\\.finalizar_origem_academica/,
+      /CREATE OR REPLACE FUNCTION public\\.ratificar_resultado_historico_escola/,
+      /CREATE OR REPLACE FUNCTION public\\.resolve_raa_progression_for_matricula/,
+      /CREATE OR REPLACE FUNCTION public\\.historico_set_snapshot_state/,
+      /ACADEMIC_DOCUMENT_GRADES_PRESENT/,
+      /HISTORICAL_SNAPSHOT_AUTH_FORBIDDEN/,
+      /'ratificacao',true/,
+      /'papel_autorizado'/,
+      /h\\.snapshot_status='fechado'/,
+      /sl\\.historico_ano_id=h\\.id/,
+      /'fonte_decisao','historico_documental_ratificado'/,
+      /public\\.current_tenant_escola_id\\(\\)/,
+      /REVOKE ALL ON FUNCTION public\\.finalizar_origem_academica/,
+    ];
+    for (const contract of mandatory) {
+      assert.match(source, contract, "Historical lifecycle bridge missing reviewed guard: " + contract);
+    }
+    for (const file of [
+      "supabase/ops/tests/raa_historico/fixture.sql",
+      "supabase/ops/tests/raa_historico/regression.sql",
+      ".github/workflows/raa-historico-documental.yml",
+    ]) {
+      assert.ok(readFileSync(join(root,file),"utf8").length > 500,
+        "Historical lifecycle bridge requires isolated integration coverage: "+file);
+    }
+    continue;
+  }
   assert.ok(!protectedWriters.test(source),
     migration + " changes SSOT writers or policies after stabilization; update lifecycle contract first");
 }
