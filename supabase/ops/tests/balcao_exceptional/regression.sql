@@ -44,6 +44,50 @@ BEGIN
  RAISE EXCEPTION 'FAIL: second real historical grade was blocked';
 END $second_grade$;
 
+-- Even an unlinked legal history for the same student and year must deny
+-- late grade edits. Historical correction never alters published results.
+RESET ROLE;
+INSERT INTO public.historico_anos(id,escola_id,matricula_id,aluno_id,ano_letivo,resultado_final)
+VALUES('f0000000-0000-4000-8000-000000000001',
+ '20000000-0000-4000-8000-000000000001',NULL,
+ '50000000-0000-4000-8000-000000000001',2025,'aprovado');
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',false);
+DO $legal_history_lock$
+BEGIN
+ BEGIN
+  PERFORM public.lancar_nota_historica_individual(
+   '20000000-0000-4000-8000-000000000001',
+   '60000000-0000-4000-8000-000000000001',
+   '80000000-0000-4000-8000-000000000001',
+   1,'NPT',16.0,'Não alterar notas após publicação do histórico legal.');
+  RAISE EXCEPTION 'FAIL: unlinked legal history ignored';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+END $legal_history_lock$;
+RESET ROLE;
+DELETE FROM public.historico_anos WHERE id='f0000000-0000-4000-8000-000000000001';
+INSERT INTO public.historico_snapshot_locks(escola_id,matricula_id,ano_letivo_id,status)
+VALUES('20000000-0000-4000-8000-000000000001',
+ '60000000-0000-4000-8000-000000000001',
+ '30000000-0000-4000-8000-000000000001','fechado');
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',false);
+DO $snapshot_lock$
+BEGIN
+ BEGIN
+  PERFORM public.lancar_nota_historica_individual(
+   '20000000-0000-4000-8000-000000000001',
+   '60000000-0000-4000-8000-000000000001',
+   '80000000-0000-4000-8000-000000000001',
+   1,'NPT',16.0,'Não alterar notas com fecho de snapshot legal.');
+  RAISE EXCEPTION 'FAIL: legal snapshot lock ignored';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+END $snapshot_lock$;
+RESET ROLE;
+DELETE FROM public.historico_snapshot_locks;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',false);
+
 -- Failed range validation rolls back the whole write (grade and journal).
 DO $invalid_grade$
 BEGIN
