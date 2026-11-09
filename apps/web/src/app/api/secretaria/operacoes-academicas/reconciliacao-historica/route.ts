@@ -9,7 +9,6 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const ReadRoles = ["secretaria", "admin", "admin_escola", "staff_admin", "diretor"] as const;
-const WriteRoles = ["admin", "admin_escola", "staff_admin", "diretor"] as const;
 const ExactHistoricalDecisionRoles = new Set(["admin", "admin_escola", "staff_admin", "diretor"]);
 
 async function canWriteHistoricalDecision(supabase: any, escolaId: string): Promise<boolean> {
@@ -133,13 +132,20 @@ export async function GET(request: Request) {
         row.details?.resultado_final === history?.resultado_final &&
         String(row.details?.referencia_documental ?? "").trim().length >= 8 &&
         String(row.details?.motivo ?? "").trim().length >= 12);
+      const sourceConsistent = history
+        ? origin.status === "concluido" && origin.status_fecho_origem === "override_admin"
+          && history.matricula_id === origin.id && history.ano_letivo_id === origin.session_id
+        : origin.status === "pendente";
+      const legalConflict = Boolean(history &&
+        ((history.snapshot_status === "fechado" &&
+          (!hasRatification || lock?.status !== "fechado")) ||
+         !["aberto", "fechado"].includes(String(history.snapshot_status ?? ""))));
       const eligible = Boolean(cohort && isClosedSourceYear &&
-        (existingNotes ?? []).length === 0 &&
-        (!history || history.matricula_id === origin.id));
+        (existingNotes ?? []).length === 0 && sourceConsistent && !legalConflict);
       const state = !eligible ? "indisponivel"
-        : !history?.resultado_final ? (origin.status === "pendente" ? "decisao" : "indisponivel")
+        : !history?.resultado_final ? "decisao"
         : !hasRatification ? "ratificacao"
-        : history.snapshot_status !== "fechado" || lock?.status !== "fechado" ? "fecho"
+        : history.snapshot_status === "aberto" ? "fecho"
         : "concluido";
       return NextResponse.json({
         ok: true, matricula_id: origin.id, estado: state,
@@ -149,6 +155,7 @@ export async function GET(request: Request) {
         mensagem: !isClosedSourceYear ? "Este ano de origem ainda não está encerrado; utilize a avaliação académica normal."
           : (existingNotes ?? []).length > 0 ? "Existem notas nesta matrícula. Não é permitido substituir a apuração por uma decisão documental."
           : !cohort ? "Não existe uma coorte histórica assistida válida para esta origem."
+          : legalConflict ? "O histórico foi fechado ou reaberto sem a ratificação necessária; a direção deve rever o fecho legal."
           : !eligible ? "Há divergência na origem ou no histórico; a direção deve rever o vínculo."
           : null,
       }, { headers: { "Cache-Control": "no-store" } });
