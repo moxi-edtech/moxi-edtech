@@ -78,6 +78,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // Both are reviewed by the dedicated lifecycle guard and disposable PG tests.
   "20271109000000_raa_pendentes_via_academica.sql",
   "20271109010000_raa_historico_documental_ratificado.sql",
+  "20271109015000_balcao_rematricula_fora_prazo_individual.sql",
+  "20271109030000_balcao_notas_historicas_individuais.sql",
   "20271109020000_rematricula_preserva_origem_legal_fechada.sql",
 ]);
 
