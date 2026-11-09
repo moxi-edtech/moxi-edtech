@@ -1,0 +1,40 @@
+name: RAA Historic Documentary Bridge
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20271109010000_raa_historico_documental_ratificado.sql"
+      - "supabase/ops/tests/raa_historico/**"
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/**"
+      - "apps/web/src/components/secretaria/BalcaoHistoricalAcademicRecovery.tsx"
+      - "apps/web/tests/unit/raa-historical-*.spec.ts"
+      - ".github/workflows/raa-historico-documental.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  documentary-raa:
+    name: Authorized historical outcomes in disposable PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: raa_historico_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d raa_historico_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/raa_historico_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load minimal synthetic academic-year fixture and migration
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/fixture.sql
+      - name: Verify RAA, exact roles, audit, legal lock and school isolation
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/regression.sql
