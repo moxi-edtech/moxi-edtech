@@ -3370,7 +3370,14 @@ export default function BalcaoAtendimento({
           historicalMatriculaId={postAction?.historicalMatriculaId ?? null}
           initialTrimestre={postAction?.initialTrimestre ?? null}
           initialDisciplinaId={postAction?.initialDisciplinaId ?? null}
-          onAcademicSaved={() => void rematricula.refreshStatus()}
+          onAcademicSaved={() => {
+            if (postAction?.historicalMatriculaId) {
+              window.dispatchEvent(new CustomEvent("klasse:historic-grade-saved", {
+                detail: { matriculaId: postAction.historicalMatriculaId },
+              }));
+            }
+            void rematricula.refreshStatus();
+          }}
           onPayment={() => {
             setPostAction(null);
             const next = dossier.mensalidades[0];
