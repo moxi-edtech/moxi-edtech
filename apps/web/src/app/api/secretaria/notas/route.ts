@@ -51,7 +51,8 @@ export async function POST(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
-    const authz = await authorizeBalcaoAcademicWrite(supabase, escolaId, user.id)
+    const canWritePendingGrades = await authorizeBalcaoAcademicWrite(supabase, escolaId, user.id)
+    const authz = canWritePendingGrades
       ? { allowed: true } : await authorizeTurmasManage(supabase, escolaId, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
 
@@ -127,23 +128,28 @@ export async function POST(req: Request) {
     const alunoIds = Array.from(new Set(body.notas.map((nota) => nota.aluno_id)))
     const { data: activeMatriculas, error: matriculasError } = await supabase
       .from('matriculas')
-      .select('aluno_id')
+      .select('aluno_id,ativo,status,status_fecho_origem')
       .eq('escola_id', escolaId)
       .eq('turma_id', body.turma_id)
       .eq('session_id', academicContext.anoLetivoId)
-      .eq('ativo', true)
       .in('aluno_id', alunoIds)
 
     if (matriculasError) {
       return NextResponse.json({ ok: false, error: matriculasError.message }, { status: 400 })
     }
 
-    const activeAlunoIds = new Set((activeMatriculas ?? []).map((row) => String(row.aluno_id)))
-    const invalidAlunoId = alunoIds.find((alunoId) => !activeAlunoIds.has(alunoId))
+    // A origem pendente pode receber notas pela secretaria quando ainda não
+    // foi encerrada; professores continuam limitados às matrículas ativas.
+    const eligibleAlunoIds = new Set((activeMatriculas ?? [])
+      .filter((row) => row.ativo === true ||
+        (canWritePendingGrades && row.ativo === false &&
+          row.status === 'pendente' && row.status_fecho_origem == null))
+      .map((row) => String(row.aluno_id)))
+    const invalidAlunoId = alunoIds.find((alunoId) => !eligibleAlunoIds.has(alunoId))
     if (invalidAlunoId) {
       return NextResponse.json({
         ok: false,
-        error: 'Um ou mais alunos não possuem matrícula ativa nesta turma e ano letivo.',
+        error: 'Um ou mais alunos não possuem matrícula ativa ou pendente elegível nesta turma e ano letivo.',
         code: 'ACTIVE_ENROLLMENT_REQUIRED',
       }, { status: 409 })
     }
