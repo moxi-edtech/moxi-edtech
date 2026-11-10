@@ -5,6 +5,7 @@ on:
       - "supabase/migrations/20271109015000_balcao_rematricula_fora_prazo_individual.sql"
       - "supabase/migrations/20271109020000_rematricula_preserva_origem_legal_fechada.sql"
       - "supabase/migrations/20271109030000_balcao_notas_historicas_individuais.sql"
+      - "supabase/migrations/20271109050000_balcao_rematricula_fora_epoca_direta.sql"
       - "supabase/ops/tests/balcao_exceptional/**"
       - "apps/web/src/app/api/secretaria/balcao/rematriculas/**"
       - "apps/web/src/app/api/secretaria/notas/route.ts"
