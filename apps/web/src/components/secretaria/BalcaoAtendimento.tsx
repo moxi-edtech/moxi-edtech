@@ -33,8 +33,6 @@ import { raaBalcaoEffectiveStatus, raaBalcaoPlan } from "@/lib/rematricula/raa-b
 import { RematriculaWorkspaceHeader, RematriculaAcademicDestination, type RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
 import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
 import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
-import { RematriculaWindowRecovery } from "@/components/secretaria/RematriculaWindowRecovery";
-import { BalcaoLateRematriculaAuthorization } from "@/components/secretaria/BalcaoLateRematriculaAuthorization";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
 import { PagamentoDividaModal } from "@/components/secretaria/PagamentoDividaModal";
@@ -1299,7 +1297,6 @@ function Catalogo({
   rematriculaPrice,
   rematriculaAnoLabel,
   rematriculaContextYear,
-  rematriculaSchoolId,
   rematriculaWindow,
   rematriculaAcademic,
   rematriculaTimeline,
@@ -1345,7 +1342,6 @@ function Catalogo({
   rematriculaPrice: number | null;
   rematriculaAnoLabel: string | null;
   rematriculaContextYear: { id: string; ano: number; label: string } | null;
-  rematriculaSchoolId: string;
   rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
   rematriculaAcademic: RaaBalcaoAcademic | null | undefined;
   rematriculaTimeline: RaaBalcaoTimeline | null;
@@ -1632,35 +1628,10 @@ function Catalogo({
                 <CodigoEstado estado="TARGET_YEAR_NOT_CONFIGURED" />
               </div>
             ) : null}
-            {rematriculaState === "WINDOW_CLOSED" ? (
-              <div className="mb-2 rounded-xl border border-slate-300 bg-slate-50 p-3.5 text-xs text-slate-700">
-                <strong className="block text-slate-900">Período de rematrícula fechado</strong>
-                <p className="mt-1">
-                  {rematriculaAnoLabel ?? "Ano letivo atual"} · É possível autorizar este aluno fora do prazo sem abrir a janela da escola.
-                </p>
-                {rematriculaWindow?.data_fim ? (
-                  <p className="mt-1">
-                    Última janela encerrada em{" "}
-                    <strong>{new Date(rematriculaWindow.data_fim).toLocaleDateString("pt-AO", { timeZone: "Africa/Luanda" })}</strong>.
-                  </p>
-                ) : null}
-                <CodigoEstado estado="WINDOW_CLOSED" />
-                {rematriculaContextYear && raaMatriculaId ? (
-                  <BalcaoLateRematriculaAuthorization
-                    key={raaMatriculaId + ":" + rematriculaContextYear.id}
-                    matriculaId={raaMatriculaId}
-                    anoLetivoId={rematriculaContextYear.id}
-                    onRecheck={onRefreshRematricula}
-                  />
-                ) : rematriculaContextYear ? (
-                  <RematriculaWindowRecovery
-                    key={rematriculaContextYear.id}
-                    anoLetivo={rematriculaContextYear}
-                    escolaId={rematriculaSchoolId}
-                    onRecheck={onRefreshRematricula}
-                  />
-                ) : null}
-              </div>
+            {view === "reenrollment" && rematriculaWindow && !rematriculaWindow.open && rematriculaReady ? (
+              <p role="status" className="mb-3 rounded-xl border border-amber/25 bg-amber/5 px-3 py-2 text-xs font-medium text-foreground">
+                Rematrícula fora de época · Pode concluir normalmente. O registo fica auditado.
+              </p>
             ) : null}
             {view === "reenrollment" && rematriculaState === "SOURCE_RECORD_REQUIRED" && (
               <div role="status" className="mb-3 rounded-xl border border-border bg-muted/20 p-4">
@@ -3180,7 +3151,6 @@ export default function BalcaoAtendimento({
                   rematriculaPrice={rematricula.service?.valor_base ?? null}
                   rematriculaAnoLabel={rematricula.targetYearLabel ?? rematricula.anoLetivo?.label ?? null}
                   rematriculaContextYear={rematricula.anoLetivo}
-                  rematriculaSchoolId={escolaId}
                   rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
                   rematriculaTimeline={rematricula.academicTimeline}

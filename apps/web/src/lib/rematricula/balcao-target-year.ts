@@ -26,7 +26,8 @@ export function shouldBlockClosedRematriculaWindow(input: {
   windowOpen: boolean;
   hasExistingOperationForTarget: boolean;
 }): boolean {
-  // A janela fecha a criação de operações novas. Uma operação já existente
-  // continua disponível para leitura, retomada, reconciliação ou comprovante.
-  return !input.windowOpen && !input.hasExistingOperationForTarget;
+  // Compatibilidade para consumidores antigos. O prazo já não bloqueia
+  // rematrículas; os controlos académicos/financeiros são independentes.
+  void input;
+  return false;
 }

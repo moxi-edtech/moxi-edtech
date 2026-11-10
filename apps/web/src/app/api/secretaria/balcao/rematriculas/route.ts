@@ -13,7 +13,6 @@ import { recordAuditServer } from "@/lib/audit";
 import type { Database } from "~types/supabase";
 import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
-import { resolveRematriculaWindow } from "@/lib/secretaria/rematricula-window";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { isSourceYearStillInEarlyTrimester } from "@/lib/rematricula/raa-balcao-early-trimester";
@@ -187,7 +186,6 @@ export async function POST(request: Request) {
     }
 
     let academicContext;
-    let requiresLateAuthorization = false;
     try {
       academicContext = await resolveAcademicYearContext(supabase as any, {
         userId: user.id,
@@ -202,12 +200,6 @@ export async function POST(request: Request) {
           anoLetivoId: academicContext.anoLetivoId,
         });
       }
-      const rematriculaWindow = await resolveRematriculaWindow(
-        supabase,
-        escolaId,
-        Number(academicContext.anoLetivoLabel.slice(0, 4)),
-      );
-      requiresLateAuthorization = !rematriculaWindow.open;
     } catch (error) {
       return errorResponse(error);
     }
@@ -275,24 +267,8 @@ export async function POST(request: Request) {
       }
       matricula = matriculaAnterior;
     }
-    // Use the canonical ORIGIN enrollment, not a potentially selected
-    // destination enrollment, to validate the exact out-of-window permit.
-    if (requiresLateAuthorization) {
-      const { data: authorized, error: permissionError } = await supabase.rpc(
-        "tem_autorizacao_rematricula_fora_prazo" as any, {
-          p_escola_id: escolaId,
-          p_matricula_origem_id: matricula.id,
-          p_ano_destino_id: academicContext.anoLetivoId,
-        } as any,
-      );
-      if (permissionError || authorized !== true) {
-        return NextResponse.json({
-          ok: false,
-          error: "Período encerrado. Registe o motivo e autorize esta rematrícula no Balcão.",
-          code: "REMATRICULA_WINDOW_CLOSED",
-        }, { status: 409 });
-      }
-    }
+    // O prazo de rematrícula não bloqueia a operação: o RPC aplica o RAA,
+    // papel/tenant, turma, pagamentos e regista a conclusão fora de época.
     if (await isSourceYearStillInEarlyTrimester(supabase, escolaId, matricula)) {
       return NextResponse.json({
         ok: false, code: "ACADEMIC_YEAR_IN_PROGRESS",
