@@ -19,13 +19,12 @@ test("ano inválido não é usado como destino", () => {
   assert.throws(() => resolveBalcaoRematriculaTargetYear({ selectedAcademicYear: 0 }));
 });
 
-test("janela fechada não bloqueia reconciliação de operação já existente", () => {
-  assert.equal(shouldBlockClosedRematriculaWindow({
-    windowOpen: false,
-    hasExistingOperationForTarget: true,
-  }), false);
-  assert.equal(shouldBlockClosedRematriculaWindow({
-    windowOpen: false,
-    hasExistingOperationForTarget: false,
-  }), true);
+test("janela encerrada não bloqueia nem novas rematrículas nem reconciliação", () => {
+  for (const windowOpen of [true, false]) {
+    for (const hasExistingOperationForTarget of [true, false]) {
+      assert.equal(shouldBlockClosedRematriculaWindow({
+        windowOpen, hasExistingOperationForTarget,
+      }), false);
+    }
+  }
 });
