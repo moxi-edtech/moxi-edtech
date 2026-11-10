@@ -1629,7 +1629,7 @@ function Catalogo({
               </div>
             ) : null}
             {view === "reenrollment" && rematriculaWindow && !rematriculaWindow.open && rematriculaReady ? (
-              <p role="status" className="mb-3 rounded-xl border border-amber/25 bg-amber/5 px-3 py-2 text-xs font-medium text-slate-700">
+              <p role="status" className="mb-3 rounded-xl border border-amber/25 bg-amber/5 px-3 py-2 text-xs font-medium text-foreground">
                 Rematrícula fora de época · Pode concluir normalmente. O registo fica auditado.
               </p>
             ) : null}
