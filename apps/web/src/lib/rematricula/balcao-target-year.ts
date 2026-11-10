@@ -26,7 +26,8 @@ export function shouldBlockClosedRematriculaWindow(input: {
   windowOpen: boolean;
   hasExistingOperationForTarget: boolean;
 }): boolean {
-  // A política de rematrícula assistida permite novos pedidos no Balcão
-  // mesmo fora da janela. A elegibilidade académica/financeira é independente.
+  // Compatibilidade para consumidores antigos. O prazo já não bloqueia
+  // rematrículas; os controlos académicos/financeiros são independentes.
+  void input;
   return false;
 }
