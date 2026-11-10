@@ -275,4 +275,3 @@ END;
 $function$;
 REVOKE ALL ON FUNCTION public.finalizar_rematricula_balcao(uuid,uuid,uuid,uuid,uuid,uuid) FROM PUBLIC, anon;
 COMMIT;
-COMMIT;
