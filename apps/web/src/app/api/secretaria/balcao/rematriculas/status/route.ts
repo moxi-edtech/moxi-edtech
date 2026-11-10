@@ -18,10 +18,7 @@ import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle"
 import { loadRaaBalcaoAcademicTimeline } from "@/lib/rematricula/raa-balcao-timeline-server";
 import { isSourceYearStillInEarlyTrimester } from "@/lib/rematricula/raa-balcao-early-trimester";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
-import {
-  resolveBalcaoRematriculaTargetYear,
-  shouldBlockClosedRematriculaWindow,
-} from "@/lib/rematricula/balcao-target-year";
+import { resolveBalcaoRematriculaTargetYear } from "@/lib/rematricula/balcao-target-year";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -143,13 +140,6 @@ export async function GET(request: Request) {
         || Number(pedido.contexto?.ano_letivo) === Number(targetAnoLetivoAno),
     );
     const rematriculaWindow = await resolveRematriculaWindow(supabase, escolaId, targetAnoLetivoAno);
-
-    // A janela fechada impede novas rematrículas, mas não oculta o
-    // percurso académico nem operações existentes do aluno.
-    const novaOperacaoForaDaJanela = shouldBlockClosedRematriculaWindow({
-      windowOpen: rematriculaWindow.open,
-      hasExistingOperationForTarget: pedidosDoAno.length > 0,
-    });
 
     // ── A origem pode ser do ano anterior; a matrícula destino só nasce após o pagamento ──
     let { data: matriculaOrigem } = await supabase
@@ -475,20 +465,6 @@ export async function GET(request: Request) {
       }
     }
 
-    // Individual authorization never reopens the school-wide window and
-    // is bound to this source, destination and authenticated operator.
-    let autorizacaoForaPrazo = false;
-    if (novaOperacaoForaDaJanela) {
-      const { data: authorized, error: authError } = await supabase.rpc(
-        "tem_autorizacao_rematricula_fora_prazo" as any, {
-          p_escola_id: escolaId,
-          p_matricula_origem_id: matriculaOrigem.id,
-          p_ano_destino_id: targetAnoLetivoId,
-        } as any,
-      );
-      if (authError) throw authError;
-      autorizacaoForaPrazo = authorized === true;
-    }
     // ── Determine status ──────────────────────────────────────────────────
     let status = "READY";
     // A referência no pedido só comprova a progressão se corresponder à
@@ -547,8 +523,6 @@ export async function GET(request: Request) {
                 : academicEligibility.code === "ACADEMIC_CYCLE_COMPLETED"
                   ? "ACADEMIC_CYCLE_COMPLETED"
                   : "ACADEMIC_NOT_APPROVED";
-    } else if (novaOperacaoForaDaJanela && !autorizacaoForaPrazo) {
-      status = "WINDOW_CLOSED";
     } else if (dividaTotal > 0) {
       status = "DEBT_BLOCKED";
     } else if (!service || !service.ativo || (targetPricing.valor <= 0 && targetPricing.origem !== "classe")) {
@@ -692,7 +666,8 @@ export async function GET(request: Request) {
       window: {
         configured: rematriculaWindow.configured,
         open: rematriculaWindow.open,
-        autorizacao_individual: autorizacaoForaPrazo,
+        autorizacao_individual: false,
+        rematricula_fora_epoca_permitida: true,
         data_inicio: rematriculaWindow.window?.data_inicio ?? null,
         data_fim: rematriculaWindow.window?.data_fim ?? null,
       },
