@@ -23,7 +23,7 @@ function mockClient(record: Window | null) {
   }, filters };
 }
 
-test("janela inativa permanece configurada, com bloqueio explícito", async () => {
+test("janela inativa permanece configurada como informação de calendário", async () => {
   const now = Date.now();
   const record = {
     id: "window-1", ano_letivo: 2026, ativa: false,
@@ -64,14 +64,15 @@ test("reabertura contextual exige direção, motivo e sessão ativa com prazo v�
   assert.match(route, /audit_warning/);
 });
 
-test("UI permite resolver sem sair e retorna ao mesmo atendimento", () => {
-  const ui = readFileSync(new URL("../../src/components/secretaria/RematriculaWindowRecovery.tsx", import.meta.url), "utf8");
+test("Balcão permite rematrícula fora de época sem solicitar reabertura", () => {
   const balcao = readFileSync(new URL("../../src/components/secretaria/BalcaoAtendimento.tsx", import.meta.url), "utf8");
-  assert.match(balcao, /rematriculaState === "WINDOW_CLOSED"/);
-  assert.match(balcao, /<RematriculaWindowRecovery/);
-  assert.match(ui, /onRecheck\(\)/);
-  assert.match(ui, /can_reopen/);
-  assert.doesNotMatch(ui, /window\.confirm\(/);
-  assert.match(ui, /Confirmar reabertura para toda a escola/);
-  assert.doesNotMatch(ui, /window\.location\.|router\.push\(/);
+  const status = readFileSync(new URL("../../src/app/api/secretaria/balcao/rematriculas/status/route.ts", import.meta.url), "utf8");
+  const confirm = readFileSync(new URL("../../src/app/api/secretaria/balcao/rematriculas/route.ts", import.meta.url), "utf8");
+  assert.match(balcao, /Rematrícula fora de época/);
+  assert.doesNotMatch(balcao, /rematriculaState === "WINDOW_CLOSED"/);
+  assert.doesNotMatch(balcao, /<RematriculaWindowRecovery/);
+  assert.doesNotMatch(balcao, /<BalcaoLateRematriculaAuthorization/);
+  assert.doesNotMatch(status, /status = "WINDOW_CLOSED"|autorizacaoForaPrazo/);
+  assert.match(status, /rematricula_fora_epoca_permitida: true/);
+  assert.doesNotMatch(confirm, /tem_autorizacao_rematricula_fora_prazo/);
 });
