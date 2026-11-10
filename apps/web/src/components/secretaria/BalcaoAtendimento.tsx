@@ -1297,7 +1297,6 @@ function Catalogo({
   rematriculaPrice,
   rematriculaAnoLabel,
   rematriculaContextYear,
-  rematriculaSchoolId,
   rematriculaWindow,
   rematriculaAcademic,
   rematriculaTimeline,
@@ -1343,7 +1342,6 @@ function Catalogo({
   rematriculaPrice: number | null;
   rematriculaAnoLabel: string | null;
   rematriculaContextYear: { id: string; ano: number; label: string } | null;
-  rematriculaSchoolId: string;
   rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
   rematriculaAcademic: RaaBalcaoAcademic | null | undefined;
   rematriculaTimeline: RaaBalcaoTimeline | null;
@@ -3153,7 +3151,6 @@ export default function BalcaoAtendimento({
                   rematriculaPrice={rematricula.service?.valor_base ?? null}
                   rematriculaAnoLabel={rematricula.targetYearLabel ?? rematricula.anoLetivo?.label ?? null}
                   rematriculaContextYear={rematricula.anoLetivo}
-                  rematriculaSchoolId={escolaId}
                   rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
                   rematriculaTimeline={rematricula.academicTimeline}
