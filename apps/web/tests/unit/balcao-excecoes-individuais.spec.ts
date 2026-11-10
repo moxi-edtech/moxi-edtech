@@ -6,6 +6,7 @@ const read = (relative: string) => readFileSync(new URL(relative, import.meta.ur
 const gradeSql = read("../../../../supabase/migrations/20271109030000_balcao_notas_historicas_individuais.sql");
 const lateSql = read("../../../../supabase/migrations/20271109015000_balcao_rematricula_fora_prazo_individual.sql");
 const finalSql = read("../../../../supabase/migrations/20271109020000_rematricula_preserva_origem_legal_fechada.sql");
+const directSql = read("../../../../supabase/migrations/20271109050000_balcao_rematricula_fora_epoca_direta.sql");
 const notas = read("../../src/app/api/secretaria/notas/route.ts");
 const lateApi = read("../../src/app/api/secretaria/balcao/rematriculas/fora-prazo/route.ts");
 const status = read("../../src/app/api/secretaria/balcao/rematriculas/status/route.ts");
@@ -37,20 +38,22 @@ test("grade UI and authenticated API use selected source enrollment and reason",
   assert.match(balc, /onLancarNotaHistorica/);
 });
 
-test("closed-window renewal has a scoped, audited, expiring and single-use permission", () => {
+test("Balcão conclui fora da janela sem pedido individual, com RAA e auditoria", () => {
   assert.match(lateSql, /CREATE TABLE public\.balcao_late_reenroll_authorizations/);
   assert.match(lateSql, /ENABLE ROW LEVEL SECURITY/);
-  assert.match(lateSql, /REVOKE ALL ON public\.balcao_late_reenroll_authorizations/);
-  assert.match(lateSql, /expires_at>now\(\)/);
-  assert.match(lateSql, /actor_id=auth\.uid\(\)/);
-  assert.match(lateSql, /BALCAO_REMATRICULA_FORA_PRAZO_AUTORIZADA/);
-  assert.match(finalSql, /BALCAO_REMATRICULA_FORA_PRAZO_CONCLUIDA/);
-  assert.match(finalSql, /FOR UPDATE/);
-  assert.match(finalSql, /used_at=now\(\)/);
-  assert.match(finalSql, /REMATRICULA_WINDOW_CLOSED/);
-  assert.match(lateApi, /autorizar_rematricula_fora_prazo/);
-  assert.match(confirm, /tem_autorizacao_rematricula_fora_prazo/);
-  assert.match(status, /autorizacaoForaPrazo/);
-  assert.match(balc, /BalcaoLateRematriculaAuthorization/);
+  assert.match(directSql, /CREATE OR REPLACE FUNCTION public\.finalizar_rematricula_balcao/);
+  assert.match(directSql, /v_is_late_enrollment := NOT EXISTS/);
+  assert.match(directSql, /BALCAO_REMATRICULA_FORA_PRAZO_CONCLUIDA/);
+  assert.match(directSql, /'modo','direta'/);
+  assert.match(directSql, /FOR UPDATE/);
+  assert.match(directSql, /public\.user_has_role_in_school/);
+  assert.match(directSql, /public\.resolve_raa_progression_for_matricula/);
+  assert.match(directSql, /matricula_destino_id/);
+  assert.doesNotMatch(directSql, /balcao_late_reenroll_authorizations/);
+  assert.doesNotMatch(directSql, /REMATRICULA_WINDOW_CLOSED/);
+  assert.doesNotMatch(confirm, /tem_autorizacao_rematricula_fora_prazo/);
+  assert.doesNotMatch(status, /autorizacaoForaPrazo|status = "WINDOW_CLOSED"/);
+  assert.doesNotMatch(balc, /<BalcaoLateRematriculaAuthorization/);
   assert.doesNotMatch(lateSql, /UPDATE public\.rematricula_janelas/i);
+  assert.match(finalSql, /public\.resolve_raa_progression_for_matricula/);
 });
