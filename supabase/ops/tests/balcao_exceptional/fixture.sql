@@ -66,6 +66,7 @@ CREATE TABLE public.turma_disciplinas_professores(escola_id uuid,turma_id uuid,d
 \ir ../../../migrations/20271109015000_balcao_rematricula_fora_prazo_individual.sql
 \ir ../../../migrations/20271109020000_rematricula_preserva_origem_legal_fechada.sql
 \ir ../../../migrations/20271109030000_balcao_notas_historicas_individuais.sql
+\ir ../../../migrations/20271109050000_balcao_rematricula_fora_epoca_direta.sql
 
 GRANT SELECT ON public.notas,public.anos_letivos,public.rematricula_janelas TO authenticated;
 CREATE TRIGGER grade_year_guard BEFORE INSERT OR UPDATE ON public.notas FOR EACH ROW
