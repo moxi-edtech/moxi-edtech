@@ -128,17 +128,11 @@ BEGIN
  END IF;
 END $late$;
 
--- End-to-end: a second student's closed-window renewal is committed by
--- the REAL production finalization function using the same actor's permit.
+-- End-to-end: a closed-window renewal is committed by the production
+-- function without prior authorization.
 DO $late_real_writer$
 DECLARE result jsonb;
 BEGIN
- PERFORM public.autorizar_rematricula_fora_prazo(
-  '20000000-0000-4000-8000-000000000001',
-  '60000000-0000-4000-8000-000000000002',
-  '30000000-0000-4000-8000-000000000002',
-  'Confirmação excecional de origem com resultado académico publicado.'
- );
  result := public.finalizar_rematricula_balcao(
   '20000000-0000-4000-8000-000000000001',
   '50000000-0000-4000-8000-000000000002',
@@ -212,12 +206,13 @@ BEGIN
  END IF;
  IF (SELECT count(*) FROM public.audit_logs
    WHERE action='BALCAO_REMATRICULA_FORA_PRAZO_AUTORIZADA'
-    AND details->>'motivo' IS NOT NULL)<>2 THEN
+    AND details->>'motivo' IS NOT NULL)<>1 THEN
   RAISE EXCEPTION 'FAIL: late enrollment has no reason/actor audit';
  END IF;
  IF (SELECT count(*) FROM public.audit_logs
    WHERE action='BALCAO_REMATRICULA_FORA_PRAZO_CONCLUIDA'
-     AND details->>'matricula_destino_id' IS NOT NULL)<>1 THEN
+     AND details->>'matricula_destino_id' IS NOT NULL
+     AND details->>'modo'='direta')<>1 THEN
   RAISE EXCEPTION 'FAIL: completed late enrollment missing atomic audit';
  END IF;
 END $audit$;
