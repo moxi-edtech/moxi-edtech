@@ -22,7 +22,8 @@ export function useBalcaoSituacaoAcademica(
   const refresh = useCallback(async (signal?: AbortSignal) => {
     if (!key || !alunoId || !anoLetivoId) return;
     const seq = ++requestSeq.current;
-    setSnapshot({ key, loading: true, data: null, error: null });
+    setSnapshot((current) => ({ key, loading: true,
+      data: current?.key === key ? current.data : null, error: null }));
     try {
       const params = new URLSearchParams({ aluno_id: alunoId, ano_letivo_id: anoLetivoId });
       const response = await fetch("/api/secretaria/balcao/situacao-academica?" + params, {
@@ -85,7 +86,7 @@ export function BalcaoSituacaoAcademica({
   }, [historyExpanded]);
 
   const runAction = () => {
-    if (!snapshot || !situation) return;
+    if (loading || !snapshot || !situation) return;
     switch (situation.action) {
       case "grade":
         if (current && snapshot.can_write_current_grades) onCurrentGrade(current);
@@ -145,7 +146,7 @@ export function BalcaoSituacaoAcademica({
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {situation.action && situation.actionLabel && (
-              <button type="button" onClick={runAction}
+              <button type="button" onClick={runAction} disabled={loading}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20">
                 {situation.action === "grade" && <BookOpen className="h-4 w-4" aria-hidden="true" />}
                 {situation.actionLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
