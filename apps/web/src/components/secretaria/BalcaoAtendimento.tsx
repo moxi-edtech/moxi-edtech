@@ -3121,6 +3121,7 @@ export default function BalcaoAtendimento({
               initialDisciplinaId: disciplinaId ?? null });
           }}
           onAcademicUpdated={() => void rematricula.refreshStatus()}
+          hasFinancialPending={hasOverdueDebt}
         />
       )}
       {(dossier.loading || (visible && (refreshingRevision || refreshRevision > lastRevisionRef.current))) && !dossier.aluno ? (
