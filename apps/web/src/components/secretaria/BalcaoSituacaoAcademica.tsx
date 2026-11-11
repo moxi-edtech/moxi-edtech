@@ -103,7 +103,7 @@ export function BalcaoSituacaoAcademica({
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-muted-foreground">Estado do aluno · Ano letivo selecionado</p>
-          <h3 className="mt-1 font-sora text-base font-semibold text-[#1F6B3B]">
+          <h3 className="mt-1 font-sora text-base font-semibold text-emerald">
             {loading ? "A consultar vínculo escolar…" : error ? "Situação indisponível" : situation?.title ?? "A verificar situação"}
           </h3>
         </div>
@@ -128,7 +128,7 @@ export function BalcaoSituacaoAcademica({
               {current ? "Matrícula: " + (current.status_persistido ?? "em revisão") : "Sem matrícula neste ano"}
             </span>
             {current?.situacao_resultado === "homologado" ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#1F6B3B]/10 px-3 py-1.5 text-[#1F6B3B]">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald/10 px-3 py-1.5 text-emerald">
                 <CheckCircle2 className="h-3.5 w-3.5" /> Resultado oficial
               </span>
             ) : current && !snapshot.ano.ativo ? (
@@ -140,7 +140,7 @@ export function BalcaoSituacaoAcademica({
           <div className="mt-4 flex flex-wrap gap-2">
             {situation.action && situation.actionLabel && (
               <button type="button" onClick={runAction}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20">
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20">
                 {situation.action === "grade" && <BookOpen className="h-4 w-4" aria-hidden="true" />}
                 {situation.actionLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
