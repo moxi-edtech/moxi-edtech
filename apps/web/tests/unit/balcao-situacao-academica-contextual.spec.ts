@@ -39,6 +39,11 @@ test("historic pending and enrolled destination coexist; neither is silently app
   assert.equal(state.previous?.situacao_resultado, "sem_resultado_oficial");
 });
 
+test("closed previous year with unhomologated result still offers historical resolution", () => {
+  assert.equal(hasHistoricalPending(payload(row(2026, "matriculado"), row(2025, "ano_encerrado", "registado_nao_homologado"))), true);
+  assert.equal(hasHistoricalPending(payload(row(2026, "matriculado"), row(2025, "ano_encerrado", "homologado"))), false);
+});
+
 test("archived year forbids normal grade entry even with operationally active enrollment", () => {
   assert.equal(resolveStudentYearSituation(payload(row(2026, "matriculado"), null, false)).action, "profile");
 });
