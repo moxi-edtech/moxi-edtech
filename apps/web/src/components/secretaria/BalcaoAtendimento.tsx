@@ -1303,6 +1303,7 @@ function Catalogo({
   rematriculaTimeline,
   rematriculaTimelineYear,
   rematriculaOrigemAno,
+  contextualHistoricalMatriculaId,
   rematriculaDestinoMatriculaId,
   rematriculaCanWriteGrades,
   rematriculaReconciliation,
@@ -1348,6 +1349,7 @@ function Catalogo({
   rematriculaTimeline: RaaBalcaoTimeline | null;
   rematriculaTimelineYear: number | null;
   rematriculaOrigemAno: number | null;
+  contextualHistoricalMatriculaId?: string | null;
   rematriculaDestinoMatriculaId: string | null;
   rematriculaCanWriteGrades: boolean;
   rematriculaReconciliation?: { can_link_existing_enrollment?: boolean } | null;
@@ -1668,7 +1670,8 @@ function Catalogo({
                   </button>
                 </div>
               )}
-            {historicalRecovery && raaMatriculaId && (
+            {historicalRecovery && raaMatriculaId &&
+              raaMatriculaId !== contextualHistoricalMatriculaId && (
               <div id="balcao-historical-recovery-existing">
               <BalcaoHistoricalAcademicRecovery
                 key={raaMatriculaId}
@@ -3191,6 +3194,10 @@ export default function BalcaoAtendimento({
                   rematriculaTimeline={rematricula.academicTimeline}
                   rematriculaTimelineYear={rematricula.academicTimelineYear}
                   rematriculaOrigemAno={rematricula.academic?.source?.ano_letivo_ano ?? null}
+                  contextualHistoricalMatriculaId={
+                    situacaoAcademica.data?.previous?.situacao_contextual === "regularizacao_historica"
+                      ? situacaoAcademica.data.previous.matricula_id : null
+                  }
                   rematriculaDestinoMatriculaId={rematricula.destinoMatriculaId}
                   rematriculaCanWriteGrades={rematricula.canWriteGrades}
                   rematriculaReconciliation={rematricula.reconciliation}
