@@ -91,6 +91,7 @@ export function resolveStudentYearSituation(data: SituacaoBalcaoPayload): {
 }
 
 export function hasHistoricalPending(data: SituacaoBalcaoPayload): boolean {
-  return data.previous?.situacao_contextual === "regularizacao_historica" &&
-    data.previous?.situacao_resultado !== "homologado";
+  return Boolean(data.previous &&
+    ["regularizacao_historica", "ano_encerrado"].includes(data.previous.situacao_contextual) &&
+    data.previous.situacao_resultado !== "homologado");
 }
