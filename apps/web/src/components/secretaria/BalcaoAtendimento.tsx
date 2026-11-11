@@ -3196,8 +3196,10 @@ export default function BalcaoAtendimento({
                   rematriculaTimelineYear={rematricula.academicTimelineYear}
                   rematriculaOrigemAno={rematricula.academic?.source?.ano_letivo_ano ?? null}
                   contextualHistoricalMatriculaId={
-                    situacaoAcademica.data?.previous?.situacao_contextual === "regularizacao_historica"
-                      ? situacaoAcademica.data.previous.matricula_id : null
+                    situacaoAcademica.data?.previous?.situacao_resultado !== "homologado" &&
+                    ["regularizacao_historica", "ano_encerrado"].includes(
+                      situacaoAcademica.data?.previous?.situacao_contextual ?? "",
+                    ) ? situacaoAcademica.data?.previous?.matricula_id ?? null : null
                   }
                   rematriculaDestinoMatriculaId={rematricula.destinoMatriculaId}
                   rematriculaCanWriteGrades={rematricula.canWriteGrades}
