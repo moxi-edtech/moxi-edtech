@@ -66,7 +66,7 @@ test("server enforces tenant, user, selected academic year, RLS view and no-stor
   for (const guard of [
     "resolveEscolaIdForUser", "requireRoleInSchool", "resolveAcademicYearContext",
     'from("v_student_lifecycle_status_v2")', '.eq("escola_id", escolaId)',
-    '.eq("aluno_id", alunoId)', "DUPLICATE_YEAR_ENROLLMENT", 'cache',
+    '.eq("aluno_id", alunoId)', "DUPLICATE_YEAR_ENROLLMENT", 'force-dynamic',
     'Cache-Control', "authorizeTurmasManage",
   ]) assert.ok(src.includes(guard), guard + " must be present");
   assert.doesNotMatch(src, /service.role|SUPABASE_SERVICE_ROLE_KEY/);
