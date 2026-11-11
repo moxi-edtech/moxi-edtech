@@ -60,7 +60,7 @@ export function useBalcaoSituacaoAcademica(
 }
 
 export function BalcaoSituacaoAcademica({
-  alunoId, snapshot, loading, error, refresh, onNavigate, onCurrentGrade, onHistoricalGrade, onAcademicUpdated,
+  alunoId, snapshot, loading, error, refresh, onNavigate, onCurrentGrade, onHistoricalGrade, onAcademicUpdated, hasFinancialPending,
 }: {
   alunoId: string;
   snapshot: SituacaoBalcaoPayload | null;
@@ -71,6 +71,7 @@ export function BalcaoSituacaoAcademica({
   onCurrentGrade: (row: SituacaoBalcaoRow) => void;
   onHistoricalGrade: (row: SituacaoBalcaoRow, disciplinaId?: string | null) => void;
   onAcademicUpdated: () => void;
+  hasFinancialPending?: boolean;
 }) {
   const situation = snapshot ? resolveStudentYearSituation(snapshot) : null;
   const current = snapshot?.current ?? null;
@@ -95,10 +96,12 @@ export function BalcaoSituacaoAcademica({
       case "profile":
         onNavigate?.(situation.action);
         break;
-      case "reenrollment":
-        document.querySelector<HTMLElement>('[data-balcao-action="reenrollment"]')
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      case "reenrollment": {
+        const target = document.querySelector<HTMLElement>('[data-balcao-action="reenrollment"]');
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+        else onNavigate?.("enrollment");
         break;
+      }
       case "historical":
         setHistoryExpanded(true);
         break;
@@ -145,11 +148,18 @@ export function BalcaoSituacaoAcademica({
             ) : null}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {situation.action && situation.actionLabel && (
+            {situation.action && situation.actionLabel &&
+              (!["profile", "enrollment", "reenrollment"].includes(situation.action) || onNavigate) && (
               <button type="button" onClick={runAction} disabled={loading}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20">
                 {situation.action === "grade" && <BookOpen className="h-4 w-4" aria-hidden="true" />}
                 {situation.actionLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
+            {hasFinancialPending && onNavigate && (
+              <button type="button" onClick={() => onNavigate("payment")}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber/40 px-4 py-2 text-xs font-semibold hover:bg-muted">
+                Regularizar pagamentos<ArrowRight className="h-4 w-4" />
               </button>
             )}
             {previousPending && previous && current?.matricula_id !== previous.matricula_id && (
