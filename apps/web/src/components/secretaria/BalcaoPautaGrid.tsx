@@ -219,7 +219,7 @@ export function BalcaoPautaGrid(props: Props) {
           className="inline-flex items-center gap-2 rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"><Check size={16} />{saving ? "A guardar…" : "Guardar notas"}</button>
         <button type="button" disabled={saving} onClick={() => { if (!dirty || window.confirm("Descartar notas por guardar?")) setRetry(n => n + 1); }}
           className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm"><RefreshCw size={16} />Atualizar pauta</button>
-        {dirty && <span className="text-sm text-slate-500">Alterações dos três trimestres por guardar</span>}
+        {dirty && <span className="text-sm text-muted-foreground">Alterações dos três trimestres por guardar</span>}
         {notice && <p role="status" className="text-sm">{notice}</p>}
       </div>
     </>}

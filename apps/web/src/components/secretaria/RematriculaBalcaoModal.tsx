@@ -1452,10 +1452,10 @@ function FooterWizard({
       </div>
 
       {!canSubmit && step >= 3 && !submitting && disabledReason ? (
-        <div className="text-right text-xs font-medium text-slate-500">
+        <div className="text-right text-xs font-medium text-muted-foreground">
           <p>{disabledReason}</p>
           {!academicReady && !academicOnly && <button type="button" onClick={() => setStep(1)}
-            className="mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">Rever destino</button>}
+            className="mt-1 rounded-xl border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground">Rever destino</button>}
         </div>
       ) : null}
     </div>
