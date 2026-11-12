@@ -13,16 +13,16 @@ test("rematrícula owns an accessible, dark/light token-based UX",()=>{
  assert.doesNotMatch(frame,/Pendências analisadas/);
  assert.match(frame,/border-border bg-muted/);
  assert.match(frame,/canContinue \? "Continuar rematrícula"/);
- assert.match(balc,/RematriculaWorkspaceHeader/);
- assert.match(balc,/RematriculaAcademicDestination/);
- assert.match(balc,/rematriculaDestinoTurma=\{rematricula\.destinoTurma \?\? null\}/);
+ assert.doesNotMatch(balc,/<RematriculaWorkspaceHeader/);
+ assert.doesNotMatch(balc,/<RematriculaAcademicDestination/);
+ assert.match(balc,/destinoTurma=\{rematricula\.destinoTurma\}/);
 });
 test("source eligibility gates destination and never creates a client-side RAA override",()=>{
  const frame=source("components/secretaria/RematriculaWorkspaceChrome.tsx");
  const balc=source("components/secretaria/BalcaoAtendimento.tsx");
  assert.match(frame,/disabled=\{!canContinue\}/);
- assert.match(balc,/canContinue=\{rematriculaReady && !rematriculaWizardOpen\}/);
- assert.match(balc,/onContinue=\{onRematricula\}/);
+ assert.match(balc,/canContinueEnrollment=\{/);
+ assert.match(balc,/onContinueEnrollment=\{rematricula.openModal\}/);
  assert.match(balc,/rematricula\.cardState === "READY"/);
  assert.doesNotMatch(frame,/UPDATE public\.matriculas|resultado_final =/);
 });
