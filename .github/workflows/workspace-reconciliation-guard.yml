@@ -27,3 +27,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: cd apps/web && node --test --import tsx tests/unit/balcao-return-context-reconciliation.spec.ts tests/unit/command-center-registry.spec.ts
       - run: pnpm -C apps/web typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
