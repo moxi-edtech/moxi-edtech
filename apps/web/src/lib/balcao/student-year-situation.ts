@@ -20,6 +20,7 @@ export type SituacaoBalcaoPayload = {
   current: SituacaoBalcaoRow | null;
   previous: SituacaoBalcaoRow | null;
   can_write_current_grades: boolean;
+  can_rectify_class: boolean;
   editable_historical_matricula_id: string | null;
   historical_evaluation_scale: string | null;
 };
