@@ -12,9 +12,12 @@ type Result = { key: string; loading: boolean; data: SituacaoBalcaoPayload | nul
 
 /** Re-reads the year-specific SSOT. No student/academic-year snapshots may cross a selection. */
 export function useBalcaoSituacaoAcademica(
-  alunoId: string | null, anoLetivoId: string | null, enabled: boolean,
+  escolaId: string, alunoId: string | null, anoLetivoId: string | null, enabled: boolean,
 ) {
-  const key = enabled && alunoId && anoLetivoId ? alunoId + ":" + anoLetivoId : null;
+  // School scope belongs to the cache identity even if the selected student
+  // or academic year happens to have an identical identifier on tenant switch.
+  const key = enabled && escolaId && alunoId && anoLetivoId
+    ? escolaId + ":" + alunoId + ":" + anoLetivoId : null;
   const requestSeq = useRef(0);
   const [snapshot, setSnapshot] = useState<Result | null>(null);
 
