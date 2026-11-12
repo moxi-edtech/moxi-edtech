@@ -20,7 +20,7 @@ export const balcaoAcademicOperation = z.discriminatedUnion("acao", [
   z.object({ ...base, acao: z.literal("publicar_pauta"), periodo_id: uuid, tipo: z.enum(["anual", "trimestral"]) }).strict(),
 ]);
 export type BalcaoAcademicOperation = z.infer<typeof balcaoAcademicOperation>;
-export const BALCAO_ACADEMIC_MANAGER_ROLES = ["admin", "admin_escola", "diretor", "secretaria", "admin_secretaria", "admin_secretario", "admin_financeiro", "secretaria_financeiro"] as const;
+export const BALCAO_ACADEMIC_MANAGER_ROLES = ["admin", "admin_escola", "diretor", "secretaria", "admin_secretaria", "secretaria_financeiro"] as const;
 export function canManageBalcaoAcademic(role: unknown) {
   return BALCAO_ACADEMIC_MANAGER_ROLES.some((allowed) => role === allowed);
 }
