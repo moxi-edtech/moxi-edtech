@@ -51,7 +51,7 @@ test("four authorized staff profiles can finish the same audited academic workfl
   for (const functionName of [
     "lancar_nota_historica_individual", "lancar_notas_batch",
     "finalizar_origem_academica", "ratificar_resultado_historico_escola",
-    "historico_set_snapshot_state",
+    "historico_set_snapshot_state", "resolve_raa_progression_for_matricula",
   ]) assert.match(staffMigration, new RegExp("FUNCTION public\\." + functionName));
   assert.match(api, /const WriteRoles = BALCAO_HISTORIC_OPERATOR_ROLES/);
   assert.match(api, /const ExactHistoricalDecisionRoles = new Set<string>\(BALCAO_HISTORIC_OPERATOR_ROLES\)/);
