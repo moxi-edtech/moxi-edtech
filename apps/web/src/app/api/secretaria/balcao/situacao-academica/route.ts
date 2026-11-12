@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
     const authz = await requireRoleInSchool({
       supabase: db, escolaId,
-      roles: ["secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro", "diretor", "admin", "admin_escola", "staff_admin"],
+      roles: ["secretaria", "admin_secretaria", "admin_secretario", "secretaria_financeiro", "admin_financeiro", "diretor", "admin", "admin_escola", "staff_admin"],
     });
     if (authz.error) return authz.error;
 
@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
     const canWriteCurrentGrades = Boolean(
       ano.ativo === true && current?.situacao_contextual === "matriculado" &&
       current?.turma_id && current?.ano_letivo_id &&
-(canWriteAcademic || canManageTurmas.allowed)
+      (canWriteAcademic || canManageTurmas.allowed)
     );
 
     return json({
