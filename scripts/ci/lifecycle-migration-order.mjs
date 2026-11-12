@@ -26,6 +26,7 @@ const protectedWriters = /(?:CREATE\s+OR\s+REPLACE\s+(?:FUNCTION|VIEW)\s+public\
 // contract tests. Later migrations may not redefine these protected writers
 // without another reviewed protocol update and a matching isolated regression.
 const historicBridge = "20271109010000_raa_historico_documental_ratificado.sql";
+const historicStaffAccess = "20271112010000_balcao_historic_full_staff_permissions.sql";
 for (const migration of migrations.filter((file) => file > finalName)) {
   const source = readFileSync(join(dir, migration), "utf8");
   if (migration === historicBridge) {
@@ -56,6 +57,36 @@ for (const migration of migrations.filter((file) => file > finalName)) {
       assert.ok(readFileSync(join(root,file),"utf8").length > 500,
         "Historical lifecycle bridge requires isolated integration coverage: "+file);
     }
+    continue;
+  }
+  // Reviewed school-operator authorization upgrade: no grade/outcome evidence
+  // bypass and no changes to the lifecycle SSOT projection or other writers.
+  if (migration === historicStaffAccess) {
+    const mandatory = [
+      "CREATE OR REPLACE FUNCTION public.lancar_nota_historica_individual",
+      "CREATE OR REPLACE FUNCTION public.lancar_notas_batch",
+      "CREATE OR REPLACE FUNCTION public.finalizar_origem_academica",
+      "CREATE OR REPLACE FUNCTION public.ratificar_resultado_historico_escola",
+      "CREATE OR REPLACE FUNCTION public.historico_set_snapshot_state",
+      "CREATE OR REPLACE FUNCTION public.solicitar_regularizacao_historica_balcao",
+      "ALTER POLICY balcao_historic_recovery_school_read",
+      "ALTER TABLE public.escola_users ADD CONSTRAINT escola_users_papel_check",
+      "admin_financeiro", "admin_secretaria", "admin_secretario",
+      "public.current_tenant_escola_id()",
+      "ACADEMIC_DOCUMENT_GRADES_PRESENT",
+      "HISTORICAL_SNAPSHOT_AUTH_FORBIDDEN",
+      "BALCAO_NOTA_HISTORICA_LANCADA",
+      "'papel_autorizado'",
+    ];
+    for (const contract of mandatory) {
+      assert.ok(source.includes(contract), "Historical operator grant missing guard: " + contract);
+    }
+    assert.doesNotMatch(source, /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\./i,
+      "Staff access migration must not rewrite lifecycle status projections");
+    assert.ok(readFileSync(join(root,
+      "apps/web/tests/unit/balcao-historic-actionability.spec.ts"), "utf8")
+        .includes("four authorized staff profiles"),
+      "Historical operator changes require staff-role regression coverage");
     continue;
   }
   assert.ok(!protectedWriters.test(source),
