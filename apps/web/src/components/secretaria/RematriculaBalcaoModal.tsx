@@ -45,6 +45,9 @@ interface RematriculaBalcaoModalProps {
   service: { id: string; nome: string; valor_base: number };
   itensPagamento?: RematriculaPaymentItem[];
   itensDisponiveis?: RematriculaPaymentItem[];
+  mensalidadesLoading?: boolean;
+  mensalidadesError?: string | null;
+  onRetryMensalidades?: () => void;
   onAdicionarItem?: (item: RematriculaPaymentItem) => void;
   onRemoverItem?: (id: string, tipo: RematriculaPaymentItem["tipo"]) => void;
   paymentAlreadyValidated?: boolean;
@@ -166,6 +169,9 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
     service,
     itensPagamento = [],
     itensDisponiveis = [],
+    mensalidadesLoading = false,
+    mensalidadesError = null,
+    onRetryMensalidades,
     onAdicionarItem,
     onRemoverItem,
     paymentAlreadyValidated = false,
@@ -280,8 +286,10 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
       ? true
       : canSelectRematriculaDestination(progressao, selectableDestinationId);
 
+  const paymentQuoteReady = !itensPagamento.some(item => item.tipo === "mensalidade" && item.previsto)
+    || (!mensalidadesLoading && !mensalidadesError);
   const canSubmit =
-    !submitting &&
+    !submitting && paymentQuoteReady &&
     academicReady &&
     (academicOnly || financialReady) &&
     (academicOnly || paymentAlreadyValidated || (
@@ -292,6 +300,8 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
   const disabledReason =
     submitting
       ? "A operação está a ser processada."
+      : !paymentQuoteReady
+        ? "Confirme os valores das mensalidades antes de continuar."
       : !academicReady
         ? reconciliationOnly
           ? "Conclua a decisão académica e selecione o destino quando aplicável."
@@ -438,6 +448,13 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
             </div>
           ) : step === 2 ? (
             /* ── Step 2: Financial summary ──────────────────────── */
+            <>
+            {mensalidadesLoading && <p role="status" className="mb-2 text-sm text-muted-foreground">A consultar mensalidades…</p>}
+            {mensalidadesError && <div role="alert" className="mb-2 flex flex-wrap items-center gap-2 text-sm text-red-600">
+              <span>{mensalidadesError}</span>
+              {onRetryMensalidades && <button type="button" onClick={onRetryMensalidades}
+                className="rounded-xl border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground">Tentar novamente</button>}
+            </div>}
             <StepFinanceiro
               service={service}
               debt={debt}
@@ -449,6 +466,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               onRegularizeDebt={onRegularizeDebt}
               paymentAlreadyValidated={paymentAlreadyValidated}
             />
+            </>
           ) : (
             /* ── Step 3: Payment ────────────────────────────────── */
             <StepPagamento
@@ -491,6 +509,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
               canSubmit={canSubmit}
               academicReady={academicReady}
               financialReady={financialReady}
+              paymentQuoteReady={paymentQuoteReady}
               onRegularizeDebt={onRegularizeDebt}
               paymentTotal={paymentTotal}
               paymentAlreadyValidated={paymentAlreadyValidated}
@@ -1076,6 +1095,14 @@ function StepPagamento({
         <strong className="text-xl font-black text-slate-950">{kwanza.format(total)}</strong>
       </div>
 
+      {itensPagamento.length > 0 && <ul aria-label="Itens do pagamento" className="space-y-1 text-sm">
+        {itensPagamento.filter(item => item.id !== service.id && item.codigo !== "SERV_REMATRICULA").map(item =>
+          <li key={`${item.tipo}:${item.id}`} className="flex justify-between gap-3 text-foreground">
+            <span>{item.nome || item.descricao || "Item selecionado"}</span>
+            <span>{kwanza.format(Number(item.preco ?? 0) * Math.max(Number(item.quantidade ?? 1), 1))}</span>
+          </li>)}
+      </ul>}
+
       {total > 0 ? (
         <>
           <div>
@@ -1369,6 +1396,7 @@ function FooterWizard({
   canSubmit,
   academicReady,
   financialReady,
+  paymentQuoteReady,
   onRegularizeDebt,
   paymentTotal,
   paymentAlreadyValidated,
@@ -1384,6 +1412,7 @@ function FooterWizard({
   canSubmit: boolean;
   academicReady: boolean;
   financialReady: boolean;
+  paymentQuoteReady: boolean;
   onRegularizeDebt?: () => void;
   paymentTotal: number;
   paymentAlreadyValidated: boolean;
@@ -1415,6 +1444,7 @@ function FooterWizard({
             disabled={
               submitting ||
               (step === 1 && !academicReady) ||
+              (step === 2 && !paymentQuoteReady) ||
               (step === 2 && paymentTotal <= 0 && financialReady) ||
               (step === 2 && !financialReady && !onRegularizeDebt)
             }

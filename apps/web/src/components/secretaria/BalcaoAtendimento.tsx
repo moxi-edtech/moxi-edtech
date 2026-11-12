@@ -26,6 +26,7 @@ import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useDebounce } from "@/hooks/useDebounce";
 import { createClient } from "@/lib/supabaseClient";
 import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem, type TurmaOption } from "@/hooks/useRematriculaBalcao";
+import { useRematriculaMensalidadesDestino } from "@/hooks/useRematriculaMensalidadesDestino";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
 import { RaaBalcaoResolutionPanel } from "@/components/secretaria/RaaBalcaoResolutionPanel";
 import { BalcaoHistoricalAcademicRecovery } from "@/components/secretaria/BalcaoHistoricalAcademicRecovery";
@@ -1425,6 +1426,10 @@ function Catalogo({
   // A progress snapshot must never leak into the next selected student's case.
   const activeProgress = raaMatriculaId && raaProgress?.matriculaId === raaMatriculaId ? raaProgress : null;
 
+  // The active enrollment wizard owns destination, quote and confirmation.
+  // Do not repeat a second non-actionable "Pode continuar" card above it.
+  if (view === "reenrollment" && rematriculaState === "READY") return null;
+
   return (
     <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} ${view === "reenrollment" ? "rounded-2xl border border-border bg-card p-4 text-foreground sm:p-6" : "rounded-xl border border-border bg-card p-5 sm:p-6"}`}>
       {view === "payment" ? (
@@ -2722,7 +2727,7 @@ export default function BalcaoAtendimento({
   // Itens escolhidos dentro da rematrícula pertencem ao pagamento dessa
   // operação, não ao carrinho genérico do balcão.
   const [itensRematricula, setItensRematricula] = useState<RematriculaPaymentItem[]>([]);
-  const [mensalidadesDestino, setMensalidadesDestino] = useState<RematriculaPaymentItem[]>([]);
+
 
   const rematricula = useRematriculaBalcao({
     escolaId,
@@ -2797,7 +2802,6 @@ export default function BalcaoAtendimento({
     checkout.setPendentes([]);
     checkout.setPrintQueue([]);
     setItensRematricula([]);
-    setMensalidadesDestino([]);
     setDebtModalOpen(false);
     setDebtSourceId(null);
     setPercursoBusy(false);
@@ -2825,61 +2829,16 @@ export default function BalcaoAtendimento({
     [dossier.mensalidades, selectedMensalidadeIds]
   );
 
-  useEffect(() => {
-    const turmaId = rematricula.selectedTurmaId;
-    if (!turmaId || !effectiveAcademicYearId) {
-      setMensalidadesDestino([]);
-      setItensRematricula((current) => current.filter((item) => !item.previsto));
-      return;
-    }
-
-    const controller = new AbortController();
-    setItensRematricula((current) => current.filter((item) => !item.previsto));
-
-    void (async () => {
-      try {
-        const params = new URLSearchParams({
-          escola_id: escolaId,
-          turma_id: turmaId,
-          session_id: effectiveAcademicYearId,
-        });
-        const response = await fetch(`/api/financeiro/orcamento/matricula?${params.toString()}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || payload?.ok !== true) {
-          setMensalidadesDestino([]);
-          return;
-        }
-
-        const rows = Array.isArray(payload?.data?.mensalidades) ? payload.data.mensalidades : [];
-        setMensalidadesDestino(rows
-          .filter((item: any) => typeof item?.competencia === "string" && Number(item?.valor ?? 0) > 0)
-          .map((item: any) => ({
-            id: `destino:${item.competencia}`,
-            tipo: "mensalidade" as const,
-            nome: `Propina ${item.competencia}`,
-            preco: Number(item.valor),
-            quantidade: 1,
-            competencia: String(item.competencia),
-            data_vencimento: String(item.data_vencimento ?? ""),
-            previsto: true,
-          })));
-      } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setMensalidadesDestino([]);
-        }
-      }
-    })();
-
-    return () => controller.abort();
-  }, [effectiveAcademicYearId, escolaId, rematricula.selectedTurmaId]);
+  const mensalidadesDestino = useRematriculaMensalidadesDestino({
+    escolaId, alunoId: dossier.aluno?.id ?? null,
+    anoLetivoId: rematricula.anoLetivo?.id ?? effectiveAcademicYearId,
+    turmaId: rematricula.selectedTurmaId, setSelectedItems: setItensRematricula,
+  });
 
   const itensDisponiveisNaRematricula = useMemo<RematriculaPaymentItem[]>(() => [
-    ...mensalidadesDestino,
+    ...mensalidadesDestino.items,
     ...servicos.filter((servico) => ["DOC_CARTAO_ESTUDANTE", "SERV_UNIFORME"].includes(servico.codigo.trim().toUpperCase())),
-  ], [mensalidadesDestino, servicos]);
+  ], [mensalidadesDestino.items, servicos]);
 
   useEffect(() => {
     if (!visible || refreshRevision <= lastRevisionRef.current) return;
@@ -3366,6 +3325,9 @@ export default function BalcaoAtendimento({
           service={rematricula.service}
           itensPagamento={itensRematricula}
           itensDisponiveis={itensDisponiveisNaRematricula}
+          mensalidadesLoading={mensalidadesDestino.loading}
+          mensalidadesError={mensalidadesDestino.error}
+          onRetryMensalidades={mensalidadesDestino.retry}
           paymentAlreadyValidated={rematricula.cardState === "DOCUMENT_PENDING" || rematricula.cardState === "ACADEMIC_HISTORY_PENDING"}
           onAdicionarItem={(item) => setItensRematricula((previous) => (
             previous.some((selected) => selected.id === item.id && selected.tipo === item.tipo)
