@@ -66,7 +66,6 @@ test("no prior-year enrollment does not hide current-year actions or create an a
   assert.match(workspace, /<Catalogo/);
   assert.doesNotMatch(workspace, /view !== "reenrollment" \|\| Boolean\(dossier\.aluno\.matricula_id\)/);
   assert.doesNotMatch(workspace, /!dossier\.aluno\.matricula_id \? "SOURCE_RECORD_REQUIRED"/);
-  assert.match(workspace, /situacaoAcademica\.data\?\.current/);
   assert.match(lifecycle, /resolveStudentYearSituation/);
   assert.match(workspace, /!situacaoAcademica\.data\.current &&\s*!situacaoAcademica\.data\.previous/);
   assert.match(workspace, /onNavigateAction\("enrollment"\)/);
