@@ -60,16 +60,16 @@ test("academic situation prioritizes the current state and next action before tr
   );
 });
 
-test("a student without an associated enrollment gets an explicit non-writing state", () => {
+test("no prior-year enrollment does not hide current-year actions or create an artificial origin block", () => {
   const workspace = source("components/secretaria/BalcaoAtendimento.tsx");
-  assert.match(workspace, /!dossier\.aluno\.matricula_id \? "SOURCE_RECORD_REQUIRED"/);
-  assert.match(workspace, /rematriculaState === "SOURCE_RECORD_REQUIRED"/);
-  assert.match(workspace, /Matrícula de origem por confirmar/);
-  assert.match(workspace, /Verificar matrícula novamente/);
-  assert.match(workspace, /onStartEnrollment=\{!dossier\.aluno\.matricula_id && onNavigateAction/);
+  const lifecycle = source("components/secretaria/BalcaoSituacaoAcademica.tsx");
+  assert.match(workspace, /<Catalogo/);
+  assert.doesNotMatch(workspace, /view !== "reenrollment" \|\| Boolean\(dossier\.aluno\.matricula_id\)/);
+  assert.doesNotMatch(workspace, /!dossier\.aluno\.matricula_id \? "SOURCE_RECORD_REQUIRED"/);
+  assert.match(workspace, /situacaoAcademica\.data\?\.current/);
+  assert.match(lifecycle, /resolveStudentYearSituation/);
+  assert.match(workspace, /!situacaoAcademica\.data\.current &&\s*!situacaoAcademica\.data\.previous/);
   assert.match(workspace, /onNavigateAction\("enrollment"\)/);
-  assert.match(workspace, /Abrir matrícula no Balcão/);
-  assert.match(workspace, /Verificar matrícula novamente/);
   const api = source("app/api/secretaria/notas/route.ts");
   assert.match(api, /ACTIVE_ENROLLMENT_REQUIRED/);
 });
