@@ -181,6 +181,6 @@ test("Balcão grade modal recovers year, trimester and pauta inline with the sam
   assert.match(modal, /setPautaRetry\(\(value\) => value \+ 1\)/);
   assert.match(modal, /Verificar trimestres novamente/);
   assert.match(modal, /Atualizar pauta nesta ficha/);
-  assert.match(modal, /A matrícula permanece selecionada/);
+  assert.match(modal, /anoLetivoId: academicYearId,\s*alunoId,/);
   assert.doesNotMatch(modal, /window\.location|location\.href/);
 });

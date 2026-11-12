@@ -325,6 +325,19 @@ export function useRematriculaBalcao(opts: {
   }, { submitting, enabled: Boolean(opts.alunoId) && !result?.ok });
 
 
+  // Academic edits may change the eligible class without changing the pupil
+  // or source enrollment ID. Discard both cached options and in-flight results.
+  const invalidateTurmas = useCallback(() => {
+    turmasRequestGeneration.current += 1;
+    setTurmasFetchedFor(null);
+    setTurmas([]);
+    setTurmasError(null);
+    setTurmasLoading(false);
+    setProgressao(null);
+    setSelectedTurmaId(null);
+    setStep(1);
+  }, []);
+
   // Não reutilizar pedido, taxa, matrícula ou decisão de outro aluno.
   // Uma resposta parcial/erro também deve limpar o snapshot anterior.
   const clearStatusSnapshot = useCallback(() => {
@@ -534,6 +547,7 @@ export function useRematriculaBalcao(opts: {
       if (allowManualDecision) params.set("decisao_resultado", decision);
       const res = await fetch(
         `/api/secretaria/turmas-simples?${params.toString()}`,
+        { cache: "no-store" },
       );
       const data = await res.json().catch(() => ({}));
       if (requestGeneration !== turmasRequestGeneration.current) return;
@@ -889,6 +903,7 @@ export function useRematriculaBalcao(opts: {
     cancelPendingPedido,
 
     // Turmas
+    invalidateTurmas,
     turmas,
     turmasLoading,
     turmasError,

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { authorizeBalcaoPendingAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
+import { isPrimarySecondaryBridge } from "@/lib/rematricula/primary-secondary-bridge";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from "@/lib/academico/raa-progression-server";
@@ -34,7 +36,29 @@ export async function GET(req: Request) {
     if (!escolaId) return NextResponse.json({ ok: true, items: [], total: 0 }, { headers });
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
-    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+    if (!authz.allowed) {
+      // The secretary needs only the target options for this selected pupil;
+      // grant no generic access to edit or list the school's classes.
+      const alunoId = url.searchParams.get("aluno_id");
+      const matriculaId = url.searchParams.get("matricula_id");
+      const sessionId = url.searchParams.get("session_id");
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const valid = [alunoId, matriculaId, sessionId].every((id) => Boolean(id && uuid.test(id)));
+      if (!valid || !await authorizeBalcaoPendingAcademicWrite(supabase as any, escolaId, user.id)) {
+        return NextResponse.json({ ok: false, error: "Sem acesso à rematrícula deste aluno." }, { status: 403 });
+      }
+      const [{ data: source, error: sourceError }, { data: targetYear, error: yearError }] = await Promise.all([
+        supabase.from("matriculas").select("id, ano_letivo")
+          .eq("escola_id", escolaId).eq("aluno_id", alunoId)
+          .eq("id", matriculaId).maybeSingle(),
+        supabase.from("anos_letivos").select("id, ano, ativo")
+          .eq("escola_id", escolaId).eq("id", sessionId).maybeSingle(),
+      ]);
+      if (sourceError || yearError || !source || !targetYear || !targetYear.ativo ||
+          Number(source.ano_letivo) >= Number(targetYear.ano)) {
+        return NextResponse.json({ ok: false, error: "Matrícula de origem ou ano de destino inválido." }, { status: 403 });
+      }
+    }
 
     headers.set('Deprecation', 'true');
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
@@ -141,7 +165,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400, headers });
     }
 
-    let items: any[] = turmasView || [];
+    let items: any[] = (turmasView || []).filter((item: any) =>
+      !["arquivado", "inativo", "cancelado"].includes(String(item.status_validacao ?? "").toLowerCase()));
 
     // Rematrícula no balcão consome a mesma decisão global da RAA.
     let progressao: {
@@ -165,7 +190,7 @@ export async function GET(req: Request) {
     if (matriculaId && alunoId && sessionId && anoLetivo) {
       const { data: origem } = await supabase
         .from('matriculas')
-        .select('id, aluno_id, status, ano_letivo, turma_id, turmas:turma_id(classe_id, curso_id)')
+        .select('id, aluno_id, status, ano_letivo, turma_id, turmas:turma_id(classe_id, curso_id, nivel_ensino)')
         .eq('escola_id', escolaId)
         .eq('id', matriculaId)
         .eq('aluno_id', alunoId)
@@ -231,15 +256,40 @@ export async function GET(req: Request) {
             ? (progressionResult?.progression.etapaDestino?.classeNum
               ?? (origemClasseNumero != null ? origemClasseNumero + 1 : null))
             : null;
-      // Pré-Escolar pode transitar para o curso de ensino primário; nas
-      // restantes etapas preservamos o curso da matrícula de origem.
-      const cursoFiltrado = cursoOrigemId && origemClasseNumero !== 0
-        ? items.filter((item: any) => !item.curso_id || item.curso_id === cursoOrigemId)
-        : items;
-      const elegiveis = classeDestinoNumero == null
-        ? []
-        : cursoFiltrado.filter((item: any) => numeroClasse(classeById.get(item.classe_id)) === classeDestinoNumero);
-      items = elegiveis;
+      // Filter by the academically eligible class first. The 6th-primary ->
+      // 7th-secondary bridge has a different course, but it is not a skipped
+      // class or a generic inter-course transfer.
+      const classCandidates = classeDestinoNumero == null ? []
+        : items.filter((item: any) =>
+            numeroClasse(classeById.get(item.classe_id)) === classeDestinoNumero);
+      const crossoverCandidates = classCandidates.filter((item: any) =>
+        cursoOrigemId && item.curso_id && item.curso_id !== cursoOrigemId);
+      const crossLevelById = new Map<string, string>();
+      if (crossoverCandidates.length && origemClasseNumero === 6 &&
+          classeDestinoNumero === 7 && turmaOrigem?.nivel_ensino === "primario") {
+        const { data: targetLevels, error: targetLevelsError } = await supabase
+          .from("turmas").select("id, nivel_ensino")
+          .eq("escola_id", escolaId).eq("session_id", sessionId)
+          .in("id", crossoverCandidates.map((item: any) => item.id));
+        if (targetLevelsError) throw targetLevelsError;
+        for (const turma of targetLevels ?? []) {
+          crossLevelById.set(String(turma.id), String(turma.nivel_ensino ?? ""));
+        }
+      }
+      const academicMode = reprovado ? "repeat" as const
+        : condicionalAutorizada ? "conditional" as const
+        : aprovado ? "regular" as const : null;
+      items = classCandidates.filter((item: any) =>
+        origemClasseNumero === 0 || !cursoOrigemId || !item.curso_id ||
+        item.curso_id === cursoOrigemId ||
+        isPrimarySecondaryBridge({
+          sourceClass: origemClasseNumero,
+          destinationClass: classeDestinoNumero,
+          sourceLevel: turmaOrigem?.nivel_ensino,
+          destinationLevel: crossLevelById.get(String(item.id)) ?? null,
+          mode: academicMode,
+        }));
+
       progressao = {
         aplicada: origemClasseNumero != null,
         modo: concluido ? 'indefinida' : modo,

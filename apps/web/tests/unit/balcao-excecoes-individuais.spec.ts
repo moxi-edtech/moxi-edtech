@@ -33,7 +33,9 @@ test("grade UI and authenticated API use selected source enrollment and reason",
   assert.match(notas, /operation: 'WRITE'/);
   assert.match(notas, /lancar_nota_historica_individual/);
   assert.match(gradeModal, /Lançar nota do ano anterior/);
-  assert.match(gradeModal, /Motivo do lançamento retroativo/);
+  assert.match(gradeModal, /Transcrição de nota conforme pauta física escolar/);
+  assert.match(gradeModal, /historical_motivo: historicPautaReason/);
+  assert.doesNotMatch(gradeModal, /Motivo do lançamento retroativo/);
   assert.match(gradeModal, /historical_matricula_id: historicalMatriculaId/);
   assert.match(balc, /onLancarNotaHistorica/);
 });

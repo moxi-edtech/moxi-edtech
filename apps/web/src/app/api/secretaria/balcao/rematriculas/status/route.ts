@@ -77,6 +77,8 @@ export async function GET(request: Request) {
       escolaId,
       roles: [
         "secretaria",
+        "admin_secretaria",
+        "admin_secretario",
         "secretaria_financeiro",
         "admin_financeiro",
         "admin",

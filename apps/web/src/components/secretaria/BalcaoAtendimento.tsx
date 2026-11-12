@@ -29,6 +29,7 @@ import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymen
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
 import { RaaBalcaoResolutionPanel } from "@/components/secretaria/RaaBalcaoResolutionPanel";
 import { BalcaoHistoricalAcademicRecovery } from "@/components/secretaria/BalcaoHistoricalAcademicRecovery";
+import { BalcaoSituacaoAcademica, useBalcaoSituacaoAcademica } from "@/components/secretaria/BalcaoSituacaoAcademica";
 import { raaBalcaoEffectiveStatus, raaBalcaoPlan } from "@/lib/rematricula/raa-balcao-resolution";
 import { RematriculaWorkspaceHeader, RematriculaAcademicDestination, type RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
 import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
@@ -1667,7 +1668,8 @@ function Catalogo({
                   </button>
                 </div>
               )}
-            {historicalRecovery && raaMatriculaId && (
+            {historicalRecovery && raaMatriculaId && view !== "reenrollment" && (
+              <div id="balcao-historical-recovery-existing">
               <BalcaoHistoricalAcademicRecovery
                 key={raaMatriculaId}
                 matriculaId={raaMatriculaId}
@@ -1676,6 +1678,7 @@ function Catalogo({
                 onRecheck={onRefreshRematricula}
                 onLancarNotaHistorica={onLancarNotaHistorica}
               />
+              </div>
             )}
             {/* Ordinary RAA actions never reopen a legally closed source year. */}
             {showAcademicResolution && raaMatriculaId && raaAlunoId && !historicalRecovery ? (
@@ -2727,6 +2730,9 @@ export default function BalcaoAtendimento({
     responsavelContato: dossier.aluno?.telefone_responsavel ?? null,
     itensPagamento: itensRematricula,
   });
+  const situacaoAcademica = useBalcaoSituacaoAcademica(
+    escolaId, dossier.aluno?.id ?? null, effectiveAcademicYearId, view === "reenrollment",
+  );
   const audit = useAuditTrail();
 
   const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null; originAnoLetivoId?: string | null; historicalMatriculaId?: string | null; initialTrimestre?: 1 | 2 | 3 | null; initialDisciplinaId?: string | null } | null>(null);
@@ -3078,13 +3084,64 @@ export default function BalcaoAtendimento({
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
               {[dossier.aluno.turma_codigo, dossier.aluno.numero_processo && "Processo " + dossier.aluno.numero_processo].filter(Boolean).join(" · ") || "Ficha do aluno"}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">A decisão académica será consultada no vínculo do ano de origem.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Situação do ano selecionado e histórico escolar verificado.</p>
           </div>
           <button type="button" onClick={handleTrocarAluno}
             className="rounded-xl border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20">
             Trocar aluno
           </button>
         </section>
+      )}
+      {view === "reenrollment" && dossier.aluno && (
+        <BalcaoSituacaoAcademica
+          snapshot={situacaoAcademica.data}
+          loading={situacaoAcademica.loading}
+          error={situacaoAcademica.error}
+          refresh={situacaoAcademica.refresh}
+          onNavigate={onNavigateAction}
+          onCurrentGrade={(row, disciplinaId) => {
+            if (!situacaoAcademica.data?.can_write_current_grades ||
+                !row.turma_id || !row.ano_letivo_id ||
+                row.ano_letivo_id !== effectiveAcademicYearId) return;
+            setPostAction({ action: "notas", turmaId: row.turma_id,
+              originAnoLetivoId: row.ano_letivo_id, initialDisciplinaId: disciplinaId ?? null });
+          }}
+          onHistoricalGrade={(row, disciplinaId) => {
+            const currentSnapshot = situacaoAcademica.data;
+            // UI uses exactly the server-authorized historical enrollment.
+            // Do not open a stale modal after switching school, student or year.
+            if (!row.matricula_id || !row.turma_id || !row.ano_letivo_id ||
+                !dossier.aluno || row.aluno_id !== dossier.aluno.id ||
+                row.escola_id !== escolaId ||
+                currentSnapshot?.aluno_id !== dossier.aluno.id ||
+                currentSnapshot.editable_historical_matricula_id !== row.matricula_id) {
+              error("A pauta histórica precisa de uma matrícula válida e autorização académica. Atualize a situação.");
+              return;
+            }
+            setPostAction({ action: "notas", turmaId: row.turma_id,
+              originAnoLetivoId: row.ano_letivo_id,
+              historicalMatriculaId: row.matricula_id,
+              initialDisciplinaId: disciplinaId ?? null });
+          }}
+          hasFinancialPending={hasOverdueDebt}
+          pendingSourceMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
+          pendingDisciplines={(rematricula.academic?.disciplina_ids_pendentes ?? []).map((id) => ({
+            id,
+            nome: rematricula.academic?.disciplina_names?.[id] ?? "",
+            status: rematricula.academic?.disciplina_statuses?.[id] ?? null,
+          }))}
+          onAcademicUpdated={async () => {
+            rematricula.invalidateTurmas();
+            await rematricula.refreshStatus();
+          }}
+          canContinueEnrollment={
+            rematricula.cardState === "READY" &&
+            rematricula.anoLetivo?.id === effectiveAcademicYearId &&
+            rematricula.academic?.source?.matricula_id === situacaoAcademica.data?.previous?.matricula_id &&
+            situacaoAcademica.data?.aluno_id === dossier.aluno.id
+          }
+          onContinueEnrollment={rematricula.openModal}
+        />
       )}
       {(dossier.loading || (visible && (refreshingRevision || refreshRevision > lastRevisionRef.current))) && !dossier.aluno ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
@@ -3145,7 +3202,11 @@ export default function BalcaoAtendimento({
                   }
                   rematriculaState={
                     view === "reenrollment" || servicos.some(isServicoRematricula)
-                      ? !dossier.aluno.matricula_id ? "SOURCE_RECORD_REQUIRED" : rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
+                      ? dossier.aluno.matricula_id
+                        ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
+                        : view === "reenrollment"
+                          ? null // No prior enrollment is not an error in the selected year's real enrollment.
+                          : rematricula.cardState
                       : null
                   }
                   rematriculaPrice={rematricula.service?.valor_base ?? null}
@@ -3216,7 +3277,12 @@ export default function BalcaoAtendimento({
                     : rematricula.openReconciliationModal}
                   onCancelPendingPedido={rematricula.cancelPendingPedido}
                   onRefreshRematricula={rematricula.refreshStatus}
-                  onStartEnrollment={!dossier.aluno.matricula_id && onNavigateAction ? () => onNavigateAction("enrollment") : undefined}
+                  onStartEnrollment={onNavigateAction &&
+                    (view !== "reenrollment"
+                      ? !dossier.aluno.matricula_id
+                      : Boolean(situacaoAcademica.data && !situacaoAcademica.data.current &&
+                        !situacaoAcademica.data.previous))
+                    ? () => onNavigateAction("enrollment") : undefined}
                   onRematricula={rematricula.openModal}
                   onRegularize={() => setDebtModalOpen(true)}
                 />
@@ -3261,6 +3327,7 @@ export default function BalcaoAtendimento({
             rematricula.closeModal();
             setItensRematricula([]);
             if (rematricula.result?.ok) {
+              void situacaoAcademica.refresh();
               // The canonical rematrícula writer has already committed. Signal
               // cross-panel invalidation immediately; no cached financial view
               // may be presented as current while the latest balance loads.
@@ -3344,12 +3411,14 @@ export default function BalcaoAtendimento({
           initialTrimestre={postAction?.initialTrimestre ?? null}
           initialDisciplinaId={postAction?.initialDisciplinaId ?? null}
           onAcademicSaved={() => {
+            rematricula.invalidateTurmas();
             if (postAction?.historicalMatriculaId) {
               window.dispatchEvent(new CustomEvent("klasse:historic-grade-saved", {
                 detail: { matriculaId: postAction.historicalMatriculaId },
               }));
             }
             void rematricula.refreshStatus();
+            void situacaoAcademica.refresh();
           }}
           onPayment={() => {
             setPostAction(null);

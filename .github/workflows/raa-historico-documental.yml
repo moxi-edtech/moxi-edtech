@@ -6,6 +6,9 @@ on:
       - "supabase/migrations/20271109015000_balcao_rematricula_fora_prazo_individual.sql"
       - "supabase/migrations/20271109020000_rematricula_preserva_origem_legal_fechada.sql"
       - "supabase/migrations/20271109030000_balcao_notas_historicas_individuais.sql"
+      - "supabase/migrations/20271112010000_balcao_historic_full_staff_permissions.sql"
+      - "supabase/migrations/20271112020000_balcao_primary_secondary_6_to_7.sql"
+      - "supabase/migrations/20271112030000_balcao_pauta_corrigir_turma_origem.sql"
       - "supabase/ops/tests/balcao_exceptional/**"
       - "supabase/ops/tests/raa_historico/**"
       - "apps/web/src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/**"
@@ -66,3 +69,74 @@ jobs:
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/fixture.sql
       - name: Verify real notes, one-student audit and late-window permissions
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/regression.sql
+
+  historic-staff-permissions:
+    name: Balcão historic role grants — synthetic PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: balcao_staff_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d balcao_staff_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/balcao_staff_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply real installed bridge and approved staff-role migration
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/staff_permissions_fixture.sql
+      - name: Test each authorized role, ratification audit and cross-tenant denial
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/staff_permissions_regression.sql
+
+  primary-secondary-bridge:
+    name: Balcão 6th to 7th class — synthetic PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: balcao_transition_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d balcao_transition_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/balcao_transition_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load the actual audited 6th-primary to 7th-secondary writer upgrade
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/primary_secondary_bridge_fixture.sql
+      - name: Verify reservation, completion, no skipped classes and tenant isolation
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/primary_secondary_bridge_regression.sql
+  physical-pauta-source:
+    name: Balcão physical pauta source — synthetic PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pauta_source_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d pauta_source_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/pauta_source_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the exact audited source-turma correction and physical pauta fixture
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/physical_pauta_source_fixture.sql
+      - name: Verify the secretary, unchanged grades, audit and cross-school denial
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/physical_pauta_source_regression.sql

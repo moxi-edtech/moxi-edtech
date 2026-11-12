@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRoleInSchool } from "@/lib/authz";
-import { authorizeBalcaoPendingAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
+import { authorizeBalcaoPendingAcademicWrite, BALCAO_HISTORIC_OPERATOR_ROLES } from "@/lib/academico/authorize-balcao-academic-write";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { compareNextYearEnrollment, confirmedOutcomeFitsDestination } from "@/lib/rematricula/compare-next-year-enrollment";
@@ -9,15 +9,15 @@ import { compareNextYearEnrollment, confirmedOutcomeFitsDestination } from "@/li
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ReadRoles = ["secretaria", "admin_secretaria", "admin", "admin_escola", "staff_admin", "diretor", "admin_financeiro", "secretaria_financeiro"] as const;
-const WriteRoles = ["admin", "admin_escola", "staff_admin", "diretor"] as const;
-const ExactHistoricalDecisionRoles = new Set(["admin", "admin_escola", "staff_admin", "diretor"]);
+const ReadRoles = [...BALCAO_HISTORIC_OPERATOR_ROLES, "secretaria_financeiro"] as const;
+const WriteRoles = BALCAO_HISTORIC_OPERATOR_ROLES;
+const ExactHistoricalDecisionRoles = new Set<string>(BALCAO_HISTORIC_OPERATOR_ROLES);
 
 async function canWriteHistoricalDecision(supabase: any, escolaId: string): Promise<boolean> {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return false;
-  // The generic user_has_role_in_school RPC expands financial aliases to
-  // admin. A historical outcome can only be signed by an exact school role.
+  // Do not rely on user_has_role_in_school's role expansion here.
+  // Use the exact tenant-scoped escola_users membership for these actions.
   const { data, error } = await supabase.from("escola_users")
     .select("papel").eq("escola_id", escolaId).eq("user_id", user.id).maybeSingle();
   return !error && ExactHistoricalDecisionRoles.has(String(data?.papel ?? ""));
@@ -59,6 +59,23 @@ const Params = z.object({
   pagina: z.coerce.number().int().min(1).max(10000).default(1),
 });
 
+/** A documentary "concluído" means end of an academic cycle, not passage
+ * from any ordinary class. Never infer this from an existing destination.
+ * Final formal classes: 6ª, 9ª, 12ª; EJA final module/year as resolved by RAA.
+ * Unknown regimes fail closed for cycle completion only.
+ */
+function allowsCycleCompletion(regime: any): boolean {
+  // The EJA module/year model is not equivalent to ordinary class numbers.
+  if (String(regime?.nivel_ensino ?? "").toLowerCase() === "eja") {
+    return Number(regime?.modulo_numero) === 3 || Number(regime?.ano_numero) === 2;
+  }
+  const classe = Number(regime?.classe_num);
+  if (Number.isInteger(classe) && classe >= 1 && classe <= 13) {
+    return [6, 9, 12].includes(classe);
+  }
+  return false;
+}
+
 function first<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
@@ -93,6 +110,10 @@ export async function GET(request: Request) {
         .eq("escola_id", escolaId).eq("id", parsedId.data).maybeSingle();
       if (originError) throw originError;
       if (!origin) return NextResponse.json({ ok: false, error: "Matrícula não encontrada nesta escola." }, { status: 404 });
+      const { data: sourceRegime, error: sourceRegimeError } = origin.turma_id
+        ? await supabase.rpc("resolve_regime_academico", { p_turma_id: origin.turma_id })
+        : { data: null, error: null };
+      if (sourceRegimeError) throw sourceRegimeError;
       const [{ data: academicYear, error: yearError },
         { data: currentYear, error: currentYearError },
         { data: cohorts, error: cohortError },
@@ -154,7 +175,11 @@ export async function GET(request: Request) {
           (!hasRatification || lock?.status !== "fechado")) ||
          !["aberto", "fechado"].includes(String(history.snapshot_status ?? ""))));
       const temNotasLancadas = (existingNotes ?? []).length > 0;
-      const gradeSourceEligible = Boolean(isClosedSourceYear &&
+      // A numeric pauta must match the actual source grading regime.
+      // Preschool qualitative assessment must not be stored as a 0–20 grade.
+      const numericPauta = ["quantitativa_primario", "quantitativa_secundario"]
+        .includes(String(sourceRegime?.escala ?? ""));
+      const gradeSourceEligible = Boolean(numericPauta && isClosedSourceYear &&
         Number(currentYear?.ano) === Number(origin.ano_letivo) + 1 &&
         origin.status === "pendente" && origin.ativo === false &&
         (origin.status_fecho_origem === "manual" || origin.status_fecho_origem == null) &&
@@ -168,11 +193,13 @@ export async function GET(request: Request) {
         .eq("matricula_id", origin.id).eq("status", "pendente")
         .maybeSingle();
       if (recoveryRequestError) throw recoveryRequestError;
-      // Real grade correction is available to every school, not just a school
-      // with an exceptional documentary cohort. Once notes exist, the
-      // documentary alternative disappears to preserve the true RAA outcome.
+      // Real grades transcribed from the school's physical pauta are the
+      // normal path, including before the first grade is entered. Never
+      // demand documentary ratification when a quantitative source is
+      // eligible for audited historical grade entry. Keep the documentary
+      // alternative only for sources that cannot accept numerical grades.
       const state = !history?.resultado_final
-        ? gradeSourceEligible && (temNotasLancadas || !documentaryEligible) ? "notas"
+        ? gradeSourceEligible ? "notas"
           : documentaryEligible ? "decisao" : "indisponivel"
         : !documentaryEligible ? "indisponivel"
           : !hasRatification ? "ratificacao"
@@ -182,6 +209,9 @@ export async function GET(request: Request) {
       return NextResponse.json({
         ok: true, matricula_id: origin.id, estado: state,
         permite_escrita: permiteEscrita,
+        // Visible guidance only; never infers a missing mark or academic approval.
+        tem_notas_reais: temNotasLancadas,
+        permite_conclusao_ciclo: allowsCycleCompletion(sourceRegime),
         permite_notas_historicas: Boolean(permiteNotasHistoricas) && gradeSourceEligible,
         permite_pedir_intervencao: eligible && (state === "decisao" || state === "notas" ||
           state === "ratificacao" || state === "fecho"),
@@ -382,7 +412,7 @@ export async function POST(request: Request) {
     if (allowed.error) return allowed.error;
     if (!(await canWriteHistoricalDecision(supabase, escolaId))) {
       return NextResponse.json({ ok: false, code: "HISTORICAL_DECISION_FORBIDDEN",
-        error: "A decisão escolar histórica exige direção autorizada nesta escola." }, { status: 403 });
+        error: "Este perfil não pode validar o histórico nesta escola." }, { status: 403 });
     }
     let data: any = null;
     let rpcError: any = null;
@@ -394,6 +424,17 @@ export async function POST(request: Request) {
         .eq("escola_id", escolaId).eq("id", body.matricula_id).maybeSingle();
       if (originError) throw originError;
       if (!origin) return NextResponse.json({ ok: false, error: "Matrícula de origem inexistente nesta escola." }, { status: 404 });
+      if (body.resultado_confirmado === "concluido") {
+        const { data: regime, error: regimeError } = origin.turma_id
+          ? await supabase.rpc("resolve_regime_academico", { p_turma_id: origin.turma_id })
+          : { data: null, error: null };
+        if (regimeError) throw regimeError;
+        if (!allowsCycleCompletion(regime)) {
+          return NextResponse.json({ ok: false, code: "ACADEMIC_CYCLE_NOT_FINAL",
+            error: "Esta classe não conclui um ciclo de ensino. Utilize o resultado documental efetivamente comprovado." },
+            { status: 409 });
+        }
+      }
       const { data: destination, error: destinationError } = await supabase.from("matriculas")
         .select("id,turma_id,origem_transicao_matricula_id,ano_letivo,ativo")
         .eq("escola_id", escolaId).eq("aluno_id", origin.aluno_id)

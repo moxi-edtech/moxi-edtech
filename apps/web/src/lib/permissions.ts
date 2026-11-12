@@ -115,6 +115,7 @@ export function normalizePapel(papel: Papel | string | null | undefined): Papel 
     secretaria_financeiro: 'secretaria_financeiro',
     admin_financeiro: 'admin_financeiro',
     admin_secretaria: 'admin_secretaria',
+    admin_secretario: 'admin_secretaria',
     professor: 'professor',
     aluno: 'aluno',
     encarregado: 'encarregado',

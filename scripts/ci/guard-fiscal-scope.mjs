@@ -85,6 +85,13 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271109040000_balcao_historic_recovery_requests.sql",
   // Ação direta e auditada no Balcão; os bloqueios do RAA são preservados.
   "20271109050000_balcao_rematricula_fora_epoca_direta.sql",
+  // Audited tenant-scoped permissions for the four authorised Balcão roles.
+  // No fiscal schema or AGT module is changed; the SQL is still scanned below.
+  "20271112010000_balcao_historic_full_staff_permissions.sql",
+  // Scoped, reviewed EP 6th -> ESG 7th progression; no fiscal change.
+  "20271112020000_balcao_primary_secondary_6_to_7.sql",
+  // Pupil-specific prior-year turma selection for physical pauta grade transcription.
+  "20271112030000_balcao_pauta_corrigir_turma_origem.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;

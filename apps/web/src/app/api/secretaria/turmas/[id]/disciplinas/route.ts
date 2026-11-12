@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { authorizeBalcaoPendingAcademicWrite } from '@/lib/academico/authorize-balcao-academic-write'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
@@ -36,7 +37,25 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (!escolaId) return NextResponse.json({ ok: true, items: [], total: 0 }, { headers })
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
-    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
+    if (!authz.allowed) {
+      // Reading the list of disciplines for one selected student's pauta
+      // must not require permission to edit the school's class structure.
+      const alunoId = searchParams.get('aluno_id')
+      const anoLetivoId = searchParams.get('ano_letivo_id')
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      if (!alunoId || !anoLetivoId || !uuid.test(alunoId) || !uuid.test(anoLetivoId) ||
+          !await authorizeBalcaoPendingAcademicWrite(supabase as any, escolaId, user.id)) {
+        return NextResponse.json({ ok: false, error: 'Sem acesso à pauta deste aluno.' }, { status: 403 })
+      }
+      const { data: matricula, error: linkError } = await supabase
+        .from('matriculas').select('id')
+        .eq('escola_id', escolaId).eq('aluno_id', alunoId)
+        .eq('turma_id', turmaId).eq('session_id', anoLetivoId)
+        .limit(1).maybeSingle()
+      if (linkError || !matricula) {
+        return NextResponse.json({ ok: false, error: 'Matrícula não encontrada nesta turma e ano.' }, { status: 403 })
+      }
+    }
 
     headers.set('Deprecation', 'true')
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`)

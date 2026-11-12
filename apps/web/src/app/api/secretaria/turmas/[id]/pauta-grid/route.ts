@@ -48,13 +48,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 403 })
 
-    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
-    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
-
-    // Pending enrolments are shown only for a specific student, never in a
-    // full-class grade grid, and only to academic staff.
-    const canPreviewPending = Boolean(parsed.data.alunoId) &&
+    // Academic staff may read the selected student's pauta without the
+    // unrelated permission to manage the school's classes.
+    const canPreviewPending = Boolean(parsed.data.alunoId && parsed.data.anoLetivoId) &&
       await authorizeBalcaoPendingAcademicWrite(supabase as any, escolaId, user.id)
+    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
+    if (!authz.allowed && !canPreviewPending) {
+      return NextResponse.json({ ok: false, error: 'Sem acesso à pauta deste aluno.' }, { status: 403 })
+    }
 
     const academicContext = parsed.data.anoLetivoId
       ? await resolveAcademicYearContext(supabase as any, {

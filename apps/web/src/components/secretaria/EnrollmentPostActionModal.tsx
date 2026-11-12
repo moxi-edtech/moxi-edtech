@@ -37,6 +37,8 @@ export function EnrollmentPostActionModal({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ login?: string | null; senha?: string | null; error?: string } | null>(null);
   const [disciplinas, setDisciplinas] = useState<Array<{ id: string; disciplina?: { id?: string; nome?: string } | null }>>([]);
+  const [disciplinasError, setDisciplinasError] = useState<string | null>(null);
+  const [disciplinasRetry, setDisciplinasRetry] = useState(0);
   const [disciplinaId, setDisciplinaId] = useState("");
   const [academicYearId, setAcademicYearId] = useState<string | null>(null);
   const [academicYearError, setAcademicYearError] = useState<string | null>(null);
@@ -52,7 +54,10 @@ export function EnrollmentPostActionModal({
   const [periodError, setPeriodError] = useState<string | null>(null);
   const [periodReadOnly, setPeriodReadOnly] = useState(false);
   const [nota, setNota] = useState("");
-  const [motivoHistorico, setMotivoHistorico] = useState("");
+  // The school's physical pauta is the source. The database logs the
+  // authenticated operator, grade, enrollment, period and this operation.
+  // Do not make the secretary type a justification for each mark.
+  const historicPautaReason = "Transcrição de nota conforme pauta física escolar";
   const [gradeReceipt, setGradeReceipt] = useState<{ disciplina: string; trimestre: number; tipo: string; valor: number } | null>(null);
   const [tipoAvaliacao, setTipoAvaliacao] = useState<"MAC" | "NPP" | "NPT">("MAC");
   const [showPassword, setShowPassword] = useState(false);
@@ -75,7 +80,6 @@ export function EnrollmentPostActionModal({
     setPeriodError(null);
     setPeriodReadOnly(false);
     setNota("");
-    setMotivoHistorico("");
     setGradeReceipt(null);
     setTipoAvaliacao("MAC");
     setDisciplinaId("");
@@ -90,7 +94,6 @@ export function EnrollmentPostActionModal({
     // student's selected grade, discipline or reason.
     setPeriodo("");
     setNota("");
-    setMotivoHistorico("");
     setGradeReceipt(null);
     setDisciplinaId("");
     setTurmaDisciplinaId("");
@@ -183,12 +186,14 @@ export function EnrollmentPostActionModal({
   }, [action, alunoId, academicYearId, open, turmaId, turmaDisciplinaId, initialTrimestre, periodRetry, historicalMatriculaId]);
 
   useEffect(() => {
-    if (!open || action !== "notas" || !turmaId) return;
+    if (!open || action !== "notas" || !turmaId || !academicYearId) return;
     let active = true;
     setDisciplinas([]);
+    setDisciplinasError(null);
     setDisciplinaId("");
     setTurmaDisciplinaId("");
-    fetch(`/api/secretaria/turmas/${encodeURIComponent(turmaId)}/disciplinas`, { cache: "no-store" })
+    const disciplineScope = new URLSearchParams({ aluno_id: alunoId, ano_letivo_id: academicYearId });
+    fetch(`/api/secretaria/turmas/${encodeURIComponent(turmaId)}/disciplinas?${disciplineScope}`, { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Não foi possível consultar as disciplinas desta turma.");
         return response.json();
@@ -205,9 +210,14 @@ export function EnrollmentPostActionModal({
         setDisciplinaId(found?.disciplina?.id ?? "");
         setTurmaDisciplinaId(found?.id ?? "");
       })
-      .catch(() => { if (active) setDisciplinas([]); });
+      .catch(() => {
+        if (active) {
+          setDisciplinas([]);
+          setDisciplinasError("Não foi possível carregar as disciplinas.");
+        }
+      });
     return () => { active = false; };
-  }, [open, action, turmaId, alunoId, initialDisciplinaId]);
+  }, [open, action, turmaId, alunoId, academicYearId, initialDisciplinaId, disciplinasRetry]);
 
   useEffect(() => {
     let active = true;
@@ -256,10 +266,6 @@ export function EnrollmentPostActionModal({
       setResult({ error: "Selecione um trimestre válido para esta matrícula." });
       return;
     }
-    if (historicalMatriculaId && motivoHistorico.trim().length < 12) {
-      setResult({ error: "Indique o motivo da correção histórica (mínimo 12 caracteres)." });
-      return;
-    }
     const valor = Number(nota);
     if (!Number.isFinite(valor) || valor < 0 || valor > notaMaxima) {
       setResult({ error: "A nota deve estar dentro da escala da turma." });
@@ -281,7 +287,7 @@ export function EnrollmentPostActionModal({
           notas: [{ aluno_id: alunoId, valor }],
           ...(historicalMatriculaId ? {
             historical_matricula_id: historicalMatriculaId,
-            historical_motivo: motivoHistorico.trim(),
+            historical_motivo: historicPautaReason,
           } : {}),
         }),
       });
@@ -355,12 +361,7 @@ export function EnrollmentPostActionModal({
 
         {action === "notas" && (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Lançar nota na turma e no ano letivo da matrícula de origem de {alunoNome}.</p>
-            {historicalMatriculaId && (
-              <p className="rounded-xl border border-amber/30 bg-amber/10 p-3 text-xs text-foreground">
-                Correção individual do ano anterior. O lançamento é auditado e não reabre o calendário da escola.
-              </p>
-            )}
+            <p className="text-sm font-medium text-foreground">{alunoNome} · {historicalMatriculaId ? "Pauta do ano anterior" : "Lançamento de nota"}</p>
             {!turmaId && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">A turma desta matrícula não foi identificada.</p>}
             {academicYearError && (
               <div role="alert" className="space-y-2 rounded-xl border border-border bg-card p-3 text-sm text-foreground">
@@ -381,7 +382,14 @@ export function EnrollmentPostActionModal({
               </div>
             )}
             {!academicYearId && !academicYearError && <p className="text-xs text-muted-foreground">A confirmar o ano letivo ativo...</p>}
-            <select value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); setNota(""); setResult(null); }} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" disabled={!turmaId || loading || Boolean(gradeReceipt)}>
+            {disciplinasError && (
+              <div role="alert" className="flex flex-wrap items-center gap-2 text-xs text-foreground">
+                <span>{disciplinasError}</span>
+                <button type="button" onClick={() => setDisciplinasRetry((v) => v + 1)}
+                  className="rounded-xl border border-border px-3 py-2 font-semibold">Tentar novamente</button>
+              </div>
+            )}
+            <select aria-label="Disciplina" value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); setNota(""); setResult(null); }} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" disabled={!turmaId || loading || Boolean(gradeReceipt)}>
               <option value="">Selecionar disciplina</option>
               {disciplinas.map((item) => <option key={item.id} value={item.disciplina?.id ?? ""}>{item.disciplina?.nome ?? "Disciplina"}</option>)}
             </select>
@@ -389,7 +397,6 @@ export function EnrollmentPostActionModal({
             {periodError && (
               <div role="alert" className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-foreground">
                 <p>{periodError}</p>
-                <p className="text-xs">A matrícula permanece selecionada. Se persistir, a direção deve rever a sincronização do decreto.</p>
                 <button type="button" onClick={() => setPeriodRetry((value) => value + 1)}
                   disabled={periodLoading}
                   className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50">
@@ -436,24 +443,17 @@ export function EnrollmentPostActionModal({
                   Esta disciplina ainda não tem um trimestre disponível para lançamento. Verifique o calendário académico.
                 </p>
               )}
-            {periodClosed && (
+            {periodClosed && !historicalMatriculaId && (
               <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs text-foreground">
-                Período encerrado. O lançamento só será aceite se a direção tiver autorizado a reabertura.
+                {historicalMatriculaId
+                  ? "Período encerrado. A pauta histórica deste aluno pode ser corrigida com autorização e motivo auditável, sem reabrir o ano."
+                  : "Período encerrado. O lançamento normal exige reabertura autorizada pela direção."}
                 <button type="button" onClick={() => setPeriodRetry((value) => value + 1)}
                   disabled={periodLoading}
                   className="ml-2 inline-flex rounded-xl border border-border bg-card px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted">
                   Atualizar período
                 </button>
               </p>
-            )}
-            {historicalMatriculaId && !gradeReceipt && (
-              <label className="block space-y-1 text-xs font-semibold text-foreground">
-                Motivo do lançamento retroativo
-                <textarea rows={2} maxLength={500} value={motivoHistorico}
-                  onChange={(event) => { setMotivoHistorico(event.target.value); setResult(null); }}
-                  placeholder="Ex.: Notas de 2025 em falta na pauta individual"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
-              </label>
             )}
             {result?.error && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-foreground">{result.error}</p>}
             {gradeReceipt ? (
@@ -464,10 +464,10 @@ export function EnrollmentPostActionModal({
                 <p className="text-sm text-foreground">
                   {gradeReceipt.disciplina} · {gradeReceipt.trimestre}.º trimestre · {gradeReceipt.tipo} · {gradeReceipt.valor}
                 </p>
-                <p className="text-xs text-muted-foreground">Confirme a situação académica atualizada antes de continuar.</p>
+                
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => onOpenChange(false)}
-                    className="rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95">Concluir</button>
+                    className="rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95">{historicalMatriculaId ? "Voltar à rematrícula" : "Concluir"}</button>
                   <button type="button" onClick={() => { setGradeReceipt(null); setNota(""); setDisciplinaId(""); setTurmaDisciplinaId(""); setPeriodo(""); setResult(null); }}
                     className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted">
                     Lançar outra avaliação
@@ -477,11 +477,10 @@ export function EnrollmentPostActionModal({
             ) : (
               <button type="button" onClick={() => void lancarNota()}
                 disabled={loading || periodUnavailable || !turmaId || !academicYearId || Boolean(academicYearError) ||
-                  Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota ||
-                  Boolean(historicalMatriculaId && motivoHistorico.trim().length < 12)}
+                  Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-3 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loading ? "A guardar nota…" : historicalMatriculaId ? "Guardar nota histórica auditada" : periodClosed ? "Guardar com reabertura autorizada" : "Guardar nota"}
+                {loading ? "A guardar nota…" : historicalMatriculaId ? "Guardar nota" : periodClosed ? "Guardar com autorização" : "Guardar nota"}
               </button>
             )}
           </div>

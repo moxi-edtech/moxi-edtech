@@ -14,6 +14,7 @@ import type { Database } from "~types/supabase";
 import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
+import { isPrimarySecondaryBridge } from "@/lib/rematricula/primary-secondary-bridge";
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { isSourceYearStillInEarlyTrimester } from "@/lib/rematricula/raa-balcao-early-trimester";
 
@@ -159,7 +160,7 @@ export async function POST(request: Request) {
     const authz = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+      roles: ["secretaria", "admin_secretaria", "admin_secretario", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin", "diretor"],
     });
     if (authz.error) return authz.error;
 
@@ -323,12 +324,18 @@ export async function POST(request: Request) {
       String(matriculaDestino.turma_id) === String(body.destino_turma_id ?? ""),
     );
 
+    // The deployed schema has nivel_ensino; the generated Supabase type
+    // still omits it. Limit this cast to the two validated, tenant-scoped
+    // turma reads until schema types are regenerated.
+    const turmaReader = supabase as unknown as {
+      from: (table: "turmas") => any;
+    };
     const [{ data: turmaOrigem }, { data: turmaDestino }] = await Promise.all([
       matricula.turma_id
-        ? supabase.from("turmas").select("id, classe_id, curso_id").eq("escola_id", escolaId).eq("id", matricula.turma_id).maybeSingle()
+        ? turmaReader.from("turmas").select("id, classe_id, curso_id, nivel_ensino").eq("escola_id", escolaId).eq("id", matricula.turma_id).maybeSingle()
         : Promise.resolve({ data: null }),
       body.destino_turma_id
-        ? supabase.from("turmas").select("id, classe_id, curso_id").eq("escola_id", escolaId).eq("id", body.destino_turma_id).maybeSingle()
+        ? turmaReader.from("turmas").select("id, classe_id, curso_id, nivel_ensino, status_validacao").eq("escola_id", escolaId).eq("id", body.destino_turma_id).maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
     const classeIds = [turmaOrigem?.classe_id, turmaDestino?.classe_id].filter((id): id is string => Boolean(id));
@@ -402,8 +409,30 @@ export async function POST(request: Request) {
         }
       }
     }
-    if (turmaOrigem?.curso_id && turmaDestino?.curso_id && turmaOrigem.curso_id !== turmaDestino.curso_id && !(numeroOrigem === 0 && numeroDestino === 1)) {
-      return NextResponse.json({ ok: false, error: "A turma destino pertence a outro curso.", code: "REMATRICULA_PROGRESSION_INVALID" }, { status: 409 });
+    // Cross-course progression is valid only for the school-confirmed 6th ->
+    // 7th primary/secondary bridge. The RAA and sequential-class guards above
+    // still decide the actual student's eligibility.
+    const primarySecondaryBridge = isPrimarySecondaryBridge({
+      sourceClass: numeroOrigem,
+      destinationClass: numeroDestino,
+      sourceLevel: turmaOrigem?.nivel_ensino,
+      destinationLevel: turmaDestino?.nivel_ensino,
+      mode: academicEligibility.mode,
+    });
+    if (turmaOrigem?.curso_id && turmaDestino?.curso_id &&
+        turmaOrigem.curso_id !== turmaDestino.curso_id &&
+        !(numeroOrigem === 0 && numeroDestino === 1) &&
+        !primarySecondaryBridge) {
+      return NextResponse.json({
+        ok: false,
+        error: numeroOrigem != null && numeroDestino != null && numeroDestino !== numeroOrigem + 1
+          ? `A matrícula de origem é da ${numeroOrigem}.ª classe. Reveja a classe anterior antes de escolher a ${numeroDestino}.ª.`
+          : "A turma destino pertence a outro curso.",
+        code: "REMATRICULA_PROGRESSION_INVALID",
+      }, { status: 409 });
+    }
+    if (["arquivado","inativo","cancelado"].includes(String(turmaDestino?.status_validacao ?? "").toLowerCase())) {
+      return NextResponse.json({ok:false,error:"Escolha uma turma ativa no ano de destino.",code:"REMATRICULA_DESTINATION_INACTIVE"}, {status:409});
     }
 
     const { data: service, error: serviceError } = await (supabase as any)
