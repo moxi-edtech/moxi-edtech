@@ -51,7 +51,8 @@ test("archived year forbids normal grade entry even with operationally active en
 
 test("pending current enrollment is resumed, never duplicated", () => {
   const situacao = resolveStudentYearSituation(payload(row(2026, "aguarda_confirmacao")));
-  assert.equal(situacao.action, "enrollment");
+  assert.equal(situacao.action, "profile");
+  assert.equal(situacao.actionLabel, "Rever matrícula existente");
   assert.match(situacao.description, /sem criar outra matrícula/);
 });
 
@@ -96,5 +97,41 @@ test("historic year correction reuses existing audited note modal, not the trans
   assert.doesNotMatch(ui, /DossierHistoricoTransitadoSection/);
   assert.match(balc, /historicalMatriculaId: row\.matricula_id/);
   assert.match(route, /editable_historical_matricula_id/);
-  assert.match(route, /"secretaria", "admin_secretaria", "diretor"/);
+  assert.match(route, /authorizeBalcaoPendingAcademicWrite/);
+  assert.match(route, /canWritePending && activeYear !== null/);
+});
+
+test("contextual read grants the same staff roles as the existing historic grade reader", () => {
+  const src = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/balcao/situacao-academica/route.ts"), "utf8");
+  assert.match(src, /"admin_secretaria"/);
+  assert.match(src, /"diretor"/);
+  assert.match(src, /"admin_financeiro"/);
+  assert.match(src, /canWriteAcademic \|\| canManageTurmas\.allowed/);
+  assert.match(src, /authorizeBalcaoPendingAcademicWrite/);
+});
+
+test("historical grade edit uses one selected student, a real source enrollment and audited RPC", () => {
+  const modal = readFileSync(resolve(process.cwd(), "src/components/secretaria/EnrollmentPostActionModal.tsx"), "utf8");
+  const writer = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/notas/route.ts"), "utf8");
+  const grid = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/turmas/[id]/pauta-grid/route.ts"), "utf8");
+  const history = readFileSync(resolve(process.cwd(), "src/components/aluno/DossierHistoricoTransitadoSection.tsx"), "utf8");
+  assert.match(modal, /historical_matricula_id: historicalMatriculaId/);
+  assert.match(modal, /historical_motivo: motivoHistorico/);
+  assert.match(writer, /lancar_nota_historica_individual/);
+  assert.match(writer, /\.eq\('escola_id', escolaId\)/);
+  assert.match(writer, /\.eq\('aluno_id', body\.notas\[0\]\.aluno_id\)/);
+  assert.match(writer, /authorizeBalcaoPendingAcademicWrite/);
+  assert.match(grid, /\.eq\('aluno_id', parsed\.data\.alunoId\)/);
+  assert.match(grid, /\.\.\.\(canPreviewPending \? \['pendente'\] : \[\]\)/);
+  // Do not use the separate, transited-history writer for real grade corrections.
+  assert.match(history, /historico-transitado/);
+  assert.doesNotMatch(writer, /upsert_historico_transitado/);
+});
+
+test("academic state is cached independently per school, pupil and selected year", () => {
+  const ui = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  const workspace = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
+  assert.match(ui, /escolaId \+ ":" \+ alunoId \+ ":" \+ anoLetivoId/);
+  assert.match(workspace, /escolaId, dossier\.aluno\?\.id \?\? null, effectiveAcademicYearId/);
+  assert.match(workspace, /void situacaoAcademica\.refresh\(\)/);
 });
