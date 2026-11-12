@@ -109,3 +109,28 @@ DO $$ BEGIN
 END $$;
 RESET ROLE;
 ROLLBACK;
+
+-- The same membership gate used by the installed payment writers must accept
+-- secretary aliases without turning them into administrators or crossing schools.
+BEGIN;
+INSERT INTO public.escola_users VALUES
+('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000081','admin_secretaria'),
+('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000082','admin_secretario'),
+('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000083','professor');
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000081',true);
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+ IF NOT public.user_has_role_in_school('20000000-0000-4000-8000-000000000001',ARRAY['secretaria']) THEN RAISE EXCEPTION 'FAIL: admin_secretaria cannot reach payment writer'; END IF;
+ IF public.user_has_role_in_school('20000000-0000-4000-8000-000000000001',ARRAY['admin']) THEN RAISE EXCEPTION 'FAIL: alias gained admin privileges'; END IF;
+ IF public.user_has_role_in_school('20000000-0000-4000-8000-000000000002',ARRAY['secretaria']) THEN RAISE EXCEPTION 'FAIL: alias crossed schools'; END IF;
+END $$;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000082',true);
+DO $$ BEGIN
+ IF NOT public.user_has_role_in_school('20000000-0000-4000-8000-000000000001',ARRAY['secretaria']) THEN RAISE EXCEPTION 'FAIL: admin_secretario cannot reach payment writer'; END IF;
+END $$;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000083',true);
+DO $$ BEGIN
+ IF public.user_has_role_in_school('20000000-0000-4000-8000-000000000001',ARRAY['secretaria']) THEN RAISE EXCEPTION 'FAIL: teacher gained payment privileges'; END IF;
+END $$;
+RESET ROLE;
+ROLLBACK;

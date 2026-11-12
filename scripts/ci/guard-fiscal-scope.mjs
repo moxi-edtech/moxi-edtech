@@ -96,6 +96,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271112040000_balcao_retificacao_classe_sem_progressao.sql",
   // Audited historical journey; no new financial tables or fabricated payments.
   "20271112050000_balcao_percurso_academico.sql",
+  // School-scoped secretaria role aliases; no financial writer or data changes.
+  "20271112060000_balcao_secretaria_role_aliases.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;

@@ -21,3 +21,6 @@ BEGIN
  RETURN NEW;
 END $$;
 CREATE TRIGGER fixture_percurso_link BEFORE INSERT OR UPDATE ON public.historico_snapshot_locks FOR EACH ROW EXECUTE FUNCTION public.fixture_percurso_link();
+
+CREATE FUNCTION public.check_super_admin_role() RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT false $$;
+\ir ../../../migrations/20271112060000_balcao_secretaria_role_aliases.sql

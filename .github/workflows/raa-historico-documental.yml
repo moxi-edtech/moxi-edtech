@@ -11,6 +11,7 @@ on:
       - "supabase/migrations/20271112030000_balcao_pauta_corrigir_turma_origem.sql"
       - "supabase/migrations/20271112040000_balcao_retificacao_classe_sem_progressao.sql"
       - "supabase/migrations/20271112050000_balcao_percurso_academico.sql"
+      - "supabase/migrations/20271112060000_balcao_secretaria_role_aliases.sql"
       - "supabase/ops/tests/balcao_exceptional/**"
       - "supabase/ops/tests/raa_historico/**"
       - "apps/web/src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/**"
