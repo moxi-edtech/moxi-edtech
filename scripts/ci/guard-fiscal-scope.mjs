@@ -88,6 +88,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // Audited tenant-scoped permissions for the four authorised Balcão roles.
   // No fiscal schema or AGT module is changed; the SQL is still scanned below.
   "20271112010000_balcao_historic_full_staff_permissions.sql",
+  // Scoped, reviewed EP 6th -> ESG 7th progression; no fiscal change.
+  "20271112020000_balcao_primary_secondary_6_to_7.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
