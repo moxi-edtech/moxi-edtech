@@ -324,12 +324,18 @@ export async function POST(request: Request) {
       String(matriculaDestino.turma_id) === String(body.destino_turma_id ?? ""),
     );
 
+    // The deployed schema has nivel_ensino; the generated Supabase type
+    // still omits it. Limit this cast to the two validated, tenant-scoped
+    // turma reads until schema types are regenerated.
+    const turmaReader = supabase as unknown as {
+      from: (table: "turmas") => any;
+    };
     const [{ data: turmaOrigem }, { data: turmaDestino }] = await Promise.all([
       matricula.turma_id
-        ? supabase.from("turmas").select("id, classe_id, curso_id, nivel_ensino").eq("escola_id", escolaId).eq("id", matricula.turma_id).maybeSingle()
+        ? turmaReader.from("turmas").select("id, classe_id, curso_id, nivel_ensino").eq("escola_id", escolaId).eq("id", matricula.turma_id).maybeSingle()
         : Promise.resolve({ data: null }),
       body.destino_turma_id
-        ? supabase.from("turmas").select("id, classe_id, curso_id, nivel_ensino, status_validacao").eq("escola_id", escolaId).eq("id", body.destino_turma_id).maybeSingle()
+        ? turmaReader.from("turmas").select("id, classe_id, curso_id, nivel_ensino, status_validacao").eq("escola_id", escolaId).eq("id", body.destino_turma_id).maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
     const classeIds = [turmaOrigem?.classe_id, turmaDestino?.classe_id].filter((id): id is string => Boolean(id));
