@@ -88,7 +88,7 @@ async function context(studentId: string, requestedEscolaId: string | null) {
     || Boolean(current && (current.session_id !== activeYear.id || !current.turma_id
       || current.ativo !== (canonicalEnrollmentStatus(current.status) === "ativa")));
   const { error: adminPermissionError } = await requireRoleInSchool({
-    supabase: db, escolaId, roles: ["admin", "admin_escola"],
+    supabase: db, escolaId, roles: ["secretaria", "admin_secretaria", "admin_secretario", "admin_financeiro", "admin", "admin_escola", "staff_admin", "diretor"],
   });
   const canRectifyClass = !adminPermissionError;
   return { db, user, escolaId, activeYear, current, inconsistent, canRectifyClass, count: enrollments.length };
