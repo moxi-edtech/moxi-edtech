@@ -68,6 +68,7 @@ for (const migration of migrations.filter((file) => file > finalName)) {
       "CREATE OR REPLACE FUNCTION public.finalizar_origem_academica",
       "CREATE OR REPLACE FUNCTION public.ratificar_resultado_historico_escola",
       "CREATE OR REPLACE FUNCTION public.historico_set_snapshot_state",
+      "CREATE OR REPLACE FUNCTION public.resolve_raa_progression_for_matricula",
       "CREATE OR REPLACE FUNCTION public.solicitar_regularizacao_historica_balcao",
       "ALTER POLICY balcao_historic_recovery_school_read",
       "ALTER TABLE public.escola_users ADD CONSTRAINT escola_users_papel_check",
