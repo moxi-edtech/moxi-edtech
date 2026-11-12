@@ -354,3 +354,38 @@ test("backend READY takes priority over a pending source without fabricating aca
   archived.ano.ativo = false;
   assert.notEqual(resolveStudentYearSituation(archived, true).action, "reenrollment");
 });
+
+test("academic correction discards cached destinations, old selection and in-flight responses", () => {
+  const hook = readFileSync(resolve(process.cwd(), "src/hooks/useRematriculaBalcao.ts"), "utf8");
+  const workspace = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
+  const match = hook.match(/const invalidateTurmas = useCallback\(\(\) => \{([\s\S]*?)\n  \}, \[\]\);/);
+  assert.ok(match, "destination invalidator must be exposed by the real hook");
+  const oldRequest = 7;
+  const generation = { current: oldRequest };
+  const values: Record<string, unknown> = {};
+  const setters = ["setTurmasFetchedFor", "setTurmas", "setTurmasError",
+    "setTurmasLoading", "setProgressao", "setSelectedTurmaId", "setStep"];
+  // Execute the actual callback, rather than copying its invalidation behavior.
+  new Function("turmasRequestGeneration", ...setters, match[1])(
+    generation, ...setters.map((key) => (value: unknown) => { values[key] = value; }),
+  );
+  assert.notEqual(generation.current, oldRequest, "an older response must become stale");
+  assert.deepEqual(values, {
+    setTurmasFetchedFor: null, setTurmas: [], setTurmasError: null,
+    setTurmasLoading: false, setProgressao: null, setSelectedTurmaId: null, setStep: 1,
+  });
+  assert.match(hook, /if \(requestGeneration !== turmasRequestGeneration\.current\) return;/);
+  assert.match(hook, /turmas-simples\?\$\{params\.toString\(\)\}.*,\s*\{ cache: "no-store" \}/);
+  assert.match(workspace, /onAcademicUpdated=\{async \(\) => \{\s*rematricula\.invalidateTurmas\(\);\s*await rematricula\.refreshStatus\(\);/);
+  assert.match(workspace, /onAcademicSaved=\{\(\) => \{\s*rematricula\.invalidateTurmas\(\);/);
+});
+
+test("closing a successful reenrollment refreshes the lifecycle card alongside dossier and balance", () => {
+  const workspace = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
+  const modal = workspace.slice(workspace.indexOf("<RematriculaBalcaoModal"),
+    workspace.indexOf("alunoNome={dossier.aluno.nome}", workspace.indexOf("<RematriculaBalcaoModal")));
+  assert.match(modal, /rematricula\.closeModal\(\)/);
+  assert.match(modal, /if \(rematricula\.result\?\.ok\) \{\s*void situacaoAcademica\.refresh\(\);/);
+  assert.match(modal, /onPagamentoConcluido\?\.\(\)/);
+  assert.match(modal, /dossier\.load\(dossier\.aluno!\.id\)/);
+});
