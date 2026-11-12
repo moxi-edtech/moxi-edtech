@@ -12,6 +12,7 @@ type Snapshot = {
   origem_status: string;
   estado: HistoricStage;
   permite_escrita: boolean;
+  tem_notas_reais: boolean;
   resultado_confirmado: HistoricalResult | null;
   permite_notas_historicas: boolean;
   permite_pedir_intervencao: boolean;
@@ -247,7 +248,12 @@ export function BalcaoHistoricalAcademicRecovery({
             </button>
           )}
           {stage === "decisao" && (
-            <p className="text-xs text-muted-foreground">Notas reais de {snapshot.origem_ano} pela secretaria académica, ou decisão documental comprovada pela direção. Sem reabrir o ano inteiro.</p>
+            <p role="status" className="text-xs text-muted-foreground">
+              {snapshot.tem_notas_reais === false
+                ? "Não há notas registadas nesta matrícula de " + snapshot.origem_ano + ". Pode lançar notas reais ou validar o resultado com ata/pauta escolar existente."
+                : "Notas reais de " + snapshot.origem_ano + " pela secretaria académica, ou decisão documental comprovada pela direção."}
+              {" "}A decisão não implica aprovação automática nem reabertura do ano.
+            </p>
           )}
           {snapshot.permite_notas_historicas && disciplines.length > 0 &&
             (stage === "decisao" || stage === "notas") && (
@@ -303,9 +309,14 @@ export function BalcaoHistoricalAcademicRecovery({
             </div>
           )}
           {stage === "concluido" ? (
-            <p role="status" className="flex items-center gap-2 text-sm font-medium text-emerald">
-              <CheckCircle2 className="h-4 w-4" /> Decisão ratificada e histórico fechado: {snapshot.resultado_confirmado ? labels[snapshot.resultado_confirmado] : "Resultado por confirmar"}.
-            </p>
+            <div role="status" className="space-y-2">
+              <p className="flex items-center gap-2 text-sm font-medium text-emerald">
+                <CheckCircle2 className="h-4 w-4" /> Decisão ratificada e histórico fechado: {snapshot.resultado_confirmado ? labels[snapshot.resultado_confirmado] : "Resultado por confirmar"}.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                A Situação académica foi atualizada. A matrícula do ano seguinte segue apenas a elegibilidade oficial; se estiver autorizada, use a ação principal acima.
+              </p>
+            </div>
           ) : stage === "notas" ? (
             <p role="status" className="text-sm text-foreground">
               {snapshot.permite_notas_historicas
