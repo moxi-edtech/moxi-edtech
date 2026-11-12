@@ -7,7 +7,6 @@ import {
   hasHistoricalPending, resolveStudentYearSituation,
   type SituacaoBalcaoPayload, type SituacaoBalcaoRow,
 } from "@/lib/balcao/student-year-situation";
-import { BalcaoHistoricalAcademicRecovery } from "@/components/secretaria/BalcaoHistoricalAcademicRecovery";
 
 type Result = { key: string; loading: boolean; data: SituacaoBalcaoPayload | null; error: string | null };
 
@@ -60,31 +59,32 @@ export function useBalcaoSituacaoAcademica(
 }
 
 export function BalcaoSituacaoAcademica({
-  alunoId, snapshot, loading, error, refresh, onNavigate, onCurrentGrade, onHistoricalGrade, onAcademicUpdated, hasFinancialPending,
+  snapshot, loading, error, refresh, onNavigate, onCurrentGrade, onHistoricalGrade, hasFinancialPending,
 }: {
-  alunoId: string;
   snapshot: SituacaoBalcaoPayload | null;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<unknown>;
   onNavigate?: (action: BalcaoActionId) => void;
   onCurrentGrade: (row: SituacaoBalcaoRow) => void;
-  onHistoricalGrade: (row: SituacaoBalcaoRow, disciplinaId?: string | null) => void;
-  onAcademicUpdated: () => void;
+  onHistoricalGrade: (row: SituacaoBalcaoRow) => void;
   hasFinancialPending?: boolean;
 }) {
   const situation = snapshot ? resolveStudentYearSituation(snapshot) : null;
   const current = snapshot?.current ?? null;
   const previous = snapshot?.previous ?? null;
   const previousPending = snapshot ? hasHistoricalPending(snapshot) : false;
-  const historical = (current && situation?.action === "historical" ? current : null)
-    ?? (previousPending ? previous : null);
-  const [historyExpanded, setHistoryExpanded] = useState(false);
-  useEffect(() => { setHistoryExpanded(false); }, [alunoId, snapshot?.ano.id]);
-  useEffect(() => {
-    if (historyExpanded) document.getElementById("balcao-historico-contextual")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [historyExpanded]);
+  // The existing notes modal is the only editor. The server scopes the allowed
+  // previous-year matricula to the authenticated academic role; the RPC
+  // independently checks this again before any historical write.
+  const historicalTarget = [current, previous].find((row) =>
+    row?.matricula_id === snapshot?.editable_historical_matricula_id) ?? null;
+
+  const openHistoricalReview = () => {
+    const existing = document.getElementById("balcao-historical-recovery-existing");
+    if (existing) existing.scrollIntoView({ behavior: "smooth", block: "start" });
+    else onNavigate?.("profile");
+  };
 
   const runAction = () => {
     if (loading || !snapshot || !situation) return;
@@ -103,10 +103,18 @@ export function BalcaoSituacaoAcademica({
         break;
       }
       case "historical":
-        setHistoryExpanded(true);
+        if (historicalTarget && historicalTarget.matricula_id === current?.matricula_id)
+          onHistoricalGrade(historicalTarget);
+        else openHistoricalReview();
         break;
     }
   };
+
+  const mainLabel = situation?.action === "historical" && historicalTarget?.matricula_id === current?.matricula_id
+    ? "Lançar notas de " + current?.ano_letivo
+    : situation?.action === "historical" ? "Ver regularização" : situation?.actionLabel;
+  const mainActionIsAvailable = situation?.action === "grade" || situation?.action === "historical" ||
+    Boolean(onNavigate);
 
   return (
     <section aria-label="Estado do aluno no ano letivo" className="mb-4 rounded-xl border border-border bg-card p-4 sm:p-5">
@@ -148,12 +156,20 @@ export function BalcaoSituacaoAcademica({
             ) : null}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {situation.action && situation.actionLabel &&
-              (!["profile", "enrollment", "reenrollment"].includes(situation.action) || onNavigate) && (
+            {situation.action && mainLabel && mainActionIsAvailable && (
               <button type="button" onClick={runAction} disabled={loading}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20">
-                {situation.action === "grade" && <BookOpen className="h-4 w-4" aria-hidden="true" />}
-                {situation.actionLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-60">
+                {(situation.action === "grade" || situation.action === "historical") &&
+                  <BookOpen className="h-4 w-4" aria-hidden="true" />}
+                {mainLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
+            {historicalTarget && previousPending && previous &&
+              historicalTarget.matricula_id === previous.matricula_id && (
+              <button type="button" onClick={() => onHistoricalGrade(historicalTarget)}
+                disabled={loading}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber/40 px-4 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60">
+                Lançar notas de {previous.ano_letivo}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
             {hasFinancialPending && onNavigate && (
@@ -162,29 +178,11 @@ export function BalcaoSituacaoAcademica({
                 Regularizar pagamentos<ArrowRight className="h-4 w-4" />
               </button>
             )}
-            {previousPending && previous && current?.matricula_id !== previous.matricula_id && (
-              <button type="button" onClick={() => setHistoryExpanded(true)}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber/40 px-4 py-2 text-xs font-semibold hover:bg-muted">
-                Regularizar histórico de {previous?.ano_letivo}<ArrowRight className="h-4 w-4" />
-              </button>
-            )}
           </div>
-          {previousPending && previous && (
-            <p role="status" className="mt-3 text-xs text-amber-800">
-              {previous?.ano_letivo}: regularização histórica pendente. A matrícula de {snapshot.ano.ano} mantém o seu estado real.
+          {previousPending && !historicalTarget && previous && (
+            <p role="status" className="mt-3 text-xs text-muted-foreground">
+              {previous.ano_letivo}: resultado anterior por regularizar. A correção requer um vínculo elegível e um operador autorizado.
             </p>
-          )}
-          {historyExpanded && historical && (
-            <div id="balcao-historico-contextual" className="mt-4 border-t border-border pt-4">
-              <BalcaoHistoricalAcademicRecovery
-                key={historical.matricula_id}
-                matriculaId={historical.matricula_id}
-                turmaId={historical.turma_id}
-                disciplinasPendentes={[]}
-                onLancarNotaHistorica={(disciplinaId) => onHistoricalGrade(historical, disciplinaId)}
-                onRecheck={async () => { await refresh(); onAcademicUpdated(); }}
-              />
-            </div>
           )}
         </>
       ) : (
