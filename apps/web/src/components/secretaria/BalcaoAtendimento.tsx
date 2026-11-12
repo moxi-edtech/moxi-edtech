@@ -3124,7 +3124,12 @@ export default function BalcaoAtendimento({
             status: rematricula.academic?.disciplina_statuses?.[id] ?? null,
           }))}
           onAcademicUpdated={async () => { await rematricula.refreshStatus(); }}
-          canContinueEnrollment={rematricula.cardState === "READY"}
+          canContinueEnrollment={
+            rematricula.cardState === "READY" &&
+            rematricula.anoLetivo?.id === effectiveAcademicYearId &&
+            rematricula.academic?.source?.matricula_id === situacaoAcademica.data?.previous?.matricula_id &&
+            situacaoAcademica.data?.aluno_id === dossier.aluno.id
+          }
           onContinueEnrollment={rematricula.openModal}
         />
       )}
