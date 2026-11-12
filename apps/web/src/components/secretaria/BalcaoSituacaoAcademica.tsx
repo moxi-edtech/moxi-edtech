@@ -235,6 +235,20 @@ export function BalcaoSituacaoAcademica({
               </button>
             )}
           </div>
+          {reviewOpen && historicalReviewTarget && (
+            <div id="balcao-historico-contextual" className="mt-4 border-t border-border pt-4">
+              <BalcaoHistoricalAcademicRecovery
+                key={historicalReviewTarget.matricula_id}
+                matriculaId={historicalReviewTarget.matricula_id}
+                turmaId={historicalReviewTarget.turma_id}
+                disciplinasPendentes={confirmedPendingRow?.matricula_id === historicalReviewTarget.matricula_id
+                  ? visiblePending.map((item) => item.id) : []}
+                onRecheck={async () => { await refresh(); await onAcademicUpdated?.(); }}
+                onLancarNotaHistorica={(disciplinaId) =>
+                  onHistoricalGrade(historicalReviewTarget, disciplinaId)}
+              />
+            </div>
+          )}
           {visiblePending.length > 0 && confirmedPendingRow && (
             <div className="mt-4 rounded-xl border border-border p-3">
               <p className="text-xs font-semibold text-foreground">
@@ -270,20 +284,6 @@ export function BalcaoSituacaoAcademica({
                   );
                 })}
               </ul>
-            </div>
-          )}
-          {reviewOpen && historicalReviewTarget && (
-            <div id="balcao-historico-contextual" className="mt-4 border-t border-border pt-4">
-              <BalcaoHistoricalAcademicRecovery
-                key={historicalReviewTarget.matricula_id}
-                matriculaId={historicalReviewTarget.matricula_id}
-                turmaId={historicalReviewTarget.turma_id}
-                disciplinasPendentes={confirmedPendingRow?.matricula_id === historicalReviewTarget.matricula_id
-                  ? visiblePending.map((item) => item.id) : []}
-                onRecheck={async () => { await refresh(); await onAcademicUpdated?.(); }}
-                onLancarNotaHistorica={(disciplinaId) =>
-                  onHistoricalGrade(historicalReviewTarget, disciplinaId)}
-              />
             </div>
           )}
           {previousPending && !historicalTarget && previous && (
