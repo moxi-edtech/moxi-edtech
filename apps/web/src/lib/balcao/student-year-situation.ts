@@ -61,9 +61,9 @@ export function resolveStudentYearSituation(data: SituacaoBalcaoPayload): {
   }
   if (status === "aguarda_confirmacao" || status === "rascunho") return {
     title: status === "rascunho" ? "Matrícula em preparação" : "Matrícula por confirmar",
-    description: "O aluno já possui um registo neste ano. Retome-o sem criar outra matrícula.",
-    action: ano.ativo ? "enrollment" : "profile",
-    actionLabel: ano.ativo ? "Continuar matrícula" : "Consultar ficha",
+    description: "O aluno já possui um registo neste ano. Continue a confirmação na ficha, sem criar outra matrícula.",
+    action: "profile",
+    actionLabel: ano.ativo ? "Rever matrícula existente" : "Consultar ficha",
   };
   if (status === "ano_encerrado") return {
     title: "Ano escolar encerrado",
