@@ -150,20 +150,20 @@ export function BalcaoPautaGrid(props: Props) {
 
   return <section aria-label={`Pauta de ${ano}`} className="mt-4 space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <h4 className="font-sora text-sm font-semibold text-[#1F6B3B]">Pauta de {ano}</h4>
+      <h4 className="font-sora text-sm font-semibold text-emerald">Pauta de {ano}</h4>
       <div className="flex gap-2" role="group" aria-label="Trimestre">
         {[1, 2, 3].map(n => <button key={n} type="button" aria-pressed={term === n}
           disabled={saving} onClick={() => { if (!dirty || window.confirm("Descartar notas por guardar?")) setTerm(n); }}
-          className={`rounded-xl border px-3 py-2 text-sm ${term === n ? "border-[#E3B23C] bg-[#E3B23C]/10" : "border-slate-200"}`}>{n}.º</button>)}
+          className={`rounded-xl border px-3 py-2 text-sm ${term === n ? "border-amber bg-amber/10" : "border-border"}`}>{n}.º</button>)}
       </div>
     </div>
     {loading ? <p role="status" className="text-sm">A carregar pauta…</p> : <>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {!rows.length && !error && <p className="text-sm">Nenhuma disciplina atribuída à turma.</p>}
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
-        <table className="w-full text-left text-sm"><thead><tr className="border-b border-slate-200">
+      <div className="overflow-x-auto rounded-xl border border-border">
+        <table className="w-full text-left text-sm"><thead><tr className="border-b border-border">
           <th scope="col" className="p-3">Disciplina</th>{types.map(type => <th scope="col" key={type} className="p-3">{type}</th>)}
-        </tr></thead><tbody>{rows.map(row => <tr key={row.id} className="border-b border-slate-100 last:border-0">
+        </tr></thead><tbody>{rows.map(row => <tr key={row.id} className="border-b border-border last:border-0">
           <th scope="row" className="p-3 font-medium">{row.nome}{row.error && <span className="block text-xs text-red-600">{row.error}</span>}</th>
           {types.map(type => { const key = row.id + ":" + type; return <td key={type} className="p-2">
             {row.active.includes(type) ? <><input aria-label={`${row.nome} · ${type} · ${term}.º trimestre`}
@@ -172,16 +172,16 @@ export function BalcaoPautaGrid(props: Props) {
               value={draft[key] ?? baseline[key] ?? ""} placeholder="—"
               onChange={event => { setDraft(previous => ({ ...previous, [key]: event.target.value }));
                 setErrors(previous => { const copy = { ...previous }; delete copy[key]; return copy; }); setNotice(""); }}
-              className={`w-20 rounded-xl border p-2 focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20 ${errors[key] ? "border-red-500" : "border-slate-200"}`} />
+              className={`w-20 rounded-xl border p-2 focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/20 ${errors[key] ? "border-red-500" : "border-border"}`} />
               {errors[key] && <span id={`${matriculaId}-${key}-${term}-error`} role="alert" className="block max-w-48 text-xs text-red-600">{errors[key]}</span>}</> : <span aria-label="Não aplicável">—</span>}
           </td>; })}
         </tr>)}</tbody></table>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" disabled={saving || !dirty} onClick={() => void save()}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"><Check size={16} />{saving ? "A guardar…" : "Guardar notas"}</button>
+          className="inline-flex items-center gap-2 rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"><Check size={16} />{saving ? "A guardar…" : "Guardar notas"}</button>
         <button type="button" disabled={saving} onClick={() => { if (!dirty || window.confirm("Descartar notas por guardar?")) setRetry(n => n + 1); }}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm"><RefreshCw size={16} />Atualizar pauta</button>
+          className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm"><RefreshCw size={16} />Atualizar pauta</button>
         {notice && <p role="status" className="text-sm">{notice}</p>}
       </div>
     </>}
