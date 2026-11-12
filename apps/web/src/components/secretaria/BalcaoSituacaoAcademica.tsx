@@ -184,7 +184,9 @@ export function BalcaoSituacaoAcademica({
         </p>
       ) : snapshot && situation ? (
         <>
-          <p className="mt-2 text-sm text-muted-foreground">{situation.description}</p>
+          {!(situation.action === "historical" && historicalTarget) && (
+            <p className="mt-2 text-sm text-muted-foreground">{situation.description}</p>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
             <span className="rounded-full bg-muted px-3 py-1.5 font-medium">{snapshot.ano.label}</span>
             <span className="rounded-full bg-muted px-3 py-1.5 font-medium">
@@ -221,9 +223,9 @@ export function BalcaoSituacaoAcademica({
             )}
             {historicalReviewTarget && historicalTarget && (
               <button type="button" onClick={openHistoricalReview} disabled={loading}
-                aria-label={"Validar resultado documental de " + historicalReviewTarget.ano_letivo}
+                aria-label={"Validar resultado de " + historicalReviewTarget.ano_letivo}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
-                Validar resultado documental de {historicalReviewTarget.ano_letivo}
+                Validar resultado de {historicalReviewTarget.ano_letivo}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
@@ -261,7 +263,7 @@ export function BalcaoSituacaoAcademica({
           {visiblePending.length > 0 && confirmedPendingRow && (
             <div className="mt-4 rounded-xl border border-border p-3">
               <p className="text-xs font-semibold text-foreground">
-                Disciplinas sinalizadas pelo RAA · {confirmedPendingRow.ano_letivo} ({visiblePending.length})
+                Disciplinas pendentes · {confirmedPendingRow.ano_letivo} ({visiblePending.length})
               </p>
               <ul className="mt-2 space-y-2">
                 {visiblePending.map((item) => {
