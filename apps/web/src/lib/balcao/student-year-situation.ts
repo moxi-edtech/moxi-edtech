@@ -25,11 +25,17 @@ export type SituacaoBalcaoPayload = {
 };
 export type ContextualAction = "enrollment" | "grade" | "historical" | "reenrollment" | "profile" | null;
 
-export function resolveStudentYearSituation(data: SituacaoBalcaoPayload): {
+export function resolveStudentYearSituation(data: SituacaoBalcaoPayload, canContinueEnrollment = false): {
   title: string; description: string; action: ContextualAction; actionLabel: string | null;
 } {
   const { current, previous, ano } = data;
   if (!current) {
+    // READY is supplied by the tenant/student/source/year-scoped backend check.
+    if (canContinueEnrollment && ano.ativo && previous) return {
+      title: "Pronto para rematrícula",
+      description: "Escolha a turma e conclua a rematrícula.",
+      action: "reenrollment", actionLabel: "Concluir rematrícula de " + ano.ano,
+    };
     const originIsLastYear = previous?.ano_letivo === ano.ano - 1;
     const originPending = originIsLastYear &&
       ["regularizacao_historica", "ano_encerrado"].includes(previous?.situacao_contextual ?? "") &&
