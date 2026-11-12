@@ -96,7 +96,7 @@ test("historic year correction reuses existing audited note modal, not the trans
   const balc = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
   const route = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/balcao/situacao-academica/route.ts"), "utf8");
   assert.match(ui, /onHistoricalGrade\(historicalTarget\)/);
-  assert.match(ui, /Lançar notas de \{previous\.ano_letivo\}/);
+  assert.match(ui, /Abrir pauta de \{previous\.ano_letivo\}/);
   assert.match(ui, /<BalcaoHistoricalAcademicRecovery/);
   assert.doesNotMatch(ui, /DossierHistoricoTransitadoSection/);
   assert.match(balc, /historicalMatriculaId: row\.matricula_id/);
@@ -265,4 +265,43 @@ test("non-final 7th grade cannot be marked as end of cycle in documentary UI or 
   assert.match(server, /permite_conclusao_ciclo: allowsCycleCompletion\(sourceRegime\)/);
   assert.match(recovery, /snapshot\.permite_conclusao_ciclo &&/);
   assert.match(recovery, /<option value="concluido">/);
+});
+
+test("Bernarndo 2026 happy path opens the verified 2025 pauta in one click, retaining his original enrollment", () => {
+  // Canonical situation: 2026 without a matrícula, 2025 pending in class 7
+  // with no official result. This fixture has no personal or production IDs.
+  const historical = row(2025, "regularizacao_historica");
+  historical.status_persistido = "pendente";
+  historical.situacao_resultado = "sem_resultado_oficial";
+  const situationData = payload(null, historical);
+  situationData.editable_historical_matricula_id = historical.matricula_id;
+  assert.equal(resolveStudentYearSituation(situationData).action, "historical");
+
+  const ui = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  const workspace = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
+  const modal = readFileSync(resolve(process.cwd(), "src/components/secretaria/EnrollmentPostActionModal.tsx"), "utf8");
+  assert.match(ui, /case "historical":\s*[\s\S]*?if \(historicalTarget\) onHistoricalGrade\(historicalTarget\);\s*else openHistoricalReview\(\);/);
+  assert.doesNotMatch(ui, /historicalTarget\.matricula_id === current\?\.matricula_id/);
+  assert.match(ui, /\? "Abrir pauta de " \+ historicalTarget\.ano_letivo/);
+  assert.match(ui, /previousYearReady && situation\.action !== "historical"/,
+    "the primary CTA must not be duplicated for this case");
+  assert.match(ui, /Validar resultado documental de \{historicalReviewTarget\.ano_letivo\}/);
+  assert.match(workspace, /currentSnapshot\.editable_historical_matricula_id !== row\.matricula_id/);
+  assert.match(workspace, /row\.aluno_id !== dossier\.aluno\.id/);
+  assert.match(workspace, /row\.escola_id !== escolaId/);
+  assert.match(workspace, /historicalMatriculaId: row\.matricula_id/);
+  assert.match(workspace, /originAnoLetivoId: row\.ano_letivo_id/);
+  assert.match(modal, /alunoId,/);
+  assert.match(modal, /pauta-grid\?/);
+  assert.match(modal, /alunoId,/);
+  assert.match(modal, /historical_matricula_id: historicalMatriculaId/);
+  assert.match(modal, /onAcademicSaved\?\.\(\)/);
+});
+
+test("the 2025 archived-period message no longer claims reopening is required for audited historical correction", () => {
+  const modal = readFileSync(resolve(process.cwd(), "src/components/secretaria/EnrollmentPostActionModal.tsx"), "utf8");
+  assert.match(modal, /historicalMatriculaId\s*\? "Período encerrado\. A pauta histórica/);
+  assert.match(modal, /sem reabrir o ano\./);
+  assert.match(modal, /"Período encerrado\. O lançamento normal exige reabertura autorizada/);
+  assert.match(modal, /read_only === true && !historicalMatriculaId/);
 });
