@@ -269,7 +269,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
 
   // A selecção guardada num rascunho pode já não pertencer ao ano/curso atual
   // ou ter ficado sem vagas. Nunca aceitar apenas um ID presente no estado.
-  const selectableDestinationId = turmas.some((turma) =>
+  const selectableDestinationId = !turmasLoading && !turmasError && turmas.some((turma) =>
     turma.id === selectedTurmaId &&
     (turma.capacidade_maxima === null || turma.ocupacao_atual < turma.capacidade_maxima)
   ) ? selectedTurmaId : null;
@@ -1452,7 +1452,11 @@ function FooterWizard({
       </div>
 
       {!canSubmit && step >= 3 && !submitting && disabledReason ? (
-        <p className="text-right text-xs font-medium text-slate-500">{disabledReason}</p>
+        <div className="text-right text-xs font-medium text-slate-500">
+          <p>{disabledReason}</p>
+          {!academicReady && !academicOnly && <button type="button" onClick={() => setStep(1)}
+            className="mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">Rever destino</button>}
+        </div>
       ) : null}
     </div>
   );
