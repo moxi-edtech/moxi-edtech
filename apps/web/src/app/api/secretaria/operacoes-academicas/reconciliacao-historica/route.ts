@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRoleInSchool } from "@/lib/authz";
-import { authorizeBalcaoPendingAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
+import { authorizeBalcaoPendingAcademicWrite, BALCAO_HISTORIC_OPERATOR_ROLES } from "@/lib/academico/authorize-balcao-academic-write";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { compareNextYearEnrollment, confirmedOutcomeFitsDestination } from "@/lib/rematricula/compare-next-year-enrollment";
@@ -9,15 +9,15 @@ import { compareNextYearEnrollment, confirmedOutcomeFitsDestination } from "@/li
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ReadRoles = ["secretaria", "admin_secretaria", "admin", "admin_escola", "staff_admin", "diretor", "admin_financeiro", "secretaria_financeiro"] as const;
-const WriteRoles = ["admin", "admin_escola", "staff_admin", "diretor"] as const;
-const ExactHistoricalDecisionRoles = new Set(["admin", "admin_escola", "staff_admin", "diretor"]);
+const ReadRoles = [...BALCAO_HISTORIC_OPERATOR_ROLES, "secretaria_financeiro"] as const;
+const WriteRoles = BALCAO_HISTORIC_OPERATOR_ROLES;
+const ExactHistoricalDecisionRoles = new Set<string>(BALCAO_HISTORIC_OPERATOR_ROLES);
 
 async function canWriteHistoricalDecision(supabase: any, escolaId: string): Promise<boolean> {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return false;
-  // The generic user_has_role_in_school RPC expands financial aliases to
-  // admin. A historical outcome can only be signed by an exact school role.
+  // Do not rely on user_has_role_in_school's role expansion here.
+  // Use the exact tenant-scoped escola_users membership for these actions.
   const { data, error } = await supabase.from("escola_users")
     .select("papel").eq("escola_id", escolaId).eq("user_id", user.id).maybeSingle();
   return !error && ExactHistoricalDecisionRoles.has(String(data?.papel ?? ""));
@@ -406,7 +406,7 @@ export async function POST(request: Request) {
     if (allowed.error) return allowed.error;
     if (!(await canWriteHistoricalDecision(supabase, escolaId))) {
       return NextResponse.json({ ok: false, code: "HISTORICAL_DECISION_FORBIDDEN",
-        error: "A decisão escolar histórica exige direção autorizada nesta escola." }, { status: 403 });
+        error: "Este perfil não pode validar o histórico nesta escola." }, { status: 403 });
     }
     let data: any = null;
     let rpcError: any = null;
