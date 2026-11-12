@@ -84,5 +84,5 @@ test("physical-pauta grade entry is the primary action before the first historic
   assert.match(situation, /historicalReviewTarget && !historicalTarget/);
   assert.match(modal, /historical_motivo: historicPautaReason/);
   assert.doesNotMatch(modal, /setMotivoHistorico/);
-  assert.match(modal, /O lançamento fica registado com o utilizador/);
+  assert.doesNotMatch(modal, /O lançamento fica registado com o utilizador/);
 });
