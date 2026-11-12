@@ -326,5 +326,7 @@ $fn$;
 REVOKE ALL ON FUNCTION public.concluir_pauta_trimestral(uuid,uuid,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.concluir_pauta_trimestral(uuid,uuid,uuid) TO authenticated;
 REVOKE ALL ON FUNCTION public.trg_pauta_concluida_evento_fn() FROM PUBLIC,anon,authenticated;
+-- A SECURITY DEFINER handler must never be directly callable through the Data API.
+REVOKE ALL ON FUNCTION public.trg_evento_notas_lancadas_fn(public.eventos) FROM PUBLIC,anon,authenticated;
 
 COMMIT;
