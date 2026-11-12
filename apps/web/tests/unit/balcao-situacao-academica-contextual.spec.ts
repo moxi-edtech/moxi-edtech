@@ -237,7 +237,7 @@ test("historical workflow is visible from selected student, survives pre-homolog
   assert.match(recovery, /stage === "decisao" \? "Registar decisão" : stage === "ratificacao" \? "Ratificar decisão" : "Fechar histórico"/);
   assert.match(service, /tem_notas_reais: temNotasLancadas/);
   assert.match(recovery, /snapshot\.tem_notas_reais === false/);
-  assert.match(recovery, /!snapshot\?\.permite_escrita/);
+  assert.match(recovery, /!snapshot\.permite_escrita/);
   assert.match(service, /const ExactHistoricalDecisionRoles/);
 });
 
