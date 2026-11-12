@@ -246,7 +246,10 @@ test("2026 continuation is one click only when backend says READY, not merely wh
   const workspace = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
   assert.match(component, /snapshot\.ano\.ativo && canContinueEnrollment && onContinueEnrollment/);
   assert.match(component, /onContinueEnrollment\(\);/);
-  assert.match(workspace, /canContinueEnrollment=\{rematricula\.cardState === "READY"\}/);
+  assert.match(workspace, /rematricula\.cardState === "READY"/);
+  assert.match(workspace, /rematricula\.anoLetivo\?\.id === effectiveAcademicYearId/);
+  assert.match(workspace, /rematricula\.academic\?\.source\?\.matricula_id === situacaoAcademica\.data\?\.previous\?\.matricula_id/);
+  assert.match(workspace, /situacaoAcademica\.data\?\.aluno_id === dossier\.aluno\.id/);
   assert.match(workspace, /onContinueEnrollment=\{rematricula\.openModal\}/);
   assert.doesNotMatch(component, /onNavigate\?\.\("enrollment"\)/);
 });
