@@ -28,6 +28,7 @@ const protectedWriters = /(?:CREATE\s+OR\s+REPLACE\s+(?:FUNCTION|VIEW)\s+public\
 const historicBridge = "20271109010000_raa_historico_documental_ratificado.sql";
 const historicStaffAccess = "20271112010000_balcao_historic_full_staff_permissions.sql";
 const primarySecondaryBridge = "20271112020000_balcao_primary_secondary_6_to_7.sql";
+const physicalPautaSource = "20271112030000_balcao_pauta_corrigir_turma_origem.sql";
 for (const migration of migrations.filter((file) => file > finalName)) {
   const source = readFileSync(join(dir, migration), "utf8");
   if (migration === historicBridge) {
@@ -111,6 +112,30 @@ for (const migration of migrations.filter((file) => file > finalName)) {
       "Missing 6th-to-7th school transition guard: " + token);
     assert.doesNotMatch(source, /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\./i,
       "Bridge must not change student lifecycle projections");
+    continue;
+  }
+  if (migration === physicalPautaSource) {
+    for (const token of [
+      "CREATE OR REPLACE FUNCTION public.balcao_corrigir_turma_origem_pauta",
+      "CREATE OR REPLACE FUNCTION public.guard_turma_transfer_academic_evidence_v1",
+      "CREATE OR REPLACE FUNCTION public.guard_turma_transfer_secondary_evidence_v1",
+      "CREATE TABLE IF NOT EXISTS public.balcao_pauta_turma_correction_nonce",
+      "REVOKE ALL ON TABLE public.balcao_pauta_turma_correction_nonce",
+      "current_tenant_escola_id()",
+      "user_has_role_in_school",
+      "status_fecho_origem",
+      "SELECT 1 FROM public.notas",
+      "BALCAO_PAUTA_TURMA_ORIGEM_CORRIGIDA",
+      "pg_catalog.jsonb_build_object('turma_id',v_old_turma.id)",
+      "pg_catalog.jsonb_build_object('turma_id',v_new_turma.id)",
+    ]) assert.ok(source.includes(token), "Missing trusted physical pauta correction contract: " + token);
+    assert.doesNotMatch(source, /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\./i,
+      "Source-class correction must not change lifecycle projections");
+    const regression = readFileSync(join(root,
+      "supabase/ops/tests/balcao_exceptional/physical_pauta_source_regression.sql"), "utf8");
+    assert.ok(regression.includes("other-school operator") &&
+      regression.includes("before/after automatic audit missing"),
+      "A source-class correction requires an authenticated PG negative test");
     continue;
   }
   assert.ok(!protectedWriters.test(source),
