@@ -27,10 +27,11 @@ test("existing current enrollment never requires a fabricated prior-year enrollm
   assert.equal(situacao.action, "grade");
 });
 
-test("a student without 2026 enrollment can continue the existing academic transition", () => {
+test("a student without 2026 enrollment must resolve the last year's real academic blocker first", () => {
   const situacao = resolveStudentYearSituation(payload(null, row(2025, "regularizacao_historica")));
-  assert.match(situacao.title, /Sem matrícula/);
-  assert.equal(situacao.action, "reenrollment");
+  assert.equal(situacao.title, "Histórico de 2025 por regularizar");
+  assert.equal(situacao.action, "historical");
+  assert.equal(situacao.actionLabel, "Resolver histórico de 2025");
   assert.ok(hasHistoricalPending(payload(null, row(2025, "regularizacao_historica"))));
 });
 
@@ -191,4 +192,61 @@ test("RAA disciplines have names and source-matricula matching before showing th
   assert.match(component, /onHistoricalGrade\(historicalTarget, item\.id\)/);
   assert.match(component, /onCurrentGrade\(current, item\.id\)/);
   assert.doesNotMatch(component, /Disciplinas em falta \(/);
+});
+
+test("case with no 2026 matrícula and no official 2025 result follows one documented academic recovery, not new intake", () => {
+  const origin = row(2025, "regularizacao_historica");
+  origin.status_persistido = "pendente";
+  origin.resultado_oficial = null;
+  const first = payload(null, origin);
+  first.editable_historical_matricula_id = origin.matricula_id;
+  const state = resolveStudentYearSituation(first);
+  assert.equal(state.action, "historical");
+  assert.equal(hasHistoricalPending(first), true);
+
+  // After documenting the result but before legal closure, the next step is
+  // ratification / closure in the same historic recovery.
+  origin.situacao_contextual = "ano_encerrado";
+  origin.situacao_resultado = "registado_nao_homologado";
+  assert.equal(resolveStudentYearSituation(first).action, "historical");
+  assert.equal(hasHistoricalPending(first), true);
+
+  // The legal outcome, not the new year alone, controls the next action.
+  origin.situacao_resultado = "homologado";
+  origin.resultado_oficial = "aprovado";
+  assert.equal(hasHistoricalPending(first), false);
+  assert.equal(resolveStudentYearSituation(first).action, "reenrollment");
+  assert.match(resolveStudentYearSituation(first).actionLabel ?? "", /Continuar matrícula de 2026/);
+
+  origin.resultado_oficial = "reprovado";
+  assert.equal(resolveStudentYearSituation(first).action, "reenrollment",
+    "repeat/retention goes to the backend eligibility engine, never assumed approved");
+  origin.resultado_oficial = "concluido";
+  assert.equal(resolveStudentYearSituation(first).action, "profile",
+    "cycle completion never creates a synthetic next-year matrícula");
+});
+
+test("historical workflow is visible from selected student, survives pre-homologation refresh, and never duplicates requests", () => {
+  const component = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  const recovery = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoHistoricalAcademicRecovery.tsx"), "utf8");
+  const service = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/route.ts"), "utf8");
+  assert.match(component, /reviewOpenFor === historicalReviewTarget\.matricula_id/);
+  assert.match(component, /onRecheck=\{async \(\) => \{ await refresh\(\); await onAcademicUpdated\?\.\(\); \}\}/);
+  assert.match(recovery, /snapshot\.pedido_regularizacao \? \(/);
+  assert.match(recovery, /A direção pode concluir a decisão nesta mesma ficha/);
+  assert.match(recovery, /stage === "decisao" \? "Registar decisão" : stage === "ratificacao" \? "Ratificar decisão" : "Fechar histórico"/);
+  assert.match(service, /tem_notas_reais: temNotasLancadas/);
+  assert.match(recovery, /snapshot\.tem_notas_reais === false/);
+  assert.match(recovery, /!snapshot\?\.permite_escrita/);
+  assert.match(service, /const ExactHistoricalDecisionRoles/);
+});
+
+test("2026 continuation is one click only when backend says READY, not merely when 2025 is homologated", () => {
+  const component = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  const workspace = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
+  assert.match(component, /snapshot\.ano\.ativo && canContinueEnrollment && onContinueEnrollment/);
+  assert.match(component, /onContinueEnrollment\(\);/);
+  assert.match(workspace, /canContinueEnrollment=\{rematricula\.cardState === "READY"\}/);
+  assert.match(workspace, /onContinueEnrollment=\{rematricula\.openModal\}/);
+  assert.doesNotMatch(component, /onNavigate\?\.\("enrollment"\)/);
 });
