@@ -9,16 +9,19 @@ import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYear
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 const Schema = z.object({ turma_id: z.string().uuid(), motivo: z.string().trim().min(10).max(300), ano_letivo_id: z.string().uuid(), confirmar_historico: z.boolean().default(false) });
-const roles: Role[] = ["admin", "admin_escola"];
+const roles: Role[] = ["secretaria", "admin_secretaria", "admin_secretario", "admin_financeiro", "admin", "admin_escola", "staff_admin", "diretor"];
 
 async function context(matriculaId: string) {
   const supabase = await supabaseServerTyped<any>();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }) };
-  const { data: matricula } = await supabase.from("matriculas").select("id,escola_id,aluno_id,turma_id,status").eq("id", matriculaId).maybeSingle();
-  if (!matricula) return { error: NextResponse.json({ ok: false, error: "Matrícula não encontrada" }, { status: 404 }) };
-  const escolaId = await resolveEscolaIdForUser(supabase, user.id, matricula.escola_id);
-  if (escolaId !== matricula.escola_id) return { error: NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }) };
+  const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+  if (!escolaId) return { error: NextResponse.json({ ok: false, error: "Sem permissão", }, { status: 403 }) };
+  const { data: matricula, error: matriculaError } = await supabase.from("matriculas")
+    .select("id,escola_id,aluno_id,turma_id,session_id,ano_letivo,status,ativo")
+    .eq("escola_id", escolaId).eq("id", matriculaId).maybeSingle();
+  if (matriculaError) throw matriculaError;
+  if (!matricula) return { error: NextResponse.json({ ok: false, error: "Matrícula não encontrada", }, { status: 404 }) };
   const { error } = await requireRoleInSchool({ supabase, escolaId: escolaId!, roles });
   if (error) return { error };
   return { supabase, user, matricula, escolaId };
@@ -52,7 +55,9 @@ async function preview(supabase: any, matricula: any, escolaId: string, turmaId:
   const blockers:string[]=[];
   const avisos:string[]=[];
   if(o.classe_id===t.classe_id) blockers.push("Para a mesma classe, utilize Trocar turma.");
-  if(o.ano_letivo!==t.ano_letivo || o.curso_id!==t.curso_id || o.session_id!==targetSession.session_id) blockers.push("Ano letivo, sessão ou curso incompatível.");
+  if (matricula.session_id !== o.session_id || matricula.session_id !== targetSession.session_id) blockers.push("Matrícula e turma não pertencem à mesma sessão.");
+  if (matricula.ativo !== true || !["ativo","ativa","active"].includes(String(matricula.status).toLowerCase())) blockers.push("A correção direta exige matrícula ativa.");
+  if(o.ano_letivo!==t.ano_letivo || o.session_id!==targetSession.session_id) blockers.push("Ano letivo ou sessão incompatível.");
   const requerConciliacaoAcademica = academicEvidence.data.has_evidence === true ||
     (notes.count||0)+(assessments.count||0)+(appeals.count||0)
     +(exams.count||0)+(attendance.count||0)+(frequency.count||0)>0;
@@ -74,16 +79,50 @@ async function preview(supabase: any, matricula: any, escolaId: string, turmaId:
 }
 
 export async function GET(request:Request,{params}:{params:Promise<{matriculaId:string}>}) {
- try { const {matriculaId}=await params; const turmaId=new URL(request.url).searchParams.get("target_turma_id");
- if(!turmaId || !z.string().uuid().safeParse(turmaId).success) return NextResponse.json({ok:false,error:"Turma inválida"},{status:400});
- const ctx=await context(matriculaId); if(ctx.error)return ctx.error;
- return NextResponse.json(await preview(ctx.supabase,ctx.matricula,ctx.escolaId!,turmaId));
- } catch(e) {return NextResponse.json({ok:false,error:e instanceof Error?e.message:String(e)},{status:409});}
+ try {
+  const { matriculaId } = await params;
+  if (!z.string().uuid().safeParse(matriculaId).success)
+    return NextResponse.json({ok:false,error:"Matrícula inválida."},{status:400});
+  const ctx = await context(matriculaId);
+  if (ctx.error) return ctx.error;
+  const { supabase, matricula, escolaId } = ctx;
+  const { data: ano, error: anoError } = await supabase.from("anos_letivos")
+    .select("id,ano,ativo").eq("escola_id",escolaId).eq("id",matricula.session_id).maybeSingle();
+  if (anoError || !ano || ano.ativo !== true || Number(ano.ano) !== Number(matricula.ano_letivo) ||
+      matricula.ativo !== true || !["ativo","ativa","active"].includes(String(matricula.status).toLowerCase()))
+    return NextResponse.json({ok:false,error:"Só é possível corrigir diretamente uma matrícula ativa do ano letivo corrente."},{status:409});
+  const turmaId = new URL(request.url).searchParams.get("target_turma_id");
+  if (turmaId) {
+    if (!z.string().uuid().safeParse(turmaId).success)
+      return NextResponse.json({ok:false,error:"Turma inválida."},{status:400});
+    return NextResponse.json(await preview(supabase, matricula, escolaId!, turmaId), {
+      headers: {"Cache-Control":"private, no-store"},
+    });
+  }
+  // The options are scoped to the SAME student's enrollment and year;
+  // no RAA progression filter is applicable to correction of a data-entry error.
+  const { data: turmas, error } = await supabase.from("turmas")
+    .select("id,nome,classe_num,classe_id,curso_id,turno,capacidade_maxima")
+    .eq("escola_id",escolaId).eq("session_id",matricula.session_id)
+    .eq("status_validacao","ativo")
+    .order("classe_num",{ascending:true}).order("nome",{ascending:true}).limit(300);
+  if (error) throw error;
+  if ((turmas??[]).length===300)
+    return NextResponse.json({ok:false,error:"Existem demasiadas turmas; refine o catálogo antes da correção."},{status:409});
+  return NextResponse.json({
+    ok:true, matricula_id:matricula.id, aluno_id:matricula.aluno_id,
+    turma_atual_id:matricula.turma_id, ano_letivo_id:ano.id, ano_letivo:ano.ano,
+    items:turmas??[],
+  },{headers:{"Cache-Control":"private, no-store"}});
+ } catch(e) { return NextResponse.json({ok:false,error:e instanceof Error?e.message:"Falha ao consultar."},{status:409}); }
 }
 export async function PUT(request:Request,{params}:{params:Promise<{matriculaId:string}>}) {
  try { const {matriculaId}=await params; const parsed=Schema.safeParse(await request.json());
  if(!parsed.success)return NextResponse.json({ok:false,error:parsed.error.issues[0]?.message},{status:400});
  const ctx=await context(matriculaId);if(ctx.error)return ctx.error;
+ if (!ctx.matricula || !ctx.matricula.session_id || ctx.matricula.session_id !== parsed.data.ano_letivo_id) {
+   return NextResponse.json({ok:false,code:"ENROLLMENT_STALE",error:"A sessão da matrícula mudou; atualize a situação."},{status:409});
+ }
  const academic=await resolveAcademicYearContext(ctx.supabase,{userId:ctx.user!.id,requestedAcademicYearId:parsed.data.ano_letivo_id,operation:"WRITE"});
  if(academic.escolaId!==ctx.escolaId)return NextResponse.json({ok:false,error:"Sem permissão"},{status:403});
  await assertAcademicYearEntity(ctx.supabase,{table:"matriculas",entityId:matriculaId,escolaId:ctx.escolaId!,anoLetivoId:academic.anoLetivoId});
