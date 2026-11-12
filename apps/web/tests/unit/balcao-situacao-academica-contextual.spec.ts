@@ -17,6 +17,7 @@ const payload = (current: SituacaoBalcaoRow | null, previous: SituacaoBalcaoRow 
   ok: true, aluno_id: "aluno",
   ano: { id: "ano-2026", ano: 2026, label: "2026/2027", ativo: active, arquivado_com_pendencias: !active },
   current, previous, can_write_current_grades: true,
+  editable_historical_matricula_id: null,
 });
 
 test("existing current enrollment never requires a fabricated prior-year enrollment", () => {
@@ -83,4 +84,17 @@ test("Balcao navigates by current year and suppresses misleading origin-only scr
   assert.match(src, /<BalcaoSituacaoAcademica/);
   assert.match(src, /view !== "reenrollment" \|\| Boolean\(dossier\.aluno\.matricula_id\)/);
   assert.match(src, /historicalMatriculaId: row\.matricula_id/);
+});
+
+test("historic year correction reuses existing audited note modal, not the transited-history writer", () => {
+  const ui = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  const balc = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
+  const route = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/balcao/situacao-academica/route.ts"), "utf8");
+  assert.match(ui, /onHistoricalGrade\(historicalTarget\)/);
+  assert.match(ui, /Lançar notas de \{previous\.ano_letivo\}/);
+  assert.doesNotMatch(ui, /<BalcaoHistoricalAcademicRecovery/);
+  assert.doesNotMatch(ui, /DossierHistoricoTransitadoSection/);
+  assert.match(balc, /historicalMatriculaId: row\.matricula_id/);
+  assert.match(route, /editable_historical_matricula_id/);
+  assert.match(route, /"secretaria", "admin_secretaria", "diretor"/);
 });
