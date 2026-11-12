@@ -7,6 +7,7 @@ export type SituacaoBalcaoRow = {
   ano_letivo: number;
   ano_letivo_id: string | null;
   turma_id: string | null;
+  turma_nome?: string | null;
   status_persistido: string | null;
   situacao_contextual: SituacaoMatriculaContextual;
   situacao_resultado: "homologado" | "registado_nao_homologado" | "sem_resultado_oficial";
@@ -19,7 +20,10 @@ export type SituacaoBalcaoPayload = {
   ano: { id: string; ano: number; label: string; ativo: boolean; arquivado_com_pendencias: boolean };
   current: SituacaoBalcaoRow | null;
   previous: SituacaoBalcaoRow | null;
+  records?: SituacaoBalcaoRow[];
+  can_recover_historical?: boolean;
   can_write_current_grades: boolean;
+  can_rectify_class: boolean;
   editable_historical_matricula_id: string | null;
   historical_evaluation_scale: string | null;
 };

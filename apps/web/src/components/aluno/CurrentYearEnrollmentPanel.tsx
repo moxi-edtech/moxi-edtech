@@ -178,8 +178,7 @@ export function CurrentYearEnrollmentPanel({
           {state.canRectifyClass && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
               <p className="max-w-md text-xs text-slate-500">
-                Classe incorreta? O administrador pode retificar a matrícula deste ano,
-                sem alterar notas, pagamentos ou documentos históricos.
+                Classe incorreta? Corrija a matrícula deste ano sem criar aprovações ou novas cobranças.
               </p>
               <RetificarMatriculaAction
                 matriculaId={state.matricula.id}

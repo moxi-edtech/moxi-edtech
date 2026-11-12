@@ -36,12 +36,14 @@ import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guid
 import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
+import { BalcaoPercursoAcademico } from "@/components/secretaria/BalcaoPercursoAcademico";
 import { PagamentoDividaModal } from "@/components/secretaria/PagamentoDividaModal";
 import { getTipoDocumentoFromCodigo } from "@/lib/documentos/identificacao";
 import { OmniSearchInput } from "@/components/secretaria/OmniSearchInput";
 import { isTipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 import { emitirDocumento as emitirDocumentoViaApi, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
 import { kwanza } from "@/lib/formatters";
+import { isOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { resolveCheckoutPaymentState } from "@/lib/financeiro/checkout-payment-state";
 import type { BalcaoActionId, BalcaoFocusAction } from "@/lib/balcao/action-registry";
 import Link from "next/link";
@@ -380,21 +382,23 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
         const mensalidadeIds = rawMensalidades
           .map((m) => (m.id ? String(m.id) : ""))
           .filter(Boolean);
-        const { data: origins } = mensalidadeIds.length > 0
+        const { data: origins, error: originsError } = mensalidadeIds.length > 0
           ? await supabase
               .from("mensalidades")
               .select("id, matricula_id, turma_id, ano_letivo")
               .eq("escola_id", escolaId)
               .in("id", mensalidadeIds)
-          : { data: [] };
-        const originById = new Map((origins ?? []).map((origin) => [String(origin.id), origin]));
+          : { data: [], error: null };
+        if (originsError) throw originsError;
+        const originById = new Map((origins ?? []).map((origin) => [String(origin.id), origin] as const));
+        if (mensalidadeIds.some(id => !originById.has(id))) throw new Error("Não foi possível confirmar a origem das mensalidades.");
         const turmaIds = (origins ?? [])
           .map((origin) => origin.turma_id)
           .filter((id): id is string => Boolean(id));
         const { data: originTurmas } = turmaIds.length > 0
           ? await supabase.from("turmas").select("id, nome, turma_codigo").in("id", turmaIds)
           : { data: [] };
-        const turmaById = new Map((originTurmas ?? []).map((turma) => [String(turma.id), turma]));
+        const turmaById = new Map((originTurmas ?? []).map((turma) => [String(turma.id), turma] as const));
 
         const ms: Mensalidade[] = rawMensalidades
           .filter((m: any) => !m.status || ["pendente", "pago_parcial"].includes(String(m.status)))
@@ -410,7 +414,7 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
               id: String(m.id),
               nome: mes && ano ? `Mensalidade ${new Date(0, mes - 1).toLocaleString("pt-PT", { month: "short" })}/${ano}` : String(m.nome ?? "Mensalidade"),
               preco: Math.max(0, valor - pago),
-              atrasada: vencimento ? new Date(vencimento) < new Date() : Boolean(m.atrasada),
+              atrasada: vencimento ? isOverdueRematriculaDebt({ status: m.status, valor, valor_pago_total: pago, data_vencimento: String(vencimento) }) : Boolean(m.atrasada),
               referencia_mes: mes || undefined,
               referencia_ano: ano || undefined,
               origem_ano: origin?.ano_letivo ? String(origin.ano_letivo) : null,
@@ -2738,6 +2742,8 @@ export default function BalcaoAtendimento({
   const [postAction, setPostAction] = useState<{ action: EnrollmentPostAction; turmaId?: string | null; originAnoLetivoId?: string | null; historicalMatriculaId?: string | null; initialTrimestre?: 1 | 2 | 3 | null; initialDisciplinaId?: string | null } | null>(null);
   const [raaDocumentsOpen, setRaaDocumentsOpen] = useState(false);
   const [debtModalOpen, setDebtModalOpen] = useState(false);
+  const [debtSourceId, setDebtSourceId] = useState<string | null>(null);
+  const [percursoBusy, setPercursoBusy] = useState(false);
   const hasOverdueDebt = useMemo(
     () => dossier.mensalidades.some((item) => item.preco > 0 && item.atrasada),
     [dossier.mensalidades]
@@ -2793,6 +2799,8 @@ export default function BalcaoAtendimento({
     setItensRematricula([]);
     setMensalidadesDestino([]);
     setDebtModalOpen(false);
+    setDebtSourceId(null);
+    setPercursoBusy(false);
     setPostAction(null);
     // Intencionalmente depende só da fronteira da ação. Os setters e callbacks
     // acima são estáveis; adicionar o objeto `carrinho` recriado por render
@@ -3123,6 +3131,16 @@ export default function BalcaoAtendimento({
               historicalMatriculaId: row.matricula_id,
               initialDisciplinaId: disciplinaId ?? null });
           }}
+          onRegularizeDebt={() => { setDebtSourceId(null); setDebtModalOpen(true); }}
+          percursoBusy={percursoBusy}
+          percurso={situacaoAcademica.data?.records?.length ? <BalcaoPercursoAcademico
+            key={[escolaId, dossier.aluno.id, effectiveAcademicYearId].join(":")}
+            snapshot={situacaoAcademica.data} mensalidades={dossier.mensalidades}
+            financialVerified={!dossier.loading && !dossier.loadError}
+            onBusyChange={setPercursoBusy}
+            onPay={(id) => { setDebtSourceId(id); setDebtModalOpen(true); }}
+            onUpdated={async () => { rematricula.invalidateTurmas(); await Promise.all([situacaoAcademica.refresh(), rematricula.refreshStatus()]); }}
+          /> : undefined}
           hasFinancialPending={hasOverdueDebt}
           pendingSourceMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
           pendingDisciplines={(rematricula.academic?.disciplina_ids_pendentes ?? []).map((id) => ({
@@ -3433,7 +3451,7 @@ export default function BalcaoAtendimento({
           open={debtModalOpen}
           embedded={view === "payment"}
           onOpenChange={setDebtModalOpen}
-          mensalidades={dossier.mensalidades.filter((item) => item.preco > 0 && item.atrasada)}
+          mensalidades={dossier.mensalidades.filter((item) => item.preco > 0 && item.atrasada && (!debtSourceId || item.origem_matricula_id === debtSourceId))}
           alunoId={dossier.aluno.id}
           anoLetivoId={effectiveAcademicYearId}
           onSuccess={() => {
@@ -3442,9 +3460,13 @@ export default function BalcaoAtendimento({
               else error("Pagamento registado. Não foi possível confirmar o saldo atualizado.");
             });
             void rematricula.refresh();
+            void situacaoAcademica.refresh();
             void audit.fetch(dossier.aluno!.id, dossier.aluno!.matricula_id);
           }}
           onFullyPaid={() => {
+            setDebtModalOpen(false);
+            setDebtSourceId(null);
+            void situacaoAcademica.refresh();
             void rematricula.refresh();
             setShowReturnPrompt(true);
           }}

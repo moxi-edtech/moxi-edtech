@@ -91,6 +91,8 @@ export type GlobalRole =
 export type ProductContext = 'k12' | 'formacao'
 
 const K12_COMPOSITE_ROLE_INHERITANCE: Record<string, ReadonlyArray<string>> = {
+  admin_secretaria: ['admin_secretaria', 'secretaria'],
+  admin_secretario: ['admin_secretaria', 'secretaria'],
   admin: K12_ADMIN_ROLE_GROUP,
   staff_admin: K12_ADMIN_ROLE_GROUP,
   admin_escola: K12_ADMIN_ROLE_GROUP,

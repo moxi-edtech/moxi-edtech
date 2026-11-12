@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     if ((data ?? []).length === 50) {
       return json({ ok: false, error: "Histórico extenso. É necessária consulta paginada." }, 409);
     }
-    const records = data ?? [];
+    const records: Array<typeof data[number] & { turma_nome?: string | null }> = data ?? [];
     if (records.some((row: any) => row.escola_id !== escolaId || row.aluno_id !== alunoId)) {
       return json({ ok: false, error: "Inconsistência de isolamento escolar." }, 409);
     }
@@ -76,19 +76,30 @@ export async function GET(req: NextRequest) {
         error: "Há mais de uma matrícula no ano selecionado. Requer revisão de integridade." }, 409);
     }
 
+    const turmaIds = [...new Set(records.map(row => row.turma_id).filter(Boolean))];
+    const { data: turmas, error: turmasError } = turmaIds.length
+      ? await db.from("turmas").select("id,nome").eq("escola_id", escolaId).in("id", turmaIds)
+      : { data: [], error: null };
+    if (turmasError) throw turmasError;
+    const names = new Map((turmas ?? []).map((row: any) => [row.id, row.nome] as const));
+    for (const row of records) row.turma_nome = String(names.get(row.turma_id) ?? "Turma por identificar");
     const current = atuais[0] ?? null;
     const previous = records.find((row: any) => Number(row.ano_letivo) < ano.ano) ?? null;
 
     // Só oferecer o modal de nota histórica quando a RPC existente o pode
     // aceitar: ano imediatamente anterior ao ativo, matrícula pendente e
     // papel académico exato. O writer verifica novamente todas as condições.
-    const [activeYearResult, canWritePending, canWriteAcademic, canManageTurmas] =
+    const [activeYearResult, canWritePending, canWriteAcademic, canManageTurmas, canCorrectEnrollment] =
       await Promise.all([
         db.from("anos_letivos").select("ano").eq("escola_id", escolaId)
           .eq("ativo", true).limit(2),
         authorizeBalcaoPendingAcademicWrite(db, escolaId, user.id),
         authorizeBalcaoAcademicWrite(db, escolaId, user.id),
         authorizeTurmasManage(db, escolaId, user.id),
+        requireRoleInSchool({ supabase: db, escolaId, roles: [
+          "secretaria", "admin_secretaria", "admin_secretario", "admin_financeiro",
+          "admin", "admin_escola", "staff_admin", "diretor",
+        ] }),
       ]);
     if (activeYearResult.error) throw activeYearResult.error;
     const activeYears = activeYearResult.data ?? [];
@@ -126,7 +137,10 @@ export async function GET(req: NextRequest) {
       ok: true, aluno_id: alunoId,
       ano: { id: ano.id, ano: ano.ano, label: yearContext.anoLetivoLabel,
         ativo: ano.ativo === true, arquivado_com_pendencias: ano.arquivado_com_pendencias === true },
-      current, previous, can_write_current_grades: canWriteCurrentGrades,
+      current, previous, records: [...records].reverse(), can_recover_historical: canWritePending, can_write_current_grades: canWriteCurrentGrades,
+       can_rectify_class: !canCorrectEnrollment.error && ano.ativo === true &&
+         current?.situacao_contextual === "matriculado" &&
+         Boolean(current?.turma_id && current?.ano_letivo_id),
       editable_historical_matricula_id: editableHistoricalMatriculaId,
       historical_evaluation_scale: historicalCandidate ? historicalGradeScale : null,
     });

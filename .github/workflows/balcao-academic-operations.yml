@@ -5,6 +5,8 @@ on:
       - "apps/web/src/**"
       - "apps/web/tests/unit/*raa*"
       - "apps/web/tests/balcao-actions-ui-postgres.integration.ts"
+      - "apps/web/tests/balcao-pauta-grid.integration.ts"
+      - "apps/web/tests/balcao-percurso.integration.ts"
       - "apps/web/tests/fixtures/balcao-postgres-adapter.ts"
       - "apps/web/tests/unit/balcao-academic-*.spec.ts"
       - "apps/web/tests/unit/turmas-archive-security.spec.ts"
@@ -104,3 +106,6 @@ jobs:
       - name: Click the actual React forms against the disposable database
         working-directory: apps/web
         run: TEST_JSDOM_MODULE="$RUNNER_TEMP/balcao-dom/node_modules/jsdom/lib/api.js" node --test --import tsx tests/balcao-actions-ui-postgres.integration.ts
+      - name: Inline pupil grid with synthetic HTTP and real React events
+        working-directory: apps/web
+        run: TEST_JSDOM_MODULE="$RUNNER_TEMP/balcao-dom/node_modules/jsdom/lib/api.js" node --test --import tsx tests/balcao-pauta-grid.integration.ts tests/balcao-percurso.integration.ts
