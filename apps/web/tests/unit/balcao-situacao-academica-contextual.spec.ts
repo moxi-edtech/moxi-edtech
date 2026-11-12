@@ -188,7 +188,7 @@ test("RAA disciplines have names and source-matricula matching before showing th
   assert.match(workspace, /disciplina_ids_pendentes \?\? \[\]/);
   assert.match(workspace, /disciplina_names\?\.\[id\]/);
   assert.match(component, /row\?\.matricula_id === pendingSourceMatriculaId/);
-  assert.match(component, /Disciplinas sinalizadas pelo RAA/);
+  assert.match(component, /Disciplinas pendentes/);
   assert.match(component, /onHistoricalGrade\(historicalTarget, item\.id\)/);
   assert.match(component, /onCurrentGrade\(current, item\.id\)/);
   assert.doesNotMatch(component, /Disciplinas em falta \(/);
@@ -233,8 +233,8 @@ test("historical workflow is visible from selected student, survives pre-homolog
   assert.match(component, /reviewOpenFor === historicalReviewTarget\.matricula_id/);
   assert.match(component, /onRecheck=\{async \(\) => \{ await refresh\(\); await onAcademicUpdated\?\.\(\); \}\}/);
   assert.match(recovery, /snapshot\.pedido_regularizacao \? \(/);
-  assert.match(recovery, /A direção pode concluir a decisão nesta mesma ficha/);
-  assert.match(recovery, /stage === "decisao" \? "Registar decisão" : stage === "ratificacao" \? "Ratificar decisão" : "Fechar histórico"/);
+  assert.match(recovery, /Pedido de revisão recebido/);
+  assert.match(recovery, /stage === "decisao" \? "Guardar resultado" : stage === "ratificacao" \? "Confirmar resultado" : "Concluir histórico"/);
   assert.match(service, /tem_notas_reais: temNotasLancadas/);
   assert.match(recovery, /snapshot\.tem_notas_reais === false/);
   assert.match(recovery, /!snapshot\.permite_escrita/);
@@ -285,7 +285,7 @@ test("Bernarndo 2026 happy path opens the verified 2025 pauta in one click, reta
   assert.match(ui, /\? "Abrir pauta de " \+ historicalTarget\.ano_letivo/);
   assert.match(ui, /previousYearReady && situation\.action !== "historical"/,
     "the primary CTA must not be duplicated for this case");
-  assert.match(ui, /Validar resultado documental de \{historicalReviewTarget\.ano_letivo\}/);
+  assert.match(ui, /Validar resultado de \{historicalReviewTarget\.ano_letivo\}/);
   assert.match(workspace, /currentSnapshot\.editable_historical_matricula_id !== row\.matricula_id/);
   assert.match(workspace, /row\.aluno_id !== dossier\.aluno\.id/);
   assert.match(workspace, /row\.escola_id !== escolaId/);
@@ -300,8 +300,23 @@ test("Bernarndo 2026 happy path opens the verified 2025 pauta in one click, reta
 
 test("the 2025 archived-period message no longer claims reopening is required for audited historical correction", () => {
   const modal = readFileSync(resolve(process.cwd(), "src/components/secretaria/EnrollmentPostActionModal.tsx"), "utf8");
-  assert.match(modal, /historicalMatriculaId\s*\? "Período encerrado\. A pauta histórica/);
-  assert.match(modal, /sem reabrir o ano\./);
+  assert.match(modal, /periodClosed && !historicalMatriculaId/);
+  assert.match(modal, /originAnoLetivoId/);
   assert.match(modal, /"Período encerrado\. O lançamento normal exige reabertura autorizada/);
   assert.match(modal, /read_only === true && !historicalMatriculaId/);
+});
+
+test("concise school workflows use specific buttons, not generic compliance instructions", () => {
+  const situation = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  const recovery = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoHistoricalAcademicRecovery.tsx"), "utf8");
+  const modal = readFileSync(resolve(process.cwd(), "src/components/secretaria/EnrollmentPostActionModal.tsx"), "utf8");
+  assert.match(situation, /Abrir pauta de/);
+  assert.match(situation, /Validar resultado de/);
+  assert.match(situation, /Disciplinas pendentes/);
+  assert.doesNotMatch(situation, /Disciplinas sinalizadas pelo RAA/);
+  assert.match(recovery, /Guardar resultado/);
+  assert.match(recovery, /Confirmar resultado/);
+  assert.match(recovery, /Concluir histórico/);
+  assert.doesNotMatch(recovery, /A decisão não implica aprovação automática nem reabertura do ano/);
+  assert.match(modal, /Guardar nota de 2025/);
 });
