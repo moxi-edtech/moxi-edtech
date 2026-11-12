@@ -175,7 +175,11 @@ export async function GET(request: Request) {
           (!hasRatification || lock?.status !== "fechado")) ||
          !["aberto", "fechado"].includes(String(history.snapshot_status ?? ""))));
       const temNotasLancadas = (existingNotes ?? []).length > 0;
-      const gradeSourceEligible = Boolean(isClosedSourceYear &&
+      // A numeric pauta must match the actual source grading regime.
+      // Preschool qualitative assessment must not be stored as a 0–20 grade.
+      const numericPauta = ["quantitativa_primario", "quantitativa_secundario"]
+        .includes(String(sourceRegime?.escala ?? ""));
+      const gradeSourceEligible = Boolean(numericPauta && isClosedSourceYear &&
         Number(currentYear?.ano) === Number(origin.ano_letivo) + 1 &&
         origin.status === "pendente" && origin.ativo === false &&
         (origin.status_fecho_origem === "manual" || origin.status_fecho_origem == null) &&
