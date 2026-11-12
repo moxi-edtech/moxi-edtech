@@ -182,6 +182,8 @@ export async function GET(request: Request) {
       return NextResponse.json({
         ok: true, matricula_id: origin.id, estado: state,
         permite_escrita: permiteEscrita,
+        // Visible guidance only; never infers a missing mark or academic approval.
+        tem_notas_reais: temNotasLancadas,
         permite_notas_historicas: Boolean(permiteNotasHistoricas) && gradeSourceEligible,
         permite_pedir_intervencao: eligible && (state === "decisao" || state === "notas" ||
           state === "ratificacao" || state === "fecho"),
