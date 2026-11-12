@@ -4,7 +4,13 @@ import { canManageBalcaoAcademic } from "@/lib/rematricula/balcao-academic-opera
 export async function authorizeBalcaoAcademicWrite(db: SupabaseClient, escolaId: string, userId: string) {
   const { data, error } = await db.from("escola_users").select("papel")
     .eq("escola_id", escolaId).eq("user_id", userId).maybeSingle();
-  return !error && canManageBalcaoAcademic(data?.papel);
+  // Grade entry in the Balcão is narrower than EJA/exam management.
+  // Use exact school membership; academic evidence and historical writes
+  // are still validated independently by their server/SQL writer.
+  return !error && (
+    canManageBalcaoAcademic(data?.papel) ||
+    BALCAO_HISTORIC_OPERATOR_ROLES.some((role) => role === data?.papel)
+  );
 }
 
 /** Exact school roles allowed to complete the individual academic recovery.
