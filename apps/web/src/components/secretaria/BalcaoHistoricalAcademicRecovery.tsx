@@ -13,6 +13,7 @@ type Snapshot = {
   estado: HistoricStage;
   permite_escrita: boolean;
   tem_notas_reais: boolean;
+  permite_conclusao_ciclo: boolean;
   resultado_confirmado: HistoricalResult | null;
   permite_notas_historicas: boolean;
   permite_pedir_intervencao: boolean;
@@ -353,7 +354,9 @@ export function BalcaoHistoricalAcademicRecovery({
                         <option value="">Selecionar resultado</option>
                         <option value="aprovado">{labels.aprovado}</option>
                         <option value="reprovado">{labels.reprovado}</option>
-                        <option value="concluido">{labels.concluido}</option>
+                        {snapshot.permite_conclusao_ciclo && (
+                          <option value="concluido">{labels.concluido}</option>
+                        )}
                       </select>
                     </label>
                   ) : <p className="text-sm font-medium text-foreground">
