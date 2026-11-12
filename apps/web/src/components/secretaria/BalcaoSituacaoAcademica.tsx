@@ -135,8 +135,10 @@ export function BalcaoSituacaoAcademica({
         break;
       }
       case "historical":
-        if (historicalTarget && historicalTarget.matricula_id === current?.matricula_id)
-          onHistoricalGrade(historicalTarget);
+        // One click opens the existing single-student pauta editor, even when
+        // the source enrollment is in 2025 and the selected view is 2026.
+        // The server's exact authorized historic enrollment is the only target.
+        if (historicalTarget) onHistoricalGrade(historicalTarget);
         else openHistoricalReview();
         break;
     }
@@ -144,9 +146,8 @@ export function BalcaoSituacaoAcademica({
 
   const previousYearReady = Boolean(historicalTarget && previousPending && previous &&
     historicalTarget.matricula_id === previous.matricula_id);
-  const mainLabel = situation?.action === "historical" && historicalTarget &&
-    historicalTarget.matricula_id === current?.matricula_id
-    ? "Lançar notas de " + current?.ano_letivo
+  const mainLabel = situation?.action === "historical" && historicalTarget
+    ? "Abrir pauta de " + historicalTarget.ano_letivo
     : situation?.action === "historical" ? situation.actionLabel || "Ver regularização"
     : situation?.action === "grade" ? "Lançar notas de " + current?.ano_letivo
     : situation?.action === "reenrollment" && !current &&
@@ -200,17 +201,17 @@ export function BalcaoSituacaoAcademica({
             ) : null}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {previousYearReady && historicalTarget && previous && (
+            {previousYearReady && situation.action !== "historical" && historicalTarget && previous && (
               <button type="button" onClick={() => onHistoricalGrade(historicalTarget)}
                 disabled={loading}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-60">
                 <BookOpen className="h-4 w-4" aria-hidden="true" />
-                Lançar notas de {previous.ano_letivo}<ArrowRight className="h-4 w-4" aria-hidden="true" />
+                Abrir pauta de {previous.ano_letivo}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
             {situation.action && mainLabel && mainActionIsAvailable && (
               <button type="button" onClick={runAction} disabled={loading}
-                className={previousYearReady
+                className={previousYearReady && situation.action !== "historical"
                   ? "inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60"
                   : "inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-60"}>
                 {(situation.action === "grade" || situation.action === "historical") &&
@@ -218,8 +219,16 @@ export function BalcaoSituacaoAcademica({
                 {mainLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
+            {historicalReviewTarget && historicalTarget && (
+              <button type="button" onClick={openHistoricalReview} disabled={loading}
+                aria-label={"Validar resultado documental de " + historicalReviewTarget.ano_letivo}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
+                Validar resultado documental de {historicalReviewTarget.ano_letivo}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
             {previousPending && previous && !previousYearReady && historicalReviewTarget &&
-              situation.action !== "historical" && (
+              situation.action !== "historical" && !historicalTarget && (
               <button type="button" onClick={openHistoricalReview} disabled={loading}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
                 {historicalIsQualitative
