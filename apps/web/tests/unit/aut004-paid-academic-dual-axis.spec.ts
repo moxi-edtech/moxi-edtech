@@ -58,5 +58,5 @@ test("AUT-010: payment state, academic actions and active-student context coexis
   assert.match(balc, /const academicBlocker = raaBalcaoPlan\(/);
   assert.match(balc, /showAcademicResolution && raaMatriculaId && raaAlunoId/);
   assert.match(balc, /onLancarNota=\{onLancarNota\}/);
-  assert.match(balc, /!paidExistingDestination && \(/);
+  assert.match(balc, /const showAcademicResolution = !paidExistingDestination \|\| Boolean\(academicBlocker\)/);
 });
