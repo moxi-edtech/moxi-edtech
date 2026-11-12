@@ -20,6 +20,10 @@ CREATE POLICY balcao_historic_recovery_school_read
 
 \ir ../../../migrations/20271112010000_balcao_historic_full_staff_permissions.sql
 
+-- The live Data API exposes these reads under tenant RLS; the minimal
+-- disposable fixture does not install the complete production grant/RLS layer.
+GRANT SELECT ON public.historico_anos, public.audit_logs TO authenticated;
+
 -- Confirm the migration itself installed both canonical and alias roles.
 DO $roles$
 BEGIN
