@@ -103,7 +103,7 @@ BEGIN
       'valor_novo',p_valor,'resultado',v_result));
  RETURN v_result || jsonb_build_object('historico',true,'matricula_id',v_m.id);
 END;
-$function$
+$function$;
 
 
 -- lancar_notas_batch
@@ -511,7 +511,7 @@ BEGIN
     'nota_max', v_nota_max
   );
 END;
-$function$
+$function$;
 
 
 -- finalizar_origem_academica
@@ -669,7 +669,7 @@ BEGIN
     'historico_ano_id',v_historico.id,'resultado_final',v_resultado,
     'fonte',v_fonte,'status',v_status,'snapshot_status','aberto');
 END;
-$function$
+$function$;
 
 
 -- ratificar_resultado_historico_escola
@@ -792,7 +792,7 @@ BEGIN
     'status_corrigido',v_fixed,'snapshot_status','aberto',
     'proximo_passo','Confirmar documentação e fechar histórico pelo fluxo oficial');
 END;
-$function$
+$function$;
 
 
 -- historico_set_snapshot_state
@@ -972,7 +972,7 @@ BEGIN
 
   RETURN jsonb_build_object('ok', true, 'updated', v_updated, 'novo_estado', v_new_status);
 END;
-$function$
+$function$;
 
 
 -- solicitar_regularizacao_historica_balcao
@@ -1081,7 +1081,7 @@ BEGIN
   RETURN jsonb_build_object('ok',true,'pedido_id',v_request_id,
                             'criado',v_created);
 END;
-$function$
+$function$;
 
 
 COMMIT;
