@@ -68,3 +68,16 @@ export type PostFiscalEmpresaInput = z.infer<typeof postFiscalEmpresaSchema>;
 export type PostFiscalBindingInput = z.infer<typeof postFiscalBindingSchema>;
 export type PostFiscalSerieInput = z.infer<typeof postFiscalSerieSchema>;
 export type PostFiscalChaveInput = z.infer<typeof postFiscalChaveSchema>;
+
+
+export const postFiscalSerieProvisionSchema = z.object({
+  empresa_id: z.string().uuid(),
+  tipo_documento: z.enum(FISCAL_TIPOS_DOCUMENTO),
+  series_year: z.coerce.number().int().min(2000).max(2200),
+  establishment_number: z.string().trim().min(1).max(200).default("SEDE"),
+  series_contingency_indicator: z.enum(["N", "C"]).default("N"),
+});
+
+export type PostFiscalSerieProvisionInput = z.infer<
+  typeof postFiscalSerieProvisionSchema
+>;
