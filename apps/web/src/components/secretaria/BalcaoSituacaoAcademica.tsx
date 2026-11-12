@@ -113,9 +113,14 @@ export function BalcaoSituacaoAcademica({
     }
   };
 
-  const mainLabel = situation?.action === "historical" && historicalTarget && historicalTarget.matricula_id === current?.matricula_id
+  const previousYearReady = Boolean(historicalTarget && previousPending && previous &&
+    historicalTarget.matricula_id === previous.matricula_id);
+  const mainLabel = situation?.action === "historical" && historicalTarget &&
+    historicalTarget.matricula_id === current?.matricula_id
     ? "Lançar notas de " + current?.ano_letivo
-    : situation?.action === "historical" ? "Ver regularização" : situation?.actionLabel;
+    : situation?.action === "historical" ? "Ver regularização"
+    : situation?.action === "grade" ? "Lançar notas de " + current?.ano_letivo
+    : situation?.actionLabel;
   const mainActionIsAvailable = situation?.action === "grade" ||
     (situation?.action === "historical" && Boolean(onNavigate ||
       (historicalTarget && historicalTarget.matricula_id === current?.matricula_id))) ||
@@ -161,20 +166,22 @@ export function BalcaoSituacaoAcademica({
             ) : null}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
+            {previousYearReady && historicalTarget && previous && (
+              <button type="button" onClick={() => onHistoricalGrade(historicalTarget)}
+                disabled={loading}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-60">
+                <BookOpen className="h-4 w-4" aria-hidden="true" />
+                Lançar notas de {previous.ano_letivo}<ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
             {situation.action && mainLabel && mainActionIsAvailable && (
               <button type="button" onClick={runAction} disabled={loading}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-60">
+                className={previousYearReady
+                  ? "inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60"
+                  : "inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-60"}>
                 {(situation.action === "grade" || situation.action === "historical") &&
                   <BookOpen className="h-4 w-4" aria-hidden="true" />}
                 {mainLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </button>
-            )}
-            {historicalTarget && previousPending && previous &&
-              historicalTarget.matricula_id === previous.matricula_id && (
-              <button type="button" onClick={() => onHistoricalGrade(historicalTarget)}
-                disabled={loading}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber/40 px-4 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60">
-                Lançar notas de {previous.ano_letivo}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
             {hasFinancialPending && onNavigate && (
