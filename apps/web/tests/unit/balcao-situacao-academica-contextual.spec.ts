@@ -318,7 +318,7 @@ test("concise school workflows use specific buttons, not generic compliance inst
   assert.match(recovery, /Confirmar resultado/);
   assert.match(recovery, /Concluir histórico/);
   assert.doesNotMatch(recovery, /A decisão não implica aprovação automática nem reabertura do ano/);
-  assert.match(modal, /Guardar nota de 2025/);
+  assert.match(modal, /Guardar nota/);
 });
 
 test("physical pauta source selector changes only the selected prior-year class and opens its grade editor", () => {
@@ -338,4 +338,19 @@ test("physical pauta source selector changes only the selected prior-year class 
   assert.match(migration, /BALCAO_PAUTA_TURMA_ORIGEM_CORRIGIDA/);
   assert.match(migration, /REVOKE ALL ON TABLE public\.balcao_pauta_turma_correction_nonce/);
   assert.match(migration, /public\.current_tenant_escola_id\(\)/);
+});
+
+test("backend READY takes priority over a pending source without fabricating academic approval", () => {
+  const origin = row(2025, "regularizacao_historica");
+  const data = payload(null, origin);
+  assert.equal(resolveStudentYearSituation(data, false).action, "historical");
+  const ready = resolveStudentYearSituation(data, true);
+  assert.equal(ready.action, "reenrollment");
+  assert.match(ready.actionLabel ?? "", /Concluir rematrícula de 2026/);
+  assert.equal(origin.situacao_resultado, "sem_resultado_oficial");
+  assert.notEqual(resolveStudentYearSituation(payload(row(2026, "matriculado"), origin), true).action, "reenrollment");
+  assert.notEqual(resolveStudentYearSituation(payload(null, null), true).action, "reenrollment");
+  const archived = payload(null, origin);
+  archived.ano.ativo = false;
+  assert.notEqual(resolveStudentYearSituation(archived, true).action, "reenrollment");
 });
