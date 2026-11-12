@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, ArrowRight, BookOpen, CheckCircle2, RefreshCw } from "lucide-react";
 import type { BalcaoActionId } from "@/lib/balcao/action-registry";
+import { BalcaoHistoricalAcademicRecovery } from "@/components/secretaria/BalcaoHistoricalAcademicRecovery";
 import {
   hasHistoricalPending, resolveStudentYearSituation,
   type SituacaoBalcaoPayload, type SituacaoBalcaoRow,
@@ -63,15 +64,19 @@ export function useBalcaoSituacaoAcademica(
 
 export function BalcaoSituacaoAcademica({
   snapshot, loading, error, refresh, onNavigate, onCurrentGrade, onHistoricalGrade, hasFinancialPending,
+  pendingSourceMatriculaId, pendingDisciplines, onAcademicUpdated,
 }: {
   snapshot: SituacaoBalcaoPayload | null;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<unknown>;
   onNavigate?: (action: BalcaoActionId) => void;
-  onCurrentGrade: (row: SituacaoBalcaoRow) => void;
+  onCurrentGrade: (row: SituacaoBalcaoRow, disciplinaId?: string | null) => void;
   onHistoricalGrade: (row: SituacaoBalcaoRow, disciplinaId?: string | null) => void;
   hasFinancialPending?: boolean;
+  pendingSourceMatriculaId?: string | null;
+  pendingDisciplines?: Array<{ id: string; nome: string; status: string | null }>;
+  onAcademicUpdated?: () => Promise<unknown>;
 }) {
   const situation = snapshot ? resolveStudentYearSituation(snapshot) : null;
   const current = snapshot?.current ?? null;
@@ -82,11 +87,21 @@ export function BalcaoSituacaoAcademica({
   // independently checks this again before any historical write.
   const historicalTarget = [current, previous].find((row) =>
     row?.matricula_id === snapshot?.editable_historical_matricula_id) ?? null;
+  // Review the exact persisted enrollment; never infer a source from another
+  // student's dossier or depend on a conditionally mounted Catalogo panel.
+  const historicalReviewTarget = previousPending && previous?.matricula_id ? previous
+    : current && ["regularizacao_historica", "ano_encerrado"].includes(current.situacao_contextual) &&
+      current.situacao_resultado !== "homologado" ? current : null;
+  const [reviewOpenFor, setReviewOpenFor] = useState<string | null>(null);
+  const reviewOpen = Boolean(historicalReviewTarget &&
+    reviewOpenFor === historicalReviewTarget.matricula_id);
+  const confirmedPendingRow = [previous, current].find((row) =>
+    row?.matricula_id === pendingSourceMatriculaId) ?? null;
+  const visiblePending = confirmedPendingRow && Array.isArray(pendingDisciplines)
+    ? pendingDisciplines.filter((item) => item.id && item.nome?.trim()) : [];
 
   const openHistoricalReview = () => {
-    const existing = document.getElementById("balcao-historical-recovery-existing");
-    if (existing) existing.scrollIntoView({ behavior: "smooth", block: "start" });
-    else onNavigate?.("profile");
+    if (historicalReviewTarget?.matricula_id) setReviewOpenFor(historicalReviewTarget.matricula_id);
   };
 
   const runAction = () => {
@@ -100,9 +115,13 @@ export function BalcaoSituacaoAcademica({
         onNavigate?.(situation.action);
         break;
       case "reenrollment": {
+        if (previousPending && historicalReviewTarget) {
+          openHistoricalReview();
+          break;
+        }
         const target = document.querySelector<HTMLElement>('[data-balcao-action="reenrollment"]');
         if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
-        else onNavigate?.("enrollment");
+        else onNavigate?.("profile"); // Never create a new enrollment in place of a real previous record.
         break;
       }
       case "historical":
@@ -123,8 +142,7 @@ export function BalcaoSituacaoAcademica({
     : situation?.actionLabel;
   const historicalIsQualitative = snapshot?.historical_evaluation_scale === "qualitativa";
   const mainActionIsAvailable = situation?.action === "grade" ||
-    (situation?.action === "historical" && Boolean(onNavigate ||
-      (historicalTarget && historicalTarget.matricula_id === current?.matricula_id))) ||
+    (situation?.action === "historical" && Boolean(historicalReviewTarget || historicalTarget)) ||
     Boolean(onNavigate);
 
   return (
@@ -185,7 +203,7 @@ export function BalcaoSituacaoAcademica({
                 {mainLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
-            {previousPending && previous && !previousYearReady && (
+            {previousPending && previous && !previousYearReady && historicalReviewTarget && (
               <button type="button" onClick={openHistoricalReview} disabled={loading}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
                 {historicalIsQualitative
@@ -201,6 +219,57 @@ export function BalcaoSituacaoAcademica({
               </button>
             )}
           </div>
+          {visiblePending.length > 0 && confirmedPendingRow && (
+            <div className="mt-4 rounded-xl border border-border p-3">
+              <p className="text-xs font-semibold text-foreground">
+                Disciplinas sinalizadas pelo RAA · {confirmedPendingRow.ano_letivo} ({visiblePending.length})
+              </p>
+              <ul className="mt-2 space-y-2">
+                {visiblePending.map((item) => {
+                  const canWriteHistorical = historicalTarget?.matricula_id === confirmedPendingRow.matricula_id;
+                  const canWriteCurrent = snapshot.can_write_current_grades &&
+                    current?.matricula_id === confirmedPendingRow.matricula_id;
+                  return (
+                    <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2">
+                      <span className="min-w-0 text-sm font-medium text-foreground">{item.nome}</span>
+                      {canWriteHistorical && historicalTarget ? (
+                        <button type="button" disabled={loading}
+                          onClick={() => onHistoricalGrade(historicalTarget, item.id)}
+                          className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60">
+                          Lançar nota
+                        </button>
+                      ) : canWriteCurrent && current ? (
+                        <button type="button" disabled={loading}
+                          onClick={() => onCurrentGrade(current, item.id)}
+                          className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60">
+                          Lançar nota
+                        </button>
+                      ) : historicalReviewTarget?.matricula_id === confirmedPendingRow.matricula_id ? (
+                        <button type="button" disabled={loading} onClick={openHistoricalReview}
+                          className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60">
+                          Rever
+                        </button>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+          {reviewOpen && historicalReviewTarget && (
+            <div id="balcao-historico-contextual" className="mt-4 border-t border-border pt-4">
+              <BalcaoHistoricalAcademicRecovery
+                key={historicalReviewTarget.matricula_id}
+                matriculaId={historicalReviewTarget.matricula_id}
+                turmaId={historicalReviewTarget.turma_id}
+                disciplinasPendentes={confirmedPendingRow?.matricula_id === historicalReviewTarget.matricula_id
+                  ? visiblePending.map((item) => item.id) : []}
+                onRecheck={async () => { await refresh(); await onAcademicUpdated?.(); }}
+                onLancarNotaHistorica={(disciplinaId) =>
+                  onHistoricalGrade(historicalReviewTarget, disciplinaId)}
+              />
+            </div>
+          )}
           {previousPending && !historicalTarget && previous && (
             <p role="status" className="mt-3 text-xs text-muted-foreground">
               {historicalIsQualitative
