@@ -84,7 +84,9 @@ test("Balcao navigates by current year and suppresses misleading origin-only scr
   const src = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
   assert.match(src, /useBalcaoSituacaoAcademica/);
   assert.match(src, /<BalcaoSituacaoAcademica/);
-  assert.match(src, /view !== "reenrollment" \|\| Boolean\(dossier\.aluno\.matricula_id\)/);
+  assert.doesNotMatch(src, /view !== "reenrollment" \|\| Boolean\(dossier\.aluno\.matricula_id\)/);
+  assert.match(src, /<Catalogo/);
+  assert.doesNotMatch(src, /!dossier\.aluno\.matricula_id \? "SOURCE_RECORD_REQUIRED"/);
   assert.match(src, /historicalMatriculaId: row\.matricula_id/);
 });
 
@@ -94,7 +96,7 @@ test("historic year correction reuses existing audited note modal, not the trans
   const route = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/balcao/situacao-academica/route.ts"), "utf8");
   assert.match(ui, /onHistoricalGrade\(historicalTarget\)/);
   assert.match(ui, /Lançar notas de \{previous\.ano_letivo\}/);
-  assert.doesNotMatch(ui, /<BalcaoHistoricalAcademicRecovery/);
+  assert.match(ui, /<BalcaoHistoricalAcademicRecovery/);
   assert.doesNotMatch(ui, /DossierHistoricoTransitadoSection/);
   assert.match(balc, /historicalMatriculaId: row\.matricula_id/);
   assert.match(route, /editable_historical_matricula_id/);
@@ -146,15 +148,47 @@ test("qualitative source cannot open numeric historical grades and routes to act
   assert.match(ui, /historicalIsQualitative/);
   assert.match(ui, /Validar avaliação qualitativa de/);
   assert.match(ui, /onClick=\{openHistoricalReview\}/);
+  assert.match(ui, /historicalReviewTarget\.matricula_id/);
   assert.doesNotMatch(ui, /upsert_historico_transitado/);
 });
 
 test("previous-year documentary review remains mounted and reachable without a duplicate new panel", () => {
   const workspace = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
   const context = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
-  assert.match(workspace, /historicalRecovery && raaMatriculaId && \(/);
-  assert.match(workspace, /id="balcao-historical-recovery-existing"/);
-  assert.match(context, /getElementById\("balcao-historical-recovery-existing"\)/);
-  assert.doesNotMatch(workspace, /contextualHistoricalMatriculaId/);
-  assert.doesNotMatch(context, /<BalcaoHistoricalAcademicRecovery/);
+  assert.match(workspace, /historicalRecovery && raaMatriculaId && view !== "reenrollment"/);
+  assert.match(context, /<BalcaoHistoricalAcademicRecovery/);
+  assert.match(context, /matriculaId=\{historicalReviewTarget\.matricula_id\}/);
+  assert.doesNotMatch(context, /getElementById\("balcao-historical-recovery-existing"\)/);
+  assert.doesNotMatch(context, /onNavigate\?\.\("profile"\);\s*\};/);
+});
+
+test("a current enrollment without a prior-year origin retains the same operational panel", () => {
+  const src = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
+  assert.doesNotMatch(src, /\(view !== "reenrollment" \|\| Boolean\(dossier\.aluno\.matricula_id\)\)/);
+  assert.match(src, /<Catalogo/);
+  assert.match(src, /view === "reenrollment"\s*\? null \/\/ No prior enrollment is not an error/);
+  assert.match(src, /!situacaoAcademica\.data\.current &&\s*!situacaoAcademica\.data\.previous/);
+});
+
+test("historical documentary review is tied to selected enrollment, not optional Catalogo anchor", () => {
+  const component = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  assert.match(component, /const historicalReviewTarget = previousPending && previous\?\.matricula_id/);
+  assert.match(component, /setReviewOpenFor\(historicalReviewTarget\.matricula_id\)/);
+  assert.match(component, /reviewOpenFor === historicalReviewTarget\.matricula_id/);
+  assert.match(component, /matriculaId=\{historicalReviewTarget\.matricula_id\}/);
+  assert.match(component, /onRecheck=\{async \(\) => \{ await refresh\(\); await onAcademicUpdated\?\.\(\); \}\}/);
+  assert.doesNotMatch(component, /getElementById\("balcao-historical-recovery-existing"\)/);
+});
+
+test("RAA disciplines have names and source-matricula matching before showing their actions", () => {
+  const workspace = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
+  const component = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  assert.match(workspace, /pendingSourceMatriculaId=\{rematricula\.academic\?\.source\?\.matricula_id/);
+  assert.match(workspace, /disciplina_ids_pendentes \?\? \[\]/);
+  assert.match(workspace, /disciplina_names\?\.\[id\]/);
+  assert.match(component, /row\?\.matricula_id === pendingSourceMatriculaId/);
+  assert.match(component, /Disciplinas sinalizadas pelo RAA/);
+  assert.match(component, /onHistoricalGrade\(historicalTarget, item\.id\)/);
+  assert.match(component, /onCurrentGrade\(current, item\.id\)/);
+  assert.doesNotMatch(component, /Disciplinas em falta \(/);
 });
