@@ -1668,7 +1668,7 @@ function Catalogo({
                   </button>
                 </div>
               )}
-            {historicalRecovery && raaMatriculaId && (
+            {historicalRecovery && raaMatriculaId && view !== "reenrollment" && (
               <div id="balcao-historical-recovery-existing">
               <BalcaoHistoricalAcademicRecovery
                 key={raaMatriculaId}
@@ -3099,12 +3099,12 @@ export default function BalcaoAtendimento({
           error={situacaoAcademica.error}
           refresh={situacaoAcademica.refresh}
           onNavigate={onNavigateAction}
-          onCurrentGrade={(row) => {
+          onCurrentGrade={(row, disciplinaId) => {
             if (!situacaoAcademica.data?.can_write_current_grades ||
                 !row.turma_id || !row.ano_letivo_id ||
                 row.ano_letivo_id !== effectiveAcademicYearId) return;
             setPostAction({ action: "notas", turmaId: row.turma_id,
-              originAnoLetivoId: row.ano_letivo_id });
+              originAnoLetivoId: row.ano_letivo_id, initialDisciplinaId: disciplinaId ?? null });
           }}
           onHistoricalGrade={(row, disciplinaId) => {
             if (!row.matricula_id || !row.turma_id || !row.ano_letivo_id) {
@@ -3117,6 +3117,13 @@ export default function BalcaoAtendimento({
               initialDisciplinaId: disciplinaId ?? null });
           }}
           hasFinancialPending={hasOverdueDebt}
+          pendingSourceMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
+          pendingDisciplines={(rematricula.academic?.disciplina_ids_pendentes ?? []).map((id) => ({
+            id,
+            nome: rematricula.academic?.disciplina_names?.[id] ?? "",
+            status: rematricula.academic?.disciplina_statuses?.[id] ?? null,
+          }))}
+          onAcademicUpdated={async () => { await rematricula.refreshStatus(); }}
         />
       )}
       {(dossier.loading || (visible && (refreshingRevision || refreshRevision > lastRevisionRef.current))) && !dossier.aluno ? (
