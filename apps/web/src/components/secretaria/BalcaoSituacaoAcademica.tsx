@@ -67,7 +67,7 @@ export function BalcaoSituacaoAcademica({
   refresh: () => Promise<unknown>;
   onNavigate?: (action: BalcaoActionId) => void;
   onCurrentGrade: (row: SituacaoBalcaoRow) => void;
-  onHistoricalGrade: (row: SituacaoBalcaoRow) => void;
+  onHistoricalGrade: (row: SituacaoBalcaoRow, disciplinaId?: string | null) => void;
   hasFinancialPending?: boolean;
 }) {
   const situation = snapshot ? resolveStudentYearSituation(snapshot) : null;
@@ -110,10 +110,12 @@ export function BalcaoSituacaoAcademica({
     }
   };
 
-  const mainLabel = situation?.action === "historical" && historicalTarget?.matricula_id === current?.matricula_id
+  const mainLabel = situation?.action === "historical" && historicalTarget && historicalTarget.matricula_id === current?.matricula_id
     ? "Lançar notas de " + current?.ano_letivo
     : situation?.action === "historical" ? "Ver regularização" : situation?.actionLabel;
-  const mainActionIsAvailable = situation?.action === "grade" || situation?.action === "historical" ||
+  const mainActionIsAvailable = situation?.action === "grade" ||
+    (situation?.action === "historical" && Boolean(onNavigate ||
+      (historicalTarget && historicalTarget.matricula_id === current?.matricula_id))) ||
     Boolean(onNavigate);
 
   return (
