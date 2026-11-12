@@ -6,7 +6,11 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 55);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 56);
+  const scopedHistoricStaff = "20271112010000_balcao_historic_full_staff_permissions.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(scopedHistoricStaff));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + scopedHistoricStaff]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271112010001_unreviewed_role_bypass.sql"])[0] ?? "", /Unapproved database migration/);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
 });
 
