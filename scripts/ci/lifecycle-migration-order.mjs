@@ -27,6 +27,7 @@ const protectedWriters = /(?:CREATE\s+OR\s+REPLACE\s+(?:FUNCTION|VIEW)\s+public\
 // without another reviewed protocol update and a matching isolated regression.
 const historicBridge = "20271109010000_raa_historico_documental_ratificado.sql";
 const historicStaffAccess = "20271112010000_balcao_historic_full_staff_permissions.sql";
+const primarySecondaryBridge = "20271112020000_balcao_primary_secondary_6_to_7.sql";
 for (const migration of migrations.filter((file) => file > finalName)) {
   const source = readFileSync(join(dir, migration), "utf8");
   if (migration === historicBridge) {
@@ -88,6 +89,28 @@ for (const migration of migrations.filter((file) => file > finalName)) {
       "apps/web/tests/unit/balcao-historic-actionability.spec.ts"), "utf8")
         .includes("four authorized staff profiles"),
       "Historical operator changes require staff-role regression coverage");
+    continue;
+  }
+  // The selected school primary/secondary bridge is not an unrestricted
+  // inter-course transfer. RAA eligibility and tenant/source/year guards remain.
+  if (migration === primarySecondaryBridge) {
+    for (const token of [
+      "CREATE OR REPLACE FUNCTION public.preparar_aluno_para_rematricula",
+      "CREATE OR REPLACE FUNCTION public.finalizar_rematricula_balcao",
+      "v_source_number = 6",
+      "v_numero_origem = 6",
+      "v_numero_destino = 7",
+      "v_source_turma.nivel_ensino = 'primario'",
+      "v_target_turma.nivel_ensino = 'secundario'",
+      "v_classe_origem.nivel_ensino = 'primario'",
+      "v_classe_destino.nivel_ensino = 'secundario'",
+      "resolve_raa_progression_for_matricula",
+      "public.current_tenant_escola_id()",
+      "NOT v_retido",
+    ]) assert.ok(source.includes(token),
+      "Missing 6th-to-7th school transition guard: " + token);
+    assert.doesNotMatch(source, /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\./i,
+      "Bridge must not change student lifecycle projections");
     continue;
   }
   assert.ok(!protectedWriters.test(source),
