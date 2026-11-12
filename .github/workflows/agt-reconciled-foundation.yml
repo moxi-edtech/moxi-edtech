@@ -1,0 +1,25 @@
+name: AGT Reconciled Foundation
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/agt-reconciled-foundation.yml'
+      - 'apps/web/src/lib/fiscal/decimal.ts'
+      - 'apps/web/src/lib/fiscal/agtCertificationPlan.ts'
+      - 'apps/web/tests/unit/fiscal-decimal.spec.ts'
+      - 'apps/web/tests/unit/agt-certification-plan.spec.ts'
+      - 'docs/ops/AGT_BASE_RECONCILIATION_20261013.md'
+jobs:
+  isolated-fiscal-units:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cd apps/web && node --test --import tsx tests/unit/fiscal-decimal.spec.ts tests/unit/agt-certification-plan.spec.ts
+      - run: pnpm -C apps/web typecheck
