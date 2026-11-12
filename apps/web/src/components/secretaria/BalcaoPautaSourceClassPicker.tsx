@@ -98,7 +98,7 @@ export function BalcaoPautaSourceClassPicker({
       {!open ? (
         <button type="button" onClick={() => setOpen(true)}
           className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted">
-          <Pencil className="h-4 w-4 text-slate-400" aria-hidden="true" />
+          <Pencil className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           Corrigir turma da pauta
         </button>
       ) : (
@@ -108,7 +108,7 @@ export function BalcaoPautaSourceClassPicker({
             <select aria-label="Turma da pauta física" value={selected}
               onChange={(event) => setSelected(event.target.value)}
               disabled={loading || saving}
-              className="mt-1 block w-full rounded-xl border border-slate-200 bg-background px-3 py-2 text-sm focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/20">
+              className="mt-1 block w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/20">
               <option value="">{loading ? "A carregar…" : "Escolher turma"}</option>
               {options?.items.map((item) => (
                 <option key={item.id} value={item.id}>
