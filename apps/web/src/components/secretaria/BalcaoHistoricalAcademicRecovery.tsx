@@ -37,7 +37,7 @@ async function readResponse(response: Response) {
   return payload;
 }
 
-/** Exceptional, student-scoped documentary path. Never opens the old school year
+/** Student-scoped historical recovery. Numeric grades use the school's physical pauta and are audited. Never opens the old school year
  * or writes synthetic marks. The school must choose and sign its real outcome.
  */
 export function BalcaoHistoricalAcademicRecovery({
@@ -229,7 +229,7 @@ export function BalcaoHistoricalAcademicRecovery({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <FileCheck2 className="h-5 w-5 text-emerald" aria-hidden="true" />
-          <h3 className="font-sora text-sm font-semibold text-foreground">Validar resultado de {snapshot?.origem_ano ?? "origem"}</h3>
+          <h3 className="font-sora text-sm font-semibold text-foreground">{stage === "notas" ? "Lançar notas de " : "Validar resultado de "}{snapshot?.origem_ano ?? "origem"}</h3>
         </div>
         <button type="button" onClick={() => void refresh()} disabled={saving || loading}
           className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50">
