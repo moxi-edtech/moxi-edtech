@@ -82,7 +82,7 @@ export function BalcaoSituacaoAcademica({
   /** From the server's verified rematrícula status (READY), not from grades or payment assumptions. */
   canContinueEnrollment?: boolean;
 }) {
-  const situation = snapshot ? resolveStudentYearSituation(snapshot) : null;
+  const situation = snapshot ? resolveStudentYearSituation(snapshot, Boolean(canContinueEnrollment && onContinueEnrollment)) : null;
   const current = snapshot?.current ?? null;
   const previous = snapshot?.previous ?? null;
   const previousPending = snapshot ? hasHistoricalPending(snapshot) : false;
@@ -119,15 +119,12 @@ export function BalcaoSituacaoAcademica({
         onNavigate?.(situation.action);
         break;
       case "reenrollment": {
-        if (previousPending && historicalReviewTarget) {
-          openHistoricalReview();
+        if (!current && previous && snapshot.ano.ativo && canContinueEnrollment && onContinueEnrollment) {
+          onContinueEnrollment();
           break;
         }
-        if (!current && previous?.situacao_resultado === "homologado" &&
-            snapshot.ano.ativo && canContinueEnrollment && onContinueEnrollment) {
-          // The server explicitly authorized progression. Reuse the current wizard,
-          // not a new enrollment or a second unverified payment.
-          onContinueEnrollment();
+        if (previousPending && historicalReviewTarget) {
+          openHistoricalReview();
           break;
         }
         const target = document.querySelector<HTMLElement>('[data-balcao-action="reenrollment"]');
@@ -147,18 +144,20 @@ export function BalcaoSituacaoAcademica({
 
   const previousYearReady = Boolean(historicalTarget && previousPending && previous &&
     historicalTarget.matricula_id === previous.matricula_id);
+  const historicalIsQualitative = snapshot?.historical_evaluation_scale === "qualitativa";
   const mainLabel = situation?.action === "historical" && historicalTarget
     ? "Lançar notas de " + historicalTarget.ano_letivo
-    : situation?.action === "historical" ? situation.actionLabel || "Ver regularização"
+    : situation?.action === "historical" ? historicalIsQualitative
+      ? "Validar avaliação qualitativa de " + historicalReviewTarget?.ano_letivo
+      : situation.actionLabel || "Ver regularização"
     : situation?.action === "grade" ? "Lançar notas de " + current?.ano_letivo
     : situation?.action === "reenrollment" && !current &&
-      previous?.situacao_resultado === "homologado"
+      previous
       ? canContinueEnrollment && onContinueEnrollment
-        ? "Continuar matrícula de " + snapshot?.ano.ano
-        : "Ver condições para matrícula de " + snapshot?.ano.ano
+        ? "Concluir rematrícula de " + snapshot?.ano.ano
+        : "Ver pendências da rematrícula"
     : situation?.actionLabel;
-  const historicalIsQualitative = snapshot?.historical_evaluation_scale === "qualitativa";
-  const mainActionIsAvailable = situation?.action === "grade" ||
+  const mainActionIsAvailable = Boolean(canContinueEnrollment && onContinueEnrollment) || situation?.action === "grade" ||
     (situation?.action === "historical" && Boolean(historicalReviewTarget || historicalTarget)) ||
     Boolean(onNavigate);
 
@@ -166,7 +165,7 @@ export function BalcaoSituacaoAcademica({
     <section aria-label="Estado do aluno no ano letivo" className="mb-4 rounded-xl border border-border bg-card p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-medium text-muted-foreground">Estado do aluno · Ano letivo selecionado</p>
+          <p className="text-xs font-medium text-muted-foreground">Situação académica</p>
           <h3 className="mt-1 font-sora text-base font-semibold text-emerald">
             {loading ? "A consultar vínculo escolar…" : error ? "Situação indisponível" : situation?.title ?? "A verificar situação"}
           </h3>
@@ -185,14 +184,8 @@ export function BalcaoSituacaoAcademica({
         </p>
       ) : snapshot && situation ? (
         <>
-          {!(situation.action === "historical" && historicalTarget) && (
-            <p className="mt-2 text-sm text-muted-foreground">{situation.description}</p>
-          )}
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
             <span className="rounded-full bg-muted px-3 py-1.5 font-medium">{snapshot.ano.label}</span>
-            <span className="rounded-full bg-muted px-3 py-1.5 font-medium">
-              {current ? "Matrícula: " + (current.status_persistido ?? "em revisão") : "Sem matrícula neste ano"}
-            </span>
             {current?.situacao_resultado === "homologado" ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald/10 px-3 py-1.5 text-emerald">
                 <CheckCircle2 className="h-3.5 w-3.5" /> Resultado oficial
@@ -204,7 +197,7 @@ export function BalcaoSituacaoAcademica({
             ) : null}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {previousYearReady && situation.action !== "historical" && historicalTarget && previous && (
+            {previousYearReady && situation.action !== "historical" && !canContinueEnrollment && historicalTarget && previous && (
               <button type="button" onClick={() => onHistoricalGrade(historicalTarget)}
                 disabled={loading}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-60">
@@ -222,21 +215,12 @@ export function BalcaoSituacaoAcademica({
                 {mainLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
-            {historicalReviewTarget && !historicalTarget && (
+            {historicalReviewTarget && !historicalTarget && situation.action !== "historical" && (
               <button type="button" onClick={openHistoricalReview} disabled={loading}
-                aria-label={"Validar resultado de " + historicalReviewTarget.ano_letivo}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
-                Validar resultado de {historicalReviewTarget.ano_letivo}
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </button>
-            )}
-            {previousPending && previous && !previousYearReady && historicalReviewTarget &&
-              situation.action !== "historical" && !historicalTarget && (
-              <button type="button" onClick={openHistoricalReview} disabled={loading}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60">
                 {historicalIsQualitative
-                  ? "Validar avaliação qualitativa de " + previous.ano_letivo
-                  : "Rever resultado de " + previous.ano_letivo}
+                  ? "Validar avaliação qualitativa de " + historicalReviewTarget.ano_letivo
+                  : <>Validar resultado de {historicalReviewTarget.ano_letivo}</>}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
@@ -310,13 +294,7 @@ export function BalcaoSituacaoAcademica({
               </ul>
             </div>
           )}
-          {previousPending && !historicalTarget && previous && (
-            <p role="status" className="mt-3 text-xs text-muted-foreground">
-              {historicalIsQualitative
-                ? "Esta turma tem avaliação qualitativa. O resultado deve ser validado com evidência escolar, não por nota numérica."
-                : previous.ano_letivo + ": resultado anterior por regularizar. A correção requer um vínculo elegível e um operador autorizado."}
-            </p>
-          )}
+
         </>
       ) : (
         <p role="status" className="mt-2 text-xs text-muted-foreground">
