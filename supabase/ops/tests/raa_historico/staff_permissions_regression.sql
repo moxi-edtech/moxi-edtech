@@ -42,6 +42,66 @@ INSERT INTO public.matriculas(id,escola_id,aluno_id,turma_id,session_id,ano_leti
 VALUES ('60000000-0000-4000-8000-000000000015','20000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000015','40000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001',2025,'pendente',false,'manual');
 INSERT INTO public.academic_transition_cohort_members(id,escola_id,cohort_id,aluno_id,matricula_origem_id,status)
 VALUES (gen_random_uuid(),'20000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000015','60000000-0000-4000-8000-000000000015','elegivel');
+
+-- Direct authenticated RPC coverage: reject non-final/unknown regimes before
+-- changing enrollment or history; valid completions are rolled back per case.
+DO $cycle_rpc$
+DECLARE
+  v_test_regime jsonb;
+  expected boolean;
+  accepted boolean;
+  entry jsonb;
+BEGIN
+  FOR entry IN SELECT value FROM jsonb_array_elements('[
+    {"regime":{"classe_num":3},"ok":false},
+    {"regime":{"classe_num":7},"ok":false},
+    {"regime":{},"ok":false},
+    {"regime":null,"ok":false},
+    {"regime":{"classe_num":"invalid"},"ok":false},
+    {"regime":{"classe_num":6},"ok":true},
+    {"regime":{"classe_num":9},"ok":true},
+    {"regime":{"classe_num":12},"ok":true},
+    {"regime":{"nivel_ensino":"eja","classe_num":6,"modulo_numero":1,"ano_numero":1},"ok":false},
+    {"regime":{"nivel_ensino":"eja","modulo_numero":3},"ok":true},
+    {"regime":{"nivel_ensino":"eja","ano_numero":2},"ok":true}
+  ]'::jsonb)
+  LOOP
+    v_test_regime := entry->'regime';
+    expected := (entry->>'ok')::boolean;
+    UPDATE public.turmas SET regime=v_test_regime
+      WHERE id='40000000-0000-4000-8000-000000000001';
+    PERFORM set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000011',true);
+    SET LOCAL ROLE authenticated;
+    accepted := false;
+    BEGIN
+      PERFORM public.finalizar_origem_academica(
+        '20000000-0000-4000-8000-000000000001',
+        '60000000-0000-4000-8000-000000000011',
+        'concluido','declaracao_administrativa_escola',
+        'Synthetic cycle-completion regression','SYNTHETIC-ATA-2025');
+      -- Roll back this successful synthetic completion to reuse the same source.
+      RAISE EXCEPTION 'synthetic completion rollback' USING ERRCODE='ZT001';
+    EXCEPTION
+      WHEN SQLSTATE 'ZT001' THEN accepted := true;
+      WHEN check_violation THEN
+        IF SQLERRM NOT LIKE 'ACADEMIC_CYCLE_NOT_FINAL:%' THEN RAISE; END IF;
+    END;
+    RESET ROLE;
+    IF accepted IS DISTINCT FROM expected THEN
+      RAISE EXCEPTION 'Cycle RPC mismatch for regime %, accepted %, expected %',v_test_regime,accepted,expected;
+    END IF;
+    IF EXISTS(SELECT 1 FROM public.historico_anos
+      WHERE matricula_id='60000000-0000-4000-8000-000000000011')
+      OR NOT EXISTS(SELECT 1 FROM public.matriculas
+        WHERE id='60000000-0000-4000-8000-000000000011' AND status='pendente') THEN
+      RAISE EXCEPTION 'Cycle test leaked academic mutations';
+    END IF;
+  END LOOP;
+  UPDATE public.turmas SET regime='{"nivel_ensino":"secundario","classe_num":7,"escala":"quantitativa_secundario"}'
+    WHERE id='40000000-0000-4000-8000-000000000001';
+END $cycle_rpc$;
+SELECT 'BALCAO_DIRECT_CYCLE_RPC_PASS' AS result;
+
 SET ROLE authenticated;
 
 -- secretaria must independently finish a real source within the correct school.
