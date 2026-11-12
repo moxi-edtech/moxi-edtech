@@ -78,6 +78,31 @@ export async function GET(req: NextRequest) {
 
     const current = atuais[0] ?? null;
     const previous = records.find((row: any) => Number(row.ano_letivo) < ano.ano) ?? null;
+
+    // Só oferecer o modal de nota histórica quando a RPC existente o pode
+    // aceitar: ano imediatamente anterior ao ativo, matrícula pendente e
+    // papel académico exato. O writer verifica novamente todas as condições.
+    const [{ data: activeYears, error: activeYearsError }, { data: actorRole, error: actorRoleError }] =
+      await Promise.all([
+        db.from("anos_letivos").select("ano").eq("escola_id", escolaId)
+          .eq("ativo", true).limit(2),
+        db.from("escola_users").select("papel").eq("escola_id", escolaId)
+          .eq("user_id", user.id).maybeSingle(),
+      ]);
+    if (activeYearsError || actorRoleError) throw activeYearsError ?? actorRoleError;
+    const activeYear = activeYears?.length === 1 ? Number(activeYears[0]?.ano) : null;
+    const historicalWriterRole = [
+      "secretaria", "admin_secretaria", "diretor", "admin", "admin_escola", "staff_admin",
+    ].includes(String(actorRole?.papel ?? ""));
+    const editableHistoricalMatriculaId = historicalWriterRole && activeYear !== null
+      ? ([current, previous].find((row: any) =>
+          row && Number(row.ano_letivo) === activeYear - 1 &&
+          row.status_persistido === "pendente" &&
+          row.situacao_resultado === "sem_resultado_oficial" &&
+          row.turma_id && row.ano_letivo_id
+        )?.matricula_id ?? null)
+      : null;
+
     // Acesso de consulta não equivale a permissão de lançamento.
     // A API de notas continua a validar calendário, turma, regime e RLS.
     const canWriteCurrentGrades = Boolean(
@@ -92,6 +117,7 @@ export async function GET(req: NextRequest) {
       ano: { id: ano.id, ano: ano.ano, label: yearContext.anoLetivoLabel,
         ativo: ano.ativo === true, arquivado_com_pendencias: ano.arquivado_com_pendencias === true },
       current, previous, can_write_current_grades: canWriteCurrentGrades,
+      editable_historical_matricula_id: editableHistoricalMatriculaId,
     });
   } catch (cause) {
     if (cause instanceof AcademicYearContextError) {
