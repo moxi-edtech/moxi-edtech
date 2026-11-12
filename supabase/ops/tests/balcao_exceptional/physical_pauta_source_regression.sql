@@ -50,6 +50,10 @@ END $audit$;
 
 -- Once the selected source grade exists, a class correction must not move it
 -- to another turma and silently relabel a physical grade from the old class.
+-- This fixture does not load full turma + avaliação period records; only
+-- simulate an already-existing grade for the source-class immutability check.
+-- The real historical grade writer and its normal guards are tested separately.
+ALTER TABLE public.notas DISABLE TRIGGER USER;
 INSERT INTO public.notas(escola_id,matricula_id,avaliacao_id,valor)
 VALUES(
  '20000000-0000-4000-8000-000000000001',
@@ -57,6 +61,7 @@ VALUES(
  'c0000000-0000-4000-8000-000000000005',
  15
 );
+ALTER TABLE public.notas ENABLE TRIGGER USER;
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',false);
 DO $no_relabel$
