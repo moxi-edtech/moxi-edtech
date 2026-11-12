@@ -37,6 +37,8 @@ export function EnrollmentPostActionModal({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ login?: string | null; senha?: string | null; error?: string } | null>(null);
   const [disciplinas, setDisciplinas] = useState<Array<{ id: string; disciplina?: { id?: string; nome?: string } | null }>>([]);
+  const [disciplinasError, setDisciplinasError] = useState<string | null>(null);
+  const [disciplinasRetry, setDisciplinasRetry] = useState(0);
   const [disciplinaId, setDisciplinaId] = useState("");
   const [academicYearId, setAcademicYearId] = useState<string | null>(null);
   const [academicYearError, setAcademicYearError] = useState<string | null>(null);
@@ -186,6 +188,7 @@ export function EnrollmentPostActionModal({
     if (!open || action !== "notas" || !turmaId || !academicYearId) return;
     let active = true;
     setDisciplinas([]);
+    setDisciplinasError(null);
     setDisciplinaId("");
     setTurmaDisciplinaId("");
     const disciplineScope = new URLSearchParams({ aluno_id: alunoId, ano_letivo_id: academicYearId });
@@ -206,9 +209,14 @@ export function EnrollmentPostActionModal({
         setDisciplinaId(found?.disciplina?.id ?? "");
         setTurmaDisciplinaId(found?.id ?? "");
       })
-      .catch(() => { if (active) setDisciplinas([]); });
+      .catch(() => {
+        if (active) {
+          setDisciplinas([]);
+          setDisciplinasError("Não foi possível carregar as disciplinas.");
+        }
+      });
     return () => { active = false; };
-  }, [open, action, turmaId, alunoId, academicYearId, initialDisciplinaId]);
+  }, [open, action, turmaId, alunoId, academicYearId, initialDisciplinaId, disciplinasRetry]);
 
   useEffect(() => {
     let active = true;
@@ -377,6 +385,13 @@ export function EnrollmentPostActionModal({
               </div>
             )}
             {!academicYearId && !academicYearError && <p className="text-xs text-muted-foreground">A confirmar o ano letivo ativo...</p>}
+            {disciplinasError && (
+              <div role="alert" className="flex flex-wrap items-center gap-2 text-xs text-foreground">
+                <span>{disciplinasError}</span>
+                <button type="button" onClick={() => setDisciplinasRetry((v) => v + 1)}
+                  className="rounded-xl border border-border px-3 py-2 font-semibold">Tentar novamente</button>
+              </div>
+            )}
             <select value={disciplinaId} onChange={(event) => { setDisciplinaId(event.target.value); setTurmaDisciplinaId(disciplinas.find((item) => item.disciplina?.id === event.target.value)?.id ?? ""); setNota(""); setResult(null); }} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" disabled={!turmaId || loading || Boolean(gradeReceipt)}>
               <option value="">Selecionar disciplina</option>
               {disciplinas.map((item) => <option key={item.id} value={item.disciplina?.id ?? ""}>{item.disciplina?.nome ?? "Disciplina"}</option>)}
