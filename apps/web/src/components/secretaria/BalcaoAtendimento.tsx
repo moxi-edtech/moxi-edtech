@@ -3124,6 +3124,8 @@ export default function BalcaoAtendimento({
             status: rematricula.academic?.disciplina_statuses?.[id] ?? null,
           }))}
           onAcademicUpdated={async () => { await rematricula.refreshStatus(); }}
+          canContinueEnrollment={rematricula.cardState === "READY"}
+          onContinueEnrollment={rematricula.openModal}
         />
       )}
       {(dossier.loading || (visible && (refreshingRevision || refreshRevision > lastRevisionRef.current))) && !dossier.aluno ? (
