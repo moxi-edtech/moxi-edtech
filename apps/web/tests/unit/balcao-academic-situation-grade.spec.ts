@@ -88,7 +88,7 @@ test("locked periods are explained, and official write permissions remain server
   const modal = source("components/secretaria/EnrollmentPostActionModal.tsx");
   assert.match(modal, /selectedPeriod\?\.estado === "past"/);
   assert.match(modal, /selectedPeriod\?\.estado === "locked"/);
-  assert.match(modal, /Guardar com reabertura autorizada/);
+  assert.match(modal, /Guardar com autorização/);
   assert.match(modal, /periodReadOnly/);
   assert.match(modal, /disciplina_ativa/);
   const api = source("app/api/secretaria/notas/route.ts");
