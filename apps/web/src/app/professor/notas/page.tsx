@@ -986,7 +986,7 @@ function ProfessorNotasContent() {
                     type="button"
                     onClick={() => void handleCompleteGrades()}
                     disabled={!online || !turmaDisciplinaId || pauta.length === 0 || notasBloqueadas || savingNow || completingGrades || hasUnsavedGrades || completedScopes[completionKey]}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {completedScopes[completionKey] ? "Lançamento concluído" : completingGrades ? "A concluir..." : "Concluir lançamento"}
                   </button>
@@ -1189,7 +1189,7 @@ function ProfessorNotasContent() {
                   notaCorte={gradeCorte ?? 10}
                   readOnly={academicMode !== "CURRENT" || gradeMaxima === null}
                 />
-                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3">
                   <button
                     type="button"
                     onClick={() => void handleCompleteGrades()}
@@ -1198,7 +1198,7 @@ function ProfessorNotasContent() {
                   >
                     {completedScopes[completionKey] ? "Lançamento concluído" : completingGrades ? "A concluir..." : "Concluir lançamento"}
                   </button>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-muted-foreground">
                     {hasUnsavedGrades ? "Há notas por guardar." : "Conclua quando todas as notas da disciplina e trimestre estiverem lançadas."}
                   </span>
                 </div>
