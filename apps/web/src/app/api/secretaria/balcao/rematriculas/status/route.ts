@@ -1,3 +1,4 @@
+import { readPriorYears } from "@/lib/rematricula/prior-years";
 import { authorizeBalcaoAcademicWrite, authorizeBalcaoPendingAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
 import { NextResponse } from "next/server";
 import { canLinkPaidOrderToExistingEnrollment } from "@/lib/rematricula/reconciliation-existing-enrollment";
@@ -354,12 +355,14 @@ export async function GET(request: Request) {
           .maybeSingle()
       : { data: null };
 
-    const { data: mensalidadesFinanceiras } = await supabase
+    const priorYears = await readPriorYears(supabase, escolaId, aluno_id, targetAnoLetivoAno);
+    const { data: mensalidadesFinanceiras, error: debtError } = await supabase
       .from("mensalidades")
       .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, mes_referencia, ano_referencia")
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
-      .eq("matricula_id", matriculaOrigem.id);
+      .in("matricula_id", priorYears.ids.length ? priorYears.ids : [matriculaOrigem.id]);
+    if (debtError) throw debtError;
     // O bloqueio financeiro considera somente mensalidades vencidas da origem.
     // Valores futuros não impedem a confirmação da rematrícula.
     const overdueDebt = summarizeOverdueRematriculaDebt(mensalidadesFinanceiras ?? []);
@@ -509,6 +512,8 @@ export async function GET(request: Request) {
         : !pedidoTemPagamentoAssociado
           ? "PENDING_ORDER_REVIEW"
         : "PAYMENT_IN_PROGRESS";
+    } else if (priorYears.pending) {
+      status = "ACADEMIC_PENDING";
     } else if (trimestreInicialEmCurso) {
       status = "ACADEMIC_PENDING";
     } else if (!academicEligibility.eligible) {

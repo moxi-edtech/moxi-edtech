@@ -13,8 +13,6 @@ DECLARE
   v_actor uuid := auth.uid();
   v_escola uuid := public.current_tenant_escola_id();
   v_m public.matriculas%ROWTYPE;
- v_observed public.matriculas%ROWTYPE;
- v_locked_turmas integer;
   v_blocked boolean;
 BEGIN
   IF v_actor IS NULL OR v_escola IS NULL OR NOT coalesce(
@@ -62,6 +60,8 @@ DECLARE
  v_historico jsonb;
  v_historico_apos jsonb;
  v_m_apos public.matriculas%ROWTYPE;
+ v_observed public.matriculas%ROWTYPE;
+ v_locked_turmas integer;
 BEGIN
  IF auth.uid() IS NULL OR v_escola IS NULL OR NOT coalesce(public.user_has_role_in_school(v_escola,ARRAY['secretaria','admin_secretaria','admin_secretario','admin_financeiro','admin','admin_escola','staff_admin','diretor']),false)
  THEN RAISE EXCEPTION 'AUTH: Sem permissão para corrigir esta matrícula.'; END IF;

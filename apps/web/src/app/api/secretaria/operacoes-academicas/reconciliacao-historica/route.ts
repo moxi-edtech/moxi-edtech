@@ -30,6 +30,7 @@ const Evidence = {
 };
 
 const ActionSchema = z.discriminatedUnion("acao", [
+  z.object({ acao: z.literal("concluir_ano_percurso"), matricula_id: z.string().uuid(), modo: z.enum(["resultado", "notas"]), resultado_confirmado: z.enum(["aprovado", "reprovado"]).optional() }),
   z.object({
     acao: z.literal("solicitar_intervencao"),
     matricula_id: z.string().uuid(),
@@ -180,7 +181,7 @@ export async function GET(request: Request) {
       const numericPauta = ["quantitativa_primario", "quantitativa_secundario"]
         .includes(String(sourceRegime?.escala ?? ""));
       const gradeSourceEligible = Boolean(numericPauta && isClosedSourceYear &&
-        Number(currentYear?.ano) === Number(origin.ano_letivo) + 1 &&
+        Number(currentYear?.ano) > Number(origin.ano_letivo) &&
         origin.status === "pendente" && origin.ativo === false &&
         (origin.status_fecho_origem === "manual" || origin.status_fecho_origem == null) &&
         !history && !legalConflict);
@@ -211,6 +212,7 @@ export async function GET(request: Request) {
         permite_escrita: permiteEscrita,
         // Visible guidance only; never infers a missing mark or academic approval.
         tem_notas_reais: temNotasLancadas,
+        permite_confirmar_resultado: permiteEscrita && isClosedSourceYear && sourceConsistent && !legalConflict && !temNotasLancadas && (!history || history.snapshot_status === "aberto") && Number(currentYear?.ano) > Number(origin.ano_letivo),
         permite_conclusao_ciclo: allowsCycleCompletion(sourceRegime),
         permite_notas_historicas: Boolean(permiteNotasHistoricas) && gradeSourceEligible,
         permite_pedir_intervencao: eligible && (state === "decisao" || state === "notas" ||
@@ -416,7 +418,12 @@ export async function POST(request: Request) {
     }
     let data: any = null;
     let rpcError: any = null;
-    if (body.acao === "registar_decisao") {
+    if (body.acao === "concluir_ano_percurso") {
+      ({ data, error: rpcError } = await supabase.rpc("balcao_concluir_ano_percurso", {
+        p_escola_id: escolaId, p_matricula_id: body.matricula_id,
+        p_resultado: body.resultado_confirmado ?? null, p_modo: body.modo,
+      }));
+    } else if (body.acao === "registar_decisao") {
       // Fail closed when an already-created next-year enrollment contradicts
       // the documentary decision. No automatic changes to either enrollment.
       const { data: origin, error: originError } = await supabase.from("matriculas")

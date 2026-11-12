@@ -1,3 +1,4 @@
+import { readPriorYears } from "@/lib/rematricula/prior-years";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRoleInSchool } from "@/lib/authz";
@@ -277,6 +278,8 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
     const origemMatriculaId = String(matricula.id);
+    const priorYears = await readPriorYears(supabase, escolaId, body.aluno_id, targetAnoLetivoAno);
+    if (priorYears.pending) return NextResponse.json({ ok: false, code: "REMATRICULA_ACADEMIC_PENDING", error: "Conclua os anos anteriores no percurso académico." }, { status: 409 });
     let { data: matriculaDestino } = await supabase
       .from("matriculas")
       .select("id, turma_id")
@@ -804,7 +807,7 @@ export async function POST(request: Request) {
       .select("status, valor_previsto, valor, valor_pago_total, data_vencimento, mes_referencia, ano_referencia")
       .eq("escola_id", escolaId)
       .eq("aluno_id", body.aluno_id)
-      .eq("matricula_id", origemMatriculaId);
+      .in("matricula_id", priorYears.ids.length ? priorYears.ids : [origemMatriculaId]);
     if (mensalidadesError) throw mensalidadesError;
 
     // O gate financeiro bloqueia apenas dívida vencida da matrícula de origem.

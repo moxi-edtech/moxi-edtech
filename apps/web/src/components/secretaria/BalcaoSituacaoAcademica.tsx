@@ -67,7 +67,7 @@ export function useBalcaoSituacaoAcademica(
 
 export function BalcaoSituacaoAcademica({
   snapshot, loading, error, refresh, onNavigate, onCurrentGrade, onHistoricalGrade, hasFinancialPending,
-  pendingSourceMatriculaId, pendingDisciplines, onAcademicUpdated, onContinueEnrollment, canContinueEnrollment,
+  pendingSourceMatriculaId, pendingDisciplines, onAcademicUpdated, onContinueEnrollment, canContinueEnrollment, onRegularizeDebt, percurso, percursoBusy = false,
 }: {
   snapshot: SituacaoBalcaoPayload | null;
   loading: boolean;
@@ -83,6 +83,9 @@ export function BalcaoSituacaoAcademica({
   onContinueEnrollment?: () => void;
   /** From the server's verified rematrícula status (READY), not from grades or payment assumptions. */
   canContinueEnrollment?: boolean;
+  onRegularizeDebt?: () => void;
+  percurso?: import("react").ReactNode;
+  percursoBusy?: boolean;
 }) {
   const situation = snapshot ? resolveStudentYearSituation(snapshot, Boolean(canContinueEnrollment && onContinueEnrollment)) : null;
   const current = snapshot?.current ?? null;
@@ -98,7 +101,8 @@ export function BalcaoSituacaoAcademica({
   const historicalReviewTarget = previousPending && previous?.matricula_id ? previous
     : current && ["regularizacao_historica", "ano_encerrado"].includes(current.situacao_contextual) &&
       current.situacao_resultado !== "homologado" ? current : null;
-  const [pautaBusy, setPautaBusy] = useState(false);
+  const [gridBusy, setPautaBusy] = useState(false);
+  const pautaBusy = gridBusy || percursoBusy;
   const pautaRef = useRef<HTMLDivElement>(null);
   const [reviewOpenFor, setReviewOpenFor] = useState<string | null>(null);
   const reviewOpen = Boolean(historicalReviewTarget &&
@@ -222,7 +226,7 @@ export function BalcaoSituacaoAcademica({
                 {mainLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
-            {historicalReviewTarget && (inlineTarget || (!historicalTarget && situation.action !== "historical")) && (
+            {!percurso && historicalReviewTarget && (inlineTarget || (!historicalTarget && situation.action !== "historical")) && (
               <button type="button" onClick={openHistoricalReview} disabled={loading || pautaBusy}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60">
                 {historicalIsQualitative
@@ -232,7 +236,7 @@ export function BalcaoSituacaoAcademica({
               </button>
             )}
             {hasFinancialPending && onNavigate && (
-              <button type="button" onClick={() => onNavigate("payment")}
+              <button type="button" onClick={() => onRegularizeDebt ? onRegularizeDebt() : onNavigate("payment")} disabled={pautaBusy}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber/40 px-4 py-2 text-xs font-semibold hover:bg-muted">
                 Regularizar pagamentos<ArrowRight className="h-4 w-4" />
               </button>
@@ -253,7 +257,7 @@ export function BalcaoSituacaoAcademica({
               />
             </fieldset>
           )}
-          {previousPending && historicalTarget && previous &&
+          {!percurso && previousPending && historicalTarget && previous &&
             snapshot.historical_evaluation_scale?.startsWith("quantitativa") && (
             <fieldset disabled={pautaBusy} aria-label="Corrigir turma da pauta">
             <BalcaoPautaSourceClassPicker
@@ -285,7 +289,8 @@ export function BalcaoSituacaoAcademica({
               />
             </fieldset>
           )}
-          {inlineTarget?.turma_id && inlineTarget.ano_letivo_id && (
+          {percurso}
+          {(!percurso || inlineTarget?.matricula_id === current?.matricula_id) && inlineTarget?.turma_id && inlineTarget.ano_letivo_id && (
             <div ref={pautaRef}><BalcaoPautaGrid
               key={[inlineTarget.escola_id, inlineTarget.aluno_id, inlineTarget.matricula_id,
                 inlineTarget.turma_id, inlineTarget.ano_letivo_id].join(":")}
