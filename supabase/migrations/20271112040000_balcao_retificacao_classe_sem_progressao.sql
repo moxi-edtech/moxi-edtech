@@ -13,6 +13,8 @@ DECLARE
   v_actor uuid := auth.uid();
   v_escola uuid := public.current_tenant_escola_id();
   v_m public.matriculas%ROWTYPE;
+ v_observed public.matriculas%ROWTYPE;
+ v_locked_turmas integer;
   v_blocked boolean;
 BEGIN
   IF v_actor IS NULL OR v_escola IS NULL OR NOT coalesce(
@@ -64,11 +66,32 @@ BEGIN
  IF auth.uid() IS NULL OR v_escola IS NULL OR NOT coalesce(public.user_has_role_in_school(v_escola,ARRAY['secretaria','admin_secretaria','admin_secretario','admin_financeiro','admin','admin_escola','staff_admin','diretor']),false)
  THEN RAISE EXCEPTION 'AUTH: Sem permissão para corrigir esta matrícula.'; END IF;
  IF v_motivo IS NULL OR length(v_motivo) NOT BETWEEN 10 AND 300 THEN RAISE EXCEPTION 'DATA: Motivo deve ter entre 10 e 300 caracteres.'; END IF;
- SELECT * INTO v_m FROM public.matriculas WHERE id=p_matricula_id AND escola_id=v_escola FOR UPDATE;
- IF NOT FOUND OR v_m.ativo IS DISTINCT FROM true OR public.canonicalize_matricula_status_text(v_m.status) <> 'ativo' THEN RAISE EXCEPTION 'DATA: Matrícula inativa ou inexistente.'; END IF;
+ -- Follow the existing transfer writer's lock order: both turmas first,
+ -- then the enrollment. This serialises publication of turma-only pautas
+ -- and avoids a deadlock with concurrent transfers and academic evidence.
+ SELECT * INTO v_observed FROM public.matriculas
+ WHERE id=p_matricula_id AND escola_id=v_escola;
+ IF NOT FOUND OR v_observed.turma_id IS NULL OR v_observed.turma_id=p_turma_destino_id
+ THEN RAISE EXCEPTION 'DATA: Escolha uma turma de destino diferente.'; END IF;
+ PERFORM 1 FROM public.turmas t
+ WHERE t.escola_id=v_escola AND t.id IN (v_observed.turma_id,p_turma_destino_id)
+ ORDER BY t.id FOR UPDATE;
+ GET DIAGNOSTICS v_locked_turmas = ROW_COUNT;
+ IF v_locked_turmas <> 2
+ THEN RAISE EXCEPTION 'DATA: Turma atual ou destino inválida.'; END IF;
+ SELECT * INTO v_m FROM public.matriculas
+ WHERE id=p_matricula_id AND escola_id=v_escola FOR UPDATE;
+ IF NOT FOUND OR v_m.turma_id IS DISTINCT FROM v_observed.turma_id
+    OR v_m.session_id IS DISTINCT FROM v_observed.session_id
+    OR v_m.ano_letivo IS DISTINCT FROM v_observed.ano_letivo
+ THEN RAISE EXCEPTION 'CONFLICT: Matrícula alterada; atualize antes de repetir.'
+    USING ERRCODE='40001'; END IF;
+ IF v_m.ativo IS DISTINCT FROM true
+    OR public.canonicalize_matricula_status_text(v_m.status) <> 'ativo'
+ THEN RAISE EXCEPTION 'DATA: Matrícula inativa ou inexistente.'; END IF;
  SELECT * INTO v_origem FROM public.turmas WHERE id=v_m.turma_id AND escola_id=v_escola;
  IF NOT FOUND THEN RAISE EXCEPTION 'DATA: Turma atual inválida.'; END IF;
- SELECT * INTO v_destino FROM public.turmas WHERE id=p_turma_destino_id AND escola_id=v_escola FOR UPDATE;
+ SELECT * INTO v_destino FROM public.turmas WHERE id=p_turma_destino_id AND escola_id=v_escola;
  IF NOT FOUND THEN RAISE EXCEPTION 'DATA: Turma destino inválida.'; END IF;
  IF v_origem.classe_id IS NOT DISTINCT FROM v_destino.classe_id THEN RAISE EXCEPTION 'DATA: Use transferência de turma para a mesma classe.'; END IF;
  IF v_origem.ano_letivo IS DISTINCT FROM v_destino.ano_letivo OR v_origem.session_id IS DISTINCT FROM v_destino.session_id
