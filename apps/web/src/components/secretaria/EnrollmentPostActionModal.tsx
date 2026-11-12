@@ -355,12 +355,7 @@ export function EnrollmentPostActionModal({
 
         {action === "notas" && (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Lançar nota na turma e no ano letivo da matrícula de origem de {alunoNome}.</p>
-            {historicalMatriculaId && (
-              <p className="rounded-xl border border-amber/30 bg-amber/10 p-3 text-xs text-foreground">
-                Correção individual do ano anterior. O lançamento é auditado e não reabre o calendário da escola.
-              </p>
-            )}
+            <p className="text-sm font-medium text-foreground">{alunoNome} · {historicalMatriculaId ? "Pauta do ano anterior" : "Lançamento de nota"}</p>
             {!turmaId && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-700">A turma desta matrícula não foi identificada.</p>}
             {academicYearError && (
               <div role="alert" className="space-y-2 rounded-xl border border-border bg-card p-3 text-sm text-foreground">
@@ -436,7 +431,7 @@ export function EnrollmentPostActionModal({
                   Esta disciplina ainda não tem um trimestre disponível para lançamento. Verifique o calendário académico.
                 </p>
               )}
-            {periodClosed && (
+            {periodClosed && !historicalMatriculaId && (
               <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs text-foreground">
                 {historicalMatriculaId
                   ? "Período encerrado. A pauta histórica deste aluno pode ser corrigida com autorização e motivo auditável, sem reabrir o ano."
@@ -466,7 +461,7 @@ export function EnrollmentPostActionModal({
                 <p className="text-sm text-foreground">
                   {gradeReceipt.disciplina} · {gradeReceipt.trimestre}.º trimestre · {gradeReceipt.tipo} · {gradeReceipt.valor}
                 </p>
-                <p className="text-xs text-muted-foreground">Confirme a situação académica atualizada antes de continuar.</p>
+                
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => onOpenChange(false)}
                     className="rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95">Concluir</button>
@@ -483,7 +478,7 @@ export function EnrollmentPostActionModal({
                   Boolean(historicalMatriculaId && motivoHistorico.trim().length < 12)}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-3 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loading ? "A guardar nota…" : historicalMatriculaId ? "Guardar nota histórica auditada" : periodClosed ? "Guardar com reabertura autorizada" : "Guardar nota"}
+                {loading ? "A guardar nota…" : historicalMatriculaId ? "Guardar nota de 2025" : periodClosed ? "Guardar com autorização" : "Guardar nota"}
               </button>
             )}
           </div>
