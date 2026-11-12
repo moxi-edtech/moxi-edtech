@@ -1,0 +1,51 @@
+name: Legacy PR Reconciliation Guard
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ci/legacy-pr-reconciliation.contract.test.mjs"
+      - "docs/ops/legacy-pr-reconciliation-cc-student-calendar-receipts-20261030.md"
+      - ".github/workflows/legacy-pr-reconciliation-guard.yml"
+      - "apps/web/src/lib/command-center/**"
+      - "apps/web/src/hooks/useExplorerRoster.ts"
+      - "apps/web/src/app/api/escolas/**/command-center/roster/**"
+      - "apps/web/src/components/ui/alert.tsx"
+      - "apps/web/src/components/ui/notice.tsx"
+      - "apps/web/src/components/aluno/**"
+      - "apps/web/src/lib/aluno/**"
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts"
+      - "apps/web/src/lib/academico/prepare-canonical-calendar.ts"
+      - "apps/web/src/app/api/secretaria/balcao/pagamentos/route.ts"
+      - "apps/web/src/app/api/secretaria/recibos/consultar/route.ts"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ci/legacy-pr-reconciliation.contract.test.mjs"
+      - ".github/workflows/legacy-pr-reconciliation-guard.yml"
+      - "apps/web/src/lib/command-center/**"
+      - "apps/web/src/hooks/useExplorerRoster.ts"
+      - "apps/web/src/app/api/escolas/**/command-center/roster/**"
+      - "apps/web/src/components/ui/alert.tsx"
+      - "apps/web/src/components/ui/notice.tsx"
+      - "apps/web/src/components/aluno/**"
+      - "apps/web/src/lib/aluno/**"
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/virada/sessions-target/route.ts"
+      - "apps/web/src/lib/academico/prepare-canonical-calendar.ts"
+      - "apps/web/src/app/api/secretaria/balcao/pagamentos/route.ts"
+      - "apps/web/src/app/api/secretaria/recibos/consultar/route.ts"
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    name: Preserve canonical contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify reconciliation invariants (no database or external services)
+        run: node --test scripts/ci/legacy-pr-reconciliation.contract.test.mjs
