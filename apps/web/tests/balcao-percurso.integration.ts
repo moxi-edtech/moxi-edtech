@@ -32,7 +32,7 @@ test("three-year journey settles the selected year's debt, retries confirmation 
  const render=async()=>{await React.act(async()=>{root.render(React.createElement(BalcaoPercursoAcademico,{snapshot,mensalidades:fees,financialVerified:true,onPay:(id:string)=>{paid=id;},onBusyChange:()=>{},onUpdated:async()=>{}}));await tick();});await React.act(tick);};
  try{
   await render();for(const y of [2023,2024,2025])assert.match(document.body.textContent!,new RegExp(String(y)));
-  await click("2025");assert.match(document.body.textContent!,/Conclua primeiro/);assert.equal(document.querySelectorAll("select").length,0);
+  await click("2025");assert.match(document.body.textContent!,/Conclua primeiro/);assert.equal(document.querySelectorAll("select").length,0);assert.ok(buttons().find(b=>b.textContent==="Corrigir turma da pauta"),"a mistaken future class must be correctable without skipping the previous result");
   await click("2023");await click("Liquidar");assert.equal(paid,"m2023");fees=[];await render();assert.ok(document.querySelector('[aria-label="Resolver 2024"]'));
   await React.act(async()=>{const field=document.querySelector("select")!;field.value="aprovado";field.dispatchEvent(new dom.window.Event("change",{bubbles:true}));});
   await click("Confirmar e concluir");assert.equal(writes,1);assert.equal(confirmed,0);assert.match(document.body.textContent!,/Falha sintética/);assert.equal(document.querySelector("select")!.value,"aprovado");

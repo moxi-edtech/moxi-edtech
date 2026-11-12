@@ -42,7 +42,14 @@ export function BalcaoPercursoAcademico(props: Props) {
         <span>{!financialVerified ? "Saldo por verificar" : debt(r.matricula_id)>0 ? money.format(debt(r.matricula_id))+" em dívida" : "Sem dívida vencida"}</span>
       </button></li>)}</ol>
     {active && <div aria-label={`Resolver ${active.ano_letivo}`} className="space-y-3 rounded-xl bg-muted/30 p-3">
-      {previousPending ? <p className="text-sm">Conclua primeiro a etapa anterior.</p> : <>
+      {previousPending ? <>
+        <p className="text-sm">Conclua primeiro a etapa anterior.</p>
+        {/* A wrong next-year class can block the previous result. Keep the
+            existing individual correction reachable without allowing progression. */}
+        {snapshot.can_recover_historical && active.status_persistido === "pendente" &&
+          <BalcaoPautaSourceClassPicker matriculaId={active.matricula_id} alunoId={active.aluno_id}
+            onSaved={async () => { await onUpdated(); setSelected(null); }} />}
+      </> : <>
         {gap && <p role="alert" className="text-sm">Há anos sem matrícula registada. Confira o ano e a turma do percurso antes de continuar.</p>}
         {needsResult(active) && snapshot.can_recover_historical && <YearWork key={active.matricula_id+":"+active.turma_id}
           row={active} blocked={Boolean(gap)} onBusyChange={setBusy}
