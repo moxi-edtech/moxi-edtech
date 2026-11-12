@@ -15,6 +15,11 @@ CREATE TABLE IF NOT EXISTS public.pauta_conclusoes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_pauta_conclusoes_escola ON public.pauta_conclusoes(escola_id, concluido_em DESC);
+-- A genuine completion can back exactly one event, even if a client calls the
+-- existing generic events API after inspecting the notification/event inbox.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_eventos_pauta_concluida_unica
+ON public.eventos(escola_id, entidade_id)
+WHERE entidade_tipo = 'pauta_concluida';
 ALTER TABLE public.pauta_conclusoes ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.pauta_conclusoes FROM PUBLIC, anon, authenticated;
 
@@ -26,6 +31,17 @@ DECLARE
   v_destinatario uuid;
 BEGIN
   IF ev.payload->>'workflow' = 'pauta_concluida' THEN
+    -- Existing event-insertion policies permit authenticated inserts. Never
+    -- notify on client-authored claims without the committed completion row.
+    IF ev.entidade_tipo IS DISTINCT FROM 'pauta_concluida'
+      OR NOT EXISTS (
+        SELECT 1 FROM public.pauta_conclusoes pc
+        WHERE pc.id = ev.entidade_id AND pc.escola_id = ev.escola_id
+          AND pc.concluido_por = ev.actor_id
+      )
+    THEN
+      RETURN;
+    END IF;
     FOR v_destinatario IN
       SELECT DISTINCT u.user_id FROM (
         SELECT eu.user_id FROM public.escola_users eu
