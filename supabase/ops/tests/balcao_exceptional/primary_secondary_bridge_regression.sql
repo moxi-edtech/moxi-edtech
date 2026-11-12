@@ -120,7 +120,7 @@ DO $rollback_check$
 BEGIN
  IF (SELECT status FROM public.servico_pedidos
    WHERE id='e0000000-0000-4000-8000-000000000003')<>'pending_payment' THEN
-   RAISE EXCEPTION 'FAIL: invalid progression consumed another student's payment';
+   RAISE EXCEPTION 'FAIL: invalid progression consumed another pupil payment';
  END IF;
 END $rollback_check$;
 ROLLBACK;
