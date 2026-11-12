@@ -92,6 +92,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271112020000_balcao_primary_secondary_6_to_7.sql",
   // Pupil-specific prior-year turma selection for physical pauta grade transcription.
   "20271112030000_balcao_pauta_corrigir_turma_origem.sql",
+  // Correção de erro de classe no mesmo ano, auditada, sem promoção nem alterações financeiras.
+  "20271112040000_balcao_retificacao_classe_sem_progressao.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
