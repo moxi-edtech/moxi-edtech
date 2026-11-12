@@ -24,6 +24,10 @@ test("class correction is an audited same-year change, never a promotion or a pa
   assert.match(migration, /USING ERRCODE='P1050'/);
   assert.match(migration, /INSERT INTO public\.balcao_pauta_turma_correction_nonce/);
   assert.match(migration, /DELETE FROM public\.balcao_pauta_turma_correction_nonce/);
+  assert.match(migration, /ORDER BY t.id FOR UPDATE/);
+  assert.match(migration, /v_m.turma_id IS DISTINCT FROM v_observed.turma_id/);
+  assert.ok(migration.indexOf("ORDER BY t.id FOR UPDATE") < migration.indexOf("WHERE id=p_matricula_id AND escola_id=v_escola FOR UPDATE"));
+  assert.match(migration, /USING ERRCODE='40001'/);
   assert.match(migration, /INSERT INTO public\.audit_logs/);
   assert.match(migration, /v_historico_apos IS DISTINCT FROM v_historico/);
   assert.doesNotMatch(migration, /\b(INSERT INTO|UPDATE|DELETE FROM) public\.(notas|mensalidades|pagamentos|financeiro_cobrancas|historico_anos)\b/i);
