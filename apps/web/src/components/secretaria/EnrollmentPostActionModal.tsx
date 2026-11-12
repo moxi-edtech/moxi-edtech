@@ -483,8 +483,7 @@ export function EnrollmentPostActionModal({
             ) : (
               <button type="button" onClick={() => void lancarNota()}
                 disabled={loading || periodUnavailable || !turmaId || !academicYearId || Boolean(academicYearError) ||
-                  Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota ||
-                  Boolean(historicalMatriculaId && motivoHistorico.trim().length < 12)}
+                  Boolean(notaContextError) || notaMaxima === null || !disciplinaId || !turmaDisciplinaId || !nota}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber px-4 py-3 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                 {loading ? "A guardar nota…" : historicalMatriculaId ? "Guardar nota de 2025" : periodClosed ? "Guardar com autorização" : "Guardar nota"}
