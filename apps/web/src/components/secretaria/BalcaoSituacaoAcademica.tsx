@@ -121,6 +121,7 @@ export function BalcaoSituacaoAcademica({
     : situation?.action === "historical" ? "Ver regularização"
     : situation?.action === "grade" ? "Lançar notas de " + current?.ano_letivo
     : situation?.actionLabel;
+  const historicalIsQualitative = snapshot?.historical_evaluation_scale === "qualitativa";
   const mainActionIsAvailable = situation?.action === "grade" ||
     (situation?.action === "historical" && Boolean(onNavigate ||
       (historicalTarget && historicalTarget.matricula_id === current?.matricula_id))) ||
@@ -184,6 +185,15 @@ export function BalcaoSituacaoAcademica({
                 {mainLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
+            {previousPending && previous && !previousYearReady && (
+              <button type="button" onClick={openHistoricalReview} disabled={loading}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
+                {historicalIsQualitative
+                  ? "Validar avaliação qualitativa de " + previous.ano_letivo
+                  : "Rever resultado de " + previous.ano_letivo}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
             {hasFinancialPending && onNavigate && (
               <button type="button" onClick={() => onNavigate("payment")}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber/40 px-4 py-2 text-xs font-semibold hover:bg-muted">
@@ -193,7 +203,9 @@ export function BalcaoSituacaoAcademica({
           </div>
           {previousPending && !historicalTarget && previous && (
             <p role="status" className="mt-3 text-xs text-muted-foreground">
-              {previous.ano_letivo}: resultado anterior por regularizar. A correção requer um vínculo elegível e um operador autorizado.
+              {historicalIsQualitative
+                ? "Esta turma tem avaliação qualitativa. O resultado deve ser validado com evidência escolar, não por nota numérica."
+                : previous.ano_letivo + ": resultado anterior por regularizar. A correção requer um vínculo elegível e um operador autorizado."}
             </p>
           )}
         </>
