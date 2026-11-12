@@ -42,5 +42,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install isolated database fixtures
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/fixture.sql
-      - name: Regression: grades, audit, tenant and closed enrollment window
+      - name: "Regression: grades, audit, tenant and closed enrollment window"
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/regression.sql
