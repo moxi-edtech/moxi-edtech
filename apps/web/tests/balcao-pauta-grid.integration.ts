@@ -19,16 +19,19 @@ test("inline pupil pauta preserves existing zero, validates scale and retries on
   for (const value of ["", "11", "-1", "texto"]) assert.throws(() => parsePautaValue(value, 10));
   const originalFetch = globalThis.fetch;
   const posts: any[] = [];
-  let fail = true, updates = 0;
+  let fail = true, updates = 0, failHistorical = false;
+  let gridReads = 0;
   let periodState = "past", active = true, maximum: number | null = 10;
   globalThis.fetch = (async (url: string, init?: RequestInit) => {
     if (init?.method === "POST") {
       const body = JSON.parse(String(init.body)); posts.push(body);
-      assert.equal(url, "/api/secretaria/notas");
+      assert.ok(["/api/secretaria/notas", "/api/secretaria/notas/historicas"].includes(url));
       assert.ok(new Headers(init.headers).get("Idempotency-Key"));
-      assert.equal(body.historical_matricula_id, "source");
-      assert.equal(body.notas[0].aluno_id, "pupil");
-      assert.equal(body.historical_motivo, "Transcrição de nota conforme pauta física escolar");
+      if (url.endsWith("/historicas")) {
+        if (failHistorical) { failHistorical = false; return Response.json({ ok: false, error: "Lote não guardado" }, { status: 409 }); }
+        assert.equal(body.matricula_id, "source");
+        assert.equal(body.motivo, "Transcrição de nota conforme pauta física escolar");
+      } else assert.equal(body.notas[0].aluno_id, "pupil");
       if (body.turma_disciplina_id === "td2" && fail) { fail = false; return Response.json({ ok: false, error: "Falha sintética" }, { status: 409 }); }
       return Response.json({ ok: true });
     }
@@ -37,8 +40,9 @@ test("inline pupil pauta preserves existing zero, validates scale and retries on
       { id: "td1", disciplina: { id: "d1", nome: "Português" } },
       { id: "td2", disciplina: { id: "d2", nome: "Matemática" } },
     ] });
-    if (url.includes("/periodos?")) return Response.json({ ok: true, read_only: true,
+    if (url.includes("/periodos?")) return Response.json({ ok: true, read_only: false,
       items: [1, 2, 3].map(numero => ({ numero, disciplina_ativa: active, estado: periodState })) });
+    gridReads++;
     assert.ok(url.includes("/pauta-grid?") && url.includes("alunoId=pupil") && url.includes("anoLetivoId=year"));
     return Response.json({ ok: true, items: [{ aluno_id: "pupil", componentes: url.includes("td1") ? { MAC: 0, NPT: 7 } : {} }],
       meta: { nota_maxima: maximum, entrada_numerica_permitida: maximum !== null, componentes_ativos: ["MAC", "NPP", "NPT"] } });
@@ -55,7 +59,7 @@ test("inline pupil pauta preserves existing zero, validates scale and retries on
   try {
     await React.act(async () => { root.render(React.createElement(BalcaoPautaGrid, {
       escolaId: "school", alunoId: "pupil", matriculaId: "source", turmaId: "class", anoLetivoId: "year",
-      ano: 2025, historical: true, onSaved: async () => { updates++; },
+      ano: 2025, historical: false, onSaved: async () => { updates++; },
     })); await tick(); });
     await React.act(tick);
     assert.equal(document.querySelectorAll("input").length, 6, "editable grid is mounted without a launch-note click");
@@ -85,14 +89,16 @@ test("inline pupil pauta preserves existing zero, validates scale and retries on
     await React.act(async () => { button("Guardar notas").click(); await tick(); });
     assert.equal(posts.length, 3, "clearing must never fabricate a zero or silently delete a grade");
     assert.equal(input("Português · MAC · 1.º trimestre").getAttribute("aria-invalid"), "true");
-    dom.window.confirm = () => false;
-    await React.act(async () => { button("2.º").click(); await tick(); });
-    assert.equal(button("1.º").getAttribute("aria-pressed"), "true", "cancel retains the draft and trimester");
-    dom.window.confirm = () => true;
+    let confirmations = 0;
+    dom.window.confirm = () => { confirmations++; return true; };
     periodState = "future";
     await React.act(async () => { button("2.º").click(); await tick(); });
     await React.act(tick);
+    assert.equal(confirmations, 0, "switching trimester never discards the yearly draft");
+    assert.equal(button("2.º").getAttribute("aria-pressed"), "true");
     assert.equal(document.querySelectorAll("input:not(:disabled)").length, 0, "future periods remain blocked");
+    await React.act(async () => { button("1.º").click(); await tick(); });
+    assert.equal(input("Português · MAC · 1.º trimestre").value, "", "draft is retained on returning to cached trimester");
     periodState = "past"; active = false;
     await React.act(async () => { button("Atualizar pauta").click(); await tick(); });
     await React.act(tick);
@@ -104,9 +110,39 @@ test("inline pupil pauta preserves existing zero, validates scale and retries on
     assert.match(document.body.textContent!, /Avaliação não numérica/);
     assert.equal(posts.length, 3);
 
+    maximum = 10; active = true;
+    await React.act(async () => { root.render(React.createElement(BalcaoPautaGrid, {
+      escolaId: "school", alunoId: "pupil", matriculaId: "source", turmaId: "class", anoLetivoId: "year",
+      ano: 2025, historical: true, onSaved: async () => { updates++; },
+    })); await tick(); });
+    await React.act(tick);
+    const beforeAnnual = posts.length;
+    await edit("Português · NPP · 1.º trimestre", "5");
+    await React.act(async () => { button("2.º").click(); await tick(); }); await React.act(tick);
+    await edit("Português · NPP · 2.º trimestre", "6");
+    await React.act(async () => { button("3.º").click(); await tick(); }); await React.act(tick);
+    await edit("Matemática · MAC · 3.º trimestre", "0");
+    const loadedReads = gridReads;
+    await React.act(async () => { button("1.º").click(); await tick(); });
+    assert.equal(input("Português · NPP · 1.º trimestre").value, "5");
+    assert.equal(gridReads, loadedReads, "cached trimester opens immediately without reloading");
+    assert.equal(posts.length, beforeAnnual, "three trimester drafts require no intermediate save");
+    failHistorical = true;
+    await React.act(async () => { button("Guardar notas").click(); await tick(); });
+    assert.equal(button("Guardar notas").disabled, false, "failed transaction retains every trimester draft");
+    assert.match(document.body.textContent!, /Lote não guardado/);
+    await React.act(async () => { button("Guardar notas").click(); await tick(); });
+    assert.equal(posts.length, beforeAnnual+2, "one request per save, including retry");
+    assert.equal(posts.at(-1).notas.length, 3);
+    assert.deepEqual(posts.at(-1).notas.map((x: any) => x.trimestre), [1,2,3]);
+    assert.equal(posts.at(-1).notas[2].valor, 0);
+    assert.equal(button("Guardar notas").disabled, true);
+    assert.equal(button("1.º").getAttribute("aria-pressed"), "true", "successful save preserves the selected trimester");
+    const beforeParent = posts.length;
+
     // Exercise the real parent: entry is immediate, unsaved marks block the
     // verified continuation CTA, and successful writes refresh eligibility.
-    maximum = 10;
+    maximum = 10; active = true;
     const { BalcaoSituacaoAcademica } = await import("../src/components/secretaria/BalcaoSituacaoAcademica");
     let continued = 0, refreshed = 0, legacyOpened = 0;
     const snapshot = {
@@ -142,7 +178,7 @@ test("inline pupil pauta preserves existing zero, validates scale and retries on
     assert.equal(button("Concluir rematrícula de 2026").disabled, true);
     assert.equal(button("Atualizar").disabled, true);
     await React.act(async () => { button("Guardar notas").click(); await tick(); });
-    assert.equal(posts.length, 4);
+    assert.equal(posts.length, beforeParent+1);
     assert.equal(refreshed, 1);
     assert.equal(button("Concluir rematrícula de 2026").disabled, false);
     await React.act(async () => { button("Concluir rematrícula de 2026").click(); });

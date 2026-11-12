@@ -95,7 +95,9 @@ END $$;
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',true);
 -- Time and tenant boundaries remain enforced even in the exceptional flow.
-UPDATE public.periodos_letivos SET data_fim=current_date+1 WHERE numero=3;
+-- Use the same school date as the writer: UTC CURRENT_DATE + 1 is already
+-- today in Angola after 23:00 UTC, and stops representing a future period.
+UPDATE public.periodos_letivos SET data_fim=(now() AT TIME ZONE 'Africa/Luanda')::date+1 WHERE numero=3;
 SET LOCAL ROLE authenticated;
 DO $$ DECLARE item jsonb; BEGIN
  SELECT value INTO item FROM jsonb_array_elements(public.balcao_eja_frequencias('20000000-0000-4000-8000-000000000001','60000000-0000-4000-8000-000000000001')) WHERE value->>'numero'='3';

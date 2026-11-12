@@ -48,7 +48,8 @@ test("Balcão offers existing-enrollment reconciliation without opening another 
   assert.match(balc, /paidExistingDestination \? "Associar pagamento à matrícula"/);
   assert.match(balc, /showAcademicResolution && raaMatriculaId && raaAlunoId/);
   assert.match(balc, /const showAcademicResolution = !paidExistingDestination \|\| Boolean\(academicBlocker\)/);
-  assert.match(balc, /!paidExistingDestination && \(/);
+  assert.doesNotMatch(balc, /<RematriculaAcademicDestination/);
+  assert.match(balc, /skipTurmaSelection=\{[\s\S]*?RECONFIRMATION_REQUIRED/);
   assert.doesNotMatch(balc, /onResolverReconciliacao=\{rematricula\.openReconciliationModal\}/);
 });
 

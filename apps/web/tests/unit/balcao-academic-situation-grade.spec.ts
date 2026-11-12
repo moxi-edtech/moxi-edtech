@@ -111,7 +111,9 @@ test("existing target enrollment requires payment reconciliation, not duplicate 
   assert.ok(writer.includes('reconfirmacaoApenas'));
   assert.ok(chrome.includes('title: "Taxa por confirmar"'));
   assert.ok(chrome.includes('Regularizar taxa de rematrícula'));
-  assert.ok(balc.includes('taxaValor={rematriculaPrice}'));
+  assert.ok(balc.includes('service={rematricula.service}'));
+  assert.ok(balc.includes('skipTurmaSelection={'));
+  assert.ok(!balc.includes('<RematriculaAcademicDestination'));
 });
 
 test("paid order without verified destination must stay in reconciliation", () => {

@@ -558,6 +558,9 @@ export function useRematriculaBalcao(opts: {
         setTurmasError(data.error || "Não foi possível carregar as turmas de destino.");
         return;
       }
+      // Revalidate only after fresh options arrive. Status refreshes and
+      // callback identity changes must not erase the user-selected destination.
+      setSelectedTurmaId(current => current && data.items.some((t: TurmaPayload) => t.id === current) ? current : null);
       setProgressao(data.progressao ?? null);
       if (Array.isArray(data.items)) {
         setTurmas(
@@ -597,7 +600,6 @@ export function useRematriculaBalcao(opts: {
       // Carregar as opções aqui evita deixar o modal sem escolha e o pedido
       // concedido sem matrícula no novo ano.
     }
-    setSelectedTurmaId(null);
     void fetchTurmas(decisaoResultado);
   }, [cardState, decisaoResultado, destinoTurmaId, fetchTurmas, modalOpen]);
 

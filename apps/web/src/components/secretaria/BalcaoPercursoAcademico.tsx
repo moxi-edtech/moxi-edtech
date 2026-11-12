@@ -73,7 +73,7 @@ function YearWork({ row, blocked, onUpdated, onBusyChange }: {
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   useEffect(() => {
-    const controller = new AbortController(); setLoading(true); setError(""); setSource(null);
+    const controller = new AbortController(); setLoading(true); setError("");
     void fetch(endpoint+"?"+new URLSearchParams({matricula_id:row.matricula_id}), {cache:"no-store",signal:controller.signal})
       .then(async res => { const data = await res.json(); if (!res.ok || data.ok!==true || data.matricula_id!==row.matricula_id) throw new Error(data.error || "Não foi possível consultar este ano."); return data as Source; })
       .then(data => {if (!controller.signal.aborted) {setSource(data); if(data.tem_notas_reais) setMode("notas");}})

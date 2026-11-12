@@ -25,15 +25,14 @@ import { useSearchParams } from "next/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useDebounce } from "@/hooks/useDebounce";
 import { createClient } from "@/lib/supabaseClient";
-import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem, type TurmaOption } from "@/hooks/useRematriculaBalcao";
+import { useRematriculaBalcao, type RematriculaCardState, type RematriculaPaymentItem } from "@/hooks/useRematriculaBalcao";
+import { useRematriculaMensalidadesDestino } from "@/hooks/useRematriculaMensalidadesDestino";
 import { RematriculaBalcaoModal } from "@/components/secretaria/RematriculaBalcaoModal";
 import { RaaBalcaoResolutionPanel } from "@/components/secretaria/RaaBalcaoResolutionPanel";
 import { BalcaoHistoricalAcademicRecovery } from "@/components/secretaria/BalcaoHistoricalAcademicRecovery";
 import { BalcaoSituacaoAcademica, useBalcaoSituacaoAcademica } from "@/components/secretaria/BalcaoSituacaoAcademica";
 import { raaBalcaoEffectiveStatus, raaBalcaoPlan } from "@/lib/rematricula/raa-balcao-resolution";
-import { RematriculaWorkspaceHeader, RematriculaAcademicDestination, type RaaProgressSnapshot } from "@/components/secretaria/RematriculaWorkspaceChrome";
 import type { RaaBalcaoAcademic } from "@/lib/rematricula/raa-balcao-regime-guidance";
-import type { RaaBalcaoTimeline } from "@/lib/rematricula/raa-balcao-timeline";
 import { EnrollmentPostActionModal } from "@/components/secretaria/EnrollmentPostActionModal";
 import type { EnrollmentPostAction } from "@/components/secretaria/EnrollmentPostActions";
 import { BalcaoPercursoAcademico } from "@/components/secretaria/BalcaoPercursoAcademico";
@@ -1297,20 +1296,15 @@ function Catalogo({
   selectedItemKeys,
   selectedTotal,
   rematriculaReady,
-  rematriculaWizardOpen,
   rematriculaState,
   rematriculaPrice,
   rematriculaAnoLabel,
   rematriculaContextYear,
   rematriculaWindow,
   rematriculaAcademic,
-  rematriculaTimeline,
-  rematriculaTimelineYear,
   rematriculaOrigemAno,
-  rematriculaDestinoMatriculaId,
   rematriculaCanWriteGrades,
   rematriculaReconciliation,
-  rematriculaDestinoTurma,
   rematriculaCohort,
   raaMatriculaId,
   raaAlunoId,
@@ -1340,7 +1334,6 @@ function Catalogo({
   selectedItemKeys: Set<string>;
   selectedTotal: number;
   rematriculaReady: boolean;
-  rematriculaWizardOpen: boolean;
   /** `CHECKING` é rótulo sintético do cliente, para o intervalo antes de a
    *  primeira leitura da elegibilidade responder. */
   rematriculaState: RematriculaCardState | "CHECKING" | null;
@@ -1349,13 +1342,9 @@ function Catalogo({
   rematriculaContextYear: { id: string; ano: number; label: string } | null;
   rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
   rematriculaAcademic: RaaBalcaoAcademic | null | undefined;
-  rematriculaTimeline: RaaBalcaoTimeline | null;
-  rematriculaTimelineYear: number | null;
   rematriculaOrigemAno: number | null;
-  rematriculaDestinoMatriculaId: string | null;
   rematriculaCanWriteGrades: boolean;
   rematriculaReconciliation?: { can_link_existing_enrollment?: boolean } | null;
-  rematriculaDestinoTurma: TurmaOption | null;
   rematriculaCohort: { codigo: string; nome: string; modo: string } | null;
   raaMatriculaId: string | null;
   raaAlunoId: string | null;
@@ -1421,12 +1410,13 @@ function Catalogo({
     rematriculaOrigemAno === rematriculaContextYear.ano - 1 &&
     Boolean(raaMatriculaId);
   const selectedCount = selectedItemKeys.size;
-  const [raaProgress, setRaaProgress] = useState<RaaProgressSnapshot | null>(null);
-  // A progress snapshot must never leak into the next selected student's case.
-  const activeProgress = raaMatriculaId && raaProgress?.matriculaId === raaMatriculaId ? raaProgress : null;
+
+  // The active enrollment wizard owns destination, quote and confirmation.
+  // Do not repeat a second non-actionable "Pode continuar" card above it.
+  if (view === "reenrollment" && rematriculaState === "READY") return null;
 
   return (
-    <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} ${view === "reenrollment" ? "rounded-2xl border border-border bg-card p-4 text-foreground sm:p-6" : "rounded-xl border border-border bg-card p-5 sm:p-6"}`}>
+    <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} ${view === "reenrollment" ? "text-foreground" : "rounded-xl border border-border bg-card p-5 sm:p-6"}`}>
       {view === "payment" ? (
         <div className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -1443,24 +1433,6 @@ function Catalogo({
             </a>
           ) : null}
         </div>
-      ) : view === "reenrollment" && paidExistingDestination && !academicBlocker ? (
-        <div role="status" className="text-sm font-medium text-foreground">
-          Matrícula de destino identificada · {rematriculaAnoLabel}
-        </div>
-      ) : view === "reenrollment" ? (
-        <RematriculaWorkspaceHeader
-          anoOrigem={rematriculaOrigemAno != null ? `${rematriculaOrigemAno}/${rematriculaOrigemAno + 1}` : null}
-          anoDestino={rematriculaAnoLabel}
-          status={rematriculaState}
-          motivo={rematriculaAcademic?.reason ?? null}
-          academic={rematriculaAcademic ?? null}
-          canLancarNota={rematriculaCanWriteGrades}
-          progress={activeProgress}
-          timeline={rematriculaTimeline}
-          timelineAno={rematriculaTimelineYear != null ? `${rematriculaTimelineYear}/${rematriculaTimelineYear + 1}` : null}
-          destinoMatriculaId={rematriculaDestinoMatriculaId}
-          temPendencias={Boolean(raaMatriculaId && raaAlunoId)}
-        />
       ) : view === "all" ? (
         <div className="mb-4 flex items-center gap-2">
           <Plus className="h-4 w-4 text-amber" />
@@ -1696,7 +1668,6 @@ function Catalogo({
                 canLancarNota={rematriculaCanWriteGrades}
                 onDocumentos={onDocumentos}
                 onRecheck={onRefreshRematricula}
-                onProgressChange={setRaaProgress}
               />
             ) : null}
             {rematriculaError ? (
@@ -1724,16 +1695,7 @@ function Catalogo({
                 </div>
               </button>
             ) : null}
-            {view === "reenrollment" && !paidExistingDestination && (
-              <RematriculaAcademicDestination
-                status={rematriculaState}
-                anoDestino={rematriculaAnoLabel}
-                turma={rematriculaDestinoTurma}
-                taxaValor={rematriculaPrice}
-                canContinue={rematriculaReady && !rematriculaWizardOpen}
-                onContinue={onRematricula}
-              />
-            )}
+
           </div>
         )}
 
@@ -2722,7 +2684,7 @@ export default function BalcaoAtendimento({
   // Itens escolhidos dentro da rematrícula pertencem ao pagamento dessa
   // operação, não ao carrinho genérico do balcão.
   const [itensRematricula, setItensRematricula] = useState<RematriculaPaymentItem[]>([]);
-  const [mensalidadesDestino, setMensalidadesDestino] = useState<RematriculaPaymentItem[]>([]);
+
 
   const rematricula = useRematriculaBalcao({
     escolaId,
@@ -2797,7 +2759,6 @@ export default function BalcaoAtendimento({
     checkout.setPendentes([]);
     checkout.setPrintQueue([]);
     setItensRematricula([]);
-    setMensalidadesDestino([]);
     setDebtModalOpen(false);
     setDebtSourceId(null);
     setPercursoBusy(false);
@@ -2825,61 +2786,16 @@ export default function BalcaoAtendimento({
     [dossier.mensalidades, selectedMensalidadeIds]
   );
 
-  useEffect(() => {
-    const turmaId = rematricula.selectedTurmaId;
-    if (!turmaId || !effectiveAcademicYearId) {
-      setMensalidadesDestino([]);
-      setItensRematricula((current) => current.filter((item) => !item.previsto));
-      return;
-    }
-
-    const controller = new AbortController();
-    setItensRematricula((current) => current.filter((item) => !item.previsto));
-
-    void (async () => {
-      try {
-        const params = new URLSearchParams({
-          escola_id: escolaId,
-          turma_id: turmaId,
-          session_id: effectiveAcademicYearId,
-        });
-        const response = await fetch(`/api/financeiro/orcamento/matricula?${params.toString()}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || payload?.ok !== true) {
-          setMensalidadesDestino([]);
-          return;
-        }
-
-        const rows = Array.isArray(payload?.data?.mensalidades) ? payload.data.mensalidades : [];
-        setMensalidadesDestino(rows
-          .filter((item: any) => typeof item?.competencia === "string" && Number(item?.valor ?? 0) > 0)
-          .map((item: any) => ({
-            id: `destino:${item.competencia}`,
-            tipo: "mensalidade" as const,
-            nome: `Propina ${item.competencia}`,
-            preco: Number(item.valor),
-            quantidade: 1,
-            competencia: String(item.competencia),
-            data_vencimento: String(item.data_vencimento ?? ""),
-            previsto: true,
-          })));
-      } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setMensalidadesDestino([]);
-        }
-      }
-    })();
-
-    return () => controller.abort();
-  }, [effectiveAcademicYearId, escolaId, rematricula.selectedTurmaId]);
+  const mensalidadesDestino = useRematriculaMensalidadesDestino({
+    escolaId, alunoId: dossier.aluno?.id ?? null,
+    anoLetivoId: rematricula.anoLetivo?.id ?? effectiveAcademicYearId,
+    turmaId: rematricula.selectedTurmaId, setSelectedItems: setItensRematricula,
+  });
 
   const itensDisponiveisNaRematricula = useMemo<RematriculaPaymentItem[]>(() => [
-    ...mensalidadesDestino,
+    ...mensalidadesDestino.items,
     ...servicos.filter((servico) => ["DOC_CARTAO_ESTUDANTE", "SERV_UNIFORME"].includes(servico.codigo.trim().toUpperCase())),
-  ], [mensalidadesDestino, servicos]);
+  ], [mensalidadesDestino.items, servicos]);
 
   useEffect(() => {
     if (!visible || refreshRevision <= lastRevisionRef.current) return;
@@ -3210,7 +3126,6 @@ export default function BalcaoAtendimento({
                   unlockedMensalidadeIds={unlockedMensalidadeIds}
                   selectedItemKeys={selectedItemKeys}
                   selectedTotal={carrinho.total}
-                  rematriculaWizardOpen={rematricula.modalOpen}
                   rematriculaReady={
                     rematricula.cardState === "READY" ||
                     rematricula.cardState === "RECONFIRMATION_REQUIRED" ||
@@ -3232,13 +3147,9 @@ export default function BalcaoAtendimento({
                   rematriculaContextYear={rematricula.anoLetivo}
                   rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
-                  rematriculaTimeline={rematricula.academicTimeline}
-                  rematriculaTimelineYear={rematricula.academicTimelineYear}
                   rematriculaOrigemAno={rematricula.academic?.source?.ano_letivo_ano ?? null}
-                  rematriculaDestinoMatriculaId={rematricula.destinoMatriculaId}
                   rematriculaCanWriteGrades={rematricula.canWriteGrades}
                   rematriculaReconciliation={rematricula.reconciliation}
-                  rematriculaDestinoTurma={rematricula.destinoTurma ?? null}
                   rematriculaCohort={rematricula.cohort ?? null}
                   raaMatriculaId={rematricula.academic?.source?.matricula_id ?? null}
                   raaAlunoId={dossier.aluno.id}
@@ -3366,6 +3277,9 @@ export default function BalcaoAtendimento({
           service={rematricula.service}
           itensPagamento={itensRematricula}
           itensDisponiveis={itensDisponiveisNaRematricula}
+          mensalidadesLoading={mensalidadesDestino.loading}
+          mensalidadesError={mensalidadesDestino.error}
+          onRetryMensalidades={mensalidadesDestino.retry}
           paymentAlreadyValidated={rematricula.cardState === "DOCUMENT_PENDING" || rematricula.cardState === "ACADEMIC_HISTORY_PENDING"}
           onAdicionarItem={(item) => setItensRematricula((previous) => (
             previous.some((selected) => selected.id === item.id && selected.tipo === item.tipo)

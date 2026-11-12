@@ -11,6 +11,7 @@ on:
       - "supabase/migrations/20271112030000_balcao_pauta_corrigir_turma_origem.sql"
       - "supabase/migrations/20271112040000_balcao_retificacao_classe_sem_progressao.sql"
       - "supabase/migrations/20271112050000_balcao_percurso_academico.sql"
+      - "supabase/migrations/20271112080000_balcao_pauta_anual_batch.sql"
       - "supabase/migrations/20271112060000_balcao_secretaria_role_aliases.sql"
       - "supabase/ops/tests/balcao_exceptional/**"
       - "supabase/ops/tests/raa_historico/**"
@@ -72,6 +73,11 @@ jobs:
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/fixture.sql
       - name: Verify real notes, one-student audit and late-window permissions
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/regression.sql
+      - name: Verify atomic annual grade batch and protected source
+        run: |
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -c 'CREATE DATABASE annual_pauta_test'
+          psql "${PGURL%/*}/annual_pauta_test" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/annual_pauta_fixture.sql
+          psql "${PGURL%/*}/annual_pauta_test" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/annual_pauta_regression.sql
 
   historic-staff-permissions:
     name: Balcão historic role grants — synthetic PostgreSQL
