@@ -30,6 +30,27 @@ export function resolveStudentYearSituation(data: SituacaoBalcaoPayload): {
 } {
   const { current, previous, ano } = data;
   if (!current) {
+    const originIsLastYear = previous?.ano_letivo === ano.ano - 1;
+    const originPending = originIsLastYear &&
+      ["regularizacao_historica", "ano_encerrado"].includes(previous.situacao_contextual) &&
+      previous.situacao_resultado !== "homologado";
+    if (originPending) return {
+      title: "Histórico de " + previous.ano_letivo + " por regularizar",
+      description: "Há uma matrícula anterior sem resultado homologado. Resolva a decisão escolar documentada antes de prosseguir com " + ano.ano + ".",
+      action: "historical", actionLabel: "Resolver histórico de " + previous.ano_letivo,
+    };
+    if (previous && originIsLastYear && previous.situacao_resultado === "homologado") {
+      const finishedCycle = previous.resultado_oficial?.toLowerCase() === "concluido";
+      return {
+        title: finishedCycle ? "Ciclo de " + previous.ano_letivo + " concluído"
+          : "Resultado de " + previous.ano_letivo + " homologado",
+        description: finishedCycle
+          ? "O ciclo foi concluído. Consulte a documentação final, sem criar uma matrícula de progressão."
+          : "O resultado oficial já existe. Verifique a elegibilidade e a situação de pagamento antes de efetivar a matrícula de " + ano.ano + ".",
+        action: finishedCycle ? "profile" : ano.ativo ? "reenrollment" : "profile",
+        actionLabel: finishedCycle ? "Consultar histórico" : ano.ativo ? "Continuar matrícula de " + ano.ano : "Consultar histórico",
+      };
+    }
     return {
       title: "Sem matrícula em " + ano.label,
       description: previous
