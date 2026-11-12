@@ -92,3 +92,27 @@ jobs:
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/staff_permissions_fixture.sql
       - name: Test each authorized role, ratification audit and cross-tenant denial
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/staff_permissions_regression.sql
+
+  primary-secondary-bridge:
+    name: Balcão 6th to 7th class — synthetic PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: balcao_transition_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d balcao_transition_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/balcao_transition_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load the actual audited 6th-primary to 7th-secondary writer upgrade
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/primary_secondary_bridge_fixture.sql
+      - name: Verify reservation, completion, no skipped classes and tenant isolation
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/primary_secondary_bridge_regression.sql
