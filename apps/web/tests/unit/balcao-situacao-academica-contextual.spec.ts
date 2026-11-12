@@ -96,7 +96,7 @@ test("historic year correction reuses existing audited note modal, not the trans
   const balc = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
   const route = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/balcao/situacao-academica/route.ts"), "utf8");
   assert.match(ui, /onHistoricalGrade\(historicalTarget\)/);
-  assert.match(ui, /Abrir pauta de \{previous\.ano_letivo\}/);
+  assert.match(ui, /Lançar notas de \{previous\.ano_letivo\}/);
   assert.match(ui, /<BalcaoHistoricalAcademicRecovery/);
   assert.doesNotMatch(ui, /DossierHistoricoTransitadoSection/);
   assert.match(balc, /historicalMatriculaId: row\.matricula_id/);
@@ -120,7 +120,7 @@ test("historical grade edit uses one selected student, a real source enrollment 
   const grid = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/turmas/[id]/pauta-grid/route.ts"), "utf8");
   const history = readFileSync(resolve(process.cwd(), "src/components/aluno/DossierHistoricoTransitadoSection.tsx"), "utf8");
   assert.match(modal, /historical_matricula_id: historicalMatriculaId/);
-  assert.match(modal, /historical_motivo: motivoHistorico/);
+  assert.match(modal, /historical_motivo: historicPautaReason/);
   assert.match(writer, /lancar_nota_historica_individual/);
   assert.match(writer, /\.eq\('escola_id', escolaId\)/);
   assert.match(writer, /\.eq\('aluno_id', body\.notas\[0\]\.aluno_id\)/);
@@ -282,7 +282,7 @@ test("Bernarndo 2026 happy path opens the verified 2025 pauta in one click, reta
   const modal = readFileSync(resolve(process.cwd(), "src/components/secretaria/EnrollmentPostActionModal.tsx"), "utf8");
   assert.match(ui, /case "historical":\s*[\s\S]*?if \(historicalTarget\) onHistoricalGrade\(historicalTarget\);\s*else openHistoricalReview\(\);/);
   assert.doesNotMatch(ui, /historicalTarget\.matricula_id === current\?\.matricula_id/);
-  assert.match(ui, /\? "Abrir pauta de " \+ historicalTarget\.ano_letivo/);
+  assert.match(ui, /\? "Lançar notas de " \+ historicalTarget\.ano_letivo/);
   assert.match(ui, /previousYearReady && situation\.action !== "historical"/,
     "the primary CTA must not be duplicated for this case");
   assert.match(ui, /Validar resultado de \{historicalReviewTarget\.ano_letivo\}/);
@@ -310,7 +310,7 @@ test("concise school workflows use specific buttons, not generic compliance inst
   const situation = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
   const recovery = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoHistoricalAcademicRecovery.tsx"), "utf8");
   const modal = readFileSync(resolve(process.cwd(), "src/components/secretaria/EnrollmentPostActionModal.tsx"), "utf8");
-  assert.match(situation, /Abrir pauta de/);
+  assert.match(situation, /Lançar notas de/);
   assert.match(situation, /Validar resultado de/);
   assert.match(situation, /Disciplinas pendentes/);
   assert.doesNotMatch(situation, /Disciplinas sinalizadas pelo RAA/);
@@ -319,4 +319,23 @@ test("concise school workflows use specific buttons, not generic compliance inst
   assert.match(recovery, /Concluir histórico/);
   assert.doesNotMatch(recovery, /A decisão não implica aprovação automática nem reabertura do ano/);
   assert.match(modal, /Guardar nota de 2025/);
+});
+
+test("physical pauta source selector changes only the selected prior-year class and opens its grade editor", () => {
+  const ui = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  const picker = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoPautaSourceClassPicker.tsx"), "utf8");
+  const route = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/balcao/pauta-turma-origem/route.ts"), "utf8");
+  const modal = readFileSync(resolve(process.cwd(), "src/components/secretaria/EnrollmentPostActionModal.tsx"), "utf8");
+  const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271112030000_balcao_pauta_corrigir_turma_origem.sql"), "utf8");
+  assert.match(ui, /BalcaoPautaSourceClassPicker/);
+  assert.match(ui, /onHistoricalGrade\(\{ \.\.\.historicalTarget, turma_id: turmaId \}\)/);
+  assert.match(picker, /Corrigir turma da pauta/);
+  assert.match(picker, /Guardar e abrir pauta/);
+  assert.match(route, /\.eq\("escola_id", escolaId\)\.eq\("aluno_id", alunoId\)\.eq\("id", matriculaId\)/);
+  assert.match(route, /balcao_corrigir_turma_origem_pauta/);
+  assert.match(modal, /historicPautaReason = "Transcrição de nota conforme pauta física escolar"/);
+  assert.doesNotMatch(modal, /setMotivoHistorico|motivoHistorico\.trim\(\)/);
+  assert.match(migration, /BALCAO_PAUTA_TURMA_ORIGEM_CORRIGIDA/);
+  assert.match(migration, /REVOKE ALL ON TABLE public\.balcao_pauta_turma_correction_nonce/);
+  assert.match(migration, /public\.current_tenant_escola_id\(\)/);
 });
