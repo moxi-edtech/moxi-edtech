@@ -2734,7 +2734,7 @@ export default function BalcaoAtendimento({
     itensPagamento: itensRematricula,
   });
   const situacaoAcademica = useBalcaoSituacaoAcademica(
-    dossier.aluno?.id ?? null, effectiveAcademicYearId, view === "reenrollment",
+    escolaId, dossier.aluno?.id ?? null, effectiveAcademicYearId, view === "reenrollment",
   );
   const audit = useAuditTrail();
 
