@@ -29,6 +29,7 @@ const historicBridge = "20271109010000_raa_historico_documental_ratificado.sql";
 const historicStaffAccess = "20271112010000_balcao_historic_full_staff_permissions.sql";
 const primarySecondaryBridge = "20271112020000_balcao_primary_secondary_6_to_7.sql";
 const physicalPautaSource = "20271112030000_balcao_pauta_corrigir_turma_origem.sql";
+const individualJourney = "20271112050000_balcao_percurso_academico.sql";
 for (const migration of migrations.filter((file) => file > finalName)) {
   const source = readFileSync(join(dir, migration), "utf8");
   if (migration === historicBridge) {
@@ -136,6 +137,30 @@ for (const migration of migrations.filter((file) => file > finalName)) {
     assert.ok(regression.includes("other-school operator") &&
       regression.includes("before/after automatic audit missing"),
       "A source-class correction requires an authenticated PG negative test");
+    continue;
+  }
+  // Explicitly reviewed individual recovery protocol. It preserves the
+  // lifecycle projection and cannot introduce financial/table/policy changes.
+  if (migration === individualJourney) {
+    for (const token of [
+      "public.balcao_concluir_ano_percurso", "public.balcao_pauta_completa",
+      "public.balcao_origem_percurso_elegivel", "public.current_tenant_escola_id()",
+      "ACADEMIC_GRADES_INCOMPLETE", "ACADEMIC_DOCUMENT_GRADES_PRESENT",
+      "ACADEMIC_PREVIOUS_YEAR_PENDING", "ACADEMIC_PREVIOUS_DEBT_PENDING",
+      "ACADEMIC_PATH_MISMATCH", "ACADEMIC_DESTINATION_CONFLICT",
+      "BALCAO_ANO_PERCURSO_CONCLUIDO", "'ratificacao',true",
+      "sl.historico_ano_id=h.id", "nt.matricula_id=p_matricula",
+      "REVOKE ALL ON FUNCTION public.balcao_concluir_ano_percurso",
+    ]) assert.ok(source.includes(token), "Individual journey missing reviewed guard: " + token);
+    assert.doesNotMatch(source, /(?:CREATE|ALTER|DROP)\s+(?:TABLE|VIEW|POLICY)\b/i,
+      "Individual journey must reuse tables, policies and lifecycle projections");
+    assert.doesNotMatch(source, /(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+public\.(?:mensalidades|pagamentos|financeiro_\w+)\b/i,
+      "Individual academic closure must not settle or invent financial entries");
+    const regression = readFileSync(join(root,"supabase/ops/tests/raa_historico/percurso_regression.sql"),"utf8");
+    for (const evidence of ["crossed tenant", "partial year closed", "unpaid previous year ignored", "partial result escaped rollback", "changed another pupil", "grades leaked to a classmate", "direct generic RPC bypassed full transcription"])
+      assert.ok(regression.includes(evidence), "Individual recovery needs disposable PG evidence: " + evidence);
+    assert.ok(readFileSync(join(root,".github/workflows/raa-historico-documental.yml"),"utf8")
+      .includes("percurso_regression.sql"), "Individual recovery requires an actual PostgreSQL CI job");
     continue;
   }
   assert.ok(!protectedWriters.test(source),
