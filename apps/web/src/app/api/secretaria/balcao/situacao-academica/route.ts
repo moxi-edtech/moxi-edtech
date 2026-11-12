@@ -93,14 +93,26 @@ export async function GET(req: NextRequest) {
     if (activeYearResult.error) throw activeYearResult.error;
     const activeYears = activeYearResult.data ?? [];
     const activeYear = activeYears.length === 1 ? Number(activeYears[0]?.ano) : null;
-    const editableHistoricalMatriculaId = canWritePending && activeYear !== null
-      ? ([current, previous].find((row: any) =>
+    const historicalCandidate = canWritePending && activeYear !== null
+      ? [current, previous].find((row: any) =>
           row && Number(row.ano_letivo) === activeYear - 1 &&
           row.status_persistido === "pendente" &&
           row.situacao_resultado === "sem_resultado_oficial" &&
           row.turma_id && row.ano_letivo_id
-        )?.matricula_id ?? null)
+        ) ?? null
       : null;
+    // The existing writer only accepts the two official quantitative scales.
+    // Never offer a numerical grade for a qualitative preschool class.
+    const historicalRegime = historicalCandidate
+      ? await db.rpc("resolve_regime_academico", {
+          p_turma_id: historicalCandidate.turma_id,
+        })
+      : null;
+    if (historicalRegime?.error) throw historicalRegime.error;
+    const historicalGradeScale = String(historicalRegime?.data?.escala ?? "");
+    const editableHistoricalMatriculaId =
+      ["quantitativa_primario", "quantitativa_secundario"].includes(historicalGradeScale)
+        ? historicalCandidate?.matricula_id ?? null : null;
 
     // Acesso de consulta não equivale a permissão de lançamento.
     // A API de notas continua a validar calendário, turma, regime e RLS.
@@ -116,6 +128,7 @@ export async function GET(req: NextRequest) {
         ativo: ano.ativo === true, arquivado_com_pendencias: ano.arquivado_com_pendencias === true },
       current, previous, can_write_current_grades: canWriteCurrentGrades,
       editable_historical_matricula_id: editableHistoricalMatriculaId,
+      historical_evaluation_scale: historicalCandidate ? historicalGradeScale : null,
     });
   } catch (cause) {
     if (cause instanceof AcademicYearContextError) {
