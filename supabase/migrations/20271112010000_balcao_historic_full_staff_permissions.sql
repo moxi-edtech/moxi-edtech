@@ -551,6 +551,25 @@ BEGIN
       OR v_matricula.session_id IS NULL THEN
     RAISE EXCEPTION 'ACADEMIC_SOURCE_REQUIRED: origem, turma e ano letivo são obrigatórios' USING ERRCODE='23514';
   END IF;
+  -- Enforce the same end-of-cycle rule for direct authenticated RPC calls.
+  -- A promotion (aprovado/transitou) is not completion of an academic cycle.
+  IF v_resultado = 'concluido' THEN
+    DECLARE
+      v_regime jsonb := public.resolve_regime_academico(v_matricula.turma_id);
+      v_final boolean;
+    BEGIN
+      v_final := CASE
+        WHEN lower(coalesce(v_regime->>'nivel_ensino','')) = 'eja'
+          THEN (v_regime->>'modulo_numero' = '3' OR v_regime->>'ano_numero' = '2')
+        ELSE v_regime->>'classe_num' IN ('6','9','12')
+      END;
+      IF v_final IS NOT TRUE THEN
+        RAISE EXCEPTION 'ACADEMIC_CYCLE_NOT_FINAL: esta classe não conclui um ciclo de ensino'
+          USING ERRCODE='23514';
+      END IF;
+    END;
+  END IF;
+
   v_ano_destino := v_matricula.ano_letivo+1;
   v_motivo := coalesce(nullif(btrim(p_motivo),''),
     CASE WHEN v_fonte='raa' THEN 'Progressão académica confirmada pela decisão oficial do RAA' END);
