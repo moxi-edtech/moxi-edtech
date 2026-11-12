@@ -183,12 +183,13 @@ export function EnrollmentPostActionModal({
   }, [action, alunoId, academicYearId, open, turmaId, turmaDisciplinaId, initialTrimestre, periodRetry, historicalMatriculaId]);
 
   useEffect(() => {
-    if (!open || action !== "notas" || !turmaId) return;
+    if (!open || action !== "notas" || !turmaId || !academicYearId) return;
     let active = true;
     setDisciplinas([]);
     setDisciplinaId("");
     setTurmaDisciplinaId("");
-    fetch(`/api/secretaria/turmas/${encodeURIComponent(turmaId)}/disciplinas`, { cache: "no-store" })
+    const disciplineScope = new URLSearchParams({ aluno_id: alunoId, ano_letivo_id: academicYearId });
+    fetch(`/api/secretaria/turmas/${encodeURIComponent(turmaId)}/disciplinas?${disciplineScope}`, { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Não foi possível consultar as disciplinas desta turma.");
         return response.json();
@@ -207,7 +208,7 @@ export function EnrollmentPostActionModal({
       })
       .catch(() => { if (active) setDisciplinas([]); });
     return () => { active = false; };
-  }, [open, action, turmaId, alunoId, initialDisciplinaId]);
+  }, [open, action, turmaId, alunoId, academicYearId, initialDisciplinaId]);
 
   useEffect(() => {
     let active = true;
