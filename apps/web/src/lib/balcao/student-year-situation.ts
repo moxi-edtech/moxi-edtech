@@ -21,6 +21,7 @@ export type SituacaoBalcaoPayload = {
   previous: SituacaoBalcaoRow | null;
   can_write_current_grades: boolean;
   editable_historical_matricula_id: string | null;
+  historical_evaluation_scale: string | null;
 };
 export type ContextualAction = "enrollment" | "grade" | "historical" | "reenrollment" | "profile" | null;
 
