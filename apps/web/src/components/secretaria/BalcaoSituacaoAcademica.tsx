@@ -6,6 +6,7 @@ import type { BalcaoActionId } from "@/lib/balcao/action-registry";
 import { BalcaoHistoricalAcademicRecovery } from "@/components/secretaria/BalcaoHistoricalAcademicRecovery";
 import { BalcaoPautaGrid } from "@/components/secretaria/BalcaoPautaGrid";
 import { BalcaoPautaSourceClassPicker } from "@/components/secretaria/BalcaoPautaSourceClassPicker";
+import { BalcaoEnrollmentCorrection } from "@/components/secretaria/BalcaoEnrollmentCorrection";
 import {
   hasHistoricalPending, resolveStudentYearSituation,
   type SituacaoBalcaoPayload, type SituacaoBalcaoRow,
@@ -237,6 +238,21 @@ export function BalcaoSituacaoAcademica({
               </button>
             )}
           </div>
+          {snapshot.can_rectify_class && current?.matricula_id && current.turma_id &&
+            current.ano_letivo_id && (
+            <fieldset disabled={pautaBusy} aria-label="Corrigir classe da matrícula">
+              <BalcaoEnrollmentCorrection
+                key={[snapshot.aluno_id, current.matricula_id, current.turma_id].join(":")}
+                matriculaId={current.matricula_id}
+                alunoId={snapshot.aluno_id}
+                turmaId={current.turma_id}
+                anoLetivoId={current.ano_letivo_id}
+                onSaved={async () => {
+                  await Promise.allSettled([refresh(), onAcademicUpdated?.()]);
+                }}
+              />
+            </fieldset>
+          )}
           {previousPending && historicalTarget && previous &&
             snapshot.historical_evaluation_scale?.startsWith("quantitativa") && (
             <fieldset disabled={pautaBusy} aria-label="Corrigir turma da pauta">
