@@ -74,14 +74,14 @@ test("destination activation keeps previously locked origin unchanged", () => {
   assert.match(finalizacao, /'REMATRICULA_ACADEMIC_BLOCKED'/);
 });
 
-test("physical-pauta grade entry is the primary action before the first historical mark", () => {
+test("physical pauta is inline while the historical result review remains reachable", () => {
   const situation = read("../../src/components/secretaria/BalcaoSituacaoAcademica.tsx");
   const modal = read("../../src/components/secretaria/EnrollmentPostActionModal.tsx");
   assert.match(route, /gradeSourceEligible \? "notas"/);
   assert.match(route, /const numericPauta = \["quantitativa_primario", "quantitativa_secundario"\]/);
   assert.doesNotMatch(route, /gradeSourceEligible && \(temNotasLancadas \|\| !documentaryEligible\)/);
   assert.match(situation, /Lançar notas de /);
-  assert.match(situation, /historicalReviewTarget && !historicalTarget/);
+  assert.match(situation, /historicalReviewTarget && \(inlineTarget \|\| \(!historicalTarget/);
   assert.match(modal, /historical_motivo: historicPautaReason/);
   assert.doesNotMatch(modal, /setMotivoHistorico/);
   assert.doesNotMatch(modal, /O lançamento fica registado com o utilizador/);

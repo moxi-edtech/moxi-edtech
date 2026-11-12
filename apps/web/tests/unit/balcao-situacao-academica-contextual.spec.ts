@@ -328,7 +328,8 @@ test("physical pauta source selector changes only the selected prior-year class 
   const modal = readFileSync(resolve(process.cwd(), "src/components/secretaria/EnrollmentPostActionModal.tsx"), "utf8");
   const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271112030000_balcao_pauta_corrigir_turma_origem.sql"), "utf8");
   assert.match(ui, /BalcaoPautaSourceClassPicker/);
-  assert.match(ui, /onHistoricalGrade\(\{ \.\.\.historicalTarget, turma_id: turmaId \}\)/);
+  assert.match(ui, /<BalcaoPautaGrid/);
+  assert.match(ui, /inlineTarget\.turma_id/);
   assert.match(picker, /Corrigir turma da pauta/);
   assert.match(picker, /Guardar e abrir pauta/);
   assert.match(route, /\.eq\("escola_id", escolaId\)\.eq\("aluno_id", alunoId\)\.eq\("id", matriculaId\)/);

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, ArrowRight, BookOpen, CheckCircle2, RefreshCw } from "lucide-react";
 import type { BalcaoActionId } from "@/lib/balcao/action-registry";
 import { BalcaoHistoricalAcademicRecovery } from "@/components/secretaria/BalcaoHistoricalAcademicRecovery";
+import { BalcaoPautaGrid } from "@/components/secretaria/BalcaoPautaGrid";
 import { BalcaoPautaSourceClassPicker } from "@/components/secretaria/BalcaoPautaSourceClassPicker";
 import {
   hasHistoricalPending, resolveStudentYearSituation,
@@ -86,7 +87,7 @@ export function BalcaoSituacaoAcademica({
   const current = snapshot?.current ?? null;
   const previous = snapshot?.previous ?? null;
   const previousPending = snapshot ? hasHistoricalPending(snapshot) : false;
-  // The existing notes modal is the only editor. The server scopes the allowed
+  // The server scopes the allowed
   // previous-year matricula to the authenticated academic role; the RPC
   // independently checks this again before any historical write.
   const historicalTarget = [current, previous].find((row) =>
@@ -96,6 +97,8 @@ export function BalcaoSituacaoAcademica({
   const historicalReviewTarget = previousPending && previous?.matricula_id ? previous
     : current && ["regularizacao_historica", "ano_encerrado"].includes(current.situacao_contextual) &&
       current.situacao_resultado !== "homologado" ? current : null;
+  const [pautaBusy, setPautaBusy] = useState(false);
+  const pautaRef = useRef<HTMLDivElement>(null);
   const [reviewOpenFor, setReviewOpenFor] = useState<string | null>(null);
   const reviewOpen = Boolean(historicalReviewTarget &&
     reviewOpenFor === historicalReviewTarget.matricula_id);
@@ -144,6 +147,8 @@ export function BalcaoSituacaoAcademica({
 
   const previousYearReady = Boolean(historicalTarget && previousPending && previous &&
     historicalTarget.matricula_id === previous.matricula_id);
+  const gradeCandidate = historicalTarget ?? (snapshot?.can_write_current_grades ? current : null);
+  const inlineTarget = gradeCandidate?.turma_id && gradeCandidate.ano_letivo_id ? gradeCandidate : null;
   const historicalIsQualitative = snapshot?.historical_evaluation_scale === "qualitativa";
   const mainLabel = situation?.action === "historical" && historicalTarget
     ? "Lançar notas de " + historicalTarget.ano_letivo
@@ -170,7 +175,7 @@ export function BalcaoSituacaoAcademica({
             {loading ? "A consultar vínculo escolar…" : error ? "Situação indisponível" : situation?.title ?? "A verificar situação"}
           </h3>
         </div>
-        <button type="button" onClick={() => void refresh()} disabled={loading}
+        <button type="button" onClick={() => void refresh()} disabled={loading || pautaBusy}
           aria-label="Atualizar situação académica"
           className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted disabled:opacity-60">
           <RefreshCw className={"h-4 w-4 " + (loading ? "animate-spin" : "")} aria-hidden="true" />
@@ -197,17 +202,18 @@ export function BalcaoSituacaoAcademica({
             ) : null}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {previousYearReady && situation.action !== "historical" && !canContinueEnrollment && historicalTarget && previous && (
+            {!inlineTarget && previousYearReady && situation.action !== "historical" && !canContinueEnrollment && historicalTarget && previous && (
               <button type="button" onClick={() => onHistoricalGrade(historicalTarget)}
-                disabled={loading}
+                disabled={loading || pautaBusy}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-60">
                 <BookOpen className="h-4 w-4" aria-hidden="true" />
                 Lançar notas de {previous.ano_letivo}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
-            {situation.action && mainLabel && mainActionIsAvailable && (
-              <button type="button" onClick={runAction} disabled={loading}
-                className={previousYearReady && situation.action !== "historical"
+            {situation.action && mainLabel && mainActionIsAvailable &&
+              !(inlineTarget && ["historical", "grade"].includes(situation.action)) && (
+              <button type="button" onClick={runAction} disabled={loading || pautaBusy}
+                className={!inlineTarget && previousYearReady && situation.action !== "historical"
                   ? "inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60"
                   : "inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-60"}>
                 {(situation.action === "grade" || situation.action === "historical") &&
@@ -215,8 +221,8 @@ export function BalcaoSituacaoAcademica({
                 {mainLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
-            {historicalReviewTarget && !historicalTarget && situation.action !== "historical" && (
-              <button type="button" onClick={openHistoricalReview} disabled={loading}
+            {historicalReviewTarget && (inlineTarget || (!historicalTarget && situation.action !== "historical")) && (
+              <button type="button" onClick={openHistoricalReview} disabled={loading || pautaBusy}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60">
                 {historicalIsQualitative
                   ? "Validar avaliação qualitativa de " + historicalReviewTarget.ano_letivo
@@ -233,18 +239,20 @@ export function BalcaoSituacaoAcademica({
           </div>
           {previousPending && historicalTarget && previous &&
             snapshot.historical_evaluation_scale?.startsWith("quantitativa") && (
+            <fieldset disabled={pautaBusy} aria-label="Corrigir turma da pauta">
             <BalcaoPautaSourceClassPicker
               key={historicalTarget.matricula_id}
               matriculaId={historicalTarget.matricula_id}
               alunoId={snapshot.aluno_id}
-              onSaved={async (turmaId) => {
+              onSaved={async () => {
                 await Promise.allSettled([refresh(), onAcademicUpdated?.()]);
-                onHistoricalGrade({ ...historicalTarget, turma_id: turmaId });
+                // The refreshed source remounts the inline pauta for the corrected turma.
               }}
             />
+            </fieldset>
           )}
           {reviewOpen && historicalReviewTarget && (
-            <div id="balcao-historico-contextual" className="mt-4 border-t border-border pt-4">
+            <fieldset disabled={pautaBusy} id="balcao-historico-contextual" className="mt-4 border-t border-border pt-4">
               <BalcaoHistoricalAcademicRecovery
                 key={historicalReviewTarget.matricula_id}
                 matriculaId={historicalReviewTarget.matricula_id}
@@ -252,12 +260,28 @@ export function BalcaoSituacaoAcademica({
                 disciplinasPendentes={confirmedPendingRow?.matricula_id === historicalReviewTarget.matricula_id
                   ? visiblePending.map((item) => item.id) : []}
                 onRecheck={async () => { await refresh(); await onAcademicUpdated?.(); }}
-                onLancarNotaHistorica={(disciplinaId) =>
-                  onHistoricalGrade(historicalReviewTarget, disciplinaId)}
+                onLancarNotaHistorica={(disciplinaId) => {
+                  if (inlineTarget?.matricula_id === historicalReviewTarget.matricula_id) {
+                    pautaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    pautaRef.current?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus({ preventScroll: true });
+                  } else onHistoricalGrade(historicalReviewTarget, disciplinaId);
+                }}
               />
-            </div>
+            </fieldset>
           )}
-          {visiblePending.length > 0 && confirmedPendingRow && (
+          {inlineTarget?.turma_id && inlineTarget.ano_letivo_id && (
+            <div ref={pautaRef}><BalcaoPautaGrid
+              key={[inlineTarget.escola_id, inlineTarget.aluno_id, inlineTarget.matricula_id,
+                inlineTarget.turma_id, inlineTarget.ano_letivo_id].join(":")}
+              escolaId={inlineTarget.escola_id} alunoId={inlineTarget.aluno_id}
+              matriculaId={inlineTarget.matricula_id} turmaId={inlineTarget.turma_id}
+              anoLetivoId={inlineTarget.ano_letivo_id} ano={inlineTarget.ano_letivo}
+              historical={inlineTarget.matricula_id === historicalTarget?.matricula_id}
+              onDirtyChange={setPautaBusy}
+              onSaved={async () => { await onAcademicUpdated?.(); await refresh(); }}
+            /></div>
+          )}
+          {!inlineTarget && visiblePending.length > 0 && confirmedPendingRow && (
             <div className="mt-4 rounded-xl border border-border p-3">
               <p className="text-xs font-semibold text-foreground">
                 Disciplinas pendentes · {confirmedPendingRow.ano_letivo} ({visiblePending.length})
@@ -271,19 +295,19 @@ export function BalcaoSituacaoAcademica({
                     <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2">
                       <span className="min-w-0 text-sm font-medium text-foreground">{item.nome}</span>
                       {canWriteHistorical && historicalTarget ? (
-                        <button type="button" disabled={loading}
+                        <button type="button" disabled={loading || pautaBusy}
                           onClick={() => onHistoricalGrade(historicalTarget, item.id)}
                           className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60">
                           Lançar nota
                         </button>
                       ) : canWriteCurrent && current ? (
-                        <button type="button" disabled={loading}
+                        <button type="button" disabled={loading || pautaBusy}
                           onClick={() => onCurrentGrade(current, item.id)}
                           className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60">
                           Lançar nota
                         </button>
                       ) : historicalReviewTarget?.matricula_id === confirmedPendingRow.matricula_id ? (
-                        <button type="button" disabled={loading} onClick={openHistoricalReview}
+                        <button type="button" disabled={loading || pautaBusy} onClick={openHistoricalReview}
                           className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-60">
                           Rever
                         </button>
