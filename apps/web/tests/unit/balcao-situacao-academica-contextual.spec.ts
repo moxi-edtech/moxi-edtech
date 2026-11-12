@@ -148,3 +148,13 @@ test("qualitative source cannot open numeric historical grades and routes to act
   assert.match(ui, /onClick=\{openHistoricalReview\}/);
   assert.doesNotMatch(ui, /upsert_historico_transitado/);
 });
+
+test("previous-year documentary review remains mounted and reachable without a duplicate new panel", () => {
+  const workspace = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
+  const context = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  assert.match(workspace, /historicalRecovery && raaMatriculaId && \(/);
+  assert.match(workspace, /id="balcao-historical-recovery-existing"/);
+  assert.match(context, /getElementById\("balcao-historical-recovery-existing"\)/);
+  assert.doesNotMatch(workspace, /contextualHistoricalMatriculaId/);
+  assert.doesNotMatch(context, /<BalcaoHistoricalAcademicRecovery/);
+});
