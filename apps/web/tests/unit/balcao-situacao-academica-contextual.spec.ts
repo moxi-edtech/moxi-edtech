@@ -253,3 +253,16 @@ test("2026 continuation is one click only when backend says READY, not merely wh
   assert.match(workspace, /onContinueEnrollment=\{rematricula\.openModal\}/);
   assert.doesNotMatch(component, /onNavigate\?\.\("enrollment"\)/);
 });
+
+test("non-final 7th grade cannot be marked as end of cycle in documentary UI or its server POST", () => {
+  const recovery = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoHistoricalAcademicRecovery.tsx"), "utf8");
+  const server = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/route.ts"), "utf8");
+  assert.match(server, /function allowsCycleCompletion/);
+  assert.match(server, /\[6, 9, 12\]\.includes\(classe\)/);
+  assert.match(server, /if \(body\.resultado_confirmado === "concluido"\)/);
+  assert.match(server, /if \(!allowsCycleCompletion\(regime\)\)/);
+  assert.match(server, /ACADEMIC_CYCLE_NOT_FINAL/);
+  assert.match(server, /permite_conclusao_ciclo: allowsCycleCompletion\(sourceRegime\)/);
+  assert.match(recovery, /snapshot\.permite_conclusao_ciclo &&/);
+  assert.match(recovery, /<option value="concluido">/);
+});
