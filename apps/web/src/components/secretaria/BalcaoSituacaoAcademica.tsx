@@ -147,7 +147,7 @@ export function BalcaoSituacaoAcademica({
   const previousYearReady = Boolean(historicalTarget && previousPending && previous &&
     historicalTarget.matricula_id === previous.matricula_id);
   const mainLabel = situation?.action === "historical" && historicalTarget
-    ? "Abrir pauta de " + historicalTarget.ano_letivo
+    ? "Lançar notas de " + historicalTarget.ano_letivo
     : situation?.action === "historical" ? situation.actionLabel || "Ver regularização"
     : situation?.action === "grade" ? "Lançar notas de " + current?.ano_letivo
     : situation?.action === "reenrollment" && !current &&
@@ -208,7 +208,7 @@ export function BalcaoSituacaoAcademica({
                 disabled={loading}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 text-xs font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber/20 disabled:opacity-60">
                 <BookOpen className="h-4 w-4" aria-hidden="true" />
-                Abrir pauta de {previous.ano_letivo}<ArrowRight className="h-4 w-4" aria-hidden="true" />
+                Lançar notas de {previous.ano_letivo}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
             {situation.action && mainLabel && mainActionIsAvailable && (
@@ -221,7 +221,7 @@ export function BalcaoSituacaoAcademica({
                 {mainLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
-            {historicalReviewTarget && historicalTarget && (
+            {historicalReviewTarget && !historicalTarget && (
               <button type="button" onClick={openHistoricalReview} disabled={loading}
                 aria-label={"Validar resultado de " + historicalReviewTarget.ano_letivo}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
