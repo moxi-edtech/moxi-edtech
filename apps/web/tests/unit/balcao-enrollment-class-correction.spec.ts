@@ -42,7 +42,7 @@ test("authorizations match at RLS/RPC and Next.js layers for the supported staff
 });
 
 test("the same-year correction does not use the RAA progression filter", () => {
-  assert.match(api, /\/\* The options are scoped to the SAME student's enrollment/);
+  assert.match(api, /The options are scoped to the SAME student.s enrollment/);
   assert.match(api, /\.eq\("status_validacao","ativo"\)/);
   assert.match(api, /assertAcademicYearEntity/);
   assert.match(api, /ctx\.matricula\.session_id !== parsed\.data\.ano_letivo_id/);
