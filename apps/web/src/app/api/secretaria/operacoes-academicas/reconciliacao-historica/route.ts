@@ -59,6 +59,22 @@ const Params = z.object({
   pagina: z.coerce.number().int().min(1).max(10000).default(1),
 });
 
+/** A documentary "concluído" means end of an academic cycle, not passage
+ * from any ordinary class. Never infer this from an existing destination.
+ * Final formal classes: 6ª, 9ª, 12ª; EJA final module/year as resolved by RAA.
+ * Unknown regimes fail closed for cycle completion only.
+ */
+function allowsCycleCompletion(regime: any): boolean {
+  const classe = Number(regime?.classe_num);
+  if (Number.isInteger(classe) && classe >= 1 && classe <= 13) {
+    return [6, 9, 12].includes(classe);
+  }
+  if (String(regime?.nivel_ensino ?? "").toLowerCase() === "eja") {
+    return Number(regime?.modulo_numero) === 3 || Number(regime?.ano_numero) === 2;
+  }
+  return false;
+}
+
 function first<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
@@ -93,6 +109,10 @@ export async function GET(request: Request) {
         .eq("escola_id", escolaId).eq("id", parsedId.data).maybeSingle();
       if (originError) throw originError;
       if (!origin) return NextResponse.json({ ok: false, error: "Matrícula não encontrada nesta escola." }, { status: 404 });
+      const { data: sourceRegime, error: sourceRegimeError } = origin.turma_id
+        ? await supabase.rpc("resolve_regime_academico", { p_turma_id: origin.turma_id })
+        : { data: null, error: null };
+      if (sourceRegimeError) throw sourceRegimeError;
       const [{ data: academicYear, error: yearError },
         { data: currentYear, error: currentYearError },
         { data: cohorts, error: cohortError },
@@ -184,6 +204,7 @@ export async function GET(request: Request) {
         permite_escrita: permiteEscrita,
         // Visible guidance only; never infers a missing mark or academic approval.
         tem_notas_reais: temNotasLancadas,
+        permite_conclusao_ciclo: allowsCycleCompletion(sourceRegime),
         permite_notas_historicas: Boolean(permiteNotasHistoricas) && gradeSourceEligible,
         permite_pedir_intervencao: eligible && (state === "decisao" || state === "notas" ||
           state === "ratificacao" || state === "fecho"),
@@ -396,6 +417,17 @@ export async function POST(request: Request) {
         .eq("escola_id", escolaId).eq("id", body.matricula_id).maybeSingle();
       if (originError) throw originError;
       if (!origin) return NextResponse.json({ ok: false, error: "Matrícula de origem inexistente nesta escola." }, { status: 404 });
+      if (body.resultado_confirmado === "concluido") {
+        const { data: regime, error: regimeError } = origin.turma_id
+          ? await supabase.rpc("resolve_regime_academico", { p_turma_id: origin.turma_id })
+          : { data: null, error: null };
+        if (regimeError) throw regimeError;
+        if (!allowsCycleCompletion(regime)) {
+          return NextResponse.json({ ok: false, code: "ACADEMIC_CYCLE_NOT_FINAL",
+            error: "Esta classe não conclui um ciclo de ensino. Utilize o resultado documental efetivamente comprovado." },
+            { status: 409 });
+        }
+      }
       const { data: destination, error: destinationError } = await supabase.from("matriculas")
         .select("id,turma_id,origem_transicao_matricula_id,ano_letivo,ativo")
         .eq("escola_id", escolaId).eq("aluno_id", origin.aluno_id)
