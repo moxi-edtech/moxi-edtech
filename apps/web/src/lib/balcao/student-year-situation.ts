@@ -32,9 +32,9 @@ export function resolveStudentYearSituation(data: SituacaoBalcaoPayload): {
   if (!current) {
     const originIsLastYear = previous?.ano_letivo === ano.ano - 1;
     const originPending = originIsLastYear &&
-      ["regularizacao_historica", "ano_encerrado"].includes(previous.situacao_contextual) &&
-      previous.situacao_resultado !== "homologado";
-    if (originPending) return {
+      ["regularizacao_historica", "ano_encerrado"].includes(previous?.situacao_contextual ?? "") &&
+      previous?.situacao_resultado !== "homologado";
+    if (originPending && previous) return {
       title: "Histórico de " + previous.ano_letivo + " por regularizar",
       description: "Há uma matrícula anterior sem resultado homologado. Resolva a decisão escolar documentada antes de prosseguir com " + ano.ano + ".",
       action: "historical", actionLabel: "Resolver histórico de " + previous.ano_letivo,
