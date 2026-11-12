@@ -3130,7 +3130,10 @@ export default function BalcaoAtendimento({
             nome: rematricula.academic?.disciplina_names?.[id] ?? "",
             status: rematricula.academic?.disciplina_statuses?.[id] ?? null,
           }))}
-          onAcademicUpdated={async () => { await rematricula.refreshStatus(); }}
+          onAcademicUpdated={async () => {
+            rematricula.invalidateTurmas();
+            await rematricula.refreshStatus();
+          }}
           canContinueEnrollment={
             rematricula.cardState === "READY" &&
             rematricula.anoLetivo?.id === effectiveAcademicYearId &&
@@ -3324,6 +3327,7 @@ export default function BalcaoAtendimento({
             rematricula.closeModal();
             setItensRematricula([]);
             if (rematricula.result?.ok) {
+              void situacaoAcademica.refresh();
               // The canonical rematrícula writer has already committed. Signal
               // cross-panel invalidation immediately; no cached financial view
               // may be presented as current while the latest balance loads.
@@ -3407,6 +3411,7 @@ export default function BalcaoAtendimento({
           initialTrimestre={postAction?.initialTrimestre ?? null}
           initialDisciplinaId={postAction?.initialDisciplinaId ?? null}
           onAcademicSaved={() => {
+            rematricula.invalidateTurmas();
             if (postAction?.historicalMatriculaId) {
               window.dispatchEvent(new CustomEvent("klasse:historic-grade-saved", {
                 detail: { matriculaId: postAction.historicalMatriculaId },
