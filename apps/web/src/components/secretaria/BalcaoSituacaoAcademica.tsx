@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, ArrowRight, BookOpen, CheckCircle2, RefreshCw } from "lucide-react";
 import type { BalcaoActionId } from "@/lib/balcao/action-registry";
 import { BalcaoHistoricalAcademicRecovery } from "@/components/secretaria/BalcaoHistoricalAcademicRecovery";
+import { BalcaoPautaSourceClassPicker } from "@/components/secretaria/BalcaoPautaSourceClassPicker";
 import {
   hasHistoricalPending, resolveStudentYearSituation,
   type SituacaoBalcaoPayload, type SituacaoBalcaoRow,
@@ -246,6 +247,18 @@ export function BalcaoSituacaoAcademica({
               </button>
             )}
           </div>
+          {previousPending && historicalTarget && previous &&
+            snapshot.historical_evaluation_scale?.startsWith("quantitativa") && (
+            <BalcaoPautaSourceClassPicker
+              key={historicalTarget.matricula_id}
+              matriculaId={historicalTarget.matricula_id}
+              alunoId={snapshot.aluno_id}
+              onSaved={async (turmaId) => {
+                await Promise.allSettled([refresh(), onAcademicUpdated?.()]);
+                onHistoricalGrade({ ...historicalTarget, turma_id: turmaId });
+              }}
+            />
+          )}
           {reviewOpen && historicalReviewTarget && (
             <div id="balcao-historico-contextual" className="mt-4 border-t border-border pt-4">
               <BalcaoHistoricalAcademicRecovery
