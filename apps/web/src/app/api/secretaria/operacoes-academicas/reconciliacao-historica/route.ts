@@ -65,12 +65,13 @@ const Params = z.object({
  * Unknown regimes fail closed for cycle completion only.
  */
 function allowsCycleCompletion(regime: any): boolean {
+  // The EJA module/year model is not equivalent to ordinary class numbers.
+  if (String(regime?.nivel_ensino ?? "").toLowerCase() === "eja") {
+    return Number(regime?.modulo_numero) === 3 || Number(regime?.ano_numero) === 2;
+  }
   const classe = Number(regime?.classe_num);
   if (Number.isInteger(classe) && classe >= 1 && classe <= 13) {
     return [6, 9, 12].includes(classe);
-  }
-  if (String(regime?.nivel_ensino ?? "").toLowerCase() === "eja") {
-    return Number(regime?.modulo_numero) === 3 || Number(regime?.ano_numero) === 2;
   }
   return false;
 }
