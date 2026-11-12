@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { markOutboxEventFailed } from '@/lib/outbox'
-import { dispatchAlunoNotificacao } from '@/lib/notificacoes/dispatchAlunoNotificacao'
 import type { Database } from '~types/supabase'
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
@@ -168,36 +167,8 @@ export async function POST(req: Request) {
       { onConflict: 'escola_id,scope,key' }
     )
 
-    const numericNotas = body.notas.filter(
-      (nota): nota is { aluno_id: string; valor: number } => typeof nota.valor === 'number',
-    )
-    const alunoIds = numericNotas.map((n) => n.aluno_id)
-    if (alunoIds.length > 0) {
-      await dispatchAlunoNotificacao({
-        escolaId,
-        key: 'NOTA_LANCADA',
-        alunoIds,
-        params: { disciplinaNome, actionUrl: '/aluno' },
-        actorId: user.id,
-        actorRole: 'professor',
-        agrupamentoTTLHoras: 12,
-      })
-    }
-
-    const notaMaxima = Number((data as { nota_max?: number | string | null } | null)?.nota_max ?? 20)
-    const notaCorte = Number.isFinite(notaMaxima) && notaMaxima > 0 ? notaMaxima / 2 : 10
-    const abaixoMedia = numericNotas.filter((n) => n.valor < notaCorte)
-    if (abaixoMedia.length > 0) {
-      await dispatchAlunoNotificacao({
-        escolaId,
-        key: 'NOTA_BAIXA',
-        alunoIds: abaixoMedia.map((n) => n.aluno_id),
-        params: { disciplinaNome, actionUrl: '/aluno' },
-        actorId: user.id,
-        actorRole: 'professor',
-        agrupamentoTTLHoras: 24,
-      })
-    }
+    // Lançamentos parciais não disparam avisos aos alunos/encarregados.
+    // A publicação oficial possui um fluxo próprio, separado da gravação.
 
     return NextResponse.json(responsePayload);
   } catch (e) {
