@@ -117,3 +117,26 @@ jobs:
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/primary_secondary_bridge_fixture.sql
       - name: Verify reservation, completion, no skipped classes and tenant isolation
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/primary_secondary_bridge_regression.sql
+  physical-pauta-source:
+    name: Balcão physical pauta source — synthetic PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pauta_source_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d pauta_source_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/pauta_source_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the exact audited source-turma correction and physical pauta fixture
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/physical_pauta_source_fixture.sql
+      - name: Verify the secretary, unchanged grades, audit and cross-school denial
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/physical_pauta_source_regression.sql
