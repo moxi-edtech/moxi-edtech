@@ -1,0 +1,29 @@
+name: AGT Preflight Compatibility
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/agt-preflight-compatibility.yml'
+      - 'apps/web/src/lib/fiscal/agtCertificationPlan.ts'
+      - 'apps/web/tests/unit/agt-certification-plan.spec.ts'
+      - 'docs/fiscal/reconciliation/AGT_PLAN_ONLY_20261012.md'
+jobs:
+  synthetic-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Synthetic P01-P17, P09 and series classification tests
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/agt-certification-plan.spec.ts
+      - name: TypeScript verification
+        run: pnpm -C apps/web typecheck
+      - name: Lint
+        working-directory: apps/web
+        run: pnpm exec eslint src/lib/fiscal/agtCertificationPlan.ts tests/unit/agt-certification-plan.spec.ts --max-warnings 10000
