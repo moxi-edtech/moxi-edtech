@@ -59,3 +59,17 @@ test("four authorized staff profiles can finish the same audited academic workfl
   assert.match(staffMigration, /eu\.user_id\s*=\s*v_actor/);
   assert.match(staffMigration, /MATRICULA_ORIGEM_RESULTADO_ACADEMICO_REGISTADO/);
 });
+
+test("all authorized staff can read one selected student's disciplines and pauta without class-management permission", () => {
+  const d = read("../../src/app/api/secretaria/turmas/[id]/disciplinas/route.ts");
+  const p = read("../../src/app/api/secretaria/turmas/[id]/pauta-grid/route.ts");
+  const modal = read("../../src/components/secretaria/EnrollmentPostActionModal.tsx");
+  assert.match(d, /authorizeBalcaoPendingAcademicWrite/);
+  assert.match(d, /\.eq\('escola_id', escolaId\)\.eq\('aluno_id', alunoId\)/);
+  assert.match(d, /\.eq\('turma_id', turmaId\)\.eq\('session_id', anoLetivoId\)/);
+  assert.match(p, /Boolean\(parsed\.data\.alunoId && parsed\.data\.anoLetivoId\)/);
+  assert.match(p, /!authz\.allowed && !canPreviewPending/);
+  assert.match(p, /\.eq\('aluno_id', parsed\.data\.alunoId\)/);
+  assert.match(modal, /new URLSearchParams\(\{ aluno_id: alunoId, ano_letivo_id: academicYearId \}\)/);
+  assert.match(modal, /Tentar novamente/);
+});
