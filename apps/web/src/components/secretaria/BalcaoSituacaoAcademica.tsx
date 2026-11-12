@@ -64,7 +64,7 @@ export function useBalcaoSituacaoAcademica(
 
 export function BalcaoSituacaoAcademica({
   snapshot, loading, error, refresh, onNavigate, onCurrentGrade, onHistoricalGrade, hasFinancialPending,
-  pendingSourceMatriculaId, pendingDisciplines, onAcademicUpdated,
+  pendingSourceMatriculaId, pendingDisciplines, onAcademicUpdated, onContinueEnrollment, canContinueEnrollment,
 }: {
   snapshot: SituacaoBalcaoPayload | null;
   loading: boolean;
@@ -77,6 +77,9 @@ export function BalcaoSituacaoAcademica({
   pendingSourceMatriculaId?: string | null;
   pendingDisciplines?: Array<{ id: string; nome: string; status: string | null }>;
   onAcademicUpdated?: () => Promise<unknown>;
+  onContinueEnrollment?: () => void;
+  /** From the server's verified rematrícula status (READY), not from grades or payment assumptions. */
+  canContinueEnrollment?: boolean;
 }) {
   const situation = snapshot ? resolveStudentYearSituation(snapshot) : null;
   const current = snapshot?.current ?? null;
@@ -119,6 +122,13 @@ export function BalcaoSituacaoAcademica({
           openHistoricalReview();
           break;
         }
+        if (!current && previous?.situacao_resultado === "homologado" &&
+            snapshot.ano.ativo && canContinueEnrollment && onContinueEnrollment) {
+          // The server explicitly authorized progression. Reuse the current wizard,
+          // not a new enrollment or a second unverified payment.
+          onContinueEnrollment();
+          break;
+        }
         const target = document.querySelector<HTMLElement>('[data-balcao-action="reenrollment"]');
         if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
         else onNavigate?.("profile"); // Never create a new enrollment in place of a real previous record.
@@ -137,8 +147,13 @@ export function BalcaoSituacaoAcademica({
   const mainLabel = situation?.action === "historical" && historicalTarget &&
     historicalTarget.matricula_id === current?.matricula_id
     ? "Lançar notas de " + current?.ano_letivo
-    : situation?.action === "historical" ? "Ver regularização"
+    : situation?.action === "historical" ? situation.actionLabel || "Ver regularização"
     : situation?.action === "grade" ? "Lançar notas de " + current?.ano_letivo
+    : situation?.action === "reenrollment" && !current &&
+      previous?.situacao_resultado === "homologado"
+      ? canContinueEnrollment && onContinueEnrollment
+        ? "Continuar matrícula de " + snapshot?.ano.ano
+        : "Ver condições para matrícula de " + snapshot?.ano.ano
     : situation?.actionLabel;
   const historicalIsQualitative = snapshot?.historical_evaluation_scale === "qualitativa";
   const mainActionIsAvailable = situation?.action === "grade" ||
@@ -203,7 +218,8 @@ export function BalcaoSituacaoAcademica({
                 {mainLabel}<ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
-            {previousPending && previous && !previousYearReady && historicalReviewTarget && (
+            {previousPending && previous && !previousYearReady && historicalReviewTarget &&
+              situation.action !== "historical" && (
               <button type="button" onClick={openHistoricalReview} disabled={loading}
                 className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60">
                 {historicalIsQualitative
