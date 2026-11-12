@@ -8,6 +8,7 @@ on:
       - "supabase/migrations/20271109030000_balcao_notas_historicas_individuais.sql"
       - "supabase/migrations/20271112010000_balcao_historic_full_staff_permissions.sql"
       - "supabase/migrations/20271112020000_balcao_primary_secondary_6_to_7.sql"
+      - "supabase/migrations/20271112030000_balcao_pauta_corrigir_turma_origem.sql"
       - "supabase/ops/tests/balcao_exceptional/**"
       - "supabase/ops/tests/raa_historico/**"
       - "apps/web/src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/**"
