@@ -3097,7 +3097,6 @@ export default function BalcaoAtendimento({
       )}
       {view === "reenrollment" && dossier.aluno && (
         <BalcaoSituacaoAcademica
-          alunoId={dossier.aluno.id}
           snapshot={situacaoAcademica.data}
           loading={situacaoAcademica.loading}
           error={situacaoAcademica.error}
@@ -3120,7 +3119,6 @@ export default function BalcaoAtendimento({
               historicalMatriculaId: row.matricula_id,
               initialDisciplinaId: disciplinaId ?? null });
           }}
-          onAcademicUpdated={() => void rematricula.refreshStatus()}
           hasFinancialPending={hasOverdueDebt}
         />
       )}
