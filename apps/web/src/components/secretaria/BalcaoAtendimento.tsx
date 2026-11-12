@@ -3157,7 +3157,6 @@ export default function BalcaoAtendimento({
             >
               <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
                 {view === "all" ? <AlunoCard aluno={dossier.aluno} onTrocarAluno={handleTrocarAluno} /> : null}
-                {(view !== "reenrollment" || Boolean(dossier.aluno.matricula_id)) && (
                 <Catalogo
                   view={view === "all" ? "all" : view}
                   mensalidades={dossier.mensalidades}
@@ -3179,7 +3178,11 @@ export default function BalcaoAtendimento({
                   }
                   rematriculaState={
                     view === "reenrollment" || servicos.some(isServicoRematricula)
-                      ? !dossier.aluno.matricula_id ? "SOURCE_RECORD_REQUIRED" : rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
+                      ? dossier.aluno.matricula_id
+                        ? rematricula.cardState ?? (rematricula.apiError ? "ERROR" : "CHECKING")
+                        : view === "reenrollment"
+                          ? null // No prior enrollment is not an error in the selected year's real enrollment.
+                          : rematricula.cardState
                       : null
                   }
                   rematriculaPrice={rematricula.service?.valor_base ?? null}
@@ -3250,11 +3253,15 @@ export default function BalcaoAtendimento({
                     : rematricula.openReconciliationModal}
                   onCancelPendingPedido={rematricula.cancelPendingPedido}
                   onRefreshRematricula={rematricula.refreshStatus}
-                  onStartEnrollment={!dossier.aluno.matricula_id && onNavigateAction ? () => onNavigateAction("enrollment") : undefined}
+                  onStartEnrollment={onNavigateAction &&
+                    (view !== "reenrollment"
+                      ? !dossier.aluno.matricula_id
+                      : Boolean(situacaoAcademica.data && !situacaoAcademica.data.current &&
+                        !situacaoAcademica.data.previous))
+                    ? () => onNavigateAction("enrollment") : undefined}
                   onRematricula={rematricula.openModal}
                   onRegularize={() => setDebtModalOpen(true)}
                 />
-                )}
               </div>
             </div>
 
