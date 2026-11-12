@@ -249,6 +249,8 @@ jobs:
 
       - name: Web typecheck
         run: pnpm -C apps/web typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Canonical document emission client
         run: |
