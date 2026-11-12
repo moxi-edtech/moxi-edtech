@@ -30,14 +30,15 @@ test("selected destination survives status refresh, all wizard steps and payment
     return Response.json({ok:true,status:"READY",service:{id:"fee",nome:"Rematrícula",valor_base:1600},debt:{total:0,count:0},academic:{eligible:true},ano_letivo:{id:"target",ano:2026,label:"2026/2027"},destino_turma_id:destination});
   }) as typeof fetch;
   function Harness() {
-    const [items,setItems]=React.useState<any[]>([]); paymentItems=items;
-    hook=useRematriculaBalcao({escolaId:"school",alunoId:"pupil",matriculaId:"source",academicYearId:"target",itensPagamento:items});
-    budget=useRematriculaMensalidadesDestino({escolaId:"school",alunoId:"pupil",anoLetivoId:"target",turmaId:hook.selectedTurmaId,setSelectedItems:setItems});
-    if(!hook.anoLetivo || !hook.service)return null;
-    return React.createElement(RematriculaBalcaoModal,{...hook,open:hook.modalOpen,onClose:hook.closeModal,embedded:true,
-      alunoNome:"Aluno sintético",alunoProcesso:"1",turmaAtual:"3.ª classe",matriculaId:"source",anoLetivo:hook.anoLetivo,service:hook.service,onPostAction:()=>{},
-      itensPagamento:items,itensDisponiveis:[...budget.items,{id:"card",tipo:"servico",nome:"Cartão",preco:300}],
-      mensalidadesLoading:budget.loading,mensalidadesError:budget.error,onRetryMensalidades:budget.retry,
+    const [items,setItems]=React.useState<any[]>([]);
+    const state=useRematriculaBalcao({escolaId:"school",alunoId:"pupil",matriculaId:"source",academicYearId:"target",itensPagamento:items});
+    const quote=useRematriculaMensalidadesDestino({escolaId:"school",alunoId:"pupil",anoLetivoId:"target",turmaId:state.selectedTurmaId,setSelectedItems:setItems});
+    React.useEffect(() => { hook=state; budget=quote; paymentItems=items; });
+    if(!state.anoLetivo || !state.service)return null;
+    return React.createElement(RematriculaBalcaoModal,{...state,open:state.modalOpen,onClose:state.closeModal,embedded:true,
+      alunoNome:"Aluno sintético",alunoProcesso:"1",turmaAtual:"3.ª classe",matriculaId:"source",anoLetivo:state.anoLetivo,service:state.service,onPostAction:()=>{},
+      itensPagamento:items,itensDisponiveis:[...quote.items,{id:"card",tipo:"servico",nome:"Cartão",preco:300}],
+      mensalidadesLoading:quote.loading,mensalidadesError:quote.error,onRetryMensalidades:quote.retry,
       onAdicionarItem:(item:any)=>setItems(current=>current.some(x=>x.id===item.id&&x.tipo===item.tipo)?current:[...current,item]),
       onRemoverItem:(id:string,tipo:string)=>setItems(current=>current.filter(x=>x.id!==id||x.tipo!==tipo)),
     });
