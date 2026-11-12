@@ -3,7 +3,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
-import { authorizeBalcaoAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
+import { authorizeBalcaoAcademicWrite, authorizeBalcaoPendingAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
     const authz = await requireRoleInSchool({
       supabase: db, escolaId,
-      roles: ["secretaria", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"],
+      roles: ["secretaria", "admin_secretaria", "secretaria_financeiro", "admin_financeiro", "diretor", "admin", "admin_escola", "staff_admin"],
     });
     if (authz.error) return authz.error;
 
@@ -82,19 +82,18 @@ export async function GET(req: NextRequest) {
     // Só oferecer o modal de nota histórica quando a RPC existente o pode
     // aceitar: ano imediatamente anterior ao ativo, matrícula pendente e
     // papel académico exato. O writer verifica novamente todas as condições.
-    const [{ data: activeYears, error: activeYearsError }, { data: actorRole, error: actorRoleError }] =
+    const [activeYearResult, canWritePending, canWriteAcademic, canManageTurmas] =
       await Promise.all([
         db.from("anos_letivos").select("ano").eq("escola_id", escolaId)
           .eq("ativo", true).limit(2),
-        db.from("escola_users").select("papel").eq("escola_id", escolaId)
-          .eq("user_id", user.id).maybeSingle(),
+        authorizeBalcaoPendingAcademicWrite(db, escolaId, user.id),
+        authorizeBalcaoAcademicWrite(db, escolaId, user.id),
+        authorizeTurmasManage(db, escolaId, user.id),
       ]);
-    if (activeYearsError || actorRoleError) throw activeYearsError ?? actorRoleError;
-    const activeYear = activeYears?.length === 1 ? Number(activeYears[0]?.ano) : null;
-    const historicalWriterRole = [
-      "secretaria", "admin_secretaria", "diretor", "admin", "admin_escola", "staff_admin",
-    ].includes(String(actorRole?.papel ?? ""));
-    const editableHistoricalMatriculaId = historicalWriterRole && activeYear !== null
+    if (activeYearResult.error) throw activeYearResult.error;
+    const activeYears = activeYearResult.data ?? [];
+    const activeYear = activeYears.length === 1 ? Number(activeYears[0]?.ano) : null;
+    const editableHistoricalMatriculaId = canWritePending && activeYear !== null
       ? ([current, previous].find((row: any) =>
           row && Number(row.ano_letivo) === activeYear - 1 &&
           row.status_persistido === "pendente" &&
@@ -108,8 +107,7 @@ export async function GET(req: NextRequest) {
     const canWriteCurrentGrades = Boolean(
       ano.ativo === true && current?.situacao_contextual === "matriculado" &&
       current?.turma_id && current?.ano_letivo_id &&
-      await authorizeBalcaoAcademicWrite(db, escolaId, user.id) &&
-      (await authorizeTurmasManage(db, escolaId, user.id)).allowed
+(canWriteAcademic || canManageTurmas.allowed)
     );
 
     return json({
