@@ -438,7 +438,9 @@ export function EnrollmentPostActionModal({
               )}
             {periodClosed && (
               <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs text-foreground">
-                Período encerrado. O lançamento só será aceite se a direção tiver autorizado a reabertura.
+                {historicalMatriculaId
+                  ? "Período encerrado. A pauta histórica deste aluno pode ser corrigida com autorização e motivo auditável, sem reabrir o ano."
+                  : "Período encerrado. O lançamento normal exige reabertura autorizada pela direção."}
                 <button type="button" onClick={() => setPeriodRetry((value) => value + 1)}
                   disabled={periodLoading}
                   className="ml-2 inline-flex rounded-xl border border-border bg-card px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted">
