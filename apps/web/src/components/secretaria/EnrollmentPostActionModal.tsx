@@ -54,7 +54,10 @@ export function EnrollmentPostActionModal({
   const [periodError, setPeriodError] = useState<string | null>(null);
   const [periodReadOnly, setPeriodReadOnly] = useState(false);
   const [nota, setNota] = useState("");
-  const [motivoHistorico, setMotivoHistorico] = useState("");
+  // The school's physical pauta is the source. The database logs the
+  // authenticated operator, grade, enrollment, period and this operation.
+  // Do not make the secretary type a justification for each mark.
+  const historicPautaReason = "Transcrição de nota conforme pauta física escolar";
   const [gradeReceipt, setGradeReceipt] = useState<{ disciplina: string; trimestre: number; tipo: string; valor: number } | null>(null);
   const [tipoAvaliacao, setTipoAvaliacao] = useState<"MAC" | "NPP" | "NPT">("MAC");
   const [showPassword, setShowPassword] = useState(false);
@@ -77,7 +80,6 @@ export function EnrollmentPostActionModal({
     setPeriodError(null);
     setPeriodReadOnly(false);
     setNota("");
-    setMotivoHistorico("");
     setGradeReceipt(null);
     setTipoAvaliacao("MAC");
     setDisciplinaId("");
@@ -92,7 +94,6 @@ export function EnrollmentPostActionModal({
     // student's selected grade, discipline or reason.
     setPeriodo("");
     setNota("");
-    setMotivoHistorico("");
     setGradeReceipt(null);
     setDisciplinaId("");
     setTurmaDisciplinaId("");
@@ -265,10 +266,6 @@ export function EnrollmentPostActionModal({
       setResult({ error: "Selecione um trimestre válido para esta matrícula." });
       return;
     }
-    if (historicalMatriculaId && motivoHistorico.trim().length < 12) {
-      setResult({ error: "Indique o motivo da correção histórica (mínimo 12 caracteres)." });
-      return;
-    }
     const valor = Number(nota);
     if (!Number.isFinite(valor) || valor < 0 || valor > notaMaxima) {
       setResult({ error: "A nota deve estar dentro da escala da turma." });
@@ -290,7 +287,7 @@ export function EnrollmentPostActionModal({
           notas: [{ aluno_id: alunoId, valor }],
           ...(historicalMatriculaId ? {
             historical_matricula_id: historicalMatriculaId,
-            historical_motivo: motivoHistorico.trim(),
+            historical_motivo: historicPautaReason,
           } : {}),
         }),
       });
@@ -460,13 +457,9 @@ export function EnrollmentPostActionModal({
               </p>
             )}
             {historicalMatriculaId && !gradeReceipt && (
-              <label className="block space-y-1 text-xs font-semibold text-foreground">
-                Motivo do lançamento retroativo
-                <textarea rows={2} maxLength={500} value={motivoHistorico}
-                  onChange={(event) => { setMotivoHistorico(event.target.value); setResult(null); }}
-                  placeholder="Ex.: Notas de 2025 em falta na pauta individual"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
-              </label>
+              <p role="status" className="text-xs text-muted-foreground">
+                Transcrição da pauta física escolar. O lançamento fica registado com o utilizador, aluno, disciplina, trimestre e nota.
+              </p>
             )}
             {result?.error && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-foreground">{result.error}</p>}
             {gradeReceipt ? (
