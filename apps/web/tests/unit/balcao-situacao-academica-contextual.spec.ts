@@ -18,6 +18,7 @@ const payload = (current: SituacaoBalcaoRow | null, previous: SituacaoBalcaoRow 
   ano: { id: "ano-2026", ano: 2026, label: "2026/2027", ativo: active, arquivado_com_pendencias: !active },
   current, previous, can_write_current_grades: true,
   editable_historical_matricula_id: null,
+  historical_evaluation_scale: null,
 });
 
 test("existing current enrollment never requires a fabricated prior-year enrollment", () => {
@@ -134,4 +135,16 @@ test("academic state is cached independently per school, pupil and selected year
   assert.match(ui, /escolaId \+ ":" \+ alunoId \+ ":" \+ anoLetivoId/);
   assert.match(workspace, /escolaId, dossier\.aluno\?\.id \?\? null, effectiveAcademicYearId/);
   assert.match(workspace, /void situacaoAcademica\.refresh\(\)/);
+});
+
+test("qualitative source cannot open numeric historical grades and routes to actual academic evidence review", () => {
+  const api = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/balcao/situacao-academica/route.ts"), "utf8");
+  const ui = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  assert.match(api, /rpc\("resolve_regime_academico"/);
+  assert.match(api, /"quantitativa_primario", "quantitativa_secundario"/);
+  assert.match(api, /historical_evaluation_scale: historicalCandidate/);
+  assert.match(ui, /historicalIsQualitative/);
+  assert.match(ui, /Validar avaliação qualitativa de/);
+  assert.match(ui, /onClick=\{openHistoricalReview\}/);
+  assert.doesNotMatch(ui, /upsert_historico_transitado/);
 });
