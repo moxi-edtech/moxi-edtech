@@ -3107,8 +3107,15 @@ export default function BalcaoAtendimento({
               originAnoLetivoId: row.ano_letivo_id, initialDisciplinaId: disciplinaId ?? null });
           }}
           onHistoricalGrade={(row, disciplinaId) => {
-            if (!row.matricula_id || !row.turma_id || !row.ano_letivo_id) {
-              error("Não foi possível identificar o vínculo histórico.");
+            const currentSnapshot = situacaoAcademica.data;
+            // UI uses exactly the server-authorized historical enrollment.
+            // Do not open a stale modal after switching school, student or year.
+            if (!row.matricula_id || !row.turma_id || !row.ano_letivo_id ||
+                !dossier.aluno || row.aluno_id !== dossier.aluno.id ||
+                row.escola_id !== escolaId ||
+                currentSnapshot?.aluno_id !== dossier.aluno.id ||
+                currentSnapshot.editable_historical_matricula_id !== row.matricula_id) {
+              error("A pauta histórica precisa de uma matrícula válida e autorização académica. Atualize a situação.");
               return;
             }
             setPostAction({ action: "notas", turmaId: row.turma_id,
