@@ -189,11 +189,13 @@ export async function GET(request: Request) {
         .eq("matricula_id", origin.id).eq("status", "pendente")
         .maybeSingle();
       if (recoveryRequestError) throw recoveryRequestError;
-      // Real grade correction is available to every school, not just a school
-      // with an exceptional documentary cohort. Once notes exist, the
-      // documentary alternative disappears to preserve the true RAA outcome.
+      // Real grades transcribed from the school's physical pauta are the
+      // normal path, including before the first grade is entered. Never
+      // demand documentary ratification when a quantitative source is
+      // eligible for audited historical grade entry. Keep the documentary
+      // alternative only for sources that cannot accept numerical grades.
       const state = !history?.resultado_final
-        ? gradeSourceEligible && (temNotasLancadas || !documentaryEligible) ? "notas"
+        ? gradeSourceEligible ? "notas"
           : documentaryEligible ? "decisao" : "indisponivel"
         : !documentaryEligible ? "indisponivel"
           : !hasRatification ? "ratificacao"
