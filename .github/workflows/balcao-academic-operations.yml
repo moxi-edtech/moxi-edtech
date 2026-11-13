@@ -12,6 +12,8 @@ on:
       - "apps/web/tests/unit/balcao-academic-*.spec.ts"
       - "apps/web/tests/unit/turmas-archive-security.spec.ts"
       - "supabase/migrations/2027110500*balcao*.sql"
+      - "supabase/migrations/20271112090000_rematricula_reserved_carnet_scope.sql"
+      - "supabase/ops/tests/rematricula_carnet*.sql"
       - "supabase/ops/tests/balcao_academic_resolution/**"
       - ".github/workflows/balcao-academic-operations.yml"
   workflow_dispatch:
@@ -45,6 +47,11 @@ jobs:
           psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/fixture.sql
           psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_academic_resolution/regression.sql
           python3 supabase/ops/tests/balcao_academic_resolution/concurrency.py
+      - name: Reserved reenrollment carnet and retry contract
+        run: |
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -c 'CREATE DATABASE rematricula_carnet_test'
+          psql "${PGURL%/*}/rematricula_carnet_test" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/rematricula_carnet_fixture.sql
+          psql "${PGURL%/*}/rematricula_carnet_test" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/rematricula_carnet_regression.sql
   web:
     name: Academic operations — web regression and typecheck
     runs-on: ubuntu-latest
