@@ -564,7 +564,7 @@ export async function POST(request: Request) {
 
       const { data: destinoAtualizado } = await supabase
         .from("matriculas")
-        .select("id, turma_id")
+        .select("id, turma_id, status, ativo")
         .eq("escola_id", escolaId)
         .eq("id", matriculaDestinoPreparadaId)
         .maybeSingle();
