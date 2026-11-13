@@ -314,19 +314,29 @@ export async function POST(request: Request) {
             return NextResponse.json({ ok: false, error: "Não foi possível registar a decisão académica.", code: "ACADEMIC_RESULT_RECONCILIATION_REQUIRED" }, { status: 409 });
           }
         }
-        const { data: linkedPedido, error: linkError } = await supabase.from("servico_pedidos").update({
-          status: "granted",
-          matricula_id: matriculaDestinoExistente.id,
-          contexto: {
-            ...(pedido.contexto ?? {}),
-            origem_matricula_id: matriculaOrigemId,
-            matricula_destino_id: matriculaDestinoExistente.id,
-            destino_turma_id: matriculaDestinoExistente.turma_id ?? destinoTurmaId,
-            reconciliado_com_matricula_existente: true,
-          },
-        }).eq("id", pedido.id).eq("escola_id", escolaId)
-          .in("status", ["pending_payment", "granted"])
-          .select("id,status").maybeSingle();
+        // The guarded RPC already linked and granted a previously pending
+        // destination, with canonical audit/context. Do not overwrite its
+        // snapshot using the stale pre-RPC copy of pedido.contexto.
+        const { data: linkedPedido, error: linkError } = destinoAtivo
+          ? await supabase.from("servico_pedidos").update({
+              status: "granted",
+              matricula_id: matriculaDestinoExistente.id,
+              contexto: {
+                ...(pedido.contexto ?? {}),
+                origem_matricula_id: matriculaOrigemId,
+                matricula_destino_id: matriculaDestinoExistente.id,
+                destino_turma_id: matriculaDestinoExistente.turma_id ?? destinoTurmaId,
+                reconciliado_com_matricula_existente: true,
+              },
+            }).eq("id", pedido.id).eq("escola_id", escolaId)
+              .in("status", ["pending_payment", "granted"])
+              .select("id,status").maybeSingle()
+          : await supabase.from("servico_pedidos")
+              .select("id,status")
+              .eq("id", pedido.id)
+              .eq("escola_id", escolaId)
+              .eq("status", "granted")
+              .maybeSingle();
         if (linkError || !linkedPedido || linkedPedido.status !== "granted") {
           return NextResponse.json({ ok: false,
             error: "Não foi possível associar o pagamento à matrícula. Tente novamente.",
