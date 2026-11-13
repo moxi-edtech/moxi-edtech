@@ -35,7 +35,7 @@ test("classe de exame inclui o mês final", () => {
   assert.equal(rows.length, 10);
 });
 
-test("preview começa no mês anterior à entrada quando o ano já está em curso", () => {
+test("preview inclui todo o período académico numa matrícula tardia", () => {
   const rows = buildMensalidadesPreview({
     dataInicio: "2026-02-01",
     dataFim: "2026-12-20",
@@ -45,17 +45,17 @@ test("preview começa no mês anterior à entrada quando o ano já está em curs
     today: new Date("2026-10-05T12:00:00Z"),
   });
 
-  assert.deepEqual(rows.map((row) => row.competencia), ["2026-09", "2026-10", "2026-11"]);
+  assert.deepEqual(rows.map((row) => row.competencia), ["2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11"]);
 });
 
-test("Curtume em outubro mantém setembro como primeira competência", () => {
+test("Curtume em novembro mantém setembro como primeira competência", () => {
   const rows = buildMensalidadesPreview({
     dataInicio: "2026-09-01",
     dataFim: "2027-08-31",
     isClasseExame: false,
     valorMensalidade: 2500,
     diaVencimento: 10,
-    today: new Date("2026-10-06T12:00:00Z"),
+    today: new Date("2026-11-12T12:00:00Z"),
   });
 
   assert.equal(rows[0]?.competencia, "2026-09");
