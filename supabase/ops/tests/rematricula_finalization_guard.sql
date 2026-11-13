@@ -220,6 +220,23 @@ DO $$ BEGIN
          FROM public.pagamentos WHERE id='d0000000-0000-4000-8000-000000000002');
 END $$;
 
+-- Regression: a checkout can grant a service order while leaving its
+-- destination pending. The guarded RPC must activate that reservation in-place,
+-- without another financial entry.
+UPDATE public.servico_pedidos
+   SET status='granted',
+       matricula_id='80000000-0000-4000-8000-000000000002',
+       contexto=contexto || jsonb_build_object(
+         'matricula_destino_id','80000000-0000-4000-8000-000000000002',
+         'recibo_doc_id','e0000000-0000-4000-8000-000000000002',
+         'reconfirmacao_apenas',true
+       )
+ WHERE id='c0000000-0000-4000-8000-000000000001';
+DO $$ BEGIN
+ ASSERT (SELECT status='pendente' AND ativo=false FROM public.matriculas
+         WHERE id='80000000-0000-4000-8000-000000000002');
+END $$;
+
 SET ROLE authenticated;
 DO $$ DECLARE r jsonb; BEGIN
  r := public.finalizar_rematricula_balcao(
