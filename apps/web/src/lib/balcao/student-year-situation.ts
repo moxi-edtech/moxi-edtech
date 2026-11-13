@@ -91,12 +91,24 @@ export function resolveStudentYearSituation(data: SituacaoBalcaoPayload, canCont
       actionLabel: data.can_write_current_grades ? "Lançar notas" : "Consultar ficha",
     };
   }
-  if (status === "aguarda_confirmacao" || status === "rascunho") return {
-    title: status === "rascunho" ? "Matrícula em preparação" : "Matrícula por confirmar",
-    description: "O aluno já possui um registo neste ano. Continue a confirmação na ficha, sem criar outra matrícula.",
-    action: "profile",
-    actionLabel: ano.ativo ? "Rever matrícula existente" : "Consultar ficha",
-  };
+  if (status === "aguarda_confirmacao" || status === "rascunho") {
+    // A prepared reenrollment must resume its existing reservation through the
+    // Balcão fee flow, not send the operator back to the generic student profile.
+    // New admissions, drafts and archived years retain their own review path.
+    const resumeReenrollment = status === "aguarda_confirmacao" && ano.ativo &&
+      previous?.ano_letivo === ano.ano - 1 && previous.situacao_resultado === "homologado" &&
+      previous.resultado_oficial?.toLowerCase() !== "concluido";
+    return {
+      title: status === "rascunho" ? "Matrícula em preparação" : "Matrícula por confirmar",
+      description: resumeReenrollment
+        ? "A reserva já existe. Regularize a taxa no Balcão sem criar outra matrícula nem alterar a turma."
+        : "O aluno já possui um registo neste ano. Continue a confirmação na ficha, sem criar outra matrícula.",
+      action: resumeReenrollment ? "reenrollment" : "profile",
+      actionLabel: resumeReenrollment
+        ? "Regularizar taxa de rematrícula"
+        : ano.ativo ? "Rever matrícula existente" : "Consultar ficha",
+    };
+  }
   if (status === "ano_encerrado") return {
     title: "Ano escolar encerrado",
     description: current.situacao_resultado === "homologado"
