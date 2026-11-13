@@ -134,7 +134,7 @@ test("paid order without verified destination must stay in reconciliation", () =
   const writer = source("app/api/secretaria/balcao/rematriculas/route.ts");
   assert.ok(status.includes('pedidoDestinoId && matriculaDestino?.id'));
   assert.ok(status.includes('String(pedidoDestinoId) === String(matriculaDestino.id)'));
-  assert.ok(status.includes('pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoTemMatriculaDestino'));
+  assert.ok(status.includes('pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoConcluido'));
   assert.ok(status.includes('pedidoConcluido = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino'));
   assert.ok(writer.includes('!matriculaDestinoId || !matriculaDestino?.id'));
   assert.ok(writer.includes('code: "REMATRICULA_RECONCILIATION_REQUIRED"'));
