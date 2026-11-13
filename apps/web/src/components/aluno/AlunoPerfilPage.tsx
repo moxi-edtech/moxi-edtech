@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { requireRoleInSchool } from "@/lib/authz";
 import { AcoesRapidasBalcao } from "@/components/secretaria/AcoesRapidasBalcao";
 import { CurrentYearEnrollmentPanel } from "@/components/aluno/CurrentYearEnrollmentPanel";
 import { DossierHeader } from "@/components/aluno/DossierHeader";
@@ -33,6 +34,12 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
   if (!loaded) return notFound();
   const { aluno, servicos } = loaded;
   const canEditHistoricoTransitado = role === "admin" || role === "secretaria";
+  const namePermission = await requireRoleInSchool({
+    supabase,
+    escolaId: resolvedEscolaId,
+    roles: ["diretor", "admin", "admin_escola", "staff_admin"],
+  });
+  const canEditNome = !namePermission.error;
 
   return (
     <div className={workspace ? "min-w-0" : embedded ? "bg-slate-50" : "min-h-screen bg-slate-50"}>
@@ -43,7 +50,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
           aluno={aluno}
           slotPerfil={(
             <div className="space-y-5">
-              <DossierPerfilSection aluno={aluno} />
+              <DossierPerfilSection aluno={aluno} canEditNome={canEditNome} />
               <CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId} />
             </div>
           )}
