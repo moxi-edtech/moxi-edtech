@@ -502,12 +502,14 @@ export async function GET(request: Request) {
     // completed reenrollment. Surface reconciliation rather than false success.
     const pedidoConcluido = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino && destinoConfirmado;
     const pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoConcluido;
-    if (historicoAcademicoPendente) {
+    // A document is never the primary next action while its destination is
+    // still inactive. First activate the paid reservation, then issue papers.
+    if (pagamentoSemProgressao) {
+      status = "RECONCILIATION_REQUIRED";
+    } else if (historicoAcademicoPendente) {
       status = "ACADEMIC_HISTORY_PENDING";
     } else if (comprovantePendente) {
       status = "DOCUMENT_PENDING";
-    } else if (pagamentoSemProgressao) {
-      status = "RECONCILIATION_REQUIRED";
     } else if (pedidoConcluido) {
       status = "ALREADY_COMPLETED";
     } else if (pedidoExistente?.status === "pending_payment") {
@@ -550,8 +552,11 @@ export async function GET(request: Request) {
 
     // A paid order already pointing at an enrolled destination is not a
     // missing-class problem. This hint only exposes the existing POST path.
+    const pedidoPagoComReserva = pedidoExistente?.status === "granted" &&
+      pedidoTemMatriculaDestino && !destinoConfirmado &&
+      Boolean(pedidoExistente?.contexto?.recibo_doc_id);
     const podeAssociarMatriculaExistente = status === "RECONCILIATION_REQUIRED" &&
-      canLinkPaidOrderToExistingEnrollment({
+      (pedidoPagoComReserva || canLinkPaidOrderToExistingEnrollment({
         requestStatus: pedidoExistente?.status,
         paymentSettled: pedidoPagamentoLiquidado,
         requestTargetYearId: pedidoExistente?.contexto?.ano_letivo_id,
@@ -560,7 +565,7 @@ export async function GET(request: Request) {
         existingEnrollmentId: matriculaDestino?.id,
         existingTurmaId: matriculaDestino?.turma_id,
         sourceEnrollmentId: matriculaOrigem.id,
-      });
+      }));
 
     // ── Extract turma_id from granted pedido contexto ─────────────────────
     const pedidoTurmaId =
