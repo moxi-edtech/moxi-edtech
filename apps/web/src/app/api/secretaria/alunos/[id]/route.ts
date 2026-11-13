@@ -263,6 +263,27 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: 'Aluno não pertence à escola ativa do usuário' }, { status: 403 })
     }
 
+    // A identidade é corrigida por uma única RPC: tenant, papel e auditoria na mesma transação.
+    if (body.nome !== undefined && body.nome !== (aluno as any).nome) {
+      const nomeAuthz = await requireRoleInSchool({
+        supabase: s as any,
+        escolaId: escolaFromProfile,
+        roles: ['diretor', 'admin', 'admin_escola', 'staff_admin'],
+      })
+      if (nomeAuthz.error) return nomeAuthz.error
+
+      const { error: nomeErr } = await s.rpc('corrigir_nome_aluno_balcao', {
+        p_aluno_id: alunoId,
+        p_escola_id: escolaFromProfile,
+        p_nome: body.nome,
+        p_nome_anterior: body.nome_anterior ?? (aluno as any).nome,
+      })
+      if (nomeErr) {
+        const status = nomeErr.code === '40001' ? 409 : nomeErr.code === '42501' ? 403 : 400
+        return NextResponse.json({ ok: false, error: nomeErr.message }, { status })
+      }
+    }
+
     const profileId = (aluno as any).profile_id as string | null
     // Update profiles
     if (profileId) {
@@ -316,27 +337,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (Object.keys(toUpdateAluno).length > 0) {
       const { error: aErr } = await s.from('alunos').update(toUpdateAluno).eq('id', alunoId)
       if (aErr) return NextResponse.json({ ok: false, error: aErr.message }, { status: 400 })
-    }
-
-    // A identidade é corrigida por uma única RPC: tenant, papel e auditoria na mesma transação.
-    if (body.nome !== undefined && body.nome !== (aluno as any).nome) {
-      const nomeAuthz = await requireRoleInSchool({
-        supabase: s as any,
-        escolaId: escolaFromProfile,
-        roles: ['diretor', 'admin', 'admin_escola', 'staff_admin'],
-      })
-      if (nomeAuthz.error) return nomeAuthz.error
-
-      const { error: nomeErr } = await s.rpc('corrigir_nome_aluno_balcao', {
-        p_aluno_id: alunoId,
-        p_escola_id: escolaFromProfile,
-        p_nome: body.nome,
-        p_nome_anterior: body.nome_anterior ?? (aluno as any).nome,
-      })
-      if (nomeErr) {
-        const status = nomeErr.code === '40001' ? 409 : nomeErr.code === '42501' ? 403 : 400
-        return NextResponse.json({ ok: false, error: nomeErr.message }, { status })
-      }
     }
 
     // Auditoria genérica para os restantes dados (a RPC audita alterações de nome).
