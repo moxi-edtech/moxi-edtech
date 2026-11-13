@@ -91,7 +91,7 @@ export function QuickEditField({
             onChange={(e) => setCurrentValue(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isLoading}
-            className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20"
+            className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground focus:border-ring focus:outline-none focus:ring-4 focus:ring-ring/20"
           />
           <button
             type="button"
@@ -126,7 +126,7 @@ export function QuickEditField({
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className={`inline-flex items-center gap-1 rounded-xl p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-[#1F6B3B] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#E3B23C] ${alwaysVisible ? "" : "md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"}`}
+        className={`inline-flex items-center gap-1 rounded-xl p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${alwaysVisible ? "" : "md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"}`}
         title={`Editar ${label}`}
         aria-label={`Editar ${label}`}
       >
