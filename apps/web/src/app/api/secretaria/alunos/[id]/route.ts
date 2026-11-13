@@ -240,7 +240,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       supabase: s as any,
       escolaId: escolaFromProfile,
       roles: somenteNome
-        ? ['diretor', 'admin', 'admin_escola', 'staff_admin']
+        ? [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro', 'admin_secretaria', 'admin_secretario', 'diretor']
         : [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro'],
     })
     if (authz.error) return authz.error
@@ -268,7 +268,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const nomeAuthz = await requireRoleInSchool({
         supabase: s as any,
         escolaId: escolaFromProfile,
-        roles: ['diretor', 'admin', 'admin_escola', 'staff_admin'],
+        roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro', 'admin_secretaria', 'admin_secretario', 'diretor'],
       })
       if (nomeAuthz.error) return nomeAuthz.error
 
