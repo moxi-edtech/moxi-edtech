@@ -228,7 +228,7 @@ test("payment-proof migration is the only newly authorized direct RPC protection
     "CREATE OR REPLACE FUNCTION public.agt_issue_invoice() RETURNS void LANGUAGE sql AS $x$ SELECT 1 $x$;",
     "CREATE TABLE public.saft_export (id uuid);",
   ]) {
-    assert.match(checkFiscalAndSchemaScope([path], () => sql)[0] ?? "", /Fiscal\\/AGT activation/);
+    assert.match(checkFiscalAndSchemaScope([path], () => sql)[0] ?? "", /Fiscal\/AGT activation/);
   }
 });
 
