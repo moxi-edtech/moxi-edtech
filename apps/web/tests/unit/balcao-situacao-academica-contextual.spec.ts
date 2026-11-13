@@ -58,6 +58,16 @@ test("pending current enrollment is resumed, never duplicated", () => {
   assert.match(situacao.description, /sem criar outra matrícula/);
 });
 
+test("2026 reserved reenrollment resumes its existing fee flow after 2025 approval", () => {
+  const state = payload(row(2026, "aguarda_confirmacao"), row(2025, "ano_encerrado", "homologado"));
+  const situacao = resolveStudentYearSituation(state);
+  assert.equal(situacao.action, "reenrollment");
+  assert.equal(situacao.actionLabel, "Regularizar taxa de rematrícula");
+  assert.match(situacao.description, /sem criar outra matrícula/);
+  assert.equal(resolveStudentYearSituation(payload(row(2026, "aguarda_confirmacao"), row(2025, "ano_encerrado", "homologado"), false)).action, "profile");
+  assert.equal(resolveStudentYearSituation(payload(row(2026, "rascunho"), row(2025, "ano_encerrado", "homologado"))).action, "profile");
+});
+
 test("historic archive and completed year do not imply official academic approval", () => {
   const data = payload(row(2025, "regularizacao_historica"), null, false);
   assert.equal(resolveStudentYearSituation(data).action, "historical");
