@@ -33,7 +33,7 @@ export function useRematriculaMensalidadesDestino({ escolaId, alunoId, anoLetivo
     setLoading(true); setError(null);
     void (async () => {
       try {
-        const params = new URLSearchParams({ escola_id: escolaId, turma_id: turmaId, session_id: anoLetivoId });
+        const params = new URLSearchParams({ escola_id: escolaId, aluno_id: alunoId, turma_id: turmaId, session_id: anoLetivoId });
         const response = await fetch(`/api/financeiro/orcamento/matricula?${params}`, { cache: "no-store", signal: controller.signal });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || payload?.ok !== true || !Array.isArray(payload?.data?.mensalidades)) throw new Error("Não foi possível consultar as mensalidades.");
@@ -44,9 +44,13 @@ export function useRematriculaMensalidadesDestino({ escolaId, alunoId, anoLetivo
             preco: Number(item.valor), quantidade: 1, competencia: item.competencia!, data_vencimento: String(item.data_vencimento ?? ""), previsto: true }));
         if (controller.signal.aborted) return;
         setItems(next);
-        // Refresh the quoted values without losing the chosen competencies.
-        setSelectedItems(current => current.map(item => item.previsto
-          ? next.find(candidate => candidate.id === item.id) ?? item : item));
+        // Preserve selected open months, but remove only those that the
+        // refreshed student ledger confirms are already paid or unavailable.
+        // An API failure never clears the draft; only a successful quote can.
+        const stillOpen = new Map(next.map(item => [item.id, item]));
+        setSelectedItems(current => current
+          .filter(item => !item.previsto || stillOpen.has(item.id))
+          .map(item => item.previsto ? stillOpen.get(item.id)! : item));
       } catch {
         if (!controller.signal.aborted) setError("Não foi possível consultar as mensalidades.");
       } finally { if (!controller.signal.aborted) setLoading(false); }
