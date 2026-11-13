@@ -38,7 +38,7 @@ export async function GET(
   const authorization = await requireRoleInSchool({
     supabase,
     escolaId,
-    roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
+    roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'diretor'],
   });
   if (authorization.error) return authorization.error;
 
