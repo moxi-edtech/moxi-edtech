@@ -45,11 +45,15 @@ BEGIN
     FROM public.escola_users AS eu
    WHERE eu.escola_id = v_escola_id
      AND eu.user_id = v_actor
-     AND eu.papel IN ('diretor', 'admin', 'admin_escola', 'staff_admin')
+     AND eu.papel IN (
+       'diretor', 'admin', 'admin_escola', 'staff_admin',
+       'secretaria', 'secretaria_financeiro', 'financeiro', 'admin_financeiro',
+       'admin_secretaria', 'admin_secretario'
+     )
    LIMIT 1;
 
   IF v_papel IS NULL THEN
-    RAISE EXCEPTION 'Apenas a Direção pode corrigir o nome' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'Perfil sem autorização para corrigir o nome' USING ERRCODE = '42501';
   END IF;
 
   IF p_nome_anterior IS NOT NULL AND v_nome_anterior IS DISTINCT FROM p_nome_anterior THEN
