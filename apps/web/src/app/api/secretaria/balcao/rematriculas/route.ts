@@ -465,6 +465,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "O emolumento de rematrícula ainda não está configurado.", code: "REMATRICULA_PRICE_NOT_CONFIGURED" }, { status: 409 });
     }
 
+    // Recovery takes precedence over a stale basket. A confirmed order already
+    // associated with a reserved destination MUST NOT be charged again or
+    // rejected because previously selected monthly fees are now paid.
+    if (matriculaDestino?.id && !destinoJaAtivo) {
+      const { data: pedidosJaConcedidos, error: pedidosConcedidosError } = await (supabase as any)
+        .from("servico_pedidos")
+        .select("id, contexto")
+        .eq("escola_id", escolaId)
+        .eq("aluno_id", body.aluno_id)
+        .eq("servico_codigo", SERVICE_CODE)
+        .eq("status", "granted")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (pedidosConcedidosError) throw pedidosConcedidosError;
+      const pedidoDaReserva = (pedidosJaConcedidos ?? []).find((item: any) =>
+        String(item.contexto?.origem_matricula_id ?? "") === origemMatriculaId &&
+        String(item.contexto?.ano_letivo_id ?? "") === academicContext.anoLetivoId &&
+        String(item.contexto?.destino_turma_id ?? "") === body.destino_turma_id &&
+        String(item.contexto?.matricula_destino_id ?? "") === matriculaDestino.id,
+      );
+      if (pedidoDaReserva) {
+        return NextResponse.json({
+          ok: false,
+          code: "REMATRICULA_RECONCILIATION_REQUIRED",
+          error: "O pedido já está pago. A concluir a matrícula existente sem nova cobrança.",
+          pedido_id: pedidoDaReserva.id,
+        }, { status: 409 });
+      }
+    }
+
     let mensalidadesDestinoSelecionadas: any[] = [];
     let matriculaDestinoPreparadaId: string | null = matriculaDestino?.id ? String(matriculaDestino.id) : null;
 
@@ -686,6 +716,14 @@ export async function POST(request: Request) {
           ok: false,
           error: "Pagamento já confirmado; verifique o vínculo da matrícula de destino sem criar uma nova cobrança.",
           code: "REMATRICULA_RECONCILIATION_REQUIRED",
+          pedido_id: pedidoExistente.id,
+        }, { status: 409 });
+      }
+      if (!destinoJaAtivo) {
+        return NextResponse.json({
+          ok: false,
+          code: "REMATRICULA_RECONCILIATION_REQUIRED",
+          error: "O pagamento já existe; a matrícula ainda não foi ativada.",
           pedido_id: pedidoExistente.id,
         }, { status: 409 });
       }
