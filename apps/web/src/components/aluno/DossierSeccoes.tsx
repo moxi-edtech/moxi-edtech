@@ -20,7 +20,7 @@ import {
   getEscolaParamFromPath,
 } from "@/lib/navigation";
 
-export function DossierPerfilSection({ aluno, canEditNome = false }: { aluno: AlunoNormalizado; canEditNome?: boolean }) {
+export function DossierPerfilSection({ aluno, canEditNome = false, onNomeChanged }: { aluno: AlunoNormalizado; canEditNome?: boolean; onNomeChanged?: () => void }) {
   const router = useRouter();
   const p = aluno.perfil;
   const matricula = aluno.matricula_atual;
@@ -55,7 +55,7 @@ export function DossierPerfilSection({ aluno, canEditNome = false }: { aluno: Al
               fieldName="nome"
               alunoId={aluno.id}
               alwaysVisible
-              onSuccess={() => router.refresh()}
+              onSuccess={() => { router.refresh(); onNomeChanged?.(); }}
             />
           ) : renderValue(p.nome)}
         </div>
