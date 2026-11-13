@@ -483,7 +483,7 @@ export async function POST(request: Request) {
         String(item.contexto?.origem_matricula_id ?? "") === origemMatriculaId &&
         String(item.contexto?.ano_letivo_id ?? "") === academicContext.anoLetivoId &&
         String(item.contexto?.destino_turma_id ?? "") === body.destino_turma_id &&
-        String(item.contexto?.matricula_destino_id ?? "") === matriculaDestino.id,
+        String(item.contexto?.matricula_destino_id ?? "") === String(matriculaDestino?.id ?? ""),
       );
       if (pedidoDaReserva) {
         return NextResponse.json({
