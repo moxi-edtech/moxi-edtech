@@ -6,6 +6,7 @@ import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { loadAlunoDossierData } from "@/lib/aluno/load-dossier-data";
+import { canCorrigirNomeAluno } from "@/lib/aluno/nome-permissions";
 import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
 
 export const dynamic = "force-dynamic";
@@ -73,9 +74,16 @@ export async function GET(
     if (!result) {
       return NextResponse.json({ ok: false, error: "Ficha integral indisponível." }, { status: 404 });
     }
+    const { data: member } = await supabase
+      .from("escola_users")
+      .select("papel")
+      .eq("escola_id", escolaId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const canEditNome = Boolean(aluno) && canCorrigirNomeAluno(member?.papel);
     const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, alunoId).catch(() => null);
     return NextResponse.json(
-      { ok: true, ...result, cicloVida, cicloVidaIndisponivel: cicloVida === null },
+      { ok: true, ...result, canEditNome, cicloVida, cicloVidaIndisponivel: cicloVida === null },
       { headers: { "Cache-Control": "private, no-store, max-age=0" } },
     );
   } catch {
