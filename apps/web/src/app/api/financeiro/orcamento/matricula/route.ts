@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { normalizeAnoLetivo, resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
 import { buildMensalidadesPreview } from "@/lib/financeiro/mensalidades-preview";
 import { type SupabaseClient, type User } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
@@ -131,6 +132,16 @@ export async function GET(req: NextRequest) {
     const autorizado = await usuarioTemAcessoEscola(supabase, user.id, escolaId);
     if (!autorizado) {
       return NextResponse.json({ ok: false, error: "Sem permissão para consultar preços" }, { status: 403 });
+    }
+    // A class price quote is public to school staff; a pupil's payment ledger
+    // is not. Only roles authorized for Balcão payment may request aluno_id.
+    if (alunoId) {
+      const authz = await requireRoleInSchool({
+        supabase,
+        escolaId,
+        roles: ["secretaria", "admin_secretaria", "admin_secretario", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin", "diretor"],
+      });
+      if (authz.error) return authz.error;
     }
 
     // Prioriza ano fornecido explicitamente; se não houver, tenta derivar da sessão
