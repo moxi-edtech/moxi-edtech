@@ -34,6 +34,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Receipt normalization, access control and print route tests
         run: node --test --import tsx apps/web/tests/unit/student-receipt-history.spec.ts
+      - name: Student name correction role, tenant and audit contracts
+        run: node --test --import tsx apps/web/tests/unit/balcao-nome-direcao.spec.ts
       - name: Full KLASSE web TypeScript check
         env:
           NODE_OPTIONS: --max-old-space-size=5120
