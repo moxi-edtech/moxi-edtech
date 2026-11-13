@@ -1531,10 +1531,10 @@ function Catalogo({
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                   <div>
                     <strong className="block">{paidExistingDestination
-                      ? "Pagamento confirmado · matrícula existente"
+                      ? "Pagamento confirmado · matrícula por concluir"
                       : "Pagamento confirmado · matrícula por concluir"}</strong>
                     <p className="mt-1 text-amber-900/80">{paidExistingDestination
-                      ? "Associar o pagamento à matrícula existente, sem nova cobrança."
+                      ? "Concluir a matrícula existente, sem nova cobrança."
                       : "Resolva as pendências para concluir, sem cobrar novamente."}</p>
                     <CodigoEstado estado="RECONCILIATION_REQUIRED" />
                   </div>
@@ -1546,7 +1546,7 @@ function Catalogo({
                   className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700 disabled:cursor-wait disabled:opacity-60"
                 >
                   {reconcilingPedido ? "A reconciliar…" :
-                    paidExistingDestination ? "Associar pagamento à matrícula" : "Resolver pendências e concluir"}
+                    paidExistingDestination ? "Concluir matrícula já paga" : "Resolver pendências e concluir"}
                 </button>
               </div>
             ) : null}

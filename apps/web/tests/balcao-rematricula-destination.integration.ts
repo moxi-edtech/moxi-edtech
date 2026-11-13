@@ -15,7 +15,7 @@ test("selected destination survives status refresh, all wizard steps and payment
   const { useRematriculaMensalidadesDestino } = await import("../src/hooks/useRematriculaMensalidadesDestino");
   const { RematriculaBalcaoModal } = await import("../src/components/secretaria/RematriculaBalcaoModal");
   let hook: ReturnType<typeof useRematriculaBalcao>, posted: any;
-  let available = true, failBudget = false;
+  let available = true, failBudget = false, firstMonthAlreadyPaid = false;
   let paymentItems: any[] = [];
   let budget: ReturnType<typeof useRematriculaMensalidadesDestino>;
   const originalFetch = globalThis.fetch;
@@ -23,7 +23,10 @@ test("selected destination survives status refresh, all wizard steps and payment
     if(init?.method === "POST") { posted=JSON.parse(String(init.body));return Response.json({ok:true,rematricula:{matricula_id:"new",turma_id:"destination",ano_letivo_id:"target"}}); }
     if(url.includes("/orcamento/matricula?")) return failBudget
       ? Response.json({ok:false,error:"Falha sintética"},{status:503})
-      : Response.json({ok:true,data:{mensalidades:[{competencia:"2026-09",valor:3500},{competencia:"2026-10",valor:3500}]}});
+      : Response.json({ok:true,data:{mensalidades:[
+        ...(!firstMonthAlreadyPaid?[{competencia:"2026-09",valor:3500}]:[]),
+        {competencia:"2026-10",valor:3500}
+      ]}});
     if(url.includes("turmas-simples")) return Response.json({ok:true,items:available?[{id:"destination",nome:"4.ª classe",capacidade_maxima:70,ocupacao_atual:38,session_id:"target"}]:[],progressao:{estado:"aprovado",modo:"promocao",classe_origem:3,classe_destino:4,mensagem:"Aprovado"}});
     assert.ok(url.includes("/rematriculas/status?"));
     const destination=new URL(url,"https://fixture.invalid").searchParams.get("destino_turma_id");
@@ -80,5 +83,11 @@ test("selected destination survives status refresh, all wizard steps and payment
     assert.equal(posted.destino_turma_id,"destination");assert.equal(posted.aluno_id,"pupil");
     assert.deepEqual(posted.mensalidades_competencias,["2026-09","2026-10"]);
     assert.deepEqual(posted.itens,[{id:"card",tipo:"servico"}]);assert.equal(hook!.result?.ok,true);
+    // Once the source-of-truth ledger reports a month already settled, the
+    // next successful quote drops only that stale month, never valid services.
+    firstMonthAlreadyPaid=true;
+    await React.act(async()=>{budget!.retry();await tick();});await React.act(tick);
+    assert.deepEqual(paymentItems.filter(x=>x.tipo==="mensalidade").map(x=>x.competencia),["2026-10"]);
+    assert.equal(paymentItems.some(x=>x.tipo==="servico"&&x.id==="card"),true);
   } finally {await React.act(async()=>root.unmount());globalThis.fetch=originalFetch;dom.window.close();}
 });

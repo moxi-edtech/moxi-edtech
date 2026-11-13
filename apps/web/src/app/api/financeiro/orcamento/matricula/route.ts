@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { normalizeAnoLetivo, resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
 import { buildMensalidadesPreview } from "@/lib/financeiro/mensalidades-preview";
 import { type SupabaseClient, type User } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
@@ -86,6 +87,10 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const sessionId = searchParams.get("session_id"); // compat: agora mapeado para anos_letivos.id
   const turmaId = (searchParams.get("turma_id") || "").trim() || undefined;
+  const alunoId = (searchParams.get("aluno_id") || "").trim() || undefined;
+  if (alunoId && !isUUID(alunoId)) {
+    return NextResponse.json({ ok: false, error: "Aluno inválido." }, { status: 400 });
+  }
   const cursoId = (searchParams.get("curso_id") || "").trim() || undefined;
   const classeId = (searchParams.get("classe_id") || "").trim() || undefined;
   // O ano letivo idealmente vem da sessão ativa, mas aceitamos parâmetro manual
@@ -127,6 +132,16 @@ export async function GET(req: NextRequest) {
     const autorizado = await usuarioTemAcessoEscola(supabase, user.id, escolaId);
     if (!autorizado) {
       return NextResponse.json({ ok: false, error: "Sem permissão para consultar preços" }, { status: 403 });
+    }
+    // A class price quote is public to school staff; a pupil's payment ledger
+    // is not. Only roles authorized for Balcão payment may request aluno_id.
+    if (alunoId) {
+      const authz = await requireRoleInSchool({
+        supabase,
+        escolaId,
+        roles: ["secretaria", "admin_secretaria", "admin_secretario", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin", "diretor"],
+      });
+      if (authz.error) return authz.error;
     }
 
     // Prioriza ano fornecido explicitamente; se não houver, tenta derivar da sessão
@@ -228,6 +243,46 @@ export async function GET(req: NextRequest) {
             diaVencimento: tabela.dia_vencimento,
             descontoPercentual: descontoParam,
           });
+        }
+      }
+    }
+
+    // A price-table preview is not a statement of outstanding debt. When a
+    // pupil has a prepared destination, its real monthly ledger is authoritative:
+    // paid/waived months must not appear again in the reenrollment basket.
+    if (alunoId && turmaId && resolvedSessionId && mensalidades.length > 0) {
+      const { data: destino, error: matriculaError } = await supabase
+        .from("matriculas")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .eq("aluno_id", alunoId)
+        .eq("session_id", resolvedSessionId)
+        .eq("turma_id", turmaId)
+        .in("status", ["pendente", "ativo", "ativa", "active", "aprovado", "aprovada"])
+        .limit(1)
+        .maybeSingle();
+      if (matriculaError) throw matriculaError;
+      if (destino) {
+        const { data: valoresReais, error: ledgerError } = await supabase
+          .from("mensalidades")
+          .select("ano_referencia, mes_referencia, valor_previsto, valor, valor_pago_total, status")
+          .eq("escola_id", escolaId)
+          .eq("aluno_id", alunoId)
+          .eq("matricula_id", destino.id);
+        if (ledgerError) throw ledgerError;
+        if ((valoresReais ?? []).length > 0) {
+          const abertos = new Map((valoresReais ?? [])
+            .map(row => {
+              const saldo = Math.max(0, Number(row.valor_previsto ?? row.valor ?? 0) - Number(row.valor_pago_total ?? 0));
+              const competencia = `${row.ano_referencia}-${String(row.mes_referencia).padStart(2, "0")}`;
+              return [competencia, { saldo, status: String(row.status ?? "").toLowerCase() }] as const;
+            }));
+          mensalidades = mensalidades
+            .filter(row => {
+              const item = abertos.get(row.competencia);
+              return item && item.saldo > 0 && !["pago", "isento", "cancelado"].includes(item.status);
+            })
+            .map(row => ({ ...row, valor: abertos.get(row.competencia)!.saldo }));
         }
       }
     }

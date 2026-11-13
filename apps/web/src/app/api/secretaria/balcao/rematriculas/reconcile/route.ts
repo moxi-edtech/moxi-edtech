@@ -226,7 +226,7 @@ export async function POST(request: Request) {
       const destinoAno = Number(turmaDestino?.ano_letivo ?? academicContext.anoLetivoLabel.slice(0, 4));
       const { data: matriculaDestinoExistente } = await supabase
         .from("matriculas")
-        .select("id, turma_id, ano_letivo, status")
+        .select("id, turma_id, ano_letivo, status, ativo")
         .eq("escola_id", escolaId)
         .eq("aluno_id", pedido.aluno_id)
         .eq("ano_letivo", destinoAno)
@@ -244,6 +244,41 @@ export async function POST(request: Request) {
             error: "A turma ou o ano do pedido não corresponde à matrícula existente. Reveja o pedido.",
             code: "RECONCILIATION_DESTINATION_MISMATCH" }, { status: 409 });
         }
+        // A previously paid order can point to a prepared destination that is
+        // still pending. Associating that order and issuing a certificate must
+        // NEVER be treated as proof that the enrollment was activated.
+        // The canonical SECURITY DEFINER writer atomically validates tenant,
+        // source, destination, full settled amount and an issued service receipt.
+        const destinoAtivo = matriculaDestinoExistente.ativo === true &&
+          ["ativo", "ativa", "active"].includes(String(matriculaDestinoExistente.status).toLowerCase());
+        if (!destinoAtivo) {
+          if (decisaoAdministrativa) {
+            return NextResponse.json({
+              ok: false,
+              error: "A matrícula de destino está preparada. Conclua a operação financeira existente antes de uma decisão administrativa.",
+              code: "RECONCILIATION_RESERVATION_NOT_ACTIVE",
+            }, { status: 409 });
+          }
+          const { data: ativacao, error: ativacaoError } = await supabase.rpc("finalizar_rematricula_balcao", {
+            p_escola_id: escolaId,
+            p_aluno_id: pedido.aluno_id,
+            p_matricula_origem_id: matriculaOrigemId,
+            p_ano_letivo_id: academicContext.anoLetivoId,
+            p_destino_turma_id: destinoTurmaId,
+            p_pedido_id: pedido.id,
+          });
+          if (ativacaoError || ativacao?.ok !== true ||
+              String(ativacao.matricula_id ?? "") !== String(matriculaDestinoExistente.id)) {
+            return NextResponse.json({
+              ok: false,
+              error: "O pagamento está registado, mas não foi possível ativar a matrícula. O pedido foi preservado para nova tentativa sem cobrança.",
+              code: "RECONCILIATION_FINALIZATION_REQUIRED",
+              pedido_id: pedido.id,
+              details: ativacaoError?.message ?? ativacao?.erro ?? null,
+            }, { status: 409 });
+          }
+        }
+
         if (decisaoAdministrativa) {
           if (parsed.data.decisao_resultado === "concluido") {
             return NextResponse.json({ ok: false, error: "Há uma matrícula destino preparada. Reveja-a antes de concluir o ciclo do aluno.", code: "CONCLUSION_DESTINATION_REVIEW_REQUIRED" }, { status: 409 });
@@ -279,19 +314,29 @@ export async function POST(request: Request) {
             return NextResponse.json({ ok: false, error: "Não foi possível registar a decisão académica.", code: "ACADEMIC_RESULT_RECONCILIATION_REQUIRED" }, { status: 409 });
           }
         }
-        const { data: linkedPedido, error: linkError } = await supabase.from("servico_pedidos").update({
-          status: "granted",
-          matricula_id: matriculaDestinoExistente.id,
-          contexto: {
-            ...(pedido.contexto ?? {}),
-            origem_matricula_id: matriculaOrigemId,
-            matricula_destino_id: matriculaDestinoExistente.id,
-            destino_turma_id: matriculaDestinoExistente.turma_id ?? destinoTurmaId,
-            reconciliado_com_matricula_existente: true,
-          },
-        }).eq("id", pedido.id).eq("escola_id", escolaId)
-          .in("status", ["pending_payment", "granted"])
-          .select("id,status").maybeSingle();
+        // The guarded RPC already linked and granted a previously pending
+        // destination, with canonical audit/context. Do not overwrite its
+        // snapshot using the stale pre-RPC copy of pedido.contexto.
+        const { data: linkedPedido, error: linkError } = destinoAtivo
+          ? await supabase.from("servico_pedidos").update({
+              status: "granted",
+              matricula_id: matriculaDestinoExistente.id,
+              contexto: {
+                ...(pedido.contexto ?? {}),
+                origem_matricula_id: matriculaOrigemId,
+                matricula_destino_id: matriculaDestinoExistente.id,
+                destino_turma_id: matriculaDestinoExistente.turma_id ?? destinoTurmaId,
+                reconciliado_com_matricula_existente: true,
+              },
+            }).eq("id", pedido.id).eq("escola_id", escolaId)
+              .in("status", ["pending_payment", "granted"])
+              .select("id,status").maybeSingle()
+          : await supabase.from("servico_pedidos")
+              .select("id,status")
+              .eq("id", pedido.id)
+              .eq("escola_id", escolaId)
+              .eq("status", "granted")
+              .maybeSingle();
         if (linkError || !linkedPedido || linkedPedido.status !== "granted") {
           return NextResponse.json({ ok: false,
             error: "Não foi possível associar o pagamento à matrícula. Tente novamente.",
