@@ -21,6 +21,7 @@ type DossierResponse = {
   error?: string;
   aluno?: AlunoNormalizado;
   servicos?: AlunoServicoFinanceiro[];
+  canEditNome?: boolean;
 };
 
 export function CommandCenterStudentDossier({
@@ -36,6 +37,7 @@ export function CommandCenterStudentDossier({
     aluno: AlunoNormalizado;
     servicos: AlunoServicoFinanceiro[];
     schoolScope: string;
+    canEditNome: boolean;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,6 +68,7 @@ export function CommandCenterStudentDossier({
           schoolScope: escolaId,
           aluno: body.aluno,
           servicos: Array.isArray(body.servicos) ? body.servicos : [],
+          canEditNome: body.canEditNome === true,
         });
         setLastConfirmedAt(new Date());
       })
@@ -137,7 +140,11 @@ export function CommandCenterStudentDossier({
         aluno={aluno}
         slotPerfil={(
           <div className="space-y-4">
-            <DossierPerfilSection aluno={aluno} />
+            <DossierPerfilSection
+              aluno={aluno}
+              canEditNome={data.canEditNome}
+              onNomeChanged={() => setRetry((current) => current + 1)}
+            />
             <CurrentYearEnrollmentPanel
               alunoId={alunoId}
               escolaId={escolaId}
