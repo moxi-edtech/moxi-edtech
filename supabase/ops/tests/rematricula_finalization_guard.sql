@@ -234,7 +234,24 @@ DO $$ BEGIN
  ASSERT (SELECT status='granted' AND matricula_id='80000000-0000-4000-8000-000000000002'
          FROM public.servico_pedidos WHERE id='c0000000-0000-4000-8000-000000000001');
  ASSERT (SELECT count(*)=2 FROM public.matriculas WHERE aluno_id='90000000-0000-4000-8000-000000000001');
-END $$;
+END $;
+
+-- Replaying the same paid request is a read-only success (no second audit).
+SET ROLE authenticated;
+DO $ DECLARE r jsonb; BEGIN
+ r := public.finalizar_rematricula_balcao(
+ '10000000-0000-4000-8000-000000000001','90000000-0000-4000-8000-000000000001',
+ '80000000-0000-4000-8000-000000000001','40000000-0000-4000-8000-000000000001',
+ '60000000-0000-4000-8000-000000000002','c0000000-0000-4000-8000-000000000001');
+ ASSERT r->>'ok'='true' AND r->>'idempotent'='true';
+END $;
+RESET ROLE;
+DO $ BEGIN
+ ASSERT (SELECT count(*)=1 FROM public.audit_logs
+         WHERE action='BALCAO_REMATRICULA_FORA_PRAZO_CONCLUIDA');
+ ASSERT (SELECT count(*)=2 FROM public.matriculas
+         WHERE aluno_id='90000000-0000-4000-8000-000000000001');
+END $;
 
 -- A zero-cost confirmation needs an explicit class fee waiver.
 INSERT INTO public.matriculas(id,escola_id,aluno_id,turma_id,session_id,ano_letivo,status,ativo) VALUES
@@ -268,8 +285,14 @@ BEGIN
  END;
 END $$;
 SELECT public.expect_zero_rejected();
-UPDATE public.financeiro_tabelas SET valor_confirmacao=0
+-- Missing class price falls back to the configured service fee, never an
+-- uninitialized record or an implicit waiver.
+DELETE FROM public.financeiro_tabelas
 WHERE id='b0000000-0000-4000-8000-000000000001';
+SELECT public.expect_zero_rejected();
+INSERT INTO public.financeiro_tabelas(id,escola_id,ano_letivo,curso_id,classe_id,valor_confirmacao) VALUES
+('b0000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001',2026,
+ '70000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000002',0);
 -- Executes the helper as owner via SECURITY DEFINER writer.
 SET ROLE authenticated;
 DO $$ DECLARE r jsonb; BEGIN
