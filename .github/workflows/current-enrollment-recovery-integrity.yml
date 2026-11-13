@@ -39,6 +39,8 @@ jobs:
       - name: Existing transactional class-correction guard regression
         run: node scripts/ci/class-rectification-contract.mjs
       - name: TypeScript
+        env:
+          NODE_OPTIONS: --max-old-space-size=5120
         run: pnpm -C apps/web typecheck
       - name: Targeted ESLint
         run: |

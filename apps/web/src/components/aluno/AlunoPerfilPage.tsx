@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { canCorrigirNomeAluno } from "@/lib/aluno/nome-permissions";
 import { AcoesRapidasBalcao } from "@/components/secretaria/AcoesRapidasBalcao";
 import { CurrentYearEnrollmentPanel } from "@/components/aluno/CurrentYearEnrollmentPanel";
 import { DossierHeader } from "@/components/aluno/DossierHeader";
@@ -33,6 +34,13 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
   if (!loaded) return notFound();
   const { aluno, servicos } = loaded;
   const canEditHistoricoTransitado = role === "admin" || role === "secretaria";
+  const { data: member } = await supabase
+    .from("escola_users")
+    .select("papel")
+    .eq("escola_id", resolvedEscolaId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const canEditNome = canCorrigirNomeAluno(member?.papel) && aluno.perfil.escola_id === resolvedEscolaId;
 
   return (
     <div className={workspace ? "min-w-0" : embedded ? "bg-slate-50" : "min-h-screen bg-slate-50"}>
@@ -43,7 +51,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
           aluno={aluno}
           slotPerfil={(
             <div className="space-y-5">
-              <DossierPerfilSection aluno={aluno} />
+              <DossierPerfilSection aluno={aluno} canEditNome={canEditNome} />
               <CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId} />
             </div>
           )}

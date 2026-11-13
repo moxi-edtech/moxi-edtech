@@ -149,7 +149,7 @@ export function TabPerfil() {
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-700">Nome do Aluno</label>
             <Input value={dados.nome} disabled className="bg-slate-50" />
-            <p className="mt-1 text-[10px] text-slate-400">O nome só pode ser alterado pela secretaria.</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">O nome só pode ser alterado pela Direção da escola.</p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">

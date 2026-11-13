@@ -10,7 +10,8 @@ import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
 import { AcademicYearContextError, resolveAcademicYearContext, type AcademicWorkspaceMode } from '@/lib/academic-year/context'
 
 const UpdateSchema = z.object({
-  nome: z.string().trim().min(1, 'Informe o nome').optional(),
+  nome: z.string().trim().min(2, 'Informe o nome completo').max(160, 'Nome demasiado longo').optional(),
+  nome_anterior: z.string().nullable().optional(),
   email: z.string().email('Email inválido').nullable().or(z.string().length(0)).optional(),
   telefone: z.string().trim().nullable().optional(),
   data_nascimento: z.string().nullable().optional(),
@@ -78,7 +79,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const authz = await requireRoleInSchool({
       supabase: s as any,
       escolaId: escolaFromProfile,
-      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro'],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro', 'diretor', 'admin_secretaria', 'admin_secretario'],
     })
     if (authz.error) return authz.error
 
@@ -214,6 +215,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: parsed.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
     }
     const body = parsed.data
+    const somenteNome = body.nome !== undefined && Object.keys(body).every((key) => key === 'nome' || key === 'nome_anterior')
 
     // requester + escopo
     const s = await supabaseServerTyped<any>()
@@ -237,7 +239,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const authz = await requireRoleInSchool({
       supabase: s as any,
       escolaId: escolaFromProfile,
-      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro'],
+      roles: somenteNome
+        ? [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro', 'admin_secretaria', 'admin_secretario', 'diretor']
+        : [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro'],
     })
     if (authz.error) return authz.error
 
@@ -259,11 +263,31 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: 'Aluno não pertence à escola ativa do usuário' }, { status: 403 })
     }
 
+    // A identidade é corrigida por uma única RPC: tenant, papel e auditoria na mesma transação.
+    if (body.nome !== undefined && body.nome !== (aluno as any).nome) {
+      const nomeAuthz = await requireRoleInSchool({
+        supabase: s as any,
+        escolaId: escolaFromProfile,
+        roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro', 'admin_secretaria', 'admin_secretario', 'diretor'],
+      })
+      if (nomeAuthz.error) return nomeAuthz.error
+
+      const { error: nomeErr } = await s.rpc('corrigir_nome_aluno_balcao', {
+        p_aluno_id: alunoId,
+        p_escola_id: escolaFromProfile,
+        p_nome: body.nome,
+        p_nome_anterior: body.nome_anterior ?? (aluno as any).nome,
+      })
+      if (nomeErr) {
+        const status = nomeErr.code === '40001' ? 409 : nomeErr.code === '42501' ? 403 : 400
+        return NextResponse.json({ ok: false, error: nomeErr.message }, { status })
+      }
+    }
+
     const profileId = (aluno as any).profile_id as string | null
     // Update profiles
     if (profileId) {
       const toUpdateProfile: Database['public']['Tables']['profiles']['Update'] = {}
-      if (body.nome !== undefined) toUpdateProfile.nome = body.nome
       if (body.email !== undefined) toUpdateProfile.email = body.email
       if (body.telefone !== undefined) toUpdateProfile.telefone = body.telefone
       if (body.data_nascimento !== undefined) toUpdateProfile.data_nascimento = body.data_nascimento
@@ -282,7 +306,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     // Update alunos
     const toUpdateAluno: Record<string, unknown> = {}
-    if (body.nome !== undefined) toUpdateAluno.nome = body.nome
     if (body.email !== undefined) toUpdateAluno.email = body.email
     if (body.telefone !== undefined) toUpdateAluno.telefone = body.telefone
     if (body.data_nascimento !== undefined) toUpdateAluno.data_nascimento = body.data_nascimento
@@ -316,8 +339,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (aErr) return NextResponse.json({ ok: false, error: aErr.message }, { status: 400 })
     }
 
-    // Auditoria
-    try {
+    // Auditoria genérica para os restantes dados (a RPC audita alterações de nome).
+    if (!somenteNome) try {
       await recordAuditServer({
         escolaId: (aluno as any).escola_id,
         portal: 'secretaria',

@@ -30,7 +30,10 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -C apps/web typecheck
+      - name: Full KLASSE web TypeScript check
+        env:
+          NODE_OPTIONS: --max-old-space-size=5120
+        run: pnpm -C apps/web typecheck
       - name: Lint P2 contract changes
         run: |
           pnpm -C apps/web exec eslint \

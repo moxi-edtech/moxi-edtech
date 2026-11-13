@@ -11,6 +11,7 @@ type QuickEditFieldProps = {
   alunoId: string;
   type?: "text" | "tel" | "email";
   onSuccess?: (newValue: string) => void;
+  alwaysVisible?: boolean;
 };
 
 export function QuickEditField({
@@ -20,6 +21,7 @@ export function QuickEditField({
   alunoId,
   type = "text",
   onSuccess,
+  alwaysVisible = false,
 }: QuickEditFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [currentValue, setCurrentValue] = useState(value || "");
@@ -33,7 +35,12 @@ export function QuickEditField({
   }, [isEditing]);
 
   const handleSave = async () => {
-    if (currentValue === (value || "")) {
+    const nextValue = fieldName === "nome" ? currentValue.trim().replace(/\s+/g, " ") : currentValue;
+    if (fieldName === "nome" && (nextValue.length < 2 || nextValue.length > 160)) {
+      toast.error("Informe um nome entre 2 e 160 caracteres.");
+      return;
+    }
+    if (nextValue === (value || "")) {
       setIsEditing(false);
       return;
     }
@@ -43,7 +50,9 @@ export function QuickEditField({
       const res = await fetch(`/api/secretaria/alunos/${encodeURIComponent(alunoId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [fieldName]: currentValue || null }),
+        body: JSON.stringify(fieldName === "nome"
+          ? { nome: nextValue, nome_anterior: value }
+          : { [fieldName]: nextValue || null }),
       });
 
       const json = await res.json();
@@ -51,7 +60,7 @@ export function QuickEditField({
 
       toast.success(`${label} atualizado com sucesso!`);
       setIsEditing(false);
-      onSuccess?.(currentValue);
+      onSuccess?.(nextValue);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao atualizar");
     } finally {
@@ -77,12 +86,16 @@ export function QuickEditField({
             ref={inputRef}
             type={type}
             value={currentValue}
+            aria-label={label}
+            maxLength={fieldName === "nome" ? 160 : undefined}
             onChange={(e) => setCurrentValue(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isLoading}
-            className="flex-1 text-sm font-medium text-slate-700 bg-white border border-moxinexa-teal/50 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal/20"
+            className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground focus:border-ring focus:outline-none focus:ring-4 focus:ring-ring/20"
           />
           <button
+            type="button"
+            aria-label={`Guardar ${label}`}
             onClick={handleSave}
             disabled={isLoading}
             className="p-1 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors"
@@ -90,6 +103,8 @@ export function QuickEditField({
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
           </button>
           <button
+            type="button"
+            aria-label={`Cancelar edição de ${label}`}
             onClick={handleCancel}
             disabled={isLoading}
             className="p-1 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors"
@@ -109,11 +124,14 @@ export function QuickEditField({
         <span className="text-xs text-slate-400 italic">Não preenchido</span>
       )}
       <button
+        type="button"
         onClick={() => setIsEditing(true)}
-        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-100 text-slate-400 rounded-lg transition-all"
+        className={`inline-flex items-center gap-1 rounded-xl p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${alwaysVisible ? "" : "md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"}`}
         title={`Editar ${label}`}
+        aria-label={`Editar ${label}`}
       >
-        <Pencil className="w-3 h-3" />
+        <Pencil className="h-4 w-4" />
+        {alwaysVisible ? <span className="text-xs font-semibold">Editar nome</span> : null}
       </button>
     </div>
   );

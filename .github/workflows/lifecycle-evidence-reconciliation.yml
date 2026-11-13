@@ -66,6 +66,8 @@ jobs:
             tests/unit/student-lifecycle-ssot.spec.ts \
             tests/unit/current-year-enrollment-and-receipt-recovery.spec.ts
       - name: TypeScript
+        env:
+          NODE_OPTIONS: --max-old-space-size=5120
         run: pnpm -C apps/web typecheck
       - name: ESLint on academic reconciliation and orchestrator
         run: |
