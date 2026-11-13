@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { CheckCircle2, FileText, TrendingDown, Wallet, Printer } from "lucide-react";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { formatDate, formatKwanza, monthName } from "@/lib/formatters";
@@ -20,7 +20,8 @@ import {
   getEscolaParamFromPath,
 } from "@/lib/navigation";
 
-export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
+export function DossierPerfilSection({ aluno, canEditNome = false }: { aluno: AlunoNormalizado; canEditNome?: boolean }) {
+  const router = useRouter();
   const p = aluno.perfil;
   const matricula = aluno.matricula_atual;
 
@@ -45,6 +46,19 @@ export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
           Identificação
         </p>
+        <div className="mb-4">
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Nome completo</p>
+          {canEditNome ? (
+            <QuickEditField
+              label="Nome completo"
+              value={p.nome}
+              fieldName="nome"
+              alunoId={aluno.id}
+              alwaysVisible
+              onSuccess={() => router.refresh()}
+            />
+          ) : renderValue(p.nome)}
+        </div>
         <div className="grid gap-3 md:grid-cols-3">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">BI</p>
