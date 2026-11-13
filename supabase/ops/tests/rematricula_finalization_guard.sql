@@ -198,7 +198,7 @@ ALTER TABLE public.pagamentos ADD COLUMN status_fiscal text;
 SET ROLE authenticated;
 UPDATE public.pagamentos SET status_fiscal='ok'
  WHERE id='d0000000-0000-4000-8000-000000000002';
-DO $ BEGIN
+DO $$ BEGIN
   BEGIN
     UPDATE public.pagamentos SET meta='{"pedido_id":"c0000000-0000-4000-8000-000000000009"}'::jsonb
      WHERE id='d0000000-0000-4000-8000-000000000002';
@@ -213,15 +213,15 @@ DO $ BEGIN
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM <> 'DIRECT_RECEIPT_MUTATION_FORBIDDEN' THEN RAISE; END IF;
   END;
-END $;
+END $$;
 RESET ROLE;
-DO $ BEGIN
+DO $$ BEGIN
  ASSERT (SELECT status_fiscal='ok' AND status='settled'
          FROM public.pagamentos WHERE id='d0000000-0000-4000-8000-000000000002');
-END $;
+END $$;
 
 SET ROLE authenticated;
-DO $ DECLARE r jsonb; BEGIN
+DO $$ DECLARE r jsonb; BEGIN
  r := public.finalizar_rematricula_balcao(
  '10000000-0000-4000-8000-000000000001','90000000-0000-4000-8000-000000000001',
  '80000000-0000-4000-8000-000000000001','40000000-0000-4000-8000-000000000001',
@@ -234,24 +234,24 @@ DO $$ BEGIN
  ASSERT (SELECT status='granted' AND matricula_id='80000000-0000-4000-8000-000000000002'
          FROM public.servico_pedidos WHERE id='c0000000-0000-4000-8000-000000000001');
  ASSERT (SELECT count(*)=2 FROM public.matriculas WHERE aluno_id='90000000-0000-4000-8000-000000000001');
-END $;
+END $$;
 
 -- Replaying the same paid request is a read-only success (no second audit).
 SET ROLE authenticated;
-DO $ DECLARE r jsonb; BEGIN
+DO $$ DECLARE r jsonb; BEGIN
  r := public.finalizar_rematricula_balcao(
  '10000000-0000-4000-8000-000000000001','90000000-0000-4000-8000-000000000001',
  '80000000-0000-4000-8000-000000000001','40000000-0000-4000-8000-000000000001',
  '60000000-0000-4000-8000-000000000002','c0000000-0000-4000-8000-000000000001');
  ASSERT r->>'ok'='true' AND r->>'idempotent'='true';
-END $;
+END $$;
 RESET ROLE;
-DO $ BEGIN
+DO $$ BEGIN
  ASSERT (SELECT count(*)=1 FROM public.audit_logs
          WHERE action='BALCAO_REMATRICULA_FORA_PRAZO_CONCLUIDA');
  ASSERT (SELECT count(*)=2 FROM public.matriculas
          WHERE aluno_id='90000000-0000-4000-8000-000000000001');
-END $;
+END $$;
 
 -- A zero-cost confirmation needs an explicit class fee waiver.
 INSERT INTO public.matriculas(id,escola_id,aluno_id,turma_id,session_id,ano_letivo,status,ativo) VALUES
