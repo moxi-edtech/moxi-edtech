@@ -79,7 +79,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const authz = await requireRoleInSchool({
       supabase: s as any,
       escolaId: escolaFromProfile,
-      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro', 'diretor'],
+      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP, 'financeiro', 'diretor', 'admin_secretaria', 'admin_secretario'],
     })
     if (authz.error) return authz.error
 

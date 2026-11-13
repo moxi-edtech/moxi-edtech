@@ -10,11 +10,14 @@ const sql = readFileSync(
   "utf8",
 );
 
-test("só os papéis explícitos de Direção corrigem nomes", () => {
-  for (const papel of ["diretor", "admin", "admin_escola", "staff_admin"]) {
+test("Direção, administração financeira e secretaria têm ação de corrigir nomes", () => {
+  for (const papel of [
+    "diretor", "admin", "admin_escola", "staff_admin",
+    "admin_financeiro", "admin_secretaria", "secretaria",
+  ]) {
     assert.equal(canCorrigirNomeAluno(papel), true, papel);
   }
-  for (const papel of ["secretaria", "admin_secretaria", "admin_financeiro", "financeiro", "professor", "aluno", null, undefined]) {
+  for (const papel of ["financeiro", "secretaria_financeiro", "professor", "aluno", null, undefined]) {
     assert.equal(canCorrigirNomeAluno(papel), false, String(papel));
   }
 });

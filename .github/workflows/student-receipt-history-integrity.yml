@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 9
@@ -33,6 +35,8 @@ jobs:
       - name: Receipt normalization, access control and print route tests
         run: node --test --import tsx apps/web/tests/unit/student-receipt-history.spec.ts
       - name: Full KLASSE web TypeScript check
+        env:
+          NODE_OPTIONS: --max-old-space-size=5120
         run: pnpm -C apps/web typecheck
       - name: Targeted ESLint
         run: |
@@ -45,10 +49,9 @@ jobs:
             src/components/secretaria/command-center/CommandCenterStudentDossier.tsx \
             tests/unit/student-receipt-history.spec.ts \
             --max-warnings 10000
-      - name: No fiscal engine or migration changes
+      - name: Only explicitly audited migrations; fiscal and AGT remain frozen
         run: |
           git diff --check
-          ! git diff "origin/${{ github.base_ref }}...HEAD" --name-only | grep -E '^(supabase/migrations/|apps/web/src/lib/fiscal/|apps/web/src/app/api/fiscal/)' || {
-            echo 'Fiscal or database scope modified unexpectedly' >&2
-            exit 1
-          }
+          node --test scripts/ci/tests/guard-fiscal-scope.spec.mjs
+          node scripts/ci/guard-fiscal-scope.mjs "origin/${{ github.base_ref }}"
+          node scripts/ci/lifecycle-migration-order.mjs

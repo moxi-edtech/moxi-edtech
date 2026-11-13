@@ -32,6 +32,25 @@ const physicalPautaSource = "20271112030000_balcao_pauta_corrigir_turma_origem.s
 const individualJourney = "20271112050000_balcao_percurso_academico.sql";
 for (const migration of migrations.filter((file) => file > finalName)) {
   const source = readFileSync(join(dir, migration), "utf8");
+  if (migration === "20271113090000_corrigir_nome_aluno_balcao.sql") {
+    // Reviewed limited purpose: edit identity; never academic results, payments or tenant scope.
+    for (const token of [
+      "CREATE OR REPLACE FUNCTION public.corrigir_nome_aluno_balcao",
+      "SECURITY DEFINER", "SET search_path = ''", "auth.uid()",
+      "eu.escola_id = v_escola_id", "eu.user_id = v_actor",
+      "'admin_financeiro'", "'admin_secretaria'", "'secretaria'",
+      "FOR UPDATE", "p_nome_anterior IS NOT NULL",
+      "UPDATE public.alunos SET nome", "UPDATE public.profiles SET nome",
+      "INSERT INTO public.audit_logs", "ALUNO_NOME_CORRIGIDO",
+      "REVOKE ALL ON FUNCTION public.corrigir_nome_aluno_balcao",
+      "TO authenticated",
+    ]) assert.ok(source.includes(token), "Student name correction missing reviewed guard: " + token);
+    assert.doesNotMatch(source,
+      /(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+public\.(?:mensalidades|pagamentos|notas|matriculas|financeiro_\w+)\b/i,
+      "Name correction cannot alter finance or academic records");
+    assert.doesNotMatch(source, /(?:CREATE|ALTER|DROP)\s+(?:TABLE|VIEW|POLICY)\b/i,
+      "Name correction cannot redefine tables or policies");
+  }
   if (migration === historicBridge) {
     const mandatory = [
       "CREATE OR REPLACE FUNCTION public.finalizar_origem_academica",

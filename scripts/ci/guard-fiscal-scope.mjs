@@ -101,6 +101,9 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // PR #333: exact payment-evidence guard for the existing academic finalizer.
   // The no-AGT/SAF-T scanner still examines executable SQL in this file.
   "20271112100000_rematricula_finalization_payment_guard.sql",
+  // PR #335: student name correction only; tenant, role and audit checks enforced by RPC.
+  // This exact filename remains subject to the same fiscal/AGT/SAF-T SQL scanner.
+  "20271113090000_corrigir_nome_aluno_balcao.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;

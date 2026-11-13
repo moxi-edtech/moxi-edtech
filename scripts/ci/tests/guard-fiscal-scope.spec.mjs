@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 62);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 63);
   const scopedHistoricStaff = "20271112010000_balcao_historic_full_staff_permissions.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(scopedHistoricStaff));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + scopedHistoricStaff]), []);
@@ -225,6 +225,23 @@ test("payment-proof migration is the only newly authorized direct RPC protection
   ])[0] ?? "", /Unapproved database migration/);
   for (const sql of [
     "CREATE TABLE public.fiscal_activation (enabled boolean);",
+    "CREATE OR REPLACE FUNCTION public.agt_issue_invoice() RETURNS void LANGUAGE sql AS $x$ SELECT 1 $x$;",
+    "CREATE TABLE public.saft_export (id uuid);",
+  ]) {
+    assert.match(checkFiscalAndSchemaScope([path], () => sql)[0] ?? "", /Fiscal\/AGT activation/);
+  }
+});
+
+test("student name correction migration is allowlisted only with the fiscal freeze enforced", () => {
+  const name = "20271113090000_corrigir_nome_aluno_balcao.sql";
+  const path = "supabase/migrations/" + name;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271113090001_unreviewed_name_bypass.sql",
+  ])[0] ?? "", /Unapproved database migration/);
+  for (const sql of [
+    "CREATE TABLE public.fiscal_config (enabled boolean);",
     "CREATE OR REPLACE FUNCTION public.agt_issue_invoice() RETURNS void LANGUAGE sql AS $x$ SELECT 1 $x$;",
     "CREATE TABLE public.saft_export (id uuid);",
   ]) {
