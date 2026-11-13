@@ -282,7 +282,7 @@ export async function POST(request: Request) {
     if (priorYears.pending) return NextResponse.json({ ok: false, code: "REMATRICULA_ACADEMIC_PENDING", error: "Conclua os anos anteriores no percurso académico." }, { status: 409 });
     let { data: matriculaDestino } = await supabase
       .from("matriculas")
-      .select("id, turma_id")
+      .select("id, turma_id, status, ativo")
       .eq("escola_id", escolaId)
       .eq("aluno_id", body.aluno_id)
       .eq("ano_letivo", targetAnoLetivoAno)
@@ -321,8 +321,15 @@ export async function POST(request: Request) {
         }, { status: 409 });
       }
     }
+    // A reserved destination has a turma but is NOT yet an active matrícula.
+    // It must pass through finalizar_rematricula_balcao after payment; simply
+    // marking its order as granted would leave the student pending indefinitely.
+    const destinoJaAtivo = Boolean(
+      matriculaDestino?.ativo === true &&
+      ["ativo", "ativa", "active"].includes(String(matriculaDestino.status ?? "").toLowerCase()),
+    );
     const reconfirmacaoApenas = Boolean(
-      matriculaDestino?.turma_id &&
+      destinoJaAtivo && matriculaDestino?.turma_id &&
       !reclassificacao &&
       String(matriculaDestino.turma_id) === String(body.destino_turma_id ?? ""),
     );
@@ -557,7 +564,7 @@ export async function POST(request: Request) {
 
       const { data: destinoAtualizado } = await supabase
         .from("matriculas")
-        .select("id, turma_id")
+        .select("id, turma_id, status, ativo")
         .eq("escola_id", escolaId)
         .eq("id", matriculaDestinoPreparadaId)
         .maybeSingle();

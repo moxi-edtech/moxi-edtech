@@ -156,7 +156,15 @@ export async function GET(
               && ["aberto", "open"].includes(String(turma.status_fecho).toLowerCase()));
             result.pedidoId = result.canConfirm && linkedOrder ? linkedOrder.id : null;
             if (!result.canConfirm) {
-              result.reason = "Reserva pendente: antes de confirmar, reconcilie o pedido, pagamento e recibo de rematrícula no Balcão.";
+              result.reason = matches.length > 1
+                ? "Existem vários pedidos para esta reserva. Consulte o pagamento existente no Balcão, sem cobrar novamente."
+                : !linkedOrder
+                  ? "A reserva já existe. Falta iniciar a taxa de rematrícula no Balcão; não crie outra matrícula."
+                  : !hasReceiptReference
+                    ? linkedOrder.status === "granted"
+                      ? "A taxa foi registada, mas o recibo ainda precisa de verificação no Balcão."
+                      : "A taxa de rematrícula ainda precisa de confirmação no Balcão."
+                    : "A turma está fechada para confirmação. Contacte a direção escolar.";
             }
           }
         }

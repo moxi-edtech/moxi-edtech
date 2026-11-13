@@ -98,6 +98,9 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271112050000_balcao_percurso_academico.sql",
   // School-scoped secretaria role aliases; no financial writer or data changes.
   "20271112060000_balcao_secretaria_role_aliases.sql",
+  // PR #333: exact payment-evidence guard for the existing academic finalizer.
+  // The no-AGT/SAF-T scanner still examines executable SQL in this file.
+  "20271112100000_rematricula_finalization_payment_guard.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;

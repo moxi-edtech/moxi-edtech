@@ -337,7 +337,7 @@ export async function GET(request: Request) {
     // taxa de rematrícula, sem seleccionar nem alterar turma/classe.
     const { data: matriculaDestino } = await supabase
       .from("matriculas")
-      .select("id, turma_id")
+      .select("id, turma_id, status, ativo")
       .eq("escola_id", escolaId)
       .eq("aluno_id", aluno_id)
       .eq("ano_letivo", targetAnoLetivoAno)
@@ -494,8 +494,14 @@ export async function GET(request: Request) {
     // não pode voltar a READY nem desaparecer da operação da secretaria.
     // Mantê-la na fila de reconciliação permite escolher a turma e completar
     // a progressão sem cobrar novamente.
-    const pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoTemMatriculaDestino;
-    const pedidoConcluido = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino;
+    const destinoConfirmado = Boolean(
+      matriculaDestino?.ativo === true &&
+      ["ativo", "ativa", "active"].includes(String(matriculaDestino.status ?? "").toLowerCase()),
+    );
+    // A granted order pointing to a reserved, inactive destination is not a
+    // completed reenrollment. Surface reconciliation rather than false success.
+    const pedidoConcluido = pedidoExistente?.status === "granted" && pedidoTemMatriculaDestino && destinoConfirmado;
+    const pagamentoSemProgressao = pedidoExistente?.status === "granted" && !pedidoConcluido;
     if (historicoAcademicoPendente) {
       status = "ACADEMIC_HISTORY_PENDING";
     } else if (comprovantePendente) {
