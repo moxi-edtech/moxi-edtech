@@ -47,7 +47,7 @@ export function DossierPerfilSection({ aluno, canEditNome = false, onNomeChanged
           Identificação
         </p>
         <div className="mb-4">
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">Nome completo</p>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Nome completo</p>
           {canEditNome ? (
             <QuickEditField
               label="Nome completo"
