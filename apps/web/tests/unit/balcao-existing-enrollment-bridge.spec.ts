@@ -71,6 +71,35 @@ test("reconciliation API never silently accepts a different turma or year", () =
   assert.match(api,/if \(linkError \|\| !linkedPedido/);
   assert.match(api,/emitirComprovanteMatricula/);
 });
+test("paid reserved destination is finalized before a document or another charge", () => {
+  const status = read("app/api/secretaria/balcao/rematriculas/status/route.ts");
+  const reconcile = read("app/api/secretaria/balcao/rematriculas/reconcile/route.ts");
+  const writer = read("app/api/secretaria/balcao/rematriculas/route.ts");
+  assert.match(status, /if \(pagamentoSemProgressao\) \{\s*status = "RECONCILIATION_REQUIRED"/);
+  assert.match(status, /const pedidoPagoComReserva = pedidoExistente\?\.status === "granted"/);
+  assert.match(status, /pedidoPagoComReserva \|\| canLinkPaidOrderToExistingEnrollment/);
+  assert.match(reconcile, /const destinoAtivo = matriculaDestinoExistente\.ativo === true/);
+  assert.match(reconcile, /if \(!destinoAtivo\) \{[\s\S]*?rpc\("finalizar_rematricula_balcao"/);
+  assert.match(reconcile, /RECONCILIATION_FINALIZATION_REQUIRED/);
+  assert.match(writer, /if \(matriculaDestino\?\.id && !destinoJaAtivo\)/);
+  assert.match(writer, /pedidoDaReserva[\s\S]*?code: "REMATRICULA_RECONCILIATION_REQUIRED"/);
+  assert.match(writer, /let mensalidadesDestinoSelecionadas: any\[\] = \[\]/);
+  assert.ok(writer.indexOf("if (pedidoDaReserva)") < writer.indexOf("let mensalidadesDestinoSelecionadas"),
+    "the paid-order recovery must preempt a stale monthly basket");
+});
+
+test("destination quote excludes paid monthly fees under school/student and keeps valid selections", () => {
+  const quoteApi = read("app/api/financeiro/orcamento/matricula/route.ts");
+  const quoteHook = read("hooks/useRematriculaMensalidadesDestino.ts");
+  assert.match(quoteApi, /aluno_id/);
+  assert.match(quoteApi, /\.eq\("escola_id", escolaId\)/);
+  assert.match(quoteApi, /\.eq\("aluno_id", alunoId\)/);
+  assert.match(quoteApi, /\.eq\("matricula_id", destino\.id\)/);
+  assert.match(quoteApi, /\["pago", "isento", "cancelado"\]/);
+  assert.match(quoteHook, /aluno_id: alunoId/);
+  assert.match(quoteHook, /\.filter\(item => !item\.previsto \|\| stillOpen\.has\(item\.id\)\)/);
+});
+
 test("verified absence-justification decisions provide an in-place action, without fabricating attendance", () => {
   const panel=read("components/secretaria/RaaBalcaoResolutionPanel.tsx");
   assert.match(panel,/pendingJustification = cases\.find/);
