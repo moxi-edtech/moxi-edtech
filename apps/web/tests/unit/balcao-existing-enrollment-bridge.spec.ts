@@ -45,7 +45,7 @@ test("Balcão offers existing-enrollment reconciliation without opening another 
   assert.match(hook, /setReconciliation\(data\.reconciliation \?\? null\)/);
   assert.match(hook, /setReconciliation\(null\)/);
   assert.match(balc, /rematricula\.reconciliation\?\.can_link_existing_enrollment\s*\? rematricula\.resolveReconciliation/);
-  assert.match(balc, /paidExistingDestination \? "Associar pagamento à matrícula"/);
+  assert.match(balc, /paidExistingDestination \? "Concluir matrícula já paga"/);
   assert.match(balc, /showAcademicResolution && raaMatriculaId && raaAlunoId/);
   assert.match(balc, /const showAcademicResolution = !paidExistingDestination \|\| Boolean\(academicBlocker\)/);
   assert.doesNotMatch(balc, /<RematriculaAcademicDestination/);
