@@ -193,8 +193,35 @@ INSERT INTO public.documentos_emitidos VALUES
  '90000000-0000-4000-8000-000000000001','recibo',NULL,NULL,
  '{"pagamento_id":"d0000000-0000-4000-8000-000000000002"}'::jsonb);
 
+-- Fiscal metadata may change without changing immutable settlement evidence.
+ALTER TABLE public.pagamentos ADD COLUMN status_fiscal text;
 SET ROLE authenticated;
-DO $$ DECLARE r jsonb; BEGIN
+UPDATE public.pagamentos SET status_fiscal='ok'
+ WHERE id='d0000000-0000-4000-8000-000000000002';
+DO $ BEGIN
+  BEGIN
+    UPDATE public.pagamentos SET meta='{"pedido_id":"c0000000-0000-4000-8000-000000000009"}'::jsonb
+     WHERE id='d0000000-0000-4000-8000-000000000002';
+    RAISE EXCEPTION 'EXPECTED_DENIAL_MISSING';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM <> 'DIRECT_SETTLEMENT_FORBIDDEN' THEN RAISE; END IF;
+  END;
+  BEGIN
+    UPDATE public.documentos_emitidos SET dados_snapshot='{}'::jsonb
+      WHERE id='e0000000-0000-4000-8000-000000000002';
+    RAISE EXCEPTION 'EXPECTED_DENIAL_MISSING';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM <> 'DIRECT_RECEIPT_MUTATION_FORBIDDEN' THEN RAISE; END IF;
+  END;
+END $;
+RESET ROLE;
+DO $ BEGIN
+ ASSERT (SELECT status_fiscal='ok' AND status='settled'
+         FROM public.pagamentos WHERE id='d0000000-0000-4000-8000-000000000002');
+END $;
+
+SET ROLE authenticated;
+DO $ DECLARE r jsonb; BEGIN
  r := public.finalizar_rematricula_balcao(
  '10000000-0000-4000-8000-000000000001','90000000-0000-4000-8000-000000000001',
  '80000000-0000-4000-8000-000000000001','40000000-0000-4000-8000-000000000001',
