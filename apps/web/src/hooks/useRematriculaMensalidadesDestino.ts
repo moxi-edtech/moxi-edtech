@@ -21,7 +21,7 @@ export function useRematriculaMensalidadesDestino({ escolaId, alunoId, anoLetivo
       setItems([]); setError(null);
       setSelectedItems(current => current.filter(item => !item.previsto));
     }
-    if (!owner || !turmaId || !anoLetivoId) { setLoading(false); return; }
+    if (!owner || !alunoId || !turmaId || !anoLetivoId) { setLoading(false); return; }
     const quote = owner + ":" + turmaId;
     if (quoteRef.current !== quote) {
       quoteRef.current = quote; setItems([]); setError(null);
