@@ -349,6 +349,24 @@ BEGIN
     v_ano_destino, v_destino.id
   );
 
+  -- Retry after a committed enrollment is a read-only success. Do not write
+  -- another audit event, consume another payment, or change enrollment dates.
+  IF v_destino.id IS NOT NULL AND v_destino.ativo IS TRUE
+    AND lower(coalesce(v_destino.status,'')) IN ('ativo','ativa','active')
+    AND EXISTS (
+      SELECT 1 FROM public.servico_pedidos sp
+      WHERE sp.id=p_pedido_id AND sp.escola_id=p_escola_id
+        AND sp.aluno_id=p_aluno_id AND sp.status='granted'
+        AND sp.contexto->>'matricula_destino_id'=v_destino.id::text
+    )
+  THEN
+    RETURN jsonb_build_object(
+      'ok',true,'idempotent',true,'matricula_id',v_destino.id,
+      'numero_matricula',v_destino.numero_matricula,
+      'turma_id',v_destino.turma_id,'ano_letivo_id',p_ano_letivo_id
+    );
+  END IF;
+
   IF public.canonicalize_matricula_status_text(v_origem.status)
      NOT IN ('ativo', 'pendente', 'concluido', 'transferido') THEN
     RAISE EXCEPTION 'Matrícula de origem não está elegível para rematrícula';
