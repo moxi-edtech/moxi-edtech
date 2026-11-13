@@ -52,7 +52,8 @@ BEGIN
 
   -- The source may be stored in the order's primary FK before finalization,
   -- or in its immutable context after the order was linked to the destination.
-  IF v_pedido.contexto->>'origem_matricula_id' IS DISTINCT FROM p_matricula_origem_id::text
+  IF (v_pedido.contexto ? 'origem_matricula_id'
+      AND v_pedido.contexto->>'origem_matricula_id' IS DISTINCT FROM p_matricula_origem_id::text)
     OR (
       v_pedido.matricula_id IS DISTINCT FROM p_matricula_origem_id
       AND NOT (
@@ -124,9 +125,14 @@ BEGIN
     ft.created_at DESC NULLS LAST
   LIMIT 1;
 
-  v_preco := CASE WHEN FOUND THEN v_tabela.valor_confirmacao ELSE NULL END;
+  IF FOUND THEN
+    v_preco := v_tabela.valor_confirmacao;
+    v_isencao_classe := coalesce(v_tabela.class_scope,false) AND v_preco=0;
+  ELSE
+    v_preco := NULL;
+    v_isencao_classe := false;
+  END IF;
   v_taxa := coalesce(v_preco,v_servico.valor_base,0);
-  v_isencao_classe := coalesce(v_tabela.class_scope,false) AND v_preco=0;
 
   -- No amount may be reduced below the fee actually configured for this class.
   IF v_taxa < 0 OR v_pedido.valor_cobrado IS NULL
