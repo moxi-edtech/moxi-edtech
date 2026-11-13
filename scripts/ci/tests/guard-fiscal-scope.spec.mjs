@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 61);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 62);
   const scopedHistoricStaff = "20271112010000_balcao_historic_full_staff_permissions.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(scopedHistoricStaff));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + scopedHistoricStaff]), []);
@@ -210,6 +210,25 @@ test("audited transfer revocation and secondary history guard are narrowly allow
   ]) {
     assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + unreviewed])[0] ?? "",
       /Unapproved database migration/);
+  }
+});
+
+test("payment-proof migration is the only newly authorized direct RPC protection", () => {
+  const name = "20271112100000_rematricula_finalization_payment_guard.sql";
+  const path = "supabase/migrations/" + name;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  // New migrations remain prohibited without an explicit review, and fiscal
+  // activation remains blocked even inside this narrowly authorized file.
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271112100001_unreviewed_payment_bypass.sql",
+  ])[0] ?? "", /Unapproved database migration/);
+  for (const sql of [
+    "CREATE TABLE public.fiscal_activation (enabled boolean);",
+    "CREATE OR REPLACE FUNCTION public.agt_issue_invoice() RETURNS void LANGUAGE sql AS $x$ SELECT 1 $x$;",
+    "CREATE TABLE public.saft_export (id uuid);",
+  ]) {
+    assert.match(checkFiscalAndSchemaScope([path], () => sql)[0] ?? "", /Fiscal\\/AGT activation/);
   }
 });
 
