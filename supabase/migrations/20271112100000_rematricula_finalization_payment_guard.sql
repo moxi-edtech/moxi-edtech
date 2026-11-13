@@ -199,8 +199,19 @@ BEGIN
     IF TG_OP='INSERT' AND (NEW.status='settled' OR NEW.settled_at IS NOT NULL) THEN
       RAISE EXCEPTION 'DIRECT_SETTLEMENT_FORBIDDEN' USING ERRCODE='42501';
     ELSIF TG_OP='UPDATE' AND (
-      OLD.status='settled' OR OLD.settled_at IS NOT NULL
-      OR NEW.status='settled' OR NEW.settled_at IS NOT NULL
+      ((OLD.status='settled' OR NEW.status='settled')
+         AND NEW.status IS DISTINCT FROM OLD.status)
+      OR NEW.settled_at IS DISTINCT FROM OLD.settled_at
+      OR NEW.settled_by IS DISTINCT FROM OLD.settled_by
+      OR NEW.meta->>'pedido_id' IS DISTINCT FROM OLD.meta->>'pedido_id'
+      OR NEW.meta->>'servico_pedido_id' IS DISTINCT FROM OLD.meta->>'servico_pedido_id'
+      OR (OLD.status='settled' AND (
+        NEW.valor_pago IS DISTINCT FROM OLD.valor_pago
+        OR NEW.meta IS DISTINCT FROM OLD.meta
+        OR NEW.escola_id IS DISTINCT FROM OLD.escola_id
+        OR NEW.aluno_id IS DISTINCT FROM OLD.aluno_id
+        OR NEW.mensalidade_id IS DISTINCT FROM OLD.mensalidade_id
+      ))
     ) THEN
       RAISE EXCEPTION 'DIRECT_SETTLEMENT_FORBIDDEN' USING ERRCODE='42501';
     END IF;
