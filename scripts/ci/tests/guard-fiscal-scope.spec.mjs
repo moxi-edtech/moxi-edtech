@@ -19,8 +19,8 @@ test("allows only audited enrollment and historical evidence migrations", () => 
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(pendingTuition));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + pendingTuition]), []);
   assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + pendingTuition], () =>
-    "CREATE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $ SELECT 1; $;")[0] ?? "", /Fiscal\\/AGT activation/);
-    const correction = "20271112040000_balcao_retificacao_classe_sem_progressao.sql";
+    "CREATE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $ SELECT 1; $;")[0] ?? "", /Fiscal[/]AGT activation/);
+  const correction = "20271112040000_balcao_retificacao_classe_sem_progressao.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(correction));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + correction]), []);
   assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271112040001_unreviewed_class_promotion.sql"])[0] ?? "", /Unapproved database migration/);
