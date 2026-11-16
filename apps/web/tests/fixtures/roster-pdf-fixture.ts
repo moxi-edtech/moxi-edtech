@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { renderNominalA4, type NominalA4Row } from "../../src/lib/documentos/nominalA4";
 
 /** Identidades inteiramente simuladas; não consultar nenhuma escola real. */
+async function main() {
 const testNames = [
   "Pessoa Simulada com Nome Muito Extenso e Diversos Apelidos Completos de Exemplo Número Um",
   "Pessoa Simulada da Conceição, João Ângelo e Grácia — Teste de Acentuação",
@@ -41,3 +42,10 @@ for (const [filename, rows, sensitive] of [
   await writeFile(output + "/" + filename, bytes);
   console.log(filename, bytes.length, "bytes gerados");
 }
+
+}
+
+void main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : "Falha ao criar fixture");
+  process.exitCode = 1;
+});
