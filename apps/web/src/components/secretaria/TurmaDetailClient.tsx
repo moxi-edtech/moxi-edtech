@@ -18,7 +18,6 @@ import { buildPortalHref, buildContextualPortalHref } from "@/lib/navigation";
 import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { ImprimirListaTurmaButton } from "@/components/secretaria/ImprimirListaTurmaButton";
-import { useUserRole } from "@/hooks/useUserRole";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 //
@@ -54,6 +53,7 @@ type Aluno = {
 const EMPTY_ALUNOS: Aluno[] = [];
 
 type TurmaData = {
+  canEmitLista?: boolean;
   turma: {
     id:          string;
     escola_id:   string;
@@ -795,8 +795,7 @@ export default function TurmaDetailClient({
   }, [escolaParam, turmaId, periodoId]);
 
   const [includeAllStatus, setIncludeAllStatus] = useState(false);
-  const { userRole: printRole, isLoading: printRoleLoading } = useUserRole();
-  const canPrint = !printRoleLoading && ["admin", "operacoes", "secretaria", "superadmin"].includes(printRole ?? "");
+  const canPrint = data?.canEmitLista === true;
   const [listaMode, setListaMode] = useState<"auto" | "ano_letivo" | "operacional">("auto");
   const [isAlbum, setIsAlbum] = useState(false);
 
