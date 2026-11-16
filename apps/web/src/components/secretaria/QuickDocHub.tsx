@@ -294,6 +294,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   const [scope, setScope] = useState<ScopeKey>("turma");
   const [modeOverride, setModeOverride] = useState<ListaNominalMode | null>(null);
   const [jobs, setJobs] = useState<JobItem[]>([]);
+  const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
   const [directHistory, setDirectHistory] = useState<DirectHistoryItem[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [includeAllStatus, setIncludeAllStatus] = useState(false);
@@ -410,6 +411,29 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
       setLoadingJobs(false);
     }
   }, []);
+
+  const reprocessarFalhas = useCallback(async (jobId: string) => {
+    if (retryingJobId) return;
+    setRetryingJobId(jobId);
+    try {
+      const response = await fetch("/api/secretaria/documentos-oficiais/lote/reprocess", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: jobId }),
+      });
+      const result: { ok?: boolean; error?: string } = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "Não foi possível reprocessar as turmas.");
+      }
+      setFeedback("Turmas com falha reenviadas. Os documentos anteriores serão preservados.");
+      await loadJobs();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Falha ao reprocessar o lote.");
+    } finally {
+      setRetryingJobId(null);
+    }
+  }, [loadJobs, retryingJobId]);
 
   useEffect(() => {
     void loadJobs();
@@ -1275,6 +1299,16 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                       ) : null}
                     </div>
                     {job.error_message ? <p className="mt-2 text-[11px] text-rose-600">{job.error_message}</p> : null}
+                    {job.failed_count > 0 && job.status !== "PROCESSING" && (
+                      <button
+                        type="button"
+                        disabled={retryingJobId !== null}
+                        onClick={() => void reprocessarFalhas(job.id)}
+                        className="mt-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+                      >
+                        {retryingJobId === job.id ? "A reprocessar…" : "Reprocessar turmas com falha"}
+                      </button>
+                    )}
                     {(job.itens?.length ?? 0) > 0 && (
                       <details className="mt-2 rounded-xl border border-border bg-card p-2">
                         <summary className="cursor-pointer text-xs font-semibold text-foreground">
