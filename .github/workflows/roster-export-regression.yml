@@ -35,7 +35,7 @@ jobs:
       - name: Instalar dependências fixadas
         run: pnpm install --frozen-lockfile
       - name: Testes de inclusão por sessão e estados
-        run: pnpm -C apps/web exec node --import tsx --test tests/unit/roster-export-policy.spec.ts tests/unit/roster-export-reproduction.spec.ts tests/unit/current-year-roster-backend.spec.ts
+        run: pnpm -C apps/web exec node --import tsx --test tests/unit/roster-export-*.spec.ts tests/unit/current-year-roster-backend.spec.ts
       - name: TypeScript
         env:
           NODE_OPTIONS: --max-old-space-size=6144
