@@ -28,9 +28,8 @@ test("printed lists are scoped to a single academic session and paginate", () =>
   const pdf = source("lib/documentos/listaNominalPdf.ts");
   assert.match(pdf, /sessionIds\.size !== 1/);
   assert.match(pdf, /\.eq\("session_id", turma\.session_id\)/);
-  assert.match(pdf, /if \(!includeAllStatus\) \{/);
-  assert.match(pdf, /\.eq\("ativo", true\)/);
-  assert.match(pdf, /\.in\("status", \["ativo", "ativa", "active"\]\)/);
+  assert.match(pdf, /selectMatriculasDaLista/);
+  assert.doesNotMatch(pdf, /\.eq\("ativo", true\)/);
   assert.match(pdf, /for \(let offset = 0; offset < maxRoster; offset \+= pageSize\)/);
   assert.match(pdf, /maxLimit: pageSize/);
 });

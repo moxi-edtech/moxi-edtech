@@ -58,6 +58,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const disciplinaId = searchParams.get("disciplina_id");
     const isAlbum = searchParams.get("album") === "true";
     const includeAllStatus = searchParams.get("all_status") === "true";
+    const modeParam = searchParams.get("mode");
+    if (modeParam && modeParam !== "ano_letivo" && modeParam !== "operacional") {
+      return NextResponse.json({ ok: false, error: "Modo de lista inválido" }, { status: 400 });
+    }
+    const mode = modeParam === "ano_letivo" || modeParam === "operacional" ? modeParam : undefined;
     const fallbackLogoUrl = `${new URL(req.url).origin}/insignia_med.png`;
 
     if (format === "pdf") {
@@ -73,6 +78,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         disciplinaId,
         isAlbum,
         includeAllStatus,
+      mode,
         fallbackLogoUrl,
       });
 
