@@ -15,7 +15,7 @@ permissions:
 jobs:
   quality:
     name: Typecheck, lint, build and complete unit suite
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://fixture.invalid
@@ -41,7 +41,7 @@ jobs:
         run: pnpm --dir apps/web build
   browser:
     name: E2E, keyboard, scope isolation and responsive evidence
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
