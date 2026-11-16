@@ -625,34 +625,6 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
 
     if (!selectedTurma) return;
     for (const doc of selectedDocDefs) {
-      if (doc.key === "nominal_csv") {
-        const url = buildDocUrl(doc.key, selectedTurma.id, month, anoLetivo, periodoId,
-          selectedPeriodo?.numero ?? null, false, includeAllStatus, modoLista);
-        const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
-        if (!response.ok) {
-          const result: { error?: string } = await response.json().catch(() => ({}));
-          throw new Error(result.error || "Não foi possível exportar o CSV.");
-        }
-        const blob = await response.blob();
-        const href = URL.createObjectURL(blob);
-        const disposition = response.headers.get("content-disposition");
-        const filename = disposition?.match(/filename="([^"]+)"/)?.[1] ??
-          "lista_nominal_turma_" + selectedTurma.id + ".csv";
-        const anchor = document.createElement("a");
-        anchor.href = href;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        window.setTimeout(() => URL.revokeObjectURL(href), 30_000);
-        addDirectHistory({
-          label: "Lista Nominal (CSV) • " + turmaLabel(selectedTurma),
-          format: "excel",
-          href: url,
-        });
-        continue;
-      }
-
       if (doc.key === "schedule") {
         await downloadHorarioTurmaPdf({
           escolaId: escolaId!,
