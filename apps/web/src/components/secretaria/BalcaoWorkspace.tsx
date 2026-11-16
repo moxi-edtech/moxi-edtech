@@ -178,6 +178,7 @@ function ScopedBalcaoWorkspace({
   return (
     <CommandCenterShell
       variant="modal"
+      escolaId={escolaId}
       student={{ ...selectedStudent, subtitle: currentStudent ? subtitle : null }}
       activeAction={activeAction}
       onActionChange={handleActionChange}
