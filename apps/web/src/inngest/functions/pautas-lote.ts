@@ -49,7 +49,7 @@ export const pautasLote = inngest.createFunction(
     try {
       const { data: currentJob } = await supabase
         .from("pautas_lote_jobs")
-        .select("id, status, cancel_requested_at, escola_id, tipo")
+        .select("id, status, cancel_requested_at, escola_id, tipo, created_by")
         .eq("id", job_id)
         .maybeSingle()
 
@@ -267,6 +267,42 @@ export const pautasLote = inngest.createFunction(
           })
         )
       )
+
+      // Uma inserção auditável para todas as turmas desta execução.
+      // Nunca guardar conteúdo, notas, nomes, BI ou erros não sanitizados.
+      if (tipo === "lista_nominal") {
+        const newlyProduced = results.filter(item => item.ok && "nominalRows" in item);
+        if (newlyProduced.length) {
+          const { error: auditError } = await supabase
+            .from("audit_logs")
+            .insert(newlyProduced.map(item => ({
+              escola_id,
+              portal: "secretaria",
+              acao: "LISTA_NOMINAL_LOTE_EXPORTADA",
+              tabela: "turmas",
+              entity: "turmas",
+              entity_id: item.turmaId,
+              details: {
+                job_id,
+                turma_id: item.turmaId,
+                emissor_id: currentJob.created_by ?? null,
+                ano: event.data.year ?? "sessao_da_turma",
+                modo: event.data.mode ?? "conforme_sessao",
+                linhas: "nominalRows" in item && typeof item.nominalRows === "number" ? item.nominalRows : 0,
+                campos_sensiveis: false,
+              },
+            })))
+          if (auditError) {
+            await supabase.from("pautas_lote_itens").update({
+              status: "FAILED",
+              error_message: "Auditoria indisponível",
+              pdf_path: null,
+              checksum_sha256: null,
+            }).eq("job_id", job_id).in("turma_id", newlyProduced.map(item => item.turmaId))
+            throw new Error("Auditoria do lote indisponível")
+          }
+        }
+      }
 
       // Depois do reprocessamento das falhas, reconstruir o ZIP com TODOS
       // os itens bem-sucedidos do job, inclusive os de execuções anteriores.
