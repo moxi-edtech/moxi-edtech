@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 63);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 64);
   const scopedHistoricStaff = "20271112010000_balcao_historic_full_staff_permissions.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(scopedHistoricStaff));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + scopedHistoricStaff]), []);
@@ -15,7 +15,12 @@ test("allows only audited enrollment and historical evidence migrations", () => 
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(primarySecondaryBridge));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + primarySecondaryBridge]), []);
   assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271112020001_unreviewed_cross_course.sql"])[0] ?? "", /Unapproved database migration/);
-  const correction = "20271112040000_balcao_retificacao_classe_sem_progressao.sql";
+  const pendingTuition = "20271116090000_balcao_retificacao_classe_repreco_pendentes.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(pendingTuition));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + pendingTuition]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + pendingTuition], () =>
+    "CREATE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $ SELECT 1; $;")[0] ?? "", /Fiscal\\/AGT activation/);
+    const correction = "20271112040000_balcao_retificacao_classe_sem_progressao.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(correction));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + correction]), []);
   assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271112040001_unreviewed_class_promotion.sql"])[0] ?? "", /Unapproved database migration/);
