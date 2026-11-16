@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { formatTurmaDisplayName, formatTurnoDisplay } from "@/utils/formatters";
+import { isAllowedClassCorrectionTarget } from "@/lib/secretaria/class-rectification-target";
 
 interface TransferFormProps {
   matriculaId: string;
@@ -23,6 +24,8 @@ interface Turma {
   turno?: string;
   curso_id?: string | null;
   classe_id?: string | null;
+  classe_num?: number | null;
+  nivel_ensino?: string | null;
   ano_letivo?: number | string | null;
 }
 
@@ -63,8 +66,9 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
     ? turmas.filter((turma) =>
         turma.id !== turmaAtual.id &&
         Number(turma.ano_letivo ?? 0) === Number(turmaAtual.ano_letivo ?? 0) &&
-        turma.curso_id === turmaAtual.curso_id &&
-        (retificarClasse ? turma.classe_id !== turmaAtual.classe_id : turma.classe_id === turmaAtual.classe_id)
+        (retificarClasse
+          ? isAllowedClassCorrectionTarget(turmaAtual, turma)
+          : turma.curso_id === turmaAtual.curso_id && turma.classe_id === turmaAtual.classe_id)
       )
     : [];
 
@@ -80,18 +84,28 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
     setError(null);
     if (!anoLetivo || !anoLetivoId) return () => controller.abort();
     const params = new URLSearchParams({ ano: String(anoLetivo), session_id: anoLetivoId });
-    void fetch(`/api/secretaria/turmas-simples?${params.toString()}`, { signal: controller.signal })
+    // Correção: lista vinculada à matrícula e aos papéis autorizados da própria RPC.
+    // O endpoint genérico pode bloquear a secretaria e não é o contrato da retificação.
+    const url = retificarClasse
+      ? `/api/secretaria/matriculas/${encodeURIComponent(matriculaId)}/rectify-class`
+      : `/api/secretaria/turmas-simples?${params.toString()}`;
+    void fetch(url, { signal: controller.signal, cache: "no-store" })
       .then(async (res) => {
         const json = await res.json().catch(() => ({}));
         if (!res.ok || json.ok !== true || !Array.isArray(json.items)) {
           throw new Error(json.error || "Não foi possível consultar as turmas.");
+        }
+        if (retificarClasse && (json.matricula_id !== matriculaId ||
+            json.turma_atual_id !== currentTurmaId ||
+            json.ano_letivo_id !== anoLetivoId)) {
+          throw new Error("A matrícula mudou. Atualize antes de corrigir.");
         }
         return json.items as Turma[];
       })
       .then((items) => { if (!controller.signal.aborted) setTurmas(items); })
       .catch(() => { if (!controller.signal.aborted) setError("Não foi possível carregar as turmas. Volte a tentar."); });
     return () => controller.abort();
-  }, [anoLetivo, anoLetivoId, matriculaId]);
+  }, [anoLetivo, anoLetivoId, matriculaId, currentTurmaId, retificarClasse]);
 
   useEffect(() => {
     const controller = new AbortController();
