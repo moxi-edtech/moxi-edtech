@@ -67,7 +67,7 @@ export function ImprimirListaTurmaButton({
         onClick={() => void emitir()}
         disabled={estado === "a_gerar"}
         aria-busy={estado === "a_gerar"}
-        className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-[#E3B23C] hover:text-slate-900 disabled:cursor-wait disabled:opacity-70"
+        className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-ring hover:bg-muted disabled:cursor-wait disabled:opacity-70"
       >
         {estado === "a_gerar" ? <Loader2 size={16} className="animate-spin" />
           : estado === "concluido" ? <Check size={16} />
@@ -79,7 +79,7 @@ export function ImprimirListaTurmaButton({
           : "Imprimir lista"}
       </button>
       {erro && <span role="alert" className="max-w-56 text-xs text-red-600">{erro}</span>}
-      {estado === "concluido" && <span role="status" className="text-xs text-slate-500">PDF pronto.</span>}
+      {estado === "concluido" && <span role="status" className="text-xs text-muted-foreground">PDF pronto.</span>}
     </span>
   );
 }
