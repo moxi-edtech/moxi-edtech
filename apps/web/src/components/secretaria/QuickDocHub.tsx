@@ -1,2000 +1,1417 @@
 "use client";
 
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
-  useEffect, useMemo, useState, useCallback, useRef, type CSSProperties,
-} from "react";
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import {
-  Search, X, UsersRound, CalendarCheck, Eye, Pencil, Plus,
-  AlertTriangle, CheckCircle2, GraduationCap, UserCheck, UserX,
-  BookOpen, BookX, ChevronDown, LayoutGrid, List, MapPin,
-  Printer, Lock, Send, ArrowUpDown, Calendar, Clock
+  BookOpen,
+  CalendarCheck,
+  Check,
+  ChevronsUpDown,
+  Clock3,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  GraduationCap,
+  LayoutDashboard,
+  Loader2,
+  Search,
 } from "lucide-react";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { recordAuditClient } from "@/lib/auditClient";
-import TurmaForm from "./TurmaForm";
-import TurmaAtribuirProfessoresModal from "./TurmaAtribuirProfessoresModal";
-import TurmaCurriculoModal from "./TurmaCurriculoModal";
-import TurmaHorarioModal from "./TurmaHorarioModal";
-import { useEscolaId } from "@/hooks/useEscolaId";
-import { useUserRole } from "@/hooks/useUserRole";
-import { buildPortalHref } from "@/lib/navigation";
-import { buildEscolaUrl } from "@/lib/escola/url";
-import { formatTurmaNomeHumano } from "@/utils/formatters";
+import { formatTurmaDisplayName } from "@/utils/formatters";
+import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
-import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
-import { ImprimirListaTurmaButton } from "@/components/secretaria/ImprimirListaTurmaButton";
 import { MAX_TURMAS_POR_LOTE } from "@/lib/documentos/rosterBatchPolicy";
-import type { TurmaItem } from "~/types/turmas";
+import type { ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
 
-// ─── Design tokens (single source of truth) ───────────────────────────────────
-// GREEN  = healthy / ok / confirm
-// GOLD   = primary action / warning (used ONLY for these two purposes)
-// ROSE   = critical / danger
-// SLATE  = neutral UI chrome
-
-const C = {
-  green:      "#1F6B3B",
-  greenBg:    "#1F6B3B18",
-  greenBorder:"#1F6B3B30",
-  gold:       "#E3B23C",       // primary action only
-  goldBg:     "#E3B23C18",
-  rose:       "#e11d48",
-  roseBg:     "rgba(225,29,72,0.08)",
-  amber:      "#b45309",
-  amberBg:    "#fef3c7",
-} as const;
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface TurmasResponse {
-  ok:    boolean;
-  items: TurmaItem[];
-  stats: {
-    totalTurmas: number;
-    totalAlunos: number;
-    porTurno:    Array<{ turno: string; total: number }>;
-  };
-  next_cursor?: string | null;
-}
-
-type FinanceiroTurmaStat = {
-  turmaId:          string;
-  qtdMensalidades:  number;
-  qtdEmAtraso:      number;
-  inadimplenciaPct: number;
+type TurmaItem = {
+  id: string;
+  classe_id?: string | null;
+  turma_nome?: string | null;
+  nome?: string | null;
+  turno?: string | null;
+  classe_nome?: string | null;
+  curso_nome?: string | null;
+  ano_letivo?: number | null;
+  ocupacao_atual?: number | null;
+  capacidade_maxima?: number | null;
+  status_validacao?: string | null;
 };
 
-type PedagogicoTurmaStat = {
-  turma_id:               string;
-  media_presenca:         number;
-  media_notas:            number;
-  alunos_abaixo_presenca: number;
-  alunos_abaixo_notas:    number;
-  is_desescoberta:        boolean;
-  decomposicao_saude:     any;
-  candidatos_espera:      number;
+type PeriodoItem = {
+  id: string;
+  numero: number;
+  tipo: string;
 };
 
-// Health is a derived signal that aggregates multiple dimensions into one
-type HealthSignal = "ok" | "warning" | "critical";
-
-type ActiveFilters = {
-  turno:      string;
-  status:     string;
-  curso:      string;
-  professor:  "todos" | "com" | "sem";
-  vagas:      "todos" | "com" | "sem";
-  curriculo:  "todos" | "ok" | "pendente";
-  financeiro: "todos" | "inadimplentes";
-  espera:     "todos" | "com";
+type AnoLetivoItem = {
+  id: string;
+  nome: string;
+  status: string;
+  ano_letivo: number;
 };
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+type DocKey =
+  | "attendance"
+  | "nominal"
+  | "nominal_csv"
+  | "blank"
+  | "mini"
+  | "schedule"
+  | "pauta-geral"
+  | "pauta-anual"
+  | "excel";
 
-const TURNO_LABELS: Record<string, string> = {
-  manha: "Manhã", tarde: "Tarde", noite: "Noite",
-  integral: "Integral", sem_turno: "N/D",
+type FormatKey = "pdf_individual" | "pdf_consolidado" | "excel";
+type ScopeKey = "turma" | "classe";
+
+type JobItem = {
+  id: string;
+  documento_tipo?: string | null;
+  status: string;
+  total_turmas: number;
+  processed: number;
+  success_count: number;
+  failed_count: number;
+  created_at: string;
+  download_url?: string | null;
+  error_message?: string | null;
+  itens?: Array<{ turma_id: string; status: string }>;
 };
 
-const DEFAULT_FILTERS: ActiveFilters = {
-  turno:      "todos",
-  status:     "todos",
-  curso:      "todos",
-  professor:  "todos",
-  vagas:      "todos",
-  curriculo:  "todos",
-  financeiro: "todos",
-  espera:     "todos",
+type DirectHistoryItem = {
+  id: string;
+  label: string;
+  format: FormatKey;
+  createdAt: string;
+  href: string;
 };
 
-// ─── Health signal logic ──────────────────────────────────────────────────────
-// Central place that decides how "healthy" a turma is.
-// Rules: any critical condition → critical; any warning → warning; else → ok.
+const MONTH_OPTIONS = [
+  { v: "01", l: "Jan" },
+  { v: "02", l: "Fev" },
+  { v: "03", l: "Mar" },
+  { v: "04", l: "Abr" },
+  { v: "05", l: "Mai" },
+  { v: "06", l: "Jun" },
+  { v: "07", l: "Jul" },
+  { v: "08", l: "Ago" },
+  { v: "09", l: "Set" },
+  { v: "10", l: "Out" },
+  { v: "11", l: "Nov" },
+  { v: "12", l: "Dez" },
+] as const;
 
-function computeHealth(
-  turma: TurmaItem,
-  financeiro?: FinanceiroTurmaStat | null,
-  pedagogico?: PedagogicoTurmaStat | null,
-): HealthSignal {
-  const pct            = Math.min(Math.round(((turma.ocupacao_atual || 0) / (turma.capacidade_maxima || 30)) * 100), 100);
-  const inadimplencia  = Number(financeiro?.inadimplenciaPct ?? 0);
-  const semProfessor   = !turma.professor_nome;
-  const curriculoPend  = turma.status_curriculo === "pendente";
-  const isDraft        = turma.status_validacao === "rascunho";
+const DIRECT_HISTORY_LIMIT = 8;
 
-  // Pedagogical health (Fase 2)
-  const lowAttendance  = (pedagogico?.media_presenca ?? 100) < 75;
-  const lowGrades      = (pedagogico?.media_notas ?? 100) < 50;
-  const desescoberta   = pedagogico?.is_desescoberta ?? false;
+const DOCS: Array<{
+  key: DocKey;
+  label: string;
+  hint: string;
+  icon: ReactNode;
+  formats: FormatKey[];
+  requiresPeriodo?: boolean;
+  queueLabel?: string;
+}> = [
+  {
+    key: "attendance",
+    label: "Mapa de Frequência",
+    hint: "PDF nominal da turma para o mês selecionado.",
+    icon: <CalendarCheck size={14} />,
+    formats: ["pdf_individual"],
+  },
+  {
+    key: "nominal",
+    label: "Lista Nominal",
+    hint: "Lista oficial da turma pronta para impressão.",
+    icon: <FileText size={14} />,
+    formats: ["pdf_individual", "pdf_consolidado"],
+    queueLabel: "Lista nominal",
+  },
+  {
+    key: "nominal_csv",
+    label: "Lista Nominal (CSV)",
+    hint: "Folha de cálculo com campos mínimos. Requer autorização de exportação.",
+    icon: <FileSpreadsheet size={14} />,
+    formats: ["excel"],
+  },
+  {
+    key: "blank",
+    label: "Pauta em Branco",
+    hint: "Modelo para preenchimento manual.",
+    icon: <LayoutDashboard size={14} />,
+    formats: ["pdf_individual"],
+  },
+  {
+    key: "mini",
+    label: "Mini-Pautas",
+    hint: "Versão reduzida para circulação interna.",
+    icon: <BookOpen size={14} />,
+    formats: ["pdf_individual"],
+  },
+  {
+    key: "schedule",
+    label: "Horário da Turma",
+    hint: "Quadro semanal oficial pronto para baixar.",
+    icon: <Clock3 size={14} />,
+    formats: ["pdf_individual"],
+  },
+  {
+    key: "pauta-geral",
+    label: "Pauta Geral",
+    hint: "Documento trimestral com base no período selecionado.",
+    icon: <BookOpen size={14} />,
+    formats: ["pdf_individual", "pdf_consolidado"],
+    requiresPeriodo: true,
+    queueLabel: "Pauta trimestral",
+  },
+  {
+    key: "pauta-anual",
+    label: "Pauta Anual",
+    hint: "Resumo anual oficial da turma.",
+    icon: <GraduationCap size={14} />,
+    formats: ["pdf_individual", "pdf_consolidado"],
+    queueLabel: "Pauta anual",
+  },
+  {
+    key: "excel",
+    label: "Pauta Digital (Excel)",
+    hint: "Planilha de apoio para tratamento digital.",
+    icon: <FileSpreadsheet size={14} />,
+    formats: ["excel"],
+  },
+];
 
-  if (isDraft || inadimplencia >= 40 || pct >= 95) return "critical";
-  if (semProfessor || curriculoPend || inadimplencia >= 20 || pct >= 75 || lowAttendance || lowGrades || desescoberta) return "warning";
-  return "ok";
-}
-
-const HEALTH_CONFIG: Record<HealthSignal, { label: string; dot: string; ring: string; text: string }> = {
-  ok:       { label: "Saudável",  dot: `bg-[${C.green}]`,  ring: `ring-[${C.green}]/20`,  text: `text-[${C.green}]`  },
-  warning:  { label: "Atenção",   dot: "bg-amber-500",      ring: "ring-amber-200",         text: "text-amber-600"     },
-  critical: { label: "Crítico",   dot: `bg-[${C.rose}]`,   ring: `ring-[${C.rose}]/20`,   text: `text-[${C.rose}]`  },
+const formatLabels: Record<FormatKey, string> = {
+  pdf_individual: "PDF individual",
+  pdf_consolidado: "PDF consolidado",
+  excel: "Excel / CSV",
 };
 
-// ─── Lightweight helpers ──────────────────────────────────────────────────────
+const queueDocKeys = new Set<DocKey>(["nominal", "attendance", "pauta-geral", "pauta-anual"]);
 
-// ─── Filter bar ───────────────────────────────────────────────────────────────
-// All operationally useful filters in one bar. Admin sees all; secretary sees subset.
-
-function FilterBar({
-  filters, onChange, adminMode, cursos, search, onSearch, viewMode, onViewModeChange,
-}: {
-  filters:   ActiveFilters;
-  onChange:  (next: Partial<ActiveFilters>) => void;
-  adminMode: boolean;
-  cursos:    Array<{ id: string; nome: string }>
-  search:    string;
-  onSearch:  (value: string) => void;
-  viewMode:  "table" | "cards";
-  onViewModeChange: (mode: "table" | "cards") => void;
-}) {
-  const activeCount = Object.entries(filters).filter(
-    ([k, v]) => v !== "todos" && v !== DEFAULT_FILTERS[k as keyof ActiveFilters]
-  ).length + (search.trim() ? 1 : 0);
-
-  const select = (key: keyof ActiveFilters) => (e: React.ChangeEvent<HTMLSelectElement>) =>
-    onChange({ [key]: e.target.value });
-
-  return (
-    <div className="flex flex-wrap items-center gap-2 p-4 border-b border-slate-100 bg-slate-50/50">
-      {/* Search */}
-      <div className="relative flex-1 min-w-[200px] max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-        <input
-          type="text"
-          placeholder="Buscar turma…"
-          value={search}
-          onChange={(e) => onSearch(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3B23C]/30 focus:border-[#E3B23C] placeholder:text-slate-400"
-        />
-      </div>
-
-      {/* Turno */}
-      <select value={filters.turno} onChange={select("turno")}
-        className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
-        <option value="todos">Todos os turnos</option>
-        {Object.entries(TURNO_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-      </select>
-
-      {/* Nível / Curso */}
-      {cursos.length > 0 && (
-        <select value={filters.curso} onChange={select("curso")}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
-          <option value="todos">Todos os cursos</option>
-          {cursos.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
-      )}
-
-      {/* Vagas */}
-      <select value={filters.vagas} onChange={select("vagas")}
-        className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
-        <option value="todos">Vagas: todas</option>
-        <option value="com">Com vagas</option>
-        <option value="sem">Sem vagas</option>
-      </select>
-
-      {/* Professor */}
-      <select value={filters.professor} onChange={select("professor")}
-        className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
-        <option value="todos">Professor: todos</option>
-        <option value="com">Com professor</option>
-        <option value="sem">Sem professor</option>
-      </select>
-
-      {/* Currículo (admin) */}
-      {adminMode && (
-        <select value={filters.curriculo} onChange={select("curriculo")}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
-          <option value="todos">Currículo: todos</option>
-          <option value="ok">Currículo OK</option>
-          <option value="pendente">Currículo pendente</option>
-        </select>
-      )}
-
-      {/* Financeiro (admin) */}
-      {adminMode && (
-        <select value={filters.financeiro} onChange={select("financeiro")}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
-          <option value="todos">Financeiro: todos</option>
-          <option value="inadimplentes">Com atraso</option>
-        </select>
-      )}
-
-      {/* Candidatos em Espera */}
-      <select value={filters.espera} onChange={select("espera")}
-        className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
-        <option value="todos">Candidatos: todos</option>
-        <option value="com">Com espera</option>
-      </select>
-
-      {/* Status (admin) */}
-      {adminMode && (
-        <select value={filters.status} onChange={select("status")}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
-          <option value="todos">Status: todos</option>
-          <option value="rascunho">Pendentes</option>
-          <option value="ativos">Ativos</option>
-        </select>
-      )}
-
-      {/* Clear */}
-      {activeCount > 0 && (
-        <button
-          onClick={() => { onChange(DEFAULT_FILTERS); onSearch(""); }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors"
-        >
-          <X size={14} /> Limpar ({activeCount})
-        </button>
-      )}
-
-      {/* View Mode Toggle */}
-      <div className="flex items-center gap-1 border border-slate-200 rounded-xl p-1 bg-white ml-auto">
-        <button
-          type="button"
-          onClick={() => onViewModeChange("cards")}
-          className={`p-1.5 rounded-lg transition-colors ${viewMode === "cards" ? "bg-[#1F6B3B] text-white" : "text-slate-400 hover:text-slate-700"}`}
-          title="Exibição em Cartões"
-        >
-          <LayoutGrid size={15} />
-        </button>
-        <button
-          type="button"
-          onClick={() => onViewModeChange("table")}
-          className={`p-1.5 rounded-lg transition-colors ${viewMode === "table" ? "bg-[#1F6B3B] text-white" : "text-slate-400 hover:text-slate-700"}`}
-          title="Exibição em Tabela"
-        >
-          <List size={15} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Health badge (replaces scattered color logic) ────────────────────────────
-
-function HealthBadge({ signal }: { signal: HealthSignal }) {
-  const cfg = HEALTH_CONFIG[signal];
-  return (
-    <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${cfg.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-      {cfg.label}
-    </span>
-  );
-}
-
-// ─── Health detail breakdown (shown in health column) ────────────────────────
-
-function HealthDetail({ 
-  turma, financeiro, pedagogico, onAssignProfessors, canManagePedagogy
-}: { 
-  turma: TurmaItem; 
-  financeiro?: FinanceiroTurmaStat | null;
-  pedagogico?: PedagogicoTurmaStat | null;
-  secretariaBase?: string;
-  onAssignProfessors?: (t: TurmaItem) => void;
-  canManagePedagogy: boolean;
-}) {
-  const inadimplencia = Number(financeiro?.inadimplenciaPct ?? 0);
-  const temProfessor  = Boolean(turma.professor_nome);
-  const curriculoOk   = turma.status_curriculo !== "pendente";
-  const signal        = computeHealth(turma, financeiro, pedagogico);
-
-  return (
-    <div className="flex items-center gap-2">
-      {canManagePedagogy ? (
-        <button
-          type="button"
-          onClick={() => onAssignProfessors?.(turma)}
-          className="cursor-pointer hover:opacity-80 transition-opacity text-left group/badge"
-          title="Clique para gerenciar professores e disciplinas da turma"
-        >
-          <HealthBadge signal={signal} />
-        </button>
-      ) : (
-        <HealthBadge signal={signal} />
-      )}
-      <div className="flex items-center gap-1.5">
-        {!temProfessor && canManagePedagogy && (
-          <button
-            type="button"
-            onClick={() => onAssignProfessors?.(turma)}
-            title="Sem professor atribuído — Clique para atribuir no modal"
-            className="cursor-pointer hover:scale-110 transition-transform p-0.5"
-          >
-            <UserX size={13} className="text-[#E3B23C]" />
-          </button>
-        )}
-        {!curriculoOk && (
-          <span title="Currículo pendente">
-            <BookX size={12} className="text-[#E3B23C]" />
-          </span>
-        )}
-        {inadimplencia >= 20 && (
-          <span title={`Inadimplência alta: ${inadimplencia.toFixed(0)}%`}>
-            <AlertTriangle size={12} className="text-rose-500" />
-          </span>
-        )}
-        {pedagogico?.is_desescoberta && (
-          <span title="Turma desescoberta">
-            <AlertTriangle size={12} className="text-rose-500 animate-pulse" />
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Secretary card view ──────────────────────────────────────────────────────
-// Cards grouped by turno — less dense, more scannable for secretaries.
-
-function SecretaryCardView({
-  items, detailHrefBase, secretariaBase, onEdit, onAssignProfessors, onManageCurriculum, onOpenHorario, canManagePedagogy, pedagogicoStats,
-  selectedIds, onToggleSelect, canPrint,
-}: {
-  items:           TurmaItem[];
-  detailHrefBase:  string;
-  secretariaBase:  string;
-  onEdit:          (t: TurmaItem) => void;
-  onAssignProfessors?: (t: TurmaItem) => void;
-  onManageCurriculum?: (t: TurmaItem) => void;
-  onOpenHorario?:  (t: TurmaItem) => void;
-  canManagePedagogy: boolean;
-  canPrint: boolean;
-  pedagogicoStats: Record<string, PedagogicoTurmaStat>;
-  selectedIds:     Set<string>;
-  onToggleSelect:  (id: string) => void;
-}) {
-  const byTurno = useMemo(() => {
-    const groups: Record<string, TurmaItem[]> = {};
-    items.forEach((t) => {
-      const key = t.turno || "sem_turno";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(t);
-    });
-    return groups;
-  }, [items]);
-
-  if (items.length === 0) {
-    return (
-      <div className="py-20 flex flex-col items-center gap-3 text-slate-400">
-        <Search size={24} />
-        <p className="text-sm font-medium text-slate-600">Nenhuma turma encontrada</p>
-        <p className="text-xs">Ajuste os filtros acima.</p>
-      </div>
-    );
+function buildClientHistoryId() {
+  if (typeof globalThis !== "undefined" && globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
   }
+  return `hist-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
-  return (
-    <div className="space-y-8 p-5">
-      {Object.entries(byTurno).map(([turno, turmas]) => (
-        <div key={turno}>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              {TURNO_LABELS[turno] ?? turno}
-            </span>
-            <span className="text-xs text-slate-300">·</span>
-            <span className="text-xs text-slate-400">{turmas.length} turma(s)</span>
-          </div>
+function turmaLabel(turma: TurmaItem) {
+  return formatTurmaDisplayName(turma);
+}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {turmas.map((turma) => {
-              const max    = turma.capacidade_maxima || 30;
-              const atual  = turma.ocupacao_atual    || 0;
-              const pct    = Math.min(Math.round((atual / max) * 100), 100);
-              const ped    = pedagogicoStats[turma.id];
-              const signal = computeHealth(turma, null, ped);
-              const isDraft = turma.status_validacao === "rascunho";
-              const isSelected = selectedIds.has(turma.id);
-              const displayNome = formatTurmaNomeHumano(turma.nome ?? turma.turma_codigo, turma.curso_nome);
-
-              return (
-                <div key={turma.id} className={`
-                  group relative rounded-xl border bg-white p-4 transition-all hover:shadow-md
-                  ${isSelected ? "ring-2 ring-amber-400 border-amber-200" : isDraft ? "border-amber-200 bg-amber-50/30" : "border-slate-200 hover:border-slate-300"}
-                `}>
-                  {/* Checkbox overlay */}
-                  <div className={`absolute top-3 left-3 z-10 transition-opacity ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => onToggleSelect(turma.id)}
-                      className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Card header */}
-                  <div className="flex items-start justify-between gap-2 mb-3 ml-6">
-                    <div className="min-w-0">
-                      <p
-                        className="max-w-[calc(100%-2rem)] truncate text-sm font-bold text-slate-900"
-                        title={displayNome}
-                      >
-                        {displayNome}
-                      </p>
-                      <p className="text-xs text-slate-400 truncate mt-0.5">
-                        {turma.curso_nome || "Ensino Geral"} · {turma.classe_nome || "—"}
-                      </p>
-                    </div>
-                    {canManagePedagogy ? (
-                      <button
-                        type="button"
-                        onClick={() => onAssignProfessors?.(turma)}
-                        className="cursor-pointer hover:opacity-80 transition-opacity text-left"
-                        title="Gerenciar professores da turma"
-                      >
-                        <HealthBadge signal={signal} />
-                      </button>
-                    ) : (
-                      <HealthBadge signal={signal} />
-                    )}
-                  </div>
-
-                  {canPrint && !isDraft && (
-                    <ImprimirListaTurmaButton turmaId={turma.id} className="mb-3 w-full justify-center" />
-                  )}
-
-                  {/* Occupancy bar */}
-                  <div className="mb-3">
-                    <div className="flex justify-between text-[10px] font-bold mb-1">
-                      <span className="text-slate-500">{atual}/{max} alunos</span>
-                      <span className={pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-[#1F6B3B]"}>
-                        {pct}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-[#1F6B3B]"}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Meta */}
-                  <div className="flex items-center justify-between">
-                    {canManagePedagogy ? (
-                      <button
-                        type="button"
-                        onClick={() => onAssignProfessors?.(turma)}
-                        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors text-left"
-                        title="Clique para atribuir professores"
-                      >
-                        {turma.professor_nome
-                          ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="truncate max-w-[100px]">{turma.professor_nome}</span></>
-                          : <><UserX size={12} className="text-amber-500" /><span className="text-amber-600 font-semibold underline decoration-dotted">Atribuir prof.</span></>
-                        }
-                        {ped?.is_desescoberta && <AlertTriangle size={12} className="text-rose-500 animate-pulse" />}
-                      </button>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-xs text-slate-500" title="Professor atribuído">
-                        {turma.professor_nome
-                          ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="truncate max-w-[100px]">{turma.professor_nome}</span></>
-                          : <><UserX size={12} className="text-slate-400" /><span>Sem professor</span></>
-                        }
-                      </span>
-                    )}
-
-                    <div className="flex items-center gap-3">
-                      {ped && ped.candidatos_espera > 0 && (
-                        <Link 
-                          href={`${secretariaBase}/admissoes?turmaId=${turma.id}&search=${encodeURIComponent(turma.nome || "")}`}
-                          className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold border border-amber-200 hover:bg-amber-100 transition-colors"
-                          title={`${ped.candidatos_espera} candidato(s) em espera`}
-                        >
-                          <UsersRound size={12} />
-                          {ped.candidatos_espera}
-                        </Link>
-                      )}
-
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {canManagePedagogy && <>
-                        <button
-                          onClick={() => onOpenHorario?.(turma)}
-                          className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
-                          title="Montar/Ver Grade de Horários"
-                        >
-                          <Calendar size={14} />
-                        </button>
-                        <button
-                          onClick={() => onAssignProfessors?.(turma)}
-                          className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
-                          title="Atribuir Professores"
-                        >
-                          <GraduationCap size={14} />
-                        </button>
-                        <button
-                          onClick={() => onManageCurriculum?.(turma)}
-                          className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
-                          title="Gerir currículo da turma"
-                        >
-                          <BookOpen size={14} />
-                        </button>
-                        </>}
-                        {!isDraft && (
-                          <Link href={`${detailHrefBase}/${turma.id}`}
-                            className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-green-50 rounded-lg transition-colors">
-                            <Eye size={14} />
-                          </Link>
-                        )}
-                        <button onClick={() => onEdit(turma)}
-                          className="p-1.5 text-slate-400 hover:text-[#E3B23C] hover:bg-amber-50 rounded-lg transition-colors">
-                          <Pencil size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
+function uniqSorted(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.map((value) => (value ?? "").trim()).filter(Boolean))).sort((a, b) =>
+    a.localeCompare(b, "pt-PT")
   );
 }
 
-// ─── Admin table row ──────────────────────────────────────────────────────────
-
-function TurmaRow({
-  turma, isExpanded, onToggleExpand, onEdit, onAssignProfessors, onManageCurriculum, onOpenHorario, canManagePedagogy, style,
-  detailHrefBase, secretariaBase, financeiro, pedagogico,
-  editingCell, onStartEdit, onCancelEdit, onSaveEdit, loadingCell,
-  isSelected, onToggleSelect, canPrint,
-}: {
-  turma:          TurmaItem;
-  isExpanded:     boolean;
-  onToggleExpand: () => void;
-  onEdit:         (t: TurmaItem) => void;
-  onAssignProfessors?: (t: TurmaItem) => void;
-  onManageCurriculum?: (t: TurmaItem) => void;
-  onOpenHorario?:  (t: TurmaItem) => void;
-  canManagePedagogy: boolean;
-  canPrint: boolean;
-  style?:         CSSProperties;
-  detailHrefBase: string;
-  secretariaBase: string;
-  financeiro?:    FinanceiroTurmaStat | null;
-  pedagogico?:    PedagogicoTurmaStat | null;
-  editingCell:    { id: string; field: "sala" | "capacidade_maxima" } | null;
-  onStartEdit:    (id: string, field: "sala" | "capacidade_maxima") => void;
-  onCancelEdit:   () => void;
-  onSaveEdit:     (id: string, field: "sala" | "capacidade_maxima", value: any) => void;
-  loadingCell:    string | null;
-  isSelected:     boolean;
-  onToggleSelect: (id: string) => void;
-}) {
-  const safeNome  = formatTurmaNomeHumano(turma.nome ?? turma.turma_codigo, turma.curso_nome);
-  const iniciais  = safeNome.substring(0, 2).toUpperCase();
-  const isDraft   = turma.status_validacao === "rascunho";
-  const signal    = computeHealth(turma, financeiro, pedagogico);
-
-  const isEditingSala = editingCell?.id === turma.id && editingCell?.field === "sala";
-  const isEditingCap  = editingCell?.id === turma.id && editingCell?.field === "capacidade_maxima";
-  const isLoadingSala = loadingCell === `${turma.id}-sala`;
-  const isLoadingCap  = loadingCell === `${turma.id}-capacidade_maxima`;
-
-  return (
-    <tr
-      className={`border-b border-slate-100 transition-colors group ${
-        isSelected ? "bg-amber-50/50" : isDraft ? "bg-amber-50/30" : isExpanded ? "bg-slate-50" : "hover:bg-slate-50"
-      }`}
-      style={style}
-    >
-      {/* Checkbox */}
-      <td className="px-5 py-4 w-[40px]">
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={() => onToggleSelect(turma.id)}
-          className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
-        />
-      </td>
-
-      {/* ... Nome ... */}
-      <td className="w-[30%] max-w-[320px] px-6 py-4.5">
-        <div className="flex items-center gap-3.5">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold border flex-shrink-0 shadow-xs
-            ${isDraft ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
-            {iniciais}
-          </div>
-          <div className="min-w-0 max-w-[260px] flex-1">
-            {isDraft ? (
-              <span className="font-bold text-sm text-slate-800 block truncate">{safeNome}</span>
-            ) : (
-              <Link href={`${detailHrefBase}/${turma.id}`}
-                className="font-bold text-sm text-slate-900 hover:text-[#1F6B3B] hover:underline decoration-[#1F6B3B]/30 underline-offset-4 transition-colors block truncate"
-                title={safeNome}
-              >
-                {safeNome}
-              </Link>
-            )}
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] font-mono text-slate-500 bg-slate-100/90 px-1.5 py-0.5 rounded">
-                {turma.ano_letivo || "—"}
-              </span>
-              {isDraft && <span className="text-[10px] font-bold text-amber-600">RASCUNHO</span>}
-            </div>
-          </div>
-        </div>
-      </td>
-
-      {/* Curso + Turno */}
-      <td className="px-5 py-4">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-slate-700 truncate">{turma.curso_nome || "Ensino Geral"}</p>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-400">{turma.classe_nome || "—"}</span>
-            <span className="text-slate-200">·</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-500 border border-slate-200">
-              {TURNO_LABELS[turma.turno || ""] || turma.turno || "—"}
-            </span>
-          </div>
-        </div>
-      </td>
-
-      {/* Sala */}
-      <td className="px-5 py-4">
-        {isEditingSala ? (
-          <input
-            autoFocus
-            className="w-full px-2 py-1 text-sm border border-[#E3B23C] rounded-lg outline-none focus:ring-2 focus:ring-[#E3B23C]/20"
-            defaultValue={turma.sala || ""}
-            onBlur={(e) => onSaveEdit(turma.id, "sala", e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onSaveEdit(turma.id, "sala", e.currentTarget.value);
-              if (e.key === "Escape") onCancelEdit();
-            }}
-          />
-        ) : (
-          <div
-            className={`flex items-center gap-2 cursor-pointer group/cell ${isLoadingSala ? "opacity-50" : ""}`}
-            onClick={() => onStartEdit(turma.id, "sala")}
-          >
-            <span className="text-sm text-slate-600 truncate max-w-[80px]">
-              {isLoadingSala ? "..." : turma.sala || "—"}
-            </span>
-            <Pencil size={10} className="text-slate-300 opacity-0 group-hover/cell:opacity-100 transition-opacity" />
-          </div>
-        )}
-      </td>
-
-      {/* Ocupação (progress bar) */}
-      <td className="px-5 py-4">
-        {(() => {
-          const max   = turma.capacidade_maxima || 30;
-          const atual = turma.ocupacao_atual    || 0;
-          const livre = Math.max(max - atual, 0);
-          const pct   = Math.min(Math.round((atual / max) * 100), 100);
-          const barColor = pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-[#1F6B3B]";
-          const pctColor = pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-[#1F6B3B]";
-          return (
-            <div className="space-y-1.5 min-w-[120px]">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-700">
-                  {atual}<span className="text-slate-400 font-normal">/{max}</span>
-                </span>
-                <span className={`text-[10px] font-bold ${pctColor}`}>
-                  {pct}%
-                </span>
-              </div>
-              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${barColor}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <div className="flex items-center justify-between text-[10px]">
-                <span className="text-slate-400">
-                  {livre > 0 ? (
-                    <>{livre} vaga{livre !== 1 ? "s" : ""} livre{livre !== 1 ? "s" : ""}</>
-                  ) : (
-                    <span className="text-rose-500 font-semibold">Lotada</span>
-                  )}
-                </span>
-                {isEditingCap ? (
-                  <input
-                    autoFocus
-                    type="number"
-                    className="w-12 px-1 py-0.5 text-[10px] border border-[#E3B23C] rounded outline-none focus:ring-1 focus:ring-[#E3B23C]/20"
-                    defaultValue={max}
-                    onBlur={(e) => onSaveEdit(turma.id, "capacidade_maxima", Number(e.target.value))}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") onSaveEdit(turma.id, "capacidade_maxima", Number(e.currentTarget.value));
-                      if (e.key === "Escape") onCancelEdit();
-                    }}
-                  />
-                ) : (
-                  <button
-                    className={`flex items-center gap-0.5 text-slate-400 hover:text-[#E3B23C] transition-colors ${isLoadingCap ? "opacity-50" : ""}`}
-                    onClick={() => onStartEdit(turma.id, "capacidade_maxima")}
-                    title="Editar capacidade"
-                  >
-                    <Pencil size={9} />
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">editar</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-      </td>
-
-      {/* Health (consolidated) */}
-      <td className="px-5 py-4">
-        <HealthDetail 
-          turma={turma} 
-          financeiro={financeiro} 
-          pedagogico={pedagogico} 
-          secretariaBase={secretariaBase} 
-          onAssignProfessors={onAssignProfessors}
-          canManagePedagogy={canManagePedagogy}
-        />
-      </td>
-
-      {/* Ações */}
-      <td className="px-5 py-4 text-right">
-        <div className="flex flex-wrap items-center justify-end gap-1">
-          {canPrint && !isDraft && <ImprimirListaTurmaButton turmaId={turma.id} />}
-          {isDraft ? (
-            <button onClick={() => onEdit(turma)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#E3B23C] text-white hover:brightness-95 rounded-xl text-xs font-bold shadow-sm transition-all">
-              <CheckCircle2 size={13} /> Ativar
-            </button>
-          ) : (
-            <>
-              {canManagePedagogy && <>
-              <button
-                onClick={() => onOpenHorario?.(turma)}
-                className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
-                title="Montar/Ver Grade de Horários"
-              >
-                <Calendar size={15} />
-              </button>
-              <button 
-                onClick={() => onAssignProfessors?.(turma)}
-                className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
-                title="Atribuir Professores às Disciplinas"
-              >
-                <GraduationCap size={15} />
-              </button>
-              <button
-                onClick={() => onManageCurriculum?.(turma)}
-                className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
-                title="Gerir currículo da turma"
-              >
-                <BookOpen size={15} />
-              </button>
-              </>}
-              <Link href={`${detailHrefBase}/${turma.id}`}
-                className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-green-50 rounded-lg transition-colors"
-                title="Ver detalhes da turma"
-              >
-                <Eye size={15} />
-              </Link>
-              <button onClick={() => onEdit(turma)}
-                className="p-2 text-slate-400 hover:text-[#E3B23C] hover:bg-amber-50 rounded-lg transition-colors"
-                title="Editar turma"
-              >
-                <Pencil size={15} />
-              </button>
-              <button onClick={onToggleExpand}
-                className={`p-2 rounded-lg transition-colors ${isExpanded ? "text-slate-800 bg-slate-100" : "text-slate-400 hover:text-slate-800 hover:bg-slate-50"}`}
-                title="Expandir visão rápida"
-              >
-                <UsersRound size={15} />
-              </button>
-            </>
-          )}
-        </div>
-      </td>
-    </tr>
-  );
+function jobLabel(documentoTipo?: string | null) {
+  if (documentoTipo === "lista_nominal") return "Lista nominal consolidada";
+  if (documentoTipo === "pauta_trimestral") return "Pauta geral consolidada";
+  if (documentoTipo === "pauta_anual") return "Pauta anual consolidada";
+  return documentoTipo || "Lote de documentos";
 }
 
+function buildDocUrl(
+  type: DocKey,
+  turmaId: string,
+  month: string,
+  year: number | null,
+  periodoId: string,
+  periodoNumero: number | null,
+  isAlbum: boolean = false,
+  includeAllStatus: boolean = false,
+  mode: ListaNominalMode = "operacional"
+) {
+  const params = new URLSearchParams();
+  if (isAlbum) params.set("album", "true");
+  if (includeAllStatus) params.set("all_status", "true");
+  const extra = params.toString() ? `&${params.toString()}` : "";
 
-// ─── Main component ───────────────────────────────────────────────────────────
+  switch (type) {
+    case "attendance":
+      return `/api/secretaria/turmas/${turmaId}/alunos/pdf?month=${month}${year ? `&year=${year}` : ""}${extra}`;
+    case "nominal":
+      params.set("mode", mode);
+      return `/api/secretaria/turmas/${turmaId}/alunos/pdf?${params.toString()}`;
+    case "nominal_csv":
+      params.set("mode", mode);
+      params.delete("album");
+      return `/api/secretaria/turmas/${turmaId}/alunos/csv?${params.toString()}`;
+    case "blank":
+      return `/api/secretaria/turmas/${turmaId}/pauta-branca`;
+    case "mini":
+      return `/api/secretaria/turmas/${turmaId}/mini-pautas`;
+    case "schedule":
+      return "#";
+    case "pauta-geral":
+      return `/api/secretaria/turmas/${turmaId}/pauta-geral?periodo_letivo_id=${periodoId}&periodoNumero=${periodoNumero || 1}`;
+    case "pauta-anual":
+      return `/api/secretaria/turmas/${turmaId}/pauta-anual`;
+    case "excel":
+      return `/api/secretaria/turmas/${turmaId}/pauta`;
+  }
+}
 
-export default function TurmasListClient({
-  adminMode = false,
-  initialData = null
-}: {
-  adminMode?: boolean;
-  initialData?: TurmasResponse | null;
-}) {
-  const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
-  const { userRole, isLoading: roleLoading } = useUserRole();
-  const canPrint = !roleLoading && ["admin", "operacoes", "secretaria", "superadmin"].includes(userRole ?? "");
-  const canManagePedagogy = !roleLoading && (
-    userRole === "admin" || userRole === "operacoes" || userRole === "superadmin"
-  );
-  const { success, error, toast } = useToast();
-  const confirm = useConfirm();
-  const pathname = usePathname();
+function buildClasseDocUrl(
+  classeId: string,
+  year: number | null,
+  includeAllStatus: boolean = false,
+  mode: ListaNominalMode = "operacional"
+) {
+  const params = new URLSearchParams();
+  if (year) params.set("year", String(year));
+  if (includeAllStatus) params.set("all_status", "true");
+  params.set("mode", mode);
+  const query = params.toString();
+  return `/api/secretaria/classes/${classeId}/alunos/pdf${query ? `?${query}` : ""}`;
+}
+
+export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) {
   const searchParams = useSearchParams();
-  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
-  const slugFromPath = useMemo(() => {
-    const match = pathname?.match(/^\/escola\/([^/]+)/);
-    return match?.[1] ?? null;
-  }, [pathname]);
-  const escolaParam = slugFromPath || escolaSlug || escolaId;
-  const secretariaBase = pathname?.includes("/operacoes/")
-    ? buildPortalHref(escolaParam, "/operacoes")
-    : buildPortalHref(escolaParam, "/secretaria");
+  const academicYearIdFromUrl = searchParams?.get(ACADEMIC_YEAR_PARAM);
+  const storageKey = escolaId ? `quick-doc-hub:last-turma:${escolaId}` : null;
+  const historyStorageKey = escolaId ? `quick-doc-hub:history:${escolaId}` : null;
+  const [anosLetivos, setAnosLetivos] = useState<AnoLetivoItem[]>([]);
+  const [anoLetivo, setAnoLetivo] = useState<number | null>(null);
+  const [turmas, setTurmas] = useState<TurmaItem[]>([]);
+  const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
+  const [loadingTurmas, setLoadingTurmas] = useState(false);
+  const [loadingPeriodos, setLoadingPeriodos] = useState(false);
+  const [loadingAnos, setLoadingAnos] = useState(false);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [turmaId, setTurmaId] = useState("");
+  const [month, setMonth] = useState(() => (new Date().getMonth() + 1).toString().padStart(2, "0"));
+  const [periodoId, setPeriodoId] = useState("");
+  const [classeFiltro, setClasseFiltro] = useState("");
+  const [cursoFiltro, setCursoFiltro] = useState("");
+  const [turnoFiltro, setTurnoFiltro] = useState("");
+  const [turmaQuery, setTurmaQuery] = useState("");
+  const [turmaPickerOpen, setTurmaPickerOpen] = useState(false);
+  const [selectedDocs, setSelectedDocs] = useState<DocKey[]>([]);
+  const [format, setFormat] = useState<FormatKey>("pdf_individual");
+  const [scope, setScope] = useState<ScopeKey>("turma");
+  const [modeOverride, setModeOverride] = useState<ListaNominalMode | null>(null);
+  const [jobs, setJobs] = useState<JobItem[]>([]);
+  const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
+  const [directHistory, setDirectHistory] = useState<DirectHistoryItem[]>([]);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [includeAllStatus, setIncludeAllStatus] = useState(false);
+  const [isAlbum, setIsAlbum] = useState(false);
+  const [processAllTurmas, setProcessAllTurmas] = useState(false);
+  const hasHydratedLastTurmaRef = useRef(false);
 
-  const [data,            setData]            = useState<TurmasResponse | null>(initialData);
-  const [items,           setItems]           = useState<TurmaItem[]>(initialData?.items || []);
-  const [nextCursor,      setNextCursor]      = useState<string | null>(initialData?.next_cursor ?? null);
-  const [loadingMore,     setLoadingMore]     = useState(false);
-  const [loading,         setLoading]         = useState(!initialData);
-  const [busca,           setBusca]           = useState("");
-  const [filters,         setFilters]         = useState<ActiveFilters>(DEFAULT_FILTERS);
-  const [financeiroStats, setFinanceiroStats] = useState<Record<string, FinanceiroTurmaStat>>({});
-  const [pedagogicoStats, setPedagogicoStats] = useState<Record<string, PedagogicoTurmaStat>>({});
-  const [showForm,        setShowForm]        = useState(false);
-  const [editingTurma,    setEditingTurma]    = useState<TurmaItem | null>(null);
-  const [assignProfTurma, setAssignProfTurma] = useState<TurmaItem | null>(null);
-  const [curriculoTurma, setCurriculoTurma] = useState<TurmaItem | null>(null);
-  const [horarioTurma,    setHorarioTurma]    = useState<TurmaItem | null>(null);
-  const [expandedId,      setExpandedId]      = useState<string | null>(null);
-  const [expandedData,    setExpandedData]    = useState<Record<string, any>>({});
-  const [expandedLoading, setExpandedLoading] = useState<string | null>(null);
-  const [substituting,    setSubstituting]    = useState<string | null>(null); // turmaId
-  const [professors,      setProfessors]      = useState<any[]>([]);
-  const [loadingProfs,    setLoadingProfs]    = useState(false);
-  const [selectedProf,    setSelectedProf]    = useState<string>("");
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  const [transferSourceTurmaId, setTransferSourceTurmaId] = useState<string | null>(null);
-  const [transferTargetTurmaId, setTransferTargetTurmaId] = useState("");
-  const [transferReason, setTransferReason] = useState("");
-  const [transferLoading, setTransferLoading] = useState(false);
-  const [transferError, setTransferError] = useState<string | null>(null);
-  const [transferErrorCode, setTransferErrorCode] = useState<string | null>(null);
-  const [transferCandidates, setTransferCandidates] = useState<TurmaItem[]>([]);
-  const [transferCandidatesLoading, setTransferCandidatesLoading] = useState(false);
-  const [transferConfirmed, setTransferConfirmed] = useState(false);
-
-  const fetchProfessors = useCallback(async () => {
-    if (!escolaId || professors.length > 0) return;
-    setLoadingProfs(true);
-    try {
-      const res = await fetch(`/api/secretaria/professores?escola_id=${escolaId}&pageSize=100&cargo=professor`);
-      const json = await res.json();
-      if (json.ok) setProfessors(json.items || []);
-    } catch (err) {
-      console.error("Erro ao buscar professores", err);
-    } finally {
-      setLoadingProfs(false);
-    }
-  }, [escolaId, professors.length]);
-
-  const handleAssignSubstitute = async (turmaId: string, slotId: string) => {
-    if (!escolaId || !selectedProf) return;
-    try {
-      const res = await fetch(`/api/escolas/${escolaId}/admin/turmas/${turmaId}/substituicoes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slot_id: slotId, professor_id: selectedProf }),
-      });
-      const json = await res.json();
-      if (json.ok) {
-        success("Sucesso", "Substituto atribuído com sucesso!");
-        setSubstituting(null);
-        setSelectedProf("");
-        fetchQuickView(turmaId);
-      } else {
-        throw new Error(json.error || "Erro ao atribuir");
-      }
-    } catch (err: any) {
-      error("Erro ao atribuir", err.message);
-    }
-  };
-
-  // Selection state (Fase 3)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkPrinting, setBulkPrinting] = useState(false);
-  const bulkPrintingLock = useRef(false);
-
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
-  const toggleAll = useCallback((filteredIds: string[]) => {
-    setSelectedIds(prev => {
-      if (prev.size === filteredIds.length) return new Set();
-      return new Set(filteredIds);
-    });
-  }, []);
-
-  const selectedTurmaForTransfer = useMemo(
-    () => items.find((turma) => turma.id === transferSourceTurmaId) ?? null,
-    [items, transferSourceTurmaId]
-  );
-
-  // Turmas de destino não podem depender apenas da página atual da listagem.
-  // Carregar todas as candidatas para a sessão de origem, mantendo o tenant.
   useEffect(() => {
-    if (!showTransferModal || !escolaId || !selectedTurmaForTransfer?.session_id) return;
-    const abort = new AbortController();
-    const loadCandidates = async () => {
-      setTransferCandidatesLoading(true);
-      setTransferCandidates([]);
-      setTransferError(null);
+    if (!escolaId) return;
+    let active = true;
+
+    const loadAnos = async () => {
+      setLoadingAnos(true);
       try {
-        const all: TurmaItem[] = [];
-        let cursor: string | null = null;
-        for (let page = 0; page < 20; page += 1) {
-          const params = new URLSearchParams({
-            ano_letivo_id: selectedTurmaForTransfer.session_id!,
-            limit: "200",
-          });
-          if (cursor) params.set("cursor", cursor);
-          const res = await fetch(buildEscolaUrl(escolaId, "/turmas", params), {
-            signal: abort.signal,
-          });
-          const body = await res.json();
-          if (!res.ok || body.ok !== true) {
-            throw new Error(body.error || "Falha ao carregar turmas de destino.");
-          }
-          all.push(...(Array.isArray(body.items) ? body.items : []));
-          cursor = body.next_cursor ?? null;
-          if (!cursor) break;
-          if (page === 19) throw new Error("Demasiadas turmas. Refine a pesquisa.");
-        }
-        if (!abort.signal.aborted) setTransferCandidates(all);
-      } catch (cause) {
-        if (!abort.signal.aborted) {
-          setTransferError(cause instanceof Error ? cause.message : "Falha ao carregar destinos.");
-        }
+        const params = new URLSearchParams({ escola_id: escolaId });
+        const res = await fetch(`/api/secretaria/school-sessions?${params.toString()}`, { cache: "no-store" });
+        const json = await res.json().catch(() => ({}));
+        if (!active || !res.ok || !json.ok || !Array.isArray(json.data)) return;
+
+        const fetched = (json.data as AnoLetivoItem[])
+          .filter((item) => typeof item.ano_letivo === "number")
+          .sort((a, b) => b.ano_letivo - a.ano_letivo);
+
+        setAnosLetivos(fetched);
+        const activeAno = fetched.find((item) => item.status === "ativa")?.ano_letivo ?? fetched[0]?.ano_letivo ?? null;
+        setAnoLetivo((current) => current ?? activeAno);
+      } catch (error) {
+        console.error("Erro ao carregar anos letivos:", error);
       } finally {
-        if (!abort.signal.aborted) setTransferCandidatesLoading(false);
+        if (active) setLoadingAnos(false);
       }
     };
-    void loadCandidates();
-    return () => abort.abort();
-  }, [showTransferModal, escolaId, selectedTurmaForTransfer?.id, selectedTurmaForTransfer?.session_id]);
 
-  const transferTargetOptions = useMemo(() => {
-    if (!selectedTurmaForTransfer) return [];
-    return transferCandidates.filter((turma) =>
-      turma.id !== selectedTurmaForTransfer.id &&
-      turma.session_id === selectedTurmaForTransfer.session_id &&
-      turma.status_validacao === "ativo" &&
-      turma.curso_id === selectedTurmaForTransfer.curso_id &&
-      turma.classe_id === selectedTurmaForTransfer.classe_id
-    );
-  }, [transferCandidates, selectedTurmaForTransfer]);
+    void loadAnos();
+    return () => {
+      active = false;
+    };
+  }, [escolaId]);
 
-  const openTransferModal = useCallback((turmaId: string) => {
-    setTransferSourceTurmaId(turmaId);
-    setTransferTargetTurmaId("");
-    setTransferReason("");
-    setTransferError(null);
-    setTransferErrorCode(null);
-    setTransferCandidates([]);
-    setTransferConfirmed(false);
-    setShowTransferModal(true);
+  useEffect(() => {
+    if (!escolaId) return;
+    let active = true;
+    const loadPeriodos = async () => {
+      setLoadingPeriodos(true);
+      try {
+        const params = new URLSearchParams({ escola_id: escolaId });
+        const res = await fetch(`/api/secretaria/relatorios/mapa-aproveitamento?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!active) return;
+        if (res.ok && json.ok) {
+          const fetched = Array.isArray(json.filtros?.periodos) ? (json.filtros.periodos as PeriodoItem[]) : [];
+          setPeriodos(fetched);
+          setPeriodoId((current) => current || fetched[0]?.id || "");
+        }
+      } catch (error) {
+        console.error("Erro ao carregar períodos:", error);
+      } finally {
+        if (active) setLoadingPeriodos(false);
+      }
+    };
+
+    void loadPeriodos();
+    return () => {
+      active = false;
+    };
+  }, [escolaId]);
+
+  useEffect(() => {
+    if (!escolaId || !anoLetivo) return;
+    let active = true;
+
+    const loadTurmas = async () => {
+      setLoadingTurmas(true);
+      try {
+        const params = new URLSearchParams({
+          ano: String(anoLetivo),
+          escola_id: escolaId,
+        });
+        const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`, { cache: "no-store" });
+        const json = await res.json().catch(() => ({}));
+        if (!active) return;
+        if (res.ok && json.ok) {
+          setTurmas(Array.isArray(json.items || json.data) ? (json.items || json.data) : []);
+        } else {
+          setTurmas([]);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar turmas:", error);
+        if (active) setTurmas([]);
+      } finally {
+        if (active) setLoadingTurmas(false);
+      }
+    };
+
+    void loadTurmas();
+    return () => {
+      active = false;
+    };
+  }, [escolaId, anoLetivo]);
+
+  const loadJobs = useCallback(async () => {
+    setLoadingJobs(true);
+    try {
+      const res = await fetch("/api/secretaria/documentos-oficiais/lote", { cache: "no-store" });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.ok && Array.isArray(json.items)) {
+        setJobs(json.items as JobItem[]);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar histórico de lotes:", error);
+    } finally {
+      setLoadingJobs(false);
+    }
   }, []);
 
-  const handleTransferSelectedTurma = useCallback(() => {
-    if (selectedIds.size !== 1) return;
-    const [turmaId] = Array.from(selectedIds);
-    openTransferModal(turmaId);
-  }, [openTransferModal, selectedIds]);
-
-  const handleBulkPrint = async () => {
-    if (!escolaId || selectedIds.size === 0 || bulkPrintingLock.current || !canPrint) return;
-    if (selectedIds.size > MAX_TURMAS_POR_LOTE) {
-      error("Limite de impressão", "Seleccione, no máximo, 10 turmas por lote.");
-      return;
-    }
-    const selected = items.filter(t => selectedIds.has(t.id));
-    const years = Array.from(new Set(selected.map(t => t.session_id).filter(Boolean)));
-    if (selected.length !== selectedIds.size || years.length !== 1) {
-      error("Ano letivo", "Seleccione apenas turmas da mesma sessão académica.");
-      return;
-    }
-    bulkPrintingLock.current = true;
-    setBulkPrinting(true);
+  const reprocessarFalhas = useCallback(async (jobId: string) => {
+    if (retryingJobId) return;
+    setRetryingJobId(jobId);
     try {
-      const res = await fetch("/api/secretaria/documentos-oficiais/lote", {
+      const response = await fetch("/api/secretaria/documentos-oficiais/lote/reprocess", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          turma_ids: Array.from(selectedIds),
-          tipo: "lista_nominal",
-          ano_letivo_id: years[0],
-        }),
+        body: JSON.stringify({ job_id: jobId }),
       });
-      const json: { ok?: boolean; error?: string } = await res.json().catch(() => ({}));
-      if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao iniciar impressão");
-      success("Impressão iniciada", "Lote enviado. Acompanhe o progresso e descarregue o ZIP na Central de Documentos.");
-      setSelectedIds(new Set());
-    } catch (cause) {
-      error("Erro na impressão", cause instanceof Error ? cause.message : "Não foi possível iniciar o lote.");
-    } finally {
-      bulkPrintingLock.current = false;
-      setBulkPrinting(false);
-    }
-  };
-
-  const handleBulkClose = async () => {
-    if (!escolaId || selectedIds.size === 0) return;
-    const ok = await confirm({
-      title: "Fechar períodos lectivos",
-      message: `Deseja realmente FECHAR o período de ${selectedIds.size} turma(s)? Esta acção irá bloquear o lançamento de novas notas.`,
-      confirmLabel: "Fechar períodos",
-      variant: "danger",
-    });
-    if (!ok) return;
-
-    let successCount = 0;
-    let failedCount = 0;
-
-    for (const id of Array.from(selectedIds)) {
-      try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/turmas/${id}/fecho`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "FECHADO", reason: "Fechamento em bloco (Secretaria)" }),
-        });
-        if (res.ok) successCount++;
-        else failedCount++;
-      } catch {
-        failedCount++;
+      const result: { ok?: boolean; error?: string } = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "Não foi possível reprocessar as turmas.");
       }
-    }
-
-    if (failedCount === 0) {
-      success("Períodos fechados", `${successCount} turma(s) foram fechadas com sucesso.`);
-    } else {
-      error("Falha no encerramento", `Processo concluído com ${successCount} sucessos e ${failedCount} falhas. Verifique as turmas restantes.`);
-    }
-
-    setSelectedIds(new Set());
-    fetchData();
-  };
-
-  const handleBulkNotify = () => {
-    success("Notificações em fila", `Estamos a preparar o envio de alertas para os encarregados de ${selectedIds.size} turma(s).`);
-  };
-
-  const fetchQuickView = useCallback(async (turmaId: string) => {
-    if (!escolaId || expandedData[turmaId]) return;
-    setExpandedLoading(turmaId);
-    try {
-      const [qvRes, histRes] = await Promise.all([
-        fetch(`/api/escolas/${escolaId}/admin/turmas/${turmaId}/quick-view`),
-        fetch(`/api/escolas/${escolaId}/admin/turmas/${turmaId}/historico-ocupacao`)
-      ]);
-      const qvJson = await qvRes.json();
-      const histJson = await histRes.json();
-      
-      if (qvJson.ok) {
-        setExpandedData(prev => ({ 
-          ...prev, 
-          [turmaId]: { 
-            ...qvJson.data, 
-            history: histJson.ok ? histJson.data : [] 
-          } 
-        }));
-      }
-    } catch (err) {
-      console.error("Erro ao buscar quick view", err);
+      setFeedback("Turmas com falha reenviadas. Os documentos anteriores serão preservados.");
+      await loadJobs();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Falha ao reprocessar o lote.");
     } finally {
-      setExpandedLoading(null);
+      setRetryingJobId(null);
     }
-  }, [escolaId, expandedData]);
-
-  const toggleExpand = (turmaId: string) => {
-    if (expandedId === turmaId) {
-      setExpandedId(null);
-    } else {
-      setExpandedId(turmaId);
-      fetchQuickView(turmaId);
-    }
-    };
-
-    const [editingCell,     setEditingCell]     = useState<{ id: string; field: "sala" | "capacidade_maxima" } | null>(null);
-    const [inlineLoading,   setInlineLoading]   = useState<string | null>(null);
-
-  const handleInlineUpdate = async (turmaId: string, field: "sala" | "capacidade_maxima", value: string | number | null) => {
-    if (!escolaId) return;
-    setInlineLoading(`${turmaId}-${field}`);
-    try {
-      const res = await fetch(`/api/escolas/${escolaId}/turmas/${turmaId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: value }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao atualizar");
-      
-      setItems(prev => prev.map(item => item.id === turmaId ? { ...item, [field]: value } : item));
-      setEditingCell(null);
-      success("Actualizado", "A alteração foi guardada com sucesso.");
-    } catch (err: any) {
-      error("Erro ao salvar", "Não foi possível actualizar este dado. Por favor, tente novamente.");
-    } finally {
-      setInlineLoading(null);
-    }
-  };
-
-  // Secretary defaults to card view; admin defaults to table
-  const [viewMode,        setViewMode]        = useState<"table" | "cards">(adminMode ? "table" : "cards");
-
-  const scrollParentRef = useRef<HTMLDivElement | null>(null);
-  const auditSentRef    = useRef(false);
-
-  // ── Audit ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (auditSentRef.current || escolaLoading || !escolaId) return;
-    auditSentRef.current = true;
-    recordAuditClient({
-      escolaId, portal: adminMode ? "admin_escola" : "secretaria",
-      acao: "PAGE_VIEW", entity: "turmas_list", details: {},
-    });
-  }, [adminMode, escolaId, escolaLoading]);
-
-  // ── Fetch turmas ──────────────────────────────────────────────────────────
-  const fetchData = useCallback(async (options?: { cursor?: string | null; append?: boolean }) => {
-    if (!escolaId) { setLoading(false); return; }
-    try {
-      options?.append ? setLoadingMore(true) : setLoading(true);
-      const params = new URLSearchParams();
-      if (filters.turno   !== "todos") params.set("turno",  filters.turno);
-      if (filters.status  !== "todos" && filters.status !== "rascunho") {
-        params.set("status", filters.status);
-      }
-      if (filters.curso   !== "todos") params.set("curso_id",  filters.curso);
-      if (busca.trim())                params.set("busca",  busca.trim());
-      params.set("limit", "100");
-      if (academicYearId) params.set(ACADEMIC_YEAR_PARAM, academicYearId);
-      if (options?.cursor) params.set("cursor", options.cursor);
-
-      const res  = await fetch(buildEscolaUrl(escolaId, "/turmas", params), {
-        headers: { "X-Proxy-Used": "canonical" },
-      });
-      const json = await res.json();
-      if (json.ok) {
-        setData(json);
-        setNextCursor(json.next_cursor ?? null);
-        setItems((prev) => options?.append ? [...prev, ...(json.items || [])] : (json.items || []));
-      }
-    } catch (err) {
-      console.error("Erro ao buscar turmas", err);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [escolaId, filters, busca, academicYearId]);
-
-  const initialRender = useRef(true);
+  }, [loadJobs, retryingJobId]);
 
   useEffect(() => {
-    if (escolaLoading || !escolaId) { if (!escolaLoading) setLoading(false); return; }
-    
-    // Skip first fetch if we have initialData
-    if (initialRender.current && initialData) {
-      initialRender.current = false;
+    void loadJobs();
+  }, [loadJobs]);
+
+  useEffect(() => {
+    const hasActiveJobs = jobs.some((job) => job.status === "PROCESSING");
+    if (!hasActiveJobs) return;
+    const timer = window.setInterval(() => {
+      void loadJobs();
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [jobs, loadJobs]);
+
+  useEffect(() => {
+    if (!historyStorageKey) return;
+    try {
+      const raw = window.localStorage.getItem(historyStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as DirectHistoryItem[];
+      if (Array.isArray(parsed)) setDirectHistory(parsed);
+    } catch {}
+  }, [historyStorageKey]);
+
+  useEffect(() => {
+    if (!historyStorageKey) return;
+    try {
+      window.localStorage.setItem(historyStorageKey, JSON.stringify(directHistory.slice(0, DIRECT_HISTORY_LIMIT)));
+    } catch {}
+  }, [directHistory, historyStorageKey]);
+
+  useEffect(() => {
+    if (!storageKey || turmas.length === 0 || turmaId || hasHydratedLastTurmaRef.current) return;
+    hasHydratedLastTurmaRef.current = true;
+    try {
+      const lastTurmaId = window.localStorage.getItem(storageKey);
+      if (lastTurmaId && turmas.some((turma) => turma.id === lastTurmaId)) {
+        setTurmaId(lastTurmaId);
+      }
+    } catch {}
+  }, [storageKey, turmaId, turmas]);
+
+  useEffect(() => {
+    if (!storageKey || !turmaId) return;
+    try {
+      window.localStorage.setItem(storageKey, turmaId);
+    } catch {}
+  }, [storageKey, turmaId]);
+
+  const classes = useMemo(() => uniqSorted(turmas.map((turma) => turma.classe_nome)), [turmas]);
+  const classOptions = useMemo(() => {
+    const byKey = new Map<string, { id: string; nome: string; total: number }>();
+    for (const turma of turmas) {
+      const id = turma.classe_id ?? "";
+      const nome = (turma.classe_nome ?? "").trim();
+      if (!id || !nome) continue;
+      const key = `${id}:${nome}`;
+      const current = byKey.get(key);
+      byKey.set(key, { id, nome, total: (current?.total ?? 0) + 1 });
+    }
+    return Array.from(byKey.values()).sort((a, b) => a.nome.localeCompare(b.nome, "pt-PT"));
+  }, [turmas]);
+  const cursos = useMemo(() => uniqSorted(turmas.map((turma) => turma.curso_nome)), [turmas]);
+  const turnos = useMemo(() => uniqSorted(turmas.map((turma) => turma.turno)), [turmas]);
+
+  const turmasFiltradas = useMemo(() => {
+    const term = turmaQuery.trim().toLowerCase();
+    return turmas.filter((turma) => {
+      const label = turmaLabel(turma).toLowerCase();
+      const classe = String(turma.classe_nome ?? "").toLowerCase();
+      const curso = String(turma.curso_nome ?? "").toLowerCase();
+      const turno = String(turma.turno ?? "");
+
+      if (classeFiltro && turma.classe_nome !== classeFiltro) return false;
+      if (cursoFiltro && turma.curso_nome !== cursoFiltro) return false;
+      if (turnoFiltro && turno !== turnoFiltro) return false;
+      if (!term) return true;
+
+      return label.includes(term) || classe.includes(term) || curso.includes(term);
+    });
+  }, [turmaQuery, classeFiltro, cursoFiltro, turnoFiltro, turmas]);
+
+  useEffect(() => {
+    if (!turmaId) return;
+    if (!turmas.some((turma) => turma.id === turmaId)) {
+      setTurmaId("");
+    }
+  }, [turmaId, turmas]);
+
+  const selectedTurma = useMemo(
+    () => turmas.find((turma) => turma.id === turmaId) ?? null,
+    [turmaId, turmas]
+  );
+
+  const selectedClasse = useMemo(
+    () => classOptions.find((classe) => classe.nome === classeFiltro) ?? null,
+    [classeFiltro, classOptions]
+  );
+
+  const selectedClasseTurmas = useMemo(() => {
+    if (!selectedClasse?.id) return [];
+    return turmasFiltradas.filter((turma) => turma.classe_id === selectedClasse.id);
+  }, [selectedClasse?.id, turmasFiltradas]);
+
+  const selectedClasseAlunoCount = useMemo(
+    () => selectedClasseTurmas.reduce((total, turma) => total + Number(turma.ocupacao_atual ?? 0), 0),
+    [selectedClasseTurmas]
+  );
+
+  const selectedPeriodo = useMemo(
+    () => periodos.find((periodo) => periodo.id === periodoId) ?? null,
+    [periodoId, periodos]
+  );
+
+  useEffect(() => {
+    if (selectedTurma) {
+      setTurmaQuery(turmaLabel(selectedTurma));
+    }
+  }, [selectedTurma]);
+
+  useEffect(() => {
+    setSelectedDocs((current) => current.filter((docKey) => DOCS.find((doc) => doc.key === docKey)?.formats?.includes(format)));
+  }, [format]);
+
+  useEffect(() => {
+    if (scope !== "classe") return;
+    setSelectedDocs(["nominal"]);
+    if (format === "excel") setFormat("pdf_individual");
+  }, [format, scope]);
+
+  const statusResumo = selectedTurma
+    ? [
+        selectedTurma.classe_nome ? `Classe ${selectedTurma.classe_nome}` : null,
+        selectedTurma.curso_nome ? selectedTurma.curso_nome : null,
+        selectedTurma.turno ? `Turno ${selectedTurma.turno}` : null,
+      ]
+        .filter(Boolean)
+        .join(" • ")
+    : null;
+
+  const modoLista: ListaNominalMode = modeOverride ??
+    (anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.status === "ativa" ? "operacional" : "ano_letivo");
+  const selectedDocDefs = DOCS.filter((doc) => selectedDocs.includes(doc.key));
+  const visibleDocs = useMemo(
+    () => scope === "classe" ? DOCS.filter((doc) => doc.key === "nominal") : DOCS,
+    [scope]
+  );
+
+  const docDisabledReason = useCallback(
+    (docKey: DocKey) => {
+      const doc = DOCS.find((item) => item.key === docKey);
+      if (!doc) return "Documento indisponível.";
+      if (scope === "classe") {
+        if (doc.key !== "nominal") return "Escopo por classe disponível para Lista Nominal.";
+        if (format === "excel") return "Lista nominal por classe não tem versão Excel.";
+        if (!selectedClasse?.id) return "Selecione uma classe.";
+        if (format === "pdf_consolidado" && selectedClasseTurmas.length === 0) {
+          return "Nenhuma turma encontrada para esta classe nos filtros atuais.";
+        }
+        return null;
+      }
+      if (!doc.formats.includes(format)) {
+        return format === "excel"
+          ? "Este documento não tem versão Excel."
+          : "Este documento ainda não suporta PDF consolidado.";
+      }
+      if (doc.key === "schedule" && !escolaId) return "Não foi possível identificar a escola.";
+      if (!selectedTurma && !processAllTurmas) return "Selecione uma turma.";
+      if (doc.requiresPeriodo && !periodoId) return "Selecione um período.";
+      return null;
+    },
+    [escolaId, format, periodoId, processAllTurmas, scope, selectedClasse?.id, selectedClasseTurmas.length, selectedTurma]
+  );
+
+  const addDirectHistory = useCallback((entry: Omit<DirectHistoryItem, "id" | "createdAt">) => {
+    setDirectHistory((current) => [
+      {
+        id: buildClientHistoryId(),
+        createdAt: new Date().toISOString(),
+        ...entry,
+      },
+      ...current,
+    ].slice(0, DIRECT_HISTORY_LIMIT));
+  }, []);
+
+  const runDirectDownloads = useCallback(async () => {
+    if (scope === "classe") {
+      if (!selectedClasse?.id) return;
+      const doc = selectedDocDefs.find((item) => item.key === "nominal");
+      if (!doc) return;
+
+      const url = buildClasseDocUrl(selectedClasse.id, anoLetivo, includeAllStatus, modoLista);
+      window.open(url, "_blank");
+      addDirectHistory({
+        label: `${doc.label} • ${selectedClasse.nome}`,
+        format,
+        href: url,
+      });
       return;
     }
 
-    const t = setTimeout(() => { setNextCursor(null); fetchData({ append: false }); }, 300);
-    return () => clearTimeout(t);
-  }, [fetchData, escolaId, escolaLoading, initialData]);
-
-  const loadMore = useCallback(async () => {
-    if (!nextCursor || loadingMore) return;
-    await fetchData({ cursor: nextCursor, append: true });
-  }, [fetchData, nextCursor, loadingMore]);
-
-  const submitTransfer = useCallback(async () => {
-    if (!transferSourceTurmaId || !transferTargetTurmaId || !transferConfirmed ||
-        !selectedTurmaForTransfer?.session_id || transferReason.trim().length < 10) return;
-    setTransferLoading(true);
-    setTransferError(null);
-    setTransferErrorCode(null);
-    try {
-      const res = await fetch(`/api/secretaria/turmas/${transferSourceTurmaId}/transferir`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          target_turma_id: transferTargetTurmaId,
-          ano_letivo_id: selectedTurmaForTransfer.session_id,
-          motivo: transferReason.trim(),
-        }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.ok) {
-        setTransferErrorCode(json?.code ?? null);
-        throw new Error(json?.error || "Falha ao transferir turma.");
+    if (!selectedTurma) return;
+    for (const doc of selectedDocDefs) {
+      if (doc.key === "nominal_csv") {
+        const url = buildDocUrl(doc.key, selectedTurma.id, month, anoLetivo, periodoId,
+          selectedPeriodo?.numero ?? null, false, includeAllStatus, modoLista);
+        const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+        if (!response.ok) {
+          const result: { error?: string } = await response.json().catch(() => ({}));
+          throw new Error(result.error || "Não foi possível exportar o CSV.");
+        }
+        const blob = await response.blob();
+        const href = URL.createObjectURL(blob);
+        const disposition = response.headers.get("content-disposition");
+        const filename = disposition?.match(/filename="([^"]+)"/)?.[1] ??
+          "lista_nominal_turma_" + selectedTurma.id + ".csv";
+        const anchor = document.createElement("a");
+        anchor.href = href;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(href), 30_000);
+        addDirectHistory({
+          label: "Lista Nominal (CSV) • " + turmaLabel(selectedTurma),
+          format: "excel",
+          href: url,
+        });
+        continue;
       }
-      success("Transferência concluída", `${json.transferred ?? 0} matrícula(s) movida(s) com sucesso.`);
-      setShowTransferModal(false);
-      setSelectedIds(new Set());
-      await fetchData();
-    } catch (err: any) {
-      setTransferError(err?.message || "Falha ao transferir turma.");
+
+      if (doc.key === "schedule") {
+        await downloadHorarioTurmaPdf({
+          escolaId: escolaId!,
+          escolaNome: "Escola",
+          turma: selectedTurma,
+        });
+        addDirectHistory({
+          label: `${doc.label} • ${turmaLabel(selectedTurma)}`,
+          format,
+          href: `/escola/${escolaId}/horarios/quadro?turmaId=${selectedTurma.id}`,
+        });
+        continue;
+      }
+
+      const url = buildDocUrl(
+        doc.key,
+        selectedTurma.id,
+        month,
+        anoLetivo,
+        periodoId,
+        selectedPeriodo?.numero ?? null,
+        isAlbum,
+        includeAllStatus,
+        modoLista
+      );
+      window.open(url, "_blank");
+      addDirectHistory({
+        label: `${doc.label} • ${turmaLabel(selectedTurma)}`,
+        format,
+        href: url,
+      });
+    }
+  }, [
+    addDirectHistory,
+    anoLetivo,
+    escolaId,
+    format,
+    includeAllStatus,
+    isAlbum,
+    modoLista,
+    month,
+    periodoId,
+    scope,
+    selectedClasse?.id,
+    selectedClasse?.nome,
+    selectedDocDefs,
+    selectedPeriodo?.numero,
+    selectedTurma,
+  ]);
+
+  const runQueuedEmission = useCallback(async () => {
+    if (!escolaId) throw new Error("Escola não identificada.");
+    const targetTurmaIds =
+      scope === "classe"
+        ? selectedClasseTurmas.map(turma => turma.id)
+        : processAllTurmas
+          ? turmasFiltradas.map(turma => turma.id)
+          : selectedTurma
+            ? [selectedTurma.id]
+            : [];
+
+    if (targetTurmaIds.length === 0) throw new Error("Seleccione pelo menos uma turma.");
+    if (targetTurmaIds.length > MAX_TURMAS_POR_LOTE) {
+      throw new Error("Seleccione, no máximo, 10 turmas por lote.");
+    }
+
+    const enfileirar = async (body: Record<string, unknown>) => {
+      const response = await fetch("/api/secretaria/documentos-oficiais/lote", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result: { ok?: boolean; error?: string } = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "Não foi possível enfileirar o lote.");
+      }
+    };
+
+    const anoSelecionado = academicYearIdFromUrl ??
+      anosLetivos.find(item => item.ano_letivo === anoLetivo)?.id;
+
+    for (const doc of selectedDocDefs) {
+      if (!queueDocKeys.has(doc.key)) continue;
+
+      if (doc.key === "nominal" || doc.key === "attendance") {
+        await enfileirar({
+          turma_ids: targetTurmaIds,
+          tipo: doc.key === "nominal" ? "lista_nominal" : "attendance",
+          ano_letivo_id: anoSelecionado,
+          month,
+          year: String(anoLetivo),
+          is_album: isAlbum,
+          include_all_status: includeAllStatus,
+          mode: modoLista,
+        });
+        continue;
+      }
+      const tipo = doc.key === "pauta-geral" ? "trimestral" : "anual";
+      await enfileirar({
+        turma_ids: targetTurmaIds,
+        tipo,
+        ano_letivo_id: anoSelecionado,
+        ...(tipo === "trimestral" ? { periodo_letivo_id: periodoId } : {}),
+      });
+    }
+  }, [academicYearIdFromUrl, anoLetivo, anosLetivos, escolaId, includeAllStatus, isAlbum, modoLista, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
+
+  const canSubmit =
+    selectedDocs.length > 0 &&
+    selectedDocDefs.every((doc) => docDisabledReason(doc.key) === null) &&
+    !submitting;
+
+  const handleEmit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setFeedback(null);
+    try {
+      if (format === "pdf_consolidado") {
+        await runQueuedEmission();
+        await loadJobs();
+        setFeedback("Lote enviado para a fila de emissão.");
+      } else {
+        await runDirectDownloads();
+        setFeedback("Downloads iniciados.");
+      }
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Não conseguimos concluir a emissão agora.");
     } finally {
-      setTransferLoading(false);
+      setSubmitting(false);
     }
-  }, [fetchData, transferReason, transferSourceTurmaId, transferTargetTurmaId,
-    transferConfirmed, selectedTurmaForTransfer?.session_id, success]);
+  };
 
-  // ── Financeiro fetch — stable on itemIds ──────────────────────────────────
-  const itemIds = useMemo(() => items.map((i) => i.id).join(","), [items]);
-  useEffect(() => {
-    if (!adminMode || !escolaId || !itemIds) { setFinanceiroStats({}); return; }
-    const params = new URLSearchParams({ turma_ids: itemIds });
-    fetch(buildEscolaUrl(escolaId, "/admin/turmas/financeiro", params))
-      .then((r) => r.json())
-      .then((json) => {
-        if (!json?.ok) return;
-        const map: Record<string, FinanceiroTurmaStat> = {};
-        (json.items || []).forEach((row: FinanceiroTurmaStat) => {
-          if (row?.turmaId) map[row.turmaId] = row;
-        });
-        setFinanceiroStats(map);
-      })
-      .catch(() => null);
-  }, [adminMode, escolaId, itemIds]);
+  const recentJobs = jobs
+    .filter((job) => ["lista_nominal", "mapa_frequencia", "pauta_trimestral", "pauta_anual"].includes(String(job.documento_tipo ?? "")))
+    .slice(0, 6);
 
-  // ── Pedagogico fetch (Fase 2) ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!escolaId || !itemIds) { setPedagogicoStats({}); return; }
-    fetch(buildEscolaUrl(escolaId, "/admin/turmas/stats-pedagogicos"))
-      .then((r) => r.json())
-      .then((json) => {
-        if (!json?.ok) return;
-        const map: Record<string, PedagogicoTurmaStat> = {};
-        (json.items || []).forEach((row: any) => {
-          if (row?.turma_id) map[row.turma_id] = row;
-        });
-        setPedagogicoStats(map);
-      })
-      .catch(() => null);
-  }, [escolaId, itemIds]);
-
-  // ── Client-side filtering (for fields not sent to API) ────────────────────
-  const filteredItems = useMemo(() => {
-    const query = busca.trim().toLowerCase();
-    return items.filter((t) => {
-      if (filters.curso !== "todos" && t.curso_id !== filters.curso) return false;
-      if (query) {
-        const haystack = [
-          t.nome,
-          t.turma_codigo,
-          t.curso_nome,
-          t.classe_nome,
-          t.professor_nome,
-          t.sala,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(query)) return false;
-      }
-      if (filters.status === "rascunho") {
-        const pendenciaCurriculo = t.status_curriculo === "pendente";
-        const pendenciaTurma = t.status_validacao === "rascunho";
-        if (!pendenciaCurriculo && !pendenciaTurma) return false;
-      }
-      if (filters.status === "ativos" && t.status_validacao !== "ativo") return false;
-
-      if (filters.professor === "com" && !t.professor_nome) return false;
-      if (filters.professor === "sem" && t.professor_nome)  return false;
-
-      const max  = t.capacidade_maxima || 30;
-      const livre = max - (t.ocupacao_atual || 0);
-      if (filters.vagas === "com" && livre <= 0) return false;
-      if (filters.vagas === "sem" && livre > 0)  return false;
-
-      if (filters.curriculo === "ok"      && t.status_curriculo === "pendente") return false;
-      if (filters.curriculo === "pendente" && t.status_curriculo !== "pendente") return false;
-
-      if (filters.financeiro === "inadimplentes" &&
-          (financeiroStats[t.id]?.qtdEmAtraso ?? 0) === 0) return false;
-
-      if (filters.espera === "com" && (pedagogicoStats[t.id]?.candidatos_espera ?? 0) === 0) return false;
-
-      return true;
-    });
-  }, [items, filters, financeiroStats, busca]);
-
-  const filteredIds = useMemo(() => filteredItems.map(t => t.id), [filteredItems]);
-
-  const rascunhos    = useMemo(() => items.filter((t) => t.status_validacao === "rascunho").length, [items]);
-  const pendingItems = useMemo(() =>
-    adminMode && filters.status === "rascunho"
-      ? filteredItems.filter((t) => t.status_validacao === "rascunho")
-      : [],
-    [adminMode, filters.status, filteredItems]
-  );
-
-  // ── Cursos for filter dropdown ────────────────────────────────────────────
-  const cursos = useMemo(() => {
-    const map = new Map<string, string>();
-    items.forEach((t) => {
-      if (t.curso_id && t.curso_nome && !map.has(t.curso_id)) {
-        map.set(t.curso_id, t.curso_nome);
-      }
-    });
-    return Array.from(map.entries()).map(([id, nome]) => ({ id, nome }));
-  }, [items]);
-
-  // ── Virtual rows (admin table only) ──────────────────────────────────────
-  const displayRows = useMemo(() => {
-    const rows: Array<{ key: string; type: "turma" | "expanded"; turma: TurmaItem }> = [];
-    filteredItems.forEach((turma) => {
-      rows.push({ key: turma.id, type: "turma", turma });
-      if (expandedId === turma.id) rows.push({ key: `${turma.id}-expanded`, type: "expanded", turma });
-    });
-    return rows;
-  }, [filteredItems, expandedId]);
-
-  const hasRows = !loading && displayRows.length > 0;
-  const isInitialLoading = loading && items.length === 0;
-
-  const rowVirtualizer = useVirtualizer({
-    count:            displayRows.length,
-    getScrollElement: () => scrollParentRef.current,
-    estimateSize:     (i) => (displayRows[i]?.type === "expanded" ? 220 : 96),
-    overscan:         6,
-  });
-
-  // ── Approve pending ───────────────────────────────────────────────────────
-  const handleApproveConfirmed = useCallback(async () => {
-    if (!escolaId) return;
-    try {
-      const res  = await fetch(buildEscolaUrl(escolaId, "/admin/turmas/aprovar"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turma_ids: pendingItems.map((t) => t.id) }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao aprovar turmas");
-      success("Turmas aprovadas", `${pendingItems.length} turma(s) aprovada(s)`);
-      await fetchData();
-    } catch (err: any) {
-      error("Falha na aprovação", err?.message || "Falha ao aprovar turmas");
-    }
-  }, [escolaId, pendingItems, fetchData]);
-
-  const detailHrefBase = adminMode && escolaParam
-    ? `/escola/${escolaParam}/admin/turmas`
-    : `${secretariaBase}/turmas`;
-
-  const handleFilterChange = useCallback((next: Partial<ActiveFilters>) => {
-    setFilters((prev) => ({ ...prev, ...next }));
-  }, []);
-
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="w-full max-w-6xl mx-auto p-6 space-y-6 pb-24">
-
-      {/* ... (Header, KPIs, Pending banner) ... */}
-
-      {!roleLoading && !canManagePedagogy && (userRole === "secretaria" || userRole === "financeiro") && (
-        <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          <Lock size={16} className="mt-0.5 shrink-0 text-slate-400" />
-          <p>
-            Currículo, horários e atribuição de professores são geridos por perfis administrativos autorizados.
-            Nesta tela, você pode consultar as turmas e acompanhar o estado operacional.
+    <div className="rounded-2xl border border-slate-200/60 bg-slate-50/50 p-5 space-y-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Mapas, Pautas e Listas</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Emita documentos por turma ou baixe a lista nominal de uma classe inteira no mesmo painel.
           </p>
         </div>
-      )}
-
-      {/* ── Main content ────────────────────────────────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-
-        <FilterBar
-          filters={filters}
-          onChange={handleFilterChange}
-          adminMode={adminMode}
-          cursos={cursos}
-          search={busca}
-          onSearch={setBusca}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-        />
-
-        {isInitialLoading ? (
-          <div className="p-5 space-y-3">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={`turma-skeleton-${i}`} className="rounded-xl border border-slate-100 bg-white p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-2">
-                    <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
-                    <div className="h-3 w-24 animate-pulse rounded bg-slate-100" />
-                  </div>
-                  <div className="h-6 w-20 animate-pulse rounded-full bg-slate-100" />
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-3">
-                  <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
-                  <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
-                  <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : viewMode === "cards" ? (
-          <SecretaryCardView
-            items={filteredItems}
-            detailHrefBase={detailHrefBase}
-            secretariaBase={secretariaBase}
-            canManagePedagogy={canManagePedagogy}
-            canPrint={canPrint}
-            pedagogicoStats={pedagogicoStats}
-            onEdit={(t) => { setEditingTurma(t); setShowForm(true); }}
-            onAssignProfessors={(t) => setAssignProfTurma(t)}
-            onManageCurriculum={(t) => setCurriculoTurma(t)}
-            onOpenHorario={(t) => setHorarioTurma(t)}
-            selectedIds={selectedIds}
-            onToggleSelect={toggleSelect}
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <div ref={scrollParentRef} className="max-h-[600px] overflow-y-auto">
-              <table className="min-w-[1020px] table-fixed divide-y divide-slate-100">
-                <thead className="bg-slate-50 sticky top-0 z-10"
-                  style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                  <tr>
-                    <th className="px-5 py-3 text-left w-[40px]">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.size > 0 && selectedIds.size === filteredIds.length}
-                        onChange={() => toggleAll(filteredIds)}
-                        className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[30%]">Turma</th>
-                    <th className="px-5 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[18%]">Curso / Nível</th>
-                    <th className="px-5 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[8%]">Sala</th>
-                    <th className="px-5 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[20%]">Ocupação</th>
-                    <th className="px-5 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[14%]">Saúde</th>
-                    <th className="px-5 py-3 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[10%]">Ações</th>
-                  </tr>
-                </thead>
-                <tbody
-                  className="divide-y divide-slate-50 bg-white"
-                  style={hasRows ? { position: "relative", display: "block", height: rowVirtualizer.getTotalSize() } : undefined}
-                >
-                  {loading ? (
-                    [...Array(5)].map((_, i) => (
-                      <tr key={i} className="animate-pulse"
-                        style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                        <td className="px-5 py-4.5 w-[40px]"><div className="h-4 w-4 bg-slate-100 rounded" /></td>
-                        <td className="px-6 py-4.5"><div className="h-9 w-9 bg-slate-100 rounded-xl" /></td>
-                        <td className="px-5 py-4.5"><div className="h-4 w-28 bg-slate-100 rounded" /></td>
-                        <td className="px-5 py-4.5"><div className="h-4 w-12 bg-slate-100 rounded" /></td>
-                        <td className="px-5 py-4.5">
-                          <div className="space-y-1.5">
-                            <div className="h-3 w-16 bg-slate-100 rounded" />
-                            <div className="h-2 w-full bg-slate-100 rounded-full" />
-                            <div className="h-3 w-20 bg-slate-100 rounded" />
-                          </div>
-                        </td>
-                        <td className="px-5 py-4.5"><div className="h-4 w-16 bg-slate-100 rounded" /></td>
-                        <td className="px-5 py-4.5" />
-                      </tr>
-                    ))
-                  ) : filteredItems.length === 0 ? (
-                    <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                      <td colSpan={7} className="py-20 text-center">
-                        <div className="flex flex-col items-center gap-2 text-slate-400">
-                          <Search size={22} />
-                          <p className="font-medium text-slate-600">Nenhuma turma encontrada</p>
-                          <p className="text-xs">Ajuste os filtros acima.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                      const row = displayRows[virtualRow.index];
-                      if (!row) return null;
-                      const vs: CSSProperties = {
-                        position: "absolute", top: 0, left: 0,
-                        transform: `translateY(${virtualRow.start}px)`,
-                        width: "100%", display: "table", tableLayout: "fixed",
-                      };
-                      if (row.type === "expanded") {
-                        const qv = expandedData[row.turma.id];
-                        const loading = expandedLoading === row.turma.id;
-                        const fin = financeiroStats[row.turma.id];
-                        const ped = pedagogicoStats[row.turma.id];
-                        const max = row.turma.capacidade_maxima || 30;
-                        const atual = row.turma.ocupacao_atual || 0;
-                        const pct = Math.min(Math.round((atual / max) * 100), 100);
-                        const inadimplencia = Number(fin?.inadimplenciaPct ?? 0);
-
-                        return (
-                          <tr key={row.key} className="bg-slate-50/50" style={vs}>
-                            <td colSpan={7} className="px-5 py-4">
-                              <div className="ml-11 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                {/* Status Operacional */}
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
-                                    <CheckCircle2 size={12} className="text-[#1F6B3B]" /> Status Operacional
-                                  </h4>
-                                  <div className="space-y-2 text-xs">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-slate-500">Professor:</span>
-                                      <span className="font-semibold text-slate-800 truncate max-w-[120px]" title={row.turma.professor_nome || "Sem professor"}>
-                                        {row.turma.professor_nome || "Não atribuído"}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-slate-500">Currículo:</span>
-                                      <span className={`font-semibold ${row.turma.status_curriculo === "pendente" ? "text-amber-600" : "text-[#1F6B3B]"}`}>
-                                        {row.turma.status_curriculo === "pendente" ? "Pendente" : "OK"}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-slate-500">Inadimplência:</span>
-                                      <span className={`font-semibold ${inadimplencia >= 20 ? "text-rose-600" : "text-slate-700"}`}>
-                                        {inadimplencia}%
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-slate-500">Lotação:</span>
-                                      <span className="font-semibold text-slate-800">
-                                        {atual} / {max} ({pct}%)
-                                      </span>
-                                    </div>
-                                    {ped && ped.candidatos_espera > 0 && (
-                                      <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 mt-1.5">
-                                        <span className="text-slate-500">Em Espera:</span>
-                                        <Link 
-                                          href={`${secretariaBase}/admissoes?turmaId=${row.turma.id}&search=${encodeURIComponent(row.turma.nome || "")}`}
-                                          className="font-bold text-amber-600 hover:underline"
-                                        >
-                                          {ped.candidatos_espera} candidatos
-                                        </Link>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Alunos em Risco */}
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
-                                    <AlertTriangle size={12} className="text-rose-500" /> Alunos em Risco
-                                  </h4>
-                                  {loading ? (
-                                    <div className="space-y-2 animate-pulse">
-                                      <div className="h-4 bg-slate-100 rounded w-full" />
-                                      <div className="h-4 bg-slate-100 rounded w-3/4" />
-                                    </div>
-                                  ) : qv?.risks?.length > 0 ? (
-                                    <div className="space-y-2 max-h-[100px] overflow-y-auto">
-                                      {qv.risks.map((r: any, idx: number) => (
-                                        <div key={idx} className="flex items-center justify-between text-xs">
-                                          <span className="font-medium text-slate-700 truncate max-w-[120px]">{r.nome}</span>
-                                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                            r.status === "critical" ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"
-                                          }`}>
-                                            {r.motivo}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <p className="text-xs text-slate-400 py-2">Sem alertas críticos no momento.</p>
-                                  )}
-                                </div>
-
-                                {/* Aula Atual */}
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center justify-between">
-                                    <span className="flex items-center gap-2">
-                                      <CalendarCheck size={12} className="text-[#1F6B3B]" /> Aula Atual / Próxima
-                                    </span>
-                                    {qv?.currentSubject && !substituting && (
-                                      <button 
-                                        onClick={() => { setSubstituting(row.turma.id); fetchProfessors(); }}
-                                        className="text-[10px] font-bold text-amber-600 hover:text-amber-700 transition-colors"
-                                      >
-                                        Substituir
-                                      </button>
-                                    )}
-                                  </h4>
-                                  {loading ? (
-                                    <div className="space-y-2 animate-pulse">
-                                      <div className="h-4 bg-slate-100 rounded w-1/2" />
-                                      <div className="h-4 bg-slate-100 rounded w-full" />
-                                    </div>
-                                  ) : substituting === row.turma.id ? (
-                                    <div className="space-y-3 animate-in fade-in duration-200">
-                                      <p className="text-xs font-semibold text-slate-600">Substituto para {qv?.currentSubject?.nome}:</p>
-                                      <select 
-                                        value={selectedProf}
-                                        onChange={(e) => setSelectedProf(e.target.value)}
-                                        className="w-full p-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-amber"
-                                      >
-                                        <option value="">Selecione um professor...</option>
-                                        {professors.map(p => (
-                                          <option key={p.teacher_id} value={p.teacher_id}>{p.nome}</option>
-                                        ))}
-                                      </select>
-                                      <div className="flex justify-end gap-1.5">
-                                        <button 
-                                          onClick={() => setSubstituting(null)}
-                                          className="px-2.5 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
-                                        >
-                                          Cancelar
-                                        </button>
-                                        <button 
-                                          onClick={() => handleAssignSubstitute(row.turma.id, qv.currentSubject.slot_id)}
-                                          disabled={!selectedProf}
-                                          className="px-2.5 py-1 text-[10px] font-bold bg-[#1F6B3B] text-white hover:brightness-95 rounded-lg shadow-sm transition-all disabled:opacity-50"
-                                        >
-                                          Confirmar
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : qv?.currentSubject ? (
-                                    <div>
-                                      <p className="text-sm font-bold text-slate-900 truncate">{qv.currentSubject.nome}</p>
-                                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 truncate">
-                                        <UserCheck size={12} /> {qv.currentSubject.professor}
-                                      </p>
-                                      <p className="text-[10px] text-slate-400 mt-2 flex items-center gap-1.5">
-                                        <MapPin size={12} /> {qv.currentSubject.sala} · Agora
-                                      </p>
-                                    </div>
-                                  ) : (
-                                    <p className="text-xs text-slate-400 py-2">Sem aulas agendadas.</p>
-                                  )}
-                                </div>
-
-                                {/* Log de Ocupação Histórica (Fase 4) */}
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
-                                    <UsersRound size={12} className="text-blue-500" /> Lotação Histórica
-                                  </h4>
-                                  {loading ? (
-                                    <div className="space-y-2 animate-pulse">
-                                      <div className="h-4 bg-slate-100 rounded w-full" />
-                                      <div className="h-4 bg-slate-100 rounded w-full" />
-                                    </div>
-                                  ) : qv?.history?.length > 0 ? (
-                                    <div className="space-y-2">
-                                      {qv.history.slice(-3).map((h: any, idx: number) => (
-                                        <div key={idx} className="flex items-center justify-between text-[10px]">
-                                          <span className="text-slate-500 font-medium">{h.mes_referencia}</span>
-                                          <div className="flex items-center gap-2 flex-1 mx-3">
-                                            <div className="h-1 bg-slate-100 rounded-full flex-1 overflow-hidden">
-                                              <div 
-                                                className="h-full bg-blue-400 rounded-full"
-                                                style={{ width: `${Math.min((h.total_alunos / max) * 100, 100)}%` }}
-                                              />
-                                            </div>
-                                          </div>
-                                          <span className="font-bold text-slate-700 w-4 text-right">{h.total_alunos}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <p className="text-xs text-slate-400 py-2">Sem histórico disponível.</p>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      }
-                      return (
-                        <TurmaRow
-                          key={row.key}
-                          turma={row.turma}
-                          isExpanded={expandedId === row.turma.id}
-                          onToggleExpand={() => toggleExpand(row.turma.id)}
-                          onEdit={(t) => { setEditingTurma(t); setShowForm(true); }}
-                          onAssignProfessors={(t) => setAssignProfTurma(t)}
-                          onManageCurriculum={(t) => setCurriculoTurma(t)}
-                          onOpenHorario={(t) => setHorarioTurma(t)}
-                          canManagePedagogy={canManagePedagogy}
-                          canPrint={canPrint}
-                          detailHrefBase={detailHrefBase}
-                          secretariaBase={secretariaBase}
-                          financeiro={financeiroStats[row.turma.id]}
-                          pedagogico={pedagogicoStats[row.turma.id]}
-                          style={vs}
-                          editingCell={editingCell}
-                          onStartEdit={(id, field) => setEditingCell({ id, field })}
-                          onCancelEdit={() => setEditingCell(null)}
-                          onSaveEdit={handleInlineUpdate}
-                          loadingCell={inlineLoading}
-                          isSelected={selectedIds.has(row.turma.id)}
-                          onToggleSelect={toggleSelect}
-                        />
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-          </div>
-        )}
-
-        {nextCursor && (
-          <div className="flex justify-center py-4">
-            <button
-              onClick={loadMore}
-              disabled={loadingMore}
-              className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 transition-colors"
-            >
-              {loadingMore ? "Carregando…" : "Carregar mais"}
-            </button>
+        {(loadingTurmas || loadingPeriodos || loadingAnos || submitting) && (
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
+            <Loader2 size={14} className="animate-spin text-slate-400" />
+            {submitting ? "A processar emissão" : "A preparar contexto"}
           </div>
         )}
       </div>
 
-      {/* ── Form modal ──────────────────────────────────────────────────────── */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-bold text-lg text-slate-800">
-                {editingTurma ? "Editar Turma" : "Nova Turma"}
-              </h3>
-              <button onClick={() => setShowForm(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Fechar">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-6">
-              {escolaId ? (
-                <TurmaForm escolaId={escolaId} initialData={editingTurma}
-                  onSuccess={() => { setShowForm(false); fetchData(); }} />
-              ) : (
-                <p className="text-sm text-slate-500 text-center py-4">
-                  Escola não identificada. Recarregue a página.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <Field label="Ano letivo">
+          <select
+            value={anoLetivo ?? ""}
+            onChange={(event) => { setAnoLetivo(event.target.value ? Number(event.target.value) : null); setModeOverride(null); }}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+          >
+            <option value="">{loadingAnos ? "A carregar..." : "Selecione"}</option>
+            {anosLetivos.map((ano) => (
+              <option key={ano.id} value={ano.ano_letivo}>
+                {ano.nome}
+              </option>
+            ))}
+          </select>
+        </Field>
 
-      {showTransferModal && selectedTurmaForTransfer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <div>
-                <h3 className="font-bold text-lg text-foreground">Transferir alunos entre turmas</h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  Origem: <span className="font-semibold text-slate-700">{selectedTurmaForTransfer.nome ?? selectedTurmaForTransfer.turma_codigo}</span>
-                  {" "}· {selectedTurmaForTransfer.ocupacao_atual ?? "—"} matrícula(s)
-                </p>
-              </div>
+        <Field label="Escopo">
+          <div className="grid grid-cols-2 gap-2">
+            {(["turma", "classe"] as ScopeKey[]).map((item) => (
               <button
-                onClick={() => setShowTransferModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-                aria-label="Fechar"
+                key={item}
+                type="button"
+                onClick={() => {
+                  setScope(item);
+                  if (item === "classe") {
+                    setSelectedDocs(["nominal"]);
+                    setFormat((current) => current === "excel" ? "pdf_individual" : current);
+                  }
+                }}
+                className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
+                  scope === item
+                    ? "border-amber bg-amber/10 text-slate-900"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
               >
-                <X size={18} />
+                {item === "turma" ? "Turma" : "Classe"}
               </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Turma destino</label>
-                <select
-                  value={transferTargetTurmaId}
-                  onChange={(e) => { setTransferTargetTurmaId(e.target.value); setTransferConfirmed(false); }}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#E3B23C]"
-                >
-                  <option value="">{transferCandidatesLoading ? "A carregar destinos..." : "Selecione a turma destino"}</option>
-                  {transferTargetOptions.map((turma) => (
-                    <option key={turma.id} value={turma.id}>
-                      {turma.nome ?? turma.turma_codigo}
-                    </option>
-                  ))}
-                </select>
-                {!transferCandidatesLoading && transferTargetOptions.length === 0 && (
-                  <p role="status" className="mt-2 text-xs text-amber-800">
-                    Nenhuma turma compatível. Verifique o curso, classe, ano letivo e a abertura das turmas.
-                  </p>
-                )}
-                {transferTargetTurmaId && (() => {
-                  const target = transferTargetOptions.find((t) => t.id === transferTargetTurmaId);
-                  if (!target) return null;
-                  const free = (target.capacidade_maxima ?? 0) - (target.ocupacao_atual ?? 0);
-                  return <p className="mt-2 text-xs text-muted-foreground">
-                    Vagas previstas: {Math.max(free, 0)}. A capacidade será novamente validada ao confirmar.
-                  </p>;
-                })()}
+            ))}
+          </div>
+        </Field>
+
+        <Field label="Classe">
+          <select
+            value={classeFiltro}
+            onChange={(event) => setClasseFiltro(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+          >
+            <option value="">Todas</option>
+            {classes.map((classe) => (
+              <option key={classe} value={classe}>
+                {classe}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Curso">
+          <select
+            value={cursoFiltro}
+            onChange={(event) => setCursoFiltro(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+          >
+            <option value="">Todos</option>
+            {cursos.map((curso) => (
+              <option key={curso} value={curso}>
+                {curso}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Turno">
+          <select
+            value={turnoFiltro}
+            onChange={(event) => setTurnoFiltro(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+          >
+            <option value="">Todos</option>
+            {turnos.map((turno) => (
+              <option key={turno} value={turno}>
+                {turno}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.9fr)]">
+        <div className="space-y-3">
+          {scope === "turma" ? (
+            <Field
+              label="Turma"
+              hint={
+                turmasFiltradas.length > 0
+                  ? `${turmasFiltradas.length} turma${turmasFiltradas.length !== 1 ? "s" : ""} disponível${turmasFiltradas.length !== 1 ? "eis" : ""}`
+                  : "Nenhuma turma encontrada para os filtros atuais"
+              }
+            >
+              <div className="relative">
+              <div className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400">
+                <Search size={16} />
+              </div>
+              <input
+                value={turmaQuery}
+                onFocus={() => setTurmaPickerOpen(true)}
+                onChange={(event) => {
+                  setTurmaPickerOpen(true);
+                  setTurmaQuery(event.target.value);
+                  if (turmaId) {
+                    setTurmaId("");
+                  }
+                }}
+                onBlur={() => {
+                  window.setTimeout(() => {
+                    setTurmaPickerOpen(false);
+                    if (selectedTurma) {
+                      setTurmaQuery(turmaLabel(selectedTurma));
+                    }
+                  }, 120);
+                }}
+                placeholder={loadingTurmas ? "Carregando turmas..." : "Pesquise por turma, classe ou curso"}
+                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-10 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                <ChevronsUpDown size={16} />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Motivo</label>
-                <textarea
-                  value={transferReason}
-                  onChange={(e) => { setTransferReason(e.target.value); setTransferConfirmed(false); }}
-                  rows={3}
-                  placeholder="Ex.: não existe 8ª classe no período da manhã."
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#E3B23C]"
-                />
-              </div>
-
-              <label className="flex items-start gap-2 text-sm text-foreground">
-                <input
-                  type="checkbox"
-                  checked={transferConfirmed}
-                  onChange={(e) => setTransferConfirmed(e.target.checked)}
-                  className="mt-1"
-                />
-                <span>
-                  Confirmo a transferência de todas as matrículas ativas da turma,
-                  preservando o histórico e os pagamentos. Esta operação será auditada.
-                </span>
-              </label>
-
-              {transferError && (
-                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {transferError}
-                  {transferErrorCode === "BULK_TRANSFER_ACADEMIC_RECORDS" && transferSourceTurmaId && (
-                    <Link
-                      href={`${detailHrefBase}/${transferSourceTurmaId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-flex text-sm font-semibold underline underline-offset-2"
-                    >
-                      Abrir turma e consultar os registos académicos
-                    </Link>
+              {turmaPickerOpen ? (
+                <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                  {turmasFiltradas.length > 0 ? (
+                    <div className="space-y-1">
+                      {turmasFiltradas.map((turma) => {
+                        const active = turma.id === turmaId;
+                        return (
+                          <button
+                            key={turma.id}
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              setTurmaId(turma.id);
+                              setTurmaQuery(turmaLabel(turma));
+                              setTurmaPickerOpen(false);
+                            }}
+                            className={`flex w-full items-start justify-between gap-3 rounded-xl px-3 py-2 text-left transition ${
+                              active ? "bg-amber/10 text-slate-900" : "text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold">{turmaLabel(turma)}</p>
+                              <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                                {turma.classe_nome || "Sem classe"} • {turma.curso_nome || "Sem curso"} • {turma.turno || "Sem turno"}
+                              </p>
+                            </div>
+                            {active ? <Check size={16} className="mt-0.5 shrink-0 text-emerald" /> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-6 text-center text-sm text-slate-500">
+                      Nenhuma turma encontrada para a pesquisa atual.
+                    </div>
                   )}
                 </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  onClick={() => setShowTransferModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={submitTransfer}
-                  disabled={transferLoading || transferCandidatesLoading || !transferTargetTurmaId ||
-                    !transferConfirmed || transferReason.trim().length < 10 ||
-                    !selectedTurmaForTransfer.session_id ||
-                    (selectedTurmaForTransfer.ocupacao_atual ?? 0) <= 0}
-                  className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold disabled:opacity-60"
-                >
-                  {transferLoading ? "A transferir..." : "Confirmar transferência"}
-                </button>
+              ) : null}
+              </div>
+            </Field>
+          ) : (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Lista nominal por classe</p>
+                  <p className="mt-1 text-sm font-bold text-slate-900">
+                    {selectedClasse ? selectedClasse.nome : "Selecione uma classe nos filtros acima"}
+                  </p>
+                  <p className="mt-1 text-xs text-emerald-800">
+                    {selectedClasse
+                      ? format === "pdf_consolidado"
+                        ? `Gera um pacote com ${selectedClasseTurmas.length} turma${selectedClasseTurmas.length !== 1 ? "s" : ""} desta classe.`
+                        : "Gera um PDF único com todos os alunos da classe e mantém a turma de origem em cada linha."
+                      : "Depois de escolher a classe, a Lista Nominal fica pronta para emissão."}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:min-w-44">
+                  <SummaryBox label="Turmas" value={String(selectedClasseTurmas.length)} />
+                  <SummaryBox label="Alunos" value={String(selectedClasseAlunoCount)} />
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {assignProfTurma && escolaId && (
-        <TurmaAtribuirProfessoresModal
-          turma={assignProfTurma}
-          escolaId={escolaId}
-          isOpen={Boolean(assignProfTurma)}
-          onClose={() => setAssignProfTurma(null)}
-          onUpdated={() => {
-            fetchData();
-          }}
-        />
-      )}
-
-      {curriculoTurma && escolaId && (
-        <TurmaCurriculoModal
-          turma={curriculoTurma}
-          escolaId={escolaId}
-          isOpen={Boolean(curriculoTurma)}
-          onClose={() => setCurriculoTurma(null)}
-          onUpdated={() => {
-            fetchData();
-          }}
-        />
-      )}
-
-      {horarioTurma && escolaId && (
-        <TurmaHorarioModal
-          turma={horarioTurma}
-          escolaId={escolaId}
-          isOpen={Boolean(horarioTurma)}
-          onClose={() => setHorarioTurma(null)}
-          onUpdated={() => {
-            fetchData();
-          }}
-        />
-      )}
-
-      {/* ── Bulk Actions Bar (Fase 3) ────────────────────────────────────────── */}
-      {selectedIds.size > 0 && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-8 duration-300 z-40 border border-slate-700/50 backdrop-blur-md">
-          <div className="flex items-center gap-3 border-r border-slate-700 pr-8">
-            <div className="w-6 h-6 rounded-full bg-amber-500 text-slate-900 flex items-center justify-center text-xs font-bold">
-              {selectedIds.size}
-            </div>
-            <span className="text-sm font-semibold text-slate-300">Selecionadas</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {selectedIds.size === 1 && (
-              <button
-                onClick={handleTransferSelectedTurma}
-                className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-xl transition-colors text-sm font-bold group"
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Mês do mapa">
+              <select
+                value={month}
+                onChange={(event) => setMonth(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
               >
-                <ArrowUpDown size={16} className="text-slate-400 group-hover:text-white transition-colors" />
-                Mover alunos
-              </button>
+                {MONTH_OPTIONS.map((item) => (
+                  <option key={item.v} value={item.v}>
+                    {item.l}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Período">
+              <select
+                value={periodoId}
+                onChange={(event) => setPeriodoId(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+              >
+                <option value="">{loadingPeriodos ? "A carregar..." : "Selecione"}</option>
+                {periodos.map((periodo) => (
+                  <option key={periodo.id} value={periodo.id}>
+                    {periodo.numero}º {periodo.tipo === "TRIMESTRE" ? "Trim" : "Per"}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 py-2">
+            {(scope === "classe" || selectedDocs.includes("nominal")) && (
+              <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
+                Modo da lista nominal
+                <select
+                  aria-label="Modo da lista nominal"
+                  value={modoLista}
+                  onChange={(event) => setModeOverride(event.target.value as ListaNominalMode)}
+                  className="rounded-xl border border-border bg-card px-3 py-2 text-sm"
+                >
+                  <option value="ano_letivo">Lista do ano letivo (histórica)</option>
+                  <option value="operacional">Lista operacional actual</option>
+                </select>
+              </label>
             )}
-            {canPrint && <button
-              type="button"
-              onClick={() => void handleBulkPrint()}
-              disabled={bulkPrinting || selectedIds.size > MAX_TURMAS_POR_LOTE}
-              aria-busy={bulkPrinting}
-              className="flex items-center gap-2 px-4 py-2 hover:bg-muted/20 rounded-xl transition-colors text-sm font-bold group disabled:cursor-not-allowed disabled:opacity-50"
-              title={selectedIds.size > MAX_TURMAS_POR_LOTE ? "Máximo 10 turmas por lote" : "Gerar lista nominal de todas as turmas seleccionadas"}
-            >
-              <Printer size={16} className="text-slate-400 group-hover:text-white transition-colors" />
-              {bulkPrinting ? "A enviar lote…" : "Impressão em Lote"}
-            </button>}
-            <button
-              onClick={handleBulkClose}
-              className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-xl transition-colors text-sm font-bold group"
-            >
-              <Lock size={16} className="text-slate-400 group-hover:text-white transition-colors" />
-              Fechamento em Bloco
-            </button>
-            <button
-              onClick={handleBulkNotify}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-slate-900 hover:bg-amber-400 rounded-xl transition-all text-sm font-bold shadow-lg shadow-amber-500/20"
-            >
-              <Send size={16} />
-              Notificar Encarregados
-            </button>
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              className="ml-4 p-2 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 rounded-xl transition-colors"
-              title="Limpar seleção"
-            >
-              <X size={18} />
-            </button>
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={includeAllStatus}
+                onChange={e => setIncludeAllStatus(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-amber focus:ring-amber"
+              />
+              <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">
+                Incluir todos os estados (pendentes/transferidos)
+              </span>
+            </label>
+
+            {scope === "turma" ? (
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={isAlbum}
+                  onChange={e => setIsAlbum(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-amber focus:ring-amber"
+                />
+                <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">
+                  Versão Álbum Visual (Grid com Fotos)
+                </span>
+              </label>
+            ) : null}
+
+            {format === "pdf_consolidado" && scope === "turma" && (
+              <label className="flex items-center gap-2 cursor-pointer group bg-amber-50 px-2 py-1 rounded-lg border border-amber-200">
+                <input
+                  type="checkbox"
+                  checked={processAllTurmas}
+                  onChange={e => setProcessAllTurmas(e.target.checked)}
+                  className="w-4 h-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                />
+                <span className="text-xs font-bold text-amber-700 uppercase tracking-tighter">
+                  Processar para TODAS as turmas da lista
+                </span>
+              </label>
+            )}
+          </div>
+
+          <Field label="Formato de saída">
+            <div className="grid gap-2 md:grid-cols-3">
+              {(Object.keys(formatLabels) as FormatKey[])
+                .filter((item) => !(scope === "classe" && item === "excel"))
+                .map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setFormat(item)}
+                    className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                      format === item
+                        ? "border-amber bg-amber/10 text-slate-900"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {formatLabels[item]}
+                  </button>
+                ))}
+            </div>
+          </Field>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Resumo operacional</p>
+          {scope === "classe" && selectedClasse ? (
+            <div className="mt-3 space-y-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">{selectedClasse.nome}</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Lista nominal por classe • {selectedClasseTurmas.length} turma{selectedClasseTurmas.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <SummaryBox label="Turmas" value={String(selectedClasseTurmas.length)} />
+                <SummaryBox label="Alunos" value={String(selectedClasseAlunoCount)} />
+                <SummaryBox label="Ano" value={anoLetivo ? String(anoLetivo) : "—"} />
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                {format === "pdf_consolidado"
+                  ? "O consolidado mantém cada turma como documento separado dentro do pacote final."
+                  : "O PDF direto junta os alunos da classe inteira e mantém a turma de origem em cada linha."}
+              </div>
+            </div>
+          ) : selectedTurma ? (
+            <div className="mt-3 space-y-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">{turmaLabel(selectedTurma)}</h3>
+                {statusResumo ? <p className="mt-1 text-xs text-slate-500">{statusResumo}</p> : null}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <SummaryBox label="Ocupação" value={`${Number(selectedTurma.ocupacao_atual ?? 0)}`} />
+                <SummaryBox
+                  label="Capacidade"
+                  value={selectedTurma.capacidade_maxima ? String(selectedTurma.capacidade_maxima) : "—"}
+                />
+                <SummaryBox label="Ano" value={selectedTurma.ano_letivo ? String(selectedTurma.ano_letivo) : "—"} />
+                <SummaryBox
+                  label="Status"
+                  value={selectedTurma.status_validacao ? String(selectedTurma.status_validacao) : "—"}
+                />
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {format === "pdf_consolidado"
+                  ? "O modo consolidado envia documentos compatíveis para a fila e libera o download pelo histórico."
+                  : "O modo direto abre os artefatos imediatamente em novas abas."}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+              {scope === "classe" ? "Selecione uma classe para habilitar a lista nominal." : "Selecione uma turma para ver o contexto da emissão e habilitar os documentos."}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Documentos</p>
+          <p className="text-xs text-slate-500">
+            {scope === "classe"
+              ? "Lista nominal por classe selecionada"
+              : `${selectedDocs.length} selecionado${selectedDocs.length !== 1 ? "s" : ""} • clique simples seleciona um, Ctrl/Cmd acumula`}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {visibleDocs.map((doc) => {
+            const disabledReason = docDisabledReason(doc.key);
+            const selected = selectedDocs.includes(doc.key);
+            return (
+              <button
+                key={doc.key}
+                type="button"
+                disabled={scope === "classe"}
+                onClick={(event) =>
+                  setSelectedDocs((current) => {
+                    if (scope === "classe") return ["nominal"];
+                    if (event.metaKey || event.ctrlKey) {
+                      return current.includes(doc.key)
+                        ? current.filter((item) => item !== doc.key)
+                        : [...current, doc.key];
+                    }
+
+                    return current.length === 1 && current[0] === doc.key ? [] : [doc.key];
+                  })
+                }
+                className={`rounded-xl border px-3 py-3 text-left transition ${
+                  selected
+                    ? "border-amber bg-amber/10"
+                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 shrink-0 text-slate-600">{doc.icon}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-slate-900">{doc.label}</p>
+                      <span
+                        className={`inline-flex h-5 w-5 items-center justify-center rounded-full border ${
+                          selected ? "border-amber bg-white text-emerald" : "border-slate-200 text-transparent"
+                        }`}
+                      >
+                        <Check size={12} />
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500">{doc.hint}</p>
+                    {disabledReason ? (
+                      <p className="mt-2 text-[11px] font-medium text-amber-700">{disabledReason}</p>
+                    ) : (
+                      <p className="mt-2 text-[11px] text-emerald-700">
+                        {scope === "classe"
+                          ? "Inclui todas as turmas da classe selecionada."
+                          : `Compatível com ${formatLabels[format].toLowerCase()}.`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-bold text-slate-900">Executar emissão</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {format === "pdf_consolidado"
+              ? "Documentos compatíveis serão enviados para a fila e aparecerão no histórico abaixo."
+              : "Os documentos serão gerados imediatamente em novas abas."}
+          </p>
+          {feedback ? <p className="mt-2 text-xs font-medium text-emerald">{feedback}</p> : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => void handleEmit()}
+          disabled={!canSubmit}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          {submitting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+          {format === "pdf_consolidado" ? "Enviar para a fila" : "Emitir agora"}
+        </button>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Fila de emissão</p>
+              <p className="mt-1 text-xs text-slate-500">Progresso dos documentos consolidados enviados.</p>
+            </div>
+            {loadingJobs ? <Loader2 size={14} className="animate-spin text-slate-400" /> : null}
+          </div>
+
+          <div className="space-y-3">
+            {recentJobs.length === 0 ? (
+              <EmptyState text="Sem lotes recentes." />
+            ) : (
+              recentJobs.map((job) => {
+                const progress = job.total_turmas > 0 ? Math.round((job.processed / job.total_turmas) * 100) : 0;
+                return (
+                  <div key={job.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{jobLabel(job.documento_tipo)}</p>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {new Date(job.created_at).toLocaleString("pt-PT")}
+                        </p>
+                      </div>
+                      <StatusPill status={job.status === "SUCCESS" && job.failed_count > 0 ? "PARTIAL" : job.status} />
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-slate-200">
+                      <div className="h-2 rounded-full bg-emerald transition-all" style={{ width: `${progress}%` }} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>{job.processed}/{job.total_turmas} processado(s)</span>
+                      {job.download_url ? (
+                        <a href={job.download_url} className="font-semibold text-emerald hover:underline">
+                          Baixar ZIP
+                        </a>
+                      ) : null}
+                    </div>
+                    {job.error_message ? <p className="mt-2 text-[11px] text-rose-600">{job.error_message}</p> : null}
+                    {job.failed_count > 0 && job.status !== "PROCESSING" && (
+                      <button
+                        type="button"
+                        disabled={retryingJobId !== null}
+                        onClick={() => void reprocessarFalhas(job.id)}
+                        className="mt-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+                      >
+                        {retryingJobId === job.id ? "A reprocessar…" : "Reprocessar turmas com falha"}
+                      </button>
+                    )}
+                    {(job.itens?.length ?? 0) > 0 && (
+                      <details className="mt-2 rounded-xl border border-border bg-card p-2">
+                        <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                          Resultado por turma ({job.itens?.length ?? 0})
+                        </summary>
+                        <div className="mt-2 space-y-1">
+                          {job.itens?.map(item => (
+                            <div key={item.turma_id} className="flex justify-between gap-2 text-xs text-muted-foreground">
+                              <span>Turma {item.turma_id.slice(0, 8)}</span>
+                              <span>{item.status === "SUCCESS" ? "Concluído" :
+                                item.status === "FAILED" ? "Falhou — reprocessar" :
+                                item.status === "PROCESSING" ? "Em emissão" : "Na fila"}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
-      )}
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Histórico de downloads</p>
+            <p className="mt-1 text-xs text-slate-500">Registo local das emissões diretas feitas neste hub.</p>
+          </div>
+
+          <div className="space-y-3">
+            {directHistory.length === 0 ? (
+              <EmptyState text="Nenhum download direto registado ainda." />
+            ) : (
+              directHistory.map((item) => (
+                <div key={item.id} className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{item.label}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      {formatLabels[item.format]} • {new Date(item.createdAt).toLocaleString("pt-PT")}
+                    </p>
+                  </div>
+                  <a href={item.href} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald hover:underline">
+                    Abrir
+                  </a>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
+        {hint ? <span className="text-[11px] text-slate-400">{hint}</span> : null}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SummaryBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
+      <p className="mt-1 text-sm font-bold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  const label =
+    status === "SUCCESS" ? "Concluído" : status === "PARTIAL" ? "Concluído com falhas" : status === "PROCESSING" ? "Em progresso" : status === "FAILED" ? "Falhou" : status;
+  const classes =
+    status === "SUCCESS"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : status === "PARTIAL" || status === "PROCESSING"
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : "border-rose-200 bg-rose-50 text-rose-700";
+  return <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${classes}`}>{label}</span>;
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-6 text-center text-sm text-slate-500">
+      <div className="mb-2 inline-flex rounded-full bg-white p-2 text-slate-400">
+        <Clock3 size={14} />
+      </div>
+      <p>{text}</p>
     </div>
   );
 }
