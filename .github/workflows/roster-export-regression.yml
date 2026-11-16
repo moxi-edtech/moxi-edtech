@@ -1,0 +1,48 @@
+name: Exportação de listas nominais — regressão
+
+on:
+  pull_request:
+    paths:
+      - 'apps/web/src/lib/documentos/listaNominal*'
+      - 'apps/web/src/lib/pdf/**'
+      - 'apps/web/src/app/api/secretaria/turmas/**'
+      - 'apps/web/src/app/api/secretaria/classes/**'
+      - 'apps/web/src/app/api/secretaria/documentos-oficiais/lote/**'
+      - 'apps/web/src/inngest/functions/pautas-lote.ts'
+      - 'apps/web/src/components/secretaria/QuickDocHub.tsx'
+      - 'apps/web/src/components/secretaria/TurmaDetailClient.tsx'
+      - 'apps/web/src/components/secretaria/TurmasListClient.tsx'
+      - 'apps/web/tests/unit/roster-export-*.spec.ts'
+      - '.github/workflows/roster-export-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regressao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Instalar dependências fixadas
+        run: pnpm install --frozen-lockfile
+      - name: Testes de inclusão por sessão e estados
+        run: pnpm -C apps/web exec node --import tsx --test tests/unit/roster-export-policy.spec.ts tests/unit/roster-export-reproduction.spec.ts tests/unit/current-year-roster-backend.spec.ts
+      - name: TypeScript
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: pnpm -C apps/web typecheck
+      - name: Lint
+        run: pnpm -C apps/web lint
+      - name: Build
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: pnpm -C apps/web build
