@@ -141,19 +141,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     let matriculasQuery = supabase
       .from("matriculas")
-      .select(
-        `
-        id,
-        numero_chamada,
-        status,
-        alunos (
-          id,
-          nome,
-          numero_processo,
-          sexo,
-          ${camposSensiveis ? "bi_numero, naturalidade, provincia, telefone, responsavel, telefone_responsavel" : ""}
-        )
-      `
+      .select(camposSensiveis
+        ? "id,numero_chamada,status,alunos(id,nome,numero_processo,sexo,bi_numero,naturalidade,provincia,telefone,responsavel,telefone_responsavel)"
+        : "id,numero_chamada,status,alunos(id,nome,numero_processo,sexo)"
       )
       .eq("turma_id", turmaId)
       .eq("escola_id", escolaId)
