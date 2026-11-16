@@ -122,7 +122,7 @@ const DOCS: Array<{
     label: "Lista Nominal",
     hint: "Lista oficial da turma pronta para impressão.",
     icon: <FileText size={14} />,
-    formats: ["pdf_individual", "pdf_consolidado"],
+    formats: ["pdf_individual", "pdf_consolidado", "excel"],
     queueLabel: "Lista nominal",
   },
   {
@@ -645,7 +645,9 @@ export default function QuickDocHub({
         continue;
       }
 
-      const url = buildDocUrl(
+      const url = doc.key === "nominal" && format === "excel"
+        ? `/api/secretaria/turmas/${selectedTurma.id}/alunos/xlsx?${new URLSearchParams({ mode: modoLista, ...(includeAllStatus ? { all_status: "true" } : {}) }).toString()}`
+        : buildDocUrl(
         doc.key,
         selectedTurma.id,
         month,
