@@ -6,6 +6,7 @@ import { createInstitutionalPdf, detectImageFormat, fetchImageBytes } from "@/li
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { drawTable, type Column } from "@/lib/pdf/table";
+import { renderNominalA4, type NominalA4Row } from "@/lib/documentos/nominalA4";
 import { LISTA_NOMINAL_MODES, classifyMatricula, modoPadraoDaSessao, resumoExclusoes, selectMatriculasDaLista, type ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
 
 type Client = SupabaseClient<Database>;
@@ -36,6 +37,7 @@ type SessaoRow = { ano: number | null; ativo?: boolean | null };
 type AlunoNested = {
   id: string;
   nome: string | null;
+  numero_processo: string | null;
   bi_numero: string | null;
   sexo?: string | null;
   data_nascimento?: string | null;
@@ -75,6 +77,8 @@ type ListaNominalPdfParams = {
   includeAllStatus?: boolean;
   mode?: ListaNominalMode;
   enableQr?: boolean;
+  camposSensiveis?: boolean;
+  emissor?: string;
   fallbackLogoUrl?: string | null;
 };
 
@@ -173,6 +177,8 @@ export async function renderListaNominalPdfBuffer({
   includeAllStatus = false,
   mode: requestedMode,
   enableQr = false,
+  camposSensiveis = false,
+  emissor = "Sistema KLASSE",
   fallbackLogoUrl,
 }: ListaNominalPdfParams) {
   const normalizedYear = year || String(new Date().getFullYear());
@@ -334,14 +340,11 @@ export async function renderListaNominalPdfBuffer({
         alunos (
           id,
           nome,
-          bi_numero,
+          numero_processo,
           sexo,
-          data_nascimento,
-          naturalidade,
-          provincia,
-          telefone,
-          responsavel,
-          telefone_responsavel,
+          ${camposSensiveis || isAlbum || month || isAttendance
+            ? "bi_numero, data_nascimento, naturalidade, provincia, telefone, responsavel, telefone_responsavel,"
+            : ""}
           profiles!alunos_profile_id_fkey (
             avatar_url
           )
@@ -428,6 +431,7 @@ export async function renderListaNominalPdfBuffer({
     const turmaAluno = turmaById.get(matricula.turma_id ?? "");
     const row: Record<string, string | number> = {
       id: matricula.id,
+      processo: aluno?.numero_processo?.trim() || "NÃO ATRIBUÍDO",
       numero: matricula.numero_chamada ?? index + 1,
       turma: turmaAluno?.nome ?? "—",
       nome: aluno?.nome ?? "—",
@@ -483,6 +487,61 @@ export async function renderListaNominalPdfBuffer({
   const verificationToken = enableQr ? randomUUID() : undefined;
   const validationBase = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? undefined;
   const logoUrl = normalizePdfLogoUrl(escola?.logo_url, fallbackLogoUrl);
+
+  // Documento nominal diário: layout próprio, paginação real e minimização de dados.
+  // Mapas, pautas de chamada e álbum preservam o renderer anterior.
+  if (!month && !isAttendance && !isAlbum) {
+    let logoBytes: Uint8Array | undefined;
+    if (logoUrl) {
+      try {
+        logoBytes = (await fetchImageBytes(logoUrl)).bytes;
+      } catch {
+        // Um logótipo temporariamente indisponível não bloqueia a lista.
+      }
+    }
+    let qrImageBytes: Uint8Array | undefined;
+    if (enableQr) {
+      if (!validationBase || !verificationToken) {
+        throw new Error("Verificação QR indisponível neste ambiente");
+      }
+      const verifyUrl = validationBase.replace(/\/$/, "") + "/" + verificationToken;
+      const qrRes = await fetch("https://quickchart.io/qr?text=" + encodeURIComponent(verifyUrl) + "&margin=1&size=240");
+      if (!qrRes.ok) throw new Error("Falha ao gerar o código QR");
+      qrImageBytes = new Uint8Array(await qrRes.arrayBuffer());
+    }
+    const yearValue = String(sessao?.ano ?? turma.ano_letivo ?? "—");
+    const yearLabel = /^\d{4}$/.test(yearValue)
+      ? yearValue + "/" + (Number(yearValue) + 1)
+      : yearValue;
+    const estados: Record<string, string> = {
+      activa: "Activa", concluida: "Concluída", transferida: "Transferida",
+      trancada: "Trancada", cancelada: "Cancelada",
+      pendente: "Pendente", desconhecida: "Não definido",
+    };
+    const linhas: NominalA4Row[] = alunos.map((row) => ({
+      numero: String(row.numero ?? "—"),
+      processo: String(row.processo ?? "NÃO ATRIBUÍDO"),
+      nome: String(row.nome ?? "—"),
+      turma: String(row.turma ?? turma.nome ?? "—"),
+      estado: estados[String(row.categoria)] ?? "Não definido",
+      nascimento: String(row.data_nascimento ?? "—"),
+      naturalidade: String(row.naturalidade ?? "—"),
+      bi: String(row.bi ?? "—"),
+    }));
+    const excluidos = (seleccao.totalOrigem - alunos.length) + " (" + resumoExclusoes(seleccao.excluidos) + ")";
+    return Buffer.from(await renderNominalA4({
+      escola: escola?.nome ?? "Escola",
+      turma: isClasseScope ? "Todas as turmas da classe " + classeNome : turma.nome ?? "Turma",
+      anoLetivo: yearLabel,
+      modo: LISTA_NOMINAL_MODES[mode],
+      alunos: linhas,
+      excluidos,
+      emissor,
+      camposSensiveis,
+      logoBytes,
+      qrImageBytes,
+    }));
+  }
 
   const pdfBytes = await createInstitutionalPdf({
     title: isAlbum
