@@ -5,7 +5,6 @@ import { requireFeature } from "@/lib/plan/requireFeature";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
 import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission";
-import { recordAuditServer } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -72,6 +71,7 @@ export async function GET(
     }
     const fallbackLogoUrl = `${new URL(req.url).origin}/insignia_med.png`;
 
+    let linhasExportadas = 0;
     const pdfBytes = await renderListaNominalPdfBuffer({
       supabase: supabase as any,
       escolaId,
@@ -82,16 +82,25 @@ export async function GET(
       enableQr,
       camposSensiveis,
       emissor: user.email ?? user.id,
+      onRowsCount: (count) => { linhasExportadas = count; },
       fallbackLogoUrl,
     });
 
     const headers = new Headers();
-    if (camposSensiveis) {
-      await recordAuditServer({
-        escolaId, portal: "secretaria", acao: "LISTA_NOMINAL_SENSIVEL_EXPORTADA",
-        entity: "classes", entityId: classeId,
-        details: { modo: mode ?? "automatico", ano: year, campos: ["nascimento", "naturalidade", "bi"] },
-      });
+    const { error: auditError } = await supabase.from("audit_logs").insert({
+      escola_id: escolaId, portal: "secretaria",
+      acao: "LISTA_NOMINAL_PDF_EXPORTADA",
+      tabela: "classes", entity: "classes", entity_id: classeId,
+      details: {
+        actor_id: user.id, classe_id: classeId,
+        modo: mode ?? "conforme_sessao", ano: year,
+        linhas: linhasExportadas,
+        campos_sensiveis: camposSensiveis,
+        campos: camposSensiveis ? ["nascimento", "naturalidade", "bi"] : [],
+      },
+    });
+    if (auditError) {
+      return NextResponse.json({ ok: false, error: "Auditoria indisponível. Lista não emitida." }, { status: 503 });
     }
 
     headers.set("Content-Type", "application/pdf");
@@ -101,11 +110,10 @@ export async function GET(
     );
 
     return new NextResponse(pdfBytes as any, { headers });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("[secretaria/classes/alunos/pdf] error:", e);
+  } catch {
+    console.error("[secretaria/classes/alunos/pdf] Falha na geração da lista");
     return NextResponse.json(
-      { ok: false, error: message },
+      { ok: false, error: "Não foi possível gerar a lista" },
       { status: 500 }
     );
   }
