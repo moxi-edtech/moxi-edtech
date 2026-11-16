@@ -104,7 +104,7 @@ export async function GET(request:Request,{params}:{params:Promise<{matriculaId:
   // The options are scoped to the SAME student's enrollment and year;
   // no RAA progression filter is applicable to correction of a data-entry error.
   const { data: turmas, error } = await supabase.from("turmas")
-    .select("id,nome,classe_num,classe_id,curso_id,turno,capacidade_maxima")
+    .select("id,nome,classe_num,nivel_ensino,classe_id,curso_id,turno,capacidade_maxima")
     .eq("escola_id",escolaId).eq("session_id",matricula.session_id)
     .eq("status_validacao","ativo")
     .order("classe_num",{ascending:true}).order("nome",{ascending:true}).limit(300);
