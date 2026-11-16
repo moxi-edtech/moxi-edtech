@@ -159,7 +159,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     });
     if (auditError) return deny("Auditoria indisponível. Excel não emitido.", 503);
 
-    return new NextResponse(workbook, {
+    return new NextResponse(new Uint8Array(workbook), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="lista_turma_${turmaId}_${ano}-${ano + 1}.xlsx"`,
