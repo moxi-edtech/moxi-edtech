@@ -17,6 +17,8 @@ import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, buildContextualPortalHref } from "@/lib/navigation";
 import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import { ImprimirListaTurmaButton } from "@/components/secretaria/ImprimirListaTurmaButton";
+import { useUserRole } from "@/hooks/useUserRole";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 //
@@ -793,12 +795,14 @@ export default function TurmaDetailClient({
   }, [escolaParam, turmaId, periodoId]);
 
   const [includeAllStatus, setIncludeAllStatus] = useState(false);
+  const { userRole: printRole, isLoading: printRoleLoading } = useUserRole();
+  const canPrint = !printRoleLoading && ["admin", "operacoes", "secretaria", "superadmin"].includes(printRole ?? "");
   const [listaMode, setListaMode] = useState<"auto" | "ano_letivo" | "operacional">("auto");
   const [isAlbum, setIsAlbum] = useState(false);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleListaPdf = () => {
-    if (!canQrDocs) { setUpgradeOpen(true); return; }
+    if (!canQrDocs && isAlbum) { setUpgradeOpen(true); return; }
     const params = new URLSearchParams();
     if (isAlbum) params.set("album", "true");
     if (includeAllStatus) params.set("all_status", "true");
@@ -1356,7 +1360,8 @@ export default function TurmaDetailClient({
             </div>
 
             {/* Actions — settings subtle, matricular gold */}
-            <div className="flex gap-3 flex-shrink-0">
+            <div className="flex flex-wrap gap-3 flex-shrink-0">
+              {canPrint && <ImprimirListaTurmaButton turmaId={turma.id} />}
               <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors">
                 <Settings size={17} />
               </button>
@@ -1869,7 +1874,6 @@ export default function TurmaDetailClient({
                 title="Lista Nominal"
                 desc="Relatório PDF oficial da turma com QR Code."
                 onClick={handleListaPdf}
-                locked={!canQrDocs}
               />
               <DocCard
                 icon={LayoutDashboard}

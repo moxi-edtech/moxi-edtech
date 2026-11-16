@@ -66,7 +66,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const fallbackLogoUrl = `${new URL(req.url).origin}/insignia_med.png`;
 
     if (format === "pdf") {
-      await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
+      const enableQr = searchParams.get("qr") === "true";
+      if (enableQr || isAlbum || isAttendance || month) await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
 
       const pdfBytes = await renderListaNominalPdfBuffer({
         supabase: supabase as any,
@@ -78,7 +79,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         disciplinaId,
         isAlbum,
         includeAllStatus,
-      mode,
+        mode,
+        enableQr,
         fallbackLogoUrl,
       });
 
