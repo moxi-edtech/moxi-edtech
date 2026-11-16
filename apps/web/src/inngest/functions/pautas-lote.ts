@@ -11,6 +11,7 @@ import { buildPautaGeralPayload, renderPautaGeralBuffer } from "@/lib/pedagogico
 import { buildPautaAnualPayload, renderPautaAnualBuffer } from "@/lib/pedagogico/pauta-anual"
 import { renderBoletimPdfBuffer, renderCertificadoPdfBuffer } from "@/lib/documentos/oficiaisBatchServer"
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf"
+import { progressoLote, statusFinalLote, parcialLote } from "@/lib/documentos/rosterBatchPolicy"
 
 type PautaLoteTipo = "trimestral" | "anual" | "boletim_trimestral" | "certificado" | "lista_nominal" | "attendance"
 
@@ -48,11 +49,27 @@ export const pautasLote = inngest.createFunction(
     try {
       const { data: currentJob } = await supabase
         .from("pautas_lote_jobs")
-        .select("id, status, cancel_requested_at")
+        .select("id, status, cancel_requested_at, escola_id, tipo")
         .eq("id", job_id)
         .maybeSingle()
 
       if (!currentJob?.id) throw new Error("Job não encontrado")
+      if (currentJob.escola_id !== escola_id || currentJob.tipo !== tipo) {
+        throw new Error("Lote fora do âmbito autorizado")
+      }
+      // Mesmo usando service_role, confirmar os itens autorizados na escola do job.
+      // Consultas agrupadas, não uma consulta extra por turma.
+      const { data: registered, error: registeredError } = await supabase
+        .from("pautas_lote_itens").select("turma_id").eq("job_id", job_id)
+      const permitted = new Set((registered ?? []).map(item => item.turma_id))
+      if (registeredError || turma_ids.some(id => !permitted.has(id))) {
+        throw new Error("Turmas não autorizadas neste lote")
+      }
+      const { data: schoolTurmas, error: scopeError } = await supabase
+        .from("turmas").select("id").eq("escola_id", escola_id).in("id", turma_ids)
+      if (scopeError || schoolTurmas?.length !== new Set(turma_ids).size) {
+        throw new Error("Turmas fora da escola do lote")
+      }
       if (currentJob.cancel_requested_at) {
         await supabase.from("pautas_lote_jobs").update({ status: "FAILED", error_message: "Cancelado pelo usuário" }).eq("id", job_id)
         return { ok: false }
@@ -138,6 +155,7 @@ export const pautasLote = inngest.createFunction(
 
               let pdfBuffer: Buffer
               let filePrefix = "pauta"
+               let nominalRows: number | null = null
               if (tipo === "trimestral") {
                 if (!periodoNumero) throw new Error("Período inválido")
                 const payload = await buildPautaGeralPayload({ supabase, escolaId: escola_id, turmaId, periodoNumero })
@@ -157,6 +175,7 @@ export const pautasLote = inngest.createFunction(
                   isAlbum: event.data.is_album,
                   includeAllStatus: event.data.include_all_status,
                   mode: event.data.mode,
+                   onRowsCount: (count) => { nominalRows = count },
                 })
                 filePrefix = tipo
               } else if (tipo === "boletim_trimestral") {
@@ -234,9 +253,9 @@ export const pautasLote = inngest.createFunction(
               }).eq("job_id", job_id).eq("turma_id", turmaId)
 
               await supabase.rpc("increment_pautas_lote_job", { p_job_id: job_id, p_success: true, p_failed: false })
-              return { turmaId, ok: true, pdfPath, checksum }
+              return { turmaId, ok: true, pdfPath, checksum, nominalRows }
             } catch (err) {
-              const message = err instanceof Error ? err.message : String(err)
+              const message = "Falha ao gerar o documento desta turma"
               await supabase.from("pautas_lote_itens").update({
                 status: "FAILED",
                 error_message: message,
