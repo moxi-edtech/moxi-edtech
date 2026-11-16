@@ -15,6 +15,7 @@ on:
       - "apps/web/tests/unit/class-rectification-tuition-repricing.spec.ts"
       - "apps/web/src/app/api/secretaria/matriculas/**/rectify-class/**"
       - "supabase/migrations/20271116090000_balcao_retificacao_classe_repreco_pendentes.sql"
+      - "supabase/ops/tests/class_rectification_tuition_repricing.sql"
       - "scripts/ci/guard-fiscal-scope.mjs"
       - "scripts/ci/tests/guard-fiscal-scope.spec.mjs"
       - ".github/workflows/current-enrollment-recovery-integrity.yml"
@@ -68,3 +69,29 @@ jobs:
           node --test scripts/ci/tests/guard-fiscal-scope.spec.mjs
           node scripts/ci/guard-fiscal-scope.mjs "origin/${{ github.base_ref }}"
           node scripts/ci/lifecycle-migration-order.mjs
+
+  class-tuition-postgres:
+    name: Atomic class tuition correction — PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: klasse_reprice
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d klasse_reprice"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: PostgreSQL client is installed
+        run: psql --version
+      - name: Retification, new tuition, settled payments, RLS and rollback
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/klasse_reprice
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/class_rectification_tuition_repricing.sql
