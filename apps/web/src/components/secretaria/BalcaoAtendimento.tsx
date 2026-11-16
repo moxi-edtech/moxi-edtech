@@ -3068,6 +3068,19 @@ export default function BalcaoAtendimento({
             rematricula.invalidateTurmas();
             await rematricula.refreshStatus();
           }}
+          onClassCorrected={async () => {
+            // A changed class may change every pending monthly price. The selected
+            // checkout items are snapshots, so never allow a stale 8th-grade
+            // amount to survive a correction to 9th grade.
+            carrinho.limpar();
+            setItensRematricula([]);
+            const alunoId = dossier.aluno?.id;
+            if (!alunoId) return;
+            const verified = await dossier.load(alunoId);
+            if (!verified) {
+              error("Classe corrigida, mas não foi possível atualizar as propinas. Reabra o aluno antes de cobrar.");
+            }
+          }}
           canContinueEnrollment={
             rematricula.cardState === "READY" &&
             rematricula.anoLetivo?.id === effectiveAcademicYearId &&
