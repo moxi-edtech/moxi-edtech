@@ -67,7 +67,9 @@ async function preview(supabase: any, matricula: any, escolaId: string, turmaId:
   if ((official.count||0)>0) blockers.push(
     "A turma de origem possui pautas oficiais; não é seguro retificar a classe sem preservar o documento histórico."
   );
-  if((payments.count||0)+(charges.count||0)+(monthly.count||0)+(contracts.count||0)+(entries.count||0)>0) avisos.push("Pagamentos, recibos e cobranças existentes serão preservados; confira a tabela de preços da nova classe.");
+  if ((payments.count || 0) + (charges.count || 0) + (monthly.count || 0) + (contracts.count || 0) + (entries.count || 0) > 0) {
+    avisos.push("As propinas pendentes sem pagamentos, descontos ou cobranças iniciadas serão ajustadas à tabela da nova classe. Valores já pagos ou personalizados serão preservados.");
+  }
   const capacidade=Number(t.capacidade_maxima??0);
   const lotada=capacidade<=0 || Number(t.ocupacao_atual)>=capacidade;
   if (capacidade<=0) blockers.push("Configure a capacidade da turma destino.");
@@ -75,7 +77,7 @@ async function preview(supabase: any, matricula: any, escolaId: string, turmaId:
   return { allow:blockers.length===0,
     code: requerConciliacaoAcademica ? "TRANSFER_ACADEMIC_RECONCILIATION_REQUIRED" : null,
     requer_conciliacao_academica: requerConciliacaoAcademica,
-    blockers, avisos, requer_confirmacao_historico:avisos.length>0, lotada, vagas_restantes:Math.max(0,Number(t.capacidade_maxima)-Number(t.ocupacao_atual)), mudanca_turno:o.turno!==t.turno, financeiro:{altera_valor:false,valor_antigo:0,valor_novo:0,diferenca:0,mensagem:"A correção de classe não recalcula mensalidades automaticamente. Confirme a tabela de preços da classe destino."} };
+    blockers, avisos, requer_confirmacao_historico:avisos.length>0, lotada, vagas_restantes:Math.max(0,Number(t.capacidade_maxima)-Number(t.ocupacao_atual)), mudanca_turno:o.turno!==t.turno, financeiro:{altera_valor:false,valor_antigo:0,valor_novo:0,diferenca:0,mensagem:"A correção reajusta mensalidades pendentes elegíveis ao preço da classe destino na mesma operação; pagamentos, recibos e valores personalizados permanecem intactos."} };
 }
 
 export async function GET(request:Request,{params}:{params:Promise<{matriculaId:string}>}) {
