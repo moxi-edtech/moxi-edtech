@@ -660,7 +660,28 @@ export default function QuickDocHub({
         includeAllStatus,
         modoLista
       );
-      window.open(url, "_blank");
+      if (doc.key === "nominal" && format === "excel") {
+        const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload?.error || "Não foi possível descarregar o Excel da turma.");
+        }
+        if (!response.headers.get("content-type")?.includes("spreadsheetml.sheet")) {
+          throw new Error("O servidor não devolveu um ficheiro Excel válido.");
+        }
+        const blob = await response.blob();
+        if (!blob.size) throw new Error("O Excel devolvido está vazio.");
+        const blobUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = blobUrl;
+        anchor.download = `lista_nominal_turma_${selectedTurma.id}.xlsx`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
+      } else {
+        window.open(url, "_blank");
+      }
       addDirectHistory({
         label: `${doc.label} • ${turmaLabel(selectedTurma)}`,
         format,
