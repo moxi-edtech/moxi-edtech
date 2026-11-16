@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Printer } from "lucide-react";
 
 import { CommandCenterPanel } from "@/components/secretaria/command-center/CommandCenterPanel";
 import { useBalcaoTelemetry } from "@/components/secretaria/command-center/useBalcaoTelemetry";
@@ -181,6 +182,18 @@ function ScopedBalcaoWorkspace({
       student={{ ...selectedStudent, subtitle: currentStudent ? subtitle : null }}
       activeAction={activeAction}
       onActionChange={handleActionChange}
+      trailing={currentStudent?.turmaId && activeAction !== "enrollment" ? (
+        <a
+          href={`/api/secretaria/turmas/${encodeURIComponent(currentStudent.turmaId)}/alunos/pdf`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 hover:border-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+          aria-label={`Imprimir lista da turma ${currentStudent.turma ?? ""}`}
+        >
+          <Printer className="h-4 w-4" aria-hidden="true" />
+          <span>Imprimir lista</span>
+        </a>
+      ) : undefined}
       pendingActions={pendingActions}
       shortcuts={shortcuts}
       onSwitchStudent={switchingStudent ? undefined : handleSwitchStudent}
