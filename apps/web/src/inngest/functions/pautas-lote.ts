@@ -25,6 +25,7 @@ type PautasLoteEventData = {
   year?: string | null
   is_album?: boolean
   include_all_status?: boolean
+  mode?: "ano_letivo" | "operacional"
 }
 
 const getSupabaseAdmin = () => {
@@ -155,6 +156,7 @@ export const pautasLote = inngest.createFunction(
                   year: event.data.year,
                   isAlbum: event.data.is_album,
                   includeAllStatus: event.data.include_all_status,
+                  mode: event.data.mode,
                 })
                 filePrefix = tipo
               } else if (tipo === "boletim_trimestral") {

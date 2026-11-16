@@ -19,6 +19,7 @@ import {
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import type { ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
 
 type TurmaItem = {
   id: string;
@@ -209,7 +210,8 @@ function buildDocUrl(
   periodoId: string,
   periodoNumero: number | null,
   isAlbum: boolean = false,
-  includeAllStatus: boolean = false
+  includeAllStatus: boolean = false,
+  mode: ListaNominalMode = "operacional"
 ) {
   const params = new URLSearchParams();
   if (isAlbum) params.set("album", "true");
@@ -220,6 +222,7 @@ function buildDocUrl(
     case "attendance":
       return `/api/secretaria/turmas/${turmaId}/alunos/pdf?month=${month}${year ? `&year=${year}` : ""}${extra}`;
     case "nominal":
+      params.set("mode", mode);
       return `/api/secretaria/turmas/${turmaId}/alunos/pdf?${params.toString()}`;
     case "blank":
       return `/api/secretaria/turmas/${turmaId}/pauta-branca`;
@@ -239,11 +242,13 @@ function buildDocUrl(
 function buildClasseDocUrl(
   classeId: string,
   year: number | null,
-  includeAllStatus: boolean = false
+  includeAllStatus: boolean = false,
+  mode: ListaNominalMode = "operacional"
 ) {
   const params = new URLSearchParams();
   if (year) params.set("year", String(year));
   if (includeAllStatus) params.set("all_status", "true");
+  params.set("mode", mode);
   const query = params.toString();
   return `/api/secretaria/classes/${classeId}/alunos/pdf${query ? `?${query}` : ""}`;
 }
@@ -273,6 +278,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   const [selectedDocs, setSelectedDocs] = useState<DocKey[]>([]);
   const [format, setFormat] = useState<FormatKey>("pdf_individual");
   const [scope, setScope] = useState<ScopeKey>("turma");
+  const [modeOverride, setModeOverride] = useState<ListaNominalMode | null>(null);
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [directHistory, setDirectHistory] = useState<DirectHistoryItem[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -530,6 +536,8 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         .join(" • ")
     : null;
 
+  const modoLista: ListaNominalMode = modeOverride ??
+    (anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.status === "ativa" ? "operacional" : "ano_letivo");
   const selectedDocDefs = DOCS.filter((doc) => selectedDocs.includes(doc.key));
   const visibleDocs = useMemo(
     () => scope === "classe" ? DOCS.filter((doc) => doc.key === "nominal") : DOCS,
@@ -579,7 +587,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
       const doc = selectedDocDefs.find((item) => item.key === "nominal");
       if (!doc) return;
 
-      const url = buildClasseDocUrl(selectedClasse.id, anoLetivo, includeAllStatus);
+      const url = buildClasseDocUrl(selectedClasse.id, anoLetivo, includeAllStatus, modoLista);
       window.open(url, "_blank");
       addDirectHistory({
         label: `${doc.label} • ${selectedClasse.nome}`,
@@ -613,7 +621,8 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         periodoId,
         selectedPeriodo?.numero ?? null,
         isAlbum,
-        includeAllStatus
+        includeAllStatus,
+        modoLista
       );
       window.open(url, "_blank");
       addDirectHistory({
@@ -629,6 +638,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     format,
     includeAllStatus,
     isAlbum,
+    modoLista,
     month,
     periodoId,
     scope,
@@ -667,6 +677,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
             year: String(anoLetivo),
             is_album: isAlbum,
             include_all_status: includeAllStatus,
+            mode: modoLista,
           }),
         });
         continue;
@@ -684,7 +695,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         body: JSON.stringify(body),
       });
     }
-  }, [academicYearIdFromUrl, anoLetivo, anosLetivos, escolaId, includeAllStatus, isAlbum, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
+  }, [academicYearIdFromUrl, anoLetivo, anosLetivos, escolaId, includeAllStatus, isAlbum, modoLista, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
 
   const canSubmit =
     selectedDocs.length > 0 &&
@@ -737,7 +748,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         <Field label="Ano letivo">
           <select
             value={anoLetivo ?? ""}
-            onChange={(event) => setAnoLetivo(event.target.value ? Number(event.target.value) : null)}
+            onChange={(event) => { setAnoLetivo(event.target.value ? Number(event.target.value) : null); setModeOverride(null); }}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">{loadingAnos ? "A carregar..." : "Selecione"}</option>
@@ -956,6 +967,20 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
           </div>
 
           <div className="flex flex-wrap items-center gap-4 py-2">
+            {(scope === "classe" || selectedDocs.includes("nominal")) && (
+              <label className="flex flex-col gap-1 text-xs font-semibold text-slate-700">
+                Modo da lista nominal
+                <select
+                  aria-label="Modo da lista nominal"
+                  value={modoLista}
+                  onChange={(event) => setModeOverride(event.target.value as ListaNominalMode)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="ano_letivo">Lista do ano letivo (histórica)</option>
+                  <option value="operacional">Lista operacional actual</option>
+                </select>
+              </label>
+            )}
             <label className="flex items-center gap-2 cursor-pointer group">
               <input
                 type="checkbox"

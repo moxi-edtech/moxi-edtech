@@ -25,6 +25,7 @@ const Body = z.object({
   year: z.string().optional(),
   is_album: z.boolean().optional(),
   include_all_status: z.boolean().optional(),
+  mode: z.enum(["ano_letivo", "operacional"]).optional(),
 })
 
 type PautasLoteJobRow = Database["public"]["Tables"]["pautas_lote_jobs"]["Row"]
@@ -109,7 +110,7 @@ export async function POST(req: Request) {
       academicContext = await resolveAcademicYearContext(supabase as any, {
         userId: user.id,
         requestedAcademicYearId: parsed.data.ano_letivo_id,
-        operation: "WRITE",
+        operation: parsed.data.tipo === "lista_nominal" ? "READ" : "WRITE",
       });
     } catch (err: any) {
       if (err instanceof AcademicYearContextError) {
@@ -177,7 +178,7 @@ export async function POST(req: Request) {
 
     const sortedTurmas = [...parsed.data.turma_ids].sort()
     const documentoTipo = resolveDocumentoTipo(parsed.data.tipo)
-    const idempotencyKey = `${documentoTipo}:${effectivePeriodoLetivoId ?? "none"}:${parsed.data.month ?? "any"}:${parsed.data.is_album ? "album" : "standard"}:${sortedTurmas.join(",")}`
+    const idempotencyKey = `${documentoTipo}:${effectivePeriodoLetivoId ?? "none"}:${parsed.data.month ?? "any"}:${parsed.data.is_album ? "album" : "standard"}:${parsed.data.mode ?? "auto"}:${parsed.data.include_all_status ? "todos" : "padrao"}:${academicContext.anoLetivoId}:${sortedTurmas.join(",")}`
 
     const { data: existingByKey } = await supabase
       .from("pautas_lote_jobs")
@@ -251,6 +252,7 @@ export async function POST(req: Request) {
         year: parsed.data.year,
         is_album: parsed.data.is_album,
         include_all_status: parsed.data.include_all_status,
+        mode: parsed.data.mode,
       },
     })
 
