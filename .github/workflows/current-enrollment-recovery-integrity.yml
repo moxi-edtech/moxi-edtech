@@ -13,6 +13,10 @@ on:
       - "apps/web/src/lib/financeiro/recover-receipt-after-payment.ts"
       - "apps/web/tests/unit/current-year-enrollment-and-receipt-recovery.spec.ts"
       - "apps/web/tests/unit/class-rectification-tuition-repricing.spec.ts"
+      - "apps/web/tests/unit/class-rectification-primary-first-cycle.spec.ts"
+      - "apps/web/src/lib/secretaria/class-rectification-target.ts"
+      - "apps/web/src/components/secretaria/TransferForm.tsx"
+      - "apps/web/src/components/secretaria/BalcaoEnrollmentCorrection.tsx"
       - "apps/web/src/app/api/secretaria/matriculas/**/rectify-class/**"
       - "supabase/migrations/20271116090000_balcao_retificacao_classe_repreco_pendentes.sql"
       - "supabase/ops/tests/class_rectification_tuition_repricing.sql"
@@ -46,6 +50,8 @@ jobs:
         run: node scripts/ci/class-rectification-contract.mjs
       - name: Class correction tuition repricing regression
         run: node --test --import tsx apps/web/tests/unit/class-rectification-tuition-repricing.spec.ts
+      - name: Primary 6th to Secondary 7th class correction
+        run: node --test --import tsx apps/web/tests/unit/class-rectification-primary-first-cycle.spec.ts
       - name: TypeScript
         env:
           NODE_OPTIONS: --max-old-space-size=5120
