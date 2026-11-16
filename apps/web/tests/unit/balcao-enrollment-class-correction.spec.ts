@@ -12,6 +12,7 @@ const api = source("app/api/secretaria/matriculas/[matriculaId]/rectify-class/ro
 const situacao = source("app/api/secretaria/balcao/situacao-academica/route.ts");
 const form = source("components/secretaria/BalcaoEnrollmentCorrection.tsx");
 const panel = source("components/secretaria/BalcaoSituacaoAcademica.tsx");
+const balc = source("components/secretaria/BalcaoAtendimento.tsx");
 
 test("class correction is an audited same-year change, never a promotion or a payment mutation", () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.retificar_classe_matricula/);
@@ -65,4 +66,16 @@ test("the action is discoverable inside Situação académica with a guarded pre
   assert.match(form, /body\.aluno_id !== alunoId/);
   assert.match(form, /await onSaved\(\)/);
   assert.doesNotMatch(form, /\/api\/secretaria\/notas|\/api\/secretaria\/pagamentos\/processar/);
+});
+
+test("class correction invalidates selected payment amounts and re-fetches the financial dossier", () => {
+  // A finance-only data fix is invisible if the Balcão is still holding
+  // monthly fees loaded before the 8th -> 9th correction.
+  assert.match(panel, /onClassCorrected\?\.\(\)/);
+  const callback = balc.match(/onClassCorrected=\{async \(\) => \{([\s\S]*?)\n          \}\}/)?.[1] ?? "";
+  assert.ok(callback, "dedicated class-correction callback");
+  assert.match(callback, /carrinho\.limpar\(\)/);
+  assert.match(callback, /setItensRematricula\(\[\]\)/);
+  assert.match(callback, /await dossier\.load\(alunoId\)/);
+  assert.match(callback, /if \(!verified\)/);
 });
