@@ -95,7 +95,14 @@ export async function POST(req: Request) {
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
-    const parsed = Body.safeParse(await req.json().catch(() => ({})))
+    const rawBody: unknown = await req.json().catch(() => ({}))
+    const query = new URL(req.url).searchParams
+    if (query.has("poloId") || query.has("polo_id") ||
+        (rawBody !== null && typeof rawBody === "object" &&
+          ("poloId" in rawBody || "polo_id" in rawBody))) {
+      return NextResponse.json({ ok: false, error: "Exportação por polo indisponível sem escopo canónico" }, { status: 403 })
+    }
+    const parsed = Body.safeParse(rawBody)
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 })
     }
@@ -274,8 +281,16 @@ export async function POST(req: Request) {
       .select("id")
       .maybeSingle()
 
+    if (jobError?.code === "23505") {
+      // Dois pedidos concorrentes com a mesma chave: reusar o job vencedor.
+      const { data: winner } = await supabase.from("pautas_lote_jobs")
+        .select("id").eq("escola_id", escolaId)
+        .eq("documento_tipo", documentoTipo)
+        .eq("idempotency_key", idempotencyKey).maybeSingle()
+      if (winner?.id) return NextResponse.json({ ok: true, job_id: winner.id, reused: true }, { status: 202 })
+    }
     if (jobError || !job?.id) {
-      return NextResponse.json({ ok: false, error: jobError?.message || "Falha ao criar lote" }, { status: 500 })
+      return NextResponse.json({ ok: false, error: "Falha ao criar lote" }, { status: 500 })
     }
 
     const itensPayload = parsed.data.turma_ids.map((turmaId) => ({
