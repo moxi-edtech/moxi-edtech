@@ -185,6 +185,7 @@ export default function BalcaoPageClient({
   return (
     <CommandCenterShell
       variant="page"
+      escolaId={escolaId}
       student={commandCenterStudent ? {
         id: commandCenterStudent.id,
         label: commandCenterStudent.label,
