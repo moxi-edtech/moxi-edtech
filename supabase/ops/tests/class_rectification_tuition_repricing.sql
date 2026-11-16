@@ -187,6 +187,40 @@ VALUES
  'dddddddd-dddd-dddd-dddd-dddddddddddd','55555555-5555-5555-5555-555555555555',
  '2026','pendente',4000,4000,4000,0,0,'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
 
+
+-- A separate pupil entered in Primary 6 instead of Secondary 7, within 2026.
+-- Different courses, same school and academic session; one untouched fee.
+INSERT INTO public.turmas
+ (id,escola_id,nome,classe_id,curso_id,ano_letivo,session_id,ano_letivo_id,status_validacao,capacidade_maxima)
+VALUES
+ ('16161616-1616-4161-8161-161616161616','11111111-1111-1111-1111-111111111111','EP-6ª Classe-M-A',
+  '18181818-1818-4181-8181-181818181818','20202020-2020-4202-8202-202020202020',2026,
+  '44444444-4444-4444-4444-444444444444','44444444-4444-4444-4444-444444444444','ativo',40),
+ ('17171717-1717-4171-8171-171717171717','11111111-1111-1111-1111-111111111111','ESG-7ª Classe-T-A',
+  '19191919-1919-4191-8191-191919191919','21212121-2121-4212-8212-212121212121',2026,
+  '44444444-4444-4444-4444-444444444444','44444444-4444-4444-4444-444444444444','ativo',40);
+INSERT INTO public.matriculas
+ (id,escola_id,aluno_id,turma_id,session_id,ano_letivo,ativo,status,data_inicio_financeiro)
+VALUES
+ ('14141414-1414-4141-8414-141414141414','11111111-1111-1111-1111-111111111111',
+  '25252525-2525-4252-8252-252525252525','16161616-1616-4161-8161-161616161616',
+  '44444444-4444-4444-4444-444444444444',2026,true,'ativo','2026-09-01');
+INSERT INTO public.financeiro_tabelas
+ (id,escola_id,ano_letivo,curso_id,classe_id,session_id,valor_mensalidade,updated_at,created_at)
+VALUES
+ ('23232323-2323-4232-8232-232323232323','11111111-1111-1111-1111-111111111111',2026,
+  '20202020-2020-4202-8202-202020202020','18181818-1818-4181-8181-181818181818',
+  '44444444-4444-4444-4444-444444444444',3000,now(),now()),
+ ('24242424-2424-4242-8242-242424242424','11111111-1111-1111-1111-111111111111',2026,
+  '21212121-2121-4212-8212-212121212121','19191919-1919-4191-8191-191919191919',
+  '44444444-4444-4444-4444-444444444444',4000,now(),now());
+INSERT INTO public.mensalidades
+ (escola_id,aluno_id,matricula_id,turma_id,ano_letivo,status,valor,valor_previsto,valor_original,valor_pago_total,desconto_aplicado,tabela_id)
+VALUES
+ ('11111111-1111-1111-1111-111111111111','25252525-2525-4252-8252-252525252525',
+  '14141414-1414-4141-8414-141414141414','16161616-1616-4161-8161-161616161616',
+  '2026','pendente',3000,3000,3000,0,0,'23232323-2323-4232-8232-232323232323');
+
 DO $case$
 DECLARE
  v_denied boolean := false;
@@ -264,6 +298,38 @@ BEGIN
  IF EXISTS (SELECT 1 FROM public.balcao_pauta_turma_correction_nonce)
  THEN RAISE EXCEPTION 'Academic correction nonce leaked'; END IF;
 END $case$;
+
+-- The grade-6 to grade-7 cross-course correction must write a single record
+-- and resolve the SECONDARY tariff (never reuse the PRIMARY course table).
+DO $bridge$
+BEGIN
+ PERFORM public.retificar_classe_matricula(
+  '14141414-1414-4141-8414-141414141414',
+  '17171717-1717-4171-8171-171717171717',
+  'Matrícula corrigida de sexta para sétima classe',true);
+ IF NOT EXISTS (
+  SELECT 1 FROM public.matriculas m
+  WHERE m.id='14141414-1414-4141-8414-141414141414'
+    AND m.turma_id='17171717-1717-4171-8171-171717171717'
+    AND m.session_id='44444444-4444-4444-4444-444444444444'
+    AND m.ano_letivo=2026
+ ) THEN RAISE EXCEPTION 'Sixth to seventh cross-course correction failed'; END IF;
+ IF NOT EXISTS (
+  SELECT 1 FROM public.mensalidades mn
+  WHERE mn.matricula_id='14141414-1414-4141-8414-141414141414'
+    AND mn.status='pendente' AND mn.valor=4000
+    AND mn.tabela_id='24242424-2424-4242-8242-242424242424'
+    AND mn.turma_id='17171717-1717-4171-8171-171717171717'
+ ) THEN RAISE EXCEPTION 'Secondary first-cycle tuition was not selected'; END IF;
+ IF (SELECT COUNT(*) FROM public.fixture_ledger WHERE delta=1000) <> 9
+ THEN RAISE EXCEPTION 'Expected exactly one additional cross-course ledger adjustment'; END IF;
+ IF NOT EXISTS (
+   SELECT 1 FROM public.audit_logs a
+   WHERE a.action='MATRICULA_CLASSE_RETIFICADA'
+     AND a.entity_id='14141414-1414-4141-8414-141414141414'
+     AND a.details->>'mensalidades_reprecificadas'='1'
+ ) THEN RAISE EXCEPTION 'Cross-course audit missing'; END IF;
+END $bridge$;
 
 ROLLBACK;
 \echo 'Class correction + tuition repricing transactional regression passed'
