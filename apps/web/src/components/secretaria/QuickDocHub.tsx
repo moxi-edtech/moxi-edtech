@@ -52,7 +52,6 @@ type AnoLetivoItem = {
 type DocKey =
   | "attendance"
   | "nominal"
-  | "nominal_csv"
   | "blank"
   | "mini"
   | "schedule"
@@ -127,13 +126,6 @@ const DOCS: Array<{
     queueLabel: "Lista nominal",
   },
   {
-    key: "nominal_csv",
-    label: "Lista Nominal (CSV)",
-    hint: "Folha de cálculo com campos mínimos. Requer autorização de exportação.",
-    icon: <FileSpreadsheet size={14} />,
-    formats: ["excel"],
-  },
-  {
     key: "blank",
     label: "Pauta em Branco",
     hint: "Modelo para preenchimento manual.",
@@ -183,7 +175,7 @@ const DOCS: Array<{
 const formatLabels: Record<FormatKey, string> = {
   pdf_individual: "PDF individual",
   pdf_consolidado: "PDF consolidado",
-  excel: "Excel / CSV",
+  excel: "Excel (.xlsx)",
 };
 
 const queueDocKeys = new Set<DocKey>(["nominal", "attendance", "pauta-geral", "pauta-anual"]);
@@ -234,10 +226,6 @@ function buildDocUrl(
     case "nominal":
       params.set("mode", mode);
       return `/api/secretaria/turmas/${turmaId}/alunos/pdf?${params.toString()}`;
-    case "nominal_csv":
-      params.set("mode", mode);
-      params.delete("album");
-      return `/api/secretaria/turmas/${turmaId}/alunos/csv?${params.toString()}`;
     case "blank":
       return `/api/secretaria/turmas/${turmaId}/pauta-branca`;
     case "mini":
