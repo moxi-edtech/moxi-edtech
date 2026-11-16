@@ -26,7 +26,7 @@ CREATE TABLE public.matriculas(
  id uuid PRIMARY KEY, escola_id uuid NOT NULL, aluno_id uuid NOT NULL,
  turma_id uuid NOT NULL, session_id uuid NOT NULL, ano_letivo int NOT NULL,
  ativo boolean NOT NULL, status text NOT NULL, data_inicio_financeiro date,
- updated_at timestamptz, updated_by uuid);
+ percentagem_desconto numeric DEFAULT 0, updated_at timestamptz, updated_by uuid);
 CREATE TABLE public.anos_letivos(
  id uuid PRIMARY KEY, escola_id uuid, ano int, ativo boolean);
 CREATE TABLE public.financeiro_tabelas(
