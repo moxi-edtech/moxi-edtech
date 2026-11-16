@@ -118,7 +118,7 @@ export function CommandCenterShell({
       {escolaId ? (
         <Dialog.Root open={rosterOpen} onOpenChange={setRosterOpen}>
           <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 z-[95] bg-slate-950/60" />
+            <Dialog.Overlay className="fixed inset-0 z-[95] bg-background/80 backdrop-blur-sm" />
             <Dialog.Content className="fixed inset-x-2 top-1/2 z-[96] mx-auto flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-6xl -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl sm:inset-x-5 sm:w-[calc(100%-2.5rem)]">
               <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
                 <div className="min-w-0">
