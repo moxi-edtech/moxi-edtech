@@ -52,6 +52,7 @@ type AnoLetivoItem = {
 type DocKey =
   | "attendance"
   | "nominal"
+  | "nominal_csv"
   | "blank"
   | "mini"
   | "schedule"
@@ -126,6 +127,13 @@ const DOCS: Array<{
     queueLabel: "Lista nominal",
   },
   {
+    key: "nominal_csv",
+    label: "Lista Nominal (CSV)",
+    hint: "Folha de cálculo com campos mínimos. Requer autorização de exportação.",
+    icon: <FileSpreadsheet size={14} />,
+    formats: ["excel"],
+  },
+  {
     key: "blank",
     label: "Pauta em Branco",
     hint: "Modelo para preenchimento manual.",
@@ -175,7 +183,7 @@ const DOCS: Array<{
 const formatLabels: Record<FormatKey, string> = {
   pdf_individual: "PDF individual",
   pdf_consolidado: "PDF consolidado",
-  excel: "Excel",
+  excel: "Excel / CSV",
 };
 
 const queueDocKeys = new Set<DocKey>(["nominal", "attendance", "pauta-geral", "pauta-anual"]);
@@ -226,6 +234,10 @@ function buildDocUrl(
     case "nominal":
       params.set("mode", mode);
       return `/api/secretaria/turmas/${turmaId}/alunos/pdf?${params.toString()}`;
+    case "nominal_csv":
+      params.set("mode", mode);
+      params.delete("album");
+      return `/api/secretaria/turmas/${turmaId}/alunos/csv?${params.toString()}`;
     case "blank":
       return `/api/secretaria/turmas/${turmaId}/pauta-branca`;
     case "mini":
@@ -601,6 +613,34 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
 
     if (!selectedTurma) return;
     for (const doc of selectedDocDefs) {
+      if (doc.key === "nominal_csv") {
+        const url = buildDocUrl(doc.key, selectedTurma.id, month, anoLetivo, periodoId,
+          selectedPeriodo?.numero ?? null, false, includeAllStatus, modoLista);
+        const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+        if (!response.ok) {
+          const result: { error?: string } = await response.json().catch(() => ({}));
+          throw new Error(result.error || "Não foi possível exportar o CSV.");
+        }
+        const blob = await response.blob();
+        const href = URL.createObjectURL(blob);
+        const disposition = response.headers.get("content-disposition");
+        const filename = disposition?.match(/filename="([^"]+)"/)?.[1] ??
+          "lista_nominal_turma_" + selectedTurma.id + ".csv";
+        const anchor = document.createElement("a");
+        anchor.href = href;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(href), 30_000);
+        addDirectHistory({
+          label: "Lista Nominal (CSV) • " + turmaLabel(selectedTurma),
+          format: "excel",
+          href: url,
+        });
+        continue;
+      }
+
       if (doc.key === "schedule") {
         await downloadHorarioTurmaPdf({
           escolaId: escolaId!,
