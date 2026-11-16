@@ -19,6 +19,7 @@ import {
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import { MAX_TURMAS_POR_LOTE } from "@/lib/documentos/rosterBatchPolicy";
 import type { ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
 
 type TurmaItem = {
@@ -72,6 +73,7 @@ type JobItem = {
   created_at: string;
   download_url?: string | null;
   error_message?: string | null;
+  itens?: Array<{ turma_id: string; status: string }>;
 };
 
 type DirectHistoryItem = {
@@ -406,7 +408,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     if (!hasActiveJobs) return;
     const timer = window.setInterval(() => {
       void loadJobs();
-    }, 5000);
+    }, 15000);
     return () => window.clearInterval(timer);
   }, [jobs, loadJobs]);
 
@@ -1210,7 +1212,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                           {new Date(job.created_at).toLocaleString("pt-PT")}
                         </p>
                       </div>
-                      <StatusPill status={job.status} />
+                      <StatusPill status={job.status === "SUCCESS" && job.failed_count > 0 ? "PARTIAL" : job.status} />
                     </div>
                     <div className="mt-3 h-2 rounded-full bg-slate-200">
                       <div className="h-2 rounded-full bg-emerald transition-all" style={{ width: `${progress}%` }} />
@@ -1224,6 +1226,23 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                       ) : null}
                     </div>
                     {job.error_message ? <p className="mt-2 text-[11px] text-rose-600">{job.error_message}</p> : null}
+                    {(job.itens?.length ?? 0) > 0 && (
+                      <details className="mt-2 rounded-xl border border-border bg-card p-2">
+                        <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                          Resultado por turma ({job.itens?.length ?? 0})
+                        </summary>
+                        <div className="mt-2 space-y-1">
+                          {job.itens?.map(item => (
+                            <div key={item.turma_id} className="flex justify-between gap-2 text-xs text-muted-foreground">
+                              <span>Turma {item.turma_id.slice(0, 8)}</span>
+                              <span>{item.status === "SUCCESS" ? "Concluído" :
+                                item.status === "FAILED" ? "Falhou — reprocessar" :
+                                item.status === "PROCESSING" ? "Em emissão" : "Na fila"}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )
                   </div>
                 );
               })
@@ -1293,11 +1312,11 @@ function SummaryBox({ label, value }: { label: string; value: string }) {
 
 function StatusPill({ status }: { status: string }) {
   const label =
-    status === "SUCCESS" ? "Concluído" : status === "PROCESSING" ? "Em progresso" : status === "FAILED" ? "Falhou" : status;
+    status === "SUCCESS" ? "Concluído" : status === "PARTIAL" ? "Concluído com falhas" : status === "PROCESSING" ? "Em progresso" : status === "FAILED" ? "Falhou" : status;
   const classes =
     status === "SUCCESS"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : status === "PROCESSING"
+      : status === "PARTIAL" || status === "PROCESSING"
         ? "border-amber-200 bg-amber-50 text-amber-700"
         : "border-rose-200 bg-rose-50 text-rose-700";
   return <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${classes}`}>{label}</span>;
