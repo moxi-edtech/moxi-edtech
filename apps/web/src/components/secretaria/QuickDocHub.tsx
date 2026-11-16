@@ -255,7 +255,13 @@ function buildClasseDocUrl(
   return `/api/secretaria/classes/${classeId}/alunos/pdf${query ? `?${query}` : ""}`;
 }
 
-export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) {
+export default function QuickDocHub({
+  escolaId,
+  initialNominal = false,
+}: {
+  escolaId?: string | null;
+  initialNominal?: boolean;
+}) {
   const searchParams = useSearchParams();
   const academicYearIdFromUrl = searchParams?.get(ACADEMIC_YEAR_PARAM);
   const storageKey = escolaId ? `quick-doc-hub:last-turma:${escolaId}` : null;
@@ -277,7 +283,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   const [turnoFiltro, setTurnoFiltro] = useState("");
   const [turmaQuery, setTurmaQuery] = useState("");
   const [turmaPickerOpen, setTurmaPickerOpen] = useState(false);
-  const [selectedDocs, setSelectedDocs] = useState<DocKey[]>([]);
+  const [selectedDocs, setSelectedDocs] = useState<DocKey[]>(initialNominal ? ["nominal"] : []);
   const [format, setFormat] = useState<FormatKey>("pdf_individual");
   const [scope, setScope] = useState<ScopeKey>("turma");
   const [modeOverride, setModeOverride] = useState<ListaNominalMode | null>(null);

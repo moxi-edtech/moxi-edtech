@@ -439,8 +439,8 @@ export function Dashboard({
               <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <AcaoRapidaCard
                   icon={<Printer className="h-5 w-5" />}
-                  label="Imprimir Turma"
-                  sublabel="Mapas e Pautas"
+                  label="Listas de turmas"
+                  sublabel="Exportação nominal"
                   onClick={() => setBalcaoModal("turma_docs")}
                 />
                 <AcaoRapidaCard
@@ -551,11 +551,11 @@ export function Dashboard({
 
       <ModalShell
         open={balcaoModal === "turma_docs"}
-        title="Central de Documentos"
+        title="Listas de turmas"
         description="Emissão rápida de mapas, pautas e listas nominais por turma."
         onClose={() => setBalcaoModal(null)}
       >
-        <QuickDocHub escolaId={escolaId} />
+        <QuickDocHub escolaId={escolaId} initialNominal />
       </ModalShell>
 
       <FilaAtendimentoModal open={filaOpen} onClose={() => setFilaOpen(false)} />
