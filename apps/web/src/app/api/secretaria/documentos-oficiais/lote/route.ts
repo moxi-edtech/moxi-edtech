@@ -11,7 +11,8 @@ import type { Database } from "~types/supabase"
 
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context"
 import { recordAuditServer } from "@/lib/audit"
-import { MAX_TURMAS_POR_LOTE, MAX_LOTES_NOMINAIS_POR_HORA, uniqueTurmaIds } from "@/lib/documentos/rosterBatchPolicy"
+import { MAX_TURMAS_POR_LOTE, MAX_LOTES_NOMINAIS_POR_HORA, uniqueTurmaIds, makeNominalBatchKey } from "@/lib/documentos/rosterBatchPolicy"
+import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -22,7 +23,7 @@ const Body = z.object({
   tipo: z.enum(["trimestral", "anual", "boletim_trimestral", "certificado", "lista_nominal", "attendance"]),
   periodo_letivo_id: z.string().uuid().optional(),
   ano_letivo_id: z.string().uuid().optional(),
-  month: z.string().optional(),
+  month: z.string().regex(/^(?:0[1-9]|1[0-2])$/).optional(),
   year: z.string().optional(),
   is_album: z.boolean().optional(),
   include_all_status: z.boolean().optional(),
@@ -110,6 +111,16 @@ export async function POST(req: Request) {
     if (!authz.allowed) {
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 })
     }
+    if (parsed.data.is_album && parsed.data.tipo !== "lista_nominal") {
+      return NextResponse.json({ ok: false, error: "Álbum disponível apenas para listas nominais" }, { status: 400 })
+    }
+    if (parsed.data.is_album) {
+      await requireFeature("doc_qr_code", { requestedEscolaId: escolaId })
+      const authorised = await canExportSensitiveRosterFields(supabase, escolaId, user.id)
+      if (!authorised) {
+        return NextResponse.json({ ok: false, error: "Álbum reservado a perfis autorizados" }, { status: 403 })
+      }
+    }
 
     // Validação P0 WRITE do contexto do ano letivo para geração de documentos em lote
     let academicContext;
@@ -185,7 +196,16 @@ export async function POST(req: Request) {
 
     const sortedTurmas = [...parsed.data.turma_ids].sort()
     const documentoTipo = resolveDocumentoTipo(parsed.data.tipo)
-    const idempotencyKey = `${user.id}:${documentoTipo}:${effectivePeriodoLetivoId ?? "none"}:${parsed.data.month ?? "any"}:${parsed.data.is_album ? "album" : "standard"}:${parsed.data.mode ?? "auto"}:${parsed.data.include_all_status ? "todos" : "padrao"}:${academicContext.anoLetivoId}:${sortedTurmas.join(",")}`
+    const idempotencyKey = parsed.data.tipo === "lista_nominal"
+      ? makeNominalBatchKey({
+          actorId: user.id,
+          academicYearId: academicContext.anoLetivoId,
+          mode: parsed.data.mode,
+          month: parsed.data.month,
+          isAlbum: parsed.data.is_album ?? false,
+          includeAllStatus: parsed.data.include_all_status ?? false,
+        }, sortedTurmas)
+      : `${user.id}:${documentoTipo}:${effectivePeriodoLetivoId ?? "none"}:${parsed.data.month ?? "any"}:${parsed.data.is_album ? "album" : "standard"}:${parsed.data.mode ?? "auto"}:${parsed.data.include_all_status ? "todos" : "padrao"}:${academicContext.anoLetivoId}:${sortedTurmas.join(",")}`
 
     const { data: existingByKey } = await supabase
       .from("pautas_lote_jobs")
