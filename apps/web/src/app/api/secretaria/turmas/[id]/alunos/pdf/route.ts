@@ -5,7 +5,6 @@ import { requireFeature } from "@/lib/plan/requireFeature";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
 import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission";
-import { recordAuditServer } from "@/lib/audit";
 
 export async function GET(
   req: Request,
@@ -72,6 +71,7 @@ export async function GET(
     headers.set('Deprecation', 'true');
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
 
+    let linhasExportadas = 0;
     const pdfBytes = await renderListaNominalPdfBuffer({
       supabase: supabase as any,
       escolaId,
@@ -86,15 +86,26 @@ export async function GET(
       enableQr,
       camposSensiveis,
       emissor: user.email ?? user.id,
+      onRowsCount: (count) => { linhasExportadas = count; },
       fallbackLogoUrl,
     });
 
-    if (camposSensiveis) {
-      await recordAuditServer({
-        escolaId, portal: "secretaria", acao: "LISTA_NOMINAL_SENSIVEL_EXPORTADA",
-        entity: "turmas", entityId: turmaId,
-        details: { modo: mode ?? "automatico", ano: year, campos: ["nascimento", "naturalidade", "bi"] },
+    if (!isAlbum && !isAttendance && !month) {
+      const { error: auditError } = await supabase.from("audit_logs").insert({
+        escola_id: escolaId, portal: "secretaria",
+        acao: "LISTA_NOMINAL_PDF_EXPORTADA",
+        tabela: "turmas", entity: "turmas", entity_id: turmaId,
+        details: {
+          actor_id: user.id, turma_id: turmaId,
+          modo: mode ?? "conforme_sessao", ano: year,
+          linhas: linhasExportadas,
+          campos_sensiveis: camposSensiveis,
+          campos: camposSensiveis ? ["nascimento", "naturalidade", "bi"] : [],
+        },
       });
+      if (auditError) {
+        return NextResponse.json({ ok: false, error: "Auditoria indisponível. Lista não emitida." }, { status: 503 });
+      }
     }
 
     headers.set("Content-Type", "application/pdf");
@@ -107,9 +118,9 @@ export async function GET(
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error("[secretaria/turmas/pdf] error:", e);
+    console.error("[secretaria/turmas/pdf] Falha na geração da lista");
     return NextResponse.json(
-      { ok: false, error: message },
+      { ok: false, error: "Não foi possível gerar a lista" },
       { status: 500 }
     );
   }
