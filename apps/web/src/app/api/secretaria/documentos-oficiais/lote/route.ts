@@ -11,13 +11,14 @@ import type { Database } from "~types/supabase"
 
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context"
 import { recordAuditServer } from "@/lib/audit"
+import { MAX_TURMAS_POR_LOTE, MAX_LOTES_NOMINAIS_POR_HORA, uniqueTurmaIds } from "@/lib/documentos/rosterBatchPolicy"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 export const fetchCache = "force-no-store"
 
 const Body = z.object({
-  turma_ids: z.array(z.string().uuid()).min(1),
+  turma_ids: z.array(z.string().uuid()).min(1).max(MAX_TURMAS_POR_LOTE).refine(uniqueTurmaIds, "Turmas duplicadas não são permitidas"),
   tipo: z.enum(["trimestral", "anual", "boletim_trimestral", "certificado", "lista_nominal", "attendance"]),
   periodo_letivo_id: z.string().uuid().optional(),
   ano_letivo_id: z.string().uuid().optional(),
@@ -56,7 +57,7 @@ export async function GET() {
 
     const { data: jobs, error } = await supabase
       .from("pautas_lote_jobs")
-      .select("id, tipo, documento_tipo, periodo_letivo_id, status, total_turmas, processed, success_count, failed_count, zip_path, manifest_path, zip_checksum_sha256, signed_url_expires_at, error_message, created_at")
+      .select("id, tipo, documento_tipo, periodo_letivo_id, status, total_turmas, processed, success_count, failed_count, zip_path, manifest_path, zip_checksum_sha256, signed_url_expires_at, error_message, created_at, pautas_lote_itens(turma_id,status)")
       .eq("escola_id", escolaId)
       .order("created_at", { ascending: false })
       .limit(20)
@@ -65,12 +66,18 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
     }
 
-    const items = ((jobs || []) as PautasLoteJobRow[]).map((job) => {
+    type LoteComItens = PautasLoteJobRow & {
+      pautas_lote_itens?: Array<{ turma_id: string; status: string }> | null
+    };
+    const items = ((jobs || []) as unknown as LoteComItens[]).map((job) => {
       const download_url =
         job.zip_path && job.status === "SUCCESS"
           ? `/api/secretaria/documentos-oficiais/lote/${job.id}/download`
           : null
-      return { ...job, download_url }
+      const { pautas_lote_itens, ...metadata } = job;
+      return { ...metadata, download_url, itens: (pautas_lote_itens ?? []).map(({ turma_id, status }) => ({
+        turma_id, status,
+      })) }
     })
 
     return NextResponse.json({ ok: true, items })
@@ -178,7 +185,7 @@ export async function POST(req: Request) {
 
     const sortedTurmas = [...parsed.data.turma_ids].sort()
     const documentoTipo = resolveDocumentoTipo(parsed.data.tipo)
-    const idempotencyKey = `${documentoTipo}:${effectivePeriodoLetivoId ?? "none"}:${parsed.data.month ?? "any"}:${parsed.data.is_album ? "album" : "standard"}:${parsed.data.mode ?? "auto"}:${parsed.data.include_all_status ? "todos" : "padrao"}:${academicContext.anoLetivoId}:${sortedTurmas.join(",")}`
+    const idempotencyKey = `${user.id}:${documentoTipo}:${effectivePeriodoLetivoId ?? "none"}:${parsed.data.month ?? "any"}:${parsed.data.is_album ? "album" : "standard"}:${parsed.data.mode ?? "auto"}:${parsed.data.include_all_status ? "todos" : "padrao"}:${academicContext.anoLetivoId}:${sortedTurmas.join(",")}`
 
     const { data: existingByKey } = await supabase
       .from("pautas_lote_jobs")
@@ -189,7 +196,33 @@ export async function POST(req: Request) {
       .maybeSingle()
 
     if (existingByKey?.id) {
+      if (existingByKey.status === "FAILED") {
+        return NextResponse.json({
+          ok: false, error: "O pedido anterior falhou. Reprocesse as turmas com erro.",
+          job_id: existingByKey.id, code: "REPROCESS_REQUIRED",
+        }, { status: 409 });
+      }
       return NextResponse.json({ ok: true, job_id: existingByKey.id, reused: true }, { status: 202 })
+    }
+
+    // Uma consulta por pedido (não por hora/poll): protege o plano gratuito.
+    if (parsed.data.tipo === "lista_nominal") {
+      const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count, error: rateError } = await supabase
+        .from("pautas_lote_jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("escola_id", escolaId)
+        .eq("created_by", user.id)
+        .eq("documento_tipo", "lista_nominal")
+        .gte("created_at", since);
+      if (rateError) {
+        return NextResponse.json({ ok: false, error: "Não foi possível validar o limite de emissão." }, { status: 503 });
+      }
+      if ((count ?? 0) >= MAX_LOTES_NOMINAIS_POR_HORA) {
+        return NextResponse.json({ ok: false, error: "Limite de lotes por hora atingido." }, {
+          status: 429, headers: { "Retry-After": "3600" },
+        });
+      }
     }
     const { data: activeJob } = await supabase
       .from("pautas_lote_jobs")
@@ -266,6 +299,9 @@ export async function POST(req: Request) {
         ano_letivo_id: academicContext.anoLetivoId,
         documento_tipo: documentoTipo,
         turma_ids: parsed.data.turma_ids,
+        modo: parsed.data.mode ?? "automatico",
+        quantidade_turmas: parsed.data.turma_ids.length,
+        inclui_campos_sensiveis: false,
       },
     }).catch(() => null)
 
