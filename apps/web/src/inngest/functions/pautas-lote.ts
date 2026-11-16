@@ -268,14 +268,27 @@ export const pautasLote = inngest.createFunction(
         )
       )
 
-      const successItems = results.filter((r) => r.ok) as Array<{ turmaId: string; ok: true; pdfPath: string; checksum: string }>
-      const failedItems = results.filter((r) => !r.ok)
+      // Depois do reprocessamento das falhas, reconstruir o ZIP com TODOS
+      // os itens bem-sucedidos do job, inclusive os de execuções anteriores.
+      const { data: allItems, error: stateError } = await supabase
+        .from("pautas_lote_itens")
+        .select("turma_id,status,pdf_path,checksum_sha256")
+        .eq("job_id", job_id)
+      if (stateError || !allItems) throw new Error("Falha ao reconciliar o lote")
+      const metrics = progressoLote(allItems)
+      const successItems = allItems.filter(
+        item => item.status === "SUCCESS" && Boolean(item.pdf_path) && Boolean(item.checksum_sha256)
+      ).map(item => ({
+        turmaId: item.turma_id, ok: true as const,
+        pdfPath: String(item.pdf_path), checksum: String(item.checksum_sha256),
+      }))
+      const failedItems = allItems.filter(item => item.status === "FAILED")
 
       if (successItems.length === 0) {
         await supabase.from("pautas_lote_jobs").update({
           status: "FAILED",
-          error_message: "Nenhum artefato gerado",
-          processed: results.length,
+          error_message: "Nenhum ficheiro válido gerado",
+          processed: metrics.processed,
           success_count: 0,
           failed_count: failedItems.length,
         }).eq("id", job_id)
@@ -288,7 +301,14 @@ export const pautasLote = inngest.createFunction(
         documento_tipo: documentoTipo,
         periodo_letivo_id: periodoContext.id,
         generated_at: new Date().toISOString(),
-        files: successItems.map((item) => ({ turma_id: item.turmaId, pdf_path: item.pdfPath, checksum_sha256: item.checksum })),
+        total: allItems.length,
+        success_count: successItems.length,
+        failed_count: failedItems.length,
+        files: successItems.map(item => ({
+          turma_id: item.turmaId,
+          pdf_path: item.pdfPath,
+          checksum_sha256: item.checksum,
+        })),
       }
 
       const archive = archiver("zip", { zlib: { level: 9 } })
@@ -333,20 +353,22 @@ export const pautasLote = inngest.createFunction(
       if (manifestUploadError) throw new Error(manifestUploadError.message)
 
       await supabase.from("pautas_lote_jobs").update({
-        status: failedItems.length > 0 ? "FAILED" : "SUCCESS",
+        status: statusFinalLote(successItems.length),
+        error_message: parcialLote(successItems.length, failedItems.length) ? "Lote parcial: consulte as turmas que falharam" : null,
         zip_path: zipPath,
         manifest_path: manifestPath,
         zip_checksum_sha256: zipChecksum,
-        processed: results.length,
+        processed: metrics.processed,
         success_count: successItems.length,
         failed_count: failedItems.length,
       }).eq("id", job_id)
 
-      return { ok: true }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      await supabase.from("pautas_lote_jobs").update({ status: "FAILED", error_message: message }).eq("id", job_id)
-      throw err
+      return { ok: true, parcial: failedItems.length > 0 }
+    } catch {
+      await supabase.from("pautas_lote_jobs").update({
+        status: "FAILED", error_message: "Não foi possível concluir o lote",
+      }).eq("id", job_id)
+      throw new Error("Não foi possível concluir o lote")
     }
   }
 )
