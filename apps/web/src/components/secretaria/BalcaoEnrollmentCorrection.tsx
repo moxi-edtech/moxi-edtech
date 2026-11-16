@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
+import { isAllowedClassCorrectionTarget } from "@/lib/secretaria/class-rectification-target";
 
 type Turma = {
   id: string;
   nome: string;
   classe_num: number | null;
+  nivel_ensino: string | null;
   classe_id: string | null;
   curso_id: string | null;
   turno: string | null;
@@ -116,8 +118,7 @@ export function BalcaoEnrollmentCorrection({
   const current = options?.items.find((item) => item.id === options.turma_atual_id);
   const target = options?.items.find((item) => item.id === selected);
   const possibleTargets = (options?.items ?? []).filter((item) =>
-    item.id !== options?.turma_atual_id &&
-    (!current?.classe_id || item.classe_id !== current.classe_id)
+    isAllowedClassCorrectionTarget(current, item)
   );
   const ready = Boolean(impact?.allow && target && !loading && !checking && !saving &&
     motivo.trim().length >= 10 && motivo.trim().length <= 300 &&
