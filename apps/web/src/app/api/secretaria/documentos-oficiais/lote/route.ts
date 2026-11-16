@@ -19,7 +19,7 @@ export const revalidate = 0
 export const fetchCache = "force-no-store"
 
 const Body = z.object({
-  turma_ids: z.array(z.string().uuid()).min(1).max(MAX_TURMAS_POR_LOTE).refine(uniqueTurmaIds, "Turmas duplicadas não são permitidas"),
+  turma_ids: z.array(z.string().uuid()).min(1).refine(uniqueTurmaIds, "Turmas duplicadas não são permitidas"),
   tipo: z.enum(["trimestral", "anual", "boletim_trimestral", "certificado", "lista_nominal", "attendance"]),
   periodo_letivo_id: z.string().uuid().optional(),
   ano_letivo_id: z.string().uuid().optional(),
@@ -105,6 +105,12 @@ export async function POST(req: Request) {
     const parsed = Body.safeParse(rawBody)
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 })
+    }
+
+    // Não regressar a emissão de pautas, certificados e documentos legados.
+    // O novo limite é deliberadamente exclusivo à lista nominal.
+    if (parsed.data.tipo === "lista_nominal" && parsed.data.turma_ids.length > MAX_TURMAS_POR_LOTE) {
+      return NextResponse.json({ ok: false, error: "Máximo 10 turmas por lista nominal" }, { status: 413 })
     }
 
     if (parsed.data.tipo === "certificado") {
