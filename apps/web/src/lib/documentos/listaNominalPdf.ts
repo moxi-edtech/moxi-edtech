@@ -79,6 +79,7 @@ type ListaNominalPdfParams = {
   enableQr?: boolean;
   camposSensiveis?: boolean;
   emissor?: string;
+  onRowsCount?: (count: number) => void;
   fallbackLogoUrl?: string | null;
 };
 
@@ -179,6 +180,7 @@ export async function renderListaNominalPdfBuffer({
   enableQr = false,
   camposSensiveis = false,
   emissor = "Sistema KLASSE",
+  onRowsCount,
   fallbackLogoUrl,
 }: ListaNominalPdfParams) {
   const normalizedYear = year || String(new Date().getFullYear());
@@ -484,6 +486,7 @@ export async function renderListaNominalPdfBuffer({
     return row;
   });
 
+  onRowsCount?.(alunos.length);
   const verificationToken = enableQr ? randomUUID() : undefined;
   const validationBase = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? undefined;
   const logoUrl = normalizePdfLogoUrl(escola?.logo_url, fallbackLogoUrl);
