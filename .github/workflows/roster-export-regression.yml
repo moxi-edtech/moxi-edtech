@@ -45,4 +45,7 @@ jobs:
       - name: Build
         env:
           NODE_OPTIONS: --max-old-space-size=6144
+          # Valores sintéticos usados exclusivamente para compilação; sem ligações reais.
+          NEXT_PUBLIC_SUPABASE_URL: https://example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InRlc3QiLCJleHAiOjk5OTk5OTk5OTl9.fixture
         run: pnpm -C apps/web build
