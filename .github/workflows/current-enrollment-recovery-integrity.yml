@@ -12,6 +12,11 @@ on:
       - "apps/web/src/components/secretaria/ModalPagamentoRapido.tsx"
       - "apps/web/src/lib/financeiro/recover-receipt-after-payment.ts"
       - "apps/web/tests/unit/current-year-enrollment-and-receipt-recovery.spec.ts"
+      - "apps/web/tests/unit/class-rectification-tuition-repricing.spec.ts"
+      - "apps/web/src/app/api/secretaria/matriculas/**/rectify-class/**"
+      - "supabase/migrations/20271116090000_balcao_retificacao_classe_repreco_pendentes.sql"
+      - "scripts/ci/guard-fiscal-scope.mjs"
+      - "scripts/ci/tests/guard-fiscal-scope.spec.mjs"
       - ".github/workflows/current-enrollment-recovery-integrity.yml"
   workflow_dispatch:
 
@@ -38,6 +43,8 @@ jobs:
         run: node --test --import tsx apps/web/tests/unit/current-year-enrollment-and-receipt-recovery.spec.ts
       - name: Existing transactional class-correction guard regression
         run: node scripts/ci/class-rectification-contract.mjs
+      - name: Class correction tuition repricing regression
+        run: node --test --import tsx apps/web/tests/unit/class-rectification-tuition-repricing.spec.ts
       - name: TypeScript
         env:
           NODE_OPTIONS: --max-old-space-size=5120
