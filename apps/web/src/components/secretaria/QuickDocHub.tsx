@@ -258,9 +258,11 @@ function buildClasseDocUrl(
 export default function QuickDocHub({
   escolaId,
   initialNominal = false,
+  nominalOnly = false,
 }: {
   escolaId?: string | null;
   initialNominal?: boolean;
+  nominalOnly?: boolean;
 }) {
   const searchParams = useSearchParams();
   const academicYearIdFromUrl = searchParams?.get(ACADEMIC_YEAR_PARAM);
@@ -572,8 +574,8 @@ export default function QuickDocHub({
     (anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.status === "ativa" ? "operacional" : "ano_letivo");
   const selectedDocDefs = DOCS.filter((doc) => selectedDocs.includes(doc.key));
   const visibleDocs = useMemo(
-    () => scope === "classe" ? DOCS.filter((doc) => doc.key === "nominal") : DOCS,
-    [scope]
+    () => scope === "classe" || nominalOnly ? DOCS.filter((doc) => doc.key === "nominal") : DOCS,
+    [scope, nominalOnly]
   );
 
   const docDisabledReason = useCallback(
@@ -978,7 +980,7 @@ export default function QuickDocHub({
             </div>
           )}
 
-          <div className="grid gap-3 md:grid-cols-2">
+          {!nominalOnly && <div className="grid gap-3 md:grid-cols-2">
             <Field label="Mês do mapa">
               <select
                 value={month}
@@ -1007,7 +1009,7 @@ export default function QuickDocHub({
                 ))}
               </select>
             </Field>
-          </div>
+          </div>}
 
           <div className="flex flex-wrap items-center gap-4 py-2">
             {(scope === "classe" || selectedDocs.includes("nominal")) && (
@@ -1036,7 +1038,7 @@ export default function QuickDocHub({
               </span>
             </label>
 
-            {scope === "turma" ? (
+            {!nominalOnly && scope === "turma" ? (
               <label className="flex items-center gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
@@ -1140,7 +1142,7 @@ export default function QuickDocHub({
         </div>
       </div>
 
-      <div className="space-y-3">
+      {!nominalOnly && <div className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Documentos</p>
           <p className="text-xs text-slate-500">
@@ -1205,7 +1207,7 @@ export default function QuickDocHub({
             );
           })}
         </div>
-      </div>
+      </div>}
 
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
         <div>
