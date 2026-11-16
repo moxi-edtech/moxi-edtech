@@ -130,7 +130,7 @@ export function CommandCenterShell({
                 </Dialog.Close>
               </div>
               <div className="min-h-0 overflow-y-auto p-3 sm:p-5">
-                <QuickDocHub escolaId={escolaId} initialNominal />
+                <QuickDocHub escolaId={escolaId} initialNominal nominalOnly />
               </div>
             </Dialog.Content>
           </Dialog.Portal>
