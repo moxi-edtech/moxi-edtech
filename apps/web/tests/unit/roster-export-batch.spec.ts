@@ -8,6 +8,8 @@ import {
   progressoLote,
   parcialLote,
   statusFinalLote,
+  makeNominalBatchKey,
+  readNominalBatchKey,
 } from "../../src/lib/documentos/rosterBatchPolicy";
 import { safeCsvCell, serializeRosterCsv } from "../../src/lib/command-center/roster-export-policy";
 
@@ -79,4 +81,40 @@ test("frontend reconhece cada turma e usa endpoint canónico sem bypass", () => 
   assert.match(endpoint, /MAX_TURMAS_POR_LOTE/);
   assert.match(legacy, /if \(!userEscolaId\)/);
   assert.doesNotMatch(legacy, /userEscolaId \?\? requestedEscolaId/);
+});
+
+test("chave versionada preserva modo e exclusões no reprocessamento", () => {
+  const actorId = "00000000-0000-4000-8000-000000000001";
+  const academicYearId = "00000000-0000-4000-8000-000000000002";
+  const key = makeNominalBatchKey({
+    actorId, academicYearId, mode: "ano_letivo", month: "03",
+    isAlbum: false, includeAllStatus: true,
+  }, ["00000000-0000-4000-8000-000000000003"]);
+  assert.deepEqual(readNominalBatchKey(key), {
+    actorId, academicYearId, mode: "ano_letivo",
+    month: "03", isAlbum: false, includeAllStatus: true,
+  });
+  assert.equal(readNominalBatchKey("legacy:uncertain"), null);
+  assert.equal(readNominalBatchKey(key.replace(":03:", ":13:")), null);
+});
+
+test("CSV autorizado não devolve dados sensíveis, usa sessão e audita", () => {
+  const csv = source("app/api/secretaria/turmas/[id]/alunos/csv/route.ts");
+  assert.match(csv, /resolveRosterExportPolicy/);
+  assert.match(csv, /requireRoleInSchool/);
+  assert.match(csv, /selectMatriculasDaLista/);
+  assert.match(csv, /\.eq\("session_id", turma\.session_id\)/);
+  assert.match(csv, /safeCsvCell/);
+  assert.match(csv, /if \(auditError\)/);
+  assert.match(csv, /campos_sensiveis: false/);
+  assert.doesNotMatch(csv, /bi_numero/);
+  assert.doesNotMatch(csv, /data_nascimento/);
+});
+
+test("reprocessamento bloqueia modo original irrecuperável", () => {
+  const retry = source("app/api/secretaria/documentos-oficiais/lote/reprocess/route.ts");
+  assert.match(retry, /readNominalBatchKey/);
+  assert.match(retry, /prefs\.actorId !== job\.created_by/);
+  assert.match(retry, /include_all_status: prefs\.includeAllStatus/);
+  assert.match(retry, /canExportSensitiveRosterFields/);
 });
