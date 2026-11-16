@@ -104,6 +104,9 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // PR #335: student name correction only; tenant, role and audit checks enforced by RPC.
   // This exact filename remains subject to the same fiscal/AGT/SAF-T SQL scanner.
   "20271113090000_corrigir_nome_aluno_balcao.sql",
+  // Reviewed atomic reprice on class correction: only unpaid untouched monthly
+  // entries may change. Fiscal/AGT/SAF-T scanner remains enforced.
+  "20271116090000_balcao_retificacao_classe_repreco_pendentes.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
