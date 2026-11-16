@@ -3,6 +3,8 @@
 \set ON_ERROR_STOP on
 BEGIN;
 
+CREATE ROLE anon;
+CREATE ROLE authenticated;
 CREATE SCHEMA auth;
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
 $$ SELECT nullif(current_setting('klasse.fixture_actor',true),'')::uuid $$;
@@ -98,6 +100,11 @@ END $$;
 CREATE TRIGGER fixture_enrollment_guard BEFORE UPDATE OF turma_id ON public.matriculas
 FOR EACH ROW EXECUTE FUNCTION public.fixture_enrollment_guard();
 
+COMMIT;
+
+\ir ../../migrations/20271116090000_balcao_retificacao_classe_repreco_pendentes.sql
+
+BEGIN;
 SELECT set_config('klasse.fixture_actor','22222222-2222-2222-2222-222222222222',true);
 SELECT set_config('klasse.fixture_school','11111111-1111-1111-1111-111111111111',true);
 SELECT set_config('klasse.fixture_allowed','on',true);
@@ -179,8 +186,6 @@ VALUES
 ('11111111-1111-1111-1111-111111111111','eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
  'dddddddd-dddd-dddd-dddd-dddddddddddd','55555555-5555-5555-5555-555555555555',
  '2026','pendente',4000,4000,4000,0,0,'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
-
-\ir ../../migrations/20271116090000_balcao_retificacao_classe_repreco_pendentes.sql
 
 DO $case$
 DECLARE
