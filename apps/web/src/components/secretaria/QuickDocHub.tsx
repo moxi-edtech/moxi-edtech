@@ -652,49 +652,59 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   ]);
 
   const runQueuedEmission = useCallback(async () => {
-    if (!escolaId) return;
+    if (!escolaId) throw new Error("Escola não identificada.");
     const targetTurmaIds =
       scope === "classe"
-        ? selectedClasseTurmas.map((turma) => turma.id)
+        ? selectedClasseTurmas.map(turma => turma.id)
         : processAllTurmas
-          ? turmasFiltradas.map((t) => t.id)
+          ? turmasFiltradas.map(turma => turma.id)
           : selectedTurma
             ? [selectedTurma.id]
             : [];
 
-    if (targetTurmaIds.length === 0) return;
+    if (targetTurmaIds.length === 0) throw new Error("Seleccione pelo menos uma turma.");
+    if (targetTurmaIds.length > MAX_TURMAS_POR_LOTE) {
+      throw new Error("Seleccione, no máximo, 10 turmas por lote.");
+    }
+
+    const enfileirar = async (body: Record<string, unknown>) => {
+      const response = await fetch("/api/secretaria/documentos-oficiais/lote", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result: { ok?: boolean; error?: string } = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "Não foi possível enfileirar o lote.");
+      }
+    };
+
+    const anoSelecionado = academicYearIdFromUrl ??
+      anosLetivos.find(item => item.ano_letivo === anoLetivo)?.id;
 
     for (const doc of selectedDocDefs) {
       if (!queueDocKeys.has(doc.key)) continue;
 
       if (doc.key === "nominal" || doc.key === "attendance") {
-        await fetch("/api/secretaria/documentos-oficiais/lote", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            turma_ids: targetTurmaIds,
-            tipo: doc.key === "nominal" ? "lista_nominal" : "attendance",
-            ano_letivo_id: academicYearIdFromUrl ?? anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.id,
-            month,
-            year: String(anoLetivo),
-            is_album: isAlbum,
-            include_all_status: includeAllStatus,
-            mode: modoLista,
-          }),
+        await enfileirar({
+          turma_ids: targetTurmaIds,
+          tipo: doc.key === "nominal" ? "lista_nominal" : "attendance",
+          ano_letivo_id: anoSelecionado,
+          month,
+          year: String(anoLetivo),
+          is_album: isAlbum,
+          include_all_status: includeAllStatus,
+          mode: modoLista,
         });
         continue;
       }
-
       const tipo = doc.key === "pauta-geral" ? "trimestral" : "anual";
-      const body =
-        tipo === "trimestral"
-          ? { turma_ids: targetTurmaIds, tipo, ano_letivo_id: academicYearIdFromUrl ?? anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.id, periodo_letivo_id: periodoId }
-          : { turma_ids: targetTurmaIds, tipo, ano_letivo_id: academicYearIdFromUrl ?? anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.id };
-
-      await fetch("/api/secretaria/documentos-oficiais/lote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+      await enfileirar({
+        turma_ids: targetTurmaIds,
+        tipo,
+        ano_letivo_id: anoSelecionado,
+        ...(tipo === "trimestral" ? { periodo_letivo_id: periodoId } : {}),
       });
     }
   }, [academicYearIdFromUrl, anoLetivo, anosLetivos, escolaId, includeAllStatus, isAlbum, modoLista, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
@@ -718,8 +728,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         setFeedback("Downloads iniciados.");
       }
     } catch (error) {
-      console.error("Erro ao emitir documentos:", error);
-      setFeedback("Não conseguimos concluir a emissão agora.");
+      setFeedback(error instanceof Error ? error.message : "Não conseguimos concluir a emissão agora.");
     } finally {
       setSubmitting(false);
     }
