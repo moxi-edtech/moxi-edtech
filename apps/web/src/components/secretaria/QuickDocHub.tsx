@@ -968,13 +968,13 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
 
           <div className="flex flex-wrap items-center gap-4 py-2">
             {(scope === "classe" || selectedDocs.includes("nominal")) && (
-              <label className="flex flex-col gap-1 text-xs font-semibold text-slate-700">
+              <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
                 Modo da lista nominal
                 <select
                   aria-label="Modo da lista nominal"
                   value={modoLista}
                   onChange={(event) => setModeOverride(event.target.value as ListaNominalMode)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  className="rounded-xl border border-border bg-card px-3 py-2 text-sm"
                 >
                   <option value="ano_letivo">Lista do ano letivo (histórica)</option>
                   <option value="operacional">Lista operacional actual</option>

@@ -1805,11 +1805,11 @@ export default function TurmaDetailClient({
             </div>
 
             <div className="flex flex-wrap items-center gap-4 mb-6 p-3 bg-slate-50 rounded-xl border border-slate-200/60">
-              <label className="flex flex-col gap-1 text-xs font-semibold text-slate-700">
+              <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
                 Modo da lista nominal
                 <select
                   aria-label="Modo da lista nominal"
-                  className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm"
+                  className="rounded-xl border border-border bg-card px-2 py-1.5 text-sm"
                   value={listaMode}
                   onChange={(event) => setListaMode(event.target.value as "auto" | "ano_letivo" | "operacional")}
                 >
