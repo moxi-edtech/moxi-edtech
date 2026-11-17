@@ -15,6 +15,15 @@ const BatchSchema = z.object({
   cursor: z.string().uuid().nullable(),
 }).strict();
 
+const GradeReconciliationSchema = z.object({
+  acao: z.literal("conferir_notas_2025"),
+  matricula_id: z.string().uuid(),
+  aluno_id: z.string().uuid(),
+  referencia: z.string().trim().min(8).max(180),
+  motivo: z.string().trim().min(12).max(500),
+  confirmacao: z.literal("CONFIRMO_PAUTA_2025"),
+}).strict();
+
 async function context() {
   const db = await supabaseServerTyped<any>();
   const { data: { user }, error: authError } = await db.auth.getUser();
@@ -142,6 +151,13 @@ export async function GET(request: Request) {
       const sourceComplete = origin.status === "concluido" &&
         origin.ativo === false && origin.status_fecho_origem === "override_admin" &&
         origin.session_id != null && origin.session_id === history.ano_letivo_id;
+      const signedStatus = operacionais.length > 0
+        ? await ctx.db.rpc("curtume_2025_status_conferencia", {
+            p_escola_id: CURTUME, p_matricula_id: matriculaId,
+          })
+        : { data: false, error: null };
+      if (signedStatus.error) throw signedStatus.error;
+
       const issueCode = !sourceComplete ? "ORIGEM_HISTORICA_INCOMPATIVEL" :
         operacionais.length > 0 ? "NOTAS_OPERACIONAIS_EXIGEM_RECONCILIACAO" :
         historicas.length === 0 ? "SEM_NOTAS_HISTORICAS" :
@@ -158,6 +174,7 @@ export async function GET(request: Request) {
           referencia: typeof h.notas_detalhe?.arquivo === "string" ? h.notas_detalhe.arquivo : null,
         })),
         notas_operacionais: operationalGrades,
+        conferencia_validada: signedStatus.data === true,
         sourceComplete,
       }, { headers: { "Cache-Control": "no-store" } });
     }
@@ -267,7 +284,48 @@ export async function POST(request: Request) {
   try {
     const ctx = await context();
     if (!ctx.allowed) return ctx.response!;
-    const parsed = BatchSchema.safeParse(await request.json().catch(() => null));
+    const payload = await request.json().catch(() => null);
+    if (payload && typeof payload === "object" &&
+        !Array.isArray(payload) && payload.acao === "conferir_notas_2025") {
+      const verified = GradeReconciliationSchema.safeParse(payload);
+      if (!verified.success)
+        return NextResponse.json({ ok: false, error: "Referência, motivo e confirmação são obrigatórios." },
+          { status: 400 });
+      const { matricula_id, aluno_id, referencia, motivo } = verified.data;
+      const { data: history, error: lookupError } = await ctx.db.from("historico_anos")
+        .select("id").eq("escola_id", CURTUME).eq("ano_letivo", 2025)
+        .eq("aluno_id", aluno_id).eq("matricula_id", matricula_id)
+        .eq("snapshot_status", "aberto").maybeSingle();
+      if (lookupError) throw lookupError;
+      if (!history) return NextResponse.json({ ok: false,
+        error: "Histórico de 2025/2026 não encontrado para este aluno." }, { status: 404 });
+      const { data, error: signingError } = await ctx.db.rpc(
+        "curtume_2025_conferir_notas_documentais", {
+          p_escola_id: CURTUME,
+          p_matricula_id: matricula_id,
+          p_referencia: referencia,
+          p_motivo: motivo,
+        });
+      if (signingError) {
+        console.error("[curtume-historic-batch] director confirmation failed", {
+          code: signingError.code, message: signingError.message,
+        });
+        const status = signingError.code === "42501" ? 403 :
+          signingError.code === "23514" ? 409 : 500;
+        return NextResponse.json({ ok: false,
+          error: status === 403 ? "A conferência exige sessão autorizada da Direção." :
+            status === 409 ? "A pauta ou a matrícula mudou. Atualize e confira novamente." :
+              "Não foi possível registar a conferência." }, { status });
+      }
+      if (data?.ok !== true || data.matricula_id !== matricula_id)
+        return NextResponse.json({ ok: false, error: "Resposta de conferência inválida." },
+          { status: 502 });
+      return NextResponse.json({
+        ok: true, matricula_id, conferencia_validada: true,
+        notas_operacionais_preservadas: data.notas_operacionais_preservadas ?? null,
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
+    const parsed = BatchSchema.safeParse(payload);
     if (!parsed.success)
       return NextResponse.json({ ok: false, error: "Confirmação do lote inválida." }, { status: 400 });
 
