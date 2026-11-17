@@ -43,3 +43,29 @@ test("enrolment counts are independent of the page of rows returned", () => {
   assert.match(route, /pendingCount\.count \?\? 0/);
   assert.doesNotMatch(route, /const total = rows\.length/);
 });
+
+test("nominal list JSON and PDF exclude closed enrolments and use contiguous visible numbers", () => {
+  const jsonRoute = source("app/api/secretaria/turmas/[id]/alunos/lista/route.ts");
+  assert.match(jsonRoute, /\\.eq\\("session_id", turma\\.session_id\\)/);
+  assert.match(jsonRoute, /\\.eq\\("ativo", true\\)/);
+  assert.match(jsonRoute, /numero: numero\\+\\+/);
+  assert.match(jsonRoute, /numero_chamada: m\\.numero_chamada/);
+
+  const pdf = source("lib/documentos/listaNominalPdf.ts");
+  assert.match(pdf, /numero: isAttendance \\|\\| month \\|\\| includeAllStatus/);
+  assert.match(pdf, /: index \\+ 1/);
+});
+
+test("database migration blocks approved grade repeats across all enrolment writers", () => {
+  const sql = readFileSync(
+    new URL("../../../../supabase/migrations/20271117160000_guard_enrollment_prior_year_progression.sql", import.meta.url),
+    "utf8"
+  );
+  assert.match(sql, /BEFORE INSERT OR UPDATE OF escola_id, aluno_id, turma_id/);
+  assert.match(sql, /NEW\\.origem_transicao_matricula_id IS NOT NULL/);
+  assert.match(sql, /h\\.escola_id = NEW\\.escola_id/);
+  assert.match(sql, /h\\.ano_letivo = v_target_year - 1/);
+  assert.match(sql, /ENROLLMENT_PRIOR_YEAR_APPROVED_SAME_OR_LOWER_GRADE/);
+  assert.match(sql, /ENROLLMENT_FINALIST_REPEAT_REQUIRES_RETAINED_DECISION/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION/);
+});
