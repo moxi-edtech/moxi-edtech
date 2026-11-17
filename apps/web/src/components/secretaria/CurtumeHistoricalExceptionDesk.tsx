@@ -6,7 +6,7 @@ import { AlertTriangle, ArrowLeft, BookOpen, CheckCircle2, RefreshCw } from "luc
 import { getHistoricBatchIssueAdvice } from "@/lib/academico/curtume-historic-batch-issues";
 
 const CURTUME = "3744879f-2e19-4671-8995-78604302d8c5";
-const API = "/api/secretaria/operacoes-academicas/fecho-historico-lote";
+const API = "/api/operacoes/academico/fecho-historico-lote";
 
 type PautaDisciplina = {
   id: string; nome: string | null; nota_final: number | null; referencia: string | null;
@@ -73,9 +73,9 @@ export function CurtumeHistoricalExceptionDesk({
 
   const backHref = returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")
     ? returnTo
-    : `/escola/${encodeURIComponent(escolaParam)}/secretaria/operacoes-academicas`;
+    : `/escola/${encodeURIComponent(escolaParam)}/operacoes/academico`;
   const reconciliationHref =
-    `/escola/${encodeURIComponent(escolaParam)}/secretaria/operacoes-academicas/reconciliacao-historica?` +
+    `/escola/${encodeURIComponent(escolaParam)}/operacoes/academico/reconciliacao-historica?` +
     new URLSearchParams({ tipo: "historicos", ano: "2025", matricula_id: matriculaId }).toString();
   const advice = dossier ? getHistoricBatchIssueAdvice(dossier.motivo) : null;
   const hasOperational = Boolean(dossier?.notas_operacionais.length);
