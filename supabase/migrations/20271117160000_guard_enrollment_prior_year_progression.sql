@@ -40,6 +40,33 @@ BEGIN
     END IF;
   END IF;
 
+  -- An explicit same-year class CORRECTION is not a progression. Only the
+  -- existing retificar_classe_matricula RPC may issue the protected,
+  -- one-student, one-source/target nonce within its transaction. Direct
+  -- API/SQL updates never have this nonce (no authenticated table grants).
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.turma_id IS DISTINCT FROM OLD.turma_id
+       AND NEW.escola_id IS NOT DISTINCT FROM OLD.escola_id
+       AND NEW.aluno_id IS NOT DISTINCT FROM OLD.aluno_id
+       AND NEW.session_id IS NOT DISTINCT FROM OLD.session_id
+       AND NEW.ano_letivo IS NOT DISTINCT FROM OLD.ano_letivo
+       AND NEW.origem_transicao_matricula_id IS NOT DISTINCT FROM OLD.origem_transicao_matricula_id
+       AND NEW.status IS NOT DISTINCT FROM OLD.status
+       AND NEW.ativo IS NOT DISTINCT FROM OLD.ativo
+       AND auth.uid() IS NOT NULL
+       AND public.current_tenant_escola_id() = NEW.escola_id
+       AND EXISTS (
+         SELECT 1 FROM public.balcao_pauta_turma_correction_nonce nonce
+         WHERE nonce.escola_id = NEW.escola_id
+           AND nonce.matricula_id = NEW.id
+           AND nonce.actor_id = auth.uid()
+           AND nonce.turma_origem_id = OLD.turma_id
+           AND nonce.turma_destino_id = NEW.turma_id
+       ) THEN
+      RETURN NEW;
+    END IF;
+  END IF;
+
   SELECT id, escola_id, curso_id, ano_letivo, session_id
     INTO v_destination
   FROM public.turmas
