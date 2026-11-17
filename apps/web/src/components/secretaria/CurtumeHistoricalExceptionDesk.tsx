@@ -26,6 +26,8 @@ type ExceptionDossier = {
   notas_operacionais: OperationalGrade[];
   sourceComplete: boolean;
   conferencia_validada: boolean;
+  disciplinas_disponiveis_2025: Array<{ id: string; nome: string }>;
+  escala_maxima: number | null;
 };
 
 type Props = {
@@ -49,6 +51,11 @@ export function CurtumeHistoricalExceptionDesk({
   const [saving, setSaving] = useState(false);
   const [signed, setSigned] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [pautaReferencia, setPautaReferencia] = useState("");
+  const [pautaFolha, setPautaFolha] = useState("");
+  const [pautaNotas, setPautaNotas] = useState<Record<string, string>>({});
+  const [pautaConferida, setPautaConferida] = useState(false);
+  const [pautaSaving, setPautaSaving] = useState(false);
 
   const supported = escolaId === CURTUME && /^[0-9a-f-]{36}$/i.test(matriculaId) &&
     /^[0-9a-f-]{36}$/i.test(alunoId);
@@ -104,6 +111,45 @@ export function CurtumeHistoricalExceptionDesk({
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Falha ao confirmar a pauta.");
     } finally { setSaving(false); }
+  }
+
+  async function guardarPautaFisica() {
+    if (!dossier || !dossier.sourceComplete || dossier.disciplinas_pauta.length ||
+        dossier.notas_operacionais.length || pautaSaving || !pautaConferida ||
+        !dossier.escala_maxima || pautaReferencia.trim().length < 8 ||
+        pautaFolha.trim().length < 2) return;
+    const notas = dossier.disciplinas_disponiveis_2025
+      .filter((item) => pautaNotas[item.id]?.trim() !== "")
+      .map((item) => ({ disciplina_id: item.id, valor: Number(pautaNotas[item.id]) }));
+    if (!notas.length || notas.some(({ valor }) =>
+      !Number.isFinite(valor) || valor < 0 || valor > dossier.escala_maxima! ||
+      !Number.isInteger(valor * 100))) {
+      setError("Confira as classificações e a escala antes de guardar.");
+      return;
+    }
+    setPautaSaving(true); setError(null); setNotice(null);
+    try {
+      const response = await fetch(API, {
+        method: "POST", cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acao: "transcrever_pauta_2025",
+          matricula_id: matriculaId, aluno_id: alunoId,
+          referencia: pautaReferencia.trim(), folha: pautaFolha.trim(),
+          notas, todas_disciplinas: true,
+          confirmacao: "CONFIRMO_PAUTA_2025",
+        }),
+      });
+      const output = await response.json();
+      if (!response.ok || output?.ok !== true ||
+          output.matricula_id !== matriculaId ||
+          output.disciplinas_registadas !== notas.length)
+        throw Error(output.error ?? "Não foi possível registar a pauta.");
+      setNotice("Pauta registada e auditada. Volte ao fecho em lote.");
+      setRevision((value) => value + 1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "A pauta não foi guardada.");
+    } finally { setPautaSaving(false); }
   }
 
   if (!supported) return null;
@@ -218,6 +264,60 @@ export function CurtumeHistoricalExceptionDesk({
             </div>
           )}
           {notice && <p role="status" className="text-xs font-medium text-emerald">{notice}</p>}
+          {missingDocument && dossier.sourceComplete &&
+            dossier.disciplinas_pauta.length === 0 &&
+            dossier.notas_operacionais.length === 0 &&
+            dossier.disciplinas_disponiveis_2025.length > 0 &&
+            dossier.escala_maxima && (
+            <div className="space-y-3 rounded-xl border border-border p-3">
+              <h3 className="font-semibold text-foreground">Transcrever pauta física de 2025/2026</h3>
+              <p className="text-xs text-muted-foreground">
+                Insira a nota final apenas nas disciplinas que constam da pauta real deste aluno.
+                Confirme que nenhuma disciplina da pauta ficou de fora.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {dossier.disciplinas_disponiveis_2025.map((item) => (
+                  <label key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-2 text-xs">
+                    <span className="font-medium">{item.nome}</span>
+                    <input type="number" min={0} max={dossier.escala_maxima ?? 20}
+                      step="0.01" inputMode="decimal" placeholder={"— / " + dossier.escala_maxima}
+                      value={pautaNotas[item.id] ?? ""}
+                      onChange={(event) => setPautaNotas((current) => ({
+                        ...current, [item.id]: event.target.value,
+                      }))}
+                      className="w-20 rounded-xl border border-border bg-background p-2 text-right text-xs tabular-nums" />
+                  </label>
+                ))}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs font-semibold">Referência da pauta física
+                  <input type="text" maxLength={180} value={pautaReferencia}
+                    onChange={(event) => setPautaReferencia(event.target.value)}
+                    placeholder="Ex.: Pauta assinada, 2025/2026"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"/>
+                </label>
+                <label className="block text-xs font-semibold">Folha ou linha do aluno
+                  <input type="text" maxLength={80} value={pautaFolha}
+                    onChange={(event) => setPautaFolha(event.target.value)}
+                    placeholder="Ex.: Folha 2, linha 14"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"/>
+                </label>
+              </div>
+              <label className="flex items-start gap-2 text-xs">
+                <input type="checkbox" className="mt-0.5 accent-amber"
+                  checked={pautaConferida} onChange={(event) => setPautaConferida(event.target.checked)}/>
+                Transcrevi todas as disciplinas e notas finais que constam da pauta física deste aluno.
+              </label>
+              <button type="button" onClick={() => void guardarPautaFisica()}
+                disabled={pautaSaving || loading || !pautaConferida ||
+                  pautaReferencia.trim().length < 8 || pautaFolha.trim().length < 2 ||
+                  !Object.values(pautaNotas).some((value) => value.trim() !== "")}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 font-semibold text-white disabled:opacity-50">
+                <BookOpen className="h-4 w-4"/>
+                {pautaSaving ? "A guardar…" : "Guardar notas de 2025/2026"}
+              </button>
+            </div>
+          )}
           {missingDocument && (
             <p role="status" className="text-xs text-amber-700">
               Não há classificações históricas associadas a esta matrícula. Registe apenas notas
