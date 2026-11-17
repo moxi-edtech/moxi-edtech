@@ -28,13 +28,13 @@ test("PDF, XLSX e lotes lêem matrícula na mesma sessão e sem truncagem silenc
   const pdf = source("lib/documentos/listaNominalPdf.ts");
   const service = source("lib/documentos/listaNominalService.ts");
   assert.match(pdf, /loadNominalRoster/);
-  assert.doesNotMatch(pdf, /\\.from\\("matriculas"\\)/);
-  assert.match(service, /sessionIds\\.size !== 1/);
-  assert.match(service, /\\.eq\\("session_id", sessionId\\)/);
+  assert.doesNotMatch(pdf, /\.from\("matriculas"\)/);
+  assert.match(service, /sessionIds\.size !== 1/);
+  assert.match(service, /\.eq\("session_id", sessionId\)/);
   assert.match(service, /selectMatriculasDaLista/);
-  assert.match(service, /for \\(let offset = 0; offset <= maxRoster; offset \\+= pageSize\\)/);
+  assert.match(service, /for \(let offset = 0; offset <= maxRoster; offset \+= pageSize\)/);
   assert.match(service, /maxLimit: pageSize/);
-  assert.doesNotMatch(service, /\\.eq\\("ativo", true\\)/);
+  assert.doesNotMatch(service, /\.eq\("ativo", true\)/);
 });
 
 test("enrolment counts are independent of the page of rows returned", () => {
