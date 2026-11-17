@@ -19,7 +19,7 @@ type BatchResult = {
 const API = "/api/secretaria/operacoes-academicas/fecho-historico-lote";
 const MAX_PAGES = 40; // 25 histories/chunk; bounds repeated or corrupted responses.
 
-export function CurtumeFechoHistoricoLote({ onComplete }: { onComplete: () => void }) {
+export function CurtumeFechoHistoricoLote({ onComplete }: { onComplete?: () => void } = {}) {
   const [abertos, setAbertos] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
   const [processados, setProcessados] = useState(0);
@@ -105,12 +105,12 @@ export function CurtumeFechoHistoricoLote({ onComplete }: { onComplete: () => vo
         throw Error("O lote ultrapassou o limite de páginas. Execute novamente para retomar.");
       setDone(true);
       setAbertos(rejected);
-      onComplete();
+      onComplete?.();
     } catch (cause) {
       // Already-committed pupils remain legally closed. Retrying starts from
       // still-open records: no duplicate grades or repeated legal close.
       setError(cause instanceof Error ? cause.message : "Não foi possível concluir o lote.");
-      onComplete();
+      onComplete?.();
     } finally {
       setRunning(false);
     }
