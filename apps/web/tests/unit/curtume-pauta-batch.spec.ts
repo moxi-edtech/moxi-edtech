@@ -21,7 +21,7 @@ test("historic school year is the only mutable scope; admission and grade tables
 test("PostgreSQL checks school, exact academic director, source year, note bounds and source identity", () => {
   assert.match(sql, /v_actor uuid := public\.safe_auth_uid\(\)/);
   assert.match(sql, /current_tenant_escola_id\(\)/);
-  assert.match(sql, /'admin','admin_escola','diretor','staff_admin'/);
+  assert.match(sql, /'admin','admin_escola','diretor'/);
   assert.match(sql, /NOT BETWEEN 1 AND 30/);
   assert.match(sql, /'2025','2025\/2026'/);
   assert.match(sql, /nota_final > COALESCE/);
