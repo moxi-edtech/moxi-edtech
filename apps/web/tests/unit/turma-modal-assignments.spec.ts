@@ -105,3 +105,24 @@ describe('Modal: integração com API existente e ausência de substituição im
     assert.match(modal, /sourceAlreadyAssigned/)
   })
 })
+
+
+const teachersRoute = readFileSync(
+  new URL('../../src/app/api/secretaria/professores/route.ts', import.meta.url), 'utf8',
+)
+const singleAssignRoute = readFileSync(
+  new URL('../../src/app/api/secretaria/turmas/[id]/atribuir-professor/route.ts', import.meta.url), 'utf8',
+)
+const readDisciplinasRoute = readFileSync(
+  new URL('../../src/app/api/secretaria/turmas/[id]/disciplinas/route.ts', import.meta.url), 'utf8',
+)
+describe('Secretaria: paginação e autorização consistentes', () => {
+  it('não pagina novamente depois de aplicar limit/offset no banco', () => {
+    assert.match(teachersRoute, /const paged = filtered/)
+    assert.doesNotMatch(teachersRoute, /filtered\.slice\(from, from \+ pageSize\)/)
+  })
+  it('permite atribuição e leitura ao papel Secretaria sem conceder edição curricular', () => {
+    assert.match(singleAssignRoute, /authorizeTeacherManage\(supabase as any, escolaId, user.id\)/)
+    assert.match(readDisciplinasRoute, /authorizeTeacherManage\(supabase as any, escolaId, user.id\)/)
+  })
+})
