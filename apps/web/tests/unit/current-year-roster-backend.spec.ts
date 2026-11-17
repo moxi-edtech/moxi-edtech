@@ -56,16 +56,38 @@ test("nominal list JSON and PDF exclude closed enrolments and use contiguous vis
   assert.match(pdf, /: index \+ 1/);
 });
 
-test("database migration blocks approved grade repeats across all enrolment writers", () => {
+test("destination activation relies only on the canonical RAA decision", () => {
   const sql = readFileSync(
     new URL("../../../../supabase/migrations/20271117160000_guard_enrollment_prior_year_progression.sql", import.meta.url),
     "utf8"
   );
-  assert.match(sql, /BEFORE INSERT OR UPDATE OF escola_id, aluno_id, turma_id/);
-  assert.match(sql, /NEW\.origem_transicao_matricula_id IS NOT NULL/);
-  assert.match(sql, /h\.escola_id = NEW\.escola_id/);
-  assert.match(sql, /h\.ano_letivo = v_target_year - 1/);
-  assert.match(sql, /ENROLLMENT_PRIOR_YEAR_APPROVED_SAME_OR_LOWER_GRADE/);
-  assert.match(sql, /ENROLLMENT_FINALIST_REPEAT_REQUIRES_RETAINED_DECISION/);
+
+  assert.match(sql, /CREATE OR REPLACE FUNCTION public\.guard_enrollment_raa_progression_v1/);
+  assert.match(sql, /public\.resolve_raa_progression_for_matricula\(/);
+  assert.match(sql, /v_decision='transitou'/);
+  assert.match(sql, /v_decision='retido'/);
+  assert.match(sql, /v_decision='concluiu'/);
+  assert.match(sql, /v_decision='inscricao_condicional'/);
+  assert.match(sql, /ENROLLMENT_RAA_DECISION_REQUIRED/);
+  assert.match(sql, /ENROLLMENT_RAA_DESTINATION_MISMATCH/);
+  assert.match(sql, /canonicalize_matricula_status_text\(NEW\.status\) <> 'ativo'/);
+  assert.match(sql, /NEW\.escola_id/);
+  assert.match(sql, /NEW\.aluno_id/);
+  assert.match(sql, /v_destination\.ano_letivo - 1/);
+  assert.doesNotMatch(sql, /SELECT\s+lower\(btrim\(h\.resultado_final\)\)/i);
+  assert.doesNotMatch(sql, /from\s+public\.historico_anos\s+h/i);
   assert.match(sql, /REVOKE ALL ON FUNCTION/);
+});
+
+test("audited administrative class corrections bypass RAA only with an exact nonce", () => {
+  const sql = readFileSync(
+    new URL("../../../../supabase/migrations/20271117160000_guard_enrollment_prior_year_progression.sql", import.meta.url),
+    "utf8"
+  );
+  assert.match(sql, /public\.balcao_pauta_turma_correction_nonce/);
+  assert.match(sql, /nonce\.actor_id = auth\.uid\(\)/);
+  assert.match(sql, /nonce\.matricula_id = NEW\.id/);
+  assert.match(sql, /nonce\.turma_origem_id = OLD\.turma_id/);
+  assert.match(sql, /nonce\.turma_destino_id = NEW\.turma_id/);
+  assert.match(sql, /NEW\.ano_letivo IS NOT DISTINCT FROM OLD\.ano_letivo/);
 });
