@@ -4,6 +4,8 @@ import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
+import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission";
+import { recordAuditServer } from "@/lib/audit";
 
 export async function GET(
   req: Request,
@@ -58,6 +60,13 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Modo de lista inválido" }, { status: 400 });
     }
     const mode = modeParam === "ano_letivo" || modeParam === "operacional" ? modeParam : undefined;
+    const camposSensiveis = searchParams.get("sensiveis") === "true";
+    if (camposSensiveis) {
+      const authorised = await canExportSensitiveRosterFields(supabase, escolaId, user.id);
+      if (!authorised) {
+        return NextResponse.json({ ok: false, error: "Campos sensíveis reservados à Direcção" }, { status: 403 });
+      }
+    }
     const fallbackLogoUrl = `${new URL(req.url).origin}/insignia_med.png`;
 
     headers.set('Deprecation', 'true');
@@ -75,13 +84,23 @@ export async function GET(
       includeAllStatus,
       mode,
       enableQr,
+      camposSensiveis,
+      emissor: user.email ?? user.id,
       fallbackLogoUrl,
     });
+
+    if (camposSensiveis) {
+      await recordAuditServer({
+        escolaId, portal: "secretaria", acao: "LISTA_NOMINAL_SENSIVEL_EXPORTADA",
+        entity: "turmas", entityId: turmaId,
+        details: { modo: mode ?? "automatico", ano: year, campos: ["nascimento", "naturalidade", "bi"] },
+      });
+    }
 
     headers.set("Content-Type", "application/pdf");
     headers.set(
       "Content-Disposition",
-      `attachment; filename="mapa_frequencia_${turmaId}_${month || "lista"}.pdf"`
+      `attachment; filename="lista_escola_${escolaId}_turma_${turmaId}_${year}_${new Date().toISOString().slice(0,10)}.pdf"`
     );
     return new NextResponse(pdfBytes as any, {
       headers,

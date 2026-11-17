@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'apps/web/src/lib/documentos/listaNominal*'
+      - 'apps/web/src/lib/documentos/nominalA4.ts'
+      - 'apps/web/src/lib/documentos/rosterSensitivePermission.ts'
+      - 'apps/web/tests/fixtures/roster-pdf-*'
+      - 'apps/web/tests/fixtures/verify-roster-pdfs.py'
       - 'apps/web/src/lib/pdf/**'
       - 'apps/web/src/app/api/secretaria/turmas/**'
       - 'apps/web/src/app/api/secretaria/classes/**'
@@ -36,6 +40,24 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Testes de inclusão por sessão e estados
         run: pnpm -C apps/web exec node --import tsx --test tests/unit/roster-export-*.spec.ts tests/unit/current-year-roster-backend.spec.ts
+      - name: Instalar ferramentas de inspeção do PDF
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y poppler-utils
+      - name: Gerar e validar PDFs sintéticos (55 alunos, sem alunos, campos sensíveis)
+        env:
+          ROSTER_PDF_OUTPUT: ${{ runner.temp }}/klasse-roster-artifacts
+        run: |
+          pnpm -C apps/web exec node --import tsx tests/fixtures/roster-pdf-fixture.ts
+          python3 apps/web/tests/fixtures/verify-roster-pdfs.py "${ROSTER_PDF_OUTPUT}"
+      - name: Anexar páginas dos PDFs de teste
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: roster-pdf-fixtures-${{ github.run_id }}
+          path: ${{ runner.temp }}/klasse-roster-artifacts/*
+          if-no-files-found: warn
+          retention-days: 14
       - name: TypeScript
         env:
           NODE_OPTIONS: --max-old-space-size=6144
