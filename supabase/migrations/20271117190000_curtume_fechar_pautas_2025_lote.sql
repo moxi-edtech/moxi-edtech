@@ -50,7 +50,7 @@ BEGIN
 
   SELECT eu.papel INTO v_role FROM public.escola_users eu
     WHERE eu.escola_id=p_escola_id AND eu.user_id=v_actor
-      AND eu.papel IN ('admin','admin_escola','diretor','staff_admin')
+      AND eu.papel IN ('admin','admin_escola','diretor')
     LIMIT 1;
   IF v_role IS NULL THEN
     RAISE EXCEPTION 'CURTUME_BATCH_ROLE_FORBIDDEN' USING ERRCODE='42501';
