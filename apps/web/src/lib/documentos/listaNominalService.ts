@@ -95,7 +95,7 @@ export async function authorizeNominalExport(
 ): Promise<string> {
   const { data: row, error } = scope.turmaId
     ? await supabase.from("turmas").select("escola_id").eq("id", scope.turmaId).maybeSingle()
-    : await supabase.from("classes").select("escola_id").eq("id", scope.classeId).maybeSingle();
+    : await supabase.from("classes").select("escola_id").eq("id", scope.classeId ?? "").maybeSingle();
   if (error || !row?.escola_id) {
     throw new NominalRosterError(scope.turmaId ? "Turma não encontrada" : "Classe não encontrada", 404);
   }
