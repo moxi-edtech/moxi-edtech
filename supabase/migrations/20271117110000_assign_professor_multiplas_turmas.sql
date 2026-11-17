@@ -87,6 +87,20 @@ BEGIN
       RAISE EXCEPTION 'ASSIGN_BATCH_DISCIPLINA_INCOMPATIVEL: %', v_turma_id;
     END IF;
 
+    -- A mesma disciplina pode existir em várias versões curriculares.
+    -- Não sobrepor professor noutra versão da mesma turma.
+    IF EXISTS (
+      SELECT 1 FROM public.turma_disciplinas td
+      JOIN public.curso_matriz cm
+        ON cm.id = td.curso_matriz_id AND cm.escola_id = p_escola_id
+      WHERE td.escola_id = p_escola_id AND td.turma_id = v_turma_id
+        AND cm.disciplina_id = p_disciplina_id
+        AND td.professor_id IS NOT NULL
+        AND td.professor_id <> p_professor_id
+    ) THEN
+      RAISE EXCEPTION 'ASSIGN_BATCH_JA_ATRIBUIDA: %', v_turma_id;
+    END IF;
+
     SELECT tdp.professor_id INTO v_tdp_professor
     FROM public.turma_disciplinas_professores tdp
     WHERE tdp.escola_id = p_escola_id AND tdp.turma_id = v_turma_id
