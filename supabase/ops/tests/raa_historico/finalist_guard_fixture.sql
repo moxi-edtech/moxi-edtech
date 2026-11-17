@@ -26,4 +26,4 @@ CREATE TRIGGER test_curtume_history_destination_guard
   BEFORE INSERT OR UPDATE OF status ON public.historico_snapshot_locks
   FOR EACH ROW
   EXECUTE FUNCTION public.curtume_guard_legal_history_destination_v1();
-GRANT SELECT ON public.escolas,public.classes,public.historico_snapshot_locks TO authenticated;
+GRANT SELECT ON public.escolas,public.classes,public.historico_snapshot_locks,public.notas TO authenticated;
