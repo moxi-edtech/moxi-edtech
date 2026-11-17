@@ -84,9 +84,9 @@ test("rota XLSX da turma valida cliente e usa serviço nominal partilhado", () =
   assert.match(route, /loadNominalRoster/);
   assert.match(route, /toNominalXlsxRows/);
   assert.match(route, /LISTA_NOMINAL_XLSX_EXPORTADA/);
-  assert.match(route, /if \\(auditError\\) return deny/);
+  assert.match(route, /if \(auditError\) return deny/);
   assert.match(route, /polo_id/);
-  assert.doesNotMatch(route, /\\.from\\("matriculas"\\)/);
+  assert.doesNotMatch(route, /\.from\("matriculas"\)/);
 });
 
 test("XLSX da classe inteira preserva 55 alunos, turmas e processos distintos", () => {
@@ -137,22 +137,22 @@ test("PDF e Excel de classe/turma usam o mesmo leitor sem consultas nominais dup
     assert.match(route, /authorizeNominalExport/);
     assert.match(route, /loadNominalRoster/);
     assert.match(route, /LISTA_NOMINAL_XLSX_EXPORTADA/);
-    assert.match(route, /if \\(auditError\\) return deny/);
-    assert.doesNotMatch(route, /\\.from\\("matriculas"\\)/);
+    assert.match(route, /if \(auditError\) return deny/);
+    assert.doesNotMatch(route, /\.from\("matriculas"\)/);
     assert.doesNotMatch(route, /bi_numero|data_nascimento|naturalidade/);
   }
   assert.match(pdf, /loadNominalRoster/);
-  assert.doesNotMatch(pdf, /\\.from\\("matriculas"\\)/);
+  assert.doesNotMatch(pdf, /\.from\("matriculas"\)/);
   assert.match(service, /resolveEscolaIdForUser/);
   assert.match(service, /authorizeTurmasManage/);
-  assert.match(service, /\\.eq\\("escola_id", escolaId\\)/);
-  assert.match(service, /\\.eq\\("classe_id", classeId\\)/);
-  assert.match(service, /\\.eq\\("session_id", sessionId\\)/);
-  assert.match(service, /\\.in\\("turma_id", turmaIds\\)/);
+  assert.match(service, /\.eq\("escola_id", escolaId\)/);
+  assert.match(service, /\.eq\("classe_id", classeId\)/);
+  assert.match(service, /\.eq\("session_id", sessionId\)/);
+  assert.match(service, /\.in\("turma_id", turmaIds\)/);
   assert.match(service, /sessionIds.size !== 1/);
   assert.match(service, /applyKf2ListInvariants/);
   assert.match(service, /selectMatriculasDaLista/);
-  assert.match(service, /if \\(offset === maxRoster && \\(data\\?\\.length \\?\\? 0\\)\\)/);
+  assert.match(service, /if \(offset === maxRoster && \(data\?\.length \?\? 0\)\)/);
 });
 
 test("Central de Documentos permite Excel da classe sem depender de aluno selecionado", () => {
