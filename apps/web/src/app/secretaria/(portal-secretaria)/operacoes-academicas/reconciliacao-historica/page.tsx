@@ -32,11 +32,13 @@ type Item = {
       id: string; nome: string; nota: number | null; escala: number | null;
       arquivo: string | null; aba: string | null; linha: string | null;
       mapeada_na_turma: boolean | null;
+      nota_abaixo_metade: boolean;
     }>;
     arquivos: string[];
     contagem_notas: number;
     contagem_matriz: number | null;
     sem_mapeamento: number;
+    notas_abaixo_metade: number;
     divergencia_ano_documento: boolean;
     processo_verificado: boolean | null;
     evidencia_original_confirmada: false;
@@ -324,6 +326,9 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
                     </p>)}
                   {selected.pauta_historica.alertas.some((a) => a !== "CONFERIR_EXCEL_ORIGINAL") && (
                     <div role="status" className="rounded-xl border border-amber-300 px-3 py-2 text-xs text-amber-700">
+                      {selected.pauta_historica.notas_abaixo_metade > 0
+                        ? `${selected.pauta_historica.notas_abaixo_metade} nota(s) abaixo de metade da escala; confirmar regra e recurso no RAA. `
+                        : ""}
                       {selected.pauta_historica.sem_mapeamento > 0
                         ? `${selected.pauta_historica.sem_mapeamento} disciplina(s) da pauta não estão na atribuição actual da turma. `
                         : ""}
@@ -345,6 +350,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
                               <td className="p-2">
                                 <span>{linha.nome}</span>
                                 {linha.mapeada_na_turma === false && <span className="ml-1 text-amber-700">(mapear)</span>}
+                                {linha.nota_abaixo_metade && <p className="text-amber-700">Abaixo da metade — conferir decisão</p>}
                                 {linha.aba && linha.linha && <p className="text-muted-foreground">{linha.aba} · linha {linha.linha}</p>}
                               </td>
                               <td className="p-2 text-right tabular-nums">
