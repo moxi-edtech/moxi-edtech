@@ -399,7 +399,8 @@ export async function GET(req: Request) {
         id: vincData?.id,
         user_id: p.user_id,
         professor_id: legacyProfessorByProfile.get(p.user_id) ?? null,
-        nome: p.nome,
+        // Nome local da escola prevalece quando o docente atua em vários tenants.
+        nome: meta?.nome_completo || p.nome,
         email: p.email,
         telefone: p.telefone,
         cargo: mapPapelToCargo(vincData?.papel),
