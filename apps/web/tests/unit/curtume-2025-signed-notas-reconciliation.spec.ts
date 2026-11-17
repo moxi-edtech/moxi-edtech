@@ -52,3 +52,26 @@ test("server signs exact 2025 enrollment and returns safe typed result", () => {
   assert.match(desk, /returnTo/);
   assert.match(desk, /setRevision\(\(value\) => value \+ 1\)/);
 });
+
+test("transcription for a missing 2025 physical pauta is one audited atomic write", () => {
+  assert.match(sql, /curtume_2025_transcrever_pauta_fisica/);
+  assert.match(sql, /h\.ano_letivo=2025/);
+  assert.match(sql, /m\.ano_letivo=2025/);
+  assert.match(sql, /m\.session_id=v_ano/);
+  assert.match(sql, /t\.ano_letivo=2025/);
+  assert.match(sql, /FOR UPDATE OF h,m/);
+  assert.match(sql, /p_todas_disciplinas IS DISTINCT FROM true/);
+  assert.match(sql, /EXISTS \(SELECT 1 FROM public\.historico_disciplinas hd/);
+  assert.match(sql, /EXISTS \(SELECT 1 FROM public\.notas n/);
+  assert.match(sql, /cc\.ano_letivo_id=v_ano/);
+  assert.match(sql, /cm\.ativo/);
+  assert.match(sql, /IF v_total IS DISTINCT FROM v_unique/);
+  assert.match(sql, /'pauta_escola_oficial_transcrita'/);
+  assert.match(sql, /CURTUME_2025_PAUTA_FISICA_TRANSCRITA/);
+  assert.match(api, /const PhysicalPautaSchema = z\.object/);
+  assert.match(api, /acao: z\.literal\("transcrever_pauta_2025"\)/);
+  assert.match(api, /curtume_2025_transcrever_pauta_fisica/);
+  assert.match(api, /confirmacao: z\.literal\("CONFIRMO_PAUTA_2025"\)/);
+  assert.match(desk, /Guardar notas de 2025\/2026/);
+  assert.match(desk, /Transcrevi todas as disciplinas e notas finais/);
+});
