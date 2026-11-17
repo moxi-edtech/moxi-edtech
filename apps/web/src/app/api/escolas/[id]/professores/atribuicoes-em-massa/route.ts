@@ -164,6 +164,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         : error.message }, { status: conflict ? 409 : 400 })
     }
     if (Number(inserted) > 0) {
+      const { data: actorLink } = await s.from('escola_users')
+        .select('papel,role').eq('escola_id', escolaId).eq('user_id', user!.id).maybeSingle()
       // Uma única notificação agrupada, evitando N eventos de realtime.
       await dispatchProfessorNotificacao({
         escolaId,
@@ -171,7 +173,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         params: { turmaNome: `${inserted} turmas`, actionUrl: '/professor/turmas' },
         recipientIds: [parsed.data.professor_user_id],
         actorId: user!.id,
-        actorRole: 'secretaria',
+        actorRole: actorLink?.papel ?? actorLink?.role ?? 'admin_escola',
         agrupamentoTTLHoras: 12,
       }).catch(() => null)
     }
