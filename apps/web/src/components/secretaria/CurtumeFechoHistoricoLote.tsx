@@ -1,9 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { getHistoricBatchIssueAdvice, isHistoricBatchAcademicIssue } from "@/lib/academico/curtume-historic-batch-issues";
 
-type Problema = { matricula_id: string; codigo: string; detalhe?: string };
+type Problema = {
+  matricula_id: string;
+  codigo: string;
+  detalhe?: string;
+  aluno_id?: string | null;
+  aluno_nome?: string | null;
+  numero_processo?: string | null;
+  turma_nome?: string | null;
+};
 type BatchResult = {
   ok: boolean;
   lote_id: string;
@@ -19,7 +29,7 @@ type BatchResult = {
 const API = "/api/secretaria/operacoes-academicas/fecho-historico-lote";
 const MAX_PAGES = 40; // 25 histories/chunk; bounds repeated or corrupted responses.
 
-export function CurtumeFechoHistoricoLote({ onComplete }: { onComplete?: () => void } = {}) {
+export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComplete?: () => void; balcaoHref?: string } = {}) {
   const [abertos, setAbertos] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
   const [processados, setProcessados] = useState(0);
@@ -51,8 +61,8 @@ export function CurtumeFechoHistoricoLote({ onComplete }: { onComplete?: () => v
     if (running) return;
     if (!window.confirm(
       "Concluir em lote os históricos elegíveis de 2025/2026 da CURTUME, " +
-      "conforme as notas já importadas? Os conflitos ficarão pendentes; " +
-      "não serão alteradas notas, matrículas nem decisões de aprovação/reprovação."
+      "conforme as notas já importadas? Apenas casos válidos serão ratificados e fechados. " +
+      "As notas serão preservadas e os conflitos ficarão para revisão."
     )) return;
     setRunning(true);
     setDone(false);
@@ -135,7 +145,7 @@ export function CurtumeFechoHistoricoLote({ onComplete }: { onComplete?: () => v
           disabled={running || !abertos}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
           {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-          {running ? "A concluir…" : "Concluir históricos elegíveis"}
+          {running ? "A concluir…" : done && bloqueados > 0 ? "Reanalisar os pendentes" : "Concluir históricos elegíveis"}
         </button>
       </div>
       {(running || done || processados > 0) && (
@@ -149,18 +159,54 @@ export function CurtumeFechoHistoricoLote({ onComplete }: { onComplete?: () => v
       {error && <p role="alert" className="mt-3 flex items-start gap-2 text-red-700">
         <AlertTriangle className="h-4 w-4 shrink-0" />{error}
       </p>}
-      {pendencias.length > 0 && (
-        <details className="mt-3 text-foreground">
-          <summary className="cursor-pointer font-medium">Ver os {pendencias.length} casos para revisão</summary>
-          <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto">
-            {pendencias.map((issue, index) => (
-              <li key={issue.matricula_id + "-" + index} className="rounded-xl border border-border px-3 py-2">
-                <span className="font-mono text-xs">{issue.matricula_id}</span>
-                <span className="ml-2">{issue.codigo.replace(/_/g, " ")}</span>
-              </li>
-            ))}
-          </ul>
-        </details>
+      {pendencias.some((issue) => !isHistoricBatchAcademicIssue(issue.codigo)) && (
+        <p role="alert" className="mt-3 text-xs text-amber">
+          Alguns registos não puderam ser processados por uma falha de validação.
+          Repita o fecho; se persistir, contacte o suporte.
+        </p>
+      )}
+      {pendencias.some((issue) => isHistoricBatchAcademicIssue(issue.codigo)) && (
+        <section aria-label="Casos que exigem intervenção" className="mt-4 border-t border-border pt-4">
+          <h3 className="font-semibold text-foreground">{pendencias.filter((issue) => isHistoricBatchAcademicIssue(issue.codigo)).length} casos para intervenção</h3>
+          <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+            {pendencias.map((issue, index) => {
+              if (!isHistoricBatchAcademicIssue(issue.codigo)) return null;
+              const advice = getHistoricBatchIssueAdvice(issue.codigo);
+              const params = new URLSearchParams({
+                alunoId: issue.aluno_id ?? "",
+                action: "reenrollment",
+              });
+              const href = balcaoHref
+                ? balcaoHref + (balcaoHref.includes("?") ? "&" : "?") + params.toString()
+                : null;
+              return (
+                <div key={issue.matricula_id + "-" + index}
+                  className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border p-3">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="font-semibold text-foreground">
+                      {issue.aluno_nome || ("Matrícula " + issue.matricula_id.slice(0, 8))}
+                    </p>
+                    {(issue.turma_nome || issue.numero_processo) && (
+                      <p className="text-xs text-muted-foreground">
+                        {[issue.turma_nome, issue.numero_processo ? "Processo " + issue.numero_processo : null]
+                          .filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                    <p className="text-xs font-semibold">{advice.title}</p>
+                    <p className="text-xs text-muted-foreground">{advice.nextStep}</p>
+                  </div>
+                  {href && issue.aluno_id && (
+                    <Link href={href}
+                      className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-emerald hover:bg-muted">
+                      Resolver no Balcão
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
     </section>
   );

@@ -59,7 +59,14 @@ test("Director has one confirmation and may see only the real exceptions", () =>
   assert.match(component, /crypto\.randomUUID\(\)/);
   assert.match(component, /Concluir históricos elegíveis/);
   assert.match(component, /pendencias\.map/);
-  assert.match(page, /<CurtumeFechoHistoricoLote\s*\/>/);
+  assert.match(component, /getHistoricBatchIssueAdvice\(issue\.codigo\)/);
+  assert.match(component, /issue\.aluno_nome/);
+  assert.match(component, /Resolver no Balcão/);
+  assert.match(route, /enrichBlockingIssues\(ctx\.db, rawIssues/);
+  assert.match(route, /\.eq\("ano_letivo", 2025\)/);
+  assert.match(route, /\.eq\("snapshot_status", "aberto"\)/);
+  assert.match(route, /\.eq\("escola_id", CURTUME\)/);
+  assert.match(page, /<CurtumeFechoHistoricoLote balcaoHref=\{buildPortalHref\(escolaParam, "\/secretaria\/balcao"\)\} \/>/);
   assert.doesNotMatch(historicPage, /<CurtumeFechoHistoricoLote/);
   assert.match(page, /Rever apenas os históricos com pendências/);
   assert.match(page, /escolaId === "3744879f-2e19-4671-8995-78604302d8c5"/);
