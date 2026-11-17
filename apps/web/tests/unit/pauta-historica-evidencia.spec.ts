@@ -45,6 +45,17 @@ test("mismatched original year, process, scale and duplicated discipline are rev
     assert.ok(review.alertas.includes(code), code);
 });
 
+test("a below-half subject triggers manual RAA review and never automatic rejection", () => {
+  const review = buildPautaHistoricaReview([
+    nota("math", "Matemática", 4.8, "6classe-2025-26.xlsx"),
+    nota("pt", "Língua Portuguesa", 8.5, "6classe-2025-26.xlsx"),
+  ], new Set(["math","pt"]), "000220", 2025);
+  assert.equal(review.notas_abaixo_metade, 1);
+  assert.ok(review.disciplinas.find((d) => d.id === "math")?.nota_abaixo_metade);
+  assert.ok(review.alertas.includes("NOTAS_BAIXAS_VERIFICAR_RAA"));
+  assert.equal(review.evidencia_original_confirmada, false);
+});
+
 test("unknown or absent original XLSX must never be treated as certified by import metadata", () => {
   const review = buildPautaHistoricaReview([], null, null, 2025);
   assert.ok(review.alertas.includes("SEM_NOTAS_NA_PAUTA"));
