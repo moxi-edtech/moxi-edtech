@@ -247,6 +247,11 @@ export function BalcaoHistoricalAcademicRecovery({
               Abrir pauta de {snapshot.origem_ano}
             </button>
           )}
+          {(stage === "ratificacao" || stage === "fecho") && snapshot.tem_notas_reais === false && (
+            <p role="status" className="text-xs text-muted-foreground">
+              Notas do ano anterior não digitalizadas. Confira a pauta física: após a confirmação e o fecho, o RAA reconhecerá o resultado histórico.
+            </p>
+          )}
           {stage === "decisao" && (
             <p role="status" className="text-xs text-muted-foreground">
               {snapshot.tem_notas_reais === false ? "Sem notas registadas." : "Confirme a ata ou pauta antes de decidir."}

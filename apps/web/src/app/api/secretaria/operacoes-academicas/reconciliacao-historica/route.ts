@@ -57,6 +57,7 @@ const ActionSchema = z.discriminatedUnion("acao", [
 const Params = z.object({
   ano: z.coerce.number().int().min(2000).max(2100).optional(),
   tipo: z.enum(["pendentes", "historicos"]).default("pendentes"),
+  classe: z.coerce.number().int().min(1).max(13).optional(),
   pagina: z.coerce.number().int().min(1).max(10000).default(1),
 });
 
@@ -333,18 +334,49 @@ export async function GET(request: Request) {
       }, { headers: { "Cache-Control": "no-store" } });
     }
 
-    const { data, count, error: historyError } = await supabase
+    // Filter at the database BEFORE pagination. This allows staff to work
+    // through one class without paging through the whole school's history.
+    // The academic year and school are always resolved server-side.
+    let historiesQuery = supabase
       .from("historico_anos")
-      .select("id,matricula_id,aluno_id,ano_letivo,resultado_final,snapshot_status,alunos:aluno_id(nome,nome_completo,numero_processo)", { count: "exact" })
+      .select("id,matricula_id,aluno_id,ano_letivo,turma_id,resultado_final,snapshot_status,alunos:aluno_id(nome,nome_completo,numero_processo)", { count: "exact" })
       .eq("escola_id", escolaId).eq("ano_letivo", ano)
-      .eq("snapshot_status", "aberto")
+      .eq("snapshot_status", "aberto");
+
+    if (parsed.data.classe !== undefined) {
+      const { data: classes, error: classError } = await supabase
+        .from("classes").select("id")
+        .eq("escola_id", escolaId).eq("numero", parsed.data.classe);
+      if (classError) throw classError;
+      const classIds = (classes ?? []).map((row: any) => row.id as string);
+      const { data: turmas, count: turmaCount, error: turmaError } = classIds.length
+        ? await supabase.from("turmas").select("id", { count: "exact" })
+          .eq("escola_id", escolaId).eq("ano_letivo", ano)
+          .in("classe_id", classIds).limit(1000)
+        : { data: [], count: 0, error: null };
+      if (turmaError) throw turmaError;
+      if ((turmaCount ?? 0) > 1000) {
+        return NextResponse.json({ ok: false, error: "Há demasiadas turmas para este filtro. Refine a pesquisa." },
+          { status: 422 });
+      }
+      const turmaIds = (turmas ?? []).map((row: any) => row.id as string);
+      if (!turmaIds.length) {
+        return NextResponse.json({
+          ok: true, tipo: "historicos", ano, pagina, total: 0,
+          permite_escrita: permiteEscrita, items: [],
+        }, { headers: { "Cache-Control": "no-store" } });
+      }
+      historiesQuery = historiesQuery.in("turma_id", turmaIds);
+    }
+
+    const { data, count, error: historyError } = await historiesQuery
       .order("updated_at", { ascending: true }).order("id", { ascending: true })
       .range(from, to);
     if (historyError) throw historyError;
     const rows = data ?? [];
     const ids = rows.map((h: any) => h.matricula_id as string).filter(Boolean);
     const [origins, audit] = await Promise.all([
-      ids.length ? supabase.from("matriculas").select("id,status,status_fecho_origem").eq("escola_id", escolaId)
+      ids.length ? supabase.from("matriculas").select("id,status,status_fecho_origem,turmas:turma_id(nome)").eq("escola_id", escolaId)
         .in("id", ids) : Promise.resolve({ data: [], error: null }),
       ids.length ? supabase.from("audit_logs")
         .select("entity_id,actor_id,action,details").eq("escola_id", escolaId)
@@ -367,7 +399,7 @@ export async function GET(request: Request) {
           matricula_id: h.matricula_id, aluno_id: h.aluno_id,
           aluno_nome: student?.nome_completo ?? student?.nome ?? "Aluno sem nome",
           numero_processo: student?.numero_processo ?? null,
-          turma_nome: null, resultado_registado: h.resultado_final,
+          turma_nome: first(m?.turmas)?.nome ?? null, resultado_registado: h.resultado_final,
           status_origem: m?.status ?? null, snapshot_status: h.snapshot_status,
           ratificado, coorte_autorizada: true,
           proximo_passo: ratificado

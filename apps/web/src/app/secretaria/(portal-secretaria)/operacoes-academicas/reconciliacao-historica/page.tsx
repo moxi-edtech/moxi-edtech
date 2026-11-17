@@ -64,6 +64,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
     return Number.isInteger(query) && query >= 2000 ? query : new Date().getFullYear() - 1;
   });
   const [tipo, setTipo] = useState<Tipo>(() => searchParams?.get("tipo") === "historicos" ? "historicos" : "pendentes");
+  const [classe, setClasse] = useState<9 | null>(() => searchParams?.get("classe") === "9" ? 9 : null);
   const [pagina, setPagina] = useState(1);
   const [reload, setReload] = useState(0);
   const [data, setData] = useState<Queue | null>(null);
@@ -85,6 +86,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
     setError(null);
     try {
       const query = new URLSearchParams({ tipo, ano: String(ano), pagina: String(pagina) });
+      if (tipo === "historicos" && classe !== null) query.set("classe", String(classe));
       const response = await fetch(`/api/secretaria/operacoes-academicas/reconciliacao-historica?${query.toString()}`, {
         cache: "no-store",
       });
@@ -99,7 +101,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
     } finally {
       if (requestId === requestSeq.current) setLoading(false);
     }
-  }, [escolaId, tipo, ano, pagina]);
+  }, [escolaId, tipo, ano, pagina, classe]);
 
   useEffect(() => { void load(); return () => { requestSeq.current += 1; }; }, [load, reload]);
 
@@ -119,6 +121,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
 
   function changeTipo(next: Tipo) {
     setTipo(next);
+    setClasse(null);
     setPagina(1);
     setSelectedId(null);
     setError(null);
@@ -192,6 +195,14 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
               </button>
             ))}
           </div>
+          {tipo === "historicos" && (
+            <button type="button"
+              aria-pressed={classe === 9}
+              onClick={() => { setClasse((value) => value === 9 ? null : 9); setPagina(1); setSelectedId(null); }}
+              className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${classe === 9 ? "border-amber bg-amber text-white" : "border-border bg-background hover:bg-muted"}`}>
+              {classe === 9 ? "9.ª classe · filtro ativo" : "Filtrar 9.ª classe"}
+            </button>
+          )}
           <button type="button" disabled={loading} onClick={() => setReload((value) => value + 1)}
             className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium disabled:opacity-50">
             <RefreshCw className="h-4 w-4" /> Actualizar
