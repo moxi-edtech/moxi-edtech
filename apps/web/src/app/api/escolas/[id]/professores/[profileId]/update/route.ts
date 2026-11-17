@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
-import { authorizePedagogicalManage } from '@/lib/escola/disciplinas'
+import { authorizeTeacherManage } from '@/lib/escola/disciplinas'
 
 const UUID = z.string().uuid()
 const BodySchema = z.object({
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (resolved !== escolaId) {
       return NextResponse.json({ ok: false, error: 'Sem acesso a esta escola' }, { status: 403 })
     }
-    const permission = await authorizePedagogicalManage(supabase as any, escolaId, actorId)
+    const permission = await authorizeTeacherManage(supabase as any, escolaId, actorId)
     if (!permission.allowed) return NextResponse.json({ ok: false, error: 'Sem permissão para editar professores' }, { status: 403 })
 
     // A RPC atualiza dados pessoais, perfil e competências na mesma transação.
