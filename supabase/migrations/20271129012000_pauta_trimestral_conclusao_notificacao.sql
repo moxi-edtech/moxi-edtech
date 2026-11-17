@@ -56,6 +56,10 @@ AS $fn$
 DECLARE
   v_destinatario uuid;
 BEGIN
+  IF ev.payload->>'workflow' IS DISTINCT FROM 'pauta_concluida' THEN
+    RETURN;
+  END IF;
+
   IF ev.payload->>'workflow' = 'pauta_concluida' THEN
     -- Existing event-insertion policies permit authenticated inserts. Never
     -- notify on client-authored claims without the committed completion row.
@@ -99,20 +103,9 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Preserve legacy callers of notas.lancadas.
-  FOR v_destinatario IN
-    SELECT user_id FROM public.get_users_by_role(
-      ev.escola_id, ARRAY['secretaria','admin']::public.user_role[]
-    )
-  LOOP
-    PERFORM public.inserir_notificacao(
-      ev.escola_id, ev.id, v_destinatario,
-      'Notas lançadas — ' || coalesce(ev.payload->>'turma_nome','Turma'),
-      coalesce(ev.payload->>'professor_nome','Professor') || ' lançou notas. Disponível para conferência.',
-      'info'::public.notificacao_prioridade, 'Conferir notas',
-      '/secretaria/pautas?turma=' || coalesce(ev.payload->>'turma_id','')
-    );
-  END LOOP;
+  -- Unverified legacy nota events must not generate staff notifications.
+  -- Only a committed pauta_conclusoes row may notify Secretaria/Admin.
+  RETURN;
 END;
 $fn$;
 

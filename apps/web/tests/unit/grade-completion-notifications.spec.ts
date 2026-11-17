@@ -64,3 +64,9 @@ test("Save now sends draft grades and completion status is read through RLS", ()
   assert.match(migration, /CREATE POLICY pauta_conclusoes_professor_select/);
   assert.match(migration, /td\.professor_id = pr\.id/);
 });
+
+test("Only committed completion events can notify staff; legacy grade events cannot", () => {
+  assert.match(migration, /IS DISTINCT FROM 'pauta_concluida' THEN/);
+  assert.match(migration, /Unverified legacy nota events must not generate staff notifications/);
+  assert.doesNotMatch(migration, /Preserve legacy callers of notas\.lancadas/);
+});
