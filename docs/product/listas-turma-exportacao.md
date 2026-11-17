@@ -29,13 +29,28 @@ Acção directa com autorização por escola/polo; PDF com número de processo, 
 - **Auditoria fail-closed**: PDF por turma/classe, XLSX e cada documento nominal em lote; regista operador, escola, entidade, ano, modo, quantidade de linhas e presença de campos sensíveis, sem conteúdo.
 - **Reprocessamento**: idempotência versionada grava somente opções não pessoais. Lotes antigos com opções não recuperáveis são recusados em vez de mudar silenciosamente o modo.
 
-## Bloqueio estrutural de isolamento por polo
+## Isolamento entre polos — revisão do esquema (2026-11-17)
 
-O esquema instalado documentado em docs/command-center/cc003-isolamento-escola-polo-20261022.md não possui vínculo canónico operador ↔ polo ↔ turma/matrícula. Por isso, sem alterar RLS nem criar migração estrutural de domínio, NÃO é possível provar isolamento entre polos X e Y na mesma escola. Pedidos com poloId ou polo_id explícito são negados. Isso não equivale a segurança por polo para pedidos sem filtro. Merge deve permanecer bloqueado até existir modelo e testes RLS verdadeiros, aprovado pelo proprietário.
+Uma verificação somente de leitura no Supabase confirmou que **já existem** as relações
+`escola_polos`, `escola_turma_polos` e `escola_user_polos`. A afirmação anterior
+de ausência de modelo canónico estava desactualizada. As políticas
+`cc_polo_turmas_all` e `cc_polo_matriculas_all` estão configuradas como
+`RESTRICTIVE` para `authenticated`, e incluem
+`cc_security.allowed_turma(escola_id, turma_id, ano_letivo)`.
+
+Estado observado em 17/11: zero escolas com isolamento por polo activado,
+zero polos activos e zero vínculos turma↔polo ou operador↔polo.
+Dessa forma, não existem polos operacionais para realizar E2E autenticado real
+neste projecto. **Não confundir a presença de RLS com uma homologação de
+isolamento entre dois polos**: essa validação é obrigatória antes de
+activar o primeiro polo ou autorizar a exportação para um operador limitado a
+um polo. A emissão usa o cliente autenticado (não service_role), respeitando
+a RLS restritiva de turmas e matrículas. O worker de lotes conserva a
+autorização do evento e dos itens persistidos antes de utilizar service_role.
 
 ## Homologação pendente
 
 - PDFs sintéticos de 55 alunos, nomes repetidos com processos distintos, textos longos, acentos e turma vazia: extração de texto, paginação, bboxes de margens e PNGs anexados pelo CI.
 - Testes unitários e de contrato para Excel contra formula injection, estado parcial do lote, reprocessamento e verificações de tenant no worker.
-- Ainda não provado: E2E autenticado com duas escolas e dois polos, sessão expirada, screenshots nos cinco viewports e três zooms, testes de RLS da exportação em PostgreSQL real, volume real e impressão em papel.
-- Esta PR só contém código e testes. Nenhuma migration nova, migração aplicada ou deploy. Merge não autorizado.
+- Ainda não provado: E2E autenticado com dois polos activos, sessão expirada, volume real e impressão em papel; validar antes de activar o isolamento por polo.
+- Esta PR só contém código e testes. Nenhuma migration nova, migração aplicada ou deploy. A integração depende de CI verde e revisão da compatibilidade com a main; a activação futura do isolamento entre polos requer homologação específica.
