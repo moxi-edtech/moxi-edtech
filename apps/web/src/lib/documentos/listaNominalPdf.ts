@@ -424,7 +424,12 @@ export async function renderListaNominalPdfBuffer({
     const turmaAluno = turmaById.get(matricula.turma_id ?? "");
     const row: Record<string, string | number> = {
       id: matricula.id,
-      numero: matricula.numero_chamada ?? index + 1,
+      // A lista nominal corrente usa numeração sequencial, mesmo quando
+      // existem números de chamada históricos/descontinuados na base.
+      // Folhas de presença e relatórios históricos mantêm a chamada original.
+      numero: isAttendance || month || includeAllStatus
+        ? (matricula.numero_chamada ?? index + 1)
+        : index + 1,
       turma: turmaAluno?.nome ?? "—",
       nome: aluno?.nome ?? "—",
       genero:
