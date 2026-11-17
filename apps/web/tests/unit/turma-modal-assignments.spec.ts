@@ -126,3 +126,54 @@ describe('Secretaria: paginação e autorização consistentes', () => {
     assert.match(readDisciplinasRoute, /authorizeTeacherManage\(supabase as any, escolaId, user.id\)/)
   })
 })
+
+const replaceRoute = readFileSync(
+  new URL('../../src/app/api/escolas/[id]/professores/trocar-atribuicao/route.ts', import.meta.url), 'utf8',
+)
+const replaceMigration = readFileSync(
+  new URL('../../../../supabase/migrations/20271117172000_trocar_professor_turma_disciplina_atomic.sql', import.meta.url), 'utf8',
+)
+
+describe('Troca explícita de docente: segurança e UI', () => {
+  it('apresenta confirmação específica e não mistura substituições no lote', () => {
+    assert.match(modal, /Trocar professor/)
+    assert.match(modal, /Rever troca/)
+    assert.match(modal, /Confirmar troca/)
+    assert.match(modal, /setReplaceReviewed\(false\)/)
+    assert.match(modal, /professor_anterior_id: previousId/)
+    assert.match(modal, /professor_novo_user_id: next\.user_id/)
+    assert.doesNotMatch(modal, /replace_existing: true/)
+  })
+
+  it('autentica escola e autoriza só operadores de docentes no endpoint', () => {
+    assert.match(replaceRoute, /resolveEscolaIdForUser\(supabase as any, user.id, escolaId\)/)
+    assert.match(replaceRoute, /authorizeTeacherManage\(supabase as any, escolaId, user.id\)/)
+    assert.match(replaceRoute, /professor_anterior_id: UUID/)
+    assert.match(replaceRoute, /professor_novo_user_id: UUID/)
+    assert.match(replaceRoute, /\.eq\('escola_id', escolaId\)/)
+    assert.match(replaceRoute, /trocar_professor_turma_disciplina_atomic/)
+  })
+
+  it('utiliza a mesma lock e CAS do modelo individual e em lote', () => {
+    assert.match(replaceMigration, /klasse:teacher-assign:/)
+    assert.match(replaceMigration, /TEACHER_REPLACE_PREVIOUS_MISMATCH/)
+    assert.match(replaceMigration, /cc\.status = 'published'/)
+    assert.match(replaceMigration, /tu\.session_id = v_ano_id/)
+  })
+
+  it('valida carga horária e horários publicados antes de alterar os vínculos', () => {
+    assert.match(replaceMigration, /TEACHER_REPLACE_WORKLOAD_EXCEEDED/)
+    assert.match(replaceMigration, /TEACHER_REPLACE_SCHEDULE_CONFLICT/)
+    assert.match(replaceMigration, /ov\.status='publicada'/)
+    assert.match(replaceMigration, /os\.inicio<ts\.fim AND ts\.inicio<os\.fim/)
+  })
+
+  it('preserva identificadores, historial de notas e auditoria no mesmo commit', () => {
+    assert.match(replaceMigration, /UPDATE public\.turma_disciplinas_professores tdp/)
+    assert.match(replaceMigration, /UPDATE public\.quadro_horarios qh/)
+    assert.match(replaceMigration, /INSERT INTO public\.audit_logs/)
+    assert.doesNotMatch(replaceMigration, /UPDATE public\.notas|DELETE FROM public\.notas/)
+    assert.doesNotMatch(replaceMigration, /DELETE FROM public\.turma_disciplinas_professores/)
+    assert.match(replaceMigration, /REVOKE ALL ON FUNCTION public\.trocar_professor_turma_disciplina_atomic/)
+  })
+})
