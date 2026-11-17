@@ -30,7 +30,7 @@ BEGIN
   END IF;
 
   IF NOT public.user_has_role_in_school(
-    p_escola_id, ARRAY['admin_escola', 'admin', 'secretaria', 'staff_admin']
+    p_escola_id, ARRAY['admin_escola', 'admin', 'secretaria', 'staff_admin', 'admin_financeiro', 'secretaria_financeiro']
   ) THEN
     RAISE EXCEPTION 'AUTH: Permissão negada.';
   END IF;
