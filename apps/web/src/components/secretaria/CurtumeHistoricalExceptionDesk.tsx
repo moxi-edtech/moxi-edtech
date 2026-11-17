@@ -25,6 +25,7 @@ type ExceptionDossier = {
   disciplinas_pauta: PautaDisciplina[];
   notas_operacionais: OperationalGrade[];
   sourceComplete: boolean;
+  conferencia_validada: boolean;
 };
 
 type Props = {
@@ -42,6 +43,12 @@ export function CurtumeHistoricalExceptionDesk({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
+  const [referencia, setReferencia] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [signed, setSigned] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const supported = escolaId === CURTUME && /^[0-9a-f-]{36}$/i.test(matriculaId) &&
     /^[0-9a-f-]{36}$/i.test(alunoId);
@@ -68,6 +75,36 @@ export function CurtumeHistoricalExceptionDesk({
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [alunoId, escolaId, matriculaId, revision, supported]);
+
+  async function confirmarPauta() {
+    if (!dossier || !dossier.sourceComplete || !dossier.notas_operacionais.length ||
+        !dossier.disciplinas_pauta.length || !confirmed || saving ||
+        referencia.trim().length < 8 || motivo.trim().length < 12) return;
+    setSaving(true); setError(null); setNotice(null);
+    try {
+      const response = await fetch(API, {
+        method: "POST", cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acao: "conferir_notas_2025",
+          matricula_id: matriculaId,
+          aluno_id: alunoId,
+          referencia: referencia.trim(),
+          motivo: motivo.trim(),
+          confirmacao: "CONFIRMO_PAUTA_2025",
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || result.ok !== true || result.matricula_id !== matriculaId ||
+          result.conferencia_validada !== true)
+        throw Error(result.error ?? "Não foi possível confirmar a pauta.");
+      setSigned(true);
+      setNotice("Conferência auditada. As notas foram preservadas. Volte ao fecho em lote.");
+      setRevision((value) => value + 1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao confirmar a pauta.");
+    } finally { setSaving(false); }
+  }
 
   if (!supported) return null;
 
@@ -138,6 +175,49 @@ export function CurtumeHistoricalExceptionDesk({
               </div>
             </div>
           ) : null}
+          {hasOperational && dossier.sourceComplete && dossier.disciplinas_pauta.length > 0 && (
+            <div className="rounded-xl border border-border p-3">
+              {dossier.conferencia_validada || signed ? (
+                <p role="status" className="flex items-center gap-2 text-sm font-semibold text-emerald">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Pauta de 2025/2026 conferida pela Direção. As notas originais continuam preservadas.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Conferir notas e ratificar a pauta</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block text-xs font-semibold">
+                      Referência da pauta física
+                      <input value={referencia} onChange={(event) => setReferencia(event.target.value)}
+                        maxLength={180} placeholder="Ex.: Pauta assinada, folha 12"
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
+                    </label>
+                    <label className="block text-xs font-semibold">
+                      Motivo da conferência
+                      <input value={motivo} onChange={(event) => setMotivo(event.target.value)}
+                        maxLength={500} placeholder="Ex.: Notas conferidas pela Direção"
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
+                    </label>
+                  </div>
+                  <label className="flex items-start gap-2 text-xs">
+                    <input type="checkbox" checked={confirmed}
+                      onChange={(event) => setConfirmed(event.target.checked)}
+                      className="mt-0.5 accent-amber" />
+                    Conferi ambas as fontes. Para o histórico de 2025/2026, a pauta oficial
+                    prevalece; os lançamentos operacionais permanecem preservados.
+                  </label>
+                  <button type="button" onClick={() => void confirmarPauta()}
+                    disabled={saving || loading || !confirmed ||
+                      referencia.trim().length < 8 || motivo.trim().length < 12}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 font-semibold text-white disabled:opacity-50">
+                    <CheckCircle2 className="h-4 w-4" />
+                    {saving ? "A confirmar…" : "Confirmar pauta de 2025/2026"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {notice && <p role="status" className="text-xs font-medium text-emerald">{notice}</p>}
           {missingDocument && (
             <p role="status" className="text-xs text-amber-700">
               Não há classificações históricas associadas a esta matrícula. Registe apenas notas
