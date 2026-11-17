@@ -21,6 +21,12 @@ DECLARE
 BEGIN
   PERFORM pg_advisory_xact_lock(hashtextextended('curtume:pauta:2025:classe6:curriculo',0));
 
+  -- Fresh/test installations need no CURTUME seed; the migration must be safe there.
+  IF NOT EXISTS (SELECT 1 FROM public.historico_anos
+                  WHERE escola_id=v_escola AND ano_letivo=2025) THEN
+    RETURN;
+  END IF;
+
   SELECT id INTO STRICT v_ano
     FROM public.anos_letivos WHERE escola_id=v_escola AND ano=2025;
   SELECT id,curso_id INTO STRICT v_classe,v_curso
