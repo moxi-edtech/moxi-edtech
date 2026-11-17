@@ -202,6 +202,12 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.escola_users eu
     WHERE eu.user_id = p_profile_id AND eu.escola_id <> p_escola_id
+  ) AND NOT EXISTS (
+    SELECT 1 FROM public.professores p
+    WHERE p.profile_id = p_profile_id AND p.escola_id <> p_escola_id
+  ) AND NOT EXISTS (
+    SELECT 1 FROM public.teachers t
+    WHERE t.profile_id = p_profile_id AND t.escola_id <> p_escola_id
   ) THEN
     UPDATE public.profiles SET
       nome = v_nome,
