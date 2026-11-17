@@ -4,6 +4,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTeacherManage } from '@/lib/escola/disciplinas'
 import { dispatchProfessorNotificacao } from '@/lib/notificacoes/dispatchProfessorNotificacao'
+import { buildTeacherAssignmentCandidates } from '@/lib/professores/assignment-candidates'
 
 export const dynamic = 'force-dynamic'
 
@@ -100,45 +101,19 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       return NextResponse.json({ ok: false, error: 'Lista de atribuições demasiado grande.' }, { status: 409 })
     }
 
-    const curriculoIds = new Set((curriculos || []).map((c: any) => c.id))
-    const turmaById = new Map<string, any>(turmas.map((t: any): [string, any] => [t.id, t]))
-    const matrizById = new Map<string, any>(matrizes.map((m: any): [string, any] => [m.id, m]))
-    const occupiedByTurma = new Map<string, string>()
-    for (const l of links || []) {
-      if (l.professor_id) occupiedByTurma.set(l.turma_id, l.professor_id)
-    }
-    for (const oferta of ofertas || []) {
-      if (oferta.professor_id) occupiedByTurma.set(oferta.turma_id, oferta.professor_id)
-    }
-
-    const candidates = new Map<string, { curso_matriz_id: string; professor_id: string | null }>()
-    for (const oferta of ofertas || []) {
-      const t = turmaById.get(oferta.turma_id)
-      const matriz = matrizById.get(oferta.curso_matriz_id)
-      if (!t || !matriz || matriz.ativo !== true || !curriculoIds.has(matriz.curso_curriculo_id)) continue
-      if (matriz.curso_id !== t.curso_id || matriz.classe_id !== t.classe_id) continue
-
-      // Two published matrices for one offering is a curricular conflict,
-      // not permission to silently pick whichever row PostgREST returns first.
-      if (candidates.has(t.id) && candidates.get(t.id)?.curso_matriz_id !== oferta.curso_matriz_id) {
-        return NextResponse.json({ ok: false, error: 'A disciplina tem versões curriculares duplicadas nesta turma.' }, { status: 409 })
-      }
-      candidates.set(t.id, {
-        curso_matriz_id: oferta.curso_matriz_id,
-        professor_id: occupiedByTurma.get(t.id) ?? null,
-      })
-    }
-
-    const items = turmas.flatMap((t: any) => {
-      const oferta = candidates.get(t.id)
-      return oferta ? [{
-        turma_id: t.id,
-        nome: t.nome ?? 'Turma',
-        turno: t.turno ?? null,
-        curso_matriz_id: oferta.curso_matriz_id,
-        professor_id: oferta.professor_id,
-      }] : []
+    const selection = buildTeacherAssignmentCandidates({
+      turmas: turmas as any[],
+      currentPublishedCurriculoIds: (curriculos || []).map((c: any) => c.id),
+      matrizes: matrizes as any[],
+      ofertas: (ofertas || []) as any[],
+      links: (links || []) as any[],
     })
+    if (!selection.ok) {
+      return NextResponse.json({
+        ok: false, error: 'A disciplina tem versões curriculares duplicadas nesta turma.',
+      }, { status: 409 })
+    }
+    const { items } = selection
     return NextResponse.json({ ok: true, items })
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : 'Falha ao carregar turmas' }, { status: 500 })
