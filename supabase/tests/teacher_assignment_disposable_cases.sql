@@ -171,6 +171,22 @@ BEGIN
   END IF;
 END $tests$;
 
+-- A draft version of the same current-year offering must retain the
+-- original professor. Reassignment is not a retroactive history rewrite.
+INSERT INTO public.curso_curriculos(id,escola_id,ano_letivo_id,curso_id,classe_id,status,version)
+VALUES ('90000000-0000-0000-0000-000000000018',
+'10000000-0000-0000-0000-000000000001','50000000-0000-0000-0000-000000000001',
+'60000000-0000-0000-0000-000000000001','70000000-0000-0000-0000-000000000008','draft',2);
+INSERT INTO public.curso_matriz(id,escola_id,curso_id,classe_id,disciplina_id,curso_curriculo_id,carga_horaria_semanal,ativo)
+VALUES ('a0000000-0000-0000-0000-000000000018',
+'10000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000001',
+'70000000-0000-0000-0000-000000000008','80000000-0000-0000-0000-000000000001',
+'90000000-0000-0000-0000-000000000018',2,true);
+INSERT INTO public.turma_disciplinas(id,escola_id,turma_id,curso_matriz_id,professor_id,carga_horaria_semanal)
+VALUES ('c0000000-0000-0000-0000-000000000018',
+'10000000-0000-0000-0000-000000000001','b0000000-0000-0000-0000-000000000002',
+'a0000000-0000-0000-0000-000000000018','40000000-0000-0000-0000-000000000001',2);
+
 -- Explicit replacement: keep the link row, validate CAS, load and overlapping
 -- published schedules, audit the decision, leave historical classes untouched.
 INSERT INTO public.horario_versoes(id,escola_id,turma_id,status) VALUES
@@ -247,6 +263,11 @@ BEGIN
     WHERE turma_id='b0000000-0000-0000-0000-000000000002'
       AND professor_id <> '40000000-0000-0000-0000-000000000002'
   ) THEN RAISE EXCEPTION 'PUBLISHED_TIMETABLE_NOT_UPDATED'; END IF;
+  IF EXISTS(
+    SELECT 1 FROM public.turma_disciplinas
+    WHERE curso_matriz_id='a0000000-0000-0000-0000-000000000018'
+      AND professor_id <> '40000000-0000-0000-0000-000000000001'
+  ) THEN RAISE EXCEPTION 'DRAFT_TEACHER_HISTORY_CHANGED'; END IF;
   IF EXISTS(
     SELECT 1 FROM public.turma_disciplinas
     WHERE turma_id='b0000000-0000-0000-0000-000000000005'
