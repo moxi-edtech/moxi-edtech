@@ -25,7 +25,7 @@ permissions:
 jobs:
   synthetic-browser-evidence:
     name: 5 viewports x 3 zoom levels x consolidated portal scenarios
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright 1.57 Chromium is unsupported on ubuntu-26.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
