@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { requireFeature } from "@/lib/plan/requireFeature";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
+import { authorizeNominalExport, NominalRosterError } from "@/lib/documentos/listaNominalService";
 import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission";
 
 export async function GET(
@@ -24,26 +23,7 @@ export async function GET(
     }
 
     const { id: turmaId } = await params;
-    const { data: turmaScope } = await supabase
-      .from("turmas")
-      .select("escola_id")
-      .eq("id", turmaId)
-      .maybeSingle();
-
-    const escolaId = await resolveEscolaIdForUser(
-      supabase as any,
-      user.id,
-      (turmaScope as any)?.escola_id ?? null
-    );
-    if (!escolaId) {
-      return NextResponse.json(
-        { ok: false, error: "Escola não encontrada" },
-        { status: 400 }
-      );
-    }
-
-    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
-    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+    const escolaId = await authorizeNominalExport(supabase, user.id, { turmaId });
 
     const { searchParams } = new URL(req.url);
     const isAttendance = searchParams.get("attendance") === "true";
@@ -117,7 +97,9 @@ export async function GET(
       headers,
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    if (e instanceof NominalRosterError) {
+      return NextResponse.json({ ok: false, error: e.message }, { status: e.status });
+    }
     console.error("[secretaria/turmas/pdf] Falha na geração da lista");
     return NextResponse.json(
       { ok: false, error: "Não foi possível gerar a lista" },

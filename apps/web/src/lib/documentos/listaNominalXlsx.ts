@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { LISTA_NOMINAL_MODES, type ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
+import { compareNominalSortableRows, LISTA_NOMINAL_MODES, type ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
 
 /** Exportação nominal simples, distinta da pauta digital (notas). */
 export type NominalXlsxRow = {
@@ -13,12 +13,7 @@ export type NominalXlsxRow = {
 
 /** Ordenação estável por turma e chamada, mantendo números ausentes em branco. */
 export function sortClasseNominalRows(rows: readonly NominalXlsxRow[]): NominalXlsxRow[] {
-  return [...rows].sort((a, b) =>
-    a.turma.localeCompare(b.turma, "pt-PT", { numeric: true, sensitivity: "base" }) ||
-    (a.chamada ?? Number.MAX_SAFE_INTEGER) - (b.chamada ?? Number.MAX_SAFE_INTEGER) ||
-    a.nome.localeCompare(b.nome, "pt-PT") ||
-    a.processo.localeCompare(b.processo, "pt-PT")
-  );
+  return [...rows].sort(compareNominalSortableRows);
 }
 
 /**

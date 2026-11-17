@@ -12,10 +12,12 @@ test("a lista nominal simples não exige plano com QR", () => {
   ]) {
     const route = from(file);
     assert.match(route, /if \(enableQr/);
-    assert.match(route, /authorizeTurmasManage/);
-    assert.match(route, /resolveEscolaIdForUser/);
+    assert.match(route, /authorizeNominalExport/);
     assert.doesNotMatch(route, /await requireFeature\("doc_qr_code"[^;]+;\n\n    const authz/);
   }
+  const service = from("lib/documentos/listaNominalService.ts");
+  assert.match(service, /authorizeTurmasManage/);
+  assert.match(service, /resolveEscolaIdForUser/);
   const renderer = from("lib/documentos/listaNominalPdf.ts");
   assert.match(renderer, /enableQr = false/);
   assert.match(renderer, /enableQr \? randomUUID\(\) : undefined/);
