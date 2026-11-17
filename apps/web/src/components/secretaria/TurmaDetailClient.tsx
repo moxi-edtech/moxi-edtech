@@ -793,6 +793,7 @@ export default function TurmaDetailClient({
   }, [escolaParam, turmaId, periodoId]);
 
   const [includeAllStatus, setIncludeAllStatus] = useState(false);
+  const [listaMode, setListaMode] = useState<"auto" | "ano_letivo" | "operacional">("auto");
   const [isAlbum, setIsAlbum] = useState(false);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -801,6 +802,7 @@ export default function TurmaDetailClient({
     const params = new URLSearchParams();
     if (isAlbum) params.set("album", "true");
     if (includeAllStatus) params.set("all_status", "true");
+    if (listaMode !== "auto") params.set("mode", listaMode);
     const extra = params.toString() ? `?${params.toString()}` : "";
     window.open(`/api/secretaria/turmas/${turmaId}/alunos/pdf${extra}`, "_blank");
   };
@@ -1803,6 +1805,19 @@ export default function TurmaDetailClient({
             </div>
 
             <div className="flex flex-wrap items-center gap-4 mb-6 p-3 bg-slate-50 rounded-xl border border-slate-200/60">
+              <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
+                Modo da lista nominal
+                <select
+                  aria-label="Modo da lista nominal"
+                  className="rounded-xl border border-border bg-card px-2 py-1.5 text-sm"
+                  value={listaMode}
+                  onChange={(event) => setListaMode(event.target.value as "auto" | "ano_letivo" | "operacional")}
+                >
+                  <option value="auto">Conforme ano letivo seleccionado</option>
+                  <option value="ano_letivo">Lista do ano letivo (histórica)</option>
+                  <option value="operacional">Lista operacional actual</option>
+                </select>
+              </label>
               <label className="flex items-center gap-2 cursor-pointer group">
                 <input 
                   type="checkbox" 

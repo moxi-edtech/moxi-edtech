@@ -56,6 +56,11 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const year = searchParams.get("year") || String(new Date().getFullYear());
     const includeAllStatus = searchParams.get("all_status") === "true";
+    const modeParam = searchParams.get("mode");
+    if (modeParam && modeParam !== "ano_letivo" && modeParam !== "operacional") {
+      return NextResponse.json({ ok: false, error: "Modo de lista inválido" }, { status: 400 });
+    }
+    const mode = modeParam === "ano_letivo" || modeParam === "operacional" ? modeParam : undefined;
     const fallbackLogoUrl = `${new URL(req.url).origin}/insignia_med.png`;
 
     const pdfBytes = await renderListaNominalPdfBuffer({
@@ -64,6 +69,7 @@ export async function GET(
       classeId,
       year,
       includeAllStatus,
+      mode,
       fallbackLogoUrl,
     });
 

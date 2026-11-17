@@ -6,6 +6,7 @@ import { createInstitutionalPdf, detectImageFormat, fetchImageBytes } from "@/li
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { drawTable, type Column } from "@/lib/pdf/table";
+import { LISTA_NOMINAL_MODES, classifyMatricula, modoPadraoDaSessao, resumoExclusoes, selectMatriculasDaLista, type ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
 
 type Client = SupabaseClient<Database>;
 
@@ -30,7 +31,7 @@ type EscolaRow = {
 };
 
 type ClasseRow = { nome: string | null };
-type SessaoRow = { ano: number | null };
+type SessaoRow = { ano: number | null; ativo?: boolean | null };
 
 type AlunoNested = {
   id: string;
@@ -51,6 +52,7 @@ type MatriculaRow = {
   turma_id: string | null;
   numero_chamada: number | null;
   status: string;
+  ativo: boolean | null;
   alunos: AlunoNested | AlunoNested[] | null;
 };
 
@@ -71,6 +73,7 @@ type ListaNominalPdfParams = {
   disciplinaId?: string | null;
   isAlbum?: boolean;
   includeAllStatus?: boolean;
+  mode?: ListaNominalMode;
   fallbackLogoUrl?: string | null;
 };
 
@@ -167,6 +170,7 @@ export async function renderListaNominalPdfBuffer({
   disciplinaId,
   isAlbum = false,
   includeAllStatus = false,
+  mode: requestedMode,
   fallbackLogoUrl,
 }: ListaNominalPdfParams) {
   const normalizedYear = year || String(new Date().getFullYear());
@@ -281,7 +285,7 @@ export async function renderListaNominalPdfBuffer({
       ? supabase.from("classes").select("nome").eq("id", turma.classe_id).eq("escola_id", escolaId).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     turma.session_id
-      ? supabase.from("anos_letivos").select("ano").eq("id", turma.session_id).maybeSingle()
+      ? supabase.from("anos_letivos").select("ano, ativo").eq("id", turma.session_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     disciplinaId && turmaId
       ? Promise.all([
@@ -303,6 +307,7 @@ export async function renderListaNominalPdfBuffer({
   const escola = escolaRes.data as unknown as EscolaRow | null;
   const classe = classeRes.data as unknown as ClasseRow | null;
   const sessao = sessaoRes.data as unknown as SessaoRow | null;
+  const mode = requestedMode ?? modoPadraoDaSessao(sessao?.ativo);
   if (!isClasseScope) {
     classeNome = classe?.nome ?? "—";
   }
@@ -323,6 +328,7 @@ export async function renderListaNominalPdfBuffer({
         turma_id,
         numero_chamada,
         status,
+        ativo,
         alunos (
           id,
           nome,
@@ -350,12 +356,7 @@ export async function renderListaNominalPdfBuffer({
       pageQuery = pageQuery.eq("turma_id", turmaId);
     }
 
-    if (!includeAllStatus) {
-      pageQuery = pageQuery
-        .eq("ativo", true)
-        .in("status", ["ativo", "ativa", "active"]);
-    }
-
+    // Uma política para turma, classe e lote: nunca perder a matrícula histórica.
     pageQuery = applyKf2ListInvariants(pageQuery, {
       limit: pageSize,
       maxLimit: pageSize,
@@ -404,7 +405,8 @@ export async function renderListaNominalPdfBuffer({
     attendanceData = (frequenciasData ?? []) as unknown as FrequenciaRow[];
   }
 
-  const matriculas = (matriculasData ?? []) as unknown as MatriculaRow[];
+  const seleccao = selectMatriculasDaLista(matriculasData, mode, includeAllStatus);
+  const matriculas = seleccao.incluidos;
   const sortedMatriculas = isClasseScope
     ? [...matriculas].sort((a, b) => {
         const turmaA = turmaById.get(a.turma_id ?? "")?.nome ?? "";
@@ -442,6 +444,7 @@ export async function renderListaNominalPdfBuffer({
       responsavel: aluno?.responsavel ?? "—",
       telefone_responsavel: aluno?.telefone_responsavel ?? "—",
       status: matricula.status,
+      categoria: classifyMatricula(matricula.status),
     };
 
     if (aluno?.profiles?.avatar_url) {
@@ -542,6 +545,7 @@ export async function renderListaNominalPdfBuffer({
         [
           `Ano letivo: ${sessao?.ano ?? turma.ano_letivo ?? "—"}`,
           isClasseScope ? (cursoNome ? `Curso: ${cursoNome}` : "") : `Sala: ${turma.sala ?? "—"}`,
+          "Modo: " + LISTA_NOMINAL_MODES[mode],
           disciplinaNome ? `Disciplina: ${disciplinaNome}` : "",
           professorNome ? `Prof: ${professorNome}` : "",
         ],
@@ -550,6 +554,9 @@ export async function renderListaNominalPdfBuffer({
         metaFontSize
       );
 
+      const excluidosCount = seleccao.totalOrigem - alunos.length;
+      const resumoDaLista = "Alunos na lista: " + alunos.length + " | Excluídos: " + excluidosCount + " (" + resumoExclusoes(seleccao.excluidos) + ")";
+      metaLineTwo.push(...fitMetaLines([resumoDaLista], width - 2 * margin, font, 8));
       for (const line of metaLineOne) {
         currentPage.drawText(line, { x: margin, y: cursorY, font: boldFont, size: metaFontSize });
         cursorY -= lineHeight;
@@ -722,13 +729,11 @@ export async function renderListaNominalPdfBuffer({
             { header: "Documento (BI)", key: "bi", width: 80 },
           ];
 
-          // If showing all status, highlight the non-active ones
-          if (includeAllStatus) {
-            alunos.forEach(a => {
-              if (a.status !== "ativo" && a.status !== "ativa") {
-                a.nome = `${a.nome} [${String(a.status).toUpperCase()}]`;
-              }
-            });
+          // Identificação explícita: transferida/cancelada não aparece como activa.
+          for (const aluno of alunos) {
+            if (["transferida", "trancada", "cancelada", "pendente", "desconhecida"].includes(String(aluno.categoria))) {
+              aluno.nome = String(aluno.nome) + " [" + String(aluno.status).toUpperCase() + "]";
+            }
           }
         }
 
