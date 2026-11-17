@@ -40,6 +40,33 @@ BEGIN
     END IF;
   END IF;
 
+  -- Same-class turma transfers are not academic progression. They stay
+  -- protected by the existing turma-transfer RLS, evidence and capacity
+  -- guards, but must not re-evaluate an unrelated prior-year RAA decision.
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.turma_id IS DISTINCT FROM OLD.turma_id
+       AND NEW.escola_id IS NOT DISTINCT FROM OLD.escola_id
+       AND NEW.aluno_id IS NOT DISTINCT FROM OLD.aluno_id
+       AND NEW.session_id IS NOT DISTINCT FROM OLD.session_id
+       AND NEW.ano_letivo IS NOT DISTINCT FROM OLD.ano_letivo
+       AND NEW.origem_transicao_matricula_id IS NOT DISTINCT FROM OLD.origem_transicao_matricula_id
+       AND NEW.status IS NOT DISTINCT FROM OLD.status
+       AND NEW.ativo IS NOT DISTINCT FROM OLD.ativo
+       AND EXISTS (
+         SELECT 1 FROM public.turmas previous
+         JOIN public.turmas next ON next.id=NEW.turma_id
+         WHERE previous.id=OLD.turma_id
+           AND previous.escola_id=NEW.escola_id
+           AND next.escola_id=NEW.escola_id
+           AND previous.session_id=next.session_id
+           AND previous.ano_letivo=next.ano_letivo
+           AND previous.curso_id=next.curso_id
+           AND previous.classe_id=next.classe_id
+       ) THEN
+      RETURN NEW;
+    END IF;
+  END IF;
+
   -- An explicit same-year class CORRECTION is not a progression. Only the
   -- existing retificar_classe_matricula RPC may issue the protected,
   -- one-student, one-source/target nonce within its transaction. Direct
