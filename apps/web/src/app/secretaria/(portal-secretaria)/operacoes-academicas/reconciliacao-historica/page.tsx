@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileCheck2, LockKeyhole, RefreshCw } from "lucide-react";
 import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
+import { CurtumeFechoHistoricoLote } from "@/components/secretaria/CurtumeFechoHistoricoLote";
 
 type Resultado = "aprovado" | "reprovado" | "concluido";
 type Item = {
@@ -197,6 +198,10 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
           O histórico permanece aberto até à ratificação e ao fechamento oficial, sem criação de notas fictícias.
         </p>
       </div>
+
+      {escolaId === "3744879f-2e19-4671-8995-78604302d8c5" && ano === 2025 && tipo === "historicos" && (
+        <CurtumeFechoHistoricoLote onComplete={() => setReload((value) => value + 1)} />
+      )}
 
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex flex-wrap items-end gap-3">
