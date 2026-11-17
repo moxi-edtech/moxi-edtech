@@ -18,7 +18,7 @@ ALTER TABLE public.matriculas
 -- Preserve the real wrapper's optional individual-journey predicate. In this
 -- minimal test the pupil qualifies through the real scoped historical cohort.
 CREATE FUNCTION public.balcao_origem_percurso_elegivel(uuid,uuid)
-RETURNS boolean LANGUAGE sql STABLE AS $ SELECT false $;
+RETURNS boolean LANGUAGE sql STABLE AS $test_eligibility$ SELECT false $test_eligibility$;
 
 -- The academic branch is an additive override of the installed canonical RAA.
 \ir ../../../migrations/20271117173000_raa_historical_finalists_and_voided_destinations.sql
