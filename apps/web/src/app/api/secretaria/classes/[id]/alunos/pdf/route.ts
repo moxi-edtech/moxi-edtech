@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { requireFeature } from "@/lib/plan/requireFeature";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
+import { authorizeNominalExport, NominalRosterError } from "@/lib/documentos/listaNominalService";
 import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission";
 
 export const dynamic = "force-dynamic";
@@ -26,31 +25,7 @@ export async function GET(
     }
 
     const { id: classeId } = await params;
-    const { data: classeScope } = await supabase
-      .from("classes")
-      .select("escola_id")
-      .eq("id", classeId)
-      .maybeSingle();
-
-    const escolaId = await resolveEscolaIdForUser(
-      supabase as any,
-      user.id,
-      (classeScope as any)?.escola_id ?? null
-    );
-    if (!escolaId) {
-      return NextResponse.json(
-        { ok: false, error: "Escola não encontrada" },
-        { status: 400 }
-      );
-    }
-
-    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
-    if (!authz.allowed) {
-      return NextResponse.json(
-        { ok: false, error: authz.reason || "Sem permissão" },
-        { status: 403 }
-      );
-    }
+    const escolaId = await authorizeNominalExport(supabase, user.id, { classeId });
 
     const { searchParams } = new URL(req.url);
     const year = searchParams.get("year") || String(new Date().getFullYear());
@@ -110,7 +85,10 @@ export async function GET(
     );
 
     return new NextResponse(pdfBytes as any, { headers });
-  } catch {
+  } catch (error) {
+    if (error instanceof NominalRosterError) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
+    }
     console.error("[secretaria/classes/alunos/pdf] Falha na geração da lista");
     return NextResponse.json(
       { ok: false, error: "Não foi possível gerar a lista" },
