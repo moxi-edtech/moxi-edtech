@@ -24,14 +24,17 @@ test("turma details do not count old, concluded or transferred enrolments as cur
   assert.doesNotMatch(query, /concluid[oa]|transferid[oa]/);
 });
 
-test("printed lists are scoped to a single academic session and paginate", () => {
+test("PDF, XLSX e lotes lêem matrícula na mesma sessão e sem truncagem silenciosa", () => {
   const pdf = source("lib/documentos/listaNominalPdf.ts");
-  assert.match(pdf, /sessionIds\.size !== 1/);
-  assert.match(pdf, /\.eq\("session_id", turma\.session_id\)/);
-  assert.match(pdf, /selectMatriculasDaLista/);
-  assert.doesNotMatch(pdf, /\.eq\("ativo", true\)/);
-  assert.match(pdf, /for \(let offset = 0; offset < maxRoster; offset \+= pageSize\)/);
-  assert.match(pdf, /maxLimit: pageSize/);
+  const service = source("lib/documentos/listaNominalService.ts");
+  assert.match(pdf, /loadNominalRoster/);
+  assert.doesNotMatch(pdf, /\\.from\\("matriculas"\\)/);
+  assert.match(service, /sessionIds\\.size !== 1/);
+  assert.match(service, /\\.eq\\("session_id", sessionId\\)/);
+  assert.match(service, /selectMatriculasDaLista/);
+  assert.match(service, /for \\(let offset = 0; offset <= maxRoster; offset \\+= pageSize\\)/);
+  assert.match(service, /maxLimit: pageSize/);
+  assert.doesNotMatch(service, /\\.eq\\("ativo", true\\)/);
 });
 
 test("enrolment counts are independent of the page of rows returned", () => {
