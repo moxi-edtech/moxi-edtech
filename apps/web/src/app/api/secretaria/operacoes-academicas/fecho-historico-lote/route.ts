@@ -31,11 +31,135 @@ async function context() {
   return { db, allowed: true, response: null };
 }
 
-/** Read-only count. The write RPC independently validates every pupil. */
-export async function GET() {
+/** Read-only preview or a single, strictly school-scoped exception dossier. */
+export async function GET(request: Request) {
   try {
     const ctx = await context();
     if (!ctx.allowed) return ctx.response!;
+
+    const { searchParams } = new URL(request.url);
+    const matriculaId = searchParams.get("matricula_id");
+    const alunoId = searchParams.get("aluno_id");
+    if (matriculaId !== null || alunoId !== null) {
+      if (!matriculaId || !alunoId ||
+          !z.string().uuid().safeParse(matriculaId).success ||
+          !z.string().uuid().safeParse(alunoId).success)
+        return NextResponse.json({ ok: false, error: "Aluno ou matrícula inválidos." }, { status: 400 });
+      const { data: history, error: historyError } = await ctx.db.from("historico_anos")
+        .select("id,matricula_id,aluno_id,turma_id,resultado_final,snapshot_status")
+        .eq("escola_id", CURTUME).eq("ano_letivo", 2025)
+        .eq("matricula_id", matriculaId).eq("aluno_id", alunoId)
+        .eq("snapshot_status", "aberto").maybeSingle();
+      if (historyError) throw historyError;
+      if (!history) return NextResponse.json({ ok: false,
+        error: "Não existe histórico aberto de 2025/2026 para esta matrícula." }, { status: 404 });
+
+      const [{ data: origin, error: originError }, historicalResponse, notesResponse] = await Promise.all([
+        ctx.db.from("matriculas")
+          .select("id,aluno_id,ano_letivo,session_id,status,ativo,status_fecho_origem,turma_id")
+          .eq("escola_id", CURTUME).eq("id", matriculaId).eq("aluno_id", alunoId).maybeSingle(),
+        ctx.db.from("historico_disciplinas")
+          .select("disciplina_id,disciplina_nome,nota_final,notas_detalhe")
+          .eq("historico_ano_id", history.id).limit(151),
+        ctx.db.from("notas")
+          .select("id,avaliacao_id,valor,is_isento")
+          .eq("escola_id", CURTUME).eq("matricula_id", matriculaId).limit(151),
+      ]);
+      if (originError || historicalResponse.error || notesResponse.error) {
+        throw originError ?? historicalResponse.error ?? notesResponse.error;
+      }
+      if (!origin || origin.ano_letivo !== 2025)
+        return NextResponse.json({ ok: false, error: "Matrícula de origem incompatível." }, { status: 409 });
+
+      const historicas = (historicalResponse.data ?? []) as Array<{
+        disciplina_id: string; disciplina_nome: string | null;
+        nota_final: number | null; notas_detalhe: Record<string, unknown> | null;
+      }>;
+      const operacionais = (notesResponse.data ?? []) as Array<{
+        id: string; avaliacao_id: string; valor: number; is_isento: boolean | null;
+      }>;
+      if (historicas.length > 150 || operacionais.length > 150)
+        return NextResponse.json({ ok: false, error: "Há dados a mais para uma conferência individual segura." }, { status: 422 });
+
+      const evaluationIds = [...new Set(operacionais.map((n) => n.avaliacao_id))];
+      const evaluations = evaluationIds.length
+        ? await ctx.db.from("avaliacoes")
+            .select("id,nome,trimestre,ano_letivo,turma_disciplina_id")
+            .eq("escola_id", CURTUME).eq("ano_letivo", 2025).in("id", evaluationIds)
+        : { data: [], error: null };
+      if (evaluations.error) throw evaluations.error;
+      const evals = (evaluations.data ?? []) as Array<{
+        id: string; nome: string; trimestre: number; ano_letivo: number; turma_disciplina_id: string;
+      }>;
+      const tdIds = [...new Set(evals.map((ev) => ev.turma_disciplina_id))];
+      const memberships = tdIds.length
+        ? await ctx.db.from("turma_disciplinas")
+            .select("id,curso_matriz_id").eq("escola_id", CURTUME).in("id", tdIds)
+        : { data: [], error: null };
+      if (memberships.error) throw memberships.error;
+      const memberById = new Map(((memberships.data ?? []) as Array<{
+        id: string; curso_matriz_id: string;
+      }>).map((item) => [item.id, item]));
+      const cmIds = [...new Set([...memberById.values()].map((item) => item.curso_matriz_id))];
+      const matrices = cmIds.length
+        ? await ctx.db.from("curso_matriz").select("id,disciplina_id")
+            .eq("escola_id", CURTUME).in("id", cmIds)
+        : { data: [], error: null };
+      if (matrices.error) throw matrices.error;
+      const matrixById = new Map(((matrices.data ?? []) as Array<{
+        id: string; disciplina_id: string;
+      }>).map((item) => [item.id, item]));
+      const disciplineIds = [...new Set([...matrixById.values()].map((item) => item.disciplina_id))];
+      const catalog = disciplineIds.length
+        ? await ctx.db.from("disciplinas_catalogo").select("id,nome")
+            .eq("escola_id", CURTUME).in("id", disciplineIds)
+        : { data: [], error: null };
+      if (catalog.error) throw catalog.error;
+      const disciplineById = new Map(((catalog.data ?? []) as Array<{
+        id: string; nome: string;
+      }>).map((item) => [item.id, item.nome]));
+      const evalById = new Map(evals.map((ev) => [ev.id, ev]));
+      // Any grade with an unknown evaluation remains visible, never silently
+      // omitted as if it were reconciled or absent.
+      const operationalGrades = operacionais.map((note) => {
+        const evaluation = evalById.get(note.avaliacao_id);
+        const membership = evaluation ? memberById.get(evaluation.turma_disciplina_id) : null;
+        const matrix = membership ? matrixById.get(membership.curso_matriz_id) : null;
+        return {
+          id: note.id,
+          disciplina: matrix ? disciplineById.get(matrix.disciplina_id) ?? "Disciplina não identificada" :
+            "Avaliação sem vínculo identificável",
+          avaliacao: evaluation?.nome ?? "Avaliação não identificada",
+          trimestre: evaluation?.trimestre ?? null,
+          valor: note.valor,
+          is_isento: note.is_isento === true,
+          originVerified: Boolean(evaluation && matrix && matrix.disciplina_id),
+        };
+      });
+
+      const sourceComplete = origin.status === "concluido" &&
+        origin.ativo === false && origin.status_fecho_origem === "override_admin" &&
+        origin.session_id != null;
+      const issueCode = !sourceComplete ? "ORIGEM_HISTORICA_INCOMPATIVEL" :
+        operacionais.length > 0 ? "NOTAS_OPERACIONAIS_EXIGEM_RECONCILIACAO" :
+        historicas.length === 0 ? "SEM_NOTAS_HISTORICAS" :
+        historicas.some((h) => h.nota_final == null || !h.disciplina_id) ?
+          "PAUTA_HISTORICA_INCONSISTENTE" : "RAA_RESULTADO_NAO_RECONHECIDO";
+      return NextResponse.json({
+        ok: true, matricula_id: matriculaId, aluno_id: alunoId,
+        ano_letivo: "2025/2026", motivo: issueCode,
+        resultado_final: history.resultado_final,
+        disciplinas_pauta: historicas.map((h) => ({
+          id: h.disciplina_id,
+          nome: h.disciplina_nome,
+          nota_final: h.nota_final,
+          referencia: typeof h.notas_detalhe?.arquivo === "string" ? h.notas_detalhe.arquivo : null,
+        })),
+        notas_operacionais: operationalGrades,
+        sourceComplete,
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
+
     const { count, error } = await ctx.db.from("historico_anos")
       .select("id", { count: "exact", head: true })
       .eq("escola_id", CURTUME).eq("ano_letivo", 2025)
