@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { getHistoricBatchIssueAdvice } from "@/lib/academico/curtume-historic-batch-issues";
+import { getHistoricBatchIssueAdvice, isHistoricBatchAcademicIssue } from "@/lib/academico/curtume-historic-batch-issues";
 
 type Problema = {
   matricula_id: string;
@@ -159,11 +159,18 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
       {error && <p role="alert" className="mt-3 flex items-start gap-2 text-red-700">
         <AlertTriangle className="h-4 w-4 shrink-0" />{error}
       </p>}
-      {pendencias.length > 0 && (
+      {pendencias.some((issue) => !isHistoricBatchAcademicIssue(issue.codigo)) && (
+        <p role="alert" className="mt-3 text-xs text-amber">
+          Alguns registos não puderam ser processados por uma falha de validação.
+          Repita o fecho; se persistir, contacte o suporte.
+        </p>
+      )}
+      {pendencias.some((issue) => isHistoricBatchAcademicIssue(issue.codigo)) && (
         <section aria-label="Casos que exigem intervenção" className="mt-4 border-t border-border pt-4">
-          <h3 className="font-semibold text-foreground">{pendencias.length} casos para intervenção</h3>
+          <h3 className="font-semibold text-foreground">{pendencias.filter((issue) => isHistoricBatchAcademicIssue(issue.codigo)).length} casos para intervenção</h3>
           <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
             {pendencias.map((issue, index) => {
+              if (!isHistoricBatchAcademicIssue(issue.codigo)) return null;
               const advice = getHistoricBatchIssueAdvice(issue.codigo);
               const params = new URLSearchParams({
                 alunoId: issue.aluno_id ?? "",
