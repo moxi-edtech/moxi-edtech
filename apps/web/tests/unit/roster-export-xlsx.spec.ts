@@ -78,17 +78,15 @@ test("nomes que parecem fórmulas não executam no Excel", () => {
   }
 });
 
-test("rota XLSX limita escola/sessão, aplica seleção canónica e exige auditoria", () => {
+test("rota XLSX da turma valida cliente e usa serviço nominal partilhado", () => {
   const route = readFileSync(new URL("../../src/app/api/secretaria/turmas/[id]/alunos/xlsx/route.ts", import.meta.url), "utf8");
-  assert.match(route, /resolveEscolaIdForUser/);
-  assert.match(route, /authorizeTurmasManage/);
-  assert.match(route, /\.eq\("escola_id", escolaId\)/);
-  assert.match(route, /\.eq\("session_id", turma\.session_id\)/);
-  assert.match(route, /applyKf2ListInvariants/);
-  assert.match(route, /selectMatriculasDaLista/);
+  assert.match(route, /authorizeNominalExport/);
+  assert.match(route, /loadNominalRoster/);
+  assert.match(route, /toNominalXlsxRows/);
   assert.match(route, /LISTA_NOMINAL_XLSX_EXPORTADA/);
-  assert.match(route, /if \(auditError\) return deny/);
+  assert.match(route, /if \\(auditError\\) return deny/);
   assert.match(route, /polo_id/);
+  assert.doesNotMatch(route, /\\.from\\("matriculas"\\)/);
 });
 
 test("XLSX da classe inteira preserva 55 alunos, turmas e processos distintos", () => {
@@ -127,20 +125,34 @@ test("XLSX da classe inteira preserva 55 alunos, turmas e processos distintos", 
   assert.equal(sheetRows.slice(8).find((row) => row[1] === "010054")?.[0] ?? "", "");
 });
 
-test("rota XLSX de classe inteira tem limites de escola, classe, ano, sessão e auditoria", () => {
-  const route = readFileSync(new URL("../../src/app/api/secretaria/classes/[id]/alunos/xlsx/route.ts", import.meta.url), "utf8");
-  for (const guard of [
-    "resolveEscolaIdForUser", "authorizeTurmasManage",
-    '.eq("escola_id", escolaId)', '.eq("classe_id", classeId)',
-    '.eq("ano_letivo", year)', '.eq("session_id", sessionId)',
-    '.in("turma_id", turmaIds)', "selectMatriculasDaLista",
-    "applyKf2ListInvariants", "sortClasseNominalRows",
-    "LISTA_NOMINAL_XLSX_EXPORTADA", "if (auditError) return deny",
-    "Cache-Control", "polo_id", "sessionIds.size !== 1",
+test("PDF e Excel de classe/turma usam o mesmo leitor sem consultas nominais duplicadas", () => {
+  const src = (path: string) => readFileSync(new URL("../../src/" + path, import.meta.url), "utf8");
+  const service = src("lib/documentos/listaNominalService.ts");
+  const pdf = src("lib/documentos/listaNominalPdf.ts");
+  for (const path of [
+    "app/api/secretaria/classes/[id]/alunos/xlsx/route.ts",
+    "app/api/secretaria/turmas/[id]/alunos/xlsx/route.ts",
   ]) {
-    assert.ok(route.includes(guard), "guard ausente na rota por classe: " + guard);
+    const route = src(path);
+    assert.match(route, /authorizeNominalExport/);
+    assert.match(route, /loadNominalRoster/);
+    assert.match(route, /LISTA_NOMINAL_XLSX_EXPORTADA/);
+    assert.match(route, /if \\(auditError\\) return deny/);
+    assert.doesNotMatch(route, /\\.from\\("matriculas"\\)/);
+    assert.doesNotMatch(route, /bi_numero|data_nascimento|naturalidade/);
   }
-  assert.doesNotMatch(route, /bi_numero|data_nascimento|naturalidade/);
+  assert.match(pdf, /loadNominalRoster/);
+  assert.doesNotMatch(pdf, /\\.from\\("matriculas"\\)/);
+  assert.match(service, /resolveEscolaIdForUser/);
+  assert.match(service, /authorizeTurmasManage/);
+  assert.match(service, /\\.eq\\("escola_id", escolaId\\)/);
+  assert.match(service, /\\.eq\\("classe_id", classeId\\)/);
+  assert.match(service, /\\.eq\\("session_id", sessionId\\)/);
+  assert.match(service, /\\.in\\("turma_id", turmaIds\\)/);
+  assert.match(service, /sessionIds.size !== 1/);
+  assert.match(service, /applyKf2ListInvariants/);
+  assert.match(service, /selectMatriculasDaLista/);
+  assert.match(service, /if \\(offset === maxRoster && \\(data\\?\\.length \\?\\? 0\\)\\)/);
 });
 
 test("Central de Documentos permite Excel da classe sem depender de aluno selecionado", () => {
