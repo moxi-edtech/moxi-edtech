@@ -481,6 +481,7 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
   onReset:  () => void
 }) {
   const atribuicoes = prof.atribuicoes ?? []
+  const totalTurmas = new Set(atribuicoes.map((a) => a.turma_id).filter(Boolean)).size
   const labels      = Array.from(new Set(
     atribuicoes.map((a) => `${a.turma_nome ?? "Turma"} · ${a.disciplina_nome ?? "Disciplina"}`)
   ))
@@ -545,7 +546,7 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
           }
           <span className="text-slate-300">·</span>
           <span className="text-slate-500">
-            {atribuicoes.length > 0 ? `${atribuicoes.length} turma(s)` : "Sem turmas"}
+            {totalTurmas > 0 ? `${totalTurmas} turma(s)` : "Sem turmas neste ano"}
           </span>
         </div>
         <PendenciasResumoBadge total={prof.pendencias_total ?? 0} />
