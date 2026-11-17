@@ -91,3 +91,14 @@ test("audited administrative class corrections bypass RAA only with an exact non
   assert.match(sql, /nonce\.turma_destino_id = NEW\.turma_id/);
   assert.match(sql, /NEW\.ano_letivo IS NOT DISTINCT FROM OLD\.ano_letivo/);
 });
+
+test("same-class turma transfers keep their existing audited transfer guards", () => {
+  const sql = readFileSync(
+    new URL("../../../../supabase/migrations/20271117160000_guard_enrollment_prior_year_progression.sql", import.meta.url),
+    "utf8"
+  );
+  assert.match(sql, /previous\.classe_id=next\.classe_id/);
+  assert.match(sql, /previous\.curso_id=next\.curso_id/);
+  assert.match(sql, /previous\.session_id=next\.session_id/);
+  assert.match(sql, /NEW\.turma_id IS DISTINCT FROM OLD\.turma_id/);
+});
