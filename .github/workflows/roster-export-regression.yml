@@ -6,6 +6,8 @@ on:
       - 'apps/web/src/lib/documentos/listaNominal*'
       - 'apps/web/src/lib/documentos/nominalA4.ts'
       - 'apps/web/src/lib/documentos/rosterSensitivePermission.ts'
+      - 'apps/web/src/lib/documentos/rosterBatchPolicy.ts'
+      - 'apps/web/src/app/api/secretaria/turmas/**/alunos/csv/**'
       - 'apps/web/tests/fixtures/roster-pdf-*'
       - 'apps/web/tests/fixtures/verify-roster-pdfs.py'
       - 'apps/web/src/lib/pdf/**'

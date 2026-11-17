@@ -6,7 +6,6 @@ import { requireFeature } from "@/lib/plan/requireFeature";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
 import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission";
-import { recordAuditServer } from "@/lib/audit";
 
 type TurmaRow = {
   id: string;
@@ -78,6 +77,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const enableQr = searchParams.get("qr") === "true";
       if (enableQr || isAlbum || isAttendance || month) await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
 
+      let linhasExportadas = 0;
       const pdfBytes = await renderListaNominalPdfBuffer({
         supabase: supabase as any,
         escolaId,
@@ -92,15 +92,25 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         enableQr,
         camposSensiveis,
         emissor: user.email ?? user.id,
+        onRowsCount: (count) => { linhasExportadas = count; },
         fallbackLogoUrl,
       });
 
-      if (camposSensiveis) {
-        await recordAuditServer({
-          escolaId, portal: "secretaria", acao: "LISTA_NOMINAL_SENSIVEL_EXPORTADA",
-          entity: "turmas", entityId: turmaId,
-          details: { modo: mode ?? "automatico", ano: year, campos: ["nascimento", "naturalidade", "bi"] },
+      if (!month && !isAttendance && !isAlbum) {
+        const { error: auditError } = await supabase.from("audit_logs").insert({
+          escola_id: escolaId, portal: "secretaria", acao: "LISTA_NOMINAL_PDF_EXPORTADA",
+          tabela: "turmas", entity: "turmas", entity_id: turmaId,
+          details: {
+            actor_id: user.id, turma_id: turmaId,
+            modo: mode ?? "conforme_sessao", ano: year,
+            linhas: linhasExportadas,
+            campos_sensiveis: camposSensiveis,
+            campos: camposSensiveis ? ["nascimento", "naturalidade", "bi"] : [],
+          },
         });
+        if (auditError) {
+          return NextResponse.json({ ok: false, error: "Auditoria indisponível. Lista não emitida." }, { status: 503 });
+        }
       }
 
       headers.set("Content-Type", "application/pdf");
@@ -199,8 +209,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       },
       { headers }
     );
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ ok: false, error: "Não foi possível consultar a lista" }, { status: 500 });
   }
 }

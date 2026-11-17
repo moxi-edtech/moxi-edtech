@@ -6,6 +6,7 @@ import {
   Inbox,
   CreditCard,
   FileText,
+  FileSpreadsheet,
   RefreshCcw,
   UserRound,
   GraduationCap,
@@ -34,12 +35,14 @@ export function CommandCenterActionBar({
   label = "O que deseja fazer?",
   hasStudent = true,
   pendingActions = [],
+  onOpenRoster,
 }: {
   value: BalcaoActionId;
   onChange: (actionId: BalcaoActionId) => void;
   label?: string;
   hasStudent?: boolean;
   pendingActions?: ReadonlyArray<BalcaoActionId>;
+  onOpenRoster?: () => void;
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
@@ -90,6 +93,17 @@ export function CommandCenterActionBar({
             </button>
           );
         })}
+        {onOpenRoster ? (
+          <button
+            type="button"
+            onClick={onOpenRoster}
+            aria-label="Listas de turmas — abrir Central de Documentos"
+            className="inline-flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-amber/40 bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-amber/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-amber" aria-hidden="true" />
+            Listas de turmas
+          </button>
+        ) : null}
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import type { BalcaoActionId } from "../src/lib/balcao/action-registry";
 import { readBalcaoStudentId, setBalcaoLocationContext } from "../src/lib/balcao/return-context";
 import { FeedbackProvider } from "../src/components/feedback/FeedbackSystem";
 import ThemeSwitcherVisualFixture from "./ThemeSwitcherVisualFixture";
+import RosterExportVisualFixture from "./RosterExportVisualFixture";
 import "./fixture.css";
 import "../src/app/globals.css";
 import "../src/app/theme-print.css";
@@ -364,7 +365,8 @@ function BalcaoFinancialRefreshFixture(){
   </main>;
 }
 
-if (target && name === "theme-switcher") createRoot(target).render(<ThemeSwitcherVisualFixture />);
+if (target && name === "roster-export") createRoot(target).render(<RosterExportVisualFixture />);
+else if (target && name === "theme-switcher") createRoot(target).render(<ThemeSwitcherVisualFixture />);
 else if (target && name === "balcao-financial-refresh") createRoot(target).render(<FeedbackProvider><BalcaoFinancialRefreshFixture /></FeedbackProvider>);
 else if (target && name === "school-intelligence") { /* Mounted above with synthetic auth. */ }
 else if (target && name === "command-center-explorer") createRoot(target).render(<CommandCenterVisualFixture />);

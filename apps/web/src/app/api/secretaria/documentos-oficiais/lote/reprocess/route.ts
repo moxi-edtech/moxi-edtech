@@ -4,6 +4,9 @@ import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
 import { inngest } from "@/inngest/client"
+import { readNominalBatchKey } from "@/lib/documentos/rosterBatchPolicy"
+import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission"
+import { requireFeature } from "@/lib/plan/requireFeature"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -35,13 +38,29 @@ export async function POST(req: Request) {
 
     const { data: job, error: jobError } = await supabase
       .from("pautas_lote_jobs")
-      .select("id, tipo, periodo_letivo_id")
+      .select("id, tipo, periodo_letivo_id, idempotency_key, created_by")
       .eq("id", parsed.data.job_id)
       .eq("escola_id", escolaId)
       .maybeSingle()
 
     if (jobError || !job) {
       return NextResponse.json({ ok: false, error: jobError?.message || "Lote não encontrado" }, { status: 404 })
+    }
+
+    const prefs = job.tipo === "lista_nominal"
+      ? readNominalBatchKey(job.idempotency_key)
+      : null;
+    if (job.tipo === "lista_nominal" && (!prefs || prefs.actorId !== job.created_by)) {
+      // Falhar fechado é preferível a reemitir lista histórica com outro modo.
+      return NextResponse.json({
+        ok: false, error: "Modo original do lote não recuperável. Emita um novo lote.",
+      }, { status: 409 });
+    }
+    if (prefs?.isAlbum) {
+      await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
+      if (!await canExportSensitiveRosterFields(supabase, escolaId, user.id)) {
+        return NextResponse.json({ ok: false, error: "Sem permissão para álbum" }, { status: 403 });
+      }
     }
 
     const { data: itens, error: itensError } = await supabase
@@ -83,6 +102,12 @@ export async function POST(req: Request) {
         turma_ids: turmaIds,
         tipo: job.tipo,
         periodo_letivo_id: job.periodo_letivo_id ?? null,
+        ...(prefs ? {
+          month: prefs.month,
+          is_album: prefs.isAlbum,
+          include_all_status: prefs.includeAllStatus,
+          mode: prefs.mode,
+        } : {}),
       },
     })
 
