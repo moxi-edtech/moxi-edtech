@@ -1,130 +1,175 @@
--- Single tenant-scoped safeguard for future enrolments. This is not a
--- Curtume-specific patch: any path that inserts/activates a destination
--- enrolment must respect an already recorded prior-year academic decision.
--- Historical enrolments, marks, payments and invoices are not modified.
-CREATE OR REPLACE FUNCTION public.guard_enrollment_prior_year_progression_v1()
+-- Authoritative RAA guard for future destination activation.
+-- The RAA RPC is the only source of academic progression decisions.
+-- An unfinished historic result, even if labelled 'aprovado' in an open
+-- snapshot, is NOT silently promoted to a legally ratified RAA decision.
+-- Draft/reserved enrolments can be prepared without making pupils active.
+-- Existing records, grades, receipts, and ledger are not rewritten.
+CREATE OR REPLACE FUNCTION public.guard_enrollment_raa_progression_v1()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = 'pg_catalog', 'public'
 AS $function$
 DECLARE
-  v_target_year integer;
-  v_target_class integer;
-  v_target_course uuid;
-  v_origin_year integer;
-  v_origin_class integer;
-  v_origin_is_exam boolean;
-  v_result text;
+  v_destination record;
+  v_origin record;
+  v_raa jsonb;
+  v_decision text;
+  v_destino text;
+  v_blocked boolean;
+  v_origin_classe integer;
+  v_dest_classe integer;
 BEGIN
-  -- No academic eligibility is inferred for drafts, historic closures or
-  -- cancellations. Validate when a destination becomes a reservation/active.
   IF NEW.turma_id IS NULL
-     OR public.canonicalize_matricula_status_text(NEW.status)
-        NOT IN ('pendente','ativo') THEN
-    RETURN NEW;
+     OR public.canonicalize_matricula_status_text(NEW.status) <> 'ativo' THEN
+    RETURN NEW; -- reservations remain possible; activation is authoritative
   END IF;
 
-  -- Prevent unrelated updates from retroactively invalidating legacy data.
   IF TG_OP = 'UPDATE' THEN
+    -- Avoid invalidating already-active legacy registrations during ordinary
+    -- unrelated changes (payment, contact, dates, etc.).
     IF NEW.escola_id IS NOT DISTINCT FROM OLD.escola_id
-     AND NEW.aluno_id IS NOT DISTINCT FROM OLD.aluno_id
-     AND NEW.turma_id IS NOT DISTINCT FROM OLD.turma_id
-     AND NEW.session_id IS NOT DISTINCT FROM OLD.session_id
-     AND NEW.ano_letivo IS NOT DISTINCT FROM OLD.ano_letivo
-     AND NEW.origem_transicao_matricula_id IS NOT DISTINCT FROM OLD.origem_transicao_matricula_id
-     AND NEW.status IS NOT DISTINCT FROM OLD.status
-     AND NEW.ativo IS NOT DISTINCT FROM OLD.ativo THEN
+       AND NEW.aluno_id IS NOT DISTINCT FROM OLD.aluno_id
+       AND NEW.turma_id IS NOT DISTINCT FROM OLD.turma_id
+       AND NEW.session_id IS NOT DISTINCT FROM OLD.session_id
+       AND NEW.ano_letivo IS NOT DISTINCT FROM OLD.ano_letivo
+       AND NEW.origem_transicao_matricula_id IS NOT DISTINCT FROM OLD.origem_transicao_matricula_id
+       AND NEW.status IS NOT DISTINCT FROM OLD.status
+       AND NEW.ativo IS NOT DISTINCT FROM OLD.ativo THEN
       RETURN NEW;
     END IF;
   END IF;
 
-  SELECT t.ano_letivo, coalesce(t.classe_num, c.numero),
-         t.curso_id
-    INTO v_target_year, v_target_class, v_target_course
-  FROM public.turmas t
-  LEFT JOIN public.classes c ON c.id = t.classe_id
-  WHERE t.id = NEW.turma_id AND t.escola_id = NEW.escola_id;
+  SELECT id, escola_id, curso_id, ano_letivo, session_id
+    INTO v_destination
+  FROM public.turmas
+  WHERE id = NEW.turma_id AND escola_id = NEW.escola_id;
 
-  -- The canonical context guard already rejects bad school/year/class links.
-  -- Without a known numerical grade, do not guess progression from names.
-  IF v_target_year IS NULL OR v_target_class IS NULL THEN
+  IF v_destination.id IS NULL THEN
+    RAISE EXCEPTION 'ENROLLMENT_TARGET_NOT_FOUND' USING ERRCODE='23514';
+  END IF;
+
+  -- When transition origin is provided, check that exact student, tenant and
+  -- academic year. Otherwise locate the school's previous-year enrolment.
+  -- New admissions with no earlier enrolment at this school are unaffected.
+  IF NEW.origem_transicao_matricula_id IS NOT NULL THEN
+    SELECT m.id, m.escola_id, m.aluno_id, m.turma_id, m.ano_letivo,
+           t.curso_id AS curso_id
+      INTO v_origin
+    FROM public.matriculas m
+    JOIN public.turmas t ON t.id=m.turma_id AND t.escola_id=m.escola_id
+    WHERE m.id=NEW.origem_transicao_matricula_id
+      AND m.escola_id=NEW.escola_id
+      AND m.aluno_id=NEW.aluno_id;
+
+    IF v_origin.id IS NULL THEN
+      RAISE EXCEPTION 'ENROLLMENT_TRANSITION_ORIGIN_INVALID'
+        USING ERRCODE='23514';
+    END IF;
+  ELSE
+    SELECT m.id, m.escola_id, m.aluno_id, m.turma_id, m.ano_letivo,
+           t.curso_id AS curso_id
+      INTO v_origin
+    FROM public.matriculas m
+    JOIN public.turmas t ON t.id=m.turma_id AND t.escola_id=m.escola_id
+    WHERE m.escola_id=NEW.escola_id
+      AND m.aluno_id=NEW.aluno_id
+      AND m.ano_letivo=v_destination.ano_letivo - 1
+    ORDER BY m.created_at DESC, m.id DESC
+    LIMIT 1;
+  END IF;
+
+  IF v_origin.id IS NULL THEN
     RETURN NEW;
   END IF;
 
-  -- An explicit transition origin allows us to prevent a same-grade exam
-  -- enrolment even when the school has NOT yet recorded the final result.
-  IF NEW.origem_transicao_matricula_id IS NOT NULL THEN
-    SELECT o.ano_letivo, coalesce(ot.classe_num, oc.numero),
-           coalesce(ot.is_classe_exame, false)
-      INTO v_origin_year, v_origin_class, v_origin_is_exam
-    FROM public.matriculas o
-    JOIN public.turmas ot
-      ON ot.id = o.turma_id AND ot.escola_id = NEW.escola_id
-    LEFT JOIN public.classes oc ON oc.id = ot.classe_id
-    WHERE o.id = NEW.origem_transicao_matricula_id
-      AND o.escola_id = NEW.escola_id
-      AND o.aluno_id = NEW.aluno_id;
-
-    IF v_origin_year = v_target_year - 1
-       AND v_origin_class IS NOT NULL
-       AND v_target_class <= v_origin_class THEN
-      SELECT lower(btrim(h.resultado_final))
-        INTO v_result
-      FROM public.historico_anos h
-      WHERE h.escola_id = NEW.escola_id
-        AND h.aluno_id = NEW.aluno_id
-        AND h.ano_letivo = v_origin_year;
-
-      IF v_result IN ('aprovado', 'concluido') THEN
-        RAISE EXCEPTION 'ENROLLMENT_PRIOR_YEAR_APPROVED_SAME_OR_LOWER_GRADE'
-          USING ERRCODE = '23514',
-                DETAIL = 'A matrícula de origem aprovada requer classe seguinte; corrija o histórico ou o destino pelo fluxo auditado.';
-      END IF;
-
-      IF v_target_class = v_origin_class
-         AND v_origin_is_exam
-         AND coalesce(v_result, '') NOT IN
-           ('reprovado', 'reprovado_por_faltas', 'retido') THEN
-        RAISE EXCEPTION 'ENROLLMENT_FINALIST_REPEAT_REQUIRES_RETAINED_DECISION'
-          USING ERRCODE = '23514',
-                DETAIL = 'Classe de exame repetida sem resultado de retenção; confirme a decisão académica antes de rematricular.';
-      END IF;
-    END IF;
+  IF v_origin.ano_letivo IS DISTINCT FROM v_destination.ano_letivo - 1 THEN
+    RAISE EXCEPTION 'ENROLLMENT_TRANSITION_YEAR_INVALID'
+      USING ERRCODE='23514',
+            DETAIL='Revise o ano de origem e o ano de destino no Balcão.';
   END IF;
 
-  -- Defense in depth for direct inserts and admission paths without a
-  -- transition-origin link. The tenant/year/student lookup is indexed.
-  IF EXISTS (
-    SELECT 1
-      FROM public.historico_anos h
-      JOIN public.turmas ot
-        ON ot.id = h.turma_id AND ot.escola_id = h.escola_id
-      LEFT JOIN public.classes oc ON oc.id = ot.classe_id
-     WHERE h.escola_id = NEW.escola_id
-       AND h.aluno_id = NEW.aluno_id
-       AND h.ano_letivo = v_target_year - 1
-       AND lower(btrim(h.resultado_final)) IN ('aprovado','concluido')
-       AND ot.curso_id = v_target_course
-       AND coalesce(ot.classe_num, oc.numero) >= v_target_class
-  ) THEN
-    RAISE EXCEPTION 'ENROLLMENT_PRIOR_YEAR_APPROVED_SAME_OR_LOWER_GRADE'
-      USING ERRCODE = '23514',
-            DETAIL = 'A classe de destino não pode repetir ou regredir uma classe aprovada no ano anterior.';
+  -- No local duplicate of the GradeEngine, no reading of
+  -- historico_anos.resultado_final, and no assumption that a closed
+  -- enrolment means the learner was approved.
+  BEGIN
+    v_raa := public.resolve_raa_progression_for_matricula(
+      NEW.escola_id, v_origin.id);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE EXCEPTION 'ENROLLMENT_RAA_UNAVAILABLE'
+      USING ERRCODE='23514',
+            DETAIL='A decisão do RAA não pôde ser consultada; regularize a origem no Balcão.';
+  END;
+
+  v_decision := v_raa->>'decision';
+  v_destino := v_raa->>'destino';
+  v_blocked := coalesce((v_raa->>'efetivacao_matricula_bloqueada')::boolean, false);
+
+  IF v_raa IS NULL
+     OR v_decision IS NULL
+     OR v_decision IN ('pendente','recurso','retido_por_faltas',
+                       'retido_por_indisciplina') THEN
+    RAISE EXCEPTION 'ENROLLMENT_RAA_DECISION_REQUIRED'
+      USING ERRCODE='23514',
+            DETAIL='Registe ou regularize a decisão académica da matrícula de origem antes da confirmação.';
   END IF;
 
-  RETURN NEW;
+  IF v_blocked THEN
+    RAISE EXCEPTION 'ENROLLMENT_RAA_CONFIRMATION_BLOCKED'
+      USING ERRCODE='23514',
+            DETAIL='O RAA não permite confirmar esta matrícula até resolver as pendências académicas.';
+  END IF;
+
+  v_origin_classe := public.turma_classe_numero(v_origin.turma_id);
+  v_dest_classe := public.turma_classe_numero(v_destination.id);
+
+  -- Reject an unknown class rather than inferring from free text.
+  IF v_origin_classe IS NULL OR v_dest_classe IS NULL THEN
+    RAISE EXCEPTION 'ENROLLMENT_RAA_GRADE_UNRESOLVED'
+      USING ERRCODE='23514',
+            DETAIL='Configure a classe oficial da turma antes de confirmar a matrícula.';
+  END IF;
+
+  IF (v_decision='transitou'
+      OR (v_decision='inscricao_condicional' AND v_destino='proxima_etapa'))
+     AND v_destino='proxima_etapa'
+     AND v_dest_classe=v_origin_classe + 1 THEN
+    RETURN NEW;
+  END IF;
+
+  IF v_decision='retido'
+     AND v_destino='mesma_etapa'
+     AND v_destination.curso_id=v_origin.curso_id
+     AND v_dest_classe=v_origin_classe THEN
+    RETURN NEW;
+  END IF;
+
+  -- A finalista can move to a new cycle, but not repeat the completed
+  -- class in the old course. The dedicated finalist RPC also audits the
+  -- chosen new cycle and the school-specific destination.
+  IF v_decision='concluiu'
+     AND v_destino='conclusao'
+     AND v_destination.curso_id IS DISTINCT FROM v_origin.curso_id
+     AND v_dest_classe=v_origin_classe + 1 THEN
+    RETURN NEW;
+  END IF;
+
+  RAISE EXCEPTION 'ENROLLMENT_RAA_DESTINATION_MISMATCH'
+    USING ERRCODE='23514',
+          DETAIL='A turma destino não corresponde à decisão académica oficial do RAA.';
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.guard_enrollment_prior_year_progression_v1()
+REVOKE ALL ON FUNCTION public.guard_enrollment_raa_progression_v1()
   FROM PUBLIC, anon, authenticated;
 
 DROP TRIGGER IF EXISTS trg_klasse_guard_enrollment_prior_year_progression
   ON public.matriculas;
-CREATE TRIGGER trg_klasse_guard_enrollment_prior_year_progression
+DROP TRIGGER IF EXISTS trg_klasse_guard_enrollment_raa_progression
+  ON public.matriculas;
+CREATE TRIGGER trg_klasse_guard_enrollment_raa_progression
 BEFORE INSERT OR UPDATE OF escola_id, aluno_id, turma_id, session_id,
   ano_letivo, origem_transicao_matricula_id, status, ativo
 ON public.matriculas
 FOR EACH ROW
-EXECUTE FUNCTION public.guard_enrollment_prior_year_progression_v1();
+EXECUTE FUNCTION public.guard_enrollment_raa_progression_v1();
