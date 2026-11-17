@@ -86,6 +86,7 @@ const dayLabel = (day: number) => {
 
 export default function Page() {
   const [atribs, setAtribs] = useState<AtribItem[]>([]);
+  const [academicYearLabel, setAcademicYearLabel] = useState<string | null>(null);
   const [agenda, setAgenda] = useState<AgendaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendenciasResumo, setPendenciasResumo] = useState<PendenciasResumo | null>(null);
@@ -137,6 +138,7 @@ export default function Page() {
         if (!atribsJson?.ok || !agendaJson?.ok || !aulasJson?.ok) throw new Error("Dados académicos indisponíveis. Tente novamente.");
         if (!cancelled) {
           setAtribs((atribsJson?.items || []) as AtribItem[]);
+          setAcademicYearLabel(typeof atribsJson?.context?.anoLetivoLabel === "string" ? atribsJson.context.anoLetivoLabel : null);
           const actualLessons = (aulasJson?.items || []) as AgendaItem[];
           const actualByKey = new Map(actualLessons.map((lesson) => [`${lesson.turma_id}:${lesson.disciplina_id}:${lesson.slot_id ?? lesson.inicio}`, lesson]));
           setAgenda(((agendaJson?.items || []) as AgendaItem[]).map((item) => {
@@ -356,7 +358,7 @@ export default function Page() {
             <button type="button" onClick={loadAgain} className="mt-3 rounded-lg bg-rose-800 px-4 py-2 font-bold text-white">Tentar novamente</button>
           </div>
         )}
-        <AssignmentsBanner />
+        <AssignmentsBanner loading={loading} hasAssignments={atribs.length > 0} hasError={Boolean(loadError)} academicYearLabel={academicYearLabel} />
 
         {/* WIDGET AULA ATIVA EM DECORRÊNCIA */}
         {aulaAtiva && (

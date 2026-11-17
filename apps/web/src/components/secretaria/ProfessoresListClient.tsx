@@ -406,7 +406,7 @@ export default function ProfessoresListClient() {
                             <Eye className="w-4 h-4" />
                           </Link>
                           <Link
-                            href={buildContextualPortalHref(escolaParam, `/secretaria/professores/${professor.user_id || professor.id}/editar`, pathname)}
+                            href={escolaId ? `/escola/${escolaId}/professores?editar=${encodeURIComponent(professor.user_id || professor.id)}` : buildContextualPortalHref(escolaParam, `/secretaria/professores`, pathname)}
                             className="text-green-600 hover:text-white hover:bg-green-600 p-2 rounded-lg transition-all"
                             title="Editar professor"
                           >
