@@ -1,0 +1,54 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const read = (p: string) => readFileSync(new URL(p, import.meta.url), "utf8");
+const sql = read("../../../../supabase/migrations/20271117230000_curtume_2025_signed_operational_grades_reconciliation.sql");
+const api = read("../../src/app/api/secretaria/operacoes-academicas/fecho-historico-lote/route.ts");
+const desk = read("../../src/components/secretaria/CurtumeHistoricalExceptionDesk.tsx");
+
+test("strict school/year/director authority for signing real 2025 sources", () => {
+  assert.match(sql, /3744879f-2e19-4671-8995-78604302d8c5/);
+  assert.match(sql, /m\.ano_letivo=2025/);
+  assert.match(sql, /h\.ano_letivo=2025/);
+  assert.match(sql, /public\.safe_auth_uid\(\)/);
+  assert.match(sql, /public\.current_tenant_escola_id\(\)/);
+  assert.match(sql, /'admin','admin_escola','diretor'/);
+  assert.match(sql, /FOR UPDATE OF h,m/);
+  assert.match(sql, /REVOKE ALL ON public\.curtume_2025_notas_conferidas/);
+  assert.match(sql, /ENABLE ROW LEVEL SECURITY/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.curtume_2025_notas_conferidas_validas/);
+});
+
+test("operational grades and historical documentary grades stay intact", () => {
+  assert.doesNotMatch(sql, /\b(?:UPDATE|DELETE|TRUNCATE)\s+(?:FROM\s+)?public\.(?:notas|avaliacoes|historico_disciplinas|historico_anos|matriculas)/i);
+  assert.match(sql, /fontes_hash=EXCLUDED\.fontes_hash/);
+  assert.match(sql, /to_jsonb\(n\)/);
+  assert.match(sql, /to_jsonb\(hd\)/);
+  assert.match(sql, /CURTUME_2025_NOTAS_CONFERIDAS_COM_PAUTA/);
+  assert.match(sql, /notas_operacionais_preservadas/);
+  assert.match(sql, /'pauta_escola_2025_2026'/);
+});
+
+test("all independent legal gates agree on the same validated fingerprint", () => {
+  assert.match(sql, /curtume_fechar_pautas_2025_lote\(uuid,uuid,uuid,integer\)/);
+  assert.match(sql, /historico_set_snapshot_state\(uuid,uuid\[\],uuid,text,text,uuid\)/);
+  assert.match(sql, /resolve_raa_progression_for_matricula\(uuid,uuid\)/);
+  assert.match(sql, /AND NOT public\.curtume_2025_notas_conferidas_validas/);
+  assert.match(sql, /OR public\.curtume_2025_notas_conferidas_validas/);
+  assert.match(sql, /'CURTUME_2025_RAA_GUARD_CHANGED'/);
+  assert.match(sql, /snapshot_status IN \('aberto','fechado'\)/);
+});
+
+test("server signs exact 2025 enrollment and returns safe typed result", () => {
+  assert.match(api, /const GradeReconciliationSchema = z\.object/);
+  assert.match(api, /acao: z\.literal\("conferir_notas_2025"\)/);
+  assert.match(api, /confirmacao: z\.literal\("CONFIRMO_PAUTA_2025"\)/);
+  assert.match(api, /\.eq\("aluno_id", aluno_id\)\.eq\("matricula_id", matricula_id\)/);
+  assert.match(api, /curtume_2025_conferir_notas_documentais/);
+  assert.match(api, /curtume_2025_status_conferencia/);
+  assert.match(desk, /Confirmar pauta de 2025\/2026/);
+  assert.match(desk, /Conferi ambas as fontes/);
+  assert.match(desk, /returnTo/);
+  assert.match(desk, /setRevision\(\(value\) => value \+ 1\)/);
+});
