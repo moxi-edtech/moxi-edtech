@@ -12,6 +12,17 @@ export const LISTA_NOMINAL_MODES: Record<ListaNominalMode, string> = {
   ano_letivo: "Lista do ano letivo (histórica)",
   operacional: "Lista operacional actual",
 };
+/** Ordenação única por turma, chamada, nome e processo para PDF e Excel. */
+export function compareNominalSortableRows(
+  a: { turma: string; chamada: number | null; nome: string; processo: string },
+  b: { turma: string; chamada: number | null; nome: string; processo: string },
+): number {
+  return a.turma.localeCompare(b.turma, "pt-PT", { numeric: true, sensitivity: "base" }) ||
+    (a.chamada ?? Number.MAX_SAFE_INTEGER) - (b.chamada ?? Number.MAX_SAFE_INTEGER) ||
+    a.nome.localeCompare(b.nome, "pt-PT") ||
+    a.processo.localeCompare(b.processo, "pt-PT");
+}
+
 export function classifyMatricula(status: string | null): ListaNominalCategoria {
   const v = (status ?? "").trim().toLocaleLowerCase("pt-PT").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   if (["ativo", "ativa", "active"].includes(v)) return "activa";
