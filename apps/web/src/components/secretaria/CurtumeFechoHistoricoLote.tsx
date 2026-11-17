@@ -176,7 +176,7 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
                 alunoId: issue.aluno_id ?? "",
                 action: "reenrollment",
                 historicMatriculaId: issue.matricula_id,
-                returnTo: balcaoHref ? balcaoHref.replace(/\/secretaria\/balcao(?:\?.*)?$/, "/secretaria/operacoes-academicas") : "/secretaria/operacoes-academicas",
+                returnTo: balcaoHref ? balcaoHref.replace(/\/secretaria\/balcao(?:\?.*)?$/, "/operacoes/academico") : "/operacoes/academico",
               });
               const href = balcaoHref
                 ? balcaoHref + (balcaoHref.includes("?") ? "&" : "?") + params.toString()
