@@ -205,6 +205,94 @@ REVOKE ALL ON FUNCTION public.curtume_2025_status_conferencia(uuid,uuid)
 GRANT EXECUTE ON FUNCTION public.curtume_2025_status_conferencia(uuid,uuid)
   TO authenticated;
 
+
+-- A concluded 2025 source with an imported history may have a null year link
+-- and an obsolete manual flag. Only a director can ratify the real school
+-- document through the existing canonical RPC before correcting that flag.
+CREATE OR REPLACE FUNCTION public.curtume_2025_regularizar_origem_documental(
+  p_escola_id uuid,p_matricula_id uuid,p_aluno_id uuid,
+  p_referencia text,p_motivo text)
+RETURNS jsonb
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public'
+AS $fn$
+DECLARE
+  v_actor uuid := public.safe_auth_uid();
+  v_escola constant uuid := '3744879f-2e19-4671-8995-78604302d8c5';
+  v_ano uuid;
+  v_h uuid;
+  v_resultado text;
+  v_status text;
+  v_session uuid;
+  v_history_session uuid;
+  v_ref text := btrim(coalesce(p_referencia,''));
+  v_reason text := btrim(coalesce(p_motivo,''));
+  v_ratification jsonb;
+BEGIN
+  IF p_escola_id IS DISTINCT FROM v_escola OR p_matricula_id IS NULL
+    OR p_aluno_id IS NULL OR v_actor IS NULL
+    OR public.current_tenant_escola_id() IS DISTINCT FROM v_escola
+    OR NOT EXISTS (SELECT 1 FROM public.escola_users eu
+      WHERE eu.escola_id=v_escola AND eu.user_id=v_actor
+        AND eu.papel IN ('admin','admin_escola','diretor')) THEN
+    RAISE EXCEPTION 'CURTUME_2025_ORIGEM_NAO_AUTORIZADA' USING ERRCODE='42501';
+  END IF;
+  IF length(v_ref)<8 OR length(v_reason)<12 THEN
+    RAISE EXCEPTION 'CURTUME_2025_FUNDAMENTO_OBRIGATORIO' USING ERRCODE='23514';
+  END IF;
+  SELECT id INTO STRICT v_ano FROM public.anos_letivos
+    WHERE escola_id=v_escola AND ano=2025;
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('curtume2025:origem:'||p_matricula_id::text,0));
+  SELECT h.id,h.resultado_final,h.ano_letivo_id,m.status_fecho_origem,m.session_id
+  INTO v_h,v_resultado,v_history_session,v_status,v_session
+  FROM public.historico_anos h
+  JOIN public.matriculas m ON m.id=h.matricula_id AND m.escola_id=h.escola_id
+  JOIN public.turmas t ON t.id=h.turma_id AND t.escola_id=h.escola_id
+  WHERE h.escola_id=v_escola AND h.ano_letivo=2025
+    AND h.matricula_id=p_matricula_id AND h.aluno_id=p_aluno_id
+    AND h.snapshot_status='aberto'
+    AND m.aluno_id=p_aluno_id AND m.ano_letivo=2025
+    AND m.session_id=v_ano AND m.status='concluido' AND NOT m.ativo
+    AND t.ano_letivo=2025 AND t.ano_letivo_id=v_ano
+  FOR UPDATE OF h,m;
+  IF v_h IS NULL OR v_session IS DISTINCT FROM v_ano
+    OR (v_history_session IS NOT NULL AND v_history_session IS DISTINCT FROM v_ano)
+    OR v_resultado NOT IN ('aprovado','reprovado','concluido')
+    OR v_status IS DISTINCT FROM 'manual' THEN
+    RAISE EXCEPTION 'CURTUME_2025_ORIGEM_NAO_ELEGIVEL' USING ERRCODE='23514';
+  END IF;
+  -- This existing function checks source coorte and academic result,
+  -- creates a director-signed school audit and links a null historical year.
+  v_ratification := public.ratificar_resultado_historico_escola(
+    v_escola,p_matricula_id,v_resultado,v_ref,v_reason);
+  IF v_ratification->>'ok' IS DISTINCT FROM 'true' THEN
+    RAISE EXCEPTION 'CURTUME_2025_RATIFICACAO_NAO_CONFIRMADA' USING ERRCODE='23514';
+  END IF;
+  UPDATE public.matriculas m
+    SET status_fecho_origem='override_admin',
+        motivo_fecho=v_reason, updated_by=v_actor, updated_at=now()
+  WHERE m.id=p_matricula_id AND m.escola_id=v_escola
+    AND m.aluno_id=p_aluno_id AND m.ano_letivo=2025
+    AND m.status_fecho_origem='manual' AND m.status='concluido' AND NOT m.ativo;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'CURTUME_2025_ORIGEM_MUDOU' USING ERRCODE='23514';
+  END IF;
+  INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details)
+  VALUES(v_escola,v_actor,'CURTUME_2025_ORIGEM_DOCUMENTAL_REGULARIZADA',
+    'matriculas',p_matricula_id::text,'secretaria',
+    jsonb_build_object('historico_ano_id',v_h,'aluno_id',p_aluno_id,
+       'ano_letivo',2025,'origem_anterior',v_status,
+       'origem_atual','override_admin','referencia_documental',v_ref,'motivo',v_reason));
+  RETURN jsonb_build_object('ok',true,'matricula_id',p_matricula_id,
+    'ano_letivo','2025/2026','origem_regularizada',true);
+END;
+$fn$;
+REVOKE ALL ON FUNCTION public.curtume_2025_regularizar_origem_documental(
+  uuid,uuid,uuid,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.curtume_2025_regularizar_origem_documental(
+  uuid,uuid,uuid,text,text) TO authenticated;
+
 -- The signed reconciliation is part of all THREE independent legal checks.
 -- Patch exact known bodies only; a changed canonical function fails closed.
 DO $patch$
