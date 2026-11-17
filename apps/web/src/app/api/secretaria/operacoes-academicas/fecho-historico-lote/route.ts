@@ -49,6 +49,94 @@ export async function GET() {
   }
 }
 
+type HistoricIssue = {
+  matricula_id: string;
+  codigo: string;
+  detalhe?: string;
+};
+
+type HistoricIssueWithStudent = HistoricIssue & {
+  aluno_id: string | null;
+  aluno_nome: string | null;
+  numero_processo: string | null;
+  turma_nome: string | null;
+};
+
+/** Enrich only actual RPC failures; do not fetch or expose the successful pupils. */
+async function enrichBlockingIssues(db: any, input: HistoricIssue[]): Promise<HistoricIssueWithStudent[]> {
+  const fallback = input.map((issue) => ({
+    ...issue,
+    aluno_id: null,
+    aluno_nome: null,
+    numero_processo: null,
+    turma_nome: null,
+  }));
+  if (!input.length) return fallback;
+
+  const ids = Array.from(new Set(input.map((issue) => issue.matricula_id)))
+    .filter((id) => z.string().uuid().safeParse(id).success)
+    .slice(0, 25);
+  if (!ids.length) return fallback;
+
+  try {
+    const { data: records, error: recordError } = await db.from("historico_anos")
+      .select("matricula_id,aluno_id,turma_id")
+      .eq("escola_id", CURTUME)
+      .eq("ano_letivo", 2025)
+      .eq("snapshot_status", "aberto")
+      .in("matricula_id", ids);
+    if (recordError) throw recordError;
+    const histories = (records ?? []) as Array<{
+      matricula_id: string;
+      aluno_id: string;
+      turma_id: string | null;
+    }>;
+
+    const studentIds = Array.from(new Set(histories.map((item) => item.aluno_id)));
+    const turmaIds = Array.from(new Set(histories.map((item) => item.turma_id).filter(
+      (id): id is string => typeof id === "string"
+    )));
+    const [studentsResponse, turmasResponse] = await Promise.all([
+      studentIds.length
+        ? db.from("alunos").select("id,nome_completo,nome,numero_processo")
+            .eq("escola_id", CURTUME).in("id", studentIds)
+        : Promise.resolve({ data: [], error: null }),
+      turmaIds.length
+        ? db.from("turmas").select("id,nome").eq("escola_id", CURTUME)
+            .eq("ano_letivo", 2025).in("id", turmaIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (studentsResponse.error || turmasResponse.error) {
+      throw studentsResponse.error ?? turmasResponse.error;
+    }
+
+    const byMatricula = new Map(histories.map((item) => [item.matricula_id, item]));
+    const byStudent = new Map(((studentsResponse.data ?? []) as Array<{
+      id: string; nome_completo: string | null; nome: string | null; numero_processo: string | null;
+    }>).map((item) => [item.id, item]));
+    const byTurma = new Map(((turmasResponse.data ?? []) as Array<{
+      id: string; nome: string;
+    }>).map((item) => [item.id, item]));
+
+    return input.map((issue) => {
+      const history = byMatricula.get(issue.matricula_id);
+      const student = history ? byStudent.get(history.aluno_id) : null;
+      const turma = history?.turma_id ? byTurma.get(history.turma_id) : null;
+      return {
+        ...issue,
+        aluno_id: student?.id ?? null,
+        aluno_nome: student?.nome_completo || student?.nome || null,
+        numero_processo: student?.numero_processo ?? null,
+        turma_nome: turma?.nome ?? null,
+      };
+    });
+  } catch (cause) {
+    // A failed name lookup must never undo an already committed legal close.
+    console.error("[curtume-historic-batch] exception enrichment failed", cause);
+    return fallback;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const ctx = await context();
@@ -75,7 +163,18 @@ export async function POST(request: Request) {
     }
     if (data?.ok !== true || !Number.isSafeInteger(Number(data?.processados)))
       return NextResponse.json({ ok: false, error: "Resposta inesperada da operação académica." }, { status: 502 });
-    return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
+
+    const rawIssues = data?.pendencias;
+    if (!Array.isArray(rawIssues) ||
+        rawIssues.length > 25 ||
+        rawIssues.length !== Number(data.bloqueados) ||
+        rawIssues.some((issue: unknown) => !issue || typeof issue !== "object" ||
+          typeof (issue as HistoricIssue).matricula_id !== "string" ||
+          typeof (issue as HistoricIssue).codigo !== "string")) {
+      return NextResponse.json({ ok: false, error: "Contagem de pendências inconsistente." }, { status: 502 });
+    }
+    const pendencias = await enrichBlockingIssues(ctx.db, rawIssues as HistoricIssue[]);
+    return NextResponse.json({ ...data, pendencias }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[curtume-historic-batch] request failed", error);
     return NextResponse.json({ ok: false, error: "Falha no processamento do lote." }, { status: 500 });
