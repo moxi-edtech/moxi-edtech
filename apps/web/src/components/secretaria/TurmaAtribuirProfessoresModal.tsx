@@ -31,7 +31,7 @@ interface ProfessorOption {
   email?: string | null;
 }
 
-const inputClass = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20 disabled:opacity-50";
+const inputClass = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20 disabled:opacity-50";
 
 async function fetchProfessores(escolaId: string): Promise<ProfessorOption[]> {
   // The Secretaria endpoint caps each page at 50. Never silently omit teachers after page 1.
@@ -249,40 +249,40 @@ export default function TurmaAtribuirProfessoresModal({
   const selectedBulkTeacher = professores.find((p) => p.user_id === bulkProfessorUserId) ?? null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-0 sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-0 sm:p-4">
       <div role="dialog" aria-modal="true" aria-labelledby="turma-assign-title"
-        className="flex h-full w-full flex-col overflow-hidden bg-white sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-xl sm:border sm:border-slate-200 sm:shadow-xl">
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4 sm:px-6">
+        className="flex h-full w-full flex-col overflow-hidden bg-card sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-xl sm:border sm:border-border sm:shadow-xl">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border bg-muted px-4 py-4 sm:px-6">
           <div className="min-w-0">
-            <p className="text-xs text-slate-500">{turma.turno || "Turno não definido"} · {turma.ano_letivo || "Ano letivo"}</p>
-            <h2 id="turma-assign-title" className="mt-1 text-base font-bold text-[#1F6B3B]">
+            <p className="text-xs text-muted-foreground">{turma.turno || "Turno não definido"} · {turma.ano_letivo || "Ano letivo"}</p>
+            <h2 id="turma-assign-title" className="mt-1 text-base font-bold text-klasse-green">
               Atribuir professores · {turma.nome || turma.turma_codigo}
             </h2>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               {turma.curso_nome || "Ensino Geral"}{turma.classe_nome ? ` · ${turma.classe_nome}` : ""}
             </p>
           </div>
           <button type="button" aria-label="Fechar" onClick={onClose} disabled={bulkSaving || Boolean(savingId)}
-            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50">
+            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50">
             <X size={18} />
           </button>
         </header>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs sm:px-6">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-muted px-4 py-3 text-xs sm:px-6">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="text-slate-600"><strong>{disciplinas.length}</strong> disciplinas</span>
-            <span className="flex items-center gap-1 font-medium text-[#1F6B3B]"><UserCheck size={13}/>{atribuidas} atribuídas</span>
+            <span className="text-foreground"><strong>{disciplinas.length}</strong> disciplinas</span>
+            <span className="flex items-center gap-1 font-medium text-klasse-green"><UserCheck size={13}/>{atribuidas} atribuídas</span>
             {pending > 0 && <span className="flex items-center gap-1 font-medium text-amber-700"><UserX size={13}/>{pending} sem professor</span>}
           </div>
           {disciplinas.length > 5 && <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Filtrar disciplina…" aria-label="Filtrar disciplina"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-[#E3B23C] sm:w-44" />}
+            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-xs outline-none focus:border-klasse-gold sm:w-44" />}
         </div>
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-6">
           {loading ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
-              <Loader2 size={18} className="animate-spin text-[#E3B23C]"/> A carregar disciplinas e professores…
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+              <Loader2 size={18} className="animate-spin text-klasse-gold"/> A carregar disciplinas e professores…
             </div>
           ) : loadError ? (
             <div role="alert" className="rounded-xl border border-red-200 p-4 text-sm text-red-700">
@@ -291,11 +291,11 @@ export default function TurmaAtribuirProfessoresModal({
             </div>
           ) : disciplinas.length === 0 ? (
             <div className="py-12 text-center">
-              <BookOpen size={30} className="mx-auto mb-2 text-slate-300"/>
+              <BookOpen size={30} className="mx-auto mb-2 text-muted-foreground"/>
               <p className="text-sm font-medium">Nenhuma disciplina na matriz desta turma.</p>
             </div>
           ) : filteredDisciplinas.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-500">Nenhuma disciplina corresponde à pesquisa.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma disciplina corresponde à pesquisa.</p>
           ) : filteredDisciplinas.map((disc) => {
             const hasProf = Boolean(disc.professor?.id);
             const expanded = bulkDisciplinaId === disc.curso_matriz_id;
@@ -308,14 +308,14 @@ export default function TurmaAtribuirProfessoresModal({
               ? bulkCandidates.filter((item) => bulkSelected.includes(item.turma_id))
               : [];
             return (
-              <section key={disc.curso_matriz_id} className="rounded-xl border border-slate-200 bg-white p-4">
+              <section key={disc.curso_matriz_id} className="rounded-xl border border-border bg-card p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="truncate text-sm font-semibold text-slate-900">{disc.disciplina?.nome || "Disciplina"}</h3>
-                      {disc.meta?.carga_horaria_semanal != null && <span className="text-xs text-slate-400">{disc.meta.carga_horaria_semanal} tempos/sem</span>}
+                      <h3 className="truncate text-sm font-semibold text-foreground">{disc.disciplina?.nome || "Disciplina"}</h3>
+                      {disc.meta?.carga_horaria_semanal != null && <span className="text-xs text-muted-foreground">{disc.meta.carga_horaria_semanal} tempos/sem</span>}
                     </div>
-                    <p className={`mt-1 flex items-center gap-1 text-xs ${hasProf ? "text-[#1F6B3B]" : "text-amber-700"}`}>
+                    <p className={`mt-1 flex items-center gap-1 text-xs ${hasProf ? "text-klasse-green" : "text-amber-700"}`}>
                       {hasProf ? <UserCheck size={13}/> : <UserX size={13}/>}
                       {hasProf ? disc.professor?.nome || "Professor atribuído" : "Sem professor"}
                     </p>
@@ -327,31 +327,31 @@ export default function TurmaAtribuirProfessoresModal({
                         const prof = professores.find((item) => item.user_id === e.target.value);
                         if (prof) void handleAssign(disc, prof);
                       }}
-                      className="min-w-[180px] max-w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20">
+                      className="min-w-[180px] max-w-full rounded-xl border border-border bg-card px-3 py-2 text-xs focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
                       <option value="">Selecionar professor…</option>
                       {professores.map((prof) => <option key={prof.user_id} value={prof.user_id}>{prof.nome}</option>)}
                     </select>
                   )}
-                  {isSaving && <Loader2 aria-label="A guardar" size={17} className="animate-spin text-[#E3B23C]"/>}
+                  {isSaving && <Loader2 aria-label="A guardar" size={17} className="animate-spin text-klasse-gold"/>}
                 </div>
                 {!isPublished && <p className="mt-2 text-xs text-amber-700">Atribuição indisponível: a matriz desta disciplina ainda não está publicada.</p>}
                 {hasProf && !expanded && (
-                  <p className="mt-2 text-xs text-slate-500">Atribuição existente protegida. Não é possível substituí-la automaticamente.</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Atribuição existente protegida. Não é possível substituí-la automaticamente.</p>
                 )}
 
                 {isPublished && (
                   <button type="button" disabled={Boolean(savingId) || bulkSaving || loading}
                     aria-expanded={expanded} onClick={() => toggleBulk(disc)}
-                    className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[#1F6B3B] hover:underline disabled:opacity-50">
+                    className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-klasse-green hover:underline disabled:opacity-50">
                     {expanded ? <ChevronDown size={15} className="rotate-180"/> : <Plus size={15}/>}
                     {expanded ? "Ocultar outras turmas" : "Atribuir também a outras turmas"}
                   </button>
                 )}
 
                 {expanded && (
-                  <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+                  <div className="mt-3 space-y-3 border-t border-border pt-3">
                     <label className="block space-y-1">
-                      <span className="text-xs font-semibold text-slate-600">Professor</span>
+                      <span className="text-xs font-semibold text-foreground">Professor</span>
                       <select value={bulkProfessorUserId} onChange={(e) => { setBulkProfessorUserId(e.target.value); setBulkError(null); }}
                         disabled={sourceAlreadyAssigned || bulkSaving || bulkLoading}
                         aria-label="Professor para atribuição múltipla"
@@ -364,27 +364,27 @@ export default function TurmaAtribuirProfessoresModal({
                       <p role="alert" className="text-xs text-amber-700">Não foi possível identificar o professor atual. Recarregue os dados antes de distribuir a disciplina.</p>
                     )}
                     {bulkLoading ? (
-                      <div className="flex items-center gap-2 py-3 text-xs text-slate-500"><Loader2 size={15} className="animate-spin"/> A verificar turmas elegíveis…</div>
+                      <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground"><Loader2 size={15} className="animate-spin"/> A verificar turmas elegíveis…</div>
                     ) : bulkError && bulkCandidates.length === 0 ? (
                       <p role="alert" className="text-xs text-red-600">{bulkError}</p>
                     ) : (
                       <>
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-xs font-semibold text-slate-700">Turmas que oferecem esta disciplina</p>
-                          <span className="text-xs text-slate-500">{bulkSelected.length} selecionada(s) · limite 30</span>
+                          <p className="text-xs font-semibold text-foreground">Turmas que oferecem esta disciplina</p>
+                          <span className="text-xs text-muted-foreground">{bulkSelected.length} selecionada(s) · limite 30</span>
                         </div>
                         <input value={bulkSearch} onChange={(e) => setBulkSearch(e.target.value)}
                           placeholder="Pesquisar turma…" aria-label="Pesquisar outras turmas"
                           className={inputClass}/>
-                        <div className="max-h-60 divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200">
+                        <div className="max-h-60 divide-y divide-border overflow-y-auto rounded-xl border border-border">
                           {bulkCandidates.filter((item) => item.nome.toLowerCase().includes(bulkSearch.toLowerCase())).map((item) => {
                             const isSource = item.turma_id === turma.id;
                             const occupied = Boolean(item.professor_id);
                             const checked = isSource ? !occupied : bulkSelected.includes(item.turma_id);
                             return (
-                              <label key={item.turma_id} className="flex items-center justify-between gap-2 px-3 py-2.5 text-xs hover:bg-slate-50">
+                              <label key={item.turma_id} className="flex items-center justify-between gap-2 px-3 py-2.5 text-xs hover:bg-muted">
                                 <span className="flex min-w-0 items-center gap-2">
-                                  <input type="checkbox" className="accent-[#E3B23C]"
+                                  <input type="checkbox" className="accent-klasse-gold"
                                     checked={checked} disabled={isSource || occupied || bulkSaving}
                                     onChange={(e) => setBulkSelected((prev) => {
                                       if (e.target.checked && prev.length >= 30) return prev;
@@ -392,18 +392,18 @@ export default function TurmaAtribuirProfessoresModal({
                                         ? [...prev.filter((id) => id !== item.turma_id), item.turma_id]
                                         : prev.filter((id) => id !== item.turma_id);
                                     })}/>
-                                  <span className="truncate font-medium text-slate-800">{item.nome}</span>
+                                  <span className="truncate font-medium text-foreground">{item.nome}</span>
                                 </span>
-                                <span className="shrink-0 text-slate-500">
+                                <span className="shrink-0 text-muted-foreground">
                                   {isSource ? (occupied ? "Atual · atribuída" : "Turma atual")
                                     : occupied ? "Já atribuída" : item.turno || "Disponível"}
                                 </span>
                               </label>
                             );
                           })}
-                          {bulkCandidates.length === 0 && <p className="p-3 text-xs text-slate-500">Nenhuma turma elegível.</p>}
+                          {bulkCandidates.length === 0 && <p className="p-3 text-xs text-muted-foreground">Nenhuma turma elegível.</p>}
                         </div>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           {sourceAlreadyAssigned
                             ? "A turma atual mantém o professor; apenas as novas turmas selecionadas serão gravadas."
                             : "A turma atual está incluída. Todas as atribuições serão guardadas numa só transação."}
@@ -413,10 +413,10 @@ export default function TurmaAtribuirProfessoresModal({
                     {bulkError && bulkCandidates.length > 0 && <p role="alert" className="text-xs text-red-600">{bulkError}</p>}
                     <div className="flex items-center justify-end gap-2">
                       <button type="button" disabled={bulkSaving} onClick={() => setBulkDisciplinaId(null)}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">Cancelar</button>
+                        className="rounded-xl border border-border px-3 py-2 text-sm text-foreground">Cancelar</button>
                       <button type="button" disabled={!selectedBulkTeacher || bulkLoading || bulkSaving || bulkSelected.length === 0 || Boolean(bulkError && bulkCandidates.length === 0)}
                         onClick={() => void handleBulkAssign()}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50">
+                        className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50">
                         {bulkSaving ? <Loader2 size={15} className="animate-spin"/> : <Check size={15}/>}
                         Atribuir a {selectedCandidates.length} turma(s)
                       </button>
@@ -428,10 +428,10 @@ export default function TurmaAtribuirProfessoresModal({
           })}
         </div>
 
-        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-4 py-3 sm:px-6">
-          <p className="text-xs text-slate-500">Uma turma: guarda ao selecionar. Várias turmas: confirmar seleção.</p>
+        <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border bg-muted px-4 py-3 sm:px-6">
+          <p className="text-xs text-muted-foreground">Uma turma: guarda ao selecionar. Várias turmas: confirmar seleção.</p>
           <button type="button" onClick={onClose} disabled={Boolean(savingId) || bulkSaving}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50">
+            className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50">
             Concluir
           </button>
         </footer>
