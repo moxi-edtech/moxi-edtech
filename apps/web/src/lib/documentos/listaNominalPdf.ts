@@ -4,59 +4,12 @@ import { rgb } from "pdf-lib";
 import type { Database } from "~types/supabase";
 import { createInstitutionalPdf, detectImageFormat, fetchImageBytes } from "@/lib/pdf/documentTemplate";
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
-import { applyKf2ListInvariants } from "@/lib/kf2";
 import { drawTable, type Column } from "@/lib/pdf/table";
 import { renderNominalA4, type NominalA4Row } from "@/lib/documentos/nominalA4";
-import { LISTA_NOMINAL_MODES, classifyMatricula, modoPadraoDaSessao, resumoExclusoes, selectMatriculasDaLista, type ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
+import { LISTA_NOMINAL_MODES, classifyMatricula, resumoExclusoes, type ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
+import { loadNominalRoster } from "@/lib/documentos/listaNominalService";
 
 type Client = SupabaseClient<Database>;
-
-type TurmaRow = {
-  id: string;
-  nome: string | null;
-  escola_id: string;
-  curso_id: string | null;
-  session_id: string | null;
-  ano_letivo: number | null;
-  classe_id: string | null;
-  turno: string | null;
-  sala: string | null;
-};
-
-type EscolaRow = {
-  id: string;
-  nome: string | null;
-  nif: string | null;
-  endereco: string | null;
-  logo_url: string | null;
-};
-
-type ClasseRow = { nome: string | null };
-type SessaoRow = { ano: number | null; ativo?: boolean | null };
-
-type AlunoNested = {
-  id: string;
-  nome: string | null;
-  numero_processo: string | null;
-  bi_numero: string | null;
-  sexo?: string | null;
-  data_nascimento?: string | null;
-  naturalidade?: string | null;
-  provincia?: string | null;
-  telefone?: string | null;
-  responsavel?: string | null;
-  telefone_responsavel?: string | null;
-  profiles?: { avatar_url?: string | null } | null;
-};
-
-type MatriculaRow = {
-  id: string;
-  turma_id: string | null;
-  numero_chamada: number | null;
-  status: string;
-  ativo: boolean | null;
-  alunos: AlunoNested | AlunoNested[] | null;
-};
 
 type FrequenciaRow = {
   matricula_id: string;
@@ -184,200 +137,27 @@ export async function renderListaNominalPdfBuffer({
   fallbackLogoUrl,
 }: ListaNominalPdfParams) {
   const normalizedYear = year || String(new Date().getFullYear());
-  const isClasseScope = Boolean(classeId && !turmaId);
+  const roster = await loadNominalRoster({
+    supabase, escolaId, turmaId, classeId, year: normalizedYear,
+    mode: requestedMode, includeAllStatus, pdfFields: true,
+    extendedStudentFields: camposSensiveis || isAlbum || Boolean(month) || isAttendance,
+  });
+  const {
+    turma, turmaIds, turmaById, classeNome, cursoNome, escola,
+    sessao, mode, isClasseScope, seleccao, sortedMatriculas,
+  } = roster;
 
-  if (!turmaId && !classeId) {
-    throw new Error("Informe turma ou classe para gerar a lista nominal");
-  }
-
-  let turma: TurmaRow;
-  let classeNome = "—";
-  let cursoNome = "";
-  let turmaIds: string[] = [];
-  let turmaById = new Map<string, TurmaRow>();
-
-  if (isClasseScope && classeId) {
-    const { data: classeData, error: classeError } = await supabase
-      .from("classes")
-      .select("id, nome, curso_id, cursos(nome)")
-      .eq("id", classeId)
-      .eq("escola_id", escolaId)
-      .maybeSingle();
-
-    if (classeError) throw new Error(classeError.message);
-    if (!classeData) throw new Error("Classe não encontrada");
-
-    classeNome = (classeData as any)?.nome ?? "—";
-    cursoNome = (classeData as any)?.cursos?.nome ?? "";
-
-    let turmasQuery = supabase
-      .from("turmas")
-      .select("id, nome, escola_id, curso_id, session_id, ano_letivo, classe_id, turno, sala")
-      .eq("escola_id", escolaId)
-      .eq("classe_id", classeId)
-      .order("turno", { ascending: true })
-      .order("nome", { ascending: true });
-
-    if (normalizedYear) {
-      const yearNumber = Number(normalizedYear);
-      if (Number.isFinite(yearNumber)) {
-        turmasQuery = turmasQuery.eq("ano_letivo", yearNumber);
-      }
-    }
-
-    const { data: turmasData, error: turmasError } = await turmasQuery;
-    if (turmasError) throw new Error(turmasError.message);
-
-    const turmasClasse = (turmasData ?? []) as unknown as TurmaRow[];
-    turmaIds = turmasClasse.map((item) => item.id).filter(Boolean);
-    turmaById = new Map(turmasClasse.map((item) => [item.id, item]));
-
-    if (turmaIds.length === 0) {
-      throw new Error("Não há turmas para esta classe no ano letivo selecionado");
-    }
-
-    turma = {
-      id: `classe:${classeId}`,
-      nome: `Todas as turmas (${turmaIds.length})`,
-      escola_id: escolaId,
-      curso_id: (classeData as any)?.curso_id ?? turmasClasse[0]?.curso_id ?? null,
-      session_id: turmasClasse[0]?.session_id ?? null,
-      ano_letivo: Number(normalizedYear) || (turmasClasse[0]?.ano_letivo ?? null),
-      classe_id: classeId,
-      turno: null,
-      sala: null,
-    };
-  } else if (turmaId) {
-    const { data: turmaData, error: turmaError } = await supabase
-      .from("turmas")
-      .select(
-        `
-        id,
-        nome,
-        escola_id,
-        curso_id,
-        session_id,
-        ano_letivo,
-        classe_id,
-        turno,
-        sala
-      `
-      )
-      .eq("id", turmaId)
-      .eq("escola_id", escolaId)
-      .single();
-
-    if (turmaError || !turmaData) {
-      throw new Error("Turma não encontrada");
-    }
-
-    turma = turmaData as unknown as TurmaRow;
-    turmaIds = [turma.id];
-    turmaById = new Map([[turma.id, turma]]);
-  } else {
-    throw new Error("Escopo inválido para lista nominal");
-  }
-
-  // O ano civil do mapa de frequência não define a matrícula académica.
-  // As turmas impressas devem pertencer a uma única sessão válida.
-  const sessionIds = new Set([...turmaById.values()].map((item) => item.session_id));
-  if (sessionIds.size !== 1 || !turma.session_id || sessionIds.has(null)) {
-    throw new Error("As turmas selecionadas não possuem um único ano letivo válido.");
-  }
-
-  const [escolaRes, classeRes, sessaoRes, extraDataRes] = await Promise.all([
-    supabase
-      .from("escolas")
-      .select("id, nome, nif, endereco, logo_url")
-      .eq("id", escolaId)
-      .maybeSingle(),
-    !isClasseScope && turma.classe_id
-      ? supabase.from("classes").select("nome").eq("id", turma.classe_id).eq("escola_id", escolaId).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-    turma.session_id
-      ? supabase.from("anos_letivos").select("ano, ativo").eq("id", turma.session_id).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-    disciplinaId && turmaId
-      ? Promise.all([
-          supabase.from("disciplinas_catalogo").select("nome").eq("id", disciplinaId).maybeSingle(),
-          supabase
-            .from("turma_disciplinas_professores")
-            .select("professores(profiles(nome))")
-            .eq("turma_id", turmaId)
-            .eq("disciplina_id", disciplinaId)
-            .maybeSingle()
-        ])
-      : Promise.resolve([null, null])
-  ]);
-
-  if (escolaRes.error) throw new Error(escolaRes.error.message);
-  if (classeRes.error) throw new Error(classeRes.error.message);
-  if (sessaoRes.error) throw new Error(sessaoRes.error.message);
-
-  const escola = escolaRes.data as unknown as EscolaRow | null;
-  const classe = classeRes.data as unknown as ClasseRow | null;
-  const sessao = sessaoRes.data as unknown as SessaoRow | null;
-  const mode = requestedMode ?? modoPadraoDaSessao(sessao?.ativo);
-  if (!isClasseScope) {
-    classeNome = classe?.nome ?? "—";
-  }
+  const extraDataRes = disciplinaId && turmaId
+    ? await Promise.all([
+        supabase.from("disciplinas_catalogo").select("nome").eq("id", disciplinaId).maybeSingle(),
+        supabase.from("turma_disciplinas_professores")
+          .select("professores(profiles(nome))")
+          .eq("turma_id", turmaId).eq("disciplina_id", disciplinaId).maybeSingle(),
+      ])
+    : [null, null];
 
   const disciplinaNome = (extraDataRes?.[0] as any)?.data?.nome || "";
   const professorNome = (extraDataRes?.[1] as any)?.data?.professores?.profiles?.nome || "";
-
-  // Não truncar listas com mais de 50 alunos. A paginação utiliza uma
-  // ordenação estável para não omitir nem repetir matrículas entre páginas.
-  const matriculasData: MatriculaRow[] = [];
-  const pageSize = 500;
-  const maxRoster = 10000;
-  for (let offset = 0; offset < maxRoster; offset += pageSize) {
-    let pageQuery = supabase
-      .from("matriculas")
-      .select(`
-        id,
-        turma_id,
-        numero_chamada,
-        status,
-        ativo,
-        alunos (
-          id,
-          nome,
-          numero_processo,
-          sexo,
-          ${camposSensiveis || isAlbum || month || isAttendance
-            ? "bi_numero, data_nascimento, naturalidade, provincia, telefone, responsavel, telefone_responsavel,"
-            : ""}
-          profiles!alunos_profile_id_fkey (
-            avatar_url
-          )
-        )
-      `)
-      .eq("escola_id", escolaId)
-      .eq("session_id", turma.session_id)
-      .order("numero_chamada", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: true });
-
-    if (isClasseScope) {
-      pageQuery = pageQuery.in("turma_id", turmaIds);
-    } else if (turmaId) {
-      pageQuery = pageQuery.eq("turma_id", turmaId);
-    }
-
-    // Uma política para turma, classe e lote: nunca perder a matrícula histórica.
-    pageQuery = applyKf2ListInvariants(pageQuery, {
-      limit: pageSize,
-      maxLimit: pageSize,
-      offset,
-      order: [{ column: "id", ascending: true }],
-    });
-    const { data: page, error: pageError } = await pageQuery;
-    if (pageError) throw new Error(pageError.message);
-    matriculasData.push(...((page ?? []) as unknown as MatriculaRow[]));
-    if ((page?.length ?? 0) < pageSize) break;
-    if (offset + pageSize >= maxRoster) {
-      throw new Error("A lista excede o limite seguro de emissão. Filtre por turma.");
-    }
-  }
 
   let attendanceData: FrequenciaRow[] = [];
   if (month && normalizedYear) {
@@ -411,22 +191,6 @@ export async function renderListaNominalPdfBuffer({
     if (frequenciasError) throw new Error(frequenciasError.message);
     attendanceData = (frequenciasData ?? []) as unknown as FrequenciaRow[];
   }
-
-  const seleccao = selectMatriculasDaLista(matriculasData, mode, includeAllStatus);
-  const matriculas = seleccao.incluidos;
-  const sortedMatriculas = isClasseScope
-    ? [...matriculas].sort((a, b) => {
-        const turmaA = turmaById.get(a.turma_id ?? "")?.nome ?? "";
-        const turmaB = turmaById.get(b.turma_id ?? "")?.nome ?? "";
-        const byTurma = turmaA.localeCompare(turmaB, "pt-PT");
-        if (byTurma !== 0) return byTurma;
-        const byNumero = (a.numero_chamada ?? 9999) - (b.numero_chamada ?? 9999);
-        if (byNumero !== 0) return byNumero;
-        const alunoA = Array.isArray(a.alunos) ? a.alunos[0] : a.alunos;
-        const alunoB = Array.isArray(b.alunos) ? b.alunos[0] : b.alunos;
-        return String(alunoA?.nome ?? "").localeCompare(String(alunoB?.nome ?? ""), "pt-PT");
-      })
-    : matriculas;
 
   const alunos = sortedMatriculas.map((matricula, index) => {
     const aluno = Array.isArray(matricula.alunos) ? matricula.alunos[0] : matricula.alunos;
