@@ -11,6 +11,16 @@ export type NominalXlsxRow = {
   situacao: string;
 };
 
+/** Ordenação estável por turma e chamada, mantendo números ausentes em branco. */
+export function sortClasseNominalRows(rows: readonly NominalXlsxRow[]): NominalXlsxRow[] {
+  return [...rows].sort((a, b) =>
+    a.turma.localeCompare(b.turma, "pt-PT", { numeric: true, sensitivity: "base" }) ||
+    (a.chamada ?? Number.MAX_SAFE_INTEGER) - (b.chamada ?? Number.MAX_SAFE_INTEGER) ||
+    a.nome.localeCompare(b.nome, "pt-PT") ||
+    a.processo.localeCompare(b.processo, "pt-PT")
+  );
+}
+
 /**
  * Defesa em profundidade contra fórmulas em células provenientes de dados do aluno.
  * Todas as colunas textuais são também gravadas como células XLSX de tipo string.
@@ -22,6 +32,8 @@ export function safeNominalXlsxText(value: string): string {
 export function renderNominalXlsx(input: {
   escola: string;
   turma: string;
+  classe?: string;
+  quantidadeTurmas?: number;
   ano: string;
   mode: ListaNominalMode;
   totalOrigem: number;
@@ -32,8 +44,8 @@ export function renderNominalXlsx(input: {
   const lines: Array<Array<string | number>> = [
     ["KLASSE | LISTA NOMINAL"],
     ["Escola", tx(input.escola)],
-    ["Turma", tx(input.turma), "Ano letivo", tx(input.ano)],
-    ["Modo", LISTA_NOMINAL_MODES[input.mode]],
+    [input.classe ? "Classe" : "Turma", tx(input.classe ?? input.turma), "Ano letivo", tx(input.ano)],
+    ["Modo", LISTA_NOMINAL_MODES[input.mode], ...(input.classe ? ["Turmas", input.quantidadeTurmas ?? 0] : [])],
     ["Matrículas consultadas", input.totalOrigem, "Incluídas", input.rows.length, "Excluídas", input.totalOrigem - input.rows.length],
     ["Exclusões por estado", tx(input.exclusoes)],
     [],
