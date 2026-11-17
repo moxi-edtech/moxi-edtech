@@ -9,9 +9,8 @@ const BodySchema = z.object({
   nome_completo: z.string().trim().min(3, 'Informe o nome completo').max(160),
   genero: z.enum(['M', 'F']),
   data_nascimento: z.string().trim().nullable().optional(),
-  numero_bi: z.string().trim()
-    .regex(/^[A-Za-z0-9]{14}$/, 'BI deve ter 14 caracteres alfanuméricos')
-    .nullable().optional(),
+  numero_bi: z.preprocess((value) => value === "" ? null : value, z.string().trim()
+    .regex(/^[A-Za-z0-9]{14}$/, 'BI deve ter 14 caracteres alfanuméricos').nullable().optional()),
   telefone_principal: z.string().trim().max(40).nullable().optional(),
   habilitacoes: z.enum(['Ensino Médio', 'Bacharelato', 'Licenciatura', 'Mestrado', 'Doutoramento']),
   area_formacao: z.string().trim().max(200).nullable().optional(),
