@@ -371,8 +371,9 @@ export async function GET(req: Request) {
       return String(b.user_id).localeCompare(String(a.user_id))
     })
 
-    const from = (page - 1) * pageSize
-    const paged = filtered.slice(from, from + pageSize)
+    // escola_users has already been paginated by applyKf2ListInvariants above.
+    // Slicing again here made page 2+ appear empty, hiding valid teachers.
+    const paged = filtered
 
     const vincMap = new Map(vincList.map(v => [v.user_id, v]))
     const mapPapelToCargo = (p: string | undefined): string => {

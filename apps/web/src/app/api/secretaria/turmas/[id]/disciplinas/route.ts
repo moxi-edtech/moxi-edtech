@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { authorizeTurmasManage, authorizeTeacherManage } from '@/lib/escola/disciplinas'
 import { authorizeBalcaoPendingAcademicWrite } from '@/lib/academico/authorize-balcao-academic-write'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
@@ -37,7 +37,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (!escolaId) return NextResponse.json({ ok: true, items: [], total: 0 }, { headers })
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
-    if (!authz.allowed) {
+    if (!authz.allowed && !(await authorizeTeacherManage(supabase as any, escolaId, user.id)).allowed) {
       // Reading the list of disciplines for one selected student's pauta
       // must not require permission to edit the school's class structure.
       const alunoId = searchParams.get('aluno_id')
