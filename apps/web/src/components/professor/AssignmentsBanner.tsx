@@ -1,32 +1,29 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+type AssignmentsBannerProps = {
+  loading: boolean
+  hasAssignments: boolean
+  hasError: boolean
+  academicYearLabel?: string | null
+}
 
-export default function AssignmentsBanner() {
-  const [loading, setLoading] = useState(true)
-  const [has, setHas] = useState<boolean>(true)
-  useEffect(() => {
-    let active = true
-    ;(async () => {
-      try {
-        const res = await fetch('/api/professor/atribuicoes')
-        const json = await res.json().catch(()=>null)
-        if (!active) return
-        setHas(res.ok && json?.ok && Array.isArray(json.items) && json.items.length > 0)
-      } finally {
-        if (active) setLoading(false)
-      }
-    })()
-    return () => { active = false }
-  }, [])
+export default function AssignmentsBanner({
+  loading,
+  hasAssignments,
+  hasError,
+  academicYearLabel,
+}: AssignmentsBannerProps) {
+  // Never confuse a failed request with an empty assignment set.
+  if (loading || hasAssignments || hasError) return null
 
-  if (loading || has) return null
+  const period = academicYearLabel ? `em ${academicYearLabel}` : 'no ano letivo selecionado'
 
   return (
-    <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-      <div className="font-semibold mb-1">Sem atribuições ativas</div>
+    <div role="status" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+      <p className="mb-1 font-semibold">Sem atribuições neste ano letivo</p>
       <p className="text-sm">
-        Você ainda não possui turmas/disciplinas atribuídas. Solicite à Secretaria/Coordenação a atribuição de disciplina na sua turma.
+        Não há turmas ou disciplinas atribuídas {period}. A Secretaria pode associar as turmas
+        deste ano no cadastro do professor.
       </p>
     </div>
   )
