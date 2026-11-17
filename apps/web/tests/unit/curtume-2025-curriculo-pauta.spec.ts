@@ -10,6 +10,8 @@ const sql = readFileSync(
 test("CURTUME 2025/2026 is the sole write scope, with source-backed subjects", () => {
   assert.match(sql, /v_escola constant uuid := '3744879f-2e19-4671-8995-78604302d8c5'/);
   assert.match(sql, /ano=2025/);
+  assert.match(sql, /IF NOT EXISTS \(SELECT 1 FROM public.historico_anos/);
+  assert.match(sql, /RETURN;/);
   assert.match(sql, /numero=6/);
   assert.match(sql, /AND ano_letivo=2025/);
   assert.match(sql, /h\.ano_letivo=2025/);
