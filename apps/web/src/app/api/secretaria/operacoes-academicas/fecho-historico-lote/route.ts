@@ -187,7 +187,7 @@ export async function GET(request: Request) {
           : { data: null, error: null };
         if (classError) throw classError;
         const classeNum = Number(sourceClass?.numero);
-        if (Number.isInteger(classeNum) && classeNum >= 1 && classeNum <= 12) {
+        if (sourceTurma && Number.isInteger(classeNum) && classeNum >= 1 && classeNum <= 12) {
           escalaMaxima = classeNum <= 6 ? 10 : 20;
           const { data: curriculum, error: curriculumError } = await ctx.db.from("curso_curriculos")
             .select("id").eq("escola_id", CURTUME).eq("classe_id", sourceTurma.classe_id)
