@@ -410,6 +410,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       turma,
       alunos,
       disciplinas,
+      canEmitLista: true, // A rota já exigiu authorizeTurmasManage.
     };
 
     console.log('API response prepared for turma:', turmaId);

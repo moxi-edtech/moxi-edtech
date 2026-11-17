@@ -43,8 +43,6 @@ export async function GET(
       );
     }
 
-    await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
-
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
     if (!authz.allowed) {
       return NextResponse.json(
@@ -56,6 +54,8 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const year = searchParams.get("year") || String(new Date().getFullYear());
     const includeAllStatus = searchParams.get("all_status") === "true";
+    const enableQr = searchParams.get("qr") === "true";
+    if (enableQr) await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
     const modeParam = searchParams.get("mode");
     if (modeParam && modeParam !== "ano_letivo" && modeParam !== "operacional") {
       return NextResponse.json({ ok: false, error: "Modo de lista inválido" }, { status: 400 });
@@ -70,6 +70,7 @@ export async function GET(
       year,
       includeAllStatus,
       mode,
+      enableQr,
       fallbackLogoUrl,
     });
 

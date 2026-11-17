@@ -74,6 +74,7 @@ type ListaNominalPdfParams = {
   isAlbum?: boolean;
   includeAllStatus?: boolean;
   mode?: ListaNominalMode;
+  enableQr?: boolean;
   fallbackLogoUrl?: string | null;
 };
 
@@ -171,6 +172,7 @@ export async function renderListaNominalPdfBuffer({
   isAlbum = false,
   includeAllStatus = false,
   mode: requestedMode,
+  enableQr = false,
   fallbackLogoUrl,
 }: ListaNominalPdfParams) {
   const normalizedYear = year || String(new Date().getFullYear());
@@ -478,7 +480,7 @@ export async function renderListaNominalPdfBuffer({
     return row;
   });
 
-  const verificationToken = randomUUID();
+  const verificationToken = enableQr ? randomUUID() : undefined;
   const validationBase = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? undefined;
   const logoUrl = normalizePdfLogoUrl(escola?.logo_url, fallbackLogoUrl);
 

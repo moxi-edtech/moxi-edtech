@@ -41,8 +41,6 @@ export async function GET(
       );
     }
 
-    await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
-
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
 
@@ -52,6 +50,8 @@ export async function GET(
     const year = searchParams.get("year") || String(new Date().getFullYear());
     const disciplinaId = searchParams.get("disciplina_id");
     const isAlbum = searchParams.get("album") === "true";
+    const enableQr = searchParams.get("qr") === "true";
+    if (enableQr || isAlbum || isAttendance || month) await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
     const includeAllStatus = searchParams.get("all_status") === "true";
     const modeParam = searchParams.get("mode");
     if (modeParam && modeParam !== "ano_letivo" && modeParam !== "operacional") {
@@ -74,6 +74,7 @@ export async function GET(
       isAlbum,
       includeAllStatus,
       mode,
+      enableQr,
       fallbackLogoUrl,
     });
 
