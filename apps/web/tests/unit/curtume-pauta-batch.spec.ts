@@ -6,7 +6,8 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf
 const sql = read("../../../../supabase/migrations/20271117190000_curtume_fechar_pautas_2025_lote.sql");
 const route = read("../../src/app/api/secretaria/operacoes-academicas/fecho-historico-lote/route.ts");
 const component = read("../../src/components/secretaria/CurtumeFechoHistoricoLote.tsx");
-const page = read("../../src/app/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/page.tsx");
+const page = read("../../src/app/secretaria/(portal-secretaria)/operacoes-academicas/page.tsx");
+const historicPage = read("../../src/app/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/page.tsx");
 
 test("historic school year is the only mutable scope; admission and grade tables remain read-only", () => {
   assert.match(sql, /h\.escola_id=p_escola_id AND h\.ano_letivo=2025/);
@@ -58,7 +59,10 @@ test("Director has one confirmation and may see only the real exceptions", () =>
   assert.match(component, /crypto\.randomUUID\(\)/);
   assert.match(component, /Concluir históricos elegíveis/);
   assert.match(component, /pendencias\.map/);
-  assert.match(page, /<CurtumeFechoHistoricoLote onComplete/);
+  assert.match(page, /<CurtumeFechoHistoricoLote\s*\/>/);
+  assert.doesNotMatch(historicPage, /<CurtumeFechoHistoricoLote/);
+  assert.match(page, /Rever apenas os históricos com pendências/);
   assert.match(page, /escolaId === "3744879f-2e19-4671-8995-78604302d8c5"/);
-  assert.match(page, /ano === 2025 && tipo === "historicos"/);
+  assert.match(page, /buildPortalHref\(escolaParam, "\/operacoes\/academico\/reconciliacao-historica\?tipo=historicos&ano=2025"\)/);
+  assert.match(component, /onComplete\?: \(\) => void/);
 });
