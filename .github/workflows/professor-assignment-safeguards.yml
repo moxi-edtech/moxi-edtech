@@ -7,6 +7,8 @@ on:
       - 'apps/web/src/lib/escola/disciplinas.ts'
       - 'apps/web/src/app/api/escolas/**/professores/**'
       - 'apps/web/tests/unit/professor-assignment-hardening.spec.ts'
+      - 'apps/web/tests/unit/turma-modal-assignments.spec.ts'
+      - 'apps/web/src/components/secretaria/TurmaAtribuirProfessoresModal.tsx'
       - 'apps/web/src/app/api/professor/atribuicoes/route.ts'
       - 'supabase/migrations/2027111711*.sql'
       - 'supabase/tests/teacher_assignment_disposable_*.sql'
@@ -27,7 +29,7 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - name: Run assignment contract tests
-        run: node --test --import tsx apps/web/tests/unit/professor-assignment-hardening.spec.ts
+        run: node --test --import tsx apps/web/tests/unit/professor-assignment-hardening.spec.ts apps/web/tests/unit/turma-modal-assignments.spec.ts
 
   postgres-integration:
     name: Disposable PostgreSQL assignment integration
