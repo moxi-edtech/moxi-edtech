@@ -34,9 +34,14 @@ const REASONS: Record<string, HistoricBatchIssueAdvice> = {
   },
 };
 
+/** Distinguish real academic exceptions from transient/unknown server failures. */
+export function isHistoricBatchAcademicIssue(code: string): boolean {
+  return Object.prototype.hasOwnProperty.call(REASONS, code);
+}
+
 export function getHistoricBatchIssueAdvice(code: string): HistoricBatchIssueAdvice {
   return REASONS[code] ?? {
-    title: "Revisão académica necessária",
-    nextStep: "Conferir a situação do aluno no Balcão antes de repetir o fecho.",
+    title: "Falha técnica de validação",
+    nextStep: "Repetir o fecho; se persistir, contactar o suporte.",
   };
 }
