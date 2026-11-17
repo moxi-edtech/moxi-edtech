@@ -119,13 +119,13 @@ export function CurtumeFechoHistoricoLote({ onComplete }: { onComplete: () => vo
   if (!permitted) return null;
   return (
     <section aria-label="Fecho académico em lote de 2025/2026"
-      className="rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
+      className="rounded-xl border border-border bg-card p-4 text-sm shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-start gap-3">
-          <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-[#1F6B3B]" />
+          <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-emerald" />
           <div>
-            <h2 className="font-semibold text-[#1F6B3B]">Concluir ano 2025/2026 · CURTUME</h2>
-            <p className="mt-1 text-slate-600">
+            <h2 className="font-semibold text-emerald">Concluir ano 2025/2026 · CURTUME</h2>
+            <p className="mt-1 text-muted-foreground">
               {abertos === null ? "A consultar históricos…" : `${abertos} históricos ainda abertos.`}
               {" "}Usar as pautas importadas, respeitar o RAA e separar apenas os conflitos.
             </p>
@@ -133,28 +133,28 @@ export function CurtumeFechoHistoricoLote({ onComplete }: { onComplete: () => vo
         </div>
         <button type="button" onClick={() => void concluir()}
           disabled={running || !abertos}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#E3B23C] px-4 py-2.5 font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
           {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
           {running ? "A concluir…" : "Concluir históricos elegíveis"}
         </button>
       </div>
       {(running || done || processados > 0) && (
-        <div role="status" aria-live="polite" className="mt-3 border-t border-slate-200 pt-3 text-slate-700">
+        <div role="status" aria-live="polite" className="mt-3 border-t border-border pt-3 text-foreground">
           <span className="font-semibold">{fechados} fechados</span>
           {" · "}{bloqueados} para revisão
           {" · "}{processados} analisados
-          {done && <span className="ml-2 text-[#1F6B3B]">Lote concluído.</span>}
+          {done && <span className="ml-2 text-emerald">Lote concluído.</span>}
         </div>
       )}
       {error && <p role="alert" className="mt-3 flex items-start gap-2 text-red-700">
         <AlertTriangle className="h-4 w-4 shrink-0" />{error}
       </p>}
       {pendencias.length > 0 && (
-        <details className="mt-3 text-slate-700">
+        <details className="mt-3 text-foreground">
           <summary className="cursor-pointer font-medium">Ver os {pendencias.length} casos para revisão</summary>
           <ul className="mt-2 max-h-56 space-y-1 overflow-y-auto">
             {pendencias.map((issue, index) => (
-              <li key={issue.matricula_id + "-" + index} className="rounded-xl border border-slate-200 px-3 py-2">
+              <li key={issue.matricula_id + "-" + index} className="rounded-xl border border-border px-3 py-2">
                 <span className="font-mono text-xs">{issue.matricula_id}</span>
                 <span className="ml-2">{issue.codigo.replaceAll("_", " ")}</span>
               </li>
