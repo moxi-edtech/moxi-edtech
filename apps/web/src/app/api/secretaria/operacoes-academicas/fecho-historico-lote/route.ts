@@ -15,6 +15,20 @@ const BatchSchema = z.object({
   cursor: z.string().uuid().nullable(),
 }).strict();
 
+const PhysicalPautaSchema = z.object({
+  acao: z.literal("transcrever_pauta_2025"),
+  matricula_id: z.string().uuid(),
+  aluno_id: z.string().uuid(),
+  referencia: z.string().trim().min(8).max(180),
+  folha: z.string().trim().min(2).max(80),
+  notas: z.array(z.object({
+    disciplina_id: z.string().uuid(),
+    valor: z.number().min(0).max(20).refine((value) => Number.isInteger(value * 100)),
+  }).strict()).min(1).max(30),
+  todas_disciplinas: z.literal(true),
+  confirmacao: z.literal("CONFIRMO_PAUTA_2025"),
+}).strict();
+
 const GradeReconciliationSchema = z.object({
   acao: z.literal("conferir_notas_2025"),
   matricula_id: z.string().uuid(),
@@ -158,6 +172,46 @@ export async function GET(request: Request) {
         : { data: false, error: null };
       if (signedStatus.error) throw signedStatus.error;
 
+      const availableSubjects: Array<{ id: string; nome: string }> = [];
+      let escalaMaxima: number | null = null;
+      if (historicas.length === 0 && operacionais.length === 0 && sourceComplete) {
+        // Only source-year published curriculum options for this student's
+        // actual 2025 turma. This is not the 2026/2027 curriculum.
+        const { data: sourceTurma, error: turmaError } = await ctx.db.from("turmas")
+          .select("classe_id").eq("escola_id", CURTUME).eq("id", history.turma_id)
+          .eq("ano_letivo", 2025).maybeSingle();
+        if (turmaError) throw turmaError;
+        const { data: sourceClass, error: classError } = sourceTurma
+          ? await ctx.db.from("classes").select("numero").eq("escola_id", CURTUME)
+              .eq("id", sourceTurma.classe_id).maybeSingle()
+          : { data: null, error: null };
+        if (classError) throw classError;
+        const classeNum = Number(sourceClass?.numero);
+        if (Number.isInteger(classeNum) && classeNum >= 1 && classeNum <= 12) {
+          escalaMaxima = classeNum <= 6 ? 10 : 20;
+          const { data: curriculum, error: curriculumError } = await ctx.db.from("curso_curriculos")
+            .select("id").eq("escola_id", CURTUME).eq("classe_id", sourceTurma.classe_id)
+            .eq("ano_letivo_id", history.ano_letivo_id).eq("status", "published").maybeSingle();
+          if (curriculumError) throw curriculumError;
+          if (curriculum) {
+            const { data: matrixRows, error: matrixError } = await ctx.db.from("curso_matriz")
+              .select("disciplina_id").eq("escola_id", CURTUME)
+              .eq("curso_curriculo_id", curriculum.id).eq("classe_id", sourceTurma.classe_id)
+              .eq("ativo", true).limit(40);
+            if (matrixError) throw matrixError;
+            const subjectIds = [...new Set(((matrixRows ?? []) as Array<{ disciplina_id: string }>)
+              .map((row) => row.disciplina_id))];
+            if (subjectIds.length) {
+              const { data: subjects, error: subjectError } = await ctx.db.from("disciplinas_catalogo")
+                .select("id,nome").eq("escola_id", CURTUME).in("id", subjectIds);
+              if (subjectError) throw subjectError;
+              availableSubjects.push(...((subjects ?? []) as Array<{ id: string; nome: string }>)
+                .sort((left, right) => left.nome.localeCompare(right.nome, "pt")));
+            }
+          }
+        }
+      }
+
       const issueCode = !sourceComplete ? "ORIGEM_HISTORICA_INCOMPATIVEL" :
         operacionais.length > 0 ? "NOTAS_OPERACIONAIS_EXIGEM_RECONCILIACAO" :
         historicas.length === 0 ? "SEM_NOTAS_HISTORICAS" :
@@ -175,6 +229,8 @@ export async function GET(request: Request) {
         })),
         notas_operacionais: operationalGrades,
         conferencia_validada: signedStatus.data === true,
+        disciplinas_disponiveis_2025: availableSubjects,
+        escala_maxima: escalaMaxima,
         sourceComplete,
       }, { headers: { "Cache-Control": "no-store" } });
     }
@@ -285,6 +341,46 @@ export async function POST(request: Request) {
     const ctx = await context();
     if (!ctx.allowed) return ctx.response!;
     const payload = await request.json().catch(() => null);
+    if (payload && typeof payload === "object" &&
+        !Array.isArray(payload) && payload.acao === "transcrever_pauta_2025") {
+      const verified = PhysicalPautaSchema.safeParse(payload);
+      if (!verified.success)
+        return NextResponse.json({ ok: false, error: "Preencha as notas, a referência e a folha da pauta." },
+          { status: 400 });
+      const { matricula_id, aluno_id, referencia, folha, notas, todas_disciplinas } = verified.data;
+      if (new Set(notas.map((item) => item.disciplina_id)).size !== notas.length)
+        return NextResponse.json({ ok: false, error: "A pauta contém disciplinas repetidas." },
+          { status: 400 });
+      const { data: history, error: lookupError } = await ctx.db.from("historico_anos")
+        .select("id").eq("escola_id", CURTUME).eq("ano_letivo", 2025)
+        .eq("aluno_id", aluno_id).eq("matricula_id", matricula_id)
+        .eq("snapshot_status", "aberto").maybeSingle();
+      if (lookupError) throw lookupError;
+      if (!history) return NextResponse.json({ ok: false,
+        error: "Matrícula de 2025/2026 não encontrada." }, { status: 404 });
+      const { data, error: writeError } = await ctx.db.rpc("curtume_2025_transcrever_pauta_fisica", {
+        p_escola_id: CURTUME, p_matricula_id: matricula_id, p_aluno_id: aluno_id,
+        p_referencia: referencia, p_folha: folha,
+        p_notas: notas, p_todas_disciplinas: todas_disciplinas,
+      });
+      if (writeError) {
+        console.error("[curtume-historic-batch] transcription blocked", {
+          code: writeError.code, message: writeError.message,
+        });
+        return NextResponse.json({ ok: false, error: writeError.code === "42501"
+          ? "Só a Direção pode confirmar a pauta." :
+          writeError.code === "23514"
+            ? "A pauta, a matrícula ou a turma mudou. Confira os dados e tente novamente."
+            : "Não foi possível registar a pauta." }, { status:
+              writeError.code === "42501" ? 403 : writeError.code === "23514" ? 409 : 500 });
+      }
+      if (data?.ok !== true || data?.disciplinas_registadas !== notas.length)
+        return NextResponse.json({ ok: false, error: "A confirmação não pôde ser validada." },
+          { status: 502 });
+      return NextResponse.json({ ok: true, matricula_id,
+        disciplinas_registadas: data.disciplinas_registadas, ano_letivo: "2025/2026" },
+        { headers: { "Cache-Control": "no-store" } });
+    }
     if (payload && typeof payload === "object" &&
         !Array.isArray(payload) && payload.acao === "conferir_notas_2025") {
       const verified = GradeReconciliationSchema.safeParse(payload);
