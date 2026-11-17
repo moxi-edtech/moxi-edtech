@@ -46,7 +46,7 @@ export async function GET(request: Request) {
           !z.string().uuid().safeParse(alunoId).success)
         return NextResponse.json({ ok: false, error: "Aluno ou matrícula inválidos." }, { status: 400 });
       const { data: history, error: historyError } = await ctx.db.from("historico_anos")
-        .select("id,matricula_id,aluno_id,turma_id,resultado_final,snapshot_status")
+        .select("id,matricula_id,aluno_id,turma_id,ano_letivo_id,resultado_final,snapshot_status")
         .eq("escola_id", CURTUME).eq("ano_letivo", 2025)
         .eq("matricula_id", matriculaId).eq("aluno_id", alunoId)
         .eq("snapshot_status", "aberto").maybeSingle();
@@ -60,10 +60,12 @@ export async function GET(request: Request) {
           .eq("escola_id", CURTUME).eq("id", matriculaId).eq("aluno_id", alunoId).maybeSingle(),
         ctx.db.from("historico_disciplinas")
           .select("disciplina_id,disciplina_nome,nota_final,notas_detalhe")
-          .eq("historico_ano_id", history.id).limit(151),
+          .eq("historico_ano_id", history.id)
+          .order("disciplina_nome", { ascending: true }).limit(151),
         ctx.db.from("notas")
           .select("id,avaliacao_id,valor,is_isento")
-          .eq("escola_id", CURTUME).eq("matricula_id", matriculaId).limit(151),
+          .eq("escola_id", CURTUME).eq("matricula_id", matriculaId)
+          .order("created_at", { ascending: true }).limit(151),
       ]);
       if (originError || historicalResponse.error || notesResponse.error) {
         throw originError ?? historicalResponse.error ?? notesResponse.error;
@@ -139,7 +141,7 @@ export async function GET(request: Request) {
 
       const sourceComplete = origin.status === "concluido" &&
         origin.ativo === false && origin.status_fecho_origem === "override_admin" &&
-        origin.session_id != null;
+        origin.session_id != null && origin.session_id === history.ano_letivo_id;
       const issueCode = !sourceComplete ? "ORIGEM_HISTORICA_INCOMPATIVEL" :
         operacionais.length > 0 ? "NOTAS_OPERACIONAIS_EXIGEM_RECONCILIACAO" :
         historicas.length === 0 ? "SEM_NOTAS_HISTORICAS" :
