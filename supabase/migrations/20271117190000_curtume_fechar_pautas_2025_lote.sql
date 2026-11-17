@@ -85,7 +85,7 @@ BEGIN
     -- atomic without sacrificing other well-formed pupils in the same batch.
     BEGIN
       IF v_row.status <> 'concluido' OR v_row.ativo IS DISTINCT FROM false
-         OR v_row.status_fecho_origem <> 'override_admin'
+         OR v_row.status_fecho_origem IS DISTINCT FROM 'override_admin'
          OR v_row.session_id IS NULL
          OR v_row.ano_letivo_id IS DISTINCT FROM v_row.session_id
          OR v_row.resultado_final NOT IN ('aprovado','reprovado','concluido')
