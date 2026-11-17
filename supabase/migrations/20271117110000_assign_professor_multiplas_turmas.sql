@@ -181,12 +181,19 @@ BEGIN
     is_diretor_turma = COALESCE((p_details ->> 'is_diretor_turma')::boolean, false)
   WHERE id = v_teacher_id AND escola_id = p_escola_id;
 
-  UPDATE public.profiles SET
-    nome = v_nome,
-    telefone = nullif(p_details ->> 'telefone_principal', '')
-  WHERE user_id = p_profile_id;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'UPDATE_TEACHER_PROFILE_NOT_FOUND';
+  -- profiles é global. Num docente de várias escolas, editar apenas o
+  -- cadastro local de teachers para não modificar outra organização.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.escola_users eu
+    WHERE eu.user_id = p_profile_id AND eu.escola_id <> p_escola_id
+  ) THEN
+    UPDATE public.profiles SET
+      nome = v_nome,
+      telefone = nullif(p_details ->> 'telefone_principal', '')
+    WHERE user_id = p_profile_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'UPDATE_TEACHER_PROFILE_NOT_FOUND';
+    END IF;
   END IF;
 
   DELETE FROM public.teacher_skills
