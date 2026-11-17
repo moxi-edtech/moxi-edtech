@@ -72,6 +72,9 @@ test("tenant-authenticated review uses historical rows and keeps the canonical R
   assert.match(route,/historico_ano_id/);
   assert.match(route,/from\("turma_disciplinas"\)/);
   assert.match(route,/buildPautaHistoricaReview/);
+  assert.match(route,/body\.acao === "ratificar" \|\| body\.acao === "fechar_historico"/);
+  assert.match(route,/PAUTA_CONFLITO_DOCUMENTAL/);
+  assert.match(route,/pauta\.processo_verificado === false \|\| pauta\.divergencia_ano_documento/);
   assert.match(route,/\.rpc\("ratificar_resultado_historico_escola"/);
   assert.match(route,/\.rpc\("historico_set_snapshot_state"/);
   assert.doesNotMatch(route,/INSERT INTO public\.notas/i);
