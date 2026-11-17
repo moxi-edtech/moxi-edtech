@@ -24,6 +24,8 @@ ALTER TABLE public.pauta_conclusoes ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.pauta_conclusoes FROM PUBLIC, anon, authenticated;
 -- Read-only status for assigned teachers. Never expose direct writes.
 GRANT SELECT ON TABLE public.pauta_conclusoes TO authenticated;
+-- Reapplication is safe if the migration ran through Supabase MCP before db push.
+DROP POLICY IF EXISTS pauta_conclusoes_professor_select ON public.pauta_conclusoes;
 CREATE POLICY pauta_conclusoes_professor_select ON public.pauta_conclusoes
 FOR SELECT TO authenticated
 USING (
