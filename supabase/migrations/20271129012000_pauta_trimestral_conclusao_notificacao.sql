@@ -97,7 +97,9 @@ BEGIN
           coalesce(ev.payload->>'professor_nome','Professor') || ' concluiu o lançamento.',
         'info'::public.notificacao_prioridade,
         'Conferir pauta',
-        '/secretaria/pautas?turma=' || coalesce(ev.payload->>'turma_id','')
+        '/secretaria/notas?turmaId=' || coalesce(ev.payload->>'turma_id','') ||
+          '&disciplinaId=' || coalesce(ev.payload->>'disciplina_id','') ||
+          '&trimestre=' || coalesce(ev.payload->>'trimestre','1')
       );
     END LOOP;
     RETURN;
@@ -116,11 +118,12 @@ DECLARE
   v_turma_nome text;
   v_turma_id uuid;
   v_disciplina_nome text;
+  v_disciplina_id uuid;
   v_trimestre smallint;
   v_professor_nome text;
 BEGIN
-  SELECT t.id, t.nome, dc.nome, p.numero
-    INTO v_turma_id, v_turma_nome, v_disciplina_nome, v_trimestre
+  SELECT t.id, t.nome, dc.nome, cm.disciplina_id, p.numero
+    INTO v_turma_id, v_turma_nome, v_disciplina_nome, v_disciplina_id, v_trimestre
   FROM public.turma_disciplinas td
   JOIN public.turmas t ON t.id = td.turma_id AND t.escola_id = NEW.escola_id
   JOIN public.curso_matriz cm ON cm.id = td.curso_matriz_id AND cm.escola_id = NEW.escola_id
@@ -138,6 +141,7 @@ BEGIN
       'workflow','pauta_concluida','turma_id',v_turma_id,
       'turma_disciplina_id',NEW.turma_disciplina_id,
       'turma_nome',v_turma_nome,'disciplina_nome',v_disciplina_nome,
+      'disciplina_id',v_disciplina_id,
       'trimestre',v_trimestre,'total_alunos',NEW.total_alunos,
       'professor_nome',v_professor_nome
     ),

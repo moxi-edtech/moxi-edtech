@@ -63,6 +63,7 @@ function SecretariaNotasContent() {
   const [academicYearId, setAcademicYearId] = useState<string | null>(null)
   const initialTurmaId = searchParams?.get("turmaId") ?? ""
   const initialDisciplinaId = searchParams?.get("disciplinaId") ?? ""
+  const requestedTrimestre = Number(searchParams?.get("trimestre"))
   const [academicMode, setAcademicMode] = useState<"CURRENT" | "HISTORICAL_READ" | null>(null)
   const [academicContextError, setAcademicContextError] = useState<string | null>(null)
   const [turmas, setTurmas] = useState<TurmaItem[]>([])
@@ -161,8 +162,11 @@ function SecretariaNotasContent() {
         setDisciplinas(json.items || [])
         setPeriodos(json.periodos || [])
         const firstNumero = json.periodos?.[0]?.numero
-        if (typeof firstNumero === "number") {
-          setPeriodoNumero(firstNumero)
+        const selectedNumero = (json.periodos ?? []).some(
+          (periodo: PeriodoItem) => periodo.numero === requestedTrimestre,
+        ) ? requestedTrimestre : firstNumero
+        if (typeof selectedNumero === "number") {
+          setPeriodoNumero(selectedNumero)
         }
         // The selected assignment is derived in a separate effect so URL/deep-link
         // discipline changes cannot retain a stale turma_disciplina_id.
@@ -175,7 +179,7 @@ function SecretariaNotasContent() {
     return () => {
       active = false
     }
-  }, [turmaId])
+  }, [turmaId, requestedTrimestre])
 
   const disciplinasFiltradas = useMemo(() => {
     return disciplinas.filter((disciplina) => {

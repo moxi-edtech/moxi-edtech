@@ -70,3 +70,12 @@ test("Only committed completion events can notify staff; legacy grade events can
   assert.match(migration, /Unverified legacy nota events must not generate staff notifications/);
   assert.doesNotMatch(migration, /Preserve legacy callers of notas\.lancadas/);
 });
+
+test("Staff notification links to the real grade page and its academic context", () => {
+  const secretariaPage = web("app/secretaria/(portal-secretaria)/notas/page.tsx");
+  assert.match(migration, /\/secretaria\/notas\?turmaId=/);
+  assert.match(migration, /'disciplina_id',v_disciplina_id/);
+  assert.match(migration, /'&trimestre='/);
+  assert.match(secretariaPage, /requestedTrimestre/);
+  assert.match(secretariaPage, /periodo\.numero === requestedTrimestre/);
+});
