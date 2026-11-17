@@ -26,8 +26,8 @@ BEGIN
   END IF;
 
   -- Prevent unrelated updates from retroactively invalidating legacy data.
-  IF TG_OP = 'UPDATE'
-     AND NEW.escola_id IS NOT DISTINCT FROM OLD.escola_id
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.escola_id IS NOT DISTINCT FROM OLD.escola_id
      AND NEW.aluno_id IS NOT DISTINCT FROM OLD.aluno_id
      AND NEW.turma_id IS NOT DISTINCT FROM OLD.turma_id
      AND NEW.session_id IS NOT DISTINCT FROM OLD.session_id
@@ -35,7 +35,8 @@ BEGIN
      AND NEW.origem_transicao_matricula_id IS NOT DISTINCT FROM OLD.origem_transicao_matricula_id
      AND NEW.status IS NOT DISTINCT FROM OLD.status
      AND NEW.ativo IS NOT DISTINCT FROM OLD.ativo THEN
-    RETURN NEW;
+      RETURN NEW;
+    END IF;
   END IF;
 
   SELECT t.ano_letivo, coalesce(t.classe_num, c.numero),
