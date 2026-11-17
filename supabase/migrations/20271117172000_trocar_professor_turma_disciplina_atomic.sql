@@ -117,6 +117,19 @@ BEGIN
       AND cm.disciplina_id = v_disciplina_id
       AND td.professor_id IS NOT NULL AND td.professor_id <> p_professor_anterior_id
   ) OR EXISTS (
+    -- Multiple published offerings for the SAME turma/subject would make
+    -- historical teacher attribution ambiguous. Require data reconciliation
+    -- rather than rewrite another published curricular version.
+    SELECT 1 FROM public.turma_disciplinas td
+    JOIN public.curso_matriz cm
+      ON cm.id=td.curso_matriz_id AND cm.escola_id=p_escola_id
+    JOIN public.curso_curriculos cc
+      ON cc.id=cm.curso_curriculo_id AND cc.escola_id=p_escola_id
+     AND cc.ano_letivo_id=v_ano_id AND cc.status='published'
+    WHERE td.escola_id=p_escola_id AND td.turma_id=p_turma_id
+      AND cm.disciplina_id=v_disciplina_id
+      AND td.curso_matriz_id<>p_curso_matriz_id
+  ) OR EXISTS (
     SELECT 1 FROM public.quadro_horarios q
     JOIN public.horario_versoes hv
       ON hv.id = q.versao_id AND hv.escola_id = p_escola_id
@@ -184,11 +197,10 @@ BEGIN
 
   -- Update the canonical and shared live links without deleting rows:
   -- keep IDs, syllabus, planning, grade and attendance references untouched.
+  -- Change only the current published offering, never archived/draft versions.
   UPDATE public.turma_disciplinas td SET professor_id=p_professor_novo_id
-  FROM public.curso_matriz cm
   WHERE td.escola_id=p_escola_id AND td.turma_id=p_turma_id
-    AND cm.id=td.curso_matriz_id AND cm.escola_id=p_escola_id
-    AND cm.disciplina_id=v_disciplina_id
+    AND td.curso_matriz_id=p_curso_matriz_id
     AND (td.professor_id=p_professor_anterior_id OR td.professor_id IS NULL);
 
   UPDATE public.turma_disciplinas_professores tdp
