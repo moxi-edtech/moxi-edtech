@@ -481,6 +481,7 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
   onReset:  () => void
 }) {
   const atribuicoes = prof.atribuicoes ?? []
+  const totalTurmas = new Set(atribuicoes.map((a) => a.turma_id).filter(Boolean)).size
   const labels      = Array.from(new Set(
     atribuicoes.map((a) => `${a.turma_nome ?? "Turma"} · ${a.disciplina_nome ?? "Disciplina"}`)
   ))
@@ -545,7 +546,7 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
           }
           <span className="text-slate-300">·</span>
           <span className="text-slate-500">
-            {atribuicoes.length > 0 ? `${atribuicoes.length} turma(s)` : "Sem turmas"}
+            {totalTurmas > 0 ? `${totalTurmas} turma(s)` : "Sem turmas neste ano"}
           </span>
         </div>
         <PendenciasResumoBadge total={prof.pendencias_total ?? 0} />
@@ -635,6 +636,16 @@ export default function ProfessoresPage() {
   const [removing,           setRemoving]            = useState(false)
   const [quickAssignSelection, setQuickAssignSelection] = useState("")
   const [quickAssignTurmaId, setQuickAssignTurmaId] = useState<string | null>(null)
+  const [bulkDisciplinaId, setBulkDisciplinaId] = useState("")
+  const [bulkCandidates, setBulkCandidates] = useState<Array<{
+    turma_id: string; nome: string; turno: string | null;
+    curso_matriz_id: string; professor_id: string | null;
+  }>>([])
+  const [bulkSelected, setBulkSelected] = useState<string[]>([])
+  const [bulkSearch, setBulkSearch] = useState("")
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [bulkSubmitting, setBulkSubmitting] = useState(false)
+  const [bulkError, setBulkError] = useState<string | null>(null)
 
   // ── Adicionar state ──────────────────────────────────────────────────────────
   const [teacherStep,       setTeacherStep]       = useState(0)
@@ -663,6 +674,7 @@ export default function ProfessoresPage() {
   const [editOpen,          setEditOpen]          = useState(false)
   const [editTarget,        setEditTarget]        = useState<Professor | null>(null)
   const [editForm,          setEditForm]          = useState({
+    nome_completo: "",
     genero: "M" as "M" | "F", data_nascimento: "", numero_bi: "",
     telefone_principal: "",
     habilitacoes: "Licenciatura" as "Ensino Médio" | "Bacharelato" | "Licenciatura" | "Mestrado" | "Doutoramento",
@@ -828,7 +840,7 @@ export default function ProfessoresPage() {
 
   // ── Load disciplinas catalogo ─────────────────────────────────────────────
   useEffect(() => {
-    if (tab !== "adicionar" && tab !== "gerenciar") return
+    if (tab !== "adicionar" && tab !== "gerenciar" && tab !== "atribuir") return
     let cancelled = false
     const load = async () => {
       try {
@@ -847,6 +859,35 @@ export default function ProfessoresPage() {
     load()
     return () => { cancelled = true }
   }, [tab])
+
+  // ── Turmas elegíveis para uma disciplina (ano letivo ativo) ─────────────
+  useEffect(() => {
+    if (!escolaId || tab !== "atribuir" || !bulkDisciplinaId) {
+      setBulkCandidates([])
+      setBulkSelected([])
+      setBulkError(null)
+      return
+    }
+    const controller = new AbortController()
+    setBulkLoading(true)
+    setBulkError(null)
+    setBulkSelected([])
+    fetch(`/api/escolas/${escolaId}/professores/atribuicoes-em-massa?disciplina_id=${bulkDisciplinaId}`, {
+      cache: "no-store", signal: controller.signal,
+    })
+      .then(async (res) => {
+        const payload = await res.json().catch(() => null)
+        if (!res.ok || !payload?.ok) throw new Error(payload?.error || "Falha ao carregar turmas")
+        if (!controller.signal.aborted) setBulkCandidates(payload.items || [])
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return
+        setBulkCandidates([])
+        setBulkError(error instanceof Error ? error.message : "Falha ao carregar turmas")
+      })
+      .finally(() => { if (!controller.signal.aborted) setBulkLoading(false) })
+    return () => controller.abort()
+  }, [escolaId, tab, bulkDisciplinaId])
 
   // ── Load turmas por curso ─────────────────────────────────────────────────
   useEffect(() => {
@@ -958,6 +999,40 @@ export default function ProfessoresPage() {
     finally { setAtribuindo(false) }
   }
 
+  const handleBulkAssign = async () => {
+    if (!atribProfessorUserId || !bulkDisciplinaId || bulkSelected.length === 0) {
+      return showToast("Selecione professor, disciplina e turmas.", "error")
+    }
+    const selected = bulkCandidates.filter((t) =>
+      !t.professor_id && bulkSelected.includes(t.turma_id)
+    )
+    if (selected.length !== bulkSelected.length || selected.length > 30) {
+      return showToast("Seleção inválida. Escolha até 30 turmas sem professor.", "error")
+    }
+    setBulkSubmitting(true)
+    try {
+      const res = await fetch(`/api/escolas/${escolaId}/professores/atribuicoes-em-massa`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          professor_user_id: atribProfessorUserId,
+          disciplina_id: bulkDisciplinaId,
+          itens: selected.map(({ turma_id, curso_matriz_id }) => ({ turma_id, curso_matriz_id })),
+        }),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Não foi possível atribuir")
+      showToast(`${json.atribuicoes_criadas} turma(s) atribuída(s) com sucesso.`, "success")
+      setBulkDisciplinaId("")
+      setBulkSelected([])
+      await loadBootstrapData()
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Erro ao atribuir", "error")
+    } finally {
+      setBulkSubmitting(false)
+    }
+  }
+
   const handleRemoveAtribuicao = async () => {
     if (!confirmRemove) return
     setRemoving(true)
@@ -1033,9 +1108,10 @@ export default function ProfessoresPage() {
     } catch { showToast("Falha ao copiar.", "error") }
   }
 
-  const openEdit = (prof: Professor) => {
+  const openEdit = useCallback((prof: Professor) => {
     setEditTarget(prof)
     setEditForm({
+      nome_completo: prof.nome || "",
       genero: (prof.genero as any) || "M",
       data_nascimento: prof.data_nascimento || "",
       numero_bi: prof.numero_bi || "",
@@ -1049,7 +1125,21 @@ export default function ProfessoresPage() {
       is_diretor_turma: Boolean(prof.is_diretor_turma),
     })
     setEditOpen(true)
-  }
+  }, [])
+
+  // Deep link utilizado pela Secretaria: abrir diretamente o professor.
+  useEffect(() => {
+    if (!professores.length || typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    const targetId = url.searchParams.get("editar")
+    if (!targetId) return
+    const prof = professores.find((p) => p.user_id === targetId)
+    if (!prof) return
+    setTab("gerenciar")
+    openEdit(prof)
+    url.searchParams.delete("editar")
+    window.history.replaceState(window.history.state, "", url.pathname + url.search)
+  }, [professores, openEdit])
 
   const handleUpdateProfessor = async () => {
     if (!editTarget) return
@@ -1333,6 +1423,91 @@ export default function ProfessoresPage() {
             <div>
               <h2 className="text-sm font-bold text-slate-900">Atribuir Professor</h2>
               <p className="text-xs text-slate-400">Vincule professores a turmas e disciplinas.</p>
+            </div>
+          </div>
+
+          {/* Gestão por professor: uma disciplina em várias turmas, sem repetir formulário */}
+          <div className="mb-6 rounded-xl border border-border bg-muted p-4 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-klasse-green">Atribuir a várias turmas</h3>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">Professor</span>
+                <select className={selectCls} value={atribProfessorUserId}
+                  onChange={(e) => setAtribProfessorUserId(e.target.value)}>
+                  <option value="">Selecione o professor</option>
+                  {professores.map((p) => (
+                    <option key={p.user_id} value={p.user_id}>{p.nome || p.email}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">Disciplina</span>
+                <select className={selectCls} value={bulkDisciplinaId}
+                  onChange={(e) => setBulkDisciplinaId(e.target.value)}>
+                  <option value="">Selecione a disciplina</option>
+                  {disciplinasCatalogo.map((d) => (
+                    <option key={d.id} value={d.id}>{d.nome}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {bulkDisciplinaId && (
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Turmas disponíveis</p>
+                    <p className="text-xs text-muted-foreground">Ano letivo ativo · {bulkSelected.length} selecionada(s)</p>
+                  </div>
+                  <button type="button" className="text-xs font-bold text-klasse-green hover:underline"
+                    disabled={bulkLoading || bulkCandidates.every((t) => Boolean(t.professor_id))}
+                    onClick={() => {
+                      const free = bulkCandidates.filter((t) => !t.professor_id).slice(0, 30).map((t) => t.turma_id)
+                      setBulkSelected(bulkSelected.length === free.length ? [] : free)
+                    }}>
+                    {bulkSelected.length ? "Limpar seleção" : "Selecionar até 30"}
+                  </button>
+                </div>
+                <div className="p-3 border-b border-border">
+                  <input className={inputCls} placeholder="Pesquisar turma…" value={bulkSearch}
+                    onChange={(e) => setBulkSearch(e.target.value)} />
+                </div>
+                {bulkLoading ? (
+                  <p className="p-4 text-xs text-muted-foreground">A carregar turmas…</p>
+                ) : bulkError ? (
+                  <p role="alert" className="p-4 text-xs text-rose-600">{bulkError}</p>
+                ) : bulkCandidates.length === 0 ? (
+                  <p className="p-4 text-xs text-muted-foreground">Nenhuma turma oferece esta disciplina no ano letivo ativo.</p>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                    {bulkCandidates.filter((t) => t.nome.toLowerCase().includes(bulkSearch.toLowerCase())).map((t) => (
+                      <label key={t.turma_id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted cursor-pointer">
+                        <span className="flex items-center gap-3 min-w-0">
+                          <input type="checkbox" className="accent-klasse-gold"
+                            disabled={Boolean(t.professor_id) || bulkSubmitting}
+                            checked={bulkSelected.includes(t.turma_id)}
+                            onChange={(e) => setBulkSelected((previous) => e.target.checked
+                              ? previous.length >= 30 ? previous : [...previous, t.turma_id]
+                              : previous.filter((id) => id !== t.turma_id)
+                            )} />
+                          <span className="text-sm text-foreground font-medium truncate">{t.nome}</span>
+                        </span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {t.professor_id ? "Já atribuída" : t.turno ?? ""}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <button type="button" onClick={handleBulkAssign}
+                disabled={!atribProfessorUserId || !bulkDisciplinaId || !bulkSelected.length || bulkSubmitting || bulkLoading}
+                className="rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-white hover:brightness-95 disabled:opacity-50">
+                {bulkSubmitting ? "A guardar…" : `Atribuir a ${bulkSelected.length} turma(s)`}
+              </button>
             </div>
           </div>
 
@@ -1700,6 +1875,11 @@ export default function ProfessoresPage() {
             </div>
 
             <div className="p-6 space-y-4">
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">Nome completo</span>
+                <input className={inputCls} maxLength={160} value={editForm.nome_completo}
+                  onChange={(e) => setEditForm((p) => ({ ...p, nome_completo: e.target.value }))} />
+              </label>
               <div className="grid gap-4 md:grid-cols-2">
                 <select className={selectCls} value={editForm.genero}
                   onChange={(e) => setEditForm((p) => ({ ...p, genero: e.target.value as any }))}>

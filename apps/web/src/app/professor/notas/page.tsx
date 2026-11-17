@@ -167,6 +167,9 @@ function ProfessorNotasContent() {
   const [exporting, setExporting] = useState(false)
   const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(1)
   const [savingNow, setSavingNow] = useState(false)
+  const [completingGrades, setCompletingGrades] = useState(false)
+  const [gradeDraft, setGradeDraft] = useState<StudentGradeRow[]>([])
+  const [completedScopes, setCompletedScopes] = useState<Record<string, boolean>>({})
   const [reopenRequest, setReopenRequest] = useState<ReopenRequest | null>(null)
   const [reopenHistory, setReopenHistory] = useState<ReopenRequest[]>([])
   const [requestReason, setRequestReason] = useState("")
@@ -645,11 +648,11 @@ function ProfessorNotasContent() {
   }
 
   const handleSaveNow = async () => {
-    if (!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId) return
+    if (!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading) return
     if (notasBloqueadas) return
     setSavingNow(true)
     try {
-      await handleSaveBatch(pauta)
+      await handleSaveBatch(gradeDraft.length > 0 ? gradeDraft : pauta)
       if (online) {
         success("Notas guardadas", "Os lançamentos foram sincronizados com o servidor.")
       } else {
@@ -659,6 +662,76 @@ function ProfessorNotasContent() {
       toastError("Não foi possível guardar", friendlyGradeError(cause))
     } finally {
       setSavingNow(false)
+    }
+  }
+
+  const completionKey = `${anoLetivoId}:${turmaDisciplinaId}:${trimestreSelecionado}`
+  useEffect(() => {
+    if (!anoLetivoId || !turmaId || !disciplinaId || !turmaDisciplinaId || !online) return
+    const controller = new AbortController()
+    const params = new URLSearchParams({
+      ano_letivo_id: anoLetivoId,
+      turma_id: turmaId,
+      disciplina_id: disciplinaId,
+      turma_disciplina_id: turmaDisciplinaId,
+      trimestre: String(trimestreSelecionado),
+    })
+    void fetch(`/api/professor/notas/concluir?${params.toString()}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    }).then(async (response) => {
+      if (!response.ok) return
+      const payload = await response.json()
+      if (payload?.ok && !controller.signal.aborted) {
+        setCompletedScopes((current) => ({
+          ...current,
+          [completionKey]: Boolean(payload.already_completed) || Boolean(current[completionKey]),
+        }))
+      }
+    }).catch(() => undefined)
+    return () => controller.abort()
+  }, [anoLetivoId, turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, online, completionKey])
+  const hasUnsavedGrades = useMemo(() => {
+    const persisted = new Map(pauta.map((row) => [row.id, row]))
+    return gradeDraft.some((row) => {
+      const saved = persisted.get(row.id)
+      return row._status !== "synced" || !saved || row.mac1 !== saved.mac1 || row.npp1 !== saved.npp1 || row.npt1 !== saved.npt1 || Boolean(row.is_isento) !== Boolean(saved.is_isento)
+    })
+  }, [gradeDraft, pauta])
+
+  const handleCompleteGrades = async () => {
+    if (!turmaId || !disciplinaId || !turmaDisciplinaId || !anoLetivoId || !online) {
+      warning("É necessária uma ligação ativa e uma pauta selecionada.")
+      return
+    }
+    if (loading || savingNow || hasUnsavedGrades) {
+      warning("Guarde primeiro as alterações pendentes antes de concluir.")
+      return
+    }
+    setCompletingGrades(true)
+    try {
+      const response = await fetch("/api/professor/notas/concluir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ano_letivo_id: anoLetivoId,
+          turma_id: turmaId,
+          disciplina_id: disciplinaId,
+          turma_disciplina_id: turmaDisciplinaId,
+          trimestre: trimestreSelecionado,
+        }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error ?? "Ainda existem notas por concluir nesta pauta.")
+      }
+      setCompletedScopes((current) => ({ ...current, [completionKey]: true }))
+      success(payload.already_completed ? "Lançamento já concluído" : "Lançamento concluído",
+        payload.already_completed ? "A Secretaria já foi informada." : "A Secretaria e o Admin foram informados.")
+    } catch (cause) {
+      toastError("Não foi possível concluir", cause instanceof Error ? cause.message : "Tente novamente.")
+    } finally {
+      setCompletingGrades(false)
     }
   }
 
@@ -929,7 +1002,7 @@ function ProfessorNotasContent() {
                   <button
                     type="button"
                     onClick={handleSaveNow}
-                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || savingNow || notasBloqueadas}
+                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading || savingNow || notasBloqueadas}
                     className="klasse-portal-cta w-full rounded-xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                   >
                     {savingNow ? "Salvando..." : "Salvar agora"}
@@ -1122,6 +1195,7 @@ function ProfessorNotasContent() {
                 ) : null}
                 <GradeEntryGrid
                   initialData={data}
+                  onDataChange={setGradeDraft}
                   subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${trimestreSelecionado}`}
                   onSave={handleSaveBatch}
                   onSaveError={(cause) => toastError("Não foi possível guardar", friendlyGradeError(cause))}
@@ -1132,6 +1206,19 @@ function ProfessorNotasContent() {
                   notaCorte={gradeCorte ?? 10}
                   readOnly={academicMode !== "CURRENT" || gradeMaxima === null}
                 />
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3">
+                  <button
+                    type="button"
+                    onClick={() => void handleCompleteGrades()}
+                    disabled={!online || !turmaDisciplinaId || pauta.length === 0 || loading || notasBloqueadas || savingNow || completingGrades || hasUnsavedGrades || completedScopes[completionKey]}
+                    className="rounded-xl bg-klasse-gold px-4 py-2.5 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {completedScopes[completionKey] ? "Lançamento concluído" : completingGrades ? "A concluir..." : "Concluir lançamento"}
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    {hasUnsavedGrades ? "Há notas por guardar." : "Conclua quando todas as notas da disciplina e trimestre estiverem lançadas."}
+                  </span>
+                </div>
               </div>
             )}
           </section>

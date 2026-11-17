@@ -13,6 +13,11 @@ on:
       - "supabase/migrations/20271112050000_balcao_percurso_academico.sql"
       - "supabase/migrations/20271112080000_balcao_pauta_anual_batch.sql"
       - "supabase/migrations/20271112060000_balcao_secretaria_role_aliases.sql"
+      - "supabase/migrations/20271117173000_raa_historical_finalists_and_voided_destinations.sql"
+      - "supabase/migrations/20271117190000_curtume_fechar_pautas_2025_lote.sql"
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/fecho-historico-lote/**"
+      - "apps/web/src/components/secretaria/CurtumeFechoHistoricoLote.tsx"
+      - "apps/web/tests/unit/curtume-pauta-batch.spec.ts"
       - "supabase/ops/tests/balcao_exceptional/**"
       - "supabase/ops/tests/raa_historico/**"
       - "apps/web/src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/**"
@@ -49,6 +54,54 @@ jobs:
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/fixture.sql
       - name: Verify RAA, exact roles, audit, legal lock and school isolation
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/regression.sql
+
+  finalist-raa:
+    name: RAA finalistas — legal historical close with voided rollover
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: finalist_raa_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d finalist_raa_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/finalist_raa_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install actual canonical RAA patch in disposable PostgreSQL
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/finalist_guard_fixture.sql
+      - name: Verify annulled target, blocked active target and grade 9 completion
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/finalist_guard_regression.sql
+
+  curtume-pauta-batch:
+    name: CURTUME 2025/2026 — signed historic batch in PostgreSQL 17
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: curtume_pauta_batch_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d curtume_pauta_batch_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/curtume_pauta_batch_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install actual batch migration, source and guard in disposable DB
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/curtume_batch_fixture.sql
+      - name: Verify 9th completion, 8th promotion, 8th retention, no synthetic notes and atomic rejection
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/curtume_batch_regression.sql
 
   historic-grade-and-late-renewal:
     name: Historical real grades + individual late enrollment in PostgreSQL

@@ -125,6 +125,34 @@ export async function authorizePedagogicalManage(
   return { allowed, reason: allowed ? undefined : "Operação pedagógica reservada a perfis administrativos autorizados" };
 }
 
+/**
+ * Teacher management is a narrower permission than editing the whole
+ * pedagogical structure: school secretaria may manage teacher records and
+ * assignment links without gaining curriculum or timetable edit rights.
+ * Every caller must first resolve school membership, and the database RPC
+ * independently rechecks the exact school and acting user.
+ */
+export async function authorizeTeacherManage(
+  s: Client,
+  escolaId: string,
+  userId: string,
+) {
+  const pedagogy = await authorizePedagogicalManage(s, escolaId, userId);
+  if (pedagogy.allowed) return pedagogy;
+
+  const { data: link, error } = await s
+    .from("escola_users")
+    .select("papel, role")
+    .eq("escola_id", escolaId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) return { allowed: false, reason: "Sem permissão" };
+  const papel = String((link as { papel?: string | null; role?: string | null } | null)?.papel
+    ?? (link as { role?: string | null } | null)?.role ?? "").trim().toLowerCase();
+  const allowed = ["secretaria", "secretaria_financeiro", "admin_secretario"].includes(papel);
+  return { allowed, reason: allowed ? undefined : "Sem permissão" };
+}
+
 export function authorizeTurmasManage(
   s: Client,
   escolaId: string,

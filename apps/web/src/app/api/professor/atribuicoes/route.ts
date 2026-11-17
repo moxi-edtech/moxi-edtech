@@ -68,6 +68,23 @@ export async function GET(req: Request) {
     const professorId = (professor as ProfessorRow | null)?.id
     if (!professorId) return NextResponse.json({ ok: true, escola_id: escolaId, items: [] })
 
+    // Academic-year identity is the curriculum UUID, not a shared numeric year.
+    // Reject old/draft matrices even when the legacy assignment RPC includes them.
+    const { data: publishedCurriculos, error: curriculosError } = await supabase
+      .from('curso_curriculos')
+      .select('id')
+      .eq('escola_id', escolaId)
+      .eq('ano_letivo_id', academicContext.anoLetivoId)
+      .eq('status', 'published')
+    if (curriculosError) {
+      return NextResponse.json({ ok: false, error: 'Não foi possível consultar o currículo.' }, { status: 500 })
+    }
+    const publishedCurriculoIds = (publishedCurriculos ?? []).map((row) => row.id)
+    const publishedCurriculoSet = new Set(publishedCurriculoIds)
+    if (publishedCurriculoIds.length === 0) {
+      return NextResponse.json({ ok: true, escola_id: escolaId, context: academicContext, items: [] })
+    }
+
     let query = supabase
       .from('turma_disciplinas_professores')
       .select('turma_id, disciplina_id')
@@ -115,15 +132,24 @@ export async function GET(req: Request) {
         : { data: [] as Array<{ id: string; turma_id: string; curso_matriz_id: string; professor_id: string | null }> }
       const canonicalMatrizIds = Array.from(new Set((canonicalRows ?? []).map((row: any) => row.curso_matriz_id).filter(Boolean)))
       const { data: canonicalMatrizes } = canonicalMatrizIds.length
-        ? await supabase.from('curso_matriz').select('id, disciplina_id').eq('escola_id', escolaId).in('id', canonicalMatrizIds)
-        : { data: [] as Array<{ id: string; disciplina_id: string | null }> }
-      const matrizDisciplinaById = new Map((canonicalMatrizes ?? []).map((row: any) => [row.id, row.disciplina_id]))
+        ? await supabase.from('curso_matriz').select('id, disciplina_id, curso_curriculo_id').eq('escola_id', escolaId).in('id', canonicalMatrizIds)
+        : { data: [] as Array<{ id: string; disciplina_id: string | null; curso_curriculo_id: string | null }> }
+      const matrizDisciplinaById = new Map(
+        (canonicalMatrizes ?? [])
+          .filter((row: any) => publishedCurriculoSet.has(row.curso_curriculo_id))
+          .map((row: any) => [row.id, row.disciplina_id]),
+      )
       const canonicalByKey = new Map<string, { id: string; curso_matriz_id: string }>()
       for (const row of canonicalRows ?? []) {
         const disciplinaId = matrizDisciplinaById.get(row.curso_matriz_id)
         if (!disciplinaId) continue
         const key = `${row.turma_id}:${disciplinaId}`
         const current = canonicalByKey.get(key)
+        if (current && current.curso_matriz_id !== row.curso_matriz_id) {
+          return NextResponse.json({
+            ok: false, error: 'A disciplina possui versões curriculares publicadas duplicadas.',
+          }, { status: 409 })
+        }
         if (!current) {
           canonicalByKey.set(key, { id: row.id, curso_matriz_id: row.curso_matriz_id })
         }
@@ -137,7 +163,8 @@ export async function GET(req: Request) {
         }
       }
       const uniqueItems = Array.from(
-        new Map(items.map((item) => [`${item.turma.id}:${item.disciplina.id}`, item])).values(),
+        new Map(items.filter((item) => canonicalByKey.has(`${item.turma.id}:${item.disciplina.id}`))
+          .map((item) => [`${item.turma.id}:${item.disciplina.id}`, item])).values(),
       )
 
       return NextResponse.json({
@@ -203,6 +230,7 @@ export async function GET(req: Request) {
           .select('id, curso_id, classe_id, disciplina_id')
           .eq('escola_id', escolaId)
           .eq('ativo', true)
+          .in('curso_curriculo_id', publishedCurriculoIds)
           .in('disciplina_id', disciplinaIds)
           .in('classe_id', classeIds)
       : { data: [] as CursoMatrizRow[], error: null }
@@ -224,6 +252,7 @@ export async function GET(req: Request) {
             .select('id, curso_id, classe_id, disciplina_id')
             .eq('escola_id', escolaId)
             .eq('ativo', true)
+            .in('curso_curriculo_id', publishedCurriculoIds)
             .in('curso_id', cursoIds)
             .in('classe_id', classeIds)
         : { data: [] as CursoMatrizRow[], error: null }
@@ -236,6 +265,11 @@ export async function GET(req: Request) {
     const matrizByKey = new Map<string, { id: string; disciplinaId: string | null; disciplinaNome: string | null }>()
     for (const row of matrizRows) {
       const key = `${row.curso_id}:${row.classe_id}:${row.disciplina_id}`
+      if (matrizByKey.has(key) && matrizByKey.get(key)?.id !== row.id) {
+        return NextResponse.json({
+          ok: false, error: 'A disciplina possui versões curriculares publicadas duplicadas.',
+        }, { status: 409 })
+      }
       matrizByKey.set(key, {
         id: row.id,
         disciplinaId: row.disciplina_id ?? row.disciplina?.id ?? null,
