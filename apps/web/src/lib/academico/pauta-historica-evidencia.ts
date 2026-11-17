@@ -20,11 +20,13 @@ export type PautaHistoricaReview = {
     aba: string | null;
     linha: string | null;
     mapeada_na_turma: boolean | null;
+    nota_abaixo_metade: boolean;
   }>;
   arquivos: string[];
   contagem_notas: number;
   contagem_matriz: number | null;
   sem_mapeamento: number;
+  notas_abaixo_metade: number;
   divergencia_ano_documento: boolean;
   processo_verificado: boolean | null;
   alertas: string[];
@@ -50,6 +52,7 @@ export function buildPautaHistoricaReview(
   const arquivos = new Set<string>();
   const disciplinas: PautaHistoricaReview["disciplinas"] = [];
   let semMapeamento = 0;
+  let notasAbaixoMetade = 0;
   let divergenciaAno = false;
   let processoVerificado: boolean | null = null;
   const uniqueDiscipline = new Set<string>();
@@ -89,6 +92,10 @@ export function buildPautaHistoricaReview(
     if (uniqueDiscipline.has(item.disciplina_id)) alertas.add("DISCIPLINA_REPETIDA");
     uniqueDiscipline.add(item.disciplina_id);
     if (match === false) semMapeamento += 1;
+    // A below-half subject is an academic review flag, not a failed grade:
+    // legal progression, final-cycle exams and remediation vary by regime.
+    const notaAbaixoMetade = nota !== null && escala !== null && escala > 0 && nota < escala / 2;
+    if (notaAbaixoMetade) notasAbaixoMetade += 1;
     if (origemProcesso) {
       if (numeroProcesso) {
         const same = processNumber(numeroProcesso) === processNumber(origemProcesso);
@@ -101,10 +108,12 @@ export function buildPautaHistoricaReview(
     disciplinas.push({
       id: item.disciplina_id, nome: nome || "Disciplina não identificada", nota,
       escala, arquivo, aba, linha, mapeada_na_turma: match,
+      nota_abaixo_metade: notaAbaixoMetade,
     });
   }
   if (!notas.length) alertas.add("SEM_NOTAS_NA_PAUTA");
   if (semMapeamento) alertas.add("MATRIZ_ATUAL_DIFERENTE_DA_PAUTA");
+  if (notasAbaixoMetade) alertas.add("NOTAS_BAIXAS_VERIFICAR_RAA");
   if (currentCurriculumIds !== null &&
       uniqueDiscipline.size < currentCurriculumIds.size)
     alertas.add("PAUTA_MENOR_QUE_MATRIZ_ATUAL");
@@ -117,6 +126,7 @@ export function buildPautaHistoricaReview(
     contagem_notas: notas.length,
     contagem_matriz: currentCurriculumIds?.size ?? null,
     sem_mapeamento: semMapeamento,
+    notas_abaixo_metade: notasAbaixoMetade,
     divergencia_ano_documento: divergenciaAno,
     processo_verificado: processoVerificado,
     alertas: [...alertas],
