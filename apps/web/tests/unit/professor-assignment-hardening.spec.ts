@@ -111,3 +111,16 @@ describe('RPC: contratos de segurança antes da homologação Postgres', () => {
     assert.match(migration, /REVOKE ALL ON FUNCTION public\.assign_professor_turmas_disciplina_batch/)
   })
 })
+
+const portalAssignmentsRoute = readFileSync(
+  new URL('../../src/app/api/professor/atribuicoes/route.ts', import.meta.url), 'utf8',
+)
+describe('Portal do Professor: matriz do ano selecionado', () => {
+  it('não converte uma ligação histórica em matriz atual por ordenação de UUID', () => {
+    assert.match(portalAssignmentsRoute, /\.eq\('ano_letivo_id', academicContext\.anoLetivoId\)/)
+    assert.match(portalAssignmentsRoute, /\.eq\('status', 'published'\)/)
+    assert.match(portalAssignmentsRoute, /publishedCurriculoSet\.has\(row\.curso_curriculo_id\)/)
+    assert.match(portalAssignmentsRoute, /canonicalByKey\.has\(/)
+    assert.match(portalAssignmentsRoute, /\.in\('curso_curriculo_id', publishedCurriculoIds\)/)
+  })
+})
