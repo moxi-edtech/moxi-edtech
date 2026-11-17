@@ -5,6 +5,7 @@ import { authorizeBalcaoPendingAcademicWrite, BALCAO_HISTORIC_OPERATOR_ROLES } f
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { compareNextYearEnrollment, confirmedOutcomeFitsDestination } from "@/lib/rematricula/compare-next-year-enrollment";
+import { buildPautaHistoricaReview } from "@/lib/academico/pauta-historica-evidencia";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -375,15 +376,47 @@ export async function GET(request: Request) {
     if (historyError) throw historyError;
     const rows = data ?? [];
     const ids = rows.map((h: any) => h.matricula_id as string).filter(Boolean);
-    const [origins, audit] = await Promise.all([
+    // Provenance of the original school pauta is authoritative for historical
+    // subjects. The operational turma matrix is shown only for comparison;
+    // never replace archival subject names/notes with current assignments.
+    const historyIds = rows.map((h: any) => String(h.id)).filter(Boolean);
+    const turmaIdsForHistory = [...new Set(rows.map((h: any) => String(h.turma_id)).filter(Boolean))];
+    const [origins, audit, historicalGrades, assigned] = await Promise.all([
       ids.length ? supabase.from("matriculas").select("id,status,status_fecho_origem,turmas:turma_id(nome)").eq("escola_id", escolaId)
         .in("id", ids) : Promise.resolve({ data: [], error: null }),
       ids.length ? supabase.from("audit_logs")
         .select("entity_id,actor_id,action,details").eq("escola_id", escolaId)
         .eq("action", "MATRICULA_ORIGEM_RESULTADO_ACADEMICO_REGISTADO")
         .in("entity_id", ids).limit(500) : Promise.resolve({ data: [], error: null }),
+      historyIds.length ? supabase.from("historico_disciplinas")
+        .select("historico_ano_id,disciplina_id,disciplina_nome,nota_final,notas_detalhe")
+        .in("historico_ano_id", historyIds).limit(1500)
+        : Promise.resolve({ data: [], error: null }),
+      turmaIdsForHistory.length ? supabase.from("turma_disciplinas")
+        .select("turma_id,avaliacao_disciplina_id,curso_matriz:curso_matriz_id(avaliacao_disciplina_id,disciplina_id)")
+        .eq("escola_id", escolaId).in("turma_id", turmaIdsForHistory).limit(1500)
+        : Promise.resolve({ data: [], error: null }),
     ]);
-    if (origins.error || audit.error) throw origins.error ?? audit.error;
+    if (origins.error || audit.error || historicalGrades.error || assigned.error)
+      throw origins.error ?? audit.error ?? historicalGrades.error ?? assigned.error;
+    // A truncated list must never present itself as a complete school record.
+    if ((historicalGrades.data ?? []).length >= 1500 || (assigned.data ?? []).length >= 1500) {
+      return NextResponse.json({ ok: false, error: "A pauta excede o limite de conferência; refine por classe." }, { status: 422 });
+    }
+    const gradesByHistory = new Map<string, any[]>();
+    for (const note of historicalGrades.data ?? []) {
+      const key = String(note.historico_ano_id);
+      gradesByHistory.set(key, [...(gradesByHistory.get(key) ?? []), note]);
+    }
+    const matrixByTurma = new Map<string, Set<string>>();
+    for (const link of assigned.data ?? []) {
+      const turma = String(link.turma_id);
+      const matrix = matrixByTurma.get(turma) ?? new Set<string>();
+      const entry = first(link.curso_matriz);
+      const id = link.avaliacao_disciplina_id ?? entry?.avaliacao_disciplina_id ?? entry?.disciplina_id;
+      if (id) matrix.add(String(id));
+      matrixByTurma.set(turma, matrix);
+    }
     const sourceById = new Map<string, any>((origins.data ?? []).map((m: any): [string, any] => [String(m.id), m]));
     const signed = new Set((audit.data ?? [])
       .filter((a: any) => Boolean(a.actor_id) && a.details?.ratificacao === true &&
@@ -402,6 +435,12 @@ export async function GET(request: Request) {
           turma_nome: first(m?.turmas)?.nome ?? null, resultado_registado: h.resultado_final,
           status_origem: m?.status ?? null, snapshot_status: h.snapshot_status,
           ratificado, coorte_autorizada: true,
+          pauta_historica: buildPautaHistoricaReview(
+            gradesByHistory.get(String(h.id)) ?? [],
+            matrixByTurma.get(String(h.turma_id)) ?? null,
+            student?.numero_processo ?? null,
+            ano,
+          ),
           proximo_passo: ratificado
             ? "Conferir as pautas e confirmar o fecho legal pelo fluxo oficial."
             : "A direção deve ratificar a decisão escolar com referência documental antes do fecho legal.",
@@ -447,6 +486,40 @@ export async function POST(request: Request) {
     if (!(await canWriteHistoricalDecision(supabase, escolaId))) {
       return NextResponse.json({ ok: false, code: "HISTORICAL_DECISION_FORBIDDEN",
         error: "Este perfil não pode validar o histórico nesta escola." }, { status: 403 });
+    }
+    // The UI cannot be the sole protection for historical documents.
+    // Re-check source year and process on the authenticated write route
+    // before invoking the signed canonical ratification/close RPC.
+    if (body.acao === "ratificar" || body.acao === "fechar_historico") {
+      const { data: history, error: historyError } = await supabase
+        .from("historico_anos")
+        .select("id,aluno_id,ano_letivo")
+        .eq("escola_id", escolaId)
+        .eq("matricula_id", body.matricula_id).maybeSingle();
+      if (historyError) throw historyError;
+      if (history) {
+        const [source, student] = await Promise.all([
+          supabase.from("historico_disciplinas")
+            .select("disciplina_id,disciplina_nome,nota_final,notas_detalhe")
+            .eq("historico_ano_id", history.id).limit(1500),
+          supabase.from("alunos").select("numero_processo")
+            .eq("escola_id", escolaId).eq("id", history.aluno_id).maybeSingle(),
+        ]);
+        if (source.error || student.error) throw source.error ?? student.error;
+        if ((source.data ?? []).length >= 1500) {
+          return NextResponse.json({ ok: false, code: "PAUTA_LIMITE_EXCEDIDO",
+            error: "O histórico excede o limite de conferência documental." }, { status: 422 });
+        }
+        const pauta = buildPautaHistoricaReview(source.data ?? [], null,
+          student.data?.numero_processo ?? null, Number(history.ano_letivo));
+        if (pauta.processo_verificado === false || pauta.divergencia_ano_documento ||
+            pauta.alertas.includes("NOTA_OU_ESCALA_INVALIDA") ||
+            pauta.alertas.includes("DISCIPLINA_REPETIDA")) {
+          return NextResponse.json({ ok: false, code: "PAUTA_CONFLITO_DOCUMENTAL",
+            error: "A pauta tem divergência de processo, ano, disciplina ou escala. Corrija o vínculo com evidência antes de ratificar." },
+            { status: 409 });
+        }
+      }
     }
     let data: any = null;
     let rpcError: any = null;
