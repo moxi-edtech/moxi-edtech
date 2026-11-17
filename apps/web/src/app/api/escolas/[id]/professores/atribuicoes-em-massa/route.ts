@@ -95,6 +95,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const matrizById = new Map<string, any>(matrizes.map((m: any): [string, any] => [m.id, m]))
     const linkByTurma = new Map<string, string | null>((links || []).map((l: any): [string, string | null] => [l.turma_id, l.professor_id ?? null]))
     const candidates = new Map<string, any>()
+    const anyAssigned = new Map<string, string>()
+    for (const oferta of ofertas || []) {
+      if (oferta.professor_id && !anyAssigned.has(oferta.turma_id)) {
+        anyAssigned.set(oferta.turma_id, oferta.professor_id)
+      }
+    }
 
     for (const oferta of ofertas || []) {
       const matriz: any = matrizById.get(oferta.curso_matriz_id)
@@ -106,7 +112,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         candidates.set(oferta.turma_id, {
           turma_id: oferta.turma_id,
           curso_matriz_id: oferta.curso_matriz_id,
-          professor_id: linkByTurma.get(oferta.turma_id) ?? oferta.professor_id ?? null,
+          professor_id: linkByTurma.get(oferta.turma_id) ?? anyAssigned.get(oferta.turma_id) ?? oferta.professor_id ?? null,
           prioridade,
         })
       }
