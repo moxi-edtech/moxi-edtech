@@ -182,7 +182,7 @@ export async function loadNominalRoster({
 
   if (isClasseScope && classeId) {
     const yearValue = year || String(new Date().getFullYear());
-    if (!/^\\d{4}$/.test(yearValue) || Number(yearValue) < 2000 || Number(yearValue) > 2100) {
+    if (!/^[0-9]{4}$/.test(yearValue) || Number(yearValue) < 2000 || Number(yearValue) > 2100) {
       throw new NominalRosterError("Ano letivo inválido", 400);
     }
     const { data: classe, error: classeError } = await supabase.from("classes")
