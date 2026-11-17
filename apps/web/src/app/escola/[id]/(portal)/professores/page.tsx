@@ -1107,7 +1107,7 @@ export default function ProfessoresPage() {
     } catch { showToast("Falha ao copiar.", "error") }
   }
 
-  const openEdit = (prof: Professor) => {
+  const openEdit = useCallback((prof: Professor) => {
     setEditTarget(prof)
     setEditForm({
       nome_completo: prof.nome || "",
@@ -1124,7 +1124,21 @@ export default function ProfessoresPage() {
       is_diretor_turma: Boolean(prof.is_diretor_turma),
     })
     setEditOpen(true)
-  }
+  }, [])
+
+  // Deep link utilizado pela Secretaria: abrir diretamente o professor.
+  useEffect(() => {
+    if (!professores.length || typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    const targetId = url.searchParams.get("editar")
+    if (!targetId) return
+    const prof = professores.find((p) => p.user_id === targetId)
+    if (!prof) return
+    setTab("gerenciar")
+    openEdit(prof)
+    url.searchParams.delete("editar")
+    window.history.replaceState(window.history.state, "", url.pathname + url.search)
+  }, [professores, openEdit])
 
   const handleUpdateProfessor = async () => {
     if (!editTarget) return
