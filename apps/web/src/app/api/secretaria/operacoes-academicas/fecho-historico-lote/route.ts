@@ -8,7 +8,7 @@ export const revalidate = 0;
 
 const CURTUME = "3744879f-2e19-4671-8995-78604302d8c5";
 const ROLES = new Set(["admin", "admin_escola", "diretor"]);
-const Request = z.object({
+const BatchSchema = z.object({
   acao: z.literal("concluir_2025_2026"),
   confirmacao: z.literal("CONFIRMO_PAUTAS_2025"),
   lote_id: z.string().uuid(),
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   try {
     const ctx = await context();
     if (!ctx.allowed) return ctx.response!;
-    const parsed = Request.safeParse(await request.json().catch(() => null));
+    const parsed = BatchSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success)
       return NextResponse.json({ ok: false, error: "Confirmação do lote inválida." }, { status: 400 });
 
