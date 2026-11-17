@@ -648,11 +648,11 @@ function ProfessorNotasContent() {
   }
 
   const handleSaveNow = async () => {
-    if (!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId) return
+    if (!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading) return
     if (notasBloqueadas) return
     setSavingNow(true)
     try {
-      await handleSaveBatch(pauta)
+      await handleSaveBatch(gradeDraft.length > 0 ? gradeDraft : pauta)
       if (online) {
         success("Notas guardadas", "Os lançamentos foram sincronizados com o servidor.")
       } else {
@@ -666,11 +666,36 @@ function ProfessorNotasContent() {
   }
 
   const completionKey = `${anoLetivoId}:${turmaDisciplinaId}:${trimestreSelecionado}`
+  useEffect(() => {
+    if (!anoLetivoId || !turmaId || !disciplinaId || !turmaDisciplinaId || !online) return
+    const controller = new AbortController()
+    const params = new URLSearchParams({
+      ano_letivo_id: anoLetivoId,
+      turma_id: turmaId,
+      disciplina_id: disciplinaId,
+      turma_disciplina_id: turmaDisciplinaId,
+      trimestre: String(trimestreSelecionado),
+    })
+    void fetch(`/api/professor/notas/concluir?${params.toString()}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    }).then(async (response) => {
+      if (!response.ok) return
+      const payload = await response.json()
+      if (payload?.ok && !controller.signal.aborted) {
+        setCompletedScopes((current) => ({
+          ...current,
+          [completionKey]: Boolean(payload.already_completed) || Boolean(current[completionKey]),
+        }))
+      }
+    }).catch(() => undefined)
+    return () => controller.abort()
+  }, [anoLetivoId, turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, online, completionKey])
   const hasUnsavedGrades = useMemo(() => {
     const persisted = new Map(pauta.map((row) => [row.id, row]))
     return gradeDraft.some((row) => {
       const saved = persisted.get(row.id)
-      return !saved || row.mac1 !== saved.mac1 || row.npp1 !== saved.npp1 || row.npt1 !== saved.npt1
+      return row._status !== "synced" || !saved || row.mac1 !== saved.mac1 || row.npp1 !== saved.npp1 || row.npt1 !== saved.npt1 || Boolean(row.is_isento) !== Boolean(saved.is_isento)
     })
   }, [gradeDraft, pauta])
 
@@ -679,7 +704,7 @@ function ProfessorNotasContent() {
       warning("É necessária uma ligação ativa e uma pauta selecionada.")
       return
     }
-    if (savingNow || hasUnsavedGrades) {
+    if (loading || savingNow || hasUnsavedGrades) {
       warning("Guarde primeiro as alterações pendentes antes de concluir.")
       return
     }
@@ -977,18 +1002,10 @@ function ProfessorNotasContent() {
                   <button
                     type="button"
                     onClick={handleSaveNow}
-                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || savingNow || notasBloqueadas}
+                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading || savingNow || notasBloqueadas}
                     className="klasse-portal-cta w-full rounded-xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                   >
                     {savingNow ? "Salvando..." : "Salvar agora"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleCompleteGrades()}
-                    disabled={!online || !turmaDisciplinaId || pauta.length === 0 || notasBloqueadas || savingNow || completingGrades || hasUnsavedGrades || completedScopes[completionKey]}
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {completedScopes[completionKey] ? "Lançamento concluído" : completingGrades ? "A concluir..." : "Concluir lançamento"}
                   </button>
                   {turmaId && disciplinaId && (
                     <div className={`rounded-lg px-3 py-2 text-xs ${notasBloqueadas ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"}`}>
@@ -1193,7 +1210,7 @@ function ProfessorNotasContent() {
                   <button
                     type="button"
                     onClick={() => void handleCompleteGrades()}
-                    disabled={!online || !turmaDisciplinaId || pauta.length === 0 || notasBloqueadas || savingNow || completingGrades || hasUnsavedGrades || completedScopes[completionKey]}
+                    disabled={!online || !turmaDisciplinaId || pauta.length === 0 || loading || notasBloqueadas || savingNow || completingGrades || hasUnsavedGrades || completedScopes[completionKey]}
                     className="rounded-xl bg-klasse-gold px-4 py-2.5 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {completedScopes[completionKey] ? "Lançamento concluído" : completingGrades ? "A concluir..." : "Concluir lançamento"}

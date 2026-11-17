@@ -22,6 +22,32 @@ ON public.eventos(escola_id, entidade_id)
 WHERE entidade_tipo = 'pauta_concluida';
 ALTER TABLE public.pauta_conclusoes ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.pauta_conclusoes FROM PUBLIC, anon, authenticated;
+// Read-only status for assigned teachers. Never expose direct writes.
+GRANT SELECT ON TABLE public.pauta_conclusoes TO authenticated;
+CREATE POLICY pauta_conclusoes_professor_select ON public.pauta_conclusoes
+FOR SELECT TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM public.professores pr
+    JOIN public.turma_disciplinas td
+      ON td.escola_id = pauta_conclusoes.escola_id
+      AND td.id = pauta_conclusoes.turma_disciplina_id
+    JOIN public.curso_matriz cm ON cm.id = td.curso_matriz_id
+      AND cm.escola_id = pauta_conclusoes.escola_id
+    WHERE pr.profile_id = (SELECT auth.uid())
+      AND pr.escola_id = pauta_conclusoes.escola_id
+      AND (
+        td.professor_id = pr.id
+        OR EXISTS (
+          SELECT 1 FROM public.turma_disciplinas_professores tdp
+          WHERE tdp.escola_id = pauta_conclusoes.escola_id
+            AND tdp.turma_id = td.turma_id
+            AND tdp.disciplina_id = cm.disciplina_id
+            AND tdp.professor_id = pr.id
+        )
+      )
+  )
+);
 
 -- Reuse the existing, recipient-filtered realtime inbox. No notification on grade INSERT.
 CREATE OR REPLACE FUNCTION public.trg_evento_notas_lancadas_fn(ev public.eventos)
@@ -197,10 +223,18 @@ BEGIN
 
   SELECT EXISTS (
     SELECT 1 FROM public.professores pr
-    JOIN public.turma_disciplinas_professores tdp
-      ON tdp.professor_id = pr.id AND tdp.escola_id = p_escola_id
+    JOIN public.turma_disciplinas td ON td.id = p_turma_disciplina_id
+      AND td.escola_id = p_escola_id AND td.turma_id = v_ctx.turma_id
     WHERE pr.profile_id = v_uid AND pr.escola_id = p_escola_id
-      AND tdp.turma_id = v_ctx.turma_id AND tdp.disciplina_id = v_ctx.disciplina_id
+      AND (
+        td.professor_id = pr.id
+        OR EXISTS (
+          SELECT 1 FROM public.turma_disciplinas_professores tdp
+          WHERE tdp.professor_id = pr.id AND tdp.escola_id = p_escola_id
+            AND tdp.turma_id = v_ctx.turma_id
+            AND tdp.disciplina_id = v_ctx.disciplina_id
+        )
+      )
   ) OR EXISTS (
     SELECT 1 FROM public.escola_users eu
     WHERE eu.escola_id = p_escola_id AND eu.user_id = v_uid

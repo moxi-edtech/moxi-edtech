@@ -52,3 +52,15 @@ test("Notifications are emitted once by the DB and scoped to authorized school s
   assert.match(migration, /eu\.escola_id = ev\.escola_id/);
   assert.match(migration, /public\.inserir_notificacao/);
 });
+
+
+test("Save now sends draft grades and completion status is read through RLS", () => {
+  const page = web("app/professor/notas/page.tsx");
+  const api = web("app/api/professor/notas/concluir/route.ts");
+  assert.match(page, /handleSaveBatch\(gradeDraft\.length > 0 \? gradeDraft : pauta\)/);
+  assert.match(page, /Boolean\(row\.is_isento\) !== Boolean\(saved\.is_isento\)/);
+  assert.match(page, /api\/professor\/notas\/concluir\?\$\{params\.toString\(\)\}/);
+  assert.match(api, /export async function GET/);
+  assert.match(migration, /CREATE POLICY pauta_conclusoes_professor_select/);
+  assert.match(migration, /td\.professor_id = pr\.id/);
+});

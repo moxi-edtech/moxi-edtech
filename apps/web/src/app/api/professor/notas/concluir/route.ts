@@ -108,3 +108,67 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Não foi possível concluir o lançamento." }, { status: 500 });
   }
 }
+
+
+// Estado persistido: leitura sem concluir pauta nem emitir eventos.
+export async function GET(req: Request) {
+  try {
+    const params = new URL(req.url).searchParams;
+    const parsed = Body.safeParse({
+      ano_letivo_id: params.get("ano_letivo_id"),
+      turma_id: params.get("turma_id"),
+      disciplina_id: params.get("disciplina_id"),
+      turma_disciplina_id: params.get("turma_disciplina_id"),
+      trimestre: Number(params.get("trimestre")),
+    });
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Contexto da pauta inválido." }, { status: 400 });
+    }
+    const body = parsed.data;
+    const supabase = await supabaseServerTyped<any>();
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) return NextResponse.json({ ok: false, error: "Não autenticado." }, { status: 401 });
+    const escolaId = await resolveEscolaIdForUser(supabase, auth.user.id);
+    if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada." }, { status: 403 });
+    const context = await resolveAcademicYearContext(supabase, {
+      userId: auth.user.id,
+      requestedAcademicYearId: body.ano_letivo_id,
+      operation: "READ",
+    });
+    await assertAcademicYearEntity(supabase, {
+      table: "turmas", entityId: body.turma_id,
+      escolaId: context.escolaId, anoLetivoId: context.anoLetivoId,
+    });
+    const assignment = await resolveProfessorAcademicContext({
+      supabase, escolaId, userId: auth.user.id,
+      turmaId: body.turma_id, disciplinaId: body.disciplina_id,
+      turmaDisciplinaId: body.turma_disciplina_id,
+    });
+    if (!assignment || assignment.turmaDisciplinaId !== body.turma_disciplina_id) {
+      return NextResponse.json({ ok: false, error: "Sem atribuição nesta pauta." }, { status: 403 });
+    }
+    const { data: periods, error: periodError } = await supabase
+      .from("periodos_letivos").select("id")
+      .eq("escola_id", escolaId).eq("ano_letivo_id", context.anoLetivoId)
+      .eq("tipo", "TRIMESTRE").eq("numero", body.trimestre)
+      .is("offering_id", null).limit(2);
+    if (periodError || periods?.length !== 1) {
+      return NextResponse.json({ ok: false, error: "Trimestre ambíguo." }, { status: 409 });
+    }
+    const { data, error } = await supabase.from("pauta_conclusoes")
+      .select("id").eq("escola_id", escolaId)
+      .eq("turma_disciplina_id", body.turma_disciplina_id)
+      .eq("periodo_letivo_id", periods[0].id).maybeSingle();
+    if (error) return NextResponse.json({ ok: false, error: "Falha ao consultar a pauta." }, { status: 503 });
+    return NextResponse.json(
+      { ok: true, already_completed: Boolean(data?.id) },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (cause) {
+    if (cause instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: cause.message, code: cause.code }, { status: cause.status });
+    }
+    console.error("[pauta-estado] falha", cause);
+    return NextResponse.json({ ok: false, error: "Falha ao consultar a pauta." }, { status: 500 });
+  }
+}
