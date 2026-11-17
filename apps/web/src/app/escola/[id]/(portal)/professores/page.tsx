@@ -1426,17 +1426,17 @@ export default function ProfessoresPage() {
           </div>
 
           {/* Gestão por professor: uma disciplina em várias turmas, sem repetir formulário */}
-          <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+          <div className="mb-6 rounded-xl border border-border bg-muted p-4 space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-[#1F6B3B]">Atribuir a várias turmas</h3>
-              <p className="mt-1 text-xs text-slate-500">
+              <h3 className="text-sm font-bold text-klasse-green">Atribuir a várias turmas</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
                 Selecione a disciplina e as turmas em que o professor dará aulas.
                 Turmas que já têm professor não serão alteradas.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="space-y-1">
-                <span className="text-xs font-semibold text-slate-600">Professor</span>
+                <span className="text-xs font-semibold text-muted-foreground">Professor</span>
                 <select className={selectCls} value={atribProfessorUserId}
                   onChange={(e) => setAtribProfessorUserId(e.target.value)}>
                   <option value="">Selecione o professor</option>
@@ -1446,7 +1446,7 @@ export default function ProfessoresPage() {
                 </select>
               </label>
               <label className="space-y-1">
-                <span className="text-xs font-semibold text-slate-600">Disciplina</span>
+                <span className="text-xs font-semibold text-muted-foreground">Disciplina</span>
                 <select className={selectCls} value={bulkDisciplinaId}
                   onChange={(e) => setBulkDisciplinaId(e.target.value)}>
                   <option value="">Selecione a disciplina</option>
@@ -1457,13 +1457,13 @@ export default function ProfessoresPage() {
               </label>
             </div>
             {bulkDisciplinaId && (
-              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 p-3">
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3">
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">Turmas disponíveis</p>
-                    <p className="text-xs text-slate-500">Ano letivo ativo · {bulkSelected.length} selecionada(s)</p>
+                    <p className="text-sm font-semibold text-foreground">Turmas disponíveis</p>
+                    <p className="text-xs text-muted-foreground">Ano letivo ativo · {bulkSelected.length} selecionada(s)</p>
                   </div>
-                  <button type="button" className="text-xs font-bold text-[#1F6B3B] hover:underline"
+                  <button type="button" className="text-xs font-bold text-klasse-green hover:underline"
                     disabled={bulkLoading || bulkCandidates.every((t) => Boolean(t.professor_id))}
                     onClick={() => {
                       const free = bulkCandidates.filter((t) => !t.professor_id).slice(0, 30).map((t) => t.turma_id)
@@ -1472,31 +1472,31 @@ export default function ProfessoresPage() {
                     {bulkSelected.length ? "Limpar seleção" : "Selecionar até 30"}
                   </button>
                 </div>
-                <div className="p-3 border-b border-slate-100">
+                <div className="p-3 border-b border-border">
                   <input className={inputCls} placeholder="Pesquisar turma…" value={bulkSearch}
                     onChange={(e) => setBulkSearch(e.target.value)} />
                 </div>
                 {bulkLoading ? (
-                  <p className="p-4 text-xs text-slate-500">A carregar turmas…</p>
+                  <p className="p-4 text-xs text-muted-foreground">A carregar turmas…</p>
                 ) : bulkError ? (
                   <p role="alert" className="p-4 text-xs text-rose-600">{bulkError}</p>
                 ) : bulkCandidates.length === 0 ? (
-                  <p className="p-4 text-xs text-slate-500">Nenhuma turma oferece esta disciplina no ano letivo ativo.</p>
+                  <p className="p-4 text-xs text-muted-foreground">Nenhuma turma oferece esta disciplina no ano letivo ativo.</p>
                 ) : (
                   <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
                     {bulkCandidates.filter((t) => t.nome.toLowerCase().includes(bulkSearch.toLowerCase())).map((t) => (
-                      <label key={t.turma_id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer">
+                      <label key={t.turma_id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted cursor-pointer">
                         <span className="flex items-center gap-3 min-w-0">
-                          <input type="checkbox" className="accent-[#E3B23C]"
+                          <input type="checkbox" className="accent-klasse-gold"
                             disabled={Boolean(t.professor_id) || bulkSubmitting}
                             checked={bulkSelected.includes(t.turma_id)}
                             onChange={(e) => setBulkSelected((previous) => e.target.checked
                               ? previous.length >= 30 ? previous : [...previous, t.turma_id]
                               : previous.filter((id) => id !== t.turma_id)
                             )} />
-                          <span className="text-sm text-slate-700 font-medium truncate">{t.nome}</span>
+                          <span className="text-sm text-foreground font-medium truncate">{t.nome}</span>
                         </span>
-                        <span className="text-xs text-slate-400 shrink-0">
+                        <span className="text-xs text-muted-foreground shrink-0">
                           {t.professor_id ? "Já atribuída" : t.turno ?? ""}
                         </span>
                       </label>
@@ -1508,7 +1508,7 @@ export default function ProfessoresPage() {
             <div className="flex justify-end">
               <button type="button" onClick={handleBulkAssign}
                 disabled={!atribProfessorUserId || !bulkDisciplinaId || !bulkSelected.length || bulkSubmitting || bulkLoading}
-                className="rounded-xl bg-[#E3B23C] px-5 py-2.5 text-sm font-bold text-white hover:brightness-95 disabled:opacity-50">
+                className="rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-white hover:brightness-95 disabled:opacity-50">
                 {bulkSubmitting ? "A guardar…" : `Atribuir a ${bulkSelected.length} turma(s)`}
               </button>
             </div>
@@ -1879,11 +1879,11 @@ export default function ProfessoresPage() {
 
             <div className="p-6 space-y-4">
               <label className="block space-y-1">
-                <span className="text-xs font-semibold text-slate-600">Nome completo</span>
+                <span className="text-xs font-semibold text-muted-foreground">Nome completo</span>
                 <input className={inputCls} maxLength={160} value={editForm.nome_completo}
                   onChange={(e) => setEditForm((p) => ({ ...p, nome_completo: e.target.value }))} />
               </label>
-              <p className="text-xs text-slate-500">E-mail de acesso: {editTarget.email}. A mudança de e-mail exige confirmação da conta.</p>
+              <p className="text-xs text-muted-foreground">E-mail de acesso: {editTarget.email}. A mudança de e-mail exige confirmação da conta.</p>
               <div className="grid gap-4 md:grid-cols-2">
                 <select className={selectCls} value={editForm.genero}
                   onChange={(e) => setEditForm((p) => ({ ...p, genero: e.target.value as any }))}>
