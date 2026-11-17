@@ -59,7 +59,7 @@ BEGIN
   FROM public.historico_anos h
   JOIN public.matriculas m ON m.id=h.matricula_id AND m.escola_id=h.escola_id
   WHERE h.escola_id=p_escola_id AND h.ano_letivo=2025
-    AND h.matricula_id=p_matricula_id AND h.snapshot_status='aberto'
+    AND h.matricula_id=p_matricula_id AND h.snapshot_status IN ('aberto','fechado')
     AND m.ano_letivo=2025 AND m.session_id=h.ano_letivo_id
     AND m.status='concluido' AND NOT m.ativo
     AND m.status_fecho_origem='override_admin';
