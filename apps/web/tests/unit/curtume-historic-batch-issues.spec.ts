@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getHistoricBatchIssueAdvice } from "../../src/lib/academico/curtume-historic-batch-issues";
+import { getHistoricBatchIssueAdvice, isHistoricBatchAcademicIssue } from "../../src/lib/academico/curtume-historic-batch-issues";
 
 test("historic 2025 blocking reasons are operational and actionable", () => {
   assert.deepEqual(getHistoricBatchIssueAdvice("NOTAS_OPERACIONAIS_EXIGEM_RECONCILIACAO"), {
@@ -17,6 +17,8 @@ test("historic 2025 blocking reasons are operational and actionable", () => {
 
 test("unknown database reasons do not expose raw SQL errors to directors", () => {
   const message = getHistoricBatchIssueAdvice("SQLSTATE 23514 internal record");
-  assert.equal(message.title, "Revisão académica necessária");
+  assert.equal(message.title, "Falha técnica de validação");
+  assert.equal(isHistoricBatchAcademicIssue("SQLSTATE 23514 internal record"), false);
+  assert.equal(isHistoricBatchAcademicIssue("RAA_RESULTADO_NAO_RECONHECIDO"), true);
   assert.doesNotMatch(message.nextStep, /SQLSTATE|23514/);
 });
