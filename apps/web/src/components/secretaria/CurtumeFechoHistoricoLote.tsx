@@ -175,6 +175,8 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
               const params = new URLSearchParams({
                 alunoId: issue.aluno_id ?? "",
                 action: "reenrollment",
+                historicMatriculaId: issue.matricula_id,
+                returnTo: balcaoHref ? balcaoHref.replace(/\/secretaria\/balcao(?:\?.*)?$/, "/secretaria/operacoes-academicas") : "/secretaria/operacoes-academicas",
               });
               const href = balcaoHref
                 ? balcaoHref + (balcaoHref.includes("?") ? "&" : "?") + params.toString()
