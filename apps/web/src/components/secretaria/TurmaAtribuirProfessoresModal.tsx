@@ -66,6 +66,10 @@ export default function TurmaAtribuirProfessoresModal({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [replaceDisciplinaId, setReplaceDisciplinaId] = useState<string | null>(null);
+  const [replaceProfessorUserId, setReplaceProfessorUserId] = useState("");
+  const [replaceReviewed, setReplaceReviewed] = useState(false);
+  const [replaceError, setReplaceError] = useState<string | null>(null);
   const [disciplinas, setDisciplinas] = useState<DisciplinaItem[]>([]);
   const [professores, setProfessores] = useState<ProfessorOption[]>([]);
   const [search, setSearch] = useState("");
@@ -112,6 +116,10 @@ export default function TurmaAtribuirProfessoresModal({
       setBulkCandidates([]);
       setBulkSelected([]);
       setBulkError(null);
+      setReplaceDisciplinaId(null);
+      setReplaceProfessorUserId("");
+      setReplaceReviewed(false);
+      setReplaceError(null);
     }
   }, [isOpen]);
 
@@ -163,11 +171,62 @@ export default function TurmaAtribuirProfessoresModal({
       setBulkDisciplinaId(null);
       return;
     }
+    setReplaceDisciplinaId(null);
+    setReplaceReviewed(false);
+    setReplaceError(null);
     setBulkDisciplinaId(disc.curso_matriz_id);
     setBulkError(null);
     setBulkSearch("");
     const current = selectedProfessorForLegacyId(disc.professor?.id, professores);
     setBulkProfessorUserId(current?.user_id ?? "");
+  };
+
+  const toggleReplace = (disc: DisciplinaItem) => {
+    if (savingId || bulkSaving) return;
+    if (replaceDisciplinaId === disc.curso_matriz_id) {
+      setReplaceDisciplinaId(null);
+    } else {
+      setBulkDisciplinaId(null);
+      setReplaceDisciplinaId(disc.curso_matriz_id);
+    }
+    setReplaceProfessorUserId("");
+    setReplaceReviewed(false);
+    setReplaceError(null);
+  };
+
+  const handleReplace = async (disc: DisciplinaItem) => {
+    const previousId = disc.professor?.id;
+    const next = professores.find((p) => p.user_id === replaceProfessorUserId);
+    if (!replaceReviewed || !previousId || !next?.professor_id || previousId === next.professor_id
+        || savingId || bulkSaving) return;
+    setSavingId(disc.curso_matriz_id);
+    setReplaceError(null);
+    try {
+      const res = await fetch(`/api/escolas/${escolaId}/professores/trocar-atribuicao`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          turma_id: turma.id,
+          curso_matriz_id: disc.curso_matriz_id,
+          professor_anterior_id: previousId,
+          professor_novo_user_id: next.user_id,
+        }),
+      });
+      const result = await res.json().catch(() => null);
+      if (!res.ok || !result?.ok) throw new Error(result?.error || "Não foi possível trocar o professor.");
+      await refreshDisciplinas();
+      setReplaceDisciplinaId(null);
+      setReplaceReviewed(false);
+      setReplaceProfessorUserId("");
+      success("Professor substituído", "A atribuição e o horário foram atualizados. O histórico foi preservado.");
+      onUpdated?.();
+    } catch (error) {
+      setReplaceError(error instanceof Error ? error.message : "Falha ao trocar professor.");
+      await refreshDisciplinas().catch(() => null);
+      setReplaceReviewed(false);
+    } finally {
+      setSavingId(null);
+    }
   };
 
   const handleAssign = async (disc: DisciplinaItem, professor: ProfessorOption) => {
@@ -335,8 +394,54 @@ export default function TurmaAtribuirProfessoresModal({
                   {isSaving && <Loader2 aria-label="A guardar" size={17} className="animate-spin text-klasse-gold"/>}
                 </div>
                 {!isPublished && <p className="mt-2 text-xs text-amber-700">Atribuição indisponível: a matriz desta disciplina ainda não está publicada.</p>}
-                {hasProf && !expanded && (
-                  <p className="mt-2 text-xs text-muted-foreground">Atribuição existente protegida. Não é possível substituí-la automaticamente.</p>
+                {hasProf && isPublished && (
+                  <button type="button" disabled={Boolean(savingId) || bulkSaving}
+                    aria-expanded={replaceDisciplinaId === disc.curso_matriz_id}
+                    onClick={() => toggleReplace(disc)}
+                    className="mt-3 mr-4 inline-flex items-center gap-1.5 text-sm font-semibold text-klasse-green hover:underline disabled:opacity-50">
+                    {replaceDisciplinaId === disc.curso_matriz_id ? "Cancelar troca" : "Trocar professor"}
+                  </button>
+                )}
+                {replaceDisciplinaId === disc.curso_matriz_id && hasProf && isPublished && (
+                  <div className="mt-3 space-y-3 rounded-xl border border-border bg-muted p-3">
+                    <p className="text-sm font-semibold text-foreground">Substituir professor · {disc.disciplina?.nome}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Atual: <strong>{disc.professor?.nome || "Professor atribuído"}</strong>
+                    </p>
+                    <label className="block space-y-1">
+                      <span className="text-xs font-semibold text-foreground">Novo professor</span>
+                      <select aria-label="Novo professor" value={replaceProfessorUserId}
+                        disabled={Boolean(savingId)}
+                        onChange={(e) => {
+                          setReplaceProfessorUserId(e.target.value);
+                          setReplaceReviewed(false);
+                          setReplaceError(null);
+                        }}
+                        className={inputClass}>
+                        <option value="">Selecione o professor</option>
+                        {professores.filter((prof) => prof.professor_id && prof.professor_id !== disc.professor?.id)
+                          .map((prof) => <option key={prof.user_id} value={prof.user_id}>{prof.nome}</option>)}
+                      </select>
+                    </label>
+                    {replaceError && <p role="alert" className="text-xs text-red-600">{replaceError}</p>}
+                    {replaceReviewed && replaceProfessorUserId && (
+                      <p role="status" className="rounded-xl border border-border bg-card p-3 text-xs text-foreground">
+                        Confirmar a troca de <strong>{disc.professor?.nome || "professor atual"}</strong> por{" "}
+                        <strong>{professores.find((prof) => prof.user_id === replaceProfessorUserId)?.nome || "novo professor"}</strong>
+                        {" "}nesta disciplina? As notas e frequências não serão alteradas.
+                      </p>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => toggleReplace(disc)} disabled={Boolean(savingId)}
+                        className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground">Cancelar</button>
+                      <button type="button"
+                        disabled={!replaceProfessorUserId || Boolean(savingId)}
+                        onClick={() => replaceReviewed ? void handleReplace(disc) : setReplaceReviewed(true)}
+                        className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                        {savingId ? "A guardar…" : replaceReviewed ? "Confirmar troca" : "Rever troca"}
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {isPublished && (
