@@ -156,7 +156,7 @@ export function CurtumeFechoHistoricoLote({ onComplete }: { onComplete: () => vo
             {pendencias.map((issue, index) => (
               <li key={issue.matricula_id + "-" + index} className="rounded-xl border border-border px-3 py-2">
                 <span className="font-mono text-xs">{issue.matricula_id}</span>
-                <span className="ml-2">{issue.codigo.replaceAll("_", " ")}</span>
+                <span className="ml-2">{issue.codigo.replace(/_/g, " ")}</span>
               </li>
             ))}
           </ul>
