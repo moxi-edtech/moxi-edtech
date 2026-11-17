@@ -88,3 +88,11 @@ CREATE TABLE public.quadro_horarios (
   disciplina_id uuid, professor_id uuid,
   slot_id uuid, versao_id uuid
 );
+
+-- Minimal audit sink for the replacement RPC, transactionally tested below.
+CREATE TABLE public.audit_logs (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  escola_id uuid, user_id uuid, actor_id uuid,
+  acao text, tabela text, registro_id text, portal text,
+  details jsonb, before jsonb, after jsonb
+);
