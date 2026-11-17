@@ -179,6 +179,32 @@ REVOKE ALL ON FUNCTION public.curtume_2025_conferir_notas_documentais(uuid,uuid,
 GRANT EXECUTE ON FUNCTION public.curtume_2025_conferir_notas_documentais(uuid,uuid,text,text)
   TO authenticated;
 
+-- Read-only status for the signed operator (never expose the protected
+-- fingerprint table directly through PostgREST or a public view).
+CREATE OR REPLACE FUNCTION public.curtume_2025_status_conferencia(
+  p_escola_id uuid,p_matricula_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public'
+AS $fn$
+DECLARE v_actor uuid := public.safe_auth_uid();
+BEGIN
+  IF v_actor IS NULL
+    OR p_escola_id IS DISTINCT FROM '3744879f-2e19-4671-8995-78604302d8c5'::uuid
+    OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
+    OR NOT EXISTS(SELECT 1 FROM public.escola_users eu
+      WHERE eu.escola_id=p_escola_id AND eu.user_id=v_actor
+        AND eu.papel IN ('admin','admin_escola','diretor')) THEN
+    RAISE EXCEPTION 'CURTUME_2025_STATUS_NAO_AUTORIZADO' USING ERRCODE='42501';
+  END IF;
+  RETURN public.curtume_2025_notas_conferidas_validas(p_escola_id,p_matricula_id);
+END;
+$fn$;
+REVOKE ALL ON FUNCTION public.curtume_2025_status_conferencia(uuid,uuid)
+  FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.curtume_2025_status_conferencia(uuid,uuid)
+  TO authenticated;
+
 -- The signed reconciliation is part of all THREE independent legal checks.
 -- Patch exact known bodies only; a changed canonical function fails closed.
 DO $patch$
