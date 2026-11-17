@@ -119,7 +119,7 @@ export function CurtumeHistoricalExceptionDesk({
         !dossier.escala_maxima || pautaReferencia.trim().length < 8 ||
         pautaFolha.trim().length < 2) return;
     const notas = dossier.disciplinas_disponiveis_2025
-      .filter((item) => pautaNotas[item.id]?.trim() !== "")
+      .filter((item) => (pautaNotas[item.id] ?? "").trim() !== "")
       .map((item) => ({ disciplina_id: item.id, valor: Number(pautaNotas[item.id]) }));
     if (!notas.length || notas.some(({ valor }) =>
       !Number.isFinite(valor) || valor < 0 || valor > dossier.escala_maxima! ||
