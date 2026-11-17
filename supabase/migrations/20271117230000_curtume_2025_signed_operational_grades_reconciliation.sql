@@ -205,249 +205,6 @@ REVOKE ALL ON FUNCTION public.curtume_2025_status_conferencia(uuid,uuid)
 GRANT EXECUTE ON FUNCTION public.curtume_2025_status_conferencia(uuid,uuid)
   TO authenticated;
 
-
--- Pauta física not yet transcribed: Direção records all the actual grades for
--- this one 2025 pupil atomically. No automatic/estimated values and no edits to
--- existing historical notes. The official school paper stays the evidence.
-CREATE OR REPLACE FUNCTION public.curtume_2025_transcrever_pauta_fisica(
-  p_escola_id uuid,p_matricula_id uuid,p_aluno_id uuid,
-  p_referencia text,p_folha text,p_notas jsonb,p_todas_disciplinas boolean)
-RETURNS jsonb
-LANGUAGE plpgsql VOLATILE SECURITY DEFINER
-SET search_path TO 'pg_catalog','public'
-AS $fn$
-DECLARE
-  v_actor uuid := public.safe_auth_uid();
-  v_escola constant uuid := '3744879f-2e19-4671-8995-78604302d8c5';
-  v_ano uuid;
-  v_h uuid;
-  v_turma uuid;
-  v_classe uuid;
-  v_classe_num integer;
-  v_ref text := btrim(coalesce(p_referencia,''));
-  v_folha text := btrim(coalesce(p_folha,''));
-  v_total integer;
-  v_unique integer;
-  v_row record;
-  v_disciplina_nome text;
-  v_max numeric;
-BEGIN
-  IF p_escola_id IS DISTINCT FROM v_escola OR v_actor IS NULL
-      OR p_matricula_id IS NULL OR p_aluno_id IS NULL
-      OR public.current_tenant_escola_id() IS DISTINCT FROM v_escola
-      OR NOT EXISTS(SELECT 1 FROM public.escola_users eu
-        WHERE eu.escola_id=v_escola AND eu.user_id=v_actor
-          AND eu.papel IN ('admin','admin_escola','diretor')) THEN
-    RAISE EXCEPTION 'CURTUME_2025_TRANSCRICAO_NAO_AUTORIZADA' USING ERRCODE='42501';
-  END IF;
-  IF length(v_ref)<8 OR length(v_folha)<2 OR p_todas_disciplinas IS DISTINCT FROM true
-      OR jsonb_typeof(p_notas) IS DISTINCT FROM 'array'
-      OR jsonb_array_length(p_notas) NOT BETWEEN 1 AND 30 THEN
-    RAISE EXCEPTION 'CURTUME_2025_PAUTA_INCOMPLETA' USING ERRCODE='23514';
-  END IF;
-  SELECT id INTO STRICT v_ano FROM public.anos_letivos
-    WHERE escola_id=v_escola AND ano=2025;
-  PERFORM pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtextextended('curtume2025:transcrever:'||p_matricula_id::text,0));
-  SELECT h.id,h.turma_id,t.classe_id,c.numero
-  INTO v_h,v_turma,v_classe,v_classe_num
-  FROM public.historico_anos h
-  JOIN public.matriculas m ON m.escola_id=h.escola_id AND m.id=h.matricula_id
-  JOIN public.turmas t ON t.id=h.turma_id AND t.escola_id=h.escola_id
-  JOIN public.classes c ON c.id=t.classe_id AND c.escola_id=h.escola_id
-  WHERE h.escola_id=v_escola AND h.ano_letivo=2025
-    AND h.ano_letivo_id=v_ano AND h.snapshot_status='aberto'
-    AND h.matricula_id=p_matricula_id AND h.aluno_id=p_aluno_id
-    AND t.ano_letivo=2025 AND t.ano_letivo_id=v_ano
-    AND m.aluno_id=p_aluno_id AND m.session_id=v_ano
-    AND m.ano_letivo=2025
-    AND m.status='concluido' AND NOT m.ativo
-    AND m.status_fecho_origem='override_admin'
-  FOR UPDATE OF h,m;
-  IF v_h IS NULL OR v_classe_num IS NULL OR v_classe_num NOT BETWEEN 1 AND 12 THEN
-    RAISE EXCEPTION 'CURTUME_2025_ORIGEM_NAO_ELEGIVEL' USING ERRCODE='23514';
-  END IF;
-  IF EXISTS (SELECT 1 FROM public.historico_disciplinas hd
-             WHERE hd.historico_ano_id=v_h) THEN
-    RAISE EXCEPTION 'CURTUME_2025_PAUTA_JA_TRANSCRITA' USING ERRCODE='23514';
-  END IF;
-  -- Refuse to auto-merge an operational/archival source discrepancy.
-  IF EXISTS (SELECT 1 FROM public.notas n
-             WHERE n.escola_id=v_escola AND n.matricula_id=p_matricula_id) THEN
-    RAISE EXCEPTION 'CURTUME_2025_CONFERIR_NOTAS_OPERACIONAIS_ANTES' USING ERRCODE='23514';
-  END IF;
-  SELECT count(*),count(DISTINCT item->>'disciplina_id') INTO v_total,v_unique
-  FROM jsonb_array_elements(p_notas) item;
-  IF v_total IS DISTINCT FROM v_unique THEN
-    RAISE EXCEPTION 'CURTUME_2025_DISCIPLINA_REPETIDA' USING ERRCODE='23514';
-  END IF;
-  v_max := CASE WHEN v_classe_num<=6 THEN 10 ELSE 20 END;
-  FOR v_row IN
-    SELECT item->>'disciplina_id' as disciplina_text,
-           item->>'valor' as valor_text
-    FROM jsonb_array_elements(p_notas) item
-  LOOP
-    IF v_row.disciplina_text IS NULL
-       OR v_row.disciplina_text !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
--- Patch exact known bodies only; a changed canonical function fails closed.
-DO $patch$
-DECLARE v_sql text; v_old text; v_new text; v_signature regprocedure;
-BEGIN
-  v_signature := 'public.curtume_fechar_pautas_2025_lote(uuid,uuid,uuid,integer)'::regprocedure;
-  v_sql := pg_catalog.pg_get_functiondef(v_signature);
-  v_old := $a$IF EXISTS(SELECT 1 FROM public.notas n
-                WHERE n.escola_id=p_escola_id
-                  AND n.matricula_id=v_row.matricula_id) THEN$a$;
-  v_new := $b$IF EXISTS(SELECT 1 FROM public.notas n
-                WHERE n.escola_id=p_escola_id
-                  AND n.matricula_id=v_row.matricula_id)
-         AND NOT public.curtume_2025_notas_conferidas_validas(
-           p_escola_id,v_row.matricula_id) THEN$b$;
-  IF strpos(v_sql,v_old)>0 THEN
-    EXECUTE replace(v_sql,v_old,v_new);
-  ELSIF strpos(v_sql,'curtume_2025_notas_conferidas_validas')=0 THEN
-    RAISE EXCEPTION 'CURTUME_2025_BATCH_GUARD_CHANGED';
-  END IF;
-
-  v_signature := 'public.historico_set_snapshot_state(uuid,uuid[],uuid,text,text,uuid)'::regprocedure;
-  v_sql := pg_catalog.pg_get_functiondef(v_signature);
-  v_old := $a$OR EXISTS (
-          SELECT 1 FROM public.notas n
-          WHERE n.escola_id=m.escola_id AND n.matricula_id=m.id
-        )$a$;
-  v_new := $b$OR (EXISTS (
-          SELECT 1 FROM public.notas n
-          WHERE n.escola_id=m.escola_id AND n.matricula_id=m.id
-        ) AND NOT public.curtume_2025_notas_conferidas_validas(m.escola_id,m.id))$b$;
-  IF strpos(v_sql,v_old)>0 THEN
-    EXECUTE replace(v_sql,v_old,v_new);
-  ELSIF strpos(v_sql,'curtume_2025_notas_conferidas_validas')=0 THEN
-    RAISE EXCEPTION 'CURTUME_2025_LEGAL_GUARD_CHANGED';
-  END IF;
-
-  v_signature := 'public.resolve_raa_progression_for_matricula(uuid,uuid)'::regprocedure;
-  v_sql := pg_catalog.pg_get_functiondef(v_signature);
-  v_old := $a$AND NOT EXISTS (
-        SELECT 1 FROM public.notas n
-        WHERE n.escola_id=p_escola_id AND n.matricula_id=m.id
-      )$a$;
-  v_new := $b$AND (NOT EXISTS (
-        SELECT 1 FROM public.notas n
-        WHERE n.escola_id=p_escola_id AND n.matricula_id=m.id
-      ) OR public.curtume_2025_notas_conferidas_validas(p_escola_id,m.id))$b$;
-  IF strpos(v_sql,v_old)>0 THEN
-    EXECUTE replace(v_sql,v_old,v_new);
-  ELSIF strpos(v_sql,'curtume_2025_notas_conferidas_validas')=0 THEN
-    RAISE EXCEPTION 'CURTUME_2025_RAA_GUARD_CHANGED';
-  END IF;
-END;
-$patch$;
-COMMIT;
-
-       OR v_row.valor_text IS NULL
-       OR v_row.valor_text !~ '^([0-9]|[12][0-9])([.][0-9]{1,2})?
--- Patch exact known bodies only; a changed canonical function fails closed.
-DO $patch$
-DECLARE v_sql text; v_old text; v_new text; v_signature regprocedure;
-BEGIN
-  v_signature := 'public.curtume_fechar_pautas_2025_lote(uuid,uuid,uuid,integer)'::regprocedure;
-  v_sql := pg_catalog.pg_get_functiondef(v_signature);
-  v_old := $a$IF EXISTS(SELECT 1 FROM public.notas n
-                WHERE n.escola_id=p_escola_id
-                  AND n.matricula_id=v_row.matricula_id) THEN$a$;
-  v_new := $b$IF EXISTS(SELECT 1 FROM public.notas n
-                WHERE n.escola_id=p_escola_id
-                  AND n.matricula_id=v_row.matricula_id)
-         AND NOT public.curtume_2025_notas_conferidas_validas(
-           p_escola_id,v_row.matricula_id) THEN$b$;
-  IF strpos(v_sql,v_old)>0 THEN
-    EXECUTE replace(v_sql,v_old,v_new);
-  ELSIF strpos(v_sql,'curtume_2025_notas_conferidas_validas')=0 THEN
-    RAISE EXCEPTION 'CURTUME_2025_BATCH_GUARD_CHANGED';
-  END IF;
-
-  v_signature := 'public.historico_set_snapshot_state(uuid,uuid[],uuid,text,text,uuid)'::regprocedure;
-  v_sql := pg_catalog.pg_get_functiondef(v_signature);
-  v_old := $a$OR EXISTS (
-          SELECT 1 FROM public.notas n
-          WHERE n.escola_id=m.escola_id AND n.matricula_id=m.id
-        )$a$;
-  v_new := $b$OR (EXISTS (
-          SELECT 1 FROM public.notas n
-          WHERE n.escola_id=m.escola_id AND n.matricula_id=m.id
-        ) AND NOT public.curtume_2025_notas_conferidas_validas(m.escola_id,m.id))$b$;
-  IF strpos(v_sql,v_old)>0 THEN
-    EXECUTE replace(v_sql,v_old,v_new);
-  ELSIF strpos(v_sql,'curtume_2025_notas_conferidas_validas')=0 THEN
-    RAISE EXCEPTION 'CURTUME_2025_LEGAL_GUARD_CHANGED';
-  END IF;
-
-  v_signature := 'public.resolve_raa_progression_for_matricula(uuid,uuid)'::regprocedure;
-  v_sql := pg_catalog.pg_get_functiondef(v_signature);
-  v_old := $a$AND NOT EXISTS (
-        SELECT 1 FROM public.notas n
-        WHERE n.escola_id=p_escola_id AND n.matricula_id=m.id
-      )$a$;
-  v_new := $b$AND (NOT EXISTS (
-        SELECT 1 FROM public.notas n
-        WHERE n.escola_id=p_escola_id AND n.matricula_id=m.id
-      ) OR public.curtume_2025_notas_conferidas_validas(p_escola_id,m.id))$b$;
-  IF strpos(v_sql,v_old)>0 THEN
-    EXECUTE replace(v_sql,v_old,v_new);
-  ELSIF strpos(v_sql,'curtume_2025_notas_conferidas_validas')=0 THEN
-    RAISE EXCEPTION 'CURTUME_2025_RAA_GUARD_CHANGED';
-  END IF;
-END;
-$patch$;
-COMMIT;
- THEN
-      RAISE EXCEPTION 'CURTUME_2025_NOTA_OU_DISCIPLINA_INVALIDA' USING ERRCODE='23514';
-    END IF;
-    IF v_row.valor_text::numeric<0 OR v_row.valor_text::numeric>v_max THEN
-      RAISE EXCEPTION 'CURTUME_2025_ESCALA_INVALIDA' USING ERRCODE='23514';
-    END IF;
-    SELECT dc.nome INTO v_disciplina_nome
-    FROM public.disciplinas_catalogo dc
-    WHERE dc.id=v_row.disciplina_text::uuid AND dc.escola_id=v_escola
-      AND EXISTS (
-        SELECT 1 FROM public.curso_matriz cm
-        JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id
-        WHERE cm.disciplina_id=dc.id AND cm.escola_id=v_escola
-          AND cm.classe_id=v_classe AND cm.ativo
-          AND cc.escola_id=v_escola AND cc.ano_letivo_id=v_ano
-          AND cc.status='published'
-      );
-    IF v_disciplina_nome IS NULL THEN
-      RAISE EXCEPTION 'CURTUME_2025_DISCIPLINA_FORA_DA_CLASSE' USING ERRCODE='23514';
-    END IF;
-
-    INSERT INTO public.historico_disciplinas(
-      historico_ano_id,disciplina_id,disciplina_nome,nota_final,media_final,
-      notas_detalhe,updated_by)
-    VALUES(v_h,v_row.disciplina_text::uuid,v_disciplina_nome,
-      v_row.valor_text::numeric,v_row.valor_text::numeric,
-      jsonb_build_object('fonte','pauta_escola_oficial_transcrita',
-         'ano_letivo','2025/2026','arquivo',v_ref,'aba','Pauta física CURTUME',
-         'linha',v_folha,'escala_maxima',v_max,'numero_processo',
-         (SELECT nullif(a.numero_processo,'') FROM public.alunos a
-          WHERE a.escola_id=v_escola AND a.id=p_aluno_id)),v_actor);
-  END LOOP;
-  INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details)
-  VALUES(v_escola,v_actor,'CURTUME_2025_PAUTA_FISICA_TRANSCRITA',
-    'historico_anos',v_h::text,'secretaria',
-    jsonb_build_object('matricula_id',p_matricula_id,'aluno_id',p_aluno_id,
-      'ano_letivo',2025,'disciplinas',v_total,
-      'referencia_documental',v_ref,'folha',v_folha,
-      'todas_disciplinas_confirmadas',true));
-  RETURN jsonb_build_object('ok',true,'historico_ano_id',v_h,
-     'disciplinas_registadas',v_total,'ano_letivo','2025/2026');
-END;
-$fn$;
-REVOKE ALL ON FUNCTION public.curtume_2025_transcrever_pauta_fisica(
-  uuid,uuid,uuid,text,text,jsonb,boolean) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.curtume_2025_transcrever_pauta_fisica(
-  uuid,uuid,uuid,text,text,jsonb,boolean) TO authenticated;
-
 -- The signed reconciliation is part of all THREE independent legal checks.
 -- Patch exact known bodies only; a changed canonical function fails closed.
 DO $patch$
@@ -502,4 +259,136 @@ BEGIN
   END IF;
 END;
 $patch$;
+
+-- School paper can be transcribed only where 2025 pupil historical subject
+-- rows are truly absent. Director confirms all documented subjects and grades.
+-- Never import grades from 2026/2027 or synthesize missing classifications.
+CREATE OR REPLACE FUNCTION public.curtume_2025_transcrever_pauta_fisica(
+  p_escola_id uuid,p_matricula_id uuid,p_aluno_id uuid,
+  p_referencia text,p_folha text,p_notas jsonb,p_todas_disciplinas boolean)
+RETURNS jsonb
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public'
+AS $fn$
+DECLARE
+  v_actor uuid := public.safe_auth_uid();
+  v_escola constant uuid := '3744879f-2e19-4671-8995-78604302d8c5';
+  v_ano uuid;
+  v_h uuid;
+  v_classe uuid;
+  v_classe_num integer;
+  v_ref text := btrim(coalesce(p_referencia,''));
+  v_folha text := btrim(coalesce(p_folha,''));
+  v_total integer;
+  v_unique integer;
+  v_row record;
+  v_name text;
+  v_max numeric;
+BEGIN
+  IF p_escola_id IS DISTINCT FROM v_escola OR v_actor IS NULL
+    OR p_matricula_id IS NULL OR p_aluno_id IS NULL
+    OR public.current_tenant_escola_id() IS DISTINCT FROM v_escola
+    OR NOT EXISTS (SELECT 1 FROM public.escola_users eu
+      WHERE eu.escola_id=v_escola AND eu.user_id=v_actor
+        AND eu.papel IN ('admin','admin_escola','diretor')) THEN
+    RAISE EXCEPTION 'CURTUME_2025_TRANSCRICAO_NAO_AUTORIZADA' USING ERRCODE='42501';
+  END IF;
+  IF length(v_ref)<8 OR length(v_folha)<2
+    OR p_todas_disciplinas IS DISTINCT FROM true
+    OR jsonb_typeof(p_notas) IS DISTINCT FROM 'array' THEN
+    RAISE EXCEPTION 'CURTUME_2025_PAUTA_INCOMPLETA' USING ERRCODE='23514';
+  END IF;
+  IF jsonb_array_length(p_notas) NOT BETWEEN 1 AND 30 THEN
+    RAISE EXCEPTION 'CURTUME_2025_QUANTIDADE_NOTAS_INVALIDA' USING ERRCODE='23514';
+  END IF;
+
+  SELECT id INTO STRICT v_ano FROM public.anos_letivos
+    WHERE escola_id=v_escola AND ano=2025;
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('curtume2025:transcrever:'||p_matricula_id::text,0));
+  SELECT h.id,t.classe_id,c.numero INTO v_h,v_classe,v_classe_num
+  FROM public.historico_anos h
+  JOIN public.matriculas m ON m.id=h.matricula_id AND m.escola_id=h.escola_id
+  JOIN public.turmas t ON t.id=h.turma_id AND t.escola_id=h.escola_id
+  JOIN public.classes c ON c.id=t.classe_id AND c.escola_id=h.escola_id
+  WHERE h.escola_id=v_escola AND h.ano_letivo=2025
+    AND h.ano_letivo_id=v_ano AND h.snapshot_status='aberto'
+    AND h.matricula_id=p_matricula_id AND h.aluno_id=p_aluno_id
+    AND t.ano_letivo=2025 AND t.ano_letivo_id=v_ano
+    AND m.aluno_id=p_aluno_id AND m.ano_letivo=2025 AND m.session_id=v_ano
+    AND m.status='concluido' AND NOT m.ativo AND m.status_fecho_origem='override_admin'
+  FOR UPDATE OF h,m;
+  IF v_h IS NULL OR v_classe_num IS NULL OR v_classe_num NOT BETWEEN 1 AND 12 THEN
+    RAISE EXCEPTION 'CURTUME_2025_ORIGEM_NAO_ELEGIVEL' USING ERRCODE='23514';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.historico_disciplinas hd
+              WHERE hd.historico_ano_id=v_h) THEN
+    RAISE EXCEPTION 'CURTUME_2025_PAUTA_JA_TRANSCRITA' USING ERRCODE='23514';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.notas n
+              WHERE n.escola_id=v_escola AND n.matricula_id=p_matricula_id) THEN
+    RAISE EXCEPTION 'CURTUME_2025_CONFERIR_NOTAS_OPERACIONAIS_ANTES' USING ERRCODE='23514';
+  END IF;
+  SELECT count(*),count(DISTINCT item->>'disciplina_id') INTO v_total,v_unique
+    FROM jsonb_array_elements(p_notas) item;
+  IF v_total IS DISTINCT FROM v_unique THEN
+    RAISE EXCEPTION 'CURTUME_2025_DISCIPLINA_DUPLICADA' USING ERRCODE='23514';
+  END IF;
+
+  v_max := CASE WHEN v_classe_num<=6 THEN 10 ELSE 20 END;
+  FOR v_row IN
+    SELECT item->>'disciplina_id' AS disciplina_text,
+      item->>'valor' AS valor_text
+    FROM jsonb_array_elements(p_notas) item
+  LOOP
+    IF v_row.disciplina_text IS NULL
+      OR v_row.disciplina_text !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      OR v_row.valor_text IS NULL
+      OR v_row.valor_text !~ '^[0-9]{1,2}([.][0-9]{1,2})?$' THEN
+      RAISE EXCEPTION 'CURTUME_2025_NOTA_INVALIDA' USING ERRCODE='23514';
+    END IF;
+    IF v_row.valor_text::numeric<0 OR v_row.valor_text::numeric>v_max THEN
+      RAISE EXCEPTION 'CURTUME_2025_ESCALA_INVALIDA' USING ERRCODE='23514';
+    END IF;
+    SELECT dc.nome INTO v_name FROM public.disciplinas_catalogo dc
+    WHERE dc.id=v_row.disciplina_text::uuid AND dc.escola_id=v_escola
+      AND EXISTS (
+        SELECT 1 FROM public.curso_matriz cm
+        JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id
+        WHERE cm.disciplina_id=dc.id AND cm.escola_id=v_escola
+          AND cm.classe_id=v_classe AND cm.ativo
+          AND cc.escola_id=v_escola AND cc.ano_letivo_id=v_ano
+          AND cc.status='published'
+      );
+    IF v_name IS NULL THEN
+      RAISE EXCEPTION 'CURTUME_2025_DISCIPLINA_FORA_DA_CLASSE' USING ERRCODE='23514';
+    END IF;
+    INSERT INTO public.historico_disciplinas
+      (historico_ano_id,disciplina_id,disciplina_nome,nota_final,media_final,
+       notas_detalhe,updated_by)
+    VALUES(v_h,v_row.disciplina_text::uuid,v_name,
+      v_row.valor_text::numeric,v_row.valor_text::numeric,
+      jsonb_build_object('fonte','pauta_escola_oficial_transcrita',
+        'ano_letivo','2025/2026','arquivo',v_ref,'aba','Pauta física CURTUME',
+        'linha',v_folha,'escala_maxima',v_max,
+        'numero_processo',(SELECT nullif(a.numero_processo,'')
+          FROM public.alunos a WHERE a.escola_id=v_escola AND a.id=p_aluno_id)),
+      v_actor);
+  END LOOP;
+  INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details)
+  VALUES(v_escola,v_actor,'CURTUME_2025_PAUTA_FISICA_TRANSCRITA',
+    'historico_anos',v_h::text,'secretaria',
+    jsonb_build_object('matricula_id',p_matricula_id,'aluno_id',p_aluno_id,
+      'ano_letivo',2025,'disciplinas',v_total,
+      'referencia_documental',v_ref,'folha',v_folha,
+      'todas_disciplinas_confirmadas',true));
+  RETURN jsonb_build_object('ok',true,'historico_ano_id',v_h,
+    'disciplinas_registadas',v_total,'ano_letivo','2025/2026');
+END;
+$fn$;
+REVOKE ALL ON FUNCTION public.curtume_2025_transcrever_pauta_fisica(
+  uuid,uuid,uuid,text,text,jsonb,boolean) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.curtume_2025_transcrever_pauta_fisica(
+  uuid,uuid,uuid,text,text,jsonb,boolean) TO authenticated;
+
 COMMIT;
