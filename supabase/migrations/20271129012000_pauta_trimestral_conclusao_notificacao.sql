@@ -22,7 +22,7 @@ ON public.eventos(escola_id, entidade_id)
 WHERE entidade_tipo = 'pauta_concluida';
 ALTER TABLE public.pauta_conclusoes ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.pauta_conclusoes FROM PUBLIC, anon, authenticated;
-// Read-only status for assigned teachers. Never expose direct writes.
+-- Read-only status for assigned teachers. Never expose direct writes.
 GRANT SELECT ON TABLE public.pauta_conclusoes TO authenticated;
 CREATE POLICY pauta_conclusoes_professor_select ON public.pauta_conclusoes
 FOR SELECT TO authenticated
