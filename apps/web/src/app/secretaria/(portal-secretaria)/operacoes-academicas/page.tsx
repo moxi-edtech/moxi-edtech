@@ -300,7 +300,7 @@ export default async function OperacoesAcademicasPage({
 
         {escolaId === "3744879f-2e19-4671-8995-78604302d8c5" && (
           <div className="space-y-2" aria-label="Fecho do ano letivo 2025/2026">
-            <CurtumeFechoHistoricoLote />
+            <CurtumeFechoHistoricoLote balcaoHref={buildPortalHref(escolaParam, "/secretaria/balcao")} />
             <Link
               href={buildPortalHref(escolaParam, "/operacoes/academico/reconciliacao-historica?tipo=historicos&ano=2025")}
               className="inline-flex items-center gap-2 text-xs font-semibold text-emerald hover:underline"
