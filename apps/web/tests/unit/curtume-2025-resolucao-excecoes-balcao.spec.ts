@@ -32,12 +32,14 @@ test("exception read requires authenticated 2025 tenant+student+matricula and st
   assert.match(api, /operacionais\.length > 150/);
 });
 
-test("grade comparison is read-only and never treats operational evaluation as final grade", () => {
+test("comparison is read-only; documentary ratification is a separate authenticated action", () => {
   assert.match(desk, /Pauta oficial · notas finais/);
   assert.match(desk, /Avaliações operacionais preservadas/);
   assert.match(desk, /Avaliações individuais não equivalem automaticamente à média final/);
   assert.match(desk, /Este painel não altera notas nem decisões automaticamente/);
-  assert.doesNotMatch(desk, /method: "POST"/);
+  assert.match(desk, /method: "POST"/);
+  assert.match(desk, /confirmacao: "CONFIRMO_PAUTA_2025"/);
+  assert.match(api, /const GradeReconciliationSchema = z\.object/);
   assert.match(api, /notas_operacionais: operationalGrades/);
 });
 
