@@ -487,6 +487,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, code: "HISTORICAL_DECISION_FORBIDDEN",
         error: "Este perfil não pode validar o histórico nesta escola." }, { status: 403 });
     }
+    // The UI cannot be the sole protection for historical documents.
+    // Re-check source year and process on the authenticated write route
+    // before invoking the signed canonical ratification/close RPC.
+    if (body.acao === "ratificar" || body.acao === "fechar_historico") {
+      const { data: history, error: historyError } = await supabase
+        .from("historico_anos")
+        .select("id,aluno_id,ano_letivo")
+        .eq("escola_id", escolaId)
+        .eq("matricula_id", body.matricula_id).maybeSingle();
+      if (historyError) throw historyError;
+      if (history) {
+        const [source, student] = await Promise.all([
+          supabase.from("historico_disciplinas")
+            .select("disciplina_id,disciplina_nome,nota_final,notas_detalhe")
+            .eq("historico_ano_id", history.id).limit(1500),
+          supabase.from("alunos").select("numero_processo")
+            .eq("escola_id", escolaId).eq("id", history.aluno_id).maybeSingle(),
+        ]);
+        if (source.error || student.error) throw source.error ?? student.error;
+        if ((source.data ?? []).length >= 1500) {
+          return NextResponse.json({ ok: false, code: "PAUTA_LIMITE_EXCEDIDO",
+            error: "O histórico excede o limite de conferência documental." }, { status: 422 });
+        }
+        const pauta = buildPautaHistoricaReview(source.data ?? [], null,
+          student.data?.numero_processo ?? null, Number(history.ano_letivo));
+        if (pauta.processo_verificado === false || pauta.divergencia_ano_documento ||
+            pauta.alertas.includes("NOTA_OU_ESCALA_INVALIDA") ||
+            pauta.alertas.includes("DISCIPLINA_REPETIDA")) {
+          return NextResponse.json({ ok: false, code: "PAUTA_CONFLITO_DOCUMENTAL",
+            error: "A pauta tem divergência de processo, ano, disciplina ou escala. Corrija o vínculo com evidência antes de ratificar." },
+            { status: 409 });
+        }
+      }
+    }
     let data: any = null;
     let rpcError: any = null;
     if (body.acao === "concluir_ano_percurso") {
