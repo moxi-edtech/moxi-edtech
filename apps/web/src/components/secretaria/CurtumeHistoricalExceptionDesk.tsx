@@ -123,7 +123,7 @@ export function CurtumeHistoricalExceptionDesk({
       .map((item) => ({ disciplina_id: item.id, valor: Number(pautaNotas[item.id]) }));
     if (!notas.length || notas.some(({ valor }) =>
       !Number.isFinite(valor) || valor < 0 || valor > dossier.escala_maxima! ||
-      !Number.isInteger(valor * 100))) {
+      Math.abs(valor * 100 - Math.round(valor * 100)) > 1e-7)) {
       setError("Confira as classificações e a escala antes de guardar.");
       return;
     }
