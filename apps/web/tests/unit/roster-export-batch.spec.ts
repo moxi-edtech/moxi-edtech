@@ -98,17 +98,11 @@ test("chave versionada preserva modo e exclusões no reprocessamento", () => {
   assert.equal(readNominalBatchKey(key.replace(":03:", ":13:")), null);
 });
 
-test("CSV autorizado não devolve dados sensíveis, usa sessão e audita", () => {
-  const csv = source("app/api/secretaria/turmas/[id]/alunos/csv/route.ts");
-  assert.match(csv, /resolveRosterExportPolicy/);
-  assert.match(csv, /requireRoleInSchool/);
-  assert.match(csv, /selectMatriculasDaLista/);
-  assert.match(csv, /\.eq\("session_id", turma\.session_id\)/);
-  assert.match(csv, /safeCsvCell/);
-  assert.match(csv, /if \(auditError\)/);
-  assert.match(csv, /campos_sensiveis: false/);
-  assert.doesNotMatch(csv, /bi_numero/);
-  assert.doesNotMatch(csv, /data_nascimento/);
+test("esta PR não expõe uma rota CSV de listas nominais", () => {
+  assert.throws(
+    () => source("app/api/secretaria/turmas/[id]/alunos/csv/route.ts"),
+    /ENOENT/,
+  );
 });
 
 test("reprocessamento bloqueia modo original irrecuperável", () => {
