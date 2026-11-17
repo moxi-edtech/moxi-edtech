@@ -481,6 +481,7 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
   onReset:  () => void
 }) {
   const atribuicoes = prof.atribuicoes ?? []
+  const totalTurmas = new Set(atribuicoes.map((a) => a.turma_id).filter(Boolean)).size
   const labels      = Array.from(new Set(
     atribuicoes.map((a) => `${a.turma_nome ?? "Turma"} · ${a.disciplina_nome ?? "Disciplina"}`)
   ))
@@ -545,7 +546,7 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
           }
           <span className="text-slate-300">·</span>
           <span className="text-slate-500">
-            {atribuicoes.length > 0 ? `${atribuicoes.length} turma(s)` : "Sem turmas"}
+            {totalTurmas > 0 ? `${totalTurmas} turma(s)` : "Sem turmas neste ano"}
           </span>
         </div>
         <PendenciasResumoBadge total={prof.pendencias_total ?? 0} />
@@ -1429,10 +1430,6 @@ export default function ProfessoresPage() {
           <div className="mb-6 rounded-xl border border-border bg-muted p-4 space-y-4">
             <div>
               <h3 className="text-sm font-bold text-klasse-green">Atribuir a várias turmas</h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Selecione a disciplina e as turmas em que o professor dará aulas.
-                Turmas que já têm professor não serão alteradas.
-              </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="space-y-1">
@@ -1883,7 +1880,6 @@ export default function ProfessoresPage() {
                 <input className={inputCls} maxLength={160} value={editForm.nome_completo}
                   onChange={(e) => setEditForm((p) => ({ ...p, nome_completo: e.target.value }))} />
               </label>
-              <p className="text-xs text-muted-foreground">E-mail de acesso: {editTarget.email}. A mudança de e-mail exige confirmação da conta.</p>
               <div className="grid gap-4 md:grid-cols-2">
                 <select className={selectCls} value={editForm.genero}
                   onChange={(e) => setEditForm((p) => ({ ...p, genero: e.target.value as any }))}>
