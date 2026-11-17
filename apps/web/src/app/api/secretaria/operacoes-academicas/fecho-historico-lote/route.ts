@@ -23,7 +23,7 @@ const PhysicalPautaSchema = z.object({
   folha: z.string().trim().min(2).max(80),
   notas: z.array(z.object({
     disciplina_id: z.string().uuid(),
-    valor: z.number().min(0).max(20).refine((value) => Number.isInteger(value * 100)),
+    valor: z.number().min(0).max(20).refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-7),
   }).strict()).min(1).max(30),
   todas_disciplinas: z.literal(true),
   confirmacao: z.literal("CONFIRMO_PAUTA_2025"),
