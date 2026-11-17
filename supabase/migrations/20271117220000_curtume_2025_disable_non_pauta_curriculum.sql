@@ -10,6 +10,7 @@ DECLARE
   v_escola constant uuid := '3744879f-2e19-4671-8995-78604302d8c5';
   v_ano uuid;
   v_target_count integer;
+  v_total_excess integer;
   v_cross_year_count integer;
   v_updated integer;
 BEGIN
@@ -33,14 +34,14 @@ BEGIN
   -- Same exact documented conditions are used for preflight and mutation.
   -- An active curriculum subject is surplus only if the class has no
   -- documentary 2025 grade row for that subject.
-  SELECT count(*) INTO v_target_count
+  SELECT count(*),count(*) FILTER (WHERE cm.ativo)
+    INTO v_total_excess,v_target_count
     FROM public.curso_matriz cm
     JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id
    WHERE cm.escola_id=v_escola
      AND cc.escola_id=v_escola
      AND cc.ano_letivo_id=v_ano
      AND cc.status='published'
-     AND cm.ativo
      AND NOT EXISTS (
        SELECT 1
          FROM public.historico_anos h
@@ -55,9 +56,14 @@ BEGIN
           AND hd.disciplina_id=cm.disciplina_id
      );
 
-  IF v_target_count<>14 THEN
-    RAISE EXCEPTION 'CURTUME_2025_UNEXPECTED_SURPLUS_COUNT: %',v_target_count
+  IF v_total_excess<>14 THEN
+    RAISE EXCEPTION 'CURTUME_2025_UNEXPECTED_SURPLUS_COUNT: %',v_total_excess
       USING ERRCODE='23514';
+  END IF;
+
+  -- Safe on retry: the 14 identified 2025 entries can already be disabled.
+  IF v_target_count=0 THEN
+    RETURN;
   END IF;
 
   -- Do not change a matrix entry if any turma of another year relies on it.
@@ -112,7 +118,7 @@ BEGIN
           AND hd.disciplina_id=cm.disciplina_id
      );
   GET DIAGNOSTICS v_updated=ROW_COUNT;
-  IF v_updated<>14 THEN
+  IF v_updated<>v_target_count THEN
     RAISE EXCEPTION 'CURTUME_2025_SURPLUS_UPDATE_MISMATCH: %',v_updated
       USING ERRCODE='23514';
   END IF;
