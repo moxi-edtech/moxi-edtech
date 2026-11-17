@@ -245,14 +245,36 @@ function buildClasseDocUrl(
   classeId: string,
   year: number | null,
   includeAllStatus: boolean = false,
-  mode: ListaNominalMode = "operacional"
+  mode: ListaNominalMode = "operacional",
+  format: FormatKey = "pdf_individual"
 ) {
   const params = new URLSearchParams();
   if (year) params.set("year", String(year));
   if (includeAllStatus) params.set("all_status", "true");
   params.set("mode", mode);
   const query = params.toString();
-  return `/api/secretaria/classes/${classeId}/alunos/pdf${query ? `?${query}` : ""}`;
+  return `/api/secretaria/classes/${classeId}/alunos/${format === "excel" ? "xlsx" : "pdf"}${query ? `?${query}` : ""}`;
+}
+
+async function downloadNominalExcel(url: string, filename: string) {
+  const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload?.error || "Não foi possível descarregar o Excel nominal.");
+  }
+  if (!response.headers.get("content-type")?.includes("spreadsheetml.sheet")) {
+    throw new Error("O servidor não devolveu um ficheiro Excel válido.");
+  }
+  const blob = await response.blob();
+  if (!blob.size) throw new Error("O Excel devolvido está vazio.");
+  const blobUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = blobUrl;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
 }
 
 export default function QuickDocHub({
@@ -531,8 +553,9 @@ export default function QuickDocHub({
 
   const selectedClasseTurmas = useMemo(() => {
     if (!selectedClasse?.id) return [];
-    return turmasFiltradas.filter((turma) => turma.classe_id === selectedClasse.id);
-  }, [selectedClasse?.id, turmasFiltradas]);
+    // Escopo "Classe inteira" inclui todos os turnos e turmas, não só filtros secundários.
+    return turmas.filter((turma) => turma.classe_id === selectedClasse.id);
+  }, [selectedClasse?.id, turmas]);
 
   const selectedClasseAlunoCount = useMemo(
     () => selectedClasseTurmas.reduce((total, turma) => total + Number(turma.ocupacao_atual ?? 0), 0),
@@ -557,8 +580,7 @@ export default function QuickDocHub({
   useEffect(() => {
     if (scope !== "classe") return;
     setSelectedDocs(["nominal"]);
-    if (format === "excel") setFormat("pdf_individual");
-  }, [format, scope]);
+  }, [scope]);
 
   const statusResumo = selectedTurma
     ? [
@@ -584,7 +606,6 @@ export default function QuickDocHub({
       if (!doc) return "Documento indisponível.";
       if (scope === "classe") {
         if (doc.key !== "nominal") return "Escopo por classe disponível para Lista Nominal.";
-        if (format === "excel") return "Lista nominal por classe não tem versão Excel.";
         if (!selectedClasse?.id) return "Selecione uma classe.";
         if (format === "pdf_consolidado" && selectedClasseTurmas.length === 0) {
           return "Nenhuma turma encontrada para esta classe nos filtros atuais.";
@@ -621,8 +642,12 @@ export default function QuickDocHub({
       const doc = selectedDocDefs.find((item) => item.key === "nominal");
       if (!doc) return;
 
-      const url = buildClasseDocUrl(selectedClasse.id, anoLetivo, includeAllStatus, modoLista);
-      window.open(url, "_blank");
+      const url = buildClasseDocUrl(selectedClasse.id, anoLetivo, includeAllStatus, modoLista, format);
+      if (format === "excel") {
+        await downloadNominalExcel(url, `lista_nominal_classe_${selectedClasse.id}.xlsx`);
+      } else {
+        window.open(url, "_blank");
+      }
       addDirectHistory({
         label: `${doc.label} • ${selectedClasse.nome}`,
         format,
@@ -661,24 +686,7 @@ export default function QuickDocHub({
         modoLista
       );
       if (doc.key === "nominal" && format === "excel") {
-        const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload?.error || "Não foi possível descarregar o Excel da turma.");
-        }
-        if (!response.headers.get("content-type")?.includes("spreadsheetml.sheet")) {
-          throw new Error("O servidor não devolveu um ficheiro Excel válido.");
-        }
-        const blob = await response.blob();
-        if (!blob.size) throw new Error("O Excel devolvido está vazio.");
-        const blobUrl = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = blobUrl;
-        anchor.download = `lista_nominal_turma_${selectedTurma.id}.xlsx`;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
+        await downloadNominalExcel(url, `lista_nominal_turma_${selectedTurma.id}.xlsx`);
       } else {
         window.open(url, "_blank");
       }
@@ -836,7 +844,6 @@ export default function QuickDocHub({
                   setScope(item);
                   if (item === "classe") {
                     setSelectedDocs(["nominal"]);
-                    setFormat((current) => current === "excel" ? "pdf_individual" : current);
                   }
                 }}
                 className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
@@ -989,7 +996,9 @@ export default function QuickDocHub({
                     {selectedClasse
                       ? format === "pdf_consolidado"
                         ? `Gera um pacote com ${selectedClasseTurmas.length} turma${selectedClasseTurmas.length !== 1 ? "s" : ""} desta classe.`
-                        : "Gera um PDF único com todos os alunos da classe e mantém a turma de origem em cada linha."
+                        : format === "excel"
+                          ? "Gera um Excel único com os alunos de todas as turmas e a turma identificada em cada linha."
+                          : "Gera um PDF único com todos os alunos da classe e mantém a turma de origem em cada linha."
                       : "Depois de escolher a classe, a Lista Nominal fica pronta para emissão."}
                   </p>
                 </div>
@@ -1128,7 +1137,9 @@ export default function QuickDocHub({
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                 {format === "pdf_consolidado"
                   ? "O consolidado mantém cada turma como documento separado dentro do pacote final."
-                  : "O PDF direto junta os alunos da classe inteira e mantém a turma de origem em cada linha."}
+                  : format === "excel"
+                    ? "O Excel junta a classe inteira numa planilha e mantém a turma de origem em cada linha."
+                    : "O PDF direto junta os alunos da classe inteira e mantém a turma de origem em cada linha."}
               </div>
             </div>
           ) : selectedTurma ? (
@@ -1236,7 +1247,9 @@ export default function QuickDocHub({
           <p className="mt-1 text-xs text-slate-500">
             {format === "pdf_consolidado"
               ? "Documentos compatíveis serão enviados para a fila e aparecerão no histórico abaixo."
-              : "Os documentos serão gerados imediatamente em novas abas."}
+              : format === "excel"
+                ? "O Excel (.xlsx) será descarregado directamente."
+                : "Os documentos serão gerados imediatamente em novas abas."}
           </p>
           {feedback ? <p className="mt-2 text-xs font-medium text-emerald">{feedback}</p> : null}
         </div>
