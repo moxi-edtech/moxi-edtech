@@ -128,6 +128,10 @@ const ERROR_MESSAGES: Record<string, string> = {
     "Existe um pedido antigo sem ano letivo. Envie-o para reconciliação antes de cobrar novamente.",
   FINALISTA_PROGRESSION_INVALID:
     "O finalista deve seguir para a classe imediatamente seguinte.",
+  ENROLLMENT_PRIOR_YEAR_APPROVED_SAME_OR_LOWER_GRADE:
+    "Este aluno já aprovou esta classe no ano anterior. Corrija a classe de destino ou a decisão académica no Balcão.",
+  ENROLLMENT_FINALIST_REPEAT_REQUIRES_RETAINED_DECISION:
+    "A repetição de classe de exame exige uma decisão de retenção. Registe a decisão académica antes de rematricular.",
   DECISAO_MOTIVO_REQUIRED:
     "Informe o motivo da decisão administrativa antes de concluir.",
   ASSISTED_TRANSITION_COHORT_REQUIRED:
