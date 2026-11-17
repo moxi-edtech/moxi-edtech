@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'apps/web/src/lib/professores/**'
+      - 'apps/web/src/app/api/escolas/**/professores/**'
       - 'apps/web/src/lib/escola/disciplinas.ts'
       - 'apps/web/src/app/api/escolas/**/professores/**'
       - 'apps/web/tests/unit/professor-assignment-hardening.spec.ts'
@@ -14,6 +15,7 @@ on:
       - 'apps/web/src/app/api/secretaria/turmas/**/disciplinas/route.ts'
       - 'apps/web/src/app/api/professor/atribuicoes/route.ts'
       - 'supabase/migrations/2027111711*.sql'
+      - 'supabase/migrations/2027111717*.sql'
       - 'supabase/tests/teacher_assignment_disposable_*.sql'
       - '.github/workflows/professor-assignment-safeguards.yml'
 
@@ -66,6 +68,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/tests/teacher_assignment_disposable_schema.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271117110000_assign_professor_multiplas_turmas.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271117111500_professor_assignment_roster_academic_year.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271117172000_trocar_professor_turma_disciplina_atomic.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/teacher_assignment_disposable_cases.sql
 
   typecheck:
