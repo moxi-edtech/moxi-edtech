@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
-import { authorizePedagogicalManage } from '@/lib/escola/disciplinas'
+import { authorizeTeacherManage } from '@/lib/escola/disciplinas'
 import { dispatchProfessorNotificacao } from '@/lib/notificacoes/dispatchProfessorNotificacao'
 
 export const dynamic = 'force-dynamic'
@@ -29,7 +29,7 @@ async function context(escolaId: string) {
   if (resolved !== escolaId) {
     return { error: NextResponse.json({ ok: false, error: 'Sem acesso a esta escola' }, { status: 403 }) }
   }
-  const permission = await authorizePedagogicalManage(supabase as any, escolaId, user.id)
+  const permission = await authorizeTeacherManage(supabase as any, escolaId, user.id)
   if (!permission.allowed) {
     return { error: NextResponse.json({ ok: false, error: 'Sem permissão para gerir professores' }, { status: 403 }) }
   }
@@ -53,27 +53,39 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const s = gate.supabase!
 
     const { data: year, error: yearError } = await s.from('anos_letivos')
-      .select('id').eq('escola_id', escolaId).eq('ativo', true).limit(1).maybeSingle()
+      .select('id').eq('escola_id', escolaId).eq('ativo', true)
+      .order('data_inicio', { ascending: false }).limit(1).maybeSingle()
     if (yearError) throw yearError
-    if (!year) return NextResponse.json({ ok: true, items: [], message: 'Não existe ano letivo ativo' })
+    if (!year) return NextResponse.json({ ok: true, items: [] })
 
-    const { data: turmas, error: turmasError } = await s.from('turmas')
-      .select('id,nome,turno')
-      .eq('escola_id', escolaId)
-      .or(`ano_letivo_id.eq.${year.id},session_id.eq.${year.id}`)
-      .order('nome', { ascending: true })
-      .limit(300)
+    const [{ data: turmas, error: turmasError }, { data: curriculos, error: curriculoError }] = await Promise.all([
+      s.from('turmas').select('id,nome,turno,curso_id,classe_id')
+        .eq('escola_id', escolaId).eq('session_id', year.id)
+        .order('nome', { ascending: true }).limit(500),
+      s.from('curso_curriculos').select('id,curso_id,classe_id')
+        .eq('escola_id', escolaId).eq('ano_letivo_id', year.id)
+        .eq('status', 'published').limit(500),
+    ])
     if (turmasError) throw turmasError
-    if (!turmas?.length) return NextResponse.json({ ok: true, items: [] })
+    if (curriculoError) throw curriculoError
+    if (!turmas?.length || !curriculos?.length) return NextResponse.json({ ok: true, items: [] })
+    if (turmas.length >= 500 || curriculos.length >= 500) {
+      return NextResponse.json({ ok: false, error: 'Lista de turmas demasiado grande. Refine a consulta.' }, { status: 409 })
+    }
 
+    // Include all matrices for this subject only to detect occupied historical
+    // versions, but offer ONLY those in a published curriculum for this year.
     const { data: matrizes, error: matrizError } = await s.from('curso_matriz')
-      .select('id,curso_curriculo_id')
+      .select('id,curso_curriculo_id,curso_id,classe_id,ativo')
       .eq('escola_id', escolaId).eq('disciplina_id', disciplinaId!).limit(1000)
     if (matrizError) throw matrizError
     if (!matrizes?.length) return NextResponse.json({ ok: true, items: [] })
+    if (matrizes.length >= 1000) {
+      return NextResponse.json({ ok: false, error: 'Lista de disciplinas demasiado grande.' }, { status: 409 })
+    }
 
-    const turmaIds = turmas.map((t: any) => t.id)
-    const matrizIds = matrizes.map((m: any) => m.id)
+    const turmaIds: string[] = turmas.map((t: any) => t.id)
+    const matrizIds: string[] = matrizes.map((m: any) => m.id)
     const [{ data: ofertas, error: ofertasError }, { data: links, error: linksError }] = await Promise.all([
       s.from('turma_disciplinas').select('turma_id,curso_matriz_id,professor_id')
         .eq('escola_id', escolaId).in('turma_id', turmaIds).in('curso_matriz_id', matrizIds)
@@ -84,39 +96,39 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     ])
     if (ofertasError) throw ofertasError
     if (linksError) throw linksError
+    if ((ofertas || []).length >= 1000 || (links || []).length >= 1000) {
+      return NextResponse.json({ ok: false, error: 'Lista de atribuições demasiado grande.' }, { status: 409 })
+    }
 
-    const curriculoIds = [...new Set(matrizes.map((m: any) => m.curso_curriculo_id).filter(Boolean))]
-    const { data: curriculos, error: curriculoError } = curriculoIds.length
-      ? await s.from('curso_curriculos').select('id,status,version').eq('escola_id', escolaId).in('id', curriculoIds)
-      : { data: [], error: null }
-    if (curriculoError) throw curriculoError
-
-    const curriculoById = new Map<string, any>((curriculos || []).map((c: any): [string, any] => [c.id, c]))
+    const curriculoIds = new Set((curriculos || []).map((c: any) => c.id))
+    const turmaById = new Map<string, any>(turmas.map((t: any): [string, any] => [t.id, t]))
     const matrizById = new Map<string, any>(matrizes.map((m: any): [string, any] => [m.id, m]))
-    const linkByTurma = new Map<string, string | null>((links || []).map((l: any): [string, string | null] => [l.turma_id, l.professor_id ?? null]))
-    const candidates = new Map<string, any>()
-    const anyAssigned = new Map<string, string>()
+    const occupiedByTurma = new Map<string, string>()
+    for (const l of links || []) {
+      if (l.professor_id) occupiedByTurma.set(l.turma_id, l.professor_id)
+    }
     for (const oferta of ofertas || []) {
-      if (oferta.professor_id && !anyAssigned.has(oferta.turma_id)) {
-        anyAssigned.set(oferta.turma_id, oferta.professor_id)
-      }
+      if (oferta.professor_id) occupiedByTurma.set(oferta.turma_id, oferta.professor_id)
     }
 
+    const candidates = new Map<string, { curso_matriz_id: string; professor_id: string | null }>()
     for (const oferta of ofertas || []) {
-      const matriz: any = matrizById.get(oferta.curso_matriz_id)
-      const curriculo: any = matriz ? curriculoById.get(matriz.curso_curriculo_id) : null
-      const prioridade = (curriculo?.status === 'draft' ? 200000 : curriculo?.status === 'published' ? 100000 : 0)
-        + Number(curriculo?.version || 0)
-      const current = candidates.get(oferta.turma_id)
-      if (!current || prioridade > current.prioridade) {
-        candidates.set(oferta.turma_id, {
-          turma_id: oferta.turma_id,
-          curso_matriz_id: oferta.curso_matriz_id,
-          professor_id: linkByTurma.get(oferta.turma_id) ?? anyAssigned.get(oferta.turma_id) ?? oferta.professor_id ?? null,
-          prioridade,
-        })
+      const t = turmaById.get(oferta.turma_id)
+      const matriz = matrizById.get(oferta.curso_matriz_id)
+      if (!t || !matriz || matriz.ativo !== true || !curriculoIds.has(matriz.curso_curriculo_id)) continue
+      if (matriz.curso_id !== t.curso_id || matriz.classe_id !== t.classe_id) continue
+
+      // Two published matrices for one offering is a curricular conflict,
+      // not permission to silently pick whichever row PostgREST returns first.
+      if (candidates.has(t.id) && candidates.get(t.id)?.curso_matriz_id !== oferta.curso_matriz_id) {
+        return NextResponse.json({ ok: false, error: 'A disciplina tem versões curriculares duplicadas nesta turma.' }, { status: 409 })
       }
+      candidates.set(t.id, {
+        curso_matriz_id: oferta.curso_matriz_id,
+        professor_id: occupiedByTurma.get(t.id) ?? null,
+      })
     }
+
     const items = turmas.flatMap((t: any) => {
       const oferta = candidates.get(t.id)
       return oferta ? [{
@@ -158,7 +170,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       p_itens: parsed.data.itens,
     })
     if (error) {
-      const conflict = /ASSIGN_BATCH_JA_ATRIBUIDA|ASSIGN_PROF_CARGA_EXCEEDED|ASSIGN_PROF_QUADRO_CONFLICT|ASSIGN_BATCH_DISCIPLINA_INCOMPATIVEL/.test(error.message)
+      const conflict = /ASSIGN_BATCH_JA_ATRIBUIDA|ASSIGN_PROF_ALREADY_ASSIGNED|ASSIGN_PROF_CARGA_EXCEEDED|ASSIGN_PROF_QUADRO_CONFLICT|ASSIGN_BATCH_DISCIPLINA_INCOMPATIVEL|ASSIGN_PROF_MATRIZ_ANO_INCOMPATIVEL|ASSIGN_PROF_ANO_INATIVO/.test(error.message)
       return NextResponse.json({ ok: false, error: conflict
         ? 'Uma das turmas já tem professor, não oferece esta disciplina ou tem conflito de horário/carga. Nenhuma atribuição foi alterada.'
         : error.message }, { status: conflict ? 409 : 400 })
