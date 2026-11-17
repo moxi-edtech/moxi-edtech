@@ -6,7 +6,15 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 64);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 65);
+  const finalistRaa = "20271117173000_raa_historical_finalists_and_voided_destinations.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(finalistRaa));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + finalistRaa]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + finalistRaa],
+    () => "CREATE FUNCTION public.agt_activate() RETURNS void AS $ SELECT 1 $ LANGUAGE sql;"
+  )[0] ?? "", /Fiscal[/]AGT activation/);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271117173001_unreviewed.sql"])[0] ?? "",
+    /Unapproved database migration/);
   const scopedHistoricStaff = "20271112010000_balcao_historic_full_staff_permissions.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(scopedHistoricStaff));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + scopedHistoricStaff]), []);
