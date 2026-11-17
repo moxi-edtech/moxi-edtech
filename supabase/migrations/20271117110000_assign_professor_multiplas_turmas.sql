@@ -60,7 +60,9 @@ BEGIN
     pg_catalog.hashtextextended(p_escola_id::text || ':' || p_professor_id::text, 0)
   );
 
-  FOR v_item IN SELECT value FROM pg_catalog.jsonb_array_elements(p_itens)
+  FOR v_item IN
+    SELECT value FROM pg_catalog.jsonb_array_elements(p_itens)
+    ORDER BY value ->> 'turma_id'
   LOOP
     IF jsonb_typeof(v_item) <> 'object'
       OR NOT (v_item ? 'turma_id' AND v_item ? 'curso_matriz_id') THEN
