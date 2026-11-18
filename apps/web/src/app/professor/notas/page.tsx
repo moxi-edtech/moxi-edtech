@@ -1060,6 +1060,18 @@ function ProfessorNotasContent() {
                 <p className="font-bold">Lançamento de notas indisponível</p>
                 <p className="mt-1">{gradeAvailability.explanation}</p>
                 {!gradeAvailability.canRequestReopen ? <p className="mt-1">{reopenRequest?.status === "PENDENTE" ? "A solicitação aguarda decisão da escola." : "Consulta o calendário oficial ou selecciona outro trimestre."}</p> : reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : <div className="mt-4 space-y-3"><p className="text-sm text-amber-800">{reopenRequest?.status === "REJEITADO" ? "A solicitação anterior foi rejeitada. Envie uma nova justificativa para continuar." : reopenRequest?.status === "EXPIRADO" ? "A solicitação anterior expirou. Envie uma nova justificativa." : "Solicite à escola a abertura temporária deste trimestre."}</p><textarea value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-amber-300" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId} className="rounded-xl bg-amber px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "Enviando..." : "Solicitar reabertura"}</button></div>}
+                <div className="mt-4">
+                  <GradeEntryGrid
+                    initialData={data}
+                    title="Consultar notas"
+                    subtitle={`${disciplinaNome ?? "Disciplina"} · ${trimestreSelecionado}.º trimestre`}
+                    componentesAtivos={gradeComponentes}
+                    pesoPorTipo={gradePesos}
+                    notaMaxima={gradeMaxima ?? 20}
+                    notaCorte={gradeCorte ?? 10}
+                    readOnly
+                  />
+                </div>
                 {reopenHistory.length > 0 && <details className="mt-4 rounded-xl border border-amber-200 bg-white/70 p-3"><summary className="cursor-pointer text-xs font-bold text-amber-800">Ver histórico de solicitações ({reopenHistory.length})</summary><div className="mt-3 space-y-2">{reopenHistory.map((item) => <div key={item.id} className="rounded-lg border border-slate-100 p-3 text-xs"><div className="flex flex-wrap justify-between gap-2"><span className="font-bold text-slate-800">{item.status}</span><span className="text-slate-500">{new Date(item.created_at).toLocaleString("pt-PT")}</span></div><p className="mt-1 text-slate-600">{item.motivo}</p>{item.decisao_motivo && <p className="mt-1 text-slate-500">Decisão: {item.decisao_motivo}</p>}</div>)}</div></details>}
               </div>
             ) : (
