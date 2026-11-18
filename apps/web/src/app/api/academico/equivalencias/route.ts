@@ -34,7 +34,10 @@ export async function GET(request: Request) {
     .eq("escola_id", escolaId).eq("curso_id", parsed.data.curso_id)
     .eq("ano_letivo_id", parsed.data.ano_letivo_id).limit(200);
   if (error) return NextResponse.json({ ok: false, error: "Não foi possível consultar as decisões." }, { status: 503 });
-  return NextResponse.json({ ok: true, items: data ?? [] });
+  const { data: membership } = await supabase.from("escola_users")
+    .select("papel").eq("escola_id", escolaId).eq("user_id", user.id).maybeSingle();
+  const canDecide = ["diretor", "admin_escola", "admin"].includes(membership?.papel ?? "");
+  return NextResponse.json({ ok: true, items: data ?? [], can_decide: canDecide });
 }
 
 export async function POST(request: Request) {
