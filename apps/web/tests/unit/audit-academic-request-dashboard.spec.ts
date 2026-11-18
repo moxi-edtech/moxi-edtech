@@ -26,7 +26,7 @@ test("admin consulta apenas reabertura e a API não duplica a fonte", () => {
   assert.match(hook, /setAuthorized\(false\)/);
   assert.match(api, /count: "exact"/);
   assert.match(api, /\.eq\("escola_id", escolaId\)/);
-  assert.match(api, /\.eq\("status", "PENDENTE"\)/);
+  assert.match(api, /\.eq\("status", requestedStatus\)/);
   assert.match(api, /requireRoleInSchool/);
 });
 
