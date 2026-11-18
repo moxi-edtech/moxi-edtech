@@ -60,7 +60,7 @@ export async function GET(req: Request) {
 
     const { data: periodos, error: periodosError } = await supabase
       .from('periodos_letivos')
-      .select('id, numero, tipo, data_inicio, data_fim, peso, offering_id, source_template_id, source_item_id, source_version')
+      .select('id, numero, tipo, data_inicio, data_fim, trava_notas_em, peso, offering_id, source_template_id, source_item_id, source_version')
       .eq('escola_id', escolaId)
       .eq('ano_letivo_id', academicContext.anoLetivoId)
       .eq('tipo', 'TRIMESTRE')
@@ -79,8 +79,8 @@ export async function GET(req: Request) {
     })
     return NextResponse.json({
       ok: true, context: academicContext,
-      items: (periodos ?? []).map(({ id, numero, tipo, data_inicio, data_fim }: any) =>
-        ({ id, numero, tipo, data_inicio, data_fim })),
+      items: (periodos ?? []).map(({ id, numero, tipo, data_inicio, data_fim, trava_notas_em }: any) =>
+        ({ id, numero, tipo, data_inicio, data_fim, trava_notas_em })),
     })
   } catch (e) {
     if (e instanceof CanonicalPeriodReadError) {
