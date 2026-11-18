@@ -48,6 +48,20 @@ BEGIN
     ) THEN
       RAISE EXCEPTION 'professor_ou_disciplina_nao_autorizados' USING ERRCODE='42501';
     END IF;
+    -- O GET prévio da API não evita corridas. Serializar por âmbito de
+    -- pedido e recusar outro pedido activo do mesmo professor.
+    PERFORM pg_advisory_xact_lock(hashtextextended(
+      NEW.escola_id::text || NEW.turma_id::text || NEW.ano_letivo_id::text ||
+      NEW.disciplina_id::text || NEW.trimestre::text || v_uid::text, 0));
+    IF EXISTS (
+      SELECT 1 FROM public.excecoes_pauta e
+      WHERE e.escola_id=NEW.escola_id AND e.turma_id=NEW.turma_id
+        AND e.ano_letivo_id=NEW.ano_letivo_id AND e.disciplina_id=NEW.disciplina_id
+        AND e.trimestre=NEW.trimestre AND e.solicitado_por=v_uid
+        AND e.status IN ('PENDENTE','APROVADO') AND e.expira_em>now()
+    ) THEN
+      RAISE EXCEPTION 'pedido_duplicado' USING ERRCODE='23505';
+    END IF;
     RETURN NEW;
   END IF;
 
