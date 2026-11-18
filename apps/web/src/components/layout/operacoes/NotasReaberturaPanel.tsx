@@ -5,7 +5,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 
 type Item = { id: string; turma_id: string; disciplina_id: string; turma_nome?: string; disciplina_nome?: string; professor_nome?: string; trimestre: number; motivo: string; created_at: string };
 
-export default function NotasReaberturaPanel() {
+export default function NotasReaberturaPanel({ onDecided }: { onDecided?: () => void } = {}) {
   const [items, setItems] = useState<Item[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export default function NotasReaberturaPanel() {
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.ok) { setMessage(payload?.error ?? "Não foi possível atualizar a solicitação."); setActingId(null); return; }
     setMessage(status === "APROVADO" ? "Reabertura aprovada por 24 horas." : "Solicitação rejeitada.");
-    setRejecting(null); setReason(""); await load(); setActingId(null);
+    setRejecting(null); setReason(""); await load(); onDecided?.(); setActingId(null);
   };
 
   if (loading) return <section className="space-y-3"><div className="h-5 w-56 animate-pulse rounded bg-muted" /><div className="h-12 animate-pulse rounded-xl bg-muted" /></section>;
