@@ -583,7 +583,7 @@ export default function TurmaHorarioModal({
                                       </span>
                                     </div>
                                     <p className="text-[10px] truncate opacity-90 leading-tight">
-                                      {disc.professorNome || disc.nome}
+                                      {disc.professorNome || "Professor não indicado"}
                                     </p>
                                   </div>
                                 ) : (
@@ -653,7 +653,7 @@ export default function TurmaHorarioModal({
                             ) : (
                               <>
                                 <UserX size={11} className="text-amber-600" />
-                                <span className="text-amber-600 font-medium">Sem prof.</span>
+                                <span className="text-amber-600 font-medium">Professor não indicado</span>
                               </>
                             )}
                           </p>

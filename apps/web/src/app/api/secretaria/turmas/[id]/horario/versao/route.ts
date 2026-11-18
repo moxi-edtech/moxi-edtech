@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { timetablePublicationState } from "@/lib/horarios/timetable-publication-state";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -61,6 +62,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       versao_id: draft?.id ?? null,
       versao_publicada_id: publicada?.id ?? null,
       versoes: versoesRows,
+      horario_status: timetablePublicationState(versoesRows),
     });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err?.message || "Erro desconhecido" }, { status: 500 });
