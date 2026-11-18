@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { RetificarMatriculaAction } from "@/components/aluno/RetificarMatriculaAction";
 import { AlertTriangle, ArrowLeft, BookOpen, CheckCircle2, RefreshCw } from "lucide-react";
 import { getHistoricBatchIssueAdvice } from "@/lib/academico/curtume-historic-batch-issues";
 
@@ -28,6 +29,18 @@ type ExceptionDossier = {
   conferencia_validada: boolean;
   disciplinas_disponiveis_2025: Array<{ id: string; nome: string }>;
   escala_maxima: number | null;
+  destino_2026?: {
+    matricula_id: string;
+    turma_id: string | null;
+    ano_letivo_id: string | null;
+    ativo: boolean;
+    classe_origem: number | null;
+    classe_destino: number | null;
+    conflito: boolean;
+    classe_incompativel: boolean;
+    vinculo_divergente: boolean;
+  } | null;
+  destinos_ativos?: number;
 };
 
 type Props = {
@@ -218,6 +231,45 @@ export function CurtumeHistoricalExceptionDesk({
       </div>
       {dossier && (
         <div className="mt-4 space-y-3">
+          {dossier.destino_2026?.conflito && (
+            <section aria-label="Corrigir classe de destino" className="space-y-3 rounded-xl border border-amber-300 p-3">
+              <h3 className="font-semibold text-foreground">Classe de 2026/2027 incompatível</h3>
+              <p className="text-xs text-muted-foreground">
+                Resultado da pauta: {dossier.resultado_final}.
+                Origem: {dossier.destino_2026.classe_origem ?? "—"}ª classe.
+                Destino atual: {dossier.destino_2026.classe_destino ?? "—"}ª classe.
+                Confira a matrícula de destino antes de fechar o histórico do ano anterior.
+              </p>
+              {dossier.destino_2026.vinculo_divergente && (
+                <p role="alert" className="text-xs text-amber-700">
+                  O vínculo entre as matrículas de origem e destino também diverge;
+                  não pode ser corrigido automaticamente pela alteração de turma.
+                </p>
+              )}
+              {dossier.destino_2026.classe_incompativel &&
+                dossier.destino_2026.ativo && dossier.destino_2026.turma_id &&
+                dossier.destino_2026.ano_letivo_id && (
+                <RetificarMatriculaAction
+                  matriculaId={dossier.destino_2026.matricula_id}
+                  turmaId={dossier.destino_2026.turma_id}
+                  anoLetivo={2026}
+                  anoLetivoId={dossier.destino_2026.ano_letivo_id}
+                  canRectifyClass={true}
+                  onChanged={() => setRevision((value) => value + 1)}
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                A correção utiliza a prévia de impacto e a RPC transacional já existentes.
+                Não altera as notas históricas, pagamentos liquidados nem os recibos.
+              </p>
+            </section>
+          )}
+          {(dossier.destinos_ativos ?? 0) > 1 && (
+            <p role="alert" className="rounded-xl border border-amber-300 p-3 text-xs">
+              Existem várias matrículas de destino. A Direção precisa identificar a matrícula correta
+              antes de uma retificação; nenhuma será escolhida automaticamente.
+            </p>
+          )}
           {hasOperational ? (
             <div className="grid gap-3 lg:grid-cols-2">
               <div className="rounded-xl border border-border p-3">
