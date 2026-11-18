@@ -144,7 +144,7 @@ export default function CurricularEquivalenceDecisions({ courseId, yearId, group
                   {canDecide && yearId ? (
                     <button type="button" onClick={() => void decide(group)}
                       disabled={loading || Boolean(saving) || !selection[key] || (reasons[key] ?? "").trim().length < 5}
-                      className="self-start rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">
+                      className="self-start rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-foreground disabled:opacity-50">
                       {saving === key ? "A guardar..." : "Registar decisão"}
                     </button>
                   ) : <p className="flex items-center gap-1 text-xs text-muted-foreground">
