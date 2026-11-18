@@ -310,7 +310,7 @@ export async function GET(request: Request) {
     const pendencias = await enrichBlockingIssues(ctx.db, issues.slice(0, 80).map((entry) => ({
       matricula_id: entry.matricula_id,
       codigo: entry.codigo ?? "SEM_DIAGNOSTICO",
-      detalhe: entry.detalhe ?? undefined,
+      // SQL messages stay inside the protected diagnostic store.
     })));
     return NextResponse.json({
       ok: true, ano_letivo: "2025/2026", abertos: count ?? 0, pendencias,
@@ -552,7 +552,8 @@ export async function POST(request: Request) {
           typeof (issue as HistoricIssue).codigo !== "string")) {
       return NextResponse.json({ ok: false, error: "Contagem de pendências inconsistente." }, { status: 502 });
     }
-    const pendencias = await enrichBlockingIssues(ctx.db, rawIssues as HistoricIssue[]);
+    const pendencias = await enrichBlockingIssues(ctx.db, (rawIssues as HistoricIssue[])
+      .map(({ matricula_id, codigo }) => ({ matricula_id, codigo })));
     return NextResponse.json({ ...data, pendencias }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[curtume-historic-batch] request failed", error);
