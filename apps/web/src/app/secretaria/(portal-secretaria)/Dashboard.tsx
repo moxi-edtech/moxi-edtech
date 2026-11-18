@@ -28,6 +28,7 @@ import { GlobalSearch } from "@/components/GlobalSearch";
 import { BuscaBalcaoRapido } from "@/components/secretaria/BuscaBalcaoRapido";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { DashboardHeader, NoticePanel } from "@/components/dashboard";
+import OperacoesPainelHub from "@/components/layout/operacoes/OperacoesPainelHub";
 import StatCard from "@/components/shared/StatCard";
 import SecaoLabel from "@/components/shared/SecaoLabel";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
@@ -390,6 +391,7 @@ export function Dashboard({
               }
             />
 
+            {escolaId && <OperacoesPainelHub escolaId={escolaId} onlyReopen />}
             <RadarOperacional alerts={alerts} role="secretaria" />
             
             <div className="grid grid-cols-1 gap-4">

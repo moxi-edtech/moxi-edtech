@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 type AulaResponse = { ok: boolean; items?: Array<{ status: string | null }>; summary?: Record<string, number> };
-type CountResponse = { ok: boolean; items?: unknown[] };
+type CountResponse = { ok: boolean; items?: unknown[]; total?: number };
 
 export type OperacoesPendencias = {
   aulasAguardando: number;
@@ -36,15 +36,30 @@ export function todayInLuanda() {
  * Contadores operacionais partilhados pela faixa de pendências e pelos modais.
  * Uma só fonte de polling: quem consome o hook não repete os pedidos.
  */
-export function useOperacoesPendencias() {
+export function useOperacoesPendencias({ onlyReopen = false }: { onlyReopen?: boolean } = {}) {
   const [summary, setSummary] = useState<OperacoesPendencias>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authorized, setAuthorized] = useState(true);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
     try {
+      if (onlyReopen) {
+        const response = await fetch("/api/secretaria/notas/reabertura", { cache: "no-store" });
+        if (response.status === 403 || response.status === 401) {
+          setAuthorized(false);
+          setError(null);
+          return;
+        }
+        const payload = await response.json() as CountResponse;
+        if (!response.ok || !payload.ok) throw new Error("Não foi possível carregar os pedidos académicos.");
+        setAuthorized(true);
+        setSummary({ ...EMPTY, reaberturasNotas: payload.total ?? payload.items?.length ?? 0 });
+        setError(null);
+        return;
+      }
       const date = todayInLuanda();
       const [aulasRes, planosRes, reaberturasRes] = await Promise.all([
         fetch(`/api/secretaria/aulas?data=${date}`, { cache: "no-store" }),
@@ -65,7 +80,7 @@ export function useOperacoesPendencias() {
         aulasAndamento: aulaSummary.em_andamento ?? 0,
         relatoriosRecebidos: aulaSummary.finalizada ?? 0,
         planosRevisao: planos.items?.length ?? 0,
-        reaberturasNotas: reaberturas.items?.length ?? 0,
+        reaberturasNotas: reaberturas.total ?? reaberturas.items?.length ?? 0,
       });
       setError(null);
     } catch (cause) {
@@ -74,7 +89,7 @@ export function useOperacoesPendencias() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [onlyReopen]);
 
   useEffect(() => {
     void load();
@@ -87,6 +102,7 @@ export function useOperacoesPendencias() {
 
   return {
     summary,
+    authorized,
     loading,
     refreshing,
     error,

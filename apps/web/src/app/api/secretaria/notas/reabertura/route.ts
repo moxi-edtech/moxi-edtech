@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   if (requestedStatus !== "PENDENTE" && requestedStatus !== "APROVADO") {
     return NextResponse.json({ ok: false, error: "Estado inválido." }, { status: 400 });
   }
-  const { data, error } = await supabase.from("excecoes_pauta").select("id, turma_id, disciplina_id, trimestre, status, motivo, expira_em, created_at, solicitado_por").eq("escola_id", escolaId).eq("status", requestedStatus).order("created_at", { ascending: true }).limit(100);
+  const { data, error, count } = await supabase.from("excecoes_pauta").select("id, turma_id, disciplina_id, trimestre, status, motivo, expira_em, created_at, solicitado_por", { count: "exact" }).eq("escola_id", escolaId).eq("status", requestedStatus).order("created_at", { ascending: true }).limit(100);
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   const rows = data ?? [];
   const turmaIds = [...new Set(rows.map((item: any) => item.turma_id))];
@@ -30,12 +30,12 @@ export async function GET(req: Request) {
   const [{ data: turmas }, { data: disciplinas }, { data: profiles }] = await Promise.all([
     turmaIds.length ? supabase.from("turmas").select("id, nome").eq("escola_id", escolaId).in("id", turmaIds) : Promise.resolve({ data: [] }),
     disciplinaIds.length ? supabase.from("disciplinas_catalogo").select("id, nome").eq("escola_id", escolaId).in("id", disciplinaIds) : Promise.resolve({ data: [] }),
-    userIds.length ? supabase.from("profiles").select("user_id, nome").in("user_id", userIds) : Promise.resolve({ data: [] }),
+    userIds.length ? supabase.from("profiles").select("user_id, nome").eq("escola_id", escolaId).in("user_id", userIds) : Promise.resolve({ data: [] }),
   ]);
   const turmaNames = new Map((turmas ?? []).map((row: any) => [row.id, row.nome]));
   const disciplinaNames = new Map((disciplinas ?? []).map((row: any) => [row.id, row.nome]));
   const profileNames = new Map((profiles ?? []).map((row: any) => [row.user_id, row.nome]));
-  return NextResponse.json({ ok: true, items: rows.map((item: any) => ({ ...item, turma_nome: turmaNames.get(item.turma_id) ?? "Turma não identificada", disciplina_nome: disciplinaNames.get(item.disciplina_id) ?? "Disciplina não identificada", professor_nome: profileNames.get(item.solicitado_por) ?? "Professor não identificado" })) });
+  return NextResponse.json({ ok: true, total: count ?? rows.length, partial: (count ?? 0) > rows.length, items: rows.map((item: any) => ({ ...item, turma_nome: turmaNames.get(item.turma_id) ?? "Turma não identificada", disciplina_nome: disciplinaNames.get(item.disciplina_id) ?? "Disciplina não identificada", professor_nome: profileNames.get(item.solicitado_por) ?? "Professor não identificado" })) });
 }
 
 export async function PATCH(req: Request) {

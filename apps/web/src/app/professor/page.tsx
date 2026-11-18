@@ -1,6 +1,7 @@
 "use client";
 
 import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
+import ProfessorReopeningRequests from "@/components/professor/ProfessorReopeningRequests";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { formatTurmaDisplayName } from "@/utils/formatters";
@@ -359,6 +360,7 @@ export default function Page() {
           </div>
         )}
         <AssignmentsBanner loading={loading} hasAssignments={atribs.length > 0} hasError={Boolean(loadError)} academicYearLabel={academicYearLabel} />
+        <ProfessorReopeningRequests assignments={atribs} notesHref={professorHref("/professor/notas")} />
 
         {/* WIDGET AULA ATIVA EM DECORRÊNCIA */}
         {aulaAtiva && (
