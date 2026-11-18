@@ -229,6 +229,38 @@ export async function GET(request: Request) {
       const recorded = (failures ?? []).find((row: { matricula_id: string }) =>
         row.matricula_id === matriculaId);
       const issueCode = recorded?.codigo ?? "SEM_DIAGNOSTICO";
+
+      // Reuse the current-year, financially protected class-correction flow.
+      // This is a read-only comparison. Never move a destination here.
+      const { data: destinationRows, error: destinationError } = await ctx.db.from("matriculas")
+        .select("id,turma_id,session_id,status,ativo,origem_transicao_matricula_id")
+        .eq("escola_id", CURTUME).eq("aluno_id", alunoId).eq("ano_letivo", 2026)
+        .in("status", ["ativo", "pendente"]).limit(2);
+      if (destinationError) throw destinationError;
+      const destination = destinationRows?.length === 1 ? destinationRows[0] : null;
+      let conflitoDestino = false;
+      let classeOrigem: number | null = null;
+      let classeDestino: number | null = null;
+      if (destination?.turma_id && history.turma_id) {
+        const { data: turmaRows, error: turmaError } = await ctx.db.from("turmas")
+          .select("id,classes:classe_id(numero,nome)")
+          .eq("escola_id", CURTUME).in("id", [history.turma_id, destination.turma_id]);
+        if (turmaError) throw turmaError;
+        const grade = (turmaId: string): number | null => {
+          const turma = (turmaRows ?? []).find((row: any) => row.id === turmaId);
+          const entity = Array.isArray(turma?.classes) ? turma.classes[0] : turma?.classes;
+          if (entity?.nome === "Pré-Escolar") return 0;
+          return Number.isInteger(entity?.numero) ? Number(entity.numero) : null;
+        };
+        classeOrigem = grade(history.turma_id);
+        classeDestino = grade(destination.turma_id);
+        if (classeOrigem !== null && classeDestino !== null) {
+          conflitoDestino = destination.origem_transicao_matricula_id !== matriculaId ||
+            (history.resultado_final === "aprovado" && classeDestino !== classeOrigem + 1) ||
+            (history.resultado_final === "reprovado" && classeDestino !== classeOrigem) ||
+            history.resultado_final === "concluido";
+        }
+      }
       return NextResponse.json({
         ok: true, matricula_id: matriculaId, aluno_id: alunoId,
         ano_letivo: "2025/2026", motivo: issueCode,
@@ -244,6 +276,16 @@ export async function GET(request: Request) {
         disciplinas_disponiveis_2025: availableSubjects,
         escala_maxima: escalaMaxima,
         sourceComplete,
+        destino_2026: destination ? {
+          matricula_id: destination.id,
+          turma_id: destination.turma_id,
+          ano_letivo_id: destination.session_id,
+          ativo: destination.ativo === true && destination.status === "ativo",
+          classe_origem: classeOrigem,
+          classe_destino: classeDestino,
+          conflito: conflitoDestino,
+        } : null,
+        destinos_ativos: destinationRows?.length ?? 0,
       }, { headers: { "Cache-Control": "no-store" } });
     }
 
