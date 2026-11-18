@@ -570,15 +570,14 @@ export default function EscolaAdminDashboardContent({
       )}
 
       {/* ── 7. OPERAÇÃO (só em modo operações) ───────────────────────────────── */}
-      {isOperacoes && (
-        <motion.div variants={itemVariants}>
-          <OperacoesPainelHub
-            escolaId={escolaId}
-            operationalSnapshot={operationalSnapshot}
-            charts={charts}
-          />
-        </motion.div>
-      )}
+      <motion.div variants={itemVariants}>
+        <OperacoesPainelHub
+          escolaId={escolaId}
+          operationalSnapshot={operationalSnapshot}
+          charts={charts}
+          onlyReopen={!isOperacoes}
+        />
+      </motion.div>
 
       {/* ── 8. BOTTOM GRID (gestão) ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 min-[1280px]:grid-cols-3 min-[1280px]:items-start min-[1700px]:gap-8">
