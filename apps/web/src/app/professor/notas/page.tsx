@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { enqueueOfflineAction } from "@/lib/offline/queue"
 import { createIdempotencyKey } from "@/lib/idempotency"
+import { currentGradePeriod, type GradePeriodRow } from "@/lib/academico/grade-period-context"
 import { useOfflineStatus } from "@/hooks/useOfflineStatus"
 import { useOfficialDocs, type MiniPautaPayload } from "@/hooks/useOfficialDocs"
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
@@ -165,7 +166,9 @@ function ProfessorNotasContent() {
   const [periodosRetry, setPeriodosRetry] = useState(0)
   const [turmaStatusFecho, setTurmaStatusFecho] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
-  const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(1)
+  const requestedTrimestre = Number(searchParams?.get("trimestre"))
+  const requestedTrimestreValid = requestedTrimestre === 1 || requestedTrimestre === 2 || requestedTrimestre === 3
+  const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(requestedTrimestreValid ? requestedTrimestre as 1 | 2 | 3 : 1)
   const [savingNow, setSavingNow] = useState(false)
   const [completingGrades, setCompletingGrades] = useState(false)
   const [gradeDraft, setGradeDraft] = useState<StudentGradeRow[]>([])
@@ -553,7 +556,14 @@ function ProfessorNotasContent() {
           .filter((n: number): n is 1 | 2 | 3 => n === 1 || n === 2 || n === 3)))
           .sort((a, b) => a - b)
         setPeriodosAtivos(numeros)
-        setTrimestreSelecionado((atual) => numeros.includes(atual) ? atual : (numeros[0] ?? 1))
+        const canonicalPeriods = json.items as GradePeriodRow[]
+        const current = currentGradePeriod(canonicalPeriods)
+        const chosen = requestedTrimestreValid && numeros.includes(requestedTrimestre as 1 | 2 | 3)
+          ? requestedTrimestre as 1 | 2 | 3
+          : current && numeros.includes(current as 1 | 2 | 3)
+            ? current as 1 | 2 | 3
+            : (numeros[0] ?? 1)
+        setTrimestreSelecionado(chosen)
       } catch (cause) {
         if (active) {
           setPeriodosAtivos([])
@@ -568,7 +578,7 @@ function ProfessorNotasContent() {
     return () => {
       active = false
     }
-  }, [turmaId, anoLetivoId, periodosRetry])
+  }, [turmaId, anoLetivoId, periodosRetry, requestedTrimestre, requestedTrimestreValid])
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return
