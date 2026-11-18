@@ -146,6 +146,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   };
 
   const descarregarBoletim = async () => {
+    if (!boletimPago) return;
     setDownloading(true);
     setDownloadError(null);
     try {
