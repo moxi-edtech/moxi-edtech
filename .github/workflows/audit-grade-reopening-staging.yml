@@ -1,5 +1,9 @@
 name: AUD P1 Authenticated Staging E2E
 on:
+  pull_request:
+    paths:
+      - "apps/web/tests/audit-grade-reopening.authenticated.e2e.ts"
+      - ".github/workflows/audit-grade-reopening-staging.yml"
   workflow_dispatch:
 permissions:
   contents: read
