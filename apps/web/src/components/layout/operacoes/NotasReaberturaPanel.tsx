@@ -100,30 +100,30 @@ export default function NotasReaberturaPanel({ onDecided }: { onDecided?: () => 
             type="button" role="tab" aria-selected={tab === status}
             key={status}
             onClick={() => { setTab(status); setEditingId(null); setReason(""); }}
-            className={`rounded-full px-3 py-2 text-xs font-semibold ${tab === status ? "bg-slate-950 text-white" : "border border-slate-200 bg-white text-slate-600"}`}
+            className={`rounded-full px-3 py-2 text-xs font-semibold ${tab === status ? "bg-foreground text-background" : "border border-border bg-card text-muted-foreground"}`}
           >
             {status === "PENDENTE" ? "Por decidir" : "Autorizadas"}
           </button>
         ))}
       </div>
 
-      {loading ? <div className="h-14 animate-pulse rounded-xl bg-slate-100" /> :
-        loadError ? <div role="alert" className="rounded-xl border border-red-200 p-3 text-sm">
+      {loading ? <div className="h-14 animate-pulse rounded-xl bg-muted" /> :
+        loadError ? <div role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm">
           <p>{loadError}</p>
           <button type="button" className="mt-2 font-semibold text-klasse-green" onClick={() => void load()}>Tentar novamente</button>
         </div> :
-          items.length === 0 ? <p className="text-sm text-slate-500">Nenhum pedido neste estado.</p> :
+          items.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum pedido neste estado.</p> :
             <div className="space-y-2">
               {items.map((item) => {
                 const expired = item.status === "APROVADO" && item.expira_em &&
                   Date.parse(item.expira_em) <= Date.now();
                 return (
-                  <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3">
-                    <p className="text-sm font-semibold text-slate-900">{item.turma_nome} · {item.disciplina_nome}</p>
-                    <p className="mt-1 text-xs text-slate-500">{item.professor_nome} · {item.trimestre}.º trimestre</p>
-                    <p className="mt-2 text-sm text-slate-700">{item.motivo}</p>
+                  <div key={item.id} className="rounded-xl border border-border bg-card p-3">
+                    <p className="text-sm font-semibold text-foreground">{item.turma_nome} · {item.disciplina_nome}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{item.professor_nome} · {item.trimestre}.º trimestre</p>
+                    <p className="mt-2 text-sm text-foreground">{item.motivo}</p>
                     {item.expira_em && tab === "APROVADO" && (
-                      <p className="mt-1 text-xs text-slate-500">{expired ? "Prazo expirado" : `Válido até ${formatDate(item.expira_em)}`}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{expired ? "Prazo expirado" : `Válido até ${formatDate(item.expira_em)}`}</p>
                     )}
 
                     {editingId === item.id ? (
@@ -131,29 +131,29 @@ export default function NotasReaberturaPanel({ onDecided }: { onDecided?: () => 
                         <input
                           aria-label="Motivo da decisão" autoFocus value={reason}
                           onChange={(event) => setReason(event.target.value)}
-                          placeholder="Motivo da decisão" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                          placeholder="Motivo da decisão" className="min-w-0 flex-1 rounded-xl border border-border px-3 py-2 text-sm"
                         />
                         <button type="button" disabled={Boolean(actingId)} onClick={() => void decide(item.id, decision)}
-                          className="rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
+                          className="rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-slate-950 disabled:opacity-60">
                           Confirmar
                         </button>
                         <button type="button" onClick={() => { setEditingId(null); setReason(""); }}
-                          className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold">Cancelar</button>
+                          className="rounded-xl border border-border px-3 py-2 text-xs font-semibold">Cancelar</button>
                       </div>
                     ) : (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {tab === "PENDENTE" ? <>
                           <button type="button" disabled={Boolean(actingId)} onClick={() => void decide(item.id, "APROVADO")}
-                            className="inline-flex items-center gap-1 rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
+                            className="inline-flex items-center gap-1 rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-background disabled:opacity-60">
                             <Check className="h-4 w-4" aria-hidden="true" /> Aprovar
                           </button>
                           <button type="button" disabled={Boolean(actingId)} onClick={() => { setEditingId(item.id); setDecision("REJEITADO"); }}
-                            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">
+                            className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-foreground">
                             <X className="h-4 w-4" aria-hidden="true" /> Rejeitar
                           </button>
                         </> : !expired && (
                           <button type="button" disabled={Boolean(actingId)} onClick={() => { setEditingId(item.id); setDecision("EXPIRADO"); }}
-                            className="inline-flex items-center gap-1 rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
+                            className="inline-flex items-center gap-1 rounded-xl border border-destructive/30 px-3 py-2 text-xs font-semibold text-destructive">
                             <ShieldX className="h-4 w-4" aria-hidden="true" /> Revogar
                           </button>
                         )}
@@ -163,8 +163,8 @@ export default function NotasReaberturaPanel({ onDecided }: { onDecided?: () => 
                 );
               })}
             </div>}
-      {partial && <p className="text-xs text-slate-500">A apresentar os primeiros {items.length} de {total} pedidos.</p>}
-      {message && <p role="status" className="text-sm font-medium text-slate-700">{message}</p>}
+      {partial && <p className="text-xs text-muted-foreground">A apresentar os primeiros {items.length} de {total} pedidos.</p>}
+      {message && <p role="status" className="text-sm font-medium text-foreground">{message}</p>}
     </section>
   );
 }
