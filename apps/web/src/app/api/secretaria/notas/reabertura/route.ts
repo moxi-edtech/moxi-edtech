@@ -7,9 +7,9 @@ import { requireRoleInSchool } from "@/lib/authz";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 const ROLES = ["secretaria", "admin_secretaria", "admin_escola", "admin", "staff_admin", "admin_financeiro"] as const;
-  const Body = z.object({ id: z.string().uuid(), status: z.enum(["APROVADO", "REJEITADO"]), motivo_decisao: z.string().trim().max(1000).nullable().optional() });
+  const Body = z.object({ id: z.string().uuid(), status: z.enum(["APROVADO", "REJEITADO", "EXPIRADO"]), motivo_decisao: z.string().trim().max(1000).nullable().optional() });
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = await supabaseServerTyped<any>();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
@@ -17,7 +17,11 @@ export async function GET() {
   if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 });
   const authz = await requireRoleInSchool({ supabase, escolaId, roles: [...ROLES] });
   if (authz.error) return authz.error;
-  const { data, error } = await supabase.from("excecoes_pauta").select("id, turma_id, disciplina_id, trimestre, status, motivo, expira_em, created_at, solicitado_por").eq("escola_id", escolaId).eq("status", "PENDENTE").order("created_at", { ascending: true }).limit(100);
+  const requestedStatus = new URL(req.url).searchParams.get("status") ?? "PENDENTE";
+  if (requestedStatus !== "PENDENTE" && requestedStatus !== "APROVADO") {
+    return NextResponse.json({ ok: false, error: "Estado inválido." }, { status: 400 });
+  }
+  const { data, error } = await supabase.from("excecoes_pauta").select("id, turma_id, disciplina_id, trimestre, status, motivo, expira_em, created_at, solicitado_por").eq("escola_id", escolaId).eq("status", requestedStatus).order("created_at", { ascending: true }).limit(100);
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   const rows = data ?? [];
   const turmaIds = [...new Set(rows.map((item: any) => item.turma_id))];
@@ -44,8 +48,11 @@ export async function PATCH(req: Request) {
   if (authz.error) return authz.error;
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 });
-  if (parsed.data.status === "REJEITADO" && !parsed.data.motivo_decisao) return NextResponse.json({ ok: false, error: "Informe o motivo da rejeição." }, { status: 400 });
-  const { data, error } = await supabase.from("excecoes_pauta").update({ status: parsed.data.status, aprovado_por: auth.user.id, decidido_em: new Date().toISOString(), decisao_motivo: parsed.data.motivo_decisao || null, expira_em: parsed.data.status === "APROVADO" ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : new Date().toISOString() }).eq("id", parsed.data.id).eq("escola_id", escolaId).eq("status", "PENDENTE").select("id, status, expira_em, decidido_em, decisao_motivo").maybeSingle();
+  if ((parsed.data.status === "REJEITADO" || parsed.data.status === "EXPIRADO") &&
+      (!parsed.data.motivo_decisao || parsed.data.motivo_decisao.trim().length < 5)) {
+    return NextResponse.json({ ok: false, error: "Indica o motivo da decisão (mínimo 5 caracteres)." }, { status: 400 });
+  }
+  const { data, error } = await supabase.from("excecoes_pauta").update({ status: parsed.data.status, aprovado_por: auth.user.id, decidido_em: new Date().toISOString(), decisao_motivo: parsed.data.motivo_decisao || null, expira_em: parsed.data.status === "APROVADO" ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : new Date().toISOString() }).eq("id", parsed.data.id).eq("escola_id", escolaId).eq("status", parsed.data.status === "EXPIRADO" ? "APROVADO" : "PENDENTE").select("id, status, expira_em, decidido_em, decisao_motivo").maybeSingle();
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
   if (!data) return NextResponse.json({ ok: false, error: "Solicitação não encontrada ou já decidida." }, { status: 409 });
   return NextResponse.json({ ok: true, item: data });
