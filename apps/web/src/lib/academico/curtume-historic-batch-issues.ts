@@ -9,16 +9,16 @@ export type HistoricBatchIssueAdvice = {
 
 const REASONS: Record<string, HistoricBatchIssueAdvice> = {
   ORIGEM_HISTORICA_INCOMPATIVEL: {
-    title: "Matrícula de origem por rever",
-    nextStep: "Verificar a classe, o ano e o resultado da matrícula de 2025/2026.",
+    title: "Vínculo da matrícula de origem inválido",
+    nextStep: "Conferir o documento e regularizar a origem de 2025/2026 neste painel.",
   },
   NOTAS_OPERACIONAIS_EXIGEM_RECONCILIACAO: {
     title: "Notas em conflito",
-    nextStep: "Conferir as notas já lançadas com a pauta antes do fecho.",
+    nextStep: "Comparar as notas operacionais com a pauta e assinar a conferência sem apagar lançamentos.",
   },
   SEM_NOTAS_HISTORICAS: {
     title: "Pauta sem notas",
-    nextStep: "Completar as classificações do ano anterior.",
+    nextStep: "Transcrever apenas as notas comprovadas pela pauta de 2025/2026.",
   },
   PAUTA_HISTORICA_INCONSISTENTE: {
     title: "Dados da pauta por rever",
@@ -28,9 +28,13 @@ const REASONS: Record<string, HistoricBatchIssueAdvice> = {
     title: "Disciplina repetida",
     nextStep: "Rever os lançamentos duplicados na pauta histórica.",
   },
+  SEM_DIAGNOSTICO: {
+    title: "Aguardando diagnóstico do fecho",
+    nextStep: "Execute «Reanalisar os pendentes» para obter a causa real da rejeição.",
+  },
   RAA_RESULTADO_NAO_RECONHECIDO: {
     title: "Resultado académico por rever",
-    nextStep: "Conferir a decisão final do aluno com a pauta e as regras académicas.",
+    nextStep: "Conferir a decisão com a regra de progressão e ratificar pelo fluxo académico; não alterar notas automaticamente.",
   },
 };
 
@@ -41,7 +45,7 @@ export function isHistoricBatchAcademicIssue(code: string): boolean {
 
 export function getHistoricBatchIssueAdvice(code: string): HistoricBatchIssueAdvice {
   return REASONS[code] ?? {
-    title: "Falha técnica de validação",
-    nextStep: "Repetir o fecho; se persistir, contactar o suporte.",
+    title: "Validação do fecho não concluída",
+    nextStep: "Consulte o código devolvido pela RPC e reanalise este caso antes de repetir a operação.",
   };
 }
