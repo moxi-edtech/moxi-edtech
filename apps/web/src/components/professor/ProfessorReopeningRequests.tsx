@@ -78,12 +78,12 @@ export default function ProfessorReopeningRequests({
   if (!loading && !error && recent.length === 0) return null;
 
   return (
-    <section aria-label="Pedidos de reabertura de notas" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section aria-label="Pedidos de reabertura de notas" className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex items-center gap-2">
         <ClipboardCheck className="h-5 w-5 text-klasse-green" aria-hidden="true" />
         <h2 className="text-sm font-semibold text-klasse-green">Pedidos de reabertura</h2>
       </div>
-      {loading ? <p className="mt-3 text-sm text-slate-500">A consultar pedidos...</p> :
+      {loading ? <p className="mt-3 text-sm text-muted-foreground">A consultar pedidos...</p> :
         error ? <button type="button" onClick={() => void load()} className="mt-3 text-sm font-semibold text-klasse-green">Não foi possível actualizar. Tentar novamente</button> :
           <div className="mt-3 space-y-3">
             {recent.map((item) => {
@@ -97,19 +97,19 @@ export default function ProfessorReopeningRequests({
               });
               const href = notesHref + (notesHref.includes("?") ? "&" : "?") + query.toString();
               return (
-                <div key={item.id} className="border-t border-slate-100 pt-3 first:border-t-0 first:pt-0">
-                  <p className="text-sm font-medium text-slate-900">
+                <div key={item.id} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
+                  <p className="text-sm font-medium text-foreground">
                     {atrib?.disciplina.nome ?? "Disciplina"} · {atrib?.turma.nome ?? "Turma"} · {item.trimestre}.º trimestre
                   </p>
-                  <p className="mt-1 text-xs font-semibold text-slate-600">{labels[item.status]}</p>
-                  <p className="mt-1 text-xs text-slate-500">{actions[item.status]}</p>
+                  <p className="mt-1 text-xs font-semibold text-muted-foreground">{labels[item.status]}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{actions[item.status]}</p>
                   {item.status === "APROVADO" && item.expira_em && (
-                    <p className="mt-1 flex items-center gap-1 text-xs text-slate-600">
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
                       Válido até {new Intl.DateTimeFormat("pt-AO", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Luanda" }).format(new Date(item.expira_em))}
                     </p>
                   )}
-                  {item.decisao_motivo && <p className="mt-1 text-xs text-slate-600">Decisão: {item.decisao_motivo}</p>}
+                  {item.decisao_motivo && <p className="mt-1 text-xs text-muted-foreground">Decisão: {item.decisao_motivo}</p>}
                   <Link href={href} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-klasse-green hover:underline">
                     Abrir pauta <span aria-hidden="true">›</span>
                   </Link>
