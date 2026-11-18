@@ -85,11 +85,11 @@ function first<T>(value: T | T[] | null | undefined): T | null {
   return value ?? null;
 }
 
-async function schoolSession() {
+async function schoolSession(requestedEscola: string | null = null) {
   const supabase = await supabaseServerTyped<any>();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { supabase, escolaId: null, error: NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }) };
-  const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+  const escolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscola);
   if (!escolaId) return { supabase, escolaId: null, error: NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 }) };
   const authz = await requireRoleInSchool({ supabase, escolaId, roles: [...ReadRoles] });
   if (authz.error) return { supabase, escolaId: null, error: authz.error };
@@ -98,7 +98,11 @@ async function schoolSession() {
 
 export async function GET(request: Request) {
   try {
-    const { supabase, escolaId, error } = await schoolSession();
+    const requestedEscola = new URL(request.url).searchParams.get("escola");
+    if (requestedEscola && requestedEscola.length > 120) {
+      return NextResponse.json({ ok: false, error: "Escola inválida." }, { status: 400 });
+    }
+    const { supabase, escolaId, error } = await schoolSession(requestedEscola);
     if (error || !escolaId) return error!;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
@@ -467,9 +471,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { supabase, escolaId, error } = await schoolSession();
+    const payload: unknown = await request.json().catch(() => null);
+    const rawEscola = payload && typeof payload === "object" && !Array.isArray(payload)
+      ? (payload as Record<string, unknown>).escola : null;
+    if (rawEscola != null && (typeof rawEscola !== "string" ||
+        rawEscola.trim().length === 0 || rawEscola.length > 120)) {
+      return NextResponse.json({ ok: false, error: "Escola inválida." }, { status: 400 });
+    }
+    const { supabase, escolaId, error } = await schoolSession(
+      typeof rawEscola === "string" ? rawEscola : null
+    );
     if (error || !escolaId) return error!;
-    const parsed = ActionSchema.safeParse(await request.json().catch(() => null));
+    const parsed = ActionSchema.safeParse(payload);
     if (!parsed.success) {
       return NextResponse.json({ ok: false, code: "EVIDENCIA_OBRIGATORIA",
         error: "Indique uma fundamentação válida. Para uma decisão escolar, anexe a referência documental e confirme o resultado." },

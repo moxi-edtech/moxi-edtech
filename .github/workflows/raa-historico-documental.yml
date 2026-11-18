@@ -21,6 +21,10 @@ on:
       - "supabase/ops/tests/balcao_exceptional/**"
       - "supabase/ops/tests/raa_historico/**"
       - "apps/web/src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/**"
+      - "apps/web/src/app/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/**"
+      - "apps/web/src/app/escola/[id]/(portal)/operacoes/academico/reconciliacao-historica/**"
+      - "apps/web/src/app/escola/[id]/(portal)/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/**"
+      - "apps/web/tests/unit/operacoes-reconciliacao-historica-contract.spec.mjs"
       - "apps/web/src/components/secretaria/BalcaoHistoricalAcademicRecovery.tsx"
       - "apps/web/tests/unit/raa-historical-*.spec.ts"
       - ".github/workflows/raa-historico-documental.yml"
@@ -226,3 +230,12 @@ jobs:
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/physical_pauta_source_fixture.sql
       - name: Verify the secretary, unchanged grades, audit and cross-school denial
         run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/balcao_exceptional/physical_pauta_source_regression.sql
+
+  portal-reconciliation:
+    name: Operações and Secretaria — shared historical reconciliation access
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify shared routes, tenant selection and admin/finance permissions
+        run: node --test apps/web/tests/unit/operacoes-reconciliacao-historica-contract.spec.mjs
