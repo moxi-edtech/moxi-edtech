@@ -67,7 +67,7 @@ export function useBalcaoSituacaoAcademica(
 
 export function BalcaoSituacaoAcademica({
   snapshot, loading, error, refresh, onNavigate, onCurrentGrade, onHistoricalGrade, hasFinancialPending,
-  pendingSourceMatriculaId, pendingDisciplines, onAcademicUpdated, onContinueEnrollment, canContinueEnrollment, onRegularizeDebt, percurso, percursoBusy = false,
+  pendingSourceMatriculaId, pendingDisciplines, onAcademicUpdated, onClassCorrected, onContinueEnrollment, canContinueEnrollment, onRegularizeDebt, percurso, percursoBusy = false,
 }: {
   snapshot: SituacaoBalcaoPayload | null;
   loading: boolean;
@@ -80,6 +80,8 @@ export function BalcaoSituacaoAcademica({
   pendingSourceMatriculaId?: string | null;
   pendingDisciplines?: Array<{ id: string; nome: string; status: string | null }>;
   onAcademicUpdated?: () => Promise<unknown>;
+  /** Update the financial dossier and invalidate selected payment amounts after a class correction. */
+  onClassCorrected?: () => Promise<unknown>;
   onContinueEnrollment?: () => void;
   /** From the server's verified rematrícula status (READY), not from grades or payment assumptions. */
   canContinueEnrollment?: boolean;
@@ -252,7 +254,7 @@ export function BalcaoSituacaoAcademica({
                 turmaId={current.turma_id}
                 anoLetivoId={current.ano_letivo_id}
                 onSaved={async () => {
-                  await Promise.allSettled([refresh(), onAcademicUpdated?.()]);
+                  await Promise.allSettled([refresh(), onAcademicUpdated?.(), onClassCorrected?.()]);
                 }}
               />
             </fieldset>
