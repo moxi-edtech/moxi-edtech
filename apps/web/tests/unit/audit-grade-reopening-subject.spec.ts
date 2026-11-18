@@ -80,3 +80,12 @@ test("migração apenas reconcilia dados e deixa a política e a escola intactas
   assert.match(route, /disciplina_id: disciplinaAvaliadaId/);
   assert.match(route, /resolveReopeningSubject/);
 });
+
+test("a revogação reutiliza EXPIRADO e exige estado anterior APROVADO", () => {
+  const staff = readFileSync(resolve(process.cwd(),
+    "src/app/api/secretaria/notas/reabertura/route.ts"), "utf8");
+  assert.match(staff, /z\.enum\(\["APROVADO", "REJEITADO", "EXPIRADO"\]\)/);
+  assert.match(staff, /parsed\.data\.status === "EXPIRADO" \? "APROVADO" : "PENDENTE"/);
+  assert.match(staff, /motivo_decisao/);
+  assert.match(staff, /expira_em: parsed\.data\.status === "APROVADO"/);
+});
