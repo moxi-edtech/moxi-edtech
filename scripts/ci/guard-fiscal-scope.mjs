@@ -116,6 +116,10 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // Curtume 2025: only exact signed batch/conference role expansions.
   // Tenant, provenance, signed actor, RAA, and fiscal prohibitions stay intact.
   "20271118090000_curtume_2025_lote_admin_financeiro.sql",
+  // PR #370: integridade da identidade de avaliação curricular no INSERT,
+  // sem notas, sem dados históricos e sem mudanças fiscais/AGT/SAF-T.
+  // O mesmo scanner de SQL executável continua activo.
+  "20271118120000_guard_turma_assessment_identity_install.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
