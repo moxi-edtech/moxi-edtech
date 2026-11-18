@@ -28,6 +28,7 @@ import CourseCreateModal from "./CourseCreateModal";
 import CourseManager from "./CourseManager";
 import { DisciplinaModal, type DisciplinaForm } from "./_components/DisciplinaModal";
 import { findSuspectedSubjectEquivalences } from "@/lib/academico/discipline-equivalences";
+import CurricularEquivalenceDecisions from "./CurricularEquivalenceDecisions";
 
 /**
  * KLASSE UI rules applied:
@@ -1366,21 +1367,13 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     const classNameById = new Map((details?.classes ?? []).map((item) => [item.id, item.nome]));
     return (
       <>
-        {suspectedEquivalences.length > 0 && (
-          <section aria-label="Equivalências curriculares por confirmar" className="rounded-xl border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-klasse-green">Disciplinas com nomes equivalentes</h3>
-            <p className="mt-1 text-xs text-muted-foreground">Confirma com a Direção qual é a disciplina oficial antes de alterar vínculos. Nenhum registo ou nota é alterado nesta análise.</p>
-            <ul className="mt-3 space-y-2">
-              {suspectedEquivalences.map((group) => (
-                <li key={group.classId + group.normalizedName} className="rounded-xl border border-border bg-card p-3 text-sm">
-                  <p className="font-semibold text-foreground">{classNameById.get(group.classId) ?? "Classe"} · Por confirmar</p>
-                  <p className="mt-1 text-muted-foreground">{group.candidates.map((item) => item.nome).join(" / ")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Aguardam decisão registada da Direção — não é seguro escolher automaticamente.</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <CurricularEquivalenceDecisions
+          key={selectedCourseId}
+          courseId={selectedCourseId}
+          yearId={curriculoAnoLetivo?.id ?? null}
+          groups={suspectedEquivalences}
+          classNameById={classNameById}
+        />
         <CourseManager
           selectedCourse={selectedCourse}
           managerTab={managerTab}
