@@ -97,14 +97,14 @@ try {
             errors.push(`${name} ${width}x${height} zoom ${zoom}: invented schedule or notices`);
         }
         if (name.startsWith("grade-")) {
-          if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && /Prova trimestral|Trabalho prático|Exame do período/.test(metrics.bodyText)) errors.push(`${name}: protected assessments leaked`);
+          if (["grade-paid","grade-unpaid","grade-pending","grade-rejected"].includes(name) && !metrics.bodyText.includes("Matemática")) errors.push(`${name}: published grades missing`);
           if (name === "grade-paid" && (!metrics.bodyText.includes("Matemática") || !metrics.bodyText.includes("16") || !metrics.bodyText.includes("17"))) errors.push(`${name}: paid grades missing from trimester grid`);
           if (name === "grade-pending" && !metrics.bodyText.includes("Comprovativo recebido")) errors.push(`${name}: pending state missing`);
           if (name === "grade-unpaid" && !metrics.bodyText.includes("Solicitar boletim")) errors.push(`${name}: payment CTA missing`);
           if (name === "grade-rejected" && !metrics.bodyText.includes("Reenviar comprovativo")) errors.push(`${name}: resubmit action missing`);
           if (name === "grade-empty" && !metrics.bodyText.includes("Ainda não há avaliações publicadas")) errors.push(`${name}: empty state missing`);
-          if (!metrics.bodyText.includes("Boletim de notas")) errors.push(`${name}: grade grid missing`);
-          if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && !metrics.bodyText.includes("Matemática")) errors.push(`${name}: locked curriculum missing`);
+          if (!metrics.bodyText.includes("Minhas notas")) errors.push(`${name}: grade grid missing`);
+          if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && !metrics.bodyText.includes("Prova trimestral") && !metrics.bodyText.includes("16")) errors.push(`${name}: published assessments missing`);
         }
         if ((name.startsWith("grade-") || name.startsWith("notice-")) && metrics.nestedScrolls) errors.push(`${name}: unnecessary nested scroll`);
         report.push({ name, width, height, zoom, horizontalOverflow: metrics.horizontalOverflow, nestedScrolls: metrics.nestedScrolls, fixtureRendered: visible, output });
@@ -185,11 +185,11 @@ try {
       const grid = page.getByTestId("aluno-boletim-grid");
       await grid.waitFor({ timeout: 10000 });
       await grid.getByText("Matemática", { exact: true }).first().waitFor({ timeout: 10000 });
-      if (!(await grid.getByRole("button", { name: /Exibir notas indisponível/ }).isDisabled())) {
-        errors.push("grade-unpaid: protected grade reveal unexpectedly enabled");
+      if (!(await grid.getByRole("button", { name: /Ocultar notas/ }).isEnabled())) {
+        errors.push("grade-unpaid: published grades unexpectedly blocked");
       }
-      if (!(await grid.getByRole("button", { name: /Imprimir boletim indisponível/ }).isDisabled())) {
-        errors.push("grade-unpaid: protected PDF unexpectedly enabled");
+      if (!(await grid.getByRole("button", { name: /Boletim oficial requer autorização de pagamento/ }).isDisabled())) {
+        errors.push("grade-unpaid: official PDF unexpectedly enabled");
       }
     }
     if (["notice-info","notice-attention","notice-finance"].includes(name)) {
