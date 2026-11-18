@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileCheck2, LockKeyhole, RefreshCw } from "lucide-react";
 import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
 
@@ -75,13 +75,19 @@ const resultadoLabel: Record<Resultado, string> = {
 export default function ReconciliacaoAcademicaHistoricaPage() {
   const params = useParams<{ id?: string }>();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const inOperacoes = pathname?.includes("/operacoes/") ?? false;
   const escolaId = String(params?.id ?? "");
   const focusMatriculaId = searchParams?.get("matricula_id") ?? null;
   const [ano, setAno] = useState(() => {
     const query = Number(searchParams?.get("ano"));
     return Number.isInteger(query) && query >= 2000 ? query : new Date().getFullYear() - 1;
   });
-  const [tipo, setTipo] = useState<Tipo>(() => searchParams?.get("tipo") === "historicos" ? "historicos" : "pendentes");
+  const [tipo, setTipo] = useState<Tipo>(() =>
+    searchParams?.get("tipo") === "historicos" ? "historicos"
+      : searchParams?.get("tipo") === "pendentes" ? "pendentes"
+      : inOperacoes ? "historicos" : "pendentes"
+  );
   const [classe, setClasse] = useState<number | null>(() => {
     const raw = Number(searchParams?.get("classe"));
     return Number.isInteger(raw) && raw >= 1 && raw <= 9 ? raw : null;
@@ -106,7 +112,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
     setLoading(true);
     setError(null);
     try {
-      const query = new URLSearchParams({ tipo, ano: String(ano), pagina: String(pagina) });
+      const query = new URLSearchParams({ escola: escolaId, tipo, ano: String(ano), pagina: String(pagina) });
       if (tipo === "historicos" && classe !== null) query.set("classe", String(classe));
       if (tipo === "historicos" && focusMatriculaId) query.set("matricula_id", focusMatriculaId);
       const response = await fetch(`/api/secretaria/operacoes-academicas/reconciliacao-historica?${query.toString()}`, {
@@ -118,10 +124,13 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
         setData(result);
         // Open only the exact server-filtered 2025 record; don't scroll through
         // unrelated classmates to resolve a case coming from batch close.
-        if (tipo === "historicos" && focusMatriculaId &&
-            result.items.some((item) => item.matricula_id === focusMatriculaId)) {
-          setSelectedId(focusMatriculaId);
-        }
+        const focus = tipo === "historicos" && focusMatriculaId
+          ? result.items.find((item) => item.matricula_id === focusMatriculaId) : null;
+        setSelectedId((current) =>
+          focus?.matricula_id ??
+          (result.items.some((item) => item.matricula_id === current)
+            ? current : result.items[0]?.matricula_id ?? null)
+        );
       }
     } catch (cause) {
       if (requestId === requestSeq.current) {
@@ -154,6 +163,10 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
     setClasse(null);
     setPagina(1);
     setSelectedId(null);
+    setResultado("");
+    setReferencia("");
+    setMotivo("");
+    setConfirmarFecho(false);
     setError(null);
     setNotice(null);
   }
@@ -177,7 +190,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
       const response = await fetch("/api/secretaria/operacoes-academicas/reconciliacao-historica", {
         method: "POST", cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, escola: escolaId }),
       });
       const output = await response.json();
       if (!response.ok || !output.ok) throw new Error(output.error ?? "A decisão não foi registada.");
@@ -198,7 +211,8 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
   return (
     <main className="space-y-6 bg-background p-4 text-foreground sm:p-6">
       <div className="space-y-2">
-        <Link href={`/escola/${encodeURIComponent(escolaId)}/secretaria/operacoes-academicas`} className="text-sm font-medium text-emerald hover:underline">
+        <Link href={`/escola/${encodeURIComponent(escolaId)}/${inOperacoes ? "operacoes/academico" : "secretaria/operacoes-academicas"}`}
+          className="text-sm font-medium text-emerald hover:underline">
           Voltar às Operações Académicas
         </Link>
         <h1 className="text-2xl font-bold">Reconciliação académica histórica</h1>
@@ -272,7 +286,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
                 </div>
                 <span className="rounded-full border border-border px-2 py-1 text-xs">
                   {pending ? (item.coorte_autorizada ? "Revisão da escola" : "Sem coorte autorizada")
-                    : (item.ratificado ? "Ratificado" : "Ratificação pendente")}
+                    : (item.ratificado ? "Fechar histórico" : "Ratificar decisão")}
                 </span>
               </div>
               {!!item.alertas_transicao?.length && (
