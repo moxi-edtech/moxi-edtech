@@ -25,9 +25,9 @@ test("pedido do docente autoriza apenas disciplina avaliada inequívoca", () => 
 });
 
 test("rotas usam utilizador autenticado, escola, turma, ano, professor e status condicionado", () => {
-  const request = readFileSync(resolve(process.cwd(), "src/app/api/professor/notas/reabertura/route.ts"), "utf8");
-  const decision = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/notas/reabertura/route.ts"), "utf8");
-  const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271118101000_grade_reopen_rls_guard.sql"), "utf8");
+  const request = readFileSync(resolve(process.cwd(), "apps/web/src/app/api/professor/notas/reabertura/route.ts"), "utf8");
+  const decision = readFileSync(resolve(process.cwd(), "apps/web/src/app/api/secretaria/notas/reabertura/route.ts"), "utf8");
+  const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20271118101000_grade_reopen_rls_guard.sql"), "utf8");
   assert.match(request, /supabase\.auth\.getUser\(\)/);
   assert.match(request, /resolveEscolaIdForUser/);
   assert.match(request, /\.eq\("ano_letivo_id", parsed\.data\.ano_letivo_id\)/);
