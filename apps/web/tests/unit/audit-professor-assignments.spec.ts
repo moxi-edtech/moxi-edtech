@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { selectTeacherCanonicalAssignments } from "../../src/lib/professor/select-canonical-assignments";
 
 const professorId = "teacher-a";
@@ -59,10 +61,8 @@ test("registos de avaliação duplicados com matrizes divergentes não entram na
 });
 
 test("a pauta selecciona o trimestre corrente no fuso de Luanda", () => {
-  const fs = require("node:fs") as typeof import("node:fs");
-  const path = require("node:path") as typeof import("node:path");
-  const page = fs.readFileSync(path.resolve(process.cwd(), "src/app/professor/notas/page.tsx"), "utf8");
-  const api = fs.readFileSync(path.resolve(process.cwd(), "src/app/api/professor/periodos/route.ts"), "utf8");
+  const page = readFileSync(resolve(process.cwd(), "src/app/professor/notas/page.tsx"), "utf8");
+  const api = readFileSync(resolve(process.cwd(), "src/app/api/professor/periodos/route.ts"), "utf8");
   assert.match(page, /currentGradePeriod\(canonicalPeriods\)/);
   assert.match(page, /requestedTrimestreValid/);
   assert.match(api, /trava_notas_em/);
