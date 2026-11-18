@@ -113,6 +113,9 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271117190000_curtume_fechar_pautas_2025_lote.sql",
   // Exact CURTUME 2025 documentary/operational-grade reconciliation; fiscal scanner unchanged.
   "20271117230000_curtume_2025_signed_operational_grades_reconciliation.sql",
+  // Curtume 2025: only exact signed batch/conference role expansions.
+  // Tenant, provenance, signed actor, RAA, and fiscal prohibitions stay intact.
+  "20271118090000_curtume_2025_lote_admin_financeiro.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;

@@ -6,7 +6,7 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 67);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 68);
   const batchPauta = "20271117190000_curtume_fechar_pautas_2025_lote.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(batchPauta));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + batchPauta]), []);
@@ -17,6 +17,14 @@ test("allows only audited enrollment and historical evidence migrations", () => 
   assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + signedPauta], () =>
     "CREATE TABLE public.fiscal_configuration (enabled boolean);")[0] ?? "",
     /Fiscal[/]AGT activation/);
+  const allowedFinanceiro = "20271118090000_curtume_2025_lote_admin_financeiro.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(allowedFinanceiro));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + allowedFinanceiro]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + allowedFinanceiro], () =>
+    "CREATE OR REPLACE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $x$ SELECT 1 $x$;")[0] ?? "",
+    /Fiscal[/]AGT activation/);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271118090001_unreviewed.sql"])[0] ?? "",
+    /Unapproved database migration/);
   assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271117230001_unreviewed.sql"])[0] ?? "",
     /Unapproved database migration/);
   const finalistRaa = "20271117173000_raa_historical_finalists_and_voided_destinations.sql";
