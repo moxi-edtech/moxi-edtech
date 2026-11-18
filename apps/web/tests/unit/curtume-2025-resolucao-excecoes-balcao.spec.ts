@@ -49,5 +49,6 @@ test("historical reconciliation opens exactly one enrollment, filtered before pa
   assert.match(historical, /\.range\(from, to\)/);
   assert.match(historicalPage, /focusMatriculaId/);
   assert.match(historicalPage, /query\.set\("matricula_id", focusMatriculaId\)/);
-  assert.match(historicalPage, /setSelectedId\(focusMatriculaId\)/);
+  assert.match(historicalPage, /focus\?\.matricula_id/);
+  assert.match(historicalPage, /result\.items\.some\(\(item\) => item\.matricula_id === current\)/);
 });
