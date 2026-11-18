@@ -10,7 +10,7 @@ test("historic 2025 blocking reasons are operational and actionable", () => {
   });
   assert.equal(getHistoricBatchIssueAdvice("SEM_NOTAS_HISTORICAS").title, "Pauta sem notas");
   assert.equal(getHistoricBatchIssueAdvice("ORIGEM_HISTORICA_INCOMPATIVEL").title,
-    "Matrícula de origem por rever");
+    "Vínculo da matrícula de origem inválido");
   assert.equal(getHistoricBatchIssueAdvice("RAA_RESULTADO_NAO_RECONHECIDO").title,
     "Resultado académico por rever");
 });
