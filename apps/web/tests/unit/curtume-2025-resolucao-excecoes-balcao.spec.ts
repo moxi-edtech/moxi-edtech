@@ -10,10 +10,11 @@ const api = read("../../src/app/api/secretaria/operacoes-academicas/fecho-histor
 const historical = read("../../src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/route.ts");
 const historicalPage = read("../../src/app/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/page.tsx");
 
-test("one-click case carries exact source enrollment and academic context into Balcão", () => {
-  assert.match(batch, /historicMatriculaId: issue\.matricula_id/);
-  assert.match(batch, /returnTo:/);
-  assert.match(batch, /action: "reenrollment"/);
+test("one-click case opens the same source enrollment inside Reconciliação Histórica", () => {
+  assert.match(batch, /matricula_id: issue\.matricula_id/);
+  assert.match(batch, /tipo: "historicos"/);
+  assert.match(batch, /Resolver na Reconciliação/);
+  assert.match(historicalPage, /<CurtumeHistoricalExceptionDesk/);
   assert.match(balc, /const historicMatriculaId = searchParams\?\.get\("historicMatriculaId"\)/);
   assert.match(balc, /selectedAlunoId && activeAction === "reenrollment"/);
   assert.match(balc, /escolaId === "3744879f-2e19-4671-8995-78604302d8c5"/);
