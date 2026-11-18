@@ -7,6 +7,7 @@ import { AlertCircle, Save, WifiOff, Printer, FileDown, Wand2 } from "lucide-rea
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
+import { timetableStateLabels, type TimetablePublicationState } from "@/lib/horarios/timetable-publication-state";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
 import { useHorarioTurmaData } from "@/hooks/useHorarioData";
 import { useHorarioDataContext } from "@/components/escola/horarios/HorarioDataProvider";
@@ -107,6 +108,7 @@ function QuadroHorariosContent() {
 
   const [showWizard, setShowWizard] = useState(false);
   const [versaoId, setVersaoId] = useState<string | null>(null);
+  const [horarioStatus, setHorarioStatus] = useState<TimetablePublicationState>("sem_horario");
   const [turmaId, setTurmaId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -239,6 +241,7 @@ function QuadroHorariosContent() {
 
   useEffect(() => {
     if (!escolaId || !turmaId) return;
+    setHorarioStatus("sem_horario");
     const key = `horarios:versao:${escolaId}:${turmaId}`;
     const stored = typeof window !== "undefined" ? window.sessionStorage.getItem(key) : null;
     if (stored) {
@@ -251,6 +254,9 @@ function QuadroHorariosContent() {
       .then((json) => {
         if (!active) return;
         const versaoPreferida = json?.versao_publicada_id || json?.versao_id;
+        if (json?.ok && ["sem_horario", "rascunho", "publicado"].includes(json.horario_status)) {
+          setHorarioStatus(json.horario_status as TimetablePublicationState);
+        }
         if (json?.ok && versaoPreferida) {
           if (typeof window !== "undefined") {
             window.sessionStorage.setItem(key, versaoPreferida);
@@ -1013,6 +1019,7 @@ function QuadroHorariosContent() {
       setConflictSlots({});
       setConflictReasons({});
       setAutoDraftDirty(false);
+      setHorarioStatus(mode === "publish" ? "publicado" : "rascunho");
       setAutoProposalSummary(null);
       if (mode === "publish" && Array.isArray(json?.warnings) && json.warnings.length > 0) {
         const publishWarnings = json.warnings as PublishWarning[];
@@ -1627,6 +1634,11 @@ function QuadroHorariosContent() {
             ) : null}
             {baseError ? <span className="text-xs text-rose-600">{baseError}</span> : null}
             {turmaError ? <span className="text-xs text-rose-600">{turmaError}</span> : null}
+            {turmaId && (
+              <span role="status" className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground">
+                {timetableStateLabels[horarioStatus]}
+              </span>
+            )}
             {saveError ? <span className="text-xs text-rose-600">{saveError}</span> : null}
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Save className={`h-4 w-4 ${saving ? "text-amber" : "text-slate-300"}`} />
