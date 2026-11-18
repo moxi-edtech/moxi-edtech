@@ -109,6 +109,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271116090000_balcao_retificacao_classe_repreco_pendentes.sql",
   // PR: exclusively reviewed RAA historical final-cycle/annulled-target repair.
   "20271117173000_raa_historical_finalists_and_voided_destinations.sql",
+  // PR #344: the RAA progression guard remains review-only pending source-year closure.
+  "20271117160000_guard_enrollment_prior_year_progression.sql",
   // One exact reviewed 2025/CURTUME batch; fiscal/AGT writers remain denied.
   "20271117190000_curtume_fechar_pautas_2025_lote.sql",
   // Exact CURTUME 2025 documentary/operational-grade reconciliation; fiscal scanner unchanged.

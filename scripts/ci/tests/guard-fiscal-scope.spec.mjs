@@ -6,7 +6,13 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 67);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 68);
+  const activationRaa = "20271117160000_guard_enrollment_prior_year_progression.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(activationRaa));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + activationRaa]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + activationRaa],
+    () => "CREATE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $ SELECT 1 $;"
+  )[0] ?? "", /Fiscal[/]AGT activation/);
   const batchPauta = "20271117190000_curtume_fechar_pautas_2025_lote.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(batchPauta));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + batchPauta]), []);

@@ -14,6 +14,7 @@ type TurmaRow = {
   escola_id?: string | null;
   turno?: string | null;
   sala?: string | null;
+  session_id?: string | null;
 };
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -130,7 +131,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         escola_id,
         classe_id,
         turno,
-        sala
+        sala,
+        session_id
       `
       )
       .eq("id", turmaId)
@@ -141,6 +143,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: "Turma não encontrada" }, { status: 404, headers });
     }
 
+    if (!turma.session_id) {
+      return NextResponse.json({ ok: false, error: "TURMA_SEM_ANO_LETIVO" }, { status: 409, headers });
+    }
     const [{ data: escola }, { data: classe }] = await Promise.all([
       supabase.from("escolas").select("id, nome").eq("id", escolaId).maybeSingle(),
       turma.classe_id
@@ -157,6 +162,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       )
       .eq("turma_id", turmaId)
       .eq("escola_id", escolaId)
+      .eq("session_id", turma.session_id)
+      .eq("ativo", true)
       .in("status", ["ativo", "ativa"])
       .order("numero_chamada", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
@@ -174,7 +181,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const alunosArray = Array.isArray(alunoData) ? alunoData : alunoData ? [alunoData] : [];
 
       return alunosArray.map((a) => ({
-        numero: m.numero_chamada ?? numero++,
+        numero: numero++,
+        numero_chamada: m.numero_chamada,
         matricula_id: (m as any)?.id,
         aluno_id: a.id,
         nome: a.nome ?? "—",

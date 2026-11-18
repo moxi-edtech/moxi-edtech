@@ -235,6 +235,22 @@ const ERROR_MESSAGES: Record<string, string> = {
     "O período de rematrícula não está aberto para este ano letivo.",
   FINALISTA_PROGRESSION_INVALID:
     "O finalista deve seguir para a classe imediatamente seguinte.",
+  ENROLLMENT_RAA_DECISION_REQUIRED:
+    "O RAA ainda não definiu o resultado académico. Abra Situação académica para regularizar a origem.",
+  ENROLLMENT_RAA_UNAVAILABLE:
+    "Não foi possível validar a decisão do RAA. Consulte Situação académica e tente novamente.",
+  ENROLLMENT_RAA_CONFIRMATION_BLOCKED:
+    "A matrícula ainda depende de uma pendência académica indicada pelo RAA.",
+  ENROLLMENT_RAA_GRADE_UNRESOLVED:
+    "Configure a classe oficial da turma antes de confirmar a matrícula.",
+  ENROLLMENT_RAA_DESTINATION_MISMATCH:
+    "A turma escolhida não corresponde ao resultado académico do RAA. Escolha o destino correto.",
+  ENROLLMENT_TRANSITION_ORIGIN_INVALID:
+    "A matrícula de origem não pertence a este aluno ou escola.",
+  ENROLLMENT_TRANSITION_YEAR_INVALID:
+    "Verifique os anos letivos de origem e destino.",
+  ENROLLMENT_TARGET_NOT_FOUND:
+    "A turma de destino não foi encontrada nesta escola.",
   DECISAO_MOTIVO_REQUIRED:
     "Informe o motivo da decisão administrativa antes de concluir.",
   ASSISTED_TRANSITION_COHORT_REQUIRED:

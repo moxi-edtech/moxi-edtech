@@ -198,7 +198,9 @@ export async function renderListaNominalPdfBuffer({
     const row: Record<string, string | number> = {
       id: matricula.id,
       processo: aluno?.numero_processo?.trim() || "NÃO ATRIBUÍDO",
-      numero: matricula.numero_chamada ?? index + 1,
+      numero: isAttendance || month || includeAllStatus
+        ? (matricula.numero_chamada ?? index + 1)
+        : index + 1,
       turma: turmaAluno?.nome ?? "—",
       nome: aluno?.nome ?? "—",
       genero:

@@ -128,11 +128,18 @@ BEGIN
  EXCEPTION WHEN check_violation THEN
    NULL;
  END;
- IF EXISTS(SELECT 1 FROM public.historico_snapshot_locks
-           WHERE matricula_id='60000000-0000-4000-8000-000000000003') THEN
-   RAISE EXCEPTION 'FAIL: failed legal lock left a partial row';
- END IF;
 END $must_reject$;
+
+-- Inspect protected internal state as fixture owner, not as an authenticated
+-- school user. No additional grants on historico_snapshot_locks.
+RESET ROLE;
+DO $no_partial_lock$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.historico_snapshot_locks
+             WHERE matricula_id='60000000-0000-4000-8000-000000000003') THEN
+    RAISE EXCEPTION 'FAIL: failed legal lock left a partial row';
+  END IF;
+END $no_partial_lock$;
 
 -- No numeric notes or invented attendance should appear in this test.
 DO $no_forgery$
