@@ -1,0 +1,29 @@
+name: AGT Decimal Compatibility
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/agt-decimal-compatibility.yml'
+      - 'apps/web/src/lib/fiscal/decimal.ts'
+      - 'apps/web/tests/unit/fiscal-decimal.spec.ts'
+      - 'docs/fiscal/reconciliation/AGT_DECIMAL_HANDOFF_20261012.md'
+jobs:
+  synthetic-fiscal-decimal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Synthetic exact-decimal regressions
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/fiscal-decimal.spec.ts
+      - name: TypeScript verification
+        run: pnpm -C apps/web typecheck
+      - name: Fiscal module lint
+        working-directory: apps/web
+        run: pnpm exec eslint src/lib/fiscal/decimal.ts tests/unit/fiscal-decimal.spec.ts --max-warnings 10000
