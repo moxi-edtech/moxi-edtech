@@ -378,8 +378,9 @@ async function createTurmasPadrao(args: {
   classes: { id: string; nome: string }[];
   turnos: BuilderTurnos;
   anoLetivo: number;
+  anoLetivoId: string;
 }) {
-  const { supabase, escolaId, cursoId, classes, turnos, anoLetivo } = args;
+  const { supabase, escolaId, cursoId, classes, turnos, anoLetivo, anoLetivoId } = args;
   const shifts = turnosAtivos(turnos);
   if (shifts.length === 0) return [];
 
@@ -392,6 +393,8 @@ async function createTurmasPadrao(args: {
         curso_id: cursoId,
         classe_id: cls.id,
         ano_letivo: anoLetivo,
+        ano_letivo_id: anoLetivoId,
+        session_id: anoLetivoId,
         nome: "A",
         turno,
         capacidade_maxima: 70,
@@ -415,59 +418,92 @@ async function createTurmasPadrao(args: {
   return (data ?? []) as Array<{ id: string; classe_id: string }>;
 }
 
+// Nunca instalar vínculos de uma matriz sem ano, rascunho ou outra classe.
+// A disciplina avaliada deve ser resolvida na instalação, não no lançamento.
 async function syncTurmaDisciplinasFromMatriz(args: {
   supabase: SupabaseClient<Database>;
   escolaId: string;
   cursoId: string;
+  anoLetivoId: string;
   turmas: Array<{ id: string; classe_id: string }>;
 }) {
-  const { supabase, escolaId, cursoId, turmas } = args;
-  if (!turmas?.length) return 0;
+  const { supabase, escolaId, cursoId, anoLetivoId, turmas } = args;
+  if (!turmas.length) return 0;
 
-  const classeIds = Array.from(new Set(turmas.map((t) => t.classe_id).filter(Boolean)));
-
-  const { data: matriz, error } = await supabase
-    .from("curso_matriz")
+  const classeIds = [...new Set(turmas.map(t => t.classe_id).filter(Boolean))];
+  const { data: curriculos, error: curriculoError } = await supabase
+    .from("curso_curriculos")
     .select("id,classe_id")
     .eq("escola_id", escolaId)
     .eq("curso_id", cursoId)
+    .eq("ano_letivo_id", anoLetivoId)
+    .eq("status", "published")
+    .in("classe_id", classeIds);
+
+  if (curriculoError) throw new Error(curriculoError.message ?? "Falha ao consultar currículo publicado");
+  const curriculoPorClasse = new Map<string, string>();
+  for (const cc of curriculos ?? []) {
+    if (!cc.classe_id || curriculoPorClasse.has(cc.classe_id)) {
+      throw new Error("Currículos publicados ambíguos: classe sem identidade única.");
+    }
+    curriculoPorClasse.set(cc.classe_id, cc.id);
+  }
+  for (const classeId of classeIds) {
+    if (!curriculoPorClasse.has(classeId)) {
+      throw new Error("Publique o currículo da classe no ano seleccionado antes de gerar as turmas.");
+    }
+  }
+
+  const { data: matrizes, error: matrixError } = await supabase
+    .from("curso_matriz")
+    .select("id,classe_id,curso_curriculo_id,disciplina_id,avaliacao_disciplina_id")
+    .eq("escola_id", escolaId)
+    .eq("curso_id", cursoId)
+    .eq("ativo", true)
     .in("classe_id", classeIds)
-    .eq("ativo", true);
+    .in("curso_curriculo_id", [...curriculoPorClasse.values()]);
+  if (matrixError) throw new Error(matrixError.message ?? "Falha ao ler matriz do currículo publicado");
 
-  if (error) throw new Error(error.message ?? "Falha ao ler curso_matriz");
-
-  const byClasse = new Map<string, string[]>();
-  for (const m of (matriz ?? []) as Array<{ id?: string | null; classe_id?: string | null }>) {
-    if (!m?.classe_id || !m?.id) continue;
-    const arr = byClasse.get(m.classe_id) ?? [];
-    arr.push(m.id);
-    byClasse.set(m.classe_id, arr);
+  const byClasse = new Map<string, Array<{ id: string; avaliacaoDisciplinaId: string }>>();
+  for (const m of matrizes ?? []) {
+    if (!m.classe_id || !m.curso_curriculo_id ||
+        curriculoPorClasse.get(m.classe_id) !== m.curso_curriculo_id) {
+      throw new Error("A matriz não pertence ao currículo publicado desta classe e ano.");
+    }
+    const avaliacaoDisciplinaId = m.avaliacao_disciplina_id ?? m.disciplina_id;
+    if (!avaliacaoDisciplinaId) {
+      throw new Error("Disciplina sem identidade de avaliação no currículo publicado.");
+    }
+    const items = byClasse.get(m.classe_id) ?? [];
+    items.push({ id: m.id, avaliacaoDisciplinaId });
+    byClasse.set(m.classe_id, items);
+  }
+  for (const classeId of classeIds) {
+    if (!byClasse.get(classeId)?.length) {
+      throw new Error("Currículo publicado sem disciplinas activas para a classe.");
+    }
   }
 
   const inserts: TableInsert<"turma_disciplinas">[] = [];
   for (const turma of turmas) {
-    const matrizIds = byClasse.get(turma.classe_id) ?? [];
-    for (const cursoMatrizId of matrizIds) {
+    const items = byClasse.get(turma.classe_id) ?? [];
+    for (const item of items) {
       inserts.push({
         escola_id: escolaId,
         turma_id: turma.id,
-        curso_matriz_id: cursoMatrizId,
+        curso_matriz_id: item.id,
+        avaliacao_disciplina_id: item.avaliacaoDisciplinaId,
         professor_id: null,
       });
     }
   }
-
-  if (inserts.length === 0) return 0;
-
   const { error: upErr } = await supabase
     .from("turma_disciplinas")
     .upsert(inserts, {
       onConflict: "escola_id,turma_id,curso_matriz_id",
       ignoreDuplicates: true,
     });
-
-  if (upErr) throw new Error(upErr.message ?? "Falha ao upsert turma_disciplinas");
-
+  if (upErr) throw new Error(upErr.message ?? "Falha ao criar disciplinas da turma");
   return inserts.length;
 }
 
@@ -720,11 +756,17 @@ export async function applyCurriculumPreset(
     presetKey,
     customData,
     advancedConfig: advancedConfigInput,
-    createTurmas = true,
-    anoLetivo = new Date().getFullYear(),
+    createTurmas = false,
+    anoLetivo,
     createCurriculo = false,
     anoLetivoId,
   } = options;
+
+  // A criação de turmas pressupõe um currículo já publicado.
+  // Rejeitar antes de qualquer escrita quando a chamada mistura os dois passos.
+  if (createTurmas && (!anoLetivoId || createCurriculo)) {
+    throw new Error("Publique primeiro o currículo no ano letivo seleccionado antes de gerar turmas.");
+  }
 
   const presetMeta = CURRICULUM_PRESETS_META[presetKey];
 
@@ -824,19 +866,48 @@ export async function applyCurriculumPreset(
   let turmaDiscCount = 0;
 
   if (createTurmas) {
+    if (!anoLetivoId || createCurriculo) {
+      throw new Error("É obrigatório publicar o currículo do ano antes de gerar turmas.");
+    }
+    const { data: year, error: yearError } = await supabase
+      .from("anos_letivos")
+      .select("id,ano")
+      .eq("escola_id", escolaId)
+      .eq("id", anoLetivoId)
+      .maybeSingle();
+    if (yearError || !year?.id || !Number.isInteger(Number(year.ano)) ||
+        (anoLetivo !== undefined && Number(year.ano) !== anoLetivo)) {
+      throw new Error("Ano letivo da instalação não corresponde à escola e sessão seleccionadas.");
+    }
+    // Preflight antes de inserir turmas: não criar estruturas parciais.
+    const classeIds = [...new Set(Array.from(classesMap.values()).map(cls => cls.id))];
+    const { data: published, error: publishedError } = await supabase
+      .from("curso_curriculos")
+      .select("classe_id")
+      .eq("escola_id", escolaId)
+      .eq("curso_id", curso.id)
+      .eq("ano_letivo_id", anoLetivoId)
+      .eq("status", "published")
+      .in("classe_id", classeIds);
+    if (publishedError || new Set((published ?? []).map(row => row.classe_id)).size !== classeIds.length) {
+      throw new Error("Todas as classes precisam de currículo publicado neste ano antes de gerar turmas.");
+    }
+
     turmas = await createTurmasPadrao({
       supabase,
       escolaId,
       cursoId: curso.id,
       classes: Array.from(classesMap.values()),
       turnos: advancedConfig.turnos,
-      anoLetivo,
+      anoLetivo: Number(year.ano),
+      anoLetivoId,
     });
 
     turmaDiscCount = await syncTurmaDisciplinasFromMatriz({
       supabase,
       escolaId,
       cursoId: curso.id,
+      anoLetivoId,
       turmas,
     });
   }
