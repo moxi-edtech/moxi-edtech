@@ -134,7 +134,7 @@ export default function NotasReaberturaPanel({ onDecided }: { onDecided?: () => 
                           placeholder="Motivo da decisão" className="min-w-0 flex-1 rounded-xl border border-border px-3 py-2 text-sm"
                         />
                         <button type="button" disabled={Boolean(actingId)} onClick={() => void decide(item.id, decision)}
-                          className="rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-slate-950 disabled:opacity-60">
+                          className="rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-foreground disabled:opacity-60">
                           Confirmar
                         </button>
                         <button type="button" onClick={() => { setEditingId(null); setReason(""); }}
