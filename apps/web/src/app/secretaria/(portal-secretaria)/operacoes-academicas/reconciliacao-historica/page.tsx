@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileCheck2, LockKeyhole, RefreshCw } from "lucide-react";
 import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
+import { CurtumeFechoHistoricoLote } from "@/components/secretaria/CurtumeFechoHistoricoLote";
 
 type Resultado = "aprovado" | "reprovado" | "concluido";
 type Item = {
@@ -78,6 +79,8 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
   const pathname = usePathname();
   const inOperacoes = pathname?.includes("/operacoes/") ?? false;
   const escolaId = String(params?.id ?? "");
+  const isCurtume = escolaId === "3744879f-2e19-4671-8995-78604302d8c5" ||
+    escolaId === "complexo-escolar-privado-advetista-de-curtume";
   const focusMatriculaId = searchParams?.get("matricula_id") ?? null;
   const [ano, setAno] = useState(() => {
     const query = Number(searchParams?.get("ano"));
@@ -221,6 +224,13 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
           O histórico permanece aberto até à ratificação e ao fechamento oficial, sem criação de notas fictícias.
         </p>
       </div>
+
+      {isCurtume && ano === 2025 && tipo === "historicos" && !focusMatriculaId && (
+        <CurtumeFechoHistoricoLote
+          balcaoHref={`/escola/${encodeURIComponent(escolaId)}/secretaria/balcao`}
+          onComplete={() => setReload((value) => value + 1)}
+        />
+      )}
 
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex flex-wrap items-end gap-3">

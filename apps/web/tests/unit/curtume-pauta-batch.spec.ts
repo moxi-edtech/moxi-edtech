@@ -67,9 +67,26 @@ test("Director has one confirmation and may see only the real exceptions", () =>
   assert.match(route, /\.eq\("snapshot_status", "aberto"\)/);
   assert.match(route, /\.eq\("escola_id", CURTUME\)/);
   assert.match(page, /<CurtumeFechoHistoricoLote balcaoHref=\{buildPortalHref\(escolaParam, "\/secretaria\/balcao"\)\} \/>/);
-  assert.doesNotMatch(historicPage, /<CurtumeFechoHistoricoLote/);
+  assert.match(historicPage, /<CurtumeFechoHistoricoLote/);
+  assert.match(historicPage, /isCurtume && ano === 2025 && tipo === "historicos"/);
+  assert.match(historicPage, /onComplete=\{\(\) => setReload\(/);
   assert.match(page, /Rever apenas os históricos com pendências/);
   assert.match(page, /escolaId === "3744879f-2e19-4671-8995-78604302d8c5"/);
   assert.match(page, /buildPortalHref\(escolaParam, "\/operacoes\/academico\/reconciliacao-historica\?tipo=historicos&ano=2025"\)/);
   assert.match(component, /onComplete\?: \(\) => void/);
+});
+
+test("financeiro autorizado acede ao mesmo lote, com escola estrita e ratificação auditada", () => {
+  assert.match(route, /const ROLES = new Set\(\["admin", "admin_escola", "diretor", "admin_financeiro"\]\)/);
+  assert.match(route, /\.eq\("escola_id", CURTUME\)\.eq\("user_id", user\.id\)/);
+  assert.match(route, /\.rpc\("curtume_fechar_pautas_2025_lote"/);
+  const migration = read("../../../../supabase/migrations/20271118090000_curtume_2025_lote_admin_financeiro.sql");
+  assert.match(migration, /curtume_fechar_pautas_2025_lote/);
+  assert.match(migration, /curtume_2025_conferir_notas_documentais/);
+  assert.match(migration, /curtume_2025_transcrever_pauta_fisica/);
+  assert.match(migration, /curtume_2025_regularizar_origem_documental/);
+  assert.match(migration, /curtume_2025_status_conferencia/);
+  assert.match(migration, /v_old_count IS DISTINCT FROM 1/);
+  assert.match(migration, /admin_financeiro/);
+  assert.doesNotMatch(migration, /DISABLE TRIGGER|DISABLE ROW LEVEL SECURITY|service_role/i);
 });

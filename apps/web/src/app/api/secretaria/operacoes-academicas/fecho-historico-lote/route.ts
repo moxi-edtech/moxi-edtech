@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const CURTUME = "3744879f-2e19-4671-8995-78604302d8c5";
-const ROLES = new Set(["admin", "admin_escola", "diretor"]);
+const ROLES = new Set(["admin", "admin_escola", "diretor", "admin_financeiro"]);
 const BatchSchema = z.object({
   acao: z.literal("concluir_2025_2026"),
   confirmacao: z.literal("CONFIRMO_PAUTAS_2025"),
