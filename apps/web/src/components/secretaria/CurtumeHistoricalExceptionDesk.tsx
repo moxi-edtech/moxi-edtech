@@ -36,10 +36,11 @@ type Props = {
   alunoId: string;
   matriculaId: string;
   returnTo?: string | null;
+  embedded?: boolean;
 };
 
 export function CurtumeHistoricalExceptionDesk({
-  escolaId, escolaParam, alunoId, matriculaId, returnTo,
+  escolaId, escolaParam, alunoId, matriculaId, returnTo, embedded = false,
 }: Props) {
   const [dossier, setDossier] = useState<ExceptionDossier | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,10 @@ export function CurtumeHistoricalExceptionDesk({
   const [pautaNotas, setPautaNotas] = useState<Record<string, string>>({});
   const [pautaConferida, setPautaConferida] = useState(false);
   const [pautaSaving, setPautaSaving] = useState(false);
+  const [originReference, setOriginReference] = useState("");
+  const [originReason, setOriginReason] = useState("");
+  const [originConfirmed, setOriginConfirmed] = useState(false);
+  const [originSaving, setOriginSaving] = useState(false);
 
   const supported = escolaId === CURTUME && /^[0-9a-f-]{36}$/i.test(matriculaId) &&
     /^[0-9a-f-]{36}$/i.test(alunoId);
@@ -150,6 +155,32 @@ export function CurtumeHistoricalExceptionDesk({
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "A pauta não foi guardada.");
     } finally { setPautaSaving(false); }
+  }
+
+  async function regularizarOrigem() {
+    if (!dossier || dossier.sourceComplete || originSaving || !originConfirmed ||
+        originReference.trim().length < 8 || originReason.trim().length < 12) return;
+    setOriginSaving(true); setError(null); setNotice(null);
+    try {
+      const response = await fetch(API, {
+        method: "POST", cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acao: "regularizar_origem_2025",
+          matricula_id: matriculaId, aluno_id: alunoId,
+          referencia: originReference.trim(), motivo: originReason.trim(),
+          confirmacao: "CONFIRMO_ORIGEM_2025",
+        }),
+      });
+      const output = await response.json();
+      if (!response.ok || output.ok !== true ||
+          output.matricula_id !== matriculaId || output.origem_regularizada !== true)
+        throw Error(output.error ?? "Não foi possível regularizar a matrícula de origem.");
+      setNotice("Vínculo de origem regularizado e auditado. Reanalise os históricos ainda abertos.");
+      setRevision((value) => value + 1);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível regularizar a origem.");
+    } finally { setOriginSaving(false); }
   }
 
   if (!supported) return null;
@@ -324,12 +355,50 @@ export function CurtumeHistoricalExceptionDesk({
               comprovadas pela pauta física de 2025/2026; não utilize as notas do ano atual.
             </p>
           )}
-          {wrongSource && (
-            <p role="status" className="text-xs text-amber-700">
-              Confira a matrícula e a classe de 2025/2026, sem alterar a turma de 2026/2027.
+          {wrongSource && !dossier.sourceComplete && (
+            <div className="space-y-3 rounded-xl border border-border p-3">
+              <h3 className="font-semibold text-foreground">Regularizar matrícula de origem · 2025/2026</h3>
+              <p className="text-xs text-muted-foreground">
+                Utilize apenas a pauta ou ata escolar confirmada. A operação existente
+                ratifica o vínculo histórico e guarda a auditoria, sem modificar classificações.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-xs font-semibold">
+                  Referência do documento
+                  <input value={originReference} maxLength={180}
+                    onChange={(event) => setOriginReference(event.target.value)}
+                    placeholder="Ex.: Ata escolar de 2025/2026"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2 text-sm" />
+                </label>
+                <label className="text-xs font-semibold">
+                  Motivo da correção
+                  <input value={originReason} maxLength={500}
+                    onChange={(event) => setOriginReason(event.target.value)}
+                    placeholder="Ex.: Vínculo de origem comprovado pela pauta"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2 text-sm" />
+                </label>
+              </div>
+              <label className="flex items-start gap-2 text-xs">
+                <input type="checkbox" checked={originConfirmed}
+                  onChange={(event) => setOriginConfirmed(event.target.checked)}
+                  className="mt-0.5 accent-amber" />
+                Conferi o ano, a turma de origem, a matrícula e o documento da escola.
+              </label>
+              <button type="button" onClick={() => void regularizarOrigem()}
+                disabled={originSaving || loading || !originConfirmed ||
+                  originReference.trim().length < 8 || originReason.trim().length < 12}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 font-semibold text-white disabled:opacity-50">
+                <CheckCircle2 className="h-4 w-4" />
+                {originSaving ? "A regularizar…" : "Regularizar origem documentada"}
+              </button>
+            </div>
+          )}
+          {wrongSource && dossier.sourceComplete && (
+            <p role="status" className="text-xs text-emerald">
+              Origem já regularizada. Execute a reanálise para atualizar o motivo e concluir as etapas restantes.
             </p>
           )}
-          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+          {!embedded && <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
             <Link href={reconciliationHref}
               className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 font-semibold text-white hover:brightness-95">
               <BookOpen className="h-4 w-4" />
@@ -341,13 +410,13 @@ export function CurtumeHistoricalExceptionDesk({
               className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-muted">
               <ArrowLeft className="h-4 w-4" /> Voltar ao fecho em lote
             </Link>
-          </div>
+          </div>}
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             {hasOperational || missingDocument || wrongSource
               ? <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700" />
               : <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald" />}
-            Depois de corrigir os dados autorizados, reexecute apenas o fecho dos históricos ainda abertos.
-            Este painel não altera notas nem decisões automaticamente.
+            Depois de corrigir os dados autorizados, reanalise apenas os históricos ainda abertos.
+            Este painel preserva notas existentes e não decide o resultado do aluno automaticamente.
           </p>
         </div>
       )}
