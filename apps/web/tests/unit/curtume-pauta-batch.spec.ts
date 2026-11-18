@@ -61,7 +61,7 @@ test("Director has one confirmation and may see only the real exceptions", () =>
   assert.match(component, /pendencias\.map/);
   assert.match(component, /getHistoricBatchIssueAdvice\(issue\.codigo\)/);
   assert.match(component, /issue\.aluno_nome/);
-  assert.match(component, /Resolver no Balcão/);
+  assert.match(component, /Resolver na Reconciliação/);
   assert.match(route, /enrichBlockingIssues\(ctx\.db, rawIssues/);
   assert.match(route, /\.eq\("ano_letivo", 2025\)/);
   assert.match(route, /\.eq\("snapshot_status", "aberto"\)/);
