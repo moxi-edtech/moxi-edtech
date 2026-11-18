@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { existsSync } from "node:fs";
+const repoRoot = existsSync(resolve(process.cwd(), "apps/web")) ? process.cwd() : resolve(process.cwd(), "../..");
 import { resolveReopeningSubject } from "../../src/lib/academico/resolve-reopening-subject";
 
 const link = (id: string, catalog: string, assessment: string, professor = "prof") => ({
@@ -25,9 +27,9 @@ test("pedido do docente autoriza apenas disciplina avaliada inequívoca", () => 
 });
 
 test("rotas usam utilizador autenticado, escola, turma, ano, professor e status condicionado", () => {
-  const request = readFileSync(resolve(process.cwd(), "apps/web/src/app/api/professor/notas/reabertura/route.ts"), "utf8");
-  const decision = readFileSync(resolve(process.cwd(), "apps/web/src/app/api/secretaria/notas/reabertura/route.ts"), "utf8");
-  const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20271118101000_grade_reopen_rls_guard.sql"), "utf8");
+  const request = readFileSync(resolve(repoRoot, "apps/web/src/app/api/professor/notas/reabertura/route.ts"), "utf8");
+  const decision = readFileSync(resolve(repoRoot, "apps/web/src/app/api/secretaria/notas/reabertura/route.ts"), "utf8");
+  const migration = readFileSync(resolve(repoRoot, "supabase/migrations/20271118101000_grade_reopen_rls_guard.sql"), "utf8");
   assert.match(request, /supabase\.auth\.getUser\(\)/);
   assert.match(request, /resolveEscolaIdForUser/);
   assert.match(request, /\.eq\("ano_letivo_id", parsed\.data\.ano_letivo_id\)/);
