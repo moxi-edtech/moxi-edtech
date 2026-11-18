@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 type AulaResponse = { ok: boolean; items?: Array<{ status: string | null }>; summary?: Record<string, number> };
-type CountResponse = { ok: boolean; items?: unknown[] };
+type CountResponse = { ok: boolean; items?: unknown[]; total?: number };
 
 export type OperacoesPendencias = {
   aulasAguardando: number;
@@ -56,7 +56,7 @@ export function useOperacoesPendencias({ onlyReopen = false }: { onlyReopen?: bo
         const payload = await response.json() as CountResponse;
         if (!response.ok || !payload.ok) throw new Error("Não foi possível carregar os pedidos académicos.");
         setAuthorized(true);
-        setSummary({ ...EMPTY, reaberturasNotas: payload.items?.length ?? 0 });
+        setSummary({ ...EMPTY, reaberturasNotas: payload.total ?? payload.items?.length ?? 0 });
         setError(null);
         return;
       }
@@ -80,7 +80,7 @@ export function useOperacoesPendencias({ onlyReopen = false }: { onlyReopen?: bo
         aulasAndamento: aulaSummary.em_andamento ?? 0,
         relatoriosRecebidos: aulaSummary.finalizada ?? 0,
         planosRevisao: planos.items?.length ?? 0,
-        reaberturasNotas: reaberturas.items?.length ?? 0,
+        reaberturasNotas: reaberturas.total ?? reaberturas.items?.length ?? 0,
       });
       setError(null);
     } catch (cause) {
