@@ -17,7 +17,7 @@ BEGIN
     IF NEW.status IS DISTINCT FROM 'PENDENTE' OR NEW.user_id IS DISTINCT FROM v_uid
       OR NEW.solicitado_por IS DISTINCT FROM v_uid OR NEW.criado_por IS DISTINCT FROM v_uid
       OR NEW.ano_letivo_id IS NULL OR NEW.disciplina_id IS NULL
-      OR NEW.disciplina_catalogo_id IS NULL OR NEW.trimestre NOT BETWEEN 1 AND 3
+      OR NEW.disciplina_catalogo_id IS NULL OR NEW.trimestre IS NULL OR NEW.trimestre NOT BETWEEN 1 AND 3
       OR NEW.expira_em <= now() OR NEW.expira_em > now() + interval '24 hours 5 minutes'
       OR NEW.aprovado_por IS NOT NULL OR NEW.decidido_em IS NOT NULL
     THEN
@@ -27,6 +27,9 @@ BEGIN
       SELECT 1 FROM public.turmas t
       JOIN public.turma_disciplinas td ON td.turma_id=t.id AND td.escola_id=t.escola_id
       JOIN public.curso_matriz cm ON cm.id=td.curso_matriz_id AND cm.escola_id=t.escola_id
+      JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id
+        AND cc.escola_id=t.escola_id AND cc.ano_letivo_id=t.ano_letivo_id
+        AND cc.status='published'
       JOIN public.professores p ON p.escola_id=t.escola_id AND p.profile_id=v_uid
       WHERE t.id=NEW.turma_id AND t.escola_id=NEW.escola_id
         AND t.ano_letivo_id=NEW.ano_letivo_id
