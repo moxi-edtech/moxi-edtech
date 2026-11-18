@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveReopeningSubject } from "@/lib/academico/resolve-reopening-subject";
+import { reopeningDisplayState, type ReopeningStoredState } from "@/lib/academico/reopening-display";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -50,9 +51,12 @@ export async function GET(req: Request) {
     (!trimestre || String(item.trimestre) === trimestre));
 
   const now = Date.now();
-  const effectiveStatus = (item: { status: string; expira_em: string | null }) =>
-    item.status === "APROVADO" && item.expira_em && Date.parse(item.expira_em) <= now
-      ? "EXPIRADO" : item.status;
+  const effectiveStatus = (item: { status: string; expira_em: string | null }) => {
+    const status = item.status;
+    if (status !== "PENDENTE" && status !== "APROVADO" &&
+        status !== "REJEITADO" && status !== "EXPIRADO") return "EXPIRADO";
+    return reopeningDisplayState(status as ReopeningStoredState, item.expira_em, now);
+  };
   const items = (data ?? []).map((item: { status: string; expira_em: string | null }) =>
     ({ ...item, status: effectiveStatus(item) }));
   const selected = current ? { ...current, status: effectiveStatus(current) } : null;
