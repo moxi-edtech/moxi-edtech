@@ -140,7 +140,6 @@ BEGIN
     RAISE EXCEPTION 'FAIL: failed legal lock left a partial row';
   END IF;
 END $no_partial_lock$;
-SET ROLE authenticated;
 
 -- No numeric notes or invented attendance should appear in this test.
 DO $no_forgery$
