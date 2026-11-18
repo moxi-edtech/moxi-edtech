@@ -37,7 +37,7 @@ test("comparison is read-only; documentary ratification is a separate authentica
   assert.match(desk, /Pauta oficial · notas finais/);
   assert.match(desk, /Avaliações operacionais preservadas/);
   assert.match(desk, /Avaliações individuais não equivalem automaticamente à média final/);
-  assert.match(desk, /Este painel não altera notas nem decisões automaticamente/);
+  assert.match(desk, /Este painel preserva notas existentes e não decide o resultado do aluno automaticamente/);
   assert.match(desk, /method: "POST"/);
   assert.match(desk, /confirmacao: "CONFIRMO_PAUTA_2025"/);
   assert.match(api, /const GradeReconciliationSchema = z\.object/);
