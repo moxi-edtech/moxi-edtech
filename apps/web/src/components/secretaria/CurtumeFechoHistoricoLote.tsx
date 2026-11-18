@@ -199,8 +199,6 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
                     )}
                     <p className="text-xs font-semibold">{advice.title}</p>
                     <p className="text-xs text-muted-foreground">{advice.nextStep}</p>
-                    {issue.detalhe && issue.detalhe !== issue.codigo &&
-                      <p className="break-words text-xs text-muted-foreground">{issue.detalhe}</p>}
                   </div>
                   {href && issue.aluno_id && (
                     <Link href={href}
