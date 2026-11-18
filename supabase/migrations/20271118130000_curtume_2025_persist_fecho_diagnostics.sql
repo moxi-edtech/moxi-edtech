@@ -21,7 +21,6 @@ REVOKE ALL ON public.curtume_2025_fecho_diagnosticos FROM PUBLIC,anon,authentica
 -- Fail the migration if the reviewed SQL changes: never patch an unknown body.
 DO $patch$
 DECLARE
-  v_function regprocedure := 'public.curtume_fechar_pautas_2025_lote(uuid,uuid,uuid,integer)'::regprocedure;
   v_sql text := pg_catalog.pg_get_functiondef('public.curtume_fechar_pautas_2025_lote(uuid,uuid,uuid,integer)'::regprocedure);
   v_old_error text := $old$      v_state := SQLSTATE;
       v_errors := v_errors || jsonb_build_array(jsonb_build_object($old$;
@@ -54,13 +53,13 @@ END;
 $patch$;
 
 -- Readable only by the authenticated school's privileged academic roles.
+-- SQL error detail stays in the protected table, never returned by this RPC.
 -- LEFT JOIN deliberately retains unprocessed open histories: NULL code means
 -- no actual failed attempt has yet been recorded, not an inferred RAA error.
 CREATE OR REPLACE FUNCTION public.curtume_2025_listar_fecho_pendencias(p_escola_id uuid)
 RETURNS TABLE (
   matricula_id uuid,
   codigo text,
-  detalhe text,
   diagnosticado_em timestamptz
 )
 LANGUAGE plpgsql STABLE SECURITY DEFINER
@@ -79,7 +78,7 @@ BEGIN
     RAISE EXCEPTION 'CURTUME_DIAGNOSTICO_NAO_AUTORIZADO' USING ERRCODE='42501';
   END IF;
   RETURN QUERY
-    SELECT h.matricula_id,d.codigo,d.detalhe,d.diagnosticado_em
+    SELECT h.matricula_id,d.codigo,d.diagnosticado_em
       FROM public.historico_anos h
       JOIN public.matriculas m ON m.id=h.matricula_id AND m.escola_id=h.escola_id
       LEFT JOIN public.curtume_2025_fecho_diagnosticos d
