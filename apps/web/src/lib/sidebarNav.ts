@@ -21,6 +21,13 @@ export type NavItem = {
 
 export type SidebarRole = UserRole | "operacoes";
 
+/** Only a complete /operacoes path segment selects the Operations shell.
+ * /secretaria/operacoes-academicas is a Secretaria route, never Operations.
+ */
+export function isOperationsPortalPath(pathname: string): boolean {
+  return /^\/(?:escola\/[^/]+\/)?operacoes(?:\/|$)/.test(pathname);
+}
+
 type SidebarConfig = {
   [key in SidebarRole]?: NavItem[];
 };
@@ -82,6 +89,7 @@ export const sidebarConfig: SidebarConfig = {
       children: [
         { href: "/escola/[escolaId]/operacoes/academico", label: "Visão geral" },
         { href: "/escola/[escolaId]/operacoes/academico/pendencias-pos-virada", label: "Pendências pós-virada", badge: "Resolver" },
+        { href: "/escola/[escolaId]/operacoes/academico/reconciliacao-historica", label: "Reconciliação Histórica" },
         { href: "/escola/[escolaId]/operacoes/academico/reclassificacao-finalistas", label: "Reclassificação de Finalistas" },
         { href: "/escola/[escolaId]/admin/operacoes-academicas/wizard", label: "Virada 2026/2027" },
         { href: "/escola/[escolaId]/operacoes/academico/fechamento-academico", label: "Fechamento Trimestral" },
@@ -210,7 +218,15 @@ export const sidebarConfig: SidebarConfig = {
       ],
     },
     { href: "/escola/[escolaId]/admin/professores", label: "Professores", icon: "User" },
-    { href: "/escola/[escolaId]/admin/operacoes-academicas", label: "Operações Académicas", icon: "Activity" },
+    {
+      href: "/escola/[escolaId]/admin/operacoes-academicas",
+      label: "Operações Académicas",
+      icon: "Activity",
+      children: [
+        { href: "/escola/[escolaId]/admin/operacoes-academicas", label: "Visão geral" },
+        { href: "/escola/[escolaId]/admin/operacoes-academicas/reconciliacao-historica", label: "Reconciliação Histórica" },
+      ],
+    },
     { href: "/escola/[escolaId]/admin/operacoes-academicas/wizard", label: "Virada 2026/2027", icon: "RefreshCw" },
     {
       href: "/escola/[escolaId]/admin/turmas",
@@ -309,6 +325,7 @@ export const sidebarConfig: SidebarConfig = {
       children: [
         { href: "/escola/[escolaId]/secretaria/operacoes-academicas", label: "Visão geral" },
         { href: "/escola/[escolaId]/operacoes/academico/pendencias-pos-virada", label: "Pendências pós-virada", badge: "Resolver" },
+        { href: "/escola/[escolaId]/secretaria/operacoes-academicas/reconciliacao-historica", label: "Reconciliação Histórica" },
         { href: "/escola/[escolaId]/secretaria/operacoes-academicas/reclassificacao-finalistas", label: "Reclassificação de Finalistas" },
       ],
     },

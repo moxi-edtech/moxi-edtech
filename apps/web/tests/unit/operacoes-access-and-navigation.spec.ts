@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { roleMatchesAllowedRoles } from "../../src/lib/permissions";
 import { K12_OPERACOES_ROLE_GROUP } from "../../src/lib/roles";
-import { sidebarConfig } from "../../src/lib/sidebarNav";
+import { isOperationsPortalPath, sidebarConfig } from "../../src/lib/sidebarNav";
 import { toContextualPortalPath } from "../../src/lib/navigation";
 
 test("matriz de acesso de Operações preserva o grupo autorizado", () => {
@@ -129,4 +129,52 @@ test("legado Admin redireciona para Operações, Secretaria preserva o portal pr
   );
   assert.doesNotMatch(source, /source: "\/escola\/:id\/secretaria"[\s\S]*destination: "\/escola\/:id\/operacoes/);
   assert.doesNotMatch(source, /permanent: true/);
+});
+
+test("Reconciliação Histórica aparece dentro de Operações Académicas nos três sidebars", () => {
+  const routes = {
+    operacoes: "/escola/[escolaId]/operacoes/academico/reconciliacao-historica",
+    admin: "/escola/[escolaId]/admin/operacoes-academicas/reconciliacao-historica",
+    secretaria: "/escola/[escolaId]/secretaria/operacoes-academicas/reconciliacao-historica",
+  } as const;
+  for (const [role, expectedHref] of Object.entries(routes)) {
+    const item = sidebarConfig[role as keyof typeof routes]?.find(
+      (entry) => entry.label === "Operações Académicas" || entry.label === "Operações Acadêmicas"
+    );
+    assert.ok(item, `grupo académico não encontrado no sidebar ${role}`);
+    const child = item.children?.find((entry) => entry.label === "Reconciliação Histórica");
+    assert.ok(child, `subitem ausente no sidebar ${role}`);
+    assert.equal(child.href, expectedHref);
+    assert.equal(item.children?.filter((entry) => entry.href === expectedHref).length, 1);
+  }
+  for (const role of ["admin", "admin_financeiro"]) {
+    assert.equal(roleMatchesAllowedRoles(role, K12_OPERACOES_ROLE_GROUP, "k12"), true);
+  }
+});
+
+test("rotas da Secretaria não assumem indevidamente o sidebar de Operações", () => {
+  assert.equal(isOperationsPortalPath("/escola/demo/operacoes/academico/reconciliacao-historica"), true);
+  assert.equal(isOperationsPortalPath("/operacoes/dashboard"), true);
+  assert.equal(isOperationsPortalPath("/escola/demo/secretaria/operacoes-academicas"), false);
+  assert.equal(isOperationsPortalPath("/escola/demo/secretaria/operacoes-academicas/reconciliacao-historica"), false);
+  assert.equal(isOperationsPortalPath("/escola/demo/admin/operacoes-academicas"), false);
+  assert.equal(isOperationsPortalPath("/escola/demo/operacoes-malformadas"), false);
+  const shell = readFileSync(new URL("../../src/components/layout/klasse/AppShell.tsx", import.meta.url), "utf8");
+  assert.match(shell, /if \(isOperationsPortalPath\(safePathname\)\) return "operacoes"/);
+  assert.doesNotMatch(shell, /safePathname\.includes\("\/operacoes"\)/);
+});
+
+test("rotas nos sidebars reutilizam a página canónica e o admin conserva redirect compatível", () => {
+  const testDir = dirname(fileURLToPath(import.meta.url));
+  const src = (path: string) => readFileSync(resolve(testDir, "../../src/" + path), "utf8");
+  const sourceAlias = '@/app/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/page';
+  for (const route of [
+    "app/escola/[id]/(portal)/operacoes/academico/reconciliacao-historica/page.tsx",
+    "app/escola/[id]/(portal)/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/page.tsx",
+  ]) {
+    assert.ok(src(route).includes(sourceAlias));
+  }
+  const config = readFileSync(resolve(testDir, "../../next.config.ts"), "utf8");
+  assert.match(config, /source: "\/escola\/:id\/admin\/operacoes-academicas\/:path\*"/);
+  assert.match(config, /destination: "\/escola\/:id\/operacoes\/academico\/:path\*"/);
 });

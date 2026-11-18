@@ -9,7 +9,7 @@ import { AI_WIDGET_ROLES } from "@/lib/roles/ai-roles";
 import { type UserRole } from "@/hooks/useUserRole";
 import { useUserRoleContext } from "@/components/auth/UserRoleProvider";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { sidebarConfig, type NavItem, type SidebarRole } from "@/lib/sidebarNav";
+import { sidebarConfig, isOperationsPortalPath, type NavItem, type SidebarRole } from "@/lib/sidebarNav";
 import { useMemo, useState, useEffect, useCallback, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
@@ -108,14 +108,14 @@ export default function AppShell({
   const inferredRole = useMemo<UserRole | null>(() => {
     if (safePathname.startsWith("/super-admin")) return "superadmin";
     if (safePathname.startsWith("/admin")) return "admin";
-    if (safePathname.startsWith("/operacoes")) return "admin";
+    if (isOperationsPortalPath(safePathname)) return "admin";
     if (safePathname.startsWith("/secretaria")) return "secretaria";
     if (safePathname.startsWith("/financeiro")) return "financeiro";
     if (safePathname.startsWith("/professor")) return "professor";
     if (safePathname.startsWith("/aluno")) return "aluno";
 
     if (safePathname.includes("/escola/")) {
-      if (safePathname.includes("/operacoes")) return "admin";
+      if (isOperationsPortalPath(safePathname)) return "admin";
       if (safePathname.includes("/admin")) return "admin";
       if (safePathname.includes("/secretaria")) return "secretaria";
       if (safePathname.includes("/financeiro")) return "financeiro";
@@ -130,8 +130,7 @@ export default function AppShell({
   }, [userRole, safePathname]);
 
   const navRole = useMemo<SidebarRole | null>(() => {
-    if (safePathname.startsWith("/operacoes")) return "operacoes";
-    if (safePathname.includes("/escola/") && safePathname.includes("/operacoes")) return "operacoes";
+    if (isOperationsPortalPath(safePathname)) return "operacoes";
     // The academic rollover wizard still lives under the legacy admin path,
     // but it belongs to the Operations Academic menu. Keeping the operations
     // role here preserves the full submenu while navigating that wizard.
