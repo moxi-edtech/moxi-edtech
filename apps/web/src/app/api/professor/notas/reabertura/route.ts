@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { resolveReopeningSubject, type ReopeningCurriculumLink } from "@/lib/academico/resolve-reopening-subject";
+import { resolveReopeningSubject } from "@/lib/academico/resolve-reopening-subject";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -82,10 +82,15 @@ export async function POST(req: Request) {
   if (turmaError || !turma) return NextResponse.json({
     ok: false, error: "A turma não pertence ao ano letivo seleccionado nesta escola.",
   }, { status: 400 });
-  const resolution = resolveReopeningSubject(
-    (turma.turma_disciplinas ?? []) as ReopeningCurriculumLink[],
-    parsed.data.disciplina_id,
-  );
+  const links = (turma.turma_disciplinas ?? []).map((record) => ({
+    id: record.id,
+    professor_id: record.professor_id,
+    avaliacao_disciplina_id: record.avaliacao_disciplina_id,
+    curso_matriz: Array.isArray(record.curso_matriz)
+      ? (record.curso_matriz.length === 1 ? record.curso_matriz[0] : null)
+      : record.curso_matriz,
+  }));
+  const resolution = resolveReopeningSubject(links, parsed.data.disciplina_id);
   if (!resolution.ok) {
     const messages = {
       UNKNOWN: "A disciplina curricular é ambígua ou não pertence à turma.",
