@@ -1367,15 +1367,15 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     return (
       <>
         {suspectedEquivalences.length > 0 && (
-          <section aria-label="Equivalências curriculares por confirmar" className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <section aria-label="Equivalências curriculares por confirmar" className="rounded-xl border border-border bg-card p-4">
             <h3 className="text-sm font-semibold text-klasse-green">Disciplinas com nomes equivalentes</h3>
-            <p className="mt-1 text-xs text-slate-600">Confirma com a Direção qual é a disciplina oficial antes de alterar vínculos. Nenhum registo ou nota é alterado nesta análise.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Confirma com a Direção qual é a disciplina oficial antes de alterar vínculos. Nenhum registo ou nota é alterado nesta análise.</p>
             <ul className="mt-3 space-y-2">
               {suspectedEquivalences.map((group) => (
-                <li key={group.classId + group.normalizedName} className="rounded-xl border border-amber-100 bg-white p-3 text-sm">
-                  <p className="font-semibold text-slate-900">{classNameById.get(group.classId) ?? "Classe"} · Por confirmar</p>
-                  <p className="mt-1 text-slate-600">{group.candidates.map((item) => item.nome).join(" / ")}</p>
-                  <p className="mt-1 text-xs text-amber-800">Aguardam decisão registada da Direção — não é seguro escolher automaticamente.</p>
+                <li key={group.classId + group.normalizedName} className="rounded-xl border border-border bg-card p-3 text-sm">
+                  <p className="font-semibold text-foreground">{classNameById.get(group.classId) ?? "Classe"} · Por confirmar</p>
+                  <p className="mt-1 text-muted-foreground">{group.candidates.map((item) => item.nome).join(" / ")}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Aguardam decisão registada da Direção — não é seguro escolher automaticamente.</p>
                 </li>
               ))}
             </ul>
