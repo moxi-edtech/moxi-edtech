@@ -6,6 +6,7 @@ import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileCheck2, LockKeyhole, RefreshCw } from "lucide-react";
 import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
 import { CurtumeFechoHistoricoLote } from "@/components/secretaria/CurtumeFechoHistoricoLote";
+import { CurtumeHistoricalExceptionDesk } from "@/components/secretaria/CurtumeHistoricalExceptionDesk";
 
 type Resultado = "aprovado" | "reprovado" | "concluido";
 type Item = {
@@ -225,7 +226,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
         </p>
       </div>
 
-      {isCurtume && ano === 2025 && tipo === "historicos" && !focusMatriculaId && (
+      {isCurtume && ano === 2025 && tipo === "historicos" && (
         <CurtumeFechoHistoricoLote
           balcaoHref={`/escola/${encodeURIComponent(escolaId)}/secretaria/balcao`}
           onComplete={() => setReload((value) => value + 1)}
@@ -343,6 +344,16 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
                     A matrícula de destino não demonstra aprovação ou reprovação.
                   </p>
                 </div>
+              )}
+              {isCurtume && ano === 2025 && !pending && (
+                <CurtumeHistoricalExceptionDesk
+                  key={selected.matricula_id}
+                  escolaId="3744879f-2e19-4671-8995-78604302d8c5"
+                  escolaParam={escolaId}
+                  alunoId={selected.aluno_id}
+                  matriculaId={selected.matricula_id}
+                  embedded
+                />
               )}
               {!pending && selected.pauta_historica && (
                 <section aria-label="Pauta histórica de origem" className="space-y-3 rounded-xl border border-border p-3 text-sm">
