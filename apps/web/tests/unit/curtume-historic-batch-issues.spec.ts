@@ -6,7 +6,7 @@ import { getHistoricBatchIssueAdvice, isHistoricBatchAcademicIssue } from "../..
 test("historic 2025 blocking reasons are operational and actionable", () => {
   assert.deepEqual(getHistoricBatchIssueAdvice("NOTAS_OPERACIONAIS_EXIGEM_RECONCILIACAO"), {
     title: "Notas em conflito",
-    nextStep: "Conferir as notas já lançadas com a pauta antes do fecho.",
+    nextStep: "Comparar as notas operacionais com a pauta e assinar a conferência sem apagar lançamentos.",
   });
   assert.equal(getHistoricBatchIssueAdvice("SEM_NOTAS_HISTORICAS").title, "Pauta sem notas");
   assert.equal(getHistoricBatchIssueAdvice("ORIGEM_HISTORICA_INCOMPATIVEL").title,
