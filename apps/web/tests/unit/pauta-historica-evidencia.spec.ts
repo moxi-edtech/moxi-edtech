@@ -67,7 +67,8 @@ test("unknown or absent original XLSX must never be treated as certified by impo
 test("tenant-authenticated review uses historical rows and keeps the canonical RAA ratification flow", () => {
   const route = readFileSync(new URL("../../src/app/api/secretaria/operacoes-academicas/reconciliacao-historica/route.ts",import.meta.url),"utf8");
   const page = readFileSync(new URL("../../src/app/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/page.tsx",import.meta.url),"utf8");
-  assert.match(route,/await schoolSession\(\)/);
+  assert.match(route,/await schoolSession\(requestedEscola\)/);
+  assert.match(route,/resolveEscolaIdForUser\(supabase, user.id, requestedEscola\)/);
   assert.match(route,/from\("historico_disciplinas"\)/);
   assert.match(route,/historico_ano_id/);
   assert.match(route,/from\("turma_disciplinas"\)/);
