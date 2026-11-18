@@ -32,6 +32,8 @@ test("read access stays tenant-specific and does not expose an RLS-definer short
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.curtume_2025_listar_fecho_pendencias\(uuid\)/);
   assert.match(migration, /TO authenticated/);
   assert.match(api, /await context\(\)/);
+  assert.match(api, /SQL messages stay inside the protected diagnostic store/);
+  assert.match(api, /\.map\(\(\{ matricula_id, codigo \}\) => \(\{ matricula_id, codigo \}\)\)/);
   assert.match(api, /\.eq\("escola_id", CURTUME\)/);
 });
 
