@@ -305,7 +305,7 @@ export async function GET(request: Request) {
     ]);
     if (error || failuresError) throw error ?? failuresError;
     const issues = (failures ?? []) as Array<{
-      matricula_id: string; codigo: string | null; detalhe: string | null;
+      matricula_id: string; codigo: string | null;
     }>;
     const pendencias = await enrichBlockingIssues(ctx.db, issues.slice(0, 80).map((entry) => ({
       matricula_id: entry.matricula_id,
