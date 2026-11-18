@@ -1,0 +1,55 @@
+name: AUD P3 Curricular Decisions
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20271118110000_curricular_equivalence_decisions.sql"
+      - "supabase/ops/tests/audit_equivalences.sql"
+      - "apps/web/src/app/api/academico/equivalencias/**"
+      - "apps/web/src/components/escola/settings/CurricularEquivalenceDecisions.tsx"
+      - "apps/web/src/components/escola/settings/StructureMarketplace.tsx"
+      - "apps/web/tests/unit/audit-curricular-equivalence-decision.spec.ts"
+      - ".github/workflows/audit-curricular-decisions.yml"
+permissions:
+  contents: read
+jobs:
+  postgres:
+    name: Two schools, role RLS, immutable decisions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actual migration and RLS assertions with synthetic identities
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/audit_equivalences.sql
+  web:
+    name: Contract tests and TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --test --import tsx apps/web/tests/unit/audit-curricular-equivalence-decision.spec.ts
+      - run: pnpm -C apps/web typecheck
