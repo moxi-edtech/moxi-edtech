@@ -76,7 +76,7 @@ test("pré-visualização recebe exclusivamente atribuições; notas protegidas 
   assert.match(grid,/classificacoes: locked \? \[\] :/);
   assert.match(grid,/const valuesVisible = !locked && showGrades/);
   assert.match(grid,/disabled=\{locked\}/);
-  assert.match(grid,/disabled=\{locked \|\| downloading\}/);
+  assert.match(grid,/disabled=\{locked \|\| downloading \|\| !canDownloadOfficial\}/);
   assert.match(grid,/Por trimestre/);
   assert.match(grid,/Por disciplina/);
   assert.match(grid,/subjectsInTrimester\(safeSubjects, term\)/);
