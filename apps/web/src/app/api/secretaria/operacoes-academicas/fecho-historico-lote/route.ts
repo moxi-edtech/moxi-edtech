@@ -252,7 +252,8 @@ export async function GET(request: Request) {
           const turma = (turmaRows ?? []).find((row: any) => row.id === turmaId);
           const entity = Array.isArray(turma?.classes) ? turma.classes[0] : turma?.classes;
           if (entity?.nome === "Pré-Escolar") return 0;
-          return Number.isInteger(entity?.numero) ? Number(entity.numero) : null;
+          return typeof entity?.numero === "number" && Number.isInteger(entity.numero)
+            ? entity.numero : null;
         };
         classeOrigem = grade(origin.turma_id);
         classeDestino = grade(destination.turma_id);
