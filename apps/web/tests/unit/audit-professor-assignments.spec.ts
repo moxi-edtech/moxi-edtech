@@ -57,3 +57,13 @@ test("registos de avaliação duplicados com matrizes divergentes não entram na
   });
   assert.equal(items.length, 0);
 });
+
+test("a pauta selecciona o trimestre corrente no fuso de Luanda", () => {
+  const fs = require("node:fs") as typeof import("node:fs");
+  const path = require("node:path") as typeof import("node:path");
+  const page = fs.readFileSync(path.resolve(process.cwd(), "src/app/professor/notas/page.tsx"), "utf8");
+  const api = fs.readFileSync(path.resolve(process.cwd(), "src/app/api/professor/periodos/route.ts"), "utf8");
+  assert.match(page, /currentGradePeriod\(canonicalPeriods\)/);
+  assert.match(page, /requestedTrimestreValid/);
+  assert.match(api, /trava_notas_em/);
+});
