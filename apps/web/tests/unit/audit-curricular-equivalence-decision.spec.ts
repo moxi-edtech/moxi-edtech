@@ -19,9 +19,9 @@ test("equivalência só agrupa a mesma classe e não confunde História e Geogra
 });
 
 test("decisão usa contexto autenticado, valida currículo no servidor e não altera notas", () => {
-  const route = readFileSync(resolve(process.cwd(), "src/app/api/academico/equivalencias/route.ts"), "utf8");
-  const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271118110000_curricular_equivalence_decisions.sql"), "utf8");
-  const ui = readFileSync(resolve(process.cwd(), "src/components/escola/settings/CurricularEquivalenceDecisions.tsx"), "utf8");
+  const route = readFileSync(resolve(process.cwd(), "apps/web/src/app/api/academico/equivalencias/route.ts"), "utf8");
+  const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20271118110000_curricular_equivalence_decisions.sql"), "utf8");
+  const ui = readFileSync(resolve(process.cwd(), "apps/web/src/components/escola/settings/CurricularEquivalenceDecisions.tsx"), "utf8");
   assert.match(route, /supabase\.auth\.getUser\(\)/);
   assert.match(route, /resolveEscolaIdForUser/);
   assert.match(route, /\["diretor", "admin_escola", "admin"\]/);
