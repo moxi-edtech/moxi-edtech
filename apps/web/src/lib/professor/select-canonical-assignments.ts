@@ -47,6 +47,7 @@ export function selectTeacherCanonicalAssignments(scope: {
   const names = new Map(scope.subjects.map((subject) => [subject.id, subject.nome]));
   const alternate = new Set(scope.alternate.map((row) => `${row.turma_id}:${row.disciplina_id}`));
   const unique = new Map<string, TeacherAcademicAssignment>();
+  const ambiguous = new Set<string>();
 
   for (const link of scope.links) {
     const turma = classes.get(link.turma_id);
@@ -58,10 +59,12 @@ export function selectTeacherCanonicalAssignments(scope: {
         !alternate.has(`${turma.id}:${matrix.disciplina_id}`)) continue;
 
     const key = `${turma.id}:${matrix.disciplina_id}`;
+    if (ambiguous.has(key)) continue;
     const current = unique.get(key);
     // Se a mesma disciplina aponta para matrizes diferentes no mesmo ano,
     // não seleccionar arbitrariamente qual pauta publicar.
     if (current && current.curso_matriz_id !== matrix.id) {
+      ambiguous.add(key);
       unique.delete(key);
       continue;
     }
