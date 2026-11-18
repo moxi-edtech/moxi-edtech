@@ -27,6 +27,8 @@ import ConfirmDialog from "./ConfirmDialog";
 import CourseCreateModal from "./CourseCreateModal";
 import CourseManager from "./CourseManager";
 import { DisciplinaModal, type DisciplinaForm } from "./_components/DisciplinaModal";
+import { findSuspectedSubjectEquivalences } from "@/lib/academico/discipline-equivalences";
+import CurricularEquivalenceDecisions from "./CurricularEquivalenceDecisions";
 
 /**
  * KLASSE UI rules applied:
@@ -1361,8 +1363,17 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   }
 
   if (selectedCourseId) {
+    const suspectedEquivalences = findSuspectedSubjectEquivalences(details?.disciplinas ?? []);
+    const classNameById = new Map((details?.classes ?? []).map((item) => [item.id, item.nome]));
     return (
       <>
+        <CurricularEquivalenceDecisions
+          key={selectedCourseId}
+          courseId={selectedCourseId}
+          yearId={curriculoAnoLetivo?.id ?? null}
+          groups={suspectedEquivalences}
+          classNameById={classNameById}
+        />
         <CourseManager
           selectedCourse={selectedCourse}
           managerTab={managerTab}
