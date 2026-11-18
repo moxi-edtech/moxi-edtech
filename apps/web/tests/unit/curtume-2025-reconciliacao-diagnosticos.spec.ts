@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
-const migration = read("../../../../supabase/migrations/20271118110000_curtume_2025_persist_fecho_diagnostics.sql");
+const migration = read("../../../../supabase/migrations/20271118130000_curtume_2025_persist_fecho_diagnostics.sql");
 const api = read("../../src/app/api/secretaria/operacoes-academicas/fecho-historico-lote/route.ts");
 const batch = read("../../src/components/secretaria/CurtumeFechoHistoricoLote.tsx");
 const desk = read("../../src/components/secretaria/CurtumeHistoricalExceptionDesk.tsx");

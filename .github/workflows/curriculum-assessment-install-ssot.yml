@@ -1,0 +1,54 @@
+name: Curriculum Installation Assessment SSOT
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/lib/academico/curriculum-apply.ts"
+      - "apps/web/src/app/api/escolas/**/onboarding/curriculum/apply/route.ts"
+      - "apps/web/tests/unit/curriculum-assessment-install-root-cause.spec.ts"
+      - "supabase/migrations/20271118120000_guard_turma_assessment_identity_install.sql"
+      - "supabase/ops/tests/audit_curriculum_assessment_install.sql"
+      - ".github/workflows/curriculum-assessment-install-ssot.yml"
+permissions:
+  contents: read
+jobs:
+  postgres:
+    name: PostgreSQL 17 · tenant and evaluation identity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate real migration with synthetic tenants
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/audit_curriculum_assessment_install.sql
+  web:
+    name: Next.js typecheck and installation contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --test --import tsx apps/web/tests/unit/curriculum-assessment-install-root-cause.spec.ts
+      - run: pnpm -C apps/web typecheck

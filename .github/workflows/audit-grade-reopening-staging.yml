@@ -1,0 +1,74 @@
+name: AUD P1 Authenticated Staging E2E
+on:
+  pull_request:
+    paths:
+      - "apps/web/tests/audit-grade-reopening.authenticated.e2e.ts"
+      - ".github/workflows/audit-grade-reopening-staging.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  authenticated-staging:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: academic-audit-staging
+    env:
+      TEST_AUDIT_STAGING: "1"
+      TEST_AUDIT_STAGING_BASE_URL: ${{ secrets.AUDIT_STAGING_BASE_URL }}
+      PLAYWRIGHT_BASE_URL: ${{ secrets.AUDIT_STAGING_BASE_URL }}
+      TEST_AUDIT_TEACHER_EMAIL: ${{ secrets.AUDIT_TEACHER_EMAIL }}
+      TEST_AUDIT_TEACHER_PASSWORD: ${{ secrets.AUDIT_TEACHER_PASSWORD }}
+      TEST_AUDIT_DIRECTOR_EMAIL: ${{ secrets.AUDIT_DIRECTOR_EMAIL }}
+      TEST_AUDIT_DIRECTOR_PASSWORD: ${{ secrets.AUDIT_DIRECTOR_PASSWORD }}
+      TEST_AUDIT_FOREIGN_EMAIL: ${{ secrets.AUDIT_FOREIGN_EMAIL }}
+      TEST_AUDIT_FOREIGN_PASSWORD: ${{ secrets.AUDIT_FOREIGN_PASSWORD }}
+      TEST_AUDIT_ANO_ID: ${{ secrets.AUDIT_ANO_ID }}
+      TEST_AUDIT_TURMA_ID: ${{ secrets.AUDIT_TURMA_ID }}
+      TEST_AUDIT_DISCIPLINA_ID: ${{ secrets.AUDIT_DISCIPLINA_ID }}
+      TEST_AUDIT_TURMA_DISCIPLINA_ID: ${{ secrets.AUDIT_TURMA_DISCIPLINA_ID }}
+      TEST_AUDIT_ALUNO_ID: ${{ secrets.AUDIT_ALUNO_ID }}
+      TEST_AUDIT_TRIMESTRE: ${{ secrets.AUDIT_TRIMESTRE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Reject production and incomplete synthetic fixture
+        run: |
+          node - <<'NODE'
+          const keys = [
+            "TEST_AUDIT_STAGING_BASE_URL", "TEST_AUDIT_TEACHER_EMAIL",
+            "TEST_AUDIT_TEACHER_PASSWORD", "TEST_AUDIT_DIRECTOR_EMAIL",
+            "TEST_AUDIT_DIRECTOR_PASSWORD", "TEST_AUDIT_FOREIGN_EMAIL",
+            "TEST_AUDIT_FOREIGN_PASSWORD", "TEST_AUDIT_ANO_ID",
+            "TEST_AUDIT_TURMA_ID", "TEST_AUDIT_DISCIPLINA_ID",
+            "TEST_AUDIT_TURMA_DISCIPLINA_ID", "TEST_AUDIT_ALUNO_ID",
+            "TEST_AUDIT_TRIMESTRE"
+          ];
+          const missing = keys.filter(k => !process.env[k]);
+          if (missing.length) throw Error("Staging fixture incompleta: " + missing.join(", "));
+          const url = new URL(process.env.TEST_AUDIT_STAGING_BASE_URL);
+          if (url.protocol !== "https:" || ["app.klasse.ao","klasse.ao","www.klasse.ao"].includes(url.hostname))
+            throw Error("Apenas staging HTTPS isolado é permitido.");
+          NODE
+      - run: pnpm install --frozen-lockfile
+      - name: Install isolated Playwright runner
+        run: |
+          mkdir -p /tmp/klasse-audit
+          npm --prefix /tmp/klasse-audit install --no-save @playwright/test@1.57.0
+          /tmp/klasse-audit/node_modules/.bin/playwright install --with-deps chromium
+          mkdir -p apps/web/node_modules/@playwright
+          ln -s /tmp/klasse-audit/node_modules/@playwright/test apps/web/node_modules/@playwright/test
+      - name: Authenticated request, decision, grade, read and revoke
+        working-directory: apps/web
+        run: /tmp/klasse-audit/node_modules/.bin/playwright test --config playwright.config.ts tests/audit-grade-reopening.authenticated.e2e.ts --project chromium
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: academic-authenticated-e2e-trace
+          path: apps/web/test-results/
+          retention-days: 7

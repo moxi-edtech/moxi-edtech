@@ -42,30 +42,53 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 });
     }
 
+    // Uma sessão académica não pode ser deduzida do ano civil do servidor.
+    // Este passo apenas prepara a matriz; publicação/geração usam o fluxo canónico.
+    const requestedYear = body.sessionId?.trim() ?? "";
+    if (requestedYear && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedYear)) {
+      return NextResponse.json({ ok: false, error: "Ano letivo inválido." }, { status: 400 });
+    }
+    const queryYear = supabase
+      .from("anos_letivos")
+      .select("id,ano")
+      .eq("escola_id", resolvedEscolaId);
+    const { data: year, error: yearError } = requestedYear
+      ? await queryYear.eq("id", requestedYear).maybeSingle()
+      : await queryYear.eq("ativo", true).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (yearError || !year?.id || !Number.isInteger(Number(year.ano))) {
+      return NextResponse.json({
+        ok: false,
+        error: "Seleccione um ano letivo da escola antes de aplicar o currículo.",
+      }, { status: 409 });
+    }
+
     const result = await applyCurriculumPreset({
       supabase,
-      escolaId,
+      escolaId: resolvedEscolaId,
       presetKey: body.presetKey,
       customData: body.customData,
       advancedConfig: body.advancedConfig,
-      createTurmas: true,
-      anoLetivo: new Date().getFullYear(),
+      createTurmas: false,
+      createCurriculo: true,
+      anoLetivo: Number(year.ano),
+      anoLetivoId: year.id,
     });
 
     recordAuditServer({
-      escolaId,
+      escolaId: resolvedEscolaId,
       portal: "admin_escola",
       acao: "CURRICULO_PRESET_APLICADO",
       entity: "curriculo",
       details: {
         presetKey: body.presetKey,
-        createTurmas: true,
-        anoLetivo: new Date().getFullYear(),
+        createTurmas: false,
+        anoLetivo: Number(year.ano),
+        anoLetivoId: year.id,
         stats: result?.stats ?? null,
       },
     }).catch(() => null);
 
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: true, ...result, next_step: "publicar_curriculo_e_gerar_turmas" });
   } catch (e: any) {
     console.error("[INSTALL] fatal:", e);
     return NextResponse.json(

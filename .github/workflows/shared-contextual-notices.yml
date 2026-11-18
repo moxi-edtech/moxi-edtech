@@ -28,5 +28,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: node --test --import tsx apps/web/tests/unit/shared-contextual-notices.spec.ts
+      # O TypeScript do monorepo ultrapassa o heap padrão de ~2 GiB no runner.
+      # Limitar a 4 GiB evita OOM do V8 sem desactivar o typecheck.
       - run: pnpm -C apps/web typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
       - run: pnpm -C apps/web lint

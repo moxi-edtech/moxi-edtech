@@ -5,8 +5,25 @@ import { checkFiscalAndSchemaScope, LIFECYCLE_MIGRATION_ALLOWLIST } from "../gua
 const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status_ativo_20261028.sql";
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
+test("only the reviewed curriculum-assessment guard may change installation SQL", () => {
+  const file = "20271118120000_guard_turma_assessment_identity_install.sql";
+  const path = "supabase/migrations/" + file;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(file));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271118120001_unreviewed_install.sql"])[0] ?? "",
+    /Unapproved database migration/);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "CREATE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $ SELECT 1 $;")[0] ?? "",
+    /Fiscal[/]AGT activation/);
+});
+
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 69);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 70);
+  const exactDiagnostics = "20271118130000_curtume_2025_persist_fecho_diagnostics.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(exactDiagnostics));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + exactDiagnostics]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + exactDiagnostics], () =>
+    "CREATE TABLE public.fiscal_config (enabled boolean);")[0] ?? "", /Fiscal[/]AGT activation/);
   const batchPauta = "20271117190000_curtume_fechar_pautas_2025_lote.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(batchPauta));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + batchPauta]), []);
@@ -17,11 +34,6 @@ test("allows only audited enrollment and historical evidence migrations", () => 
   assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + signedPauta], () =>
     "CREATE TABLE public.fiscal_configuration (enabled boolean);")[0] ?? "",
     /Fiscal[/]AGT activation/);
-  const exactDiagnostics = "20271118110000_curtume_2025_persist_fecho_diagnostics.sql";
-  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(exactDiagnostics));
-  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + exactDiagnostics]), []);
-  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + exactDiagnostics],
-    () => "CREATE TABLE public.fiscal_config (enabled boolean);")[0] ?? "", /Fiscal[/]AGT activation/);
   const allowedFinanceiro = "20271118090000_curtume_2025_lote_admin_financeiro.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(allowedFinanceiro));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + allowedFinanceiro]), []);

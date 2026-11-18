@@ -31,14 +31,16 @@ type Props = {
   escolaId: string;
   operationalSnapshot?: OperationalSnapshot;
   charts?: DashboardCharts;
+  /** Mostra apenas a fila de decisões, sem replicar os restantes KPIs. */
+  onlyReopen?: boolean;
 };
 
 type PainelId = "aulas" | "planos" | "reabertura" | "foco" | "graficos";
 
-export default function OperacoesPainelHub({ escolaId, operationalSnapshot, charts }: Props) {
+export default function OperacoesPainelHub({ escolaId, operationalSnapshot, charts, onlyReopen = false }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const { summary, loading, refreshing, error, refresh } = useOperacoesPendencias();
+  const { summary, authorized, loading, refreshing, error, refresh } = useOperacoesPendencias({ onlyReopen });
   const [aberto, setAberto] = useState<PainelId | null>(null);
 
   const fechar = () => setAberto(null);
@@ -71,13 +73,15 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
     },
   ];
 
+  if (onlyReopen && !authorized) return null;
+
   return (
-    <section aria-label="Operação" className="space-y-5 min-[1700px]:space-y-8">
+    <section aria-label={onlyReopen ? "Solicitações académicas" : "Operação"} className="space-y-5 min-[1700px]:space-y-8">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <SecaoLabel>Operação</SecaoLabel>
+          <SecaoLabel>{onlyReopen ? "Solicitações académicas" : "Operação"}</SecaoLabel>
           <div className="flex items-center gap-2">
-            {operationalSnapshot && (
+            {operationalSnapshot && !onlyReopen && (
               <button
                 type="button"
                 onClick={() => setAberto("foco")}
@@ -109,10 +113,10 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
         ) : (
           <div className="mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4">
             {loading
-              ? [0, 1, 2].map((i) => (
+              ? (onlyReopen ? [0] : [0, 1, 2]).map((i) => (
                   <div key={i} className="h-[104px] animate-pulse rounded-xl border border-border bg-card" />
                 ))
-              : contadores.map(({ id, icon: Icon, label, value, tone }) => (
+              : contadores.filter(({ id }) => !onlyReopen || id === "reabertura").map(({ id, icon: Icon, label, value, tone }) => (
                   <StatCard
                     key={id}
                     label={label}
@@ -126,6 +130,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
         )}
       </div>
 
+      {!onlyReopen && (<>
       <div>
         <SecaoLabel>Financeiro</SecaoLabel>
         <div className="mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-4 min-[1700px]:mt-4 min-[1700px]:gap-4">
@@ -161,6 +166,8 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
           está a acontecer agora. Esconder isto num modal tirava o tempo real da página. */}
       <OperationalFeedSection escolaId={escolaId} portalBase="operacoes" />
 
+      </>)}
+
       <ModalShell
         open={aberto === "aulas"}
         onClose={fechar}
@@ -185,7 +192,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
         title="Reabertura de notas"
         description="Pedidos de professores a aguardar decisão"
       >
-        <NotasReaberturaPanel />
+        <NotasReaberturaPanel onDecided={refresh} />
       </ModalShell>
 
       <ModalShell
