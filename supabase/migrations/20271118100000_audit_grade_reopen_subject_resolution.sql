@@ -16,6 +16,10 @@ WITH todos AS (
                               AND cm.escola_id=td.escola_id
     JOIN public.turmas t ON t.id=td.turma_id
                        AND t.escola_id=td.escola_id
+    JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id
+                                  AND cc.escola_id=td.escola_id
+                                  AND cc.ano_letivo_id=t.ano_letivo_id
+                                  AND cc.status='published'
     JOIN public.disciplinas_catalogo dc
       ON dc.id=COALESCE(cm.avaliacao_disciplina_id, cm.disciplina_id)
      AND dc.escola_id=td.escola_id
