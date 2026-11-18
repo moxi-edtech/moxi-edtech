@@ -167,7 +167,7 @@ export async function GET(req: Request) {
     const canonicalByKey = new Set<string>();
     for (const turma of classes ?? []) {
       for (const row of matrices ?? []) {
-        if (!publishedCurriculoSet.has(row.curso_curriculo_id)) continue;
+        if (!row.curso_curriculo_id || !publishedCurriculoSet.has(row.curso_curriculo_id)) continue;
         if (row.curso_id !== turma.curso_id || row.classe_id !== turma.classe_id) continue;
         canonicalByKey.add(`${turma.id}:${row.id}`);
       }
@@ -175,7 +175,7 @@ export async function GET(req: Request) {
     const canonicalLinks = (links ?? []).filter((row): row is typeof row & { curso_matriz_id: string } =>
       Boolean(row.curso_matriz_id) && canonicalByKey.has(`${row.turma_id}:${row.curso_matriz_id}`));
     const publishedMatrices = (matrices ?? []).filter((row) =>
-      publishedCurriculoSet.has(row.curso_curriculo_id));
+      row.curso_curriculo_id !== null && publishedCurriculoSet.has(row.curso_curriculo_id));
 
     const items = selectTeacherCanonicalAssignments({
       professorId,
