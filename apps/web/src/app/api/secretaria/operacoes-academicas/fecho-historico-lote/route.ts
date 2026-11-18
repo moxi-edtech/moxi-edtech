@@ -239,12 +239,14 @@ export async function GET(request: Request) {
       if (destinationError) throw destinationError;
       const destination = destinationRows?.length === 1 ? destinationRows[0] : null;
       let conflitoDestino = false;
+      let classeIncompativel = false;
+      let vinculoDivergente = false;
       let classeOrigem: number | null = null;
       let classeDestino: number | null = null;
-      if (destination?.turma_id && history.turma_id) {
+      if (destination?.turma_id && origin.turma_id) {
         const { data: turmaRows, error: turmaError } = await ctx.db.from("turmas")
           .select("id,classes:classe_id(numero,nome)")
-          .eq("escola_id", CURTUME).in("id", [history.turma_id, destination.turma_id]);
+          .eq("escola_id", CURTUME).in("id", [origin.turma_id, destination.turma_id]);
         if (turmaError) throw turmaError;
         const grade = (turmaId: string): number | null => {
           const turma = (turmaRows ?? []).find((row: any) => row.id === turmaId);
@@ -252,12 +254,14 @@ export async function GET(request: Request) {
           if (entity?.nome === "Pré-Escolar") return 0;
           return Number.isInteger(entity?.numero) ? Number(entity.numero) : null;
         };
-        classeOrigem = grade(history.turma_id);
+        classeOrigem = grade(origin.turma_id);
         classeDestino = grade(destination.turma_id);
+        vinculoDivergente = destination.origem_transicao_matricula_id !== matriculaId;
         if (classeOrigem !== null && classeDestino !== null) {
-          conflitoDestino = destination.origem_transicao_matricula_id !== matriculaId ||
+          classeIncompativel =
             (history.resultado_final === "aprovado" && classeDestino !== classeOrigem + 1) ||
-            (history.resultado_final === "reprovado" && classeDestino !== classeOrigem) ||
+            (history.resultado_final === "reprovado" && classeDestino !== classeOrigem);
+          conflitoDestino = vinculoDivergente || classeIncompativel ||
             history.resultado_final === "concluido";
         }
       }
@@ -284,6 +288,8 @@ export async function GET(request: Request) {
           classe_origem: classeOrigem,
           classe_destino: classeDestino,
           conflito: conflitoDestino,
+          classe_incompativel: classeIncompativel,
+          vinculo_divergente: vinculoDivergente,
         } : null,
         destinos_ativos: destinationRows?.length ?? 0,
       }, { headers: { "Cache-Control": "no-store" } });
