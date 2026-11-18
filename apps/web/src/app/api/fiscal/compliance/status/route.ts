@@ -172,6 +172,7 @@ export async function GET(req: Request) {
         .from("fiscal_series")
         .select("id", { count: "exact", head: true })
         .eq("empresa_id", empresaId)
+        .eq("agt_status", "provisioned")
         .eq("ativa", true)
         .is("descontinuada_em", null),
     ]);
