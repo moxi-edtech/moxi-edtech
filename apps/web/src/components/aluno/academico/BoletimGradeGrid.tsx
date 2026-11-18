@@ -16,6 +16,8 @@ type Props = {
   /** Curriculum is authorized separately; assessments and finals are always gated server-side. */
   subjects: GradeSubject[];
   locked: boolean;
+  mode?: "grades" | "document";
+  canDownloadOfficial?: boolean;
   scope: string;
   yearLabel?: string | null;
   loadingSubjects?: boolean;
@@ -47,7 +49,7 @@ function TermValue({ subject, term, locked, showGrades }: {
 }
 
 export function BoletimGradeGrid({
-  subjects, locked, scope, yearLabel, loadingSubjects = false, subjectsError = null,
+  subjects, locked, scope, mode = "document", canDownloadOfficial = true, yearLabel, loadingSubjects = false, subjectsError = null,
   historicalRead = false, downloading = false, downloadError = null,
   onDownload, onReapreciacao, onMelhoria,
 }: Props) {
@@ -120,7 +122,7 @@ export function BoletimGradeGrid({
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 space-y-1">
         <h2 id={`${prefix}-heading`} className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-          Boletim de notas
+          {mode === "grades" ? "Minhas notas" : "Boletim de notas"}
         </h2>
         <p className="text-sm text-muted-foreground">
           {yearLabel ? `Ano letivo ${yearLabel} · ` : ""}
@@ -134,8 +136,8 @@ export function BoletimGradeGrid({
           {valuesVisible ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
           {valuesVisible ? "Ocultar notas" : "Exibir notas"}
         </button>
-        <button type="button" disabled={locked || downloading} onClick={onDownload}
-          aria-label={locked ? "Imprimir boletim indisponível até à liberação" : "Descarregar boletim em PDF para imprimir"}
+        <button type="button" disabled={locked || downloading || !canDownloadOfficial} onClick={onDownload}
+          aria-label={locked ? "Imprimir boletim indisponível até à liberação" : !canDownloadOfficial ? "Boletim oficial requer autorização de pagamento" : "Descarregar boletim em PDF para imprimir"}
           className={`inline-flex min-h-11 items-center gap-2 klasse-portal-cta rounded-xl px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${focus}`}>
           {downloading ? <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" /> : <Download aria-hidden="true" className="h-4 w-4" />}
           {downloading ? "A preparar PDF…" : "Imprimir / PDF"}
