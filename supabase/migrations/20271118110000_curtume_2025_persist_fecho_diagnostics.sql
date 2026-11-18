@@ -30,7 +30,7 @@ DECLARE
         (escola_id,matricula_id,historico_ano_id,codigo,detalhe,sqlstate,lote_id,diagnosticado_em)
       VALUES
         (p_escola_id,v_row.matricula_id,v_row.historico_id,
-         split_part(v_error,':',1),v_error,v_state,p_lote_id,now())
+         left(split_part(v_error,':',1),100),v_error,v_state,p_lote_id,now())
       ON CONFLICT(escola_id,matricula_id) DO UPDATE SET
         historico_ano_id=EXCLUDED.historico_ano_id,
         codigo=EXCLUDED.codigo,
