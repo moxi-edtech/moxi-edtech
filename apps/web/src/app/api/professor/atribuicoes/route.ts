@@ -4,6 +4,7 @@ import { applyKf2ListInvariants } from '@/lib/kf2'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import type { Database } from '~types/supabase'
 import { AcademicYearContextError, resolveAcademicYearContext } from '@/lib/academic-year/context'
+import { selectTeacherCanonicalAssignments } from '@/lib/professor/select-canonical-assignments'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -91,90 +92,92 @@ export async function GET(req: Request) {
       .eq('escola_id', escolaId)
       .eq('professor_id', professorId)
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 50 })
+    query = applyKf2ListInvariants(query, { defaultLimit: 1000 })
 
     const { data: assignments, error } = await query
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
-    const { data: rpcItems, error: rpcError } = await (supabase as any).rpc('get_professor_atribuicoes')
-    if (rpcError) {
-      return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 })
+    // Reconciliação canónica dos dois modos de atribuição: por vínculo da
+    // disciplina e por turma_disciplinas_professores. Não depende do horário.
+    // O RPC legado devolve apenas os vínculos da tabela alternativa e pode
+    // omitir disciplinas atribuídas directamente a turma_disciplinas.
+    const { data: directLinks, error: directError } = await supabase
+      .from('turma_disciplinas')
+      .select('id, turma_id, curso_matriz_id, professor_id')
+      .eq('escola_id', escolaId)
+      .eq('professor_id', professorId)
+      .limit(1000)
+    if (directError) return NextResponse.json({ ok: false, error: 'Não foi possível consultar as atribuições directas.' }, { status: 500 })
+    if ((directLinks ?? []).length === 1000 || (assignments ?? []).length === 1000) {
+      return NextResponse.json({ ok: false, error: 'A lista de atribuições ultrapassa o limite seguro. Solicita paginação à Direção.' }, { status: 409 })
     }
 
-    if (Array.isArray(rpcItems) && rpcItems.length > 0) {
-      const rpcTurmaIds = Array.from(new Set(rpcItems.map((row: any) => row.turma_id).filter(Boolean)))
-      const { data: rpcTurmas } = rpcTurmaIds.length
-        ? await supabase.from('turmas').select('id').eq('escola_id', escolaId).eq('session_id', academicContext.anoLetivoId).in('id', rpcTurmaIds)
-        : { data: [] as Array<{ id: string }> }
-      const allowedRpcTurmas = new Set((rpcTurmas ?? []).map((row: { id: string }) => row.id))
-      const items = rpcItems.filter((row: any) => allowedRpcTurmas.has(row.turma_id)).map((row: any) => ({
-        id: row.turma_disciplina_id,
-        turma_disciplina_id: row.turma_disciplina_id,
-        curso_matriz_id: row.curso_matriz_id,
-        turma: {
-          id: row.turma_id,
-          nome: row.turma_nome ?? null,
-          status_fecho: row.turma_status_fecho ?? null,
-        },
-        disciplina: {
-          id: row.disciplina_id ?? null,
-          nome: row.disciplina_nome ?? null,
-        },
-      }))
-      const canonicalTurmaIds = Array.from(new Set(items.map((item) => item.turma.id)))
-      const { data: canonicalRows } = canonicalTurmaIds.length
-        ? await supabase
-            .from('turma_disciplinas')
-            .select('id, turma_id, curso_matriz_id, professor_id')
-            .eq('escola_id', escolaId)
-            .in('turma_id', canonicalTurmaIds)
-            .order('id', { ascending: true })
-        : { data: [] as Array<{ id: string; turma_id: string; curso_matriz_id: string; professor_id: string | null }> }
-      const canonicalMatrizIds = Array.from(new Set((canonicalRows ?? []).map((row: any) => row.curso_matriz_id).filter(Boolean)))
-      const { data: canonicalMatrizes } = canonicalMatrizIds.length
-        ? await supabase.from('curso_matriz').select('id, disciplina_id, curso_curriculo_id').eq('escola_id', escolaId).in('id', canonicalMatrizIds)
-        : { data: [] as Array<{ id: string; disciplina_id: string | null; curso_curriculo_id: string | null }> }
-      const matrizDisciplinaById = new Map(
-        (canonicalMatrizes ?? [])
-          .filter((row: any) => publishedCurriculoSet.has(row.curso_curriculo_id))
-          .map((row: any) => [row.id, row.disciplina_id]),
-      )
-      const canonicalByKey = new Map<string, { id: string; curso_matriz_id: string }>()
-      for (const row of canonicalRows ?? []) {
-        const disciplinaId = matrizDisciplinaById.get(row.curso_matriz_id)
-        if (!disciplinaId) continue
-        const key = `${row.turma_id}:${disciplinaId}`
-        const current = canonicalByKey.get(key)
-        if (current && current.curso_matriz_id !== row.curso_matriz_id) {
-          return NextResponse.json({
-            ok: false, error: 'A disciplina possui versões curriculares publicadas duplicadas.',
-          }, { status: 409 })
-        }
-        if (!current) {
-          canonicalByKey.set(key, { id: row.id, curso_matriz_id: row.curso_matriz_id })
-        }
-      }
-      for (const item of items) {
-        const canonical = canonicalByKey.get(`${item.turma.id}:${item.disciplina.id}`)
-        if (canonical) {
-          item.id = canonical.id
-          item.turma_disciplina_id = canonical.id
-          item.curso_matriz_id = canonical.curso_matriz_id
-        }
-      }
-      const uniqueItems = Array.from(
-        new Map(items.filter((item) => canonicalByKey.has(`${item.turma.id}:${item.disciplina.id}`))
-          .map((item) => [`${item.turma.id}:${item.disciplina.id}`, item])).values(),
-      )
-
-      return NextResponse.json({
-        ok: true,
-        escola_id: escolaId,
-        context: academicContext,
-        items: uniqueItems,
-        ...(debug ? { debug: { rpc_items_count: items.length, unique_items_count: uniqueItems.length } } : {}),
-      })
+    const candidateTurmaIds = Array.from(new Set([
+      ...(assignments ?? []).map((row) => row.turma_id).filter((id): id is string => Boolean(id)),
+      ...(directLinks ?? []).map((row) => row.turma_id).filter((id): id is string => Boolean(id)),
+    ]))
+    if (candidateTurmaIds.length === 0) {
+      return NextResponse.json({ ok: true, escola_id: escolaId, context: academicContext, items: [] })
     }
+
+    const { data: classes, error: classesError } = await supabase
+      .from('turmas')
+      .select('id, nome, curso_id, classe_id, status_fecho')
+      .eq('escola_id', escolaId)
+      .eq('ano_letivo_id', academicContext.anoLetivoId)
+      .in('id', candidateTurmaIds)
+      .limit(1000)
+    if (classesError) return NextResponse.json({ ok: false, error: 'Não foi possível consultar as turmas deste ano.' }, { status: 500 })
+
+    const allowedTurmaIds = (classes ?? []).map((turma) => turma.id)
+    if (allowedTurmaIds.length === 0) {
+      return NextResponse.json({ ok: true, escola_id: escolaId, context: academicContext, items: [] })
+    }
+    const { data: links, error: linksError } = await supabase
+      .from('turma_disciplinas')
+      .select('id, turma_id, curso_matriz_id, professor_id')
+      .eq('escola_id', escolaId)
+      .in('turma_id', allowedTurmaIds)
+      .limit(2000)
+    if (linksError || (links ?? []).length === 2000) {
+      return NextResponse.json({ ok: false, error: 'Vínculos curriculares incompletos ou indisponíveis.' }, { status: 409 })
+    }
+    const matrixIds = Array.from(new Set((links ?? []).map((link) => link.curso_matriz_id)))
+    if (matrixIds.length === 0) {
+      return NextResponse.json({ ok: true, escola_id: escolaId, context: academicContext, items: [] })
+    }
+    const { data: matrices, error: matricesError } = await supabase
+      .from('curso_matriz')
+      .select('id, curso_id, classe_id, disciplina_id, curso_curriculo_id')
+      .eq('escola_id', escolaId)
+      .in('id', matrixIds)
+      .limit(2000)
+    if (matricesError || (matrices ?? []).length === 2000) {
+      return NextResponse.json({ ok: false, error: 'A matriz curricular está incompleta.' }, { status: 409 })
+    }
+    const subjectIds = Array.from(new Set((matrices ?? []).map((item) => item.disciplina_id).filter((id): id is string => Boolean(id))))
+    const { data: subjects, error: subjectsError } = subjectIds.length
+      ? await supabase.from('disciplinas_catalogo').select('id, nome').eq('escola_id', escolaId).in('id', subjectIds).limit(2000)
+      : { data: [] as Array<{ id: string; nome: string | null }>, error: null }
+    if (subjectsError) return NextResponse.json({ ok: false, error: 'Não foi possível identificar as disciplinas.' }, { status: 500 })
+
+    const items = selectTeacherCanonicalAssignments({
+      professorId,
+      classes: classes ?? [],
+      links: links ?? [],
+      matrices: matrices ?? [],
+      subjects: subjects ?? [],
+      alternate: (assignments ?? []).filter((row): row is { turma_id: string; disciplina_id: string } =>
+        Boolean(row.turma_id && row.disciplina_id)),
+      publishedCurriculumIds: publishedCurriculoSet,
+    })
+    return NextResponse.json({
+      ok: true,
+      escola_id: escolaId,
+      context: academicContext,
+      items,
+      ...(debug ? { debug: { total: items.length, candidate_turmas: candidateTurmaIds.length } } : {}),
+    })
 
     const turmaIds = Array.from(
       new Set((assignments || []).map((r: AssignmentRow) => r.turma_id).filter((id): id is string => Boolean(id)))
