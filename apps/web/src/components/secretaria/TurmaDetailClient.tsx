@@ -17,6 +17,7 @@ import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, buildContextualPortalHref } from "@/lib/navigation";
 import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import { gradePeriodState } from "@/lib/academico/grade-period-context";
 import { ImprimirListaTurmaButton } from "@/components/secretaria/ImprimirListaTurmaButton";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ type Periodo = {
   tipo:        string;
   data_inicio: string;
   data_fim:    string;
+  trava_notas_em?: string | null;
 };
 
 type ProfessorAssignmentPreview = {
@@ -1607,6 +1609,24 @@ export default function TurmaDetailClient({
                 </button>
               </div>
 
+              {periodos.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2" aria-label="Estado dos trimestres no calendário oficial">
+                  {periodos.map((periodo) => {
+                    const estado = gradePeriodState(periodo);
+                    const label = {
+                      current: "Em curso",
+                      future: "Ainda não começou",
+                      past: "Concluído",
+                      locked: "Trancado",
+                      unconfigured: "Calendário incompleto",
+                    }[estado];
+                    return <span key={periodo.id}
+                      className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground">
+                      {periodo.numero}.º trimestre · {label}
+                    </span>;
+                  })}
+                </div>
+              )}
               {periodos.length === 0 && (
                 <p className="mt-3 text-xs text-[#9a7010] flex items-center gap-1.5">
                   <AlertCircle size={11} /> Nenhum período encontrado para este ano letivo.
