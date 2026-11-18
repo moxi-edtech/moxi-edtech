@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { resolveReopeningSubject, type ReopeningCurriculumLink } from "@/lib/academico/resolve-reopening-subject";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,12 +15,6 @@ const Body = z.object({
   motivo: z.string().trim().min(5).max(1000),
 });
 
-type TurmaDisciplina = {
-  id: string;
-  professor_id: string | null;
-  avaliacao_disciplina_id: string | null;
-  curso_matriz: { disciplina_id: string | null; avaliacao_disciplina_id: string | null } | null;
-};
 
 async function context() {
   const supabase = await supabaseServerTyped<any>();
@@ -87,26 +82,19 @@ export async function POST(req: Request) {
   if (turmaError || !turma) return NextResponse.json({
     ok: false, error: "A turma não pertence ao ano letivo seleccionado nesta escola.",
   }, { status: 400 });
-  const candidatas = ((turma.turma_disciplinas ?? []) as TurmaDisciplina[])
-    .filter((td) => td.curso_matriz?.disciplina_id === parsed.data.disciplina_id);
-  if (candidatas.length !== 1) return NextResponse.json({
-    ok: false, error: "A disciplina curricular é ambígua ou não pertence à turma. Solicite revisão à Direção.",
-  }, { status: 409 });
-  const td = candidatas[0];
-  const disciplinaAvaliadaId = td.avaliacao_disciplina_id;
-  // Não emitir uma autorização transversal quando duas disciplinas
-  // curriculares partilham a mesma disciplina avaliada na turma.
-  const partilhadas = ((turma.turma_disciplinas ?? []) as TurmaDisciplina[])
-    .filter((other) => other.avaliacao_disciplina_id === disciplinaAvaliadaId);
-  if (disciplinaAvaliadaId && partilhadas.length !== 1) return NextResponse.json({
-    ok: false, error: "Existe uma avaliação partilhada por várias disciplinas. A Direção deve resolver o vínculo.",
-  }, { status: 409 });
-  if (!disciplinaAvaliadaId ||
-      disciplinaAvaliadaId !== (td.curso_matriz?.avaliacao_disciplina_id ?? td.curso_matriz?.disciplina_id)) {
-    return NextResponse.json({
-      ok: false, error: "A disciplina avaliada ainda não está reconciliada. A Direção deve confirmar a matriz curricular.",
-    }, { status: 409 });
+  const resolution = resolveReopeningSubject(
+    (turma.turma_disciplinas ?? []) as ReopeningCurriculumLink[],
+    parsed.data.disciplina_id,
+  );
+  if (!resolution.ok) {
+    const messages = {
+      UNKNOWN: "A disciplina curricular é ambígua ou não pertence à turma.",
+      UNRECONCILED: "A disciplina avaliada ainda não está reconciliada. Solicita revisão à Direção.",
+      SHARED_ASSESSMENT: "A disciplina avaliada é partilhada por várias disciplinas. Solicita revisão à Direção.",
+    };
+    return NextResponse.json({ ok: false, error: messages[resolution.code] }, { status: 409 });
   }
+  const { link: td, assessedSubjectId: disciplinaAvaliadaId } = resolution;
 
   const { data: professor } = await supabase.from("professores")
     .select("id").eq("escola_id", escolaId).eq("profile_id", user.id).maybeSingle();
