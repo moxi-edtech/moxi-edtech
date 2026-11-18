@@ -94,6 +94,13 @@ export async function POST(req: Request) {
   }, { status: 409 });
   const td = candidatas[0];
   const disciplinaAvaliadaId = td.avaliacao_disciplina_id;
+  // Não emitir uma autorização transversal quando duas disciplinas
+  // curriculares partilham a mesma disciplina avaliada na turma.
+  const partilhadas = ((turma.turma_disciplinas ?? []) as TurmaDisciplina[])
+    .filter((other) => other.avaliacao_disciplina_id === disciplinaAvaliadaId);
+  if (disciplinaAvaliadaId && partilhadas.length !== 1) return NextResponse.json({
+    ok: false, error: "Existe uma avaliação partilhada por várias disciplinas. A Direção deve resolver o vínculo.",
+  }, { status: 409 });
   if (!disciplinaAvaliadaId ||
       disciplinaAvaliadaId !== (td.curso_matriz?.avaliacao_disciplina_id ?? td.curso_matriz?.disciplina_id)) {
     return NextResponse.json({
