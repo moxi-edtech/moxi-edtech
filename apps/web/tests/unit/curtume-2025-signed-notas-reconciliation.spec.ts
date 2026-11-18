@@ -21,7 +21,13 @@ test("strict school/year/director authority for signing real 2025 sources", () =
 });
 
 test("operational grades and historical documentary grades stay intact", () => {
-  assert.doesNotMatch(sql, /\b(?:UPDATE|DELETE|TRUNCATE)\s+(?:FROM\s+)?public\.(?:notas|avaliacoes|historico_disciplinas|historico_anos|matriculas)/i);
+  assert.doesNotMatch(sql, /\b(?:UPDATE|DELETE|TRUNCATE)\s+(?:FROM\s+)?public\.(?:notas|avaliacoes|historico_disciplinas|historico_anos)\b/i);
+  // A documented, director-ratified 2025 source correction may update only
+  // the historical enrollment's closure provenance, not existing grade rows.
+  assert.match(sql, /UPDATE public\.matriculas m\s+SET status_fecho_origem='override_admin'/);
+  assert.match(sql, /ratificar_resultado_historico_escola/);
+  assert.match(sql, /m\.ano_letivo=2025/);
+  assert.match(sql, /m\.status_fecho_origem='manual'/);
   assert.match(sql, /fontes_hash=EXCLUDED\.fontes_hash/);
   assert.match(sql, /to_jsonb\(n\)/);
   assert.match(sql, /to_jsonb\(hd\)/);
