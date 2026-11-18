@@ -29,6 +29,15 @@ const PhysicalPautaSchema = z.object({
   confirmacao: z.literal("CONFIRMO_PAUTA_2025"),
 }).strict();
 
+const OriginCorrectionSchema = z.object({
+  acao: z.literal("regularizar_origem_2025"),
+  matricula_id: z.string().uuid(),
+  aluno_id: z.string().uuid(),
+  referencia: z.string().trim().min(8).max(180),
+  motivo: z.string().trim().min(12).max(500),
+  confirmacao: z.literal("CONFIRMO_ORIGEM_2025"),
+}).strict();
+
 const GradeReconciliationSchema = z.object({
   acao: z.literal("conferir_notas_2025"),
   matricula_id: z.string().uuid(),
@@ -212,11 +221,14 @@ export async function GET(request: Request) {
         }
       }
 
-      const issueCode = !sourceComplete ? "ORIGEM_HISTORICA_INCOMPATIVEL" :
-        operacionais.length > 0 ? "NOTAS_OPERACIONAIS_EXIGEM_RECONCILIACAO" :
-        historicas.length === 0 ? "SEM_NOTAS_HISTORICAS" :
-        historicas.some((h) => h.nota_final == null || !h.disciplina_id) ?
-          "PAUTA_HISTORICA_INCONSISTENTE" : "RAA_RESULTADO_NAO_RECONHECIDO";
+      // Use the actual error returned by the legal-close RPC. It is unsafe to
+      // infer an RAA failure from the mere existence of imported grade rows.
+      const { data: failures, error: failureError } = await ctx.db.rpc(
+        "curtume_2025_listar_fecho_pendencias", { p_escola_id: CURTUME });
+      if (failureError) throw failureError;
+      const recorded = (failures ?? []).find((row: { matricula_id: string }) =>
+        row.matricula_id === matriculaId);
+      const issueCode = recorded?.codigo ?? "SEM_DIAGNOSTICO";
       return NextResponse.json({
         ok: true, matricula_id: matriculaId, aluno_id: alunoId,
         ano_letivo: "2025/2026", motivo: issueCode,
@@ -235,13 +247,26 @@ export async function GET(request: Request) {
       }, { headers: { "Cache-Control": "no-store" } });
     }
 
-    const { count, error } = await ctx.db.from("historico_anos")
-      .select("id", { count: "exact", head: true })
-      .eq("escola_id", CURTUME).eq("ano_letivo", 2025)
-      .eq("snapshot_status", "aberto");
-    if (error) throw error;
-    return NextResponse.json({ ok: true, ano_letivo: "2025/2026", abertos: count ?? 0 },
-      { headers: { "Cache-Control": "no-store" } });
+    const [{ count, error }, { data: failures, error: failuresError }] = await Promise.all([
+      ctx.db.from("historico_anos")
+        .select("id", { count: "exact", head: true })
+        .eq("escola_id", CURTUME).eq("ano_letivo", 2025)
+        .eq("snapshot_status", "aberto"),
+      ctx.db.rpc("curtume_2025_listar_fecho_pendencias", { p_escola_id: CURTUME }),
+    ]);
+    if (error || failuresError) throw error ?? failuresError;
+    const issues = (failures ?? []) as Array<{
+      matricula_id: string; codigo: string | null; detalhe: string | null;
+    }>;
+    const pendencias = await enrichBlockingIssues(ctx.db, issues.slice(0, 80).map((entry) => ({
+      matricula_id: entry.matricula_id,
+      codigo: entry.codigo ?? "SEM_DIAGNOSTICO",
+      detalhe: entry.detalhe ?? undefined,
+    })));
+    return NextResponse.json({
+      ok: true, ano_letivo: "2025/2026", abertos: count ?? 0, pendencias,
+      sem_diagnostico: issues.filter((item) => !item.codigo).length,
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[curtume-historic-batch] preview failed", error);
     return NextResponse.json({ ok: false, error: "Não foi possível consultar os históricos." }, { status: 500 });
@@ -274,7 +299,7 @@ async function enrichBlockingIssues(db: any, input: HistoricIssue[]): Promise<Hi
 
   const ids = Array.from(new Set(input.map((issue) => issue.matricula_id)))
     .filter((id) => z.string().uuid().safeParse(id).success)
-    .slice(0, 25);
+    .slice(0, 80);
   if (!ids.length) return fallback;
 
   try {
@@ -341,6 +366,31 @@ export async function POST(request: Request) {
     const ctx = await context();
     if (!ctx.allowed) return ctx.response!;
     const payload = await request.json().catch(() => null);
+    if (payload && typeof payload === "object" &&
+        !Array.isArray(payload) && payload.acao === "regularizar_origem_2025") {
+      const verified = OriginCorrectionSchema.safeParse(payload);
+      if (!verified.success) return NextResponse.json({
+        ok: false, error: "Informe a referência documental, motivo e confirmação de origem."
+      }, { status: 400 });
+      const { matricula_id, aluno_id, referencia, motivo } = verified.data;
+      const { data: result, error: correctionError } = await ctx.db.rpc(
+        "curtume_2025_regularizar_origem_documental", {
+          p_escola_id: CURTUME, p_matricula_id: matricula_id,
+          p_aluno_id: aluno_id, p_referencia: referencia, p_motivo: motivo,
+        });
+      if (correctionError || result?.ok !== true) {
+        console.error("[curtume-historic-batch] origin correction blocked", {
+          code: correctionError?.code, message: correctionError?.message,
+        });
+        return NextResponse.json({
+          ok: false, error: correctionError?.code === "42501"
+            ? "Só a Direção autorizada pode regularizar a origem."
+            : "A origem mudou ou não corresponde ao documento. Confira os vínculos de 2025/2026.",
+        }, { status: correctionError?.code === "42501" ? 403 : 409 });
+      }
+      return NextResponse.json({ ok: true, matricula_id, origem_regularizada: true },
+        { headers: { "Cache-Control": "no-store" } });
+    }
     if (payload && typeof payload === "object" &&
         !Array.isArray(payload) && payload.acao === "transcrever_pauta_2025") {
       const verified = PhysicalPautaSchema.safeParse(payload);
