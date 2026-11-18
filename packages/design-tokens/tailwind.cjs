@@ -41,8 +41,36 @@ const slate = {
   950: "#020617",
 };
 
+const moxiFoundations = {
+  borderRadius: {
+    "moxi-compact": "8px",
+    "moxi-control": "12px",
+    "moxi-surface": "12px",
+    "moxi-surface-lg": "16px",
+    "moxi-overlay": "20px",
+    "moxi-pill": "9999px",
+  },
+  boxShadow: {
+    "moxi-flat": "none",
+    "moxi-raised": "0 1px 2px rgb(15 23 42 / 0.08)",
+    "moxi-floating": "0 8px 24px -12px rgb(15 23 42 / 0.22)",
+    "moxi-overlay": "0 24px 64px -24px rgb(15 23 42 / 0.28)",
+  },
+  transitionDuration: {
+    "moxi-fast": "120ms",
+    "moxi-standard": "180ms",
+    "moxi-slow": "260ms",
+  },
+};
+
 module.exports = {
   klasseColors,
+  moxiFoundations,
+  moxiTailwindTheme: {
+    borderRadius: moxiFoundations.borderRadius,
+    boxShadow: moxiFoundations.boxShadow,
+    transitionDuration: moxiFoundations.transitionDuration,
+  },
   klasseTailwindTheme: {
     colors: {
       klasse: klasseColors,
