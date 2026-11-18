@@ -46,6 +46,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   const bulletinQuery = bulletinParams.toString() ? `?${bulletinParams.toString()}` : "";
   const [loading, setLoading] = useState(true);
   const [isLiberado, setIsLiberado] = useState(false);
+  const [boletimPago, setBoletimPago] = useState(false);
   const [matriculaEncontrada, setMatriculaEncontrada] = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [boletimServico, setBoletimServico] = useState<BoletimServico | null>(null);
@@ -173,6 +174,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   useEffect(() => {
     setLoading(true);
     setIsLiberado(false);
+    setBoletimPago(false);
     setDisciplinas([]);
     setAcademicYear(null);
     setLoadedScope(null);
@@ -227,9 +229,9 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
     setAccessError(null);
     const load = async () => {
       try {
-        const res = await fetch(`/api/aluno/boletim${bulletinQuery}`, { cache: "no-store", signal: ctrl.signal });
+        const res = await fetch(`/api/aluno/minhas-notas${bulletinQuery}`, { cache: "no-store", signal: ctrl.signal });
         const json = await res.json() as BoletimResponse;
-        if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível consultar o boletim.");
+        if (!res.ok || !json.ok) throw new Error(json.error || "Não foi possível consultar as notas publicadas.");
         if (!active) return;
         setMatriculaEncontrada(json.matricula_encontrada !== false);
         setIsLiberado(json.is_liberado);
@@ -239,9 +241,10 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         setDisciplinas(published);
         const label = json.context?.anoLetivoLabel?.trim() || null;
         setAcademicYear(label);
-        if (!json.is_liberado && json.matricula_encontrada !== false) {
+        if (json.matricula_encontrada !== false) {
+          try {
           const catalogResponse = await fetch(`/api/aluno/documentos/catalogo${bulletinQuery}`, { cache: "no-store", signal: ctrl.signal });
-          const catalog = await catalogResponse.json() as { ok?: boolean; error?: string; documentos?: BoletimServico[]; dados_pagamento?: { iban?: string; banco?: string; titular_conta?: string; kwik_chave?: string } };
+          const catalog = await catalogResponse.json() as { ok?: boolean; error?: string; boletim_pago?: boolean; documentos?: BoletimServico[]; dados_pagamento?: { iban?: string; banco?: string; titular_conta?: string; kwik_chave?: string } };
           if (!catalogResponse.ok || !catalog.ok) throw new Error(catalog.error || "Não foi possível consultar a taxa do boletim.");
           if (!active) return;
           const servicos = catalog.documentos ?? [];
@@ -251,6 +254,13 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           setBoletimServico(servico ?? null);
           setPaymentDetails(catalog.dados_pagamento ?? null);
           setPaymentIntentId(servico?.pagamento_intent_id ?? null);
+          setBoletimPago(Boolean(catalog.boletim_pago));
+          } catch {
+            // A indisponibilidade do catálogo pago não bloqueia a consulta
+            // das notas já publicadas e autorizadas ao educando.
+            setBoletimPago(false);
+            setPaymentError("Não foi possível consultar o serviço do boletim oficial.");
+          }
         }
       } catch (error: unknown) {
         if (active && !(error instanceof DOMException && error.name === "AbortError")) {
@@ -354,7 +364,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   if (academicYearId) navParams.set("ano_letivo_id", academicYearId);
   const navQuery = navParams.size ? `?${navParams.toString()}` : "";
   const startBoletimPayment = async () => {
-    if (!boletimServico || !paymentConfigured || paymentBusy || historicalRead) return;
+    if (!boletimServico || boletimPago || !paymentConfigured || paymentBusy || historicalRead) return;
     setPaymentError(null);
     if (moneyStatus === "pending_payment" || moneyStatus === "rejected") {
       if (!paymentIntentId) {
@@ -412,6 +422,8 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           scope={bulletinQuery}
           subjects={gridSubjects}
           locked={!safeIsLiberado}
+          mode="grades"
+          canDownloadOfficial={boletimPago}
           yearLabel={gridYearLabel}
           loadingSubjects={!safeIsLiberado && curriculumLoading}
           subjectsError={!safeIsLiberado ? curriculumError : null}
@@ -429,7 +441,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
             void abrirMelhoria(disc);
           } : undefined}
         />
-        {!safeIsLiberado ? <section aria-labelledby="boletim-locked" className="rounded-xl border border-border bg-card p-4 sm:p-5 border-l-4 border-l-klasse-gold">
+        {!boletimPago ? <section aria-labelledby="boletim-locked" className="rounded-xl border border-border bg-card p-4 sm:p-5 border-l-4 border-l-klasse-gold">
           <div className="flex min-w-0 items-start gap-3">
             <div aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-klasse-gold-50 text-klasse-gold-700">
               <LockIcon className="h-4 w-4" />
@@ -461,7 +473,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         </section> : null}
       </div>}
       <ServicePaymentDrawer
-        open={paymentOpen && !safeIsLiberado && !historicalRead}
+        open={paymentOpen && !boletimPago && !historicalRead}
         onClose={() => setPaymentOpen(false)}
         onSuccess={() => { setPaymentOpen(false); setRefreshVersion(v => v + 1); }}
         studentId={studentId}
