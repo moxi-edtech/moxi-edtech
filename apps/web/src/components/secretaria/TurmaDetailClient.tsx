@@ -1612,7 +1612,7 @@ export default function TurmaDetailClient({
               {periodos.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2" aria-label="Estado dos trimestres no calendário oficial">
                   {periodos.map((periodo) => {
-                    const estado = gradePeriodState(periodo);
+                    const estado = gradePeriodState({ ...periodo, trava_notas_em: periodo.trava_notas_em ?? null });
                     const label = {
                       current: "Em curso",
                       future: "Ainda não começou",
