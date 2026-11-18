@@ -96,7 +96,7 @@ type ReapreciacaoItem = {
 
 type ReopenRequest = {
   id: string
-  status: "PENDENTE" | "APROVADO" | "REJEITADO" | "EXPIRADO"
+  status: "PENDENTE" | "APROVADO" | "REJEITADO" | "EXPIRADO" | "REVOGADO"
   motivo: string
   decisao_motivo?: string | null
   expira_em?: string | null
@@ -1033,7 +1033,7 @@ function ProfessorNotasContent() {
                         {notasBloqueadas ? "Trimestre indisponível para lançamento" : reaberturaAtiva ? "Reabertura aprovada" : "Trimestre disponível"}
                       </p>
                       <p className="mt-0.5">
-                        {notasBloqueadas ? gradeAvailability.explanation : reaberturaAtiva && reopenRequest?.expira_em ? `Você pode lançar até ${new Date(reopenRequest.expira_em).toLocaleString("pt-BR")}.` : "Os lançamentos podem ser salvos."}
+                        {notasBloqueadas ? gradeAvailability.explanation : reaberturaAtiva && reopenRequest?.expira_em ? `Podes lançar até ${new Intl.DateTimeFormat("pt-AO", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Luanda" }).format(new Date(reopenRequest.expira_em))}.` : "Os lançamentos podem ser salvos."}
                       </p>
                     </div>
                   )}
@@ -1059,7 +1059,7 @@ function ProfessorNotasContent() {
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
                 <p className="font-bold">Lançamento de notas indisponível</p>
                 <p className="mt-1">{gradeAvailability.explanation}</p>
-                {!gradeAvailability.canRequestReopen ? <p className="mt-1">{reopenRequest?.status === "PENDENTE" ? "A solicitação aguarda decisão da escola." : "Consulta o calendário oficial ou selecciona outro trimestre."}</p> : reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : <div className="mt-4 space-y-3"><p className="text-sm text-muted-foreground">{reopenRequest?.status === "REJEITADO" ? "A solicitação anterior foi rejeitada. Envie uma nova justificativa para continuar." : reopenRequest?.status === "EXPIRADO" ? "A solicitação anterior expirou. Envie uma nova justificativa." : "Solicite à escola a abertura temporária deste trimestre."}</p><textarea value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId} className="rounded-xl bg-amber px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "Enviando..." : "Solicitar reabertura"}</button></div>}
+                {!gradeAvailability.canRequestReopen ? <p className="mt-1">{reopenRequest?.status === "PENDENTE" ? "A solicitação aguarda decisão da escola." : "Consulta o calendário oficial ou selecciona outro trimestre."}</p> : reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : <div className="mt-4 space-y-3"><p className="text-sm text-muted-foreground">{reopenRequest?.status === "REJEITADO" ? "A solicitação anterior foi rejeitada. Envie uma nova justificativa para continuar." : reopenRequest?.status === "EXPIRADO" ? "O prazo da solicitação anterior terminou. Podes apresentar novo pedido." : reopenRequest?.status === "REVOGADO" ? "A autorização anterior foi revogada pela escola. Consulta o motivo antes de apresentar outro pedido." : "Solicite à escola a abertura temporária deste trimestre."}</p><textarea value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId} className="rounded-xl bg-amber px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "A enviar..." : "Solicitar reabertura"}</button></div>}
                 <div className="mt-4">
                   <GradeEntryGrid
                     initialData={data}
@@ -1076,7 +1076,7 @@ function ProfessorNotasContent() {
               </div>
             ) : (
               <div className="space-y-3">
-                {reaberturaAtiva && reopenRequest?.expira_em && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><p className="font-bold">Reabertura aprovada.</p><p>Você pode lançar notas até {new Date(reopenRequest.expira_em).toLocaleString("pt-BR")}.</p></div>}
+                {reaberturaAtiva && reopenRequest?.expira_em && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><p className="font-bold">Reabertura aprovada.</p><p>Podes lançar notas até {new Intl.DateTimeFormat("pt-AO", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Luanda" }).format(new Date(reopenRequest.expira_em))}.</p></div>}
                 {turmaId && disciplinaId && pauta.length > 0 && (
                   <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                     <div>
