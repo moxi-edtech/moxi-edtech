@@ -913,18 +913,25 @@ function QuadroHorariosContent() {
     }
     setSaveError(null);
 
+    // The timetable has its own optional teacher attribution.
+    // Never infer professor_id from academic turma-disciplina assignments:
+    // doing so can prevent publishing an otherwise valid grid.
+    const existingBySlotAndDiscipline = new Map(
+      existingAssignments.map((item) => [`${item.slot_id}:${item.disciplina_id}`, item])
+    );
     const items = Object.entries(nextGrid)
       .map(([slotKey, disciplinaId]) => ({ slotKey, disciplinaId }))
       .filter(({ slotKey, disciplinaId }) => disciplinaId && slotLookup[slotKey])
       .map(({ slotKey, disciplinaId }) => {
-        const aula = aulasWithAllocations.find((item) => item.id === disciplinaId);
+        const slotId = slotLookup[slotKey];
+        const previous = existingBySlotAndDiscipline.get(`${slotId}:${disciplinaId}`);
         const salaId = selectedTurma?.sala
           ? salas.find((sala) => sala.nome === selectedTurma.sala)?.id ?? null
           : null;
         return {
-          slot_id: slotLookup[slotKey],
+          slot_id: slotId,
           disciplina_id: disciplinaId as string,
-          professor_id: aula?.professorId ?? null,
+          professor_id: previous?.professor_id ?? null,
           sala_id: salaId,
         };
       });

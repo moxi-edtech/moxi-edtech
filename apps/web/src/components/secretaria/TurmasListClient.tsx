@@ -24,6 +24,8 @@ import { buildEscolaUrl } from "@/lib/escola/url";
 import { formatTurmaNomeHumano } from "@/utils/formatters";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
+import { ImprimirListaTurmaButton } from "@/components/secretaria/ImprimirListaTurmaButton";
+import { MAX_TURMAS_POR_LOTE } from "@/lib/documentos/rosterBatchPolicy";
 import type { TurmaItem } from "~/types/turmas";
 
 // ─── Design tokens (single source of truth) ───────────────────────────────────
@@ -356,7 +358,7 @@ function HealthDetail({
 
 function SecretaryCardView({
   items, detailHrefBase, secretariaBase, onEdit, onAssignProfessors, onManageCurriculum, onOpenHorario, canManagePedagogy, pedagogicoStats,
-  selectedIds, onToggleSelect,
+  selectedIds, onToggleSelect, canPrint,
 }: {
   items:           TurmaItem[];
   detailHrefBase:  string;
@@ -366,6 +368,7 @@ function SecretaryCardView({
   onManageCurriculum?: (t: TurmaItem) => void;
   onOpenHorario?:  (t: TurmaItem) => void;
   canManagePedagogy: boolean;
+  canPrint: boolean;
   pedagogicoStats: Record<string, PedagogicoTurmaStat>;
   selectedIds:     Set<string>;
   onToggleSelect:  (id: string) => void;
@@ -454,6 +457,10 @@ function SecretaryCardView({
                       <HealthBadge signal={signal} />
                     )}
                   </div>
+
+                  {canPrint && !isDraft && (
+                    <ImprimirListaTurmaButton turmaId={turma.id} className="mb-3 w-full justify-center" />
+                  )}
 
                   {/* Occupancy bar */}
                   <div className="mb-3">
@@ -560,7 +567,7 @@ function TurmaRow({
   turma, isExpanded, onToggleExpand, onEdit, onAssignProfessors, onManageCurriculum, onOpenHorario, canManagePedagogy, style,
   detailHrefBase, secretariaBase, financeiro, pedagogico,
   editingCell, onStartEdit, onCancelEdit, onSaveEdit, loadingCell,
-  isSelected, onToggleSelect,
+  isSelected, onToggleSelect, canPrint,
 }: {
   turma:          TurmaItem;
   isExpanded:     boolean;
@@ -570,6 +577,7 @@ function TurmaRow({
   onManageCurriculum?: (t: TurmaItem) => void;
   onOpenHorario?:  (t: TurmaItem) => void;
   canManagePedagogy: boolean;
+  canPrint: boolean;
   style?:         CSSProperties;
   detailHrefBase: string;
   secretariaBase: string;
@@ -753,7 +761,8 @@ function TurmaRow({
 
       {/* Ações */}
       <td className="px-5 py-4 text-right">
-        <div className="flex items-center justify-end gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {canPrint && !isDraft && <ImprimirListaTurmaButton turmaId={turma.id} />}
           {isDraft ? (
             <button onClick={() => onEdit(turma)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-[#E3B23C] text-white hover:brightness-95 rounded-xl text-xs font-bold shadow-sm transition-all">
@@ -822,6 +831,7 @@ export default function TurmasListClient({
 }) {
   const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
   const { userRole, isLoading: roleLoading } = useUserRole();
+  const canPrint = !roleLoading && ["admin", "operacoes", "secretaria", "superadmin"].includes(userRole ?? "");
   const canManagePedagogy = !roleLoading && (
     userRole === "admin" || userRole === "operacoes" || userRole === "superadmin"
   );
@@ -909,6 +919,8 @@ export default function TurmasListClient({
 
   // Selection state (Fase 3)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkPrinting, setBulkPrinting] = useState(false);
+  const bulkPrintingLock = useRef(false);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -1003,19 +1015,39 @@ export default function TurmasListClient({
   }, [openTransferModal, selectedIds]);
 
   const handleBulkPrint = async () => {
-    if (!escolaId || selectedIds.size === 0) return;
+    if (!escolaId || selectedIds.size === 0 || bulkPrintingLock.current || !canPrint) return;
+    if (selectedIds.size > MAX_TURMAS_POR_LOTE) {
+      error("Limite de impressão", "Seleccione, no máximo, 10 turmas por lote.");
+      return;
+    }
+    const selected = items.filter(t => selectedIds.has(t.id));
+    const years = Array.from(new Set(selected.map(t => t.session_id).filter(Boolean)));
+    if (selected.length !== selectedIds.size || years.length !== 1) {
+      error("Ano letivo", "Seleccione apenas turmas da mesma sessão académica.");
+      return;
+    }
+    bulkPrintingLock.current = true;
+    setBulkPrinting(true);
     try {
-      const res = await fetch(`/api/escola/${escolaId}/admin/turmas/bulk-print`, {
+      const res = await fetch("/api/secretaria/documentos-oficiais/lote", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turma_ids: Array.from(selectedIds) }),
+        body: JSON.stringify({
+          turma_ids: Array.from(selectedIds),
+          tipo: "lista_nominal",
+          ano_letivo_id: years[0],
+        }),
       });
-      const json = await res.json();
+      const json: { ok?: boolean; error?: string } = await res.json().catch(() => ({}));
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao iniciar impressão");
-      success("Impressão iniciada", "O lote de documentos foi enviado para processamento. Poderá baixar tudo no Hub de Documentos em instantes.");
+      success("Impressão iniciada", "Lote enviado. Acompanhe o progresso e descarregue o ZIP na Central de Documentos.");
       setSelectedIds(new Set());
-    } catch (err: any) {
-      error("Erro na impressão", "Não conseguimos gerar o lote de documentos agora. Por favor, tente novamente.");
+    } catch (cause) {
+      error("Erro na impressão", cause instanceof Error ? cause.message : "Não foi possível iniciar o lote.");
+    } finally {
+      bulkPrintingLock.current = false;
+      setBulkPrinting(false);
     }
   };
 
@@ -1425,6 +1457,7 @@ export default function TurmasListClient({
             detailHrefBase={detailHrefBase}
             secretariaBase={secretariaBase}
             canManagePedagogy={canManagePedagogy}
+            canPrint={canPrint}
             pedagogicoStats={pedagogicoStats}
             onEdit={(t) => { setEditingTurma(t); setShowForm(true); }}
             onAssignProfessors={(t) => setAssignProfTurma(t)}
@@ -1695,6 +1728,7 @@ export default function TurmasListClient({
                           onManageCurriculum={(t) => setCurriculoTurma(t)}
                           onOpenHorario={(t) => setHorarioTurma(t)}
                           canManagePedagogy={canManagePedagogy}
+                          canPrint={canPrint}
                           detailHrefBase={detailHrefBase}
                           secretariaBase={secretariaBase}
                           financeiro={financeiroStats[row.turma.id]}
@@ -1926,13 +1960,17 @@ export default function TurmasListClient({
                 Mover alunos
               </button>
             )}
-            <button
-              onClick={handleBulkPrint}
-              className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-xl transition-colors text-sm font-bold group"
+            {canPrint && <button
+              type="button"
+              onClick={() => void handleBulkPrint()}
+              disabled={bulkPrinting || selectedIds.size > MAX_TURMAS_POR_LOTE}
+              aria-busy={bulkPrinting}
+              className="flex items-center gap-2 px-4 py-2 hover:bg-muted/20 rounded-xl transition-colors text-sm font-bold group disabled:cursor-not-allowed disabled:opacity-50"
+              title={selectedIds.size > MAX_TURMAS_POR_LOTE ? "Máximo 10 turmas por lote" : "Gerar lista nominal de todas as turmas seleccionadas"}
             >
               <Printer size={16} className="text-slate-400 group-hover:text-white transition-colors" />
-              Impressão em Lote
-            </button>
+              {bulkPrinting ? "A enviar lote…" : "Impressão em Lote"}
+            </button>}
             <button
               onClick={handleBulkClose}
               className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-xl transition-colors text-sm font-bold group"

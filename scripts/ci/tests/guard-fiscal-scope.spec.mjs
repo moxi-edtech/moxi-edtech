@@ -6,20 +6,33 @@ const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status
 const finalLifecycle = "supabase/migrations/20271027120000_lifecycle_ssot_post_replay_guard.sql";
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 66);
-  for (const name of [
-    "20271117160000_guard_enrollment_prior_year_progression.sql",
-    "20271117173000_raa_historical_finalists_and_voided_destinations.sql",
-  ]) {
-    assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name), name);
-    assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + name]), []);
-    assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + name],
-      () => "CREATE FUNCTION public.agt_activate() RETURNS void AS $ SELECT 1 $ LANGUAGE sql;"
-    )[0] ?? "", /Fiscal[/]AGT activation/);
-  }
-  assert.match(checkFiscalAndSchemaScope([
-    "supabase/migrations/20271117173001_unsafe_historic_bypass.sql"
-  ])[0] ?? "", /Unapproved database migration/);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 68);
+  const activationRaa = "20271117160000_guard_enrollment_prior_year_progression.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(activationRaa));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + activationRaa]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + activationRaa],
+    () => "CREATE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $ SELECT 1 $;"
+  )[0] ?? "", /Fiscal[/]AGT activation/);
+  const batchPauta = "20271117190000_curtume_fechar_pautas_2025_lote.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(batchPauta));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + batchPauta]), []);
+  // Exact CURTUME 2025 academic grade reconciliation, never a fiscal bypass.
+  const signedPauta = "20271117230000_curtume_2025_signed_operational_grades_reconciliation.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(signedPauta));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + signedPauta]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + signedPauta], () =>
+    "CREATE TABLE public.fiscal_configuration (enabled boolean);")[0] ?? "",
+    /Fiscal[/]AGT activation/);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271117230001_unreviewed.sql"])[0] ?? "",
+    /Unapproved database migration/);
+  const finalistRaa = "20271117173000_raa_historical_finalists_and_voided_destinations.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(finalistRaa));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + finalistRaa]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + finalistRaa],
+    () => "CREATE FUNCTION public.agt_activate() RETURNS void AS $ SELECT 1 $ LANGUAGE sql;"
+  )[0] ?? "", /Fiscal[/]AGT activation/);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271117173001_unreviewed.sql"])[0] ?? "",
+    /Unapproved database migration/);
   const scopedHistoricStaff = "20271112010000_balcao_historic_full_staff_permissions.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(scopedHistoricStaff));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + scopedHistoricStaff]), []);

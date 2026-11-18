@@ -19,6 +19,8 @@ import {
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import { MAX_TURMAS_POR_LOTE } from "@/lib/documentos/rosterBatchPolicy";
+import type { ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
 
 type TurmaItem = {
   id: string;
@@ -71,6 +73,7 @@ type JobItem = {
   created_at: string;
   download_url?: string | null;
   error_message?: string | null;
+  itens?: Array<{ turma_id: string; status: string }>;
 };
 
 type DirectHistoryItem = {
@@ -119,7 +122,7 @@ const DOCS: Array<{
     label: "Lista Nominal",
     hint: "Lista oficial da turma pronta para impressão.",
     icon: <FileText size={14} />,
-    formats: ["pdf_individual", "pdf_consolidado"],
+    formats: ["pdf_individual", "pdf_consolidado", "excel"],
     queueLabel: "Lista nominal",
   },
   {
@@ -172,7 +175,7 @@ const DOCS: Array<{
 const formatLabels: Record<FormatKey, string> = {
   pdf_individual: "PDF individual",
   pdf_consolidado: "PDF consolidado",
-  excel: "Excel",
+  excel: "Excel (.xlsx)",
 };
 
 const queueDocKeys = new Set<DocKey>(["nominal", "attendance", "pauta-geral", "pauta-anual"]);
@@ -209,7 +212,8 @@ function buildDocUrl(
   periodoId: string,
   periodoNumero: number | null,
   isAlbum: boolean = false,
-  includeAllStatus: boolean = false
+  includeAllStatus: boolean = false,
+  mode: ListaNominalMode = "operacional"
 ) {
   const params = new URLSearchParams();
   if (isAlbum) params.set("album", "true");
@@ -220,6 +224,7 @@ function buildDocUrl(
     case "attendance":
       return `/api/secretaria/turmas/${turmaId}/alunos/pdf?month=${month}${year ? `&year=${year}` : ""}${extra}`;
     case "nominal":
+      params.set("mode", mode);
       return `/api/secretaria/turmas/${turmaId}/alunos/pdf?${params.toString()}`;
     case "blank":
       return `/api/secretaria/turmas/${turmaId}/pauta-branca`;
@@ -239,16 +244,48 @@ function buildDocUrl(
 function buildClasseDocUrl(
   classeId: string,
   year: number | null,
-  includeAllStatus: boolean = false
+  includeAllStatus: boolean = false,
+  mode: ListaNominalMode = "operacional",
+  format: FormatKey = "pdf_individual"
 ) {
   const params = new URLSearchParams();
   if (year) params.set("year", String(year));
   if (includeAllStatus) params.set("all_status", "true");
+  params.set("mode", mode);
   const query = params.toString();
-  return `/api/secretaria/classes/${classeId}/alunos/pdf${query ? `?${query}` : ""}`;
+  return `/api/secretaria/classes/${classeId}/alunos/${format === "excel" ? "xlsx" : "pdf"}${query ? `?${query}` : ""}`;
 }
 
-export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) {
+async function downloadNominalExcel(url: string, filename: string) {
+  const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload?.error || "Não foi possível descarregar o Excel nominal.");
+  }
+  if (!response.headers.get("content-type")?.includes("spreadsheetml.sheet")) {
+    throw new Error("O servidor não devolveu um ficheiro Excel válido.");
+  }
+  const blob = await response.blob();
+  if (!blob.size) throw new Error("O Excel devolvido está vazio.");
+  const blobUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = blobUrl;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
+}
+
+export default function QuickDocHub({
+  escolaId,
+  initialNominal = false,
+  nominalOnly = false,
+}: {
+  escolaId?: string | null;
+  initialNominal?: boolean;
+  nominalOnly?: boolean;
+}) {
   const searchParams = useSearchParams();
   const academicYearIdFromUrl = searchParams?.get(ACADEMIC_YEAR_PARAM);
   const storageKey = escolaId ? `quick-doc-hub:last-turma:${escolaId}` : null;
@@ -270,10 +307,12 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   const [turnoFiltro, setTurnoFiltro] = useState("");
   const [turmaQuery, setTurmaQuery] = useState("");
   const [turmaPickerOpen, setTurmaPickerOpen] = useState(false);
-  const [selectedDocs, setSelectedDocs] = useState<DocKey[]>([]);
+  const [selectedDocs, setSelectedDocs] = useState<DocKey[]>(initialNominal ? ["nominal"] : []);
   const [format, setFormat] = useState<FormatKey>("pdf_individual");
   const [scope, setScope] = useState<ScopeKey>("turma");
+  const [modeOverride, setModeOverride] = useState<ListaNominalMode | null>(null);
   const [jobs, setJobs] = useState<JobItem[]>([]);
+  const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
   const [directHistory, setDirectHistory] = useState<DirectHistoryItem[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [includeAllStatus, setIncludeAllStatus] = useState(false);
@@ -391,6 +430,29 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     }
   }, []);
 
+  const reprocessarFalhas = useCallback(async (jobId: string) => {
+    if (retryingJobId) return;
+    setRetryingJobId(jobId);
+    try {
+      const response = await fetch("/api/secretaria/documentos-oficiais/lote/reprocess", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: jobId }),
+      });
+      const result: { ok?: boolean; error?: string } = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "Não foi possível reprocessar as turmas.");
+      }
+      setFeedback("Turmas com falha reenviadas. Os documentos anteriores serão preservados.");
+      await loadJobs();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Falha ao reprocessar o lote.");
+    } finally {
+      setRetryingJobId(null);
+    }
+  }, [loadJobs, retryingJobId]);
+
   useEffect(() => {
     void loadJobs();
   }, [loadJobs]);
@@ -400,7 +462,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     if (!hasActiveJobs) return;
     const timer = window.setInterval(() => {
       void loadJobs();
-    }, 5000);
+    }, 15000);
     return () => window.clearInterval(timer);
   }, [jobs, loadJobs]);
 
@@ -491,8 +553,9 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
 
   const selectedClasseTurmas = useMemo(() => {
     if (!selectedClasse?.id) return [];
-    return turmasFiltradas.filter((turma) => turma.classe_id === selectedClasse.id);
-  }, [selectedClasse?.id, turmasFiltradas]);
+    // Escopo "Classe inteira" inclui todos os turnos e turmas, não só filtros secundários.
+    return turmas.filter((turma) => turma.classe_id === selectedClasse.id);
+  }, [selectedClasse?.id, turmas]);
 
   const selectedClasseAlunoCount = useMemo(
     () => selectedClasseTurmas.reduce((total, turma) => total + Number(turma.ocupacao_atual ?? 0), 0),
@@ -517,8 +580,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   useEffect(() => {
     if (scope !== "classe") return;
     setSelectedDocs(["nominal"]);
-    if (format === "excel") setFormat("pdf_individual");
-  }, [format, scope]);
+  }, [scope]);
 
   const statusResumo = selectedTurma
     ? [
@@ -530,10 +592,12 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         .join(" • ")
     : null;
 
+  const modoLista: ListaNominalMode = modeOverride ??
+    (anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.status === "ativa" ? "operacional" : "ano_letivo");
   const selectedDocDefs = DOCS.filter((doc) => selectedDocs.includes(doc.key));
   const visibleDocs = useMemo(
-    () => scope === "classe" ? DOCS.filter((doc) => doc.key === "nominal") : DOCS,
-    [scope]
+    () => scope === "classe" || nominalOnly ? DOCS.filter((doc) => doc.key === "nominal") : DOCS,
+    [scope, nominalOnly]
   );
 
   const docDisabledReason = useCallback(
@@ -542,7 +606,6 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
       if (!doc) return "Documento indisponível.";
       if (scope === "classe") {
         if (doc.key !== "nominal") return "Escopo por classe disponível para Lista Nominal.";
-        if (format === "excel") return "Lista nominal por classe não tem versão Excel.";
         if (!selectedClasse?.id) return "Selecione uma classe.";
         if (format === "pdf_consolidado" && selectedClasseTurmas.length === 0) {
           return "Nenhuma turma encontrada para esta classe nos filtros atuais.";
@@ -579,8 +642,12 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
       const doc = selectedDocDefs.find((item) => item.key === "nominal");
       if (!doc) return;
 
-      const url = buildClasseDocUrl(selectedClasse.id, anoLetivo, includeAllStatus);
-      window.open(url, "_blank");
+      const url = buildClasseDocUrl(selectedClasse.id, anoLetivo, includeAllStatus, modoLista, format);
+      if (format === "excel") {
+        await downloadNominalExcel(url, `lista_nominal_classe_${selectedClasse.id}.xlsx`);
+      } else {
+        window.open(url, "_blank");
+      }
       addDirectHistory({
         label: `${doc.label} • ${selectedClasse.nome}`,
         format,
@@ -605,7 +672,9 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         continue;
       }
 
-      const url = buildDocUrl(
+      const url = doc.key === "nominal" && format === "excel"
+        ? `/api/secretaria/turmas/${selectedTurma.id}/alunos/xlsx?${new URLSearchParams({ mode: modoLista, ...(includeAllStatus ? { all_status: "true" } : {}) }).toString()}`
+        : buildDocUrl(
         doc.key,
         selectedTurma.id,
         month,
@@ -613,9 +682,14 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         periodoId,
         selectedPeriodo?.numero ?? null,
         isAlbum,
-        includeAllStatus
+        includeAllStatus,
+        modoLista
       );
-      window.open(url, "_blank");
+      if (doc.key === "nominal" && format === "excel") {
+        await downloadNominalExcel(url, `lista_nominal_turma_${selectedTurma.id}.xlsx`);
+      } else {
+        window.open(url, "_blank");
+      }
       addDirectHistory({
         label: `${doc.label} • ${turmaLabel(selectedTurma)}`,
         format,
@@ -629,6 +703,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
     format,
     includeAllStatus,
     isAlbum,
+    modoLista,
     month,
     periodoId,
     scope,
@@ -640,51 +715,62 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
   ]);
 
   const runQueuedEmission = useCallback(async () => {
-    if (!escolaId) return;
+    if (!escolaId) throw new Error("Escola não identificada.");
     const targetTurmaIds =
       scope === "classe"
-        ? selectedClasseTurmas.map((turma) => turma.id)
+        ? selectedClasseTurmas.map(turma => turma.id)
         : processAllTurmas
-          ? turmasFiltradas.map((t) => t.id)
+          ? turmasFiltradas.map(turma => turma.id)
           : selectedTurma
             ? [selectedTurma.id]
             : [];
 
-    if (targetTurmaIds.length === 0) return;
+    if (targetTurmaIds.length === 0) throw new Error("Seleccione pelo menos uma turma.");
+    if (targetTurmaIds.length > MAX_TURMAS_POR_LOTE) {
+      throw new Error("Seleccione, no máximo, 10 turmas por lote.");
+    }
+
+    const enfileirar = async (body: Record<string, unknown>) => {
+      const response = await fetch("/api/secretaria/documentos-oficiais/lote", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result: { ok?: boolean; error?: string } = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "Não foi possível enfileirar o lote.");
+      }
+    };
+
+    const anoSelecionado = academicYearIdFromUrl ??
+      anosLetivos.find(item => item.ano_letivo === anoLetivo)?.id;
 
     for (const doc of selectedDocDefs) {
       if (!queueDocKeys.has(doc.key)) continue;
 
       if (doc.key === "nominal" || doc.key === "attendance") {
-        await fetch("/api/secretaria/documentos-oficiais/lote", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            turma_ids: targetTurmaIds,
-            tipo: doc.key === "nominal" ? "lista_nominal" : "attendance",
-            ano_letivo_id: academicYearIdFromUrl ?? anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.id,
-            month,
-            year: String(anoLetivo),
-            is_album: isAlbum,
-            include_all_status: includeAllStatus,
-          }),
+        await enfileirar({
+          turma_ids: targetTurmaIds,
+          tipo: doc.key === "nominal" ? "lista_nominal" : "attendance",
+          ano_letivo_id: anoSelecionado,
+          month,
+          year: String(anoLetivo),
+          is_album: isAlbum,
+          include_all_status: includeAllStatus,
+          mode: modoLista,
         });
         continue;
       }
-
       const tipo = doc.key === "pauta-geral" ? "trimestral" : "anual";
-      const body =
-        tipo === "trimestral"
-          ? { turma_ids: targetTurmaIds, tipo, ano_letivo_id: academicYearIdFromUrl ?? anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.id, periodo_letivo_id: periodoId }
-          : { turma_ids: targetTurmaIds, tipo, ano_letivo_id: academicYearIdFromUrl ?? anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.id };
-
-      await fetch("/api/secretaria/documentos-oficiais/lote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+      await enfileirar({
+        turma_ids: targetTurmaIds,
+        tipo,
+        ano_letivo_id: anoSelecionado,
+        ...(tipo === "trimestral" ? { periodo_letivo_id: periodoId } : {}),
       });
     }
-  }, [academicYearIdFromUrl, anoLetivo, anosLetivos, escolaId, includeAllStatus, isAlbum, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
+  }, [academicYearIdFromUrl, anoLetivo, anosLetivos, escolaId, includeAllStatus, isAlbum, modoLista, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
 
   const canSubmit =
     selectedDocs.length > 0 &&
@@ -705,8 +791,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         setFeedback("Downloads iniciados.");
       }
     } catch (error) {
-      console.error("Erro ao emitir documentos:", error);
-      setFeedback("Não conseguimos concluir a emissão agora.");
+      setFeedback(error instanceof Error ? error.message : "Não conseguimos concluir a emissão agora.");
     } finally {
       setSubmitting(false);
     }
@@ -737,7 +822,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         <Field label="Ano letivo">
           <select
             value={anoLetivo ?? ""}
-            onChange={(event) => setAnoLetivo(event.target.value ? Number(event.target.value) : null)}
+            onChange={(event) => { setAnoLetivo(event.target.value ? Number(event.target.value) : null); setModeOverride(null); }}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">{loadingAnos ? "A carregar..." : "Selecione"}</option>
@@ -759,7 +844,6 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                   setScope(item);
                   if (item === "classe") {
                     setSelectedDocs(["nominal"]);
-                    setFormat((current) => current === "excel" ? "pdf_individual" : current);
                   }
                 }}
                 className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
@@ -912,7 +996,9 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                     {selectedClasse
                       ? format === "pdf_consolidado"
                         ? `Gera um pacote com ${selectedClasseTurmas.length} turma${selectedClasseTurmas.length !== 1 ? "s" : ""} desta classe.`
-                        : "Gera um PDF único com todos os alunos da classe e mantém a turma de origem em cada linha."
+                        : format === "excel"
+                          ? "Gera um Excel único com os alunos de todas as turmas e a turma identificada em cada linha."
+                          : "Gera um PDF único com todos os alunos da classe e mantém a turma de origem em cada linha."
                       : "Depois de escolher a classe, a Lista Nominal fica pronta para emissão."}
                   </p>
                 </div>
@@ -924,7 +1010,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
             </div>
           )}
 
-          <div className="grid gap-3 md:grid-cols-2">
+          {!nominalOnly && <div className="grid gap-3 md:grid-cols-2">
             <Field label="Mês do mapa">
               <select
                 value={month}
@@ -953,9 +1039,23 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                 ))}
               </select>
             </Field>
-          </div>
+          </div>}
 
           <div className="flex flex-wrap items-center gap-4 py-2">
+            {(scope === "classe" || selectedDocs.includes("nominal")) && (
+              <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
+                Modo da lista nominal
+                <select
+                  aria-label="Modo da lista nominal"
+                  value={modoLista}
+                  onChange={(event) => setModeOverride(event.target.value as ListaNominalMode)}
+                  className="rounded-xl border border-border bg-card px-3 py-2 text-sm"
+                >
+                  <option value="ano_letivo">Lista do ano letivo (histórica)</option>
+                  <option value="operacional">Lista operacional actual</option>
+                </select>
+              </label>
+            )}
             <label className="flex items-center gap-2 cursor-pointer group">
               <input
                 type="checkbox"
@@ -968,7 +1068,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
               </span>
             </label>
 
-            {scope === "turma" ? (
+            {!nominalOnly && scope === "turma" ? (
               <label className="flex items-center gap-2 cursor-pointer group">
                 <input
                   type="checkbox"
@@ -1037,7 +1137,9 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                 {format === "pdf_consolidado"
                   ? "O consolidado mantém cada turma como documento separado dentro do pacote final."
-                  : "O PDF direto junta os alunos da classe inteira e mantém a turma de origem em cada linha."}
+                  : format === "excel"
+                    ? "O Excel junta a classe inteira numa planilha e mantém a turma de origem em cada linha."
+                    : "O PDF direto junta os alunos da classe inteira e mantém a turma de origem em cada linha."}
               </div>
             </div>
           ) : selectedTurma ? (
@@ -1072,7 +1174,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
         </div>
       </div>
 
-      <div className="space-y-3">
+      {!nominalOnly && <div className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Documentos</p>
           <p className="text-xs text-slate-500">
@@ -1137,7 +1239,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
             );
           })}
         </div>
-      </div>
+      </div>}
 
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -1145,7 +1247,9 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
           <p className="mt-1 text-xs text-slate-500">
             {format === "pdf_consolidado"
               ? "Documentos compatíveis serão enviados para a fila e aparecerão no histórico abaixo."
-              : "Os documentos serão gerados imediatamente em novas abas."}
+              : format === "excel"
+                ? "O Excel (.xlsx) será descarregado directamente."
+                : "Os documentos serão gerados imediatamente em novas abas."}
           </p>
           {feedback ? <p className="mt-2 text-xs font-medium text-emerald">{feedback}</p> : null}
         </div>
@@ -1185,7 +1289,7 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                           {new Date(job.created_at).toLocaleString("pt-PT")}
                         </p>
                       </div>
-                      <StatusPill status={job.status} />
+                      <StatusPill status={job.status === "SUCCESS" && job.failed_count > 0 ? "PARTIAL" : job.status} />
                     </div>
                     <div className="mt-3 h-2 rounded-full bg-slate-200">
                       <div className="h-2 rounded-full bg-emerald transition-all" style={{ width: `${progress}%` }} />
@@ -1199,6 +1303,33 @@ export default function QuickDocHub({ escolaId }: { escolaId?: string | null }) 
                       ) : null}
                     </div>
                     {job.error_message ? <p className="mt-2 text-[11px] text-rose-600">{job.error_message}</p> : null}
+                    {job.failed_count > 0 && job.status !== "PROCESSING" && (
+                      <button
+                        type="button"
+                        disabled={retryingJobId !== null}
+                        onClick={() => void reprocessarFalhas(job.id)}
+                        className="mt-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+                      >
+                        {retryingJobId === job.id ? "A reprocessar…" : "Reprocessar turmas com falha"}
+                      </button>
+                    )}
+                    {(job.itens?.length ?? 0) > 0 && (
+                      <details className="mt-2 rounded-xl border border-border bg-card p-2">
+                        <summary className="cursor-pointer text-xs font-semibold text-foreground">
+                          Resultado por turma ({job.itens?.length ?? 0})
+                        </summary>
+                        <div className="mt-2 space-y-1">
+                          {job.itens?.map(item => (
+                            <div key={item.turma_id} className="flex justify-between gap-2 text-xs text-muted-foreground">
+                              <span>Turma {item.turma_id.slice(0, 8)}</span>
+                              <span>{item.status === "SUCCESS" ? "Concluído" :
+                                item.status === "FAILED" ? "Falhou — reprocessar" :
+                                item.status === "PROCESSING" ? "Em emissão" : "Na fila"}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </div>
                 );
               })
@@ -1268,11 +1399,11 @@ function SummaryBox({ label, value }: { label: string; value: string }) {
 
 function StatusPill({ status }: { status: string }) {
   const label =
-    status === "SUCCESS" ? "Concluído" : status === "PROCESSING" ? "Em progresso" : status === "FAILED" ? "Falhou" : status;
+    status === "SUCCESS" ? "Concluído" : status === "PARTIAL" ? "Concluído com falhas" : status === "PROCESSING" ? "Em progresso" : status === "FAILED" ? "Falhou" : status;
   const classes =
     status === "SUCCESS"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : status === "PROCESSING"
+      : status === "PARTIAL" || status === "PROCESSING"
         ? "border-amber-200 bg-amber-50 text-amber-700"
         : "border-rose-200 bg-rose-50 text-rose-700";
   return <span className={`rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${classes}`}>{label}</span>;

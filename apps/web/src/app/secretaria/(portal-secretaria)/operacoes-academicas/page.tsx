@@ -9,6 +9,7 @@ import type { Database } from "~types/supabase";
 import { CutoverResolveActions } from "@/components/secretaria/virada-ano/CutoverResolveActions";
 import { RetroactivePendingPanel } from "@/components/secretaria/virada-ano/RetroactivePendingPanel";
 import { NextYearFlowCard } from "@/components/secretaria/operacoes/NextYearFlowCard";
+import { CurtumeFechoHistoricoLote } from "@/components/secretaria/CurtumeFechoHistoricoLote";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
@@ -296,6 +297,19 @@ export default async function OperacoesAcademicasPage({
             </Link>
           </div>
         </div>
+
+        {escolaId === "3744879f-2e19-4671-8995-78604302d8c5" && (
+          <div className="space-y-2" aria-label="Fecho do ano letivo 2025/2026">
+            <CurtumeFechoHistoricoLote balcaoHref={buildPortalHref(escolaParam, "/secretaria/balcao")} />
+            <Link
+              href={buildPortalHref(escolaParam, "/operacoes/academico/reconciliacao-historica?tipo=historicos&ano=2025")}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-emerald hover:underline"
+            >
+              <FileText className="h-4 w-4" />
+              Rever apenas os históricos com pendências
+            </Link>
+          </div>
+        )}
 
         <NextYearFlowCard href={(path) => buildPortalHref(escolaParam, path)} />
 

@@ -107,10 +107,14 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // Reviewed atomic reprice on class correction: only unpaid untouched monthly
   // entries may change. Fiscal/AGT/SAF-T scanner remains enforced.
   "20271116090000_balcao_retificacao_classe_repreco_pendentes.sql",
-  // PR #344: SSOT RAA activation and strictly academic historic-finalist
-  // reconciliation; both remain subject to fiscal scope verification.
-  "20271117160000_guard_enrollment_prior_year_progression.sql",
+  // PR: exclusively reviewed RAA historical final-cycle/annulled-target repair.
   "20271117173000_raa_historical_finalists_and_voided_destinations.sql",
+  // PR #344: the RAA progression guard remains review-only pending source-year closure.
+  "20271117160000_guard_enrollment_prior_year_progression.sql",
+  // One exact reviewed 2025/CURTUME batch; fiscal/AGT writers remain denied.
+  "20271117190000_curtume_fechar_pautas_2025_lote.sql",
+  // Exact CURTUME 2025 documentary/operational-grade reconciliation; fiscal scanner unchanged.
+  "20271117230000_curtume_2025_signed_operational_grades_reconciliation.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;

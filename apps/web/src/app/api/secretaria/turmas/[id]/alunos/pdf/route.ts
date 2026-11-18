@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { requireFeature } from "@/lib/plan/requireFeature";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
+import { authorizeNominalExport, NominalRosterError } from "@/lib/documentos/listaNominalService";
+import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission";
 
 export async function GET(
   req: Request,
@@ -23,28 +23,7 @@ export async function GET(
     }
 
     const { id: turmaId } = await params;
-    const { data: turmaScope } = await supabase
-      .from("turmas")
-      .select("escola_id")
-      .eq("id", turmaId)
-      .maybeSingle();
-
-    const escolaId = await resolveEscolaIdForUser(
-      supabase as any,
-      user.id,
-      (turmaScope as any)?.escola_id ?? null
-    );
-    if (!escolaId) {
-      return NextResponse.json(
-        { ok: false, error: "Escola não encontrada" },
-        { status: 400 }
-      );
-    }
-
-    await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
-
-    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
-    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+    const escolaId = await authorizeNominalExport(supabase, user.id, { turmaId });
 
     const { searchParams } = new URL(req.url);
     const isAttendance = searchParams.get("attendance") === "true";
@@ -52,12 +31,27 @@ export async function GET(
     const year = searchParams.get("year") || String(new Date().getFullYear());
     const disciplinaId = searchParams.get("disciplina_id");
     const isAlbum = searchParams.get("album") === "true";
+    const enableQr = searchParams.get("qr") === "true";
+    if (enableQr || isAlbum || isAttendance || month) await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
     const includeAllStatus = searchParams.get("all_status") === "true";
+    const modeParam = searchParams.get("mode");
+    if (modeParam && modeParam !== "ano_letivo" && modeParam !== "operacional") {
+      return NextResponse.json({ ok: false, error: "Modo de lista inválido" }, { status: 400 });
+    }
+    const mode = modeParam === "ano_letivo" || modeParam === "operacional" ? modeParam : undefined;
+    const camposSensiveis = searchParams.get("sensiveis") === "true";
+    if (camposSensiveis) {
+      const authorised = await canExportSensitiveRosterFields(supabase, escolaId, user.id);
+      if (!authorised) {
+        return NextResponse.json({ ok: false, error: "Campos sensíveis reservados à Direcção" }, { status: 403 });
+      }
+    }
     const fallbackLogoUrl = `${new URL(req.url).origin}/insignia_med.png`;
 
     headers.set('Deprecation', 'true');
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
 
+    let linhasExportadas = 0;
     const pdfBytes = await renderListaNominalPdfBuffer({
       supabase: supabase as any,
       escolaId,
@@ -68,22 +62,47 @@ export async function GET(
       disciplinaId,
       isAlbum,
       includeAllStatus,
+      mode,
+      enableQr,
+      camposSensiveis,
+      emissor: user.email ?? user.id,
+      onRowsCount: (count) => { linhasExportadas = count; },
       fallbackLogoUrl,
     });
+
+    if (!isAlbum && !isAttendance && !month) {
+      const { error: auditError } = await supabase.from("audit_logs").insert({
+        escola_id: escolaId, portal: "secretaria",
+        acao: "LISTA_NOMINAL_PDF_EXPORTADA",
+        tabela: "turmas", entity: "turmas", entity_id: turmaId,
+        details: {
+          actor_id: user.id, turma_id: turmaId,
+          modo: mode ?? "conforme_sessao", ano: year,
+          linhas: linhasExportadas,
+          campos_sensiveis: camposSensiveis,
+          campos: camposSensiveis ? ["nascimento", "naturalidade", "bi"] : [],
+        },
+      });
+      if (auditError) {
+        return NextResponse.json({ ok: false, error: "Auditoria indisponível. Lista não emitida." }, { status: 503 });
+      }
+    }
 
     headers.set("Content-Type", "application/pdf");
     headers.set(
       "Content-Disposition",
-      `attachment; filename="mapa_frequencia_${turmaId}_${month || "lista"}.pdf"`
+      `attachment; filename="lista_escola_${escolaId}_turma_${turmaId}_${year}_${new Date().toISOString().slice(0,10)}.pdf"`
     );
     return new NextResponse(pdfBytes as any, {
       headers,
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("[secretaria/turmas/pdf] error:", e);
+    if (e instanceof NominalRosterError) {
+      return NextResponse.json({ ok: false, error: e.message }, { status: e.status });
+    }
+    console.error("[secretaria/turmas/pdf] Falha na geração da lista");
     return NextResponse.json(
-      { ok: false, error: message },
+      { ok: false, error: "Não foi possível gerar a lista" },
       { status: 500 }
     );
   }

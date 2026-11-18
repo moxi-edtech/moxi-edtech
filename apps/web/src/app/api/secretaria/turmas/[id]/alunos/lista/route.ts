@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
+import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission";
 
 type TurmaRow = {
   id: string;
@@ -59,11 +60,25 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const disciplinaId = searchParams.get("disciplina_id");
     const isAlbum = searchParams.get("album") === "true";
     const includeAllStatus = searchParams.get("all_status") === "true";
+    const modeParam = searchParams.get("mode");
+    if (modeParam && modeParam !== "ano_letivo" && modeParam !== "operacional") {
+      return NextResponse.json({ ok: false, error: "Modo de lista inválido" }, { status: 400 });
+    }
+    const mode = modeParam === "ano_letivo" || modeParam === "operacional" ? modeParam : undefined;
+    const camposSensiveis = searchParams.get("sensiveis") === "true";
+    if (camposSensiveis) {
+      const authorised = await canExportSensitiveRosterFields(supabase, escolaId, user.id);
+      if (!authorised) {
+        return NextResponse.json({ ok: false, error: "Campos sensíveis reservados à Direcção" }, { status: 403 });
+      }
+    }
     const fallbackLogoUrl = `${new URL(req.url).origin}/insignia_med.png`;
 
     if (format === "pdf") {
-      await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
+      const enableQr = searchParams.get("qr") === "true";
+      if (enableQr || isAlbum || isAttendance || month) await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
 
+      let linhasExportadas = 0;
       const pdfBytes = await renderListaNominalPdfBuffer({
         supabase: supabase as any,
         escolaId,
@@ -74,13 +89,35 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         disciplinaId,
         isAlbum,
         includeAllStatus,
+        mode,
+        enableQr,
+        camposSensiveis,
+        emissor: user.email ?? user.id,
+        onRowsCount: (count) => { linhasExportadas = count; },
         fallbackLogoUrl,
       });
+
+      if (!month && !isAttendance && !isAlbum) {
+        const { error: auditError } = await supabase.from("audit_logs").insert({
+          escola_id: escolaId, portal: "secretaria", acao: "LISTA_NOMINAL_PDF_EXPORTADA",
+          tabela: "turmas", entity: "turmas", entity_id: turmaId,
+          details: {
+            actor_id: user.id, turma_id: turmaId,
+            modo: mode ?? "conforme_sessao", ano: year,
+            linhas: linhasExportadas,
+            campos_sensiveis: camposSensiveis,
+            campos: camposSensiveis ? ["nascimento", "naturalidade", "bi"] : [],
+          },
+        });
+        if (auditError) {
+          return NextResponse.json({ ok: false, error: "Auditoria indisponível. Lista não emitida." }, { status: 503 });
+        }
+      }
 
       headers.set("Content-Type", "application/pdf");
       headers.set(
         "Content-Disposition",
-        `attachment; filename="mapa_frequencia_${turmaId}_${month || "lista"}.pdf"`
+        `attachment; filename="lista_escola_${escolaId}_turma_${turmaId}_${year}_${new Date().toISOString().slice(0,10)}.pdf"`
       );
       return new NextResponse(pdfBytes as any, { headers });
     }
@@ -106,6 +143,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: "Turma não encontrada" }, { status: 404, headers });
     }
 
+    if (!turma.session_id) {
+      return NextResponse.json({ ok: false, error: "TURMA_SEM_ANO_LETIVO" }, { status: 409, headers });
+    }
     const [{ data: escola }, { data: classe }] = await Promise.all([
       supabase.from("escolas").select("id, nome").eq("id", escolaId).maybeSingle(),
       turma.classe_id
@@ -113,35 +153,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         : Promise.resolve({ data: null }),
     ]);
     const classeNome = (classe as any)?.nome || "—";
-    if (!turma.session_id) {
-      return NextResponse.json({ ok: false, error: "TURMA_SEM_ANO_LETIVO" }, { status: 409, headers });
-    }
 
     let matriculasQuery = supabase
       .from("matriculas")
-      .select(
-        `
-        id,
-        numero_chamada,
-        status,
-        alunos (
-          id,
-          nome,
-          bi_numero,
-          sexo,
-          naturalidade,
-          provincia,
-          telefone,
-          responsavel,
-          telefone_responsavel
-        )
-      `
+      .select(camposSensiveis
+        ? "id,numero_chamada,status,alunos(id,nome,numero_processo,sexo,bi_numero,naturalidade,provincia,telefone,responsavel,telefone_responsavel)"
+        : "id,numero_chamada,status,alunos(id,nome,numero_processo,sexo)"
       )
       .eq("turma_id", turmaId)
       .eq("escola_id", escolaId)
       .eq("session_id", turma.session_id)
       .eq("ativo", true)
-      .in("status", ["ativo", "ativa", "active"])
+      .in("status", ["ativo", "ativa"])
       .order("numero_chamada", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
 
@@ -159,17 +182,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
       return alunosArray.map((a) => ({
         numero: numero++,
-        numero_chamada: m.numero_chamada ?? null,
+        numero_chamada: m.numero_chamada,
         matricula_id: (m as any)?.id,
         aluno_id: a.id,
         nome: a.nome ?? "—",
         genero: a.sexo === "masculino" || a.sexo === "M" ? "M" : a.sexo === "feminino" || a.sexo === "F" ? "F" : "—",
-        bi: a.bi_numero ?? "—",
-        naturalidade: a.naturalidade ?? "—",
-        provincia: a.provincia ?? "—",
-        telefone: a.telefone ?? "—",
-        encarregado: a.responsavel ?? "—",
-        telefone_encarregado: a.telefone_responsavel ?? "—",
+        processo: a.numero_processo ?? "NÃO ATRIBUÍDO",
+        ...(camposSensiveis ? { bi: a.bi_numero ?? "—" } : {}),
+        ...(camposSensiveis ? {
+          naturalidade: a.naturalidade ?? "—",
+          provincia: a.provincia ?? "—",
+          telefone: a.telefone ?? "—",
+          encarregado: a.responsavel ?? "—",
+          telefone_encarregado: a.telefone_responsavel ?? "—",
+        } : {}),
         status_matricula: (m as any)?.status,
       }));
     });
@@ -191,8 +217,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       },
       { headers }
     );
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ ok: false, error: "Não foi possível consultar a lista" }, { status: 500 });
   }
 }

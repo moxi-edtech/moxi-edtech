@@ -1,0 +1,60 @@
+name: Listas de turma — capturas visuais sintéticas
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/roster-export-visual.yml'
+      - 'apps/web/visual-harness/RosterExportVisualFixture.tsx'
+      - 'apps/web/visual-harness/main.tsx'
+      - 'apps/web/scripts/visual/roster-export-screenshot.mjs'
+      - 'apps/web/src/components/secretaria/ImprimirListaTurmaButton.tsx'
+      - 'apps/web/src/components/secretaria/QuickDocHub.tsx'
+      - 'apps/web/src/components/secretaria/TurmasListClient.tsx'
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  synthetic-visual-matrix:
+    name: 5 viewports × 3 zooms × 4 estados do botão
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Instalar dependências fixadas
+        run: pnpm install --frozen-lockfile
+      - name: Instalar Vite e Playwright isolados em CI
+        run: |
+          mkdir -p /tmp/klasse-visual
+          npm --prefix /tmp/klasse-visual install --no-save @playwright/test@1.57.0 vite@6.4.0
+          /tmp/klasse-visual/node_modules/.bin/playwright install --with-deps chromium
+      - name: Iniciar harness dos componentes React com dados fictícios
+        run: |
+          /tmp/klasse-visual/node_modules/.bin/vite --config apps/web/visual-harness/vite.config.mjs --host 127.0.0.1 --port 6006 > /tmp/klasse-roster-vite.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:6006/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          tail -n 80 /tmp/klasse-roster-vite.log
+          exit 1
+      - name: Capturar interface real do botão e testar ausência de overflow
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/roster-export-screenshot.mjs
+      - name: Vite — diagnóstico em caso de erro
+        if: failure()
+        run: tail -n 100 /tmp/klasse-roster-vite.log
+      - name: Anexar 60 PNGs e manifesto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: roster-export-visual-sintetico
+          path: apps/web/visual-evidence/roster-export/
+          if-no-files-found: warn
+          retention-days: 14

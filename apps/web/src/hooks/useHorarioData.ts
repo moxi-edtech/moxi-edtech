@@ -45,7 +45,7 @@ type BaseDataState = {
 type TurmaDataState = {
   aulas: SchedulerAula[];
   grid: Record<string, string | null>;
-  existingAssignments: Array<{ slot_id: string; professor_id: string | null; sala_id?: string | null }>;
+  existingAssignments: Array<{ slot_id: string; disciplina_id: string; professor_id: string | null; sala_id?: string | null }>;
   loading: boolean;
   error: string | null;
 };
@@ -357,6 +357,7 @@ export function useHorarioTurmaData({
           grid: nextGrid,
           existingAssignments: quadroPayload.map((item: any) => ({
             slot_id: item.slot_id,
+            disciplina_id: item.disciplina_id,
             professor_id: item.professor_id ?? null,
             sala_id: item.sala_id ?? null,
           })),

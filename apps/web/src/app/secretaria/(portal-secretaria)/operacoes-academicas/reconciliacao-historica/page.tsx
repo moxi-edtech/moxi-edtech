@@ -27,6 +27,23 @@ type Item = {
   classe_destino_numero?: number | null;
   alertas_transicao?: string[];
   proximo_passo: string;
+  pauta_historica?: {
+    disciplinas: Array<{
+      id: string; nome: string; nota: number | null; escala: number | null;
+      arquivo: string | null; aba: string | null; linha: string | null;
+      mapeada_na_turma: boolean | null;
+      nota_abaixo_metade: boolean;
+    }>;
+    arquivos: string[];
+    contagem_notas: number;
+    contagem_matriz: number | null;
+    sem_mapeamento: number;
+    notas_abaixo_metade: number;
+    divergencia_ano_documento: boolean;
+    processo_verificado: boolean | null;
+    evidencia_original_confirmada: false;
+    alertas: string[];
+  };
 };
 type Tipo = "pendentes" | "historicos";
 type Queue = {
@@ -59,12 +76,16 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
   const params = useParams<{ id?: string }>();
   const searchParams = useSearchParams();
   const escolaId = String(params?.id ?? "");
+  const focusMatriculaId = searchParams?.get("matricula_id") ?? null;
   const [ano, setAno] = useState(() => {
     const query = Number(searchParams?.get("ano"));
     return Number.isInteger(query) && query >= 2000 ? query : new Date().getFullYear() - 1;
   });
   const [tipo, setTipo] = useState<Tipo>(() => searchParams?.get("tipo") === "historicos" ? "historicos" : "pendentes");
-  const [classe, setClasse] = useState<9 | null>(() => searchParams?.get("classe") === "9" ? 9 : null);
+  const [classe, setClasse] = useState<number | null>(() => {
+    const raw = Number(searchParams?.get("classe"));
+    return Number.isInteger(raw) && raw >= 1 && raw <= 9 ? raw : null;
+  });
   const [pagina, setPagina] = useState(1);
   const [reload, setReload] = useState(0);
   const [data, setData] = useState<Queue | null>(null);
@@ -87,12 +108,21 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
     try {
       const query = new URLSearchParams({ tipo, ano: String(ano), pagina: String(pagina) });
       if (tipo === "historicos" && classe !== null) query.set("classe", String(classe));
+      if (tipo === "historicos" && focusMatriculaId) query.set("matricula_id", focusMatriculaId);
       const response = await fetch(`/api/secretaria/operacoes-academicas/reconciliacao-historica?${query.toString()}`, {
         cache: "no-store",
       });
       const result = await response.json() as Queue;
       if (!response.ok || !result.ok) throw new Error(result.error ?? "Não foi possível consultar as decisões.");
-      if (requestId === requestSeq.current) setData(result);
+      if (requestId === requestSeq.current) {
+        setData(result);
+        // Open only the exact server-filtered 2025 record; don't scroll through
+        // unrelated classmates to resolve a case coming from batch close.
+        if (tipo === "historicos" && focusMatriculaId &&
+            result.items.some((item) => item.matricula_id === focusMatriculaId)) {
+          setSelectedId(focusMatriculaId);
+        }
+      }
     } catch (cause) {
       if (requestId === requestSeq.current) {
         setError(cause instanceof Error ? cause.message : "Não foi possível carregar a reconciliação.");
@@ -101,7 +131,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
     } finally {
       if (requestId === requestSeq.current) setLoading(false);
     }
-  }, [escolaId, tipo, ano, pagina, classe]);
+  }, [escolaId, tipo, ano, pagina, classe, focusMatriculaId]);
 
   useEffect(() => { void load(); return () => { requestSeq.current += 1; }; }, [load, reload]);
 
@@ -196,12 +226,18 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
             ))}
           </div>
           {tipo === "historicos" && (
-            <button type="button"
-              aria-pressed={classe === 9}
-              onClick={() => { setClasse((value) => value === 9 ? null : 9); setPagina(1); setSelectedId(null); }}
-              className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${classe === 9 ? "border-amber bg-amber text-white" : "border-border bg-background hover:bg-muted"}`}>
-              {classe === 9 ? "9.ª classe · filtro ativo" : "Filtrar 9.ª classe"}
-            </button>
+            <label className="space-y-1 text-sm font-medium">
+              Classe da pauta
+              <select value={classe ?? ""} onChange={(event) => {
+                const next = Number(event.target.value);
+                setClasse(next >= 1 && next <= 9 ? next : null);
+                setPagina(1); setSelectedId(null);
+              }} className="block rounded-xl border border-border bg-background px-3 py-2 text-sm">
+                <option value="">Todas as classes</option>
+                {Array.from({ length: 9 }, (_, index) => index + 1).map((c) =>
+                  <option key={c} value={c}>{c}.ª classe</option>)}
+              </select>
+            </label>
           )}
           <button type="button" disabled={loading} onClick={() => setReload((value) => value + 1)}
             className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium disabled:opacity-50">
@@ -284,6 +320,63 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
                   </p>
                 </div>
               )}
+              {!pending && selected.pauta_historica && (
+                <section aria-label="Pauta histórica de origem" className="space-y-3 rounded-xl border border-border p-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="font-semibold">Disciplinas da pauta de origem</h3>
+                    <span className="text-xs text-muted-foreground">{selected.pauta_historica.contagem_notas} notas finais</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    A pauta importada é a referência para 2025/2026. A matriz operacional serve apenas para identificar diferenças;
+                    não substitui as disciplinas nem as médias históricas.
+                  </p>
+                  {selected.pauta_historica.arquivos.map((arquivo) =>
+                    <p key={arquivo} className="break-all text-xs text-muted-foreground">
+                      Ficheiro: {arquivo}
+                    </p>)}
+                  {selected.pauta_historica.alertas.some((a) => a !== "CONFERIR_EXCEL_ORIGINAL") && (
+                    <div role="status" className="rounded-xl border border-amber-300 px-3 py-2 text-xs text-amber-700">
+                      {selected.pauta_historica.notas_abaixo_metade > 0
+                        ? `${selected.pauta_historica.notas_abaixo_metade} nota(s) abaixo de metade da escala; confirmar regra e recurso no RAA. `
+                        : ""}
+                      {selected.pauta_historica.sem_mapeamento > 0
+                        ? `${selected.pauta_historica.sem_mapeamento} disciplina(s) da pauta não estão na atribuição actual da turma. `
+                        : ""}
+                      {selected.pauta_historica.alertas.includes("ANO_NO_NOME_DO_ARQUIVO") ? "Nome do ficheiro indica outro ano; confira o cabeçalho da folha. " : ""}
+                      {selected.pauta_historica.divergencia_ano_documento ? "Ano declarado na origem não confere. " : ""}
+                      {selected.pauta_historica.processo_verificado === false ? "Número de processo divergente. " : ""}
+                      {selected.pauta_historica.alertas.includes("SEM_NOTAS_NA_PAUTA") ? "Sem notas finais históricas. " : ""}
+                    </div>
+                  )}
+                  {selected.pauta_historica.disciplinas.length > 0 ? (
+                    <div className="max-h-72 overflow-y-auto rounded-xl border border-border">
+                      <table className="w-full text-left text-xs">
+                        <thead className="sticky top-0 bg-card">
+                          <tr><th className="p-2 font-semibold">Disciplina da pauta</th><th className="p-2 text-right font-semibold">Nota</th></tr>
+                        </thead>
+                        <tbody>
+                          {selected.pauta_historica.disciplinas.map((linha) => (
+                            <tr key={linha.id} className="border-t border-border">
+                              <td className="p-2">
+                                <span>{linha.nome}</span>
+                                {linha.mapeada_na_turma === false && <span className="ml-1 text-amber-700">(mapear)</span>}
+                                {linha.nota_abaixo_metade && <p className="text-amber-700">Abaixo da metade — conferir decisão</p>}
+                                {linha.aba && linha.linha && <p className="text-muted-foreground">{linha.aba} · linha {linha.linha}</p>}
+                              </td>
+                              <td className="p-2 text-right tabular-nums">
+                                {linha.nota ?? "—"}{linha.escala !== null ? `/${linha.escala}` : ""}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : <p className="text-xs text-muted-foreground">Ainda não existe pauta histórica importada para este aluno.</p>}
+                  <p className="text-xs text-muted-foreground">
+                    Os metadados não substituem a verificação do Excel original. Confira os valores e a decisão da escola antes de ratificar.
+                  </p>
+                </section>
+              )}
               {pending && !selected.coorte_autorizada && (
                 <div role="alert" className="rounded-lg border border-amber-300 p-3 text-sm text-amber-700">
                   Esta origem não possui coorte assistida válida. Deve ser tratada pelo RAA ou pela secretaria académica.
@@ -330,6 +423,8 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
                 <button type="button" disabled={submitting || motivo.trim().length < 12
                   || ((pending || !selected.ratificado) && referencia.trim().length < 8)
                   || (pending && (!selected.coorte_autorizada || resultado === ""))
+                  || (!pending && selected.pauta_historica?.processo_verificado === false)
+                  || (!pending && selected.pauta_historica?.divergencia_ano_documento === true)
                   || (!pending && selected.ratificado && !confirmarFecho)}
                   onClick={() => void submit(pending ? "registar_decisao" : selected.ratificado ? "fechar_historico" : "ratificar")}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">

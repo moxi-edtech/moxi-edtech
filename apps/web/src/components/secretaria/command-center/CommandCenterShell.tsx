@@ -1,10 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
+import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowLeftRight, Keyboard, X } from "lucide-react";
 
 import { CommandCenterActionBar } from "@/components/secretaria/command-center/CommandCenterActionBar";
 import { type BalcaoActionId } from "@/lib/balcao/action-registry";
+
+const QuickDocHub = dynamic(() => import("@/components/secretaria/QuickDocHub"), { ssr: false });
 
 export type CommandCenterStudent = {
   id: string;
@@ -14,6 +18,7 @@ export type CommandCenterStudent = {
 
 type Props = {
   variant: "modal" | "page";
+  escolaId?: string;
   student: CommandCenterStudent | null;
   activeAction: BalcaoActionId;
   onActionChange: (actionId: BalcaoActionId) => void;
@@ -29,6 +34,7 @@ type Props = {
 
 export function CommandCenterShell({
   variant,
+  escolaId,
   student,
   activeAction,
   onActionChange,
@@ -41,6 +47,7 @@ export function CommandCenterShell({
   aboveActions,
   children,
 }: Props) {
+  const [rosterOpen, setRosterOpen] = useState(false);
   const studentSubtitle = student?.subtitle?.trim();
   const header = (
     <>
@@ -106,7 +113,29 @@ export function CommandCenterShell({
         label={activeAction === "enrollment" ? "Novo atendimento" : activeAction === "admissions" ? "Candidaturas" : student ? "Atendimento" : "Iniciar"}
         hasStudent={Boolean(student)}
         pendingActions={pendingActions}
+        onOpenRoster={escolaId ? () => setRosterOpen(true) : undefined}
       />
+      {escolaId ? (
+        <Dialog.Root open={rosterOpen} onOpenChange={setRosterOpen}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-[95] bg-background/80 backdrop-blur-sm" />
+            <Dialog.Content className="fixed inset-x-2 top-1/2 z-[96] mx-auto flex max-h-[92dvh] w-[calc(100%-1rem)] max-w-6xl -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl sm:inset-x-5 sm:w-[calc(100%-2.5rem)]">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+                <div className="min-w-0">
+                  <Dialog.Title className="text-base font-semibold text-foreground">Listas de turmas</Dialog.Title>
+                  <Dialog.Description className="text-xs text-muted-foreground">Selecione o ano letivo, a turma e o formato de emissão.</Dialog.Description>
+                </div>
+                <Dialog.Close asChild>
+                  <button type="button" aria-label="Fechar listas de turmas" className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber"><X className="h-4 w-4" /></button>
+                </Dialog.Close>
+              </div>
+              <div className="min-h-0 overflow-y-auto p-3 sm:p-5">
+                <QuickDocHub escolaId={escolaId} initialNominal nominalOnly />
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      ) : null}
     </>
   );
 
