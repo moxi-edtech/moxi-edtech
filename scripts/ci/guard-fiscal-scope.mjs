@@ -111,6 +111,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271117173000_raa_historical_finalists_and_voided_destinations.sql",
   // One exact reviewed 2025/CURTUME batch; fiscal/AGT writers remain denied.
   "20271117190000_curtume_fechar_pautas_2025_lote.sql",
+  // Exact CURTUME 2025 documentary/operational-grade reconciliation; fiscal scanner unchanged.
+  "20271117230000_curtume_2025_signed_operational_grades_reconciliation.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;

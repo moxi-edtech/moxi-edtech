@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -21,6 +22,12 @@ import {
 } from "@/lib/balcao/action-registry";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { readBalcaoStudentId, setBalcaoLocationContext } from "@/lib/balcao/return-context";
+
+const CurtumeHistoricalExceptionDesk = dynamic(
+  () => import("@/components/secretaria/CurtumeHistoricalExceptionDesk")
+    .then((module) => module.CurtumeHistoricalExceptionDesk),
+  { ssr: false },
+);
 
 function parseAction(value: string | null): BalcaoActionId {
   return value && value in BALCAO_ACTION_REGISTRY
@@ -43,6 +50,7 @@ export default function BalcaoPageClient({
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? null;
   const queryAction = parseAction(searchParams?.get("action") ?? null);
   const locationStudentId = readBalcaoStudentId(new URLSearchParams(searchParams?.toString() ?? ""), queryAction);
+  const historicMatriculaId = searchParams?.get("historicMatriculaId") ?? null;
   const returnToParam = searchParams?.get("returnTo") ?? null;
   const returnTo = returnToParam?.startsWith("/") && !returnToParam.startsWith("//")
     ? returnToParam
@@ -210,6 +218,17 @@ export default function BalcaoPageClient({
       {activeAction !== "admissions" && <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={caixaRefreshKey} />}
 
       <section className="mt-4 min-w-0 pb-2">
+        {selectedAlunoId && activeAction === "reenrollment" && historicMatriculaId &&
+          escolaId === "3744879f-2e19-4671-8995-78604302d8c5" && (
+          <CurtumeHistoricalExceptionDesk
+            key={[escolaId, selectedAlunoId, historicMatriculaId].join(":")}
+            escolaId={escolaId}
+            escolaParam={escolaParam}
+            alunoId={selectedAlunoId}
+            matriculaId={historicMatriculaId}
+            returnTo={returnTo}
+          />
+        )}
         {selectedAlunoId || activeAction === "enrollment" || activeAction === "admissions" ? (
           <RetainedActionPanels
             key={`${userScope}:${escolaId}:${searchParams?.get("polo_id") ?? "-"}:${selectedAlunoId ?? "-"}:${atendimentoKey}`}

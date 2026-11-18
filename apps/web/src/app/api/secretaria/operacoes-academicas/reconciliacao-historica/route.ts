@@ -60,6 +60,7 @@ const Params = z.object({
   tipo: z.enum(["pendentes", "historicos"]).default("pendentes"),
   classe: z.coerce.number().int().min(1).max(13).optional(),
   pagina: z.coerce.number().int().min(1).max(10000).default(1),
+  matricula_id: z.string().uuid().optional(),
 });
 
 /** A documentary "concluído" means end of an academic cycle, not passage
@@ -335,6 +336,11 @@ export async function GET(request: Request) {
       }, { headers: { "Cache-Control": "no-store" } });
     }
 
+    if (parsed.data.matricula_id && parsed.data.tipo !== "historicos") {
+      return NextResponse.json({ ok: false, error: "Filtro de matrícula disponível apenas para históricos." },
+        { status: 400 });
+    }
+
     // Filter at the database BEFORE pagination. This allows staff to work
     // through one class without paging through the whole school's history.
     // The academic year and school are always resolved server-side.
@@ -343,6 +349,12 @@ export async function GET(request: Request) {
       .select("id,matricula_id,aluno_id,ano_letivo,turma_id,resultado_final,snapshot_status,alunos:aluno_id(nome,nome_completo,numero_processo)", { count: "exact" })
       .eq("escola_id", escolaId).eq("ano_letivo", ano)
       .eq("snapshot_status", "aberto");
+
+    if (parsed.data.matricula_id) {
+      // Exact target is scoped to the authenticated school and historical year
+      // before pagination. This is a lookup, never a cross-tenant shortcut.
+      historiesQuery = historiesQuery.eq("matricula_id", parsed.data.matricula_id);
+    }
 
     if (parsed.data.classe !== undefined) {
       const { data: classes, error: classError } = await supabase

@@ -76,6 +76,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
   const params = useParams<{ id?: string }>();
   const searchParams = useSearchParams();
   const escolaId = String(params?.id ?? "");
+  const focusMatriculaId = searchParams?.get("matricula_id") ?? null;
   const [ano, setAno] = useState(() => {
     const query = Number(searchParams?.get("ano"));
     return Number.isInteger(query) && query >= 2000 ? query : new Date().getFullYear() - 1;
@@ -107,12 +108,21 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
     try {
       const query = new URLSearchParams({ tipo, ano: String(ano), pagina: String(pagina) });
       if (tipo === "historicos" && classe !== null) query.set("classe", String(classe));
+      if (tipo === "historicos" && focusMatriculaId) query.set("matricula_id", focusMatriculaId);
       const response = await fetch(`/api/secretaria/operacoes-academicas/reconciliacao-historica?${query.toString()}`, {
         cache: "no-store",
       });
       const result = await response.json() as Queue;
       if (!response.ok || !result.ok) throw new Error(result.error ?? "Não foi possível consultar as decisões.");
-      if (requestId === requestSeq.current) setData(result);
+      if (requestId === requestSeq.current) {
+        setData(result);
+        // Open only the exact server-filtered 2025 record; don't scroll through
+        // unrelated classmates to resolve a case coming from batch close.
+        if (tipo === "historicos" && focusMatriculaId &&
+            result.items.some((item) => item.matricula_id === focusMatriculaId)) {
+          setSelectedId(focusMatriculaId);
+        }
+      }
     } catch (cause) {
       if (requestId === requestSeq.current) {
         setError(cause instanceof Error ? cause.message : "Não foi possível carregar a reconciliação.");
@@ -121,7 +131,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
     } finally {
       if (requestId === requestSeq.current) setLoading(false);
     }
-  }, [escolaId, tipo, ano, pagina, classe]);
+  }, [escolaId, tipo, ano, pagina, classe, focusMatriculaId]);
 
   useEffect(() => { void load(); return () => { requestSeq.current += 1; }; }, [load, reload]);
 
