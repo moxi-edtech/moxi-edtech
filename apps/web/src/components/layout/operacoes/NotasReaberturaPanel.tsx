@@ -80,6 +80,7 @@ export default function NotasReaberturaPanel({ onDecided }: { onDecided?: () => 
       setEditingId(null);
       setReason("");
       await load();
+      window.dispatchEvent(new Event("klasse:reabertura-atualizada"));
       onDecided?.();
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "Não foi possível decidir o pedido.");
