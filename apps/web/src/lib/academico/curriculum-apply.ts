@@ -756,11 +756,17 @@ export async function applyCurriculumPreset(
     presetKey,
     customData,
     advancedConfig: advancedConfigInput,
-    createTurmas = true,
+    createTurmas = false,
     anoLetivo,
     createCurriculo = false,
     anoLetivoId,
   } = options;
+
+  // A criação de turmas pressupõe um currículo já publicado.
+  // Rejeitar antes de qualquer escrita quando a chamada mistura os dois passos.
+  if (createTurmas && (!anoLetivoId || createCurriculo)) {
+    throw new Error("Publique primeiro o currículo no ano letivo seleccionado antes de gerar turmas.");
+  }
 
   const presetMeta = CURRICULUM_PRESETS_META[presetKey];
 
