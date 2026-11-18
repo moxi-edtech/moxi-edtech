@@ -81,7 +81,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
         <div className="flex flex-wrap items-center justify-between gap-3">
           <SecaoLabel>{onlyReopen ? "Solicitações académicas" : "Operação"}</SecaoLabel>
           <div className="flex items-center gap-2">
-            {operationalSnapshot && (
+            {operationalSnapshot && !onlyReopen && (
               <button
                 type="button"
                 onClick={() => setAberto("foco")}
@@ -113,7 +113,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
         ) : (
           <div className="mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4">
             {loading
-              ? [0, 1, 2].map((i) => (
+              ? (onlyReopen ? [0] : [0, 1, 2]).map((i) => (
                   <div key={i} className="h-[104px] animate-pulse rounded-xl border border-border bg-card" />
                 ))
               : contadores.filter(({ id }) => !onlyReopen || id === "reabertura").map(({ id, icon: Icon, label, value, tone }) => (
