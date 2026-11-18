@@ -17,7 +17,7 @@ test("historic 2025 blocking reasons are operational and actionable", () => {
 
 test("unknown database reasons do not expose raw SQL errors to directors", () => {
   const message = getHistoricBatchIssueAdvice("SQLSTATE 23514 internal record");
-  assert.equal(message.title, "Falha técnica de validação");
+  assert.equal(message.title, "Validação do fecho não concluída");
   assert.equal(isHistoricBatchAcademicIssue("SQLSTATE 23514 internal record"), false);
   assert.equal(isHistoricBatchAcademicIssue("RAA_RESULTADO_NAO_RECONHECIDO"), true);
   assert.doesNotMatch(message.nextStep, /SQLSTATE|23514/);
