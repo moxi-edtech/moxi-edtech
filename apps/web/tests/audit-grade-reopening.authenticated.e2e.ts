@@ -24,7 +24,7 @@ async function login(browser: Browser, email: string, password: string): Promise
   await page.locator("#email").fill(email);
   await page.locator("#senha").fill(password);
   await page.locator('button[type="submit"]').click();
-  await page.waitForURL(/\/redirect|\/escola\/|\/professor|\/secretaria/, { timeout: 30_000 });
+  await page.waitForURL(/\/redirect|\/escola\/|\/professor|\/secretaria|\/admin|\/operacoes/, { timeout: 30_000 });
   await expect.poll(async () => {
     const r = await context.request.get("/api/professor/notas/reabertura");
     return r.status();
@@ -71,6 +71,8 @@ test("pedido → aprovação → gravação → leitura → revogação com isol
     data: { id: pedido.id, status: "APROVADO" },
   });
   expect([403, 409]).toContain(foreignDecision.status());
+  const foreignList = await foreign.request.get("/api/secretaria/notas/reabertura?status=PENDENTE");
+  if (foreignList.ok()) expect(JSON.stringify(await foreignList.json())).not.toContain(pedido.id);
 
   const director = await browser.newContext({ baseURL: config.TEST_AUDIT_STAGING_BASE_URL });
   const directorPage = await director.newPage();
@@ -119,6 +121,18 @@ test("pedido → aprovação → gravação → leitura → revogação com isol
   expect(revoked.status(), await revoked.text()).toBe(200);
   const final = await teacher.request.get(`/api/professor/notas/reabertura?${params}`);
   expect((await final.json()).can_edit).toBe(false);
+  const forbiddenGrade = await teacher.request.post("/api/professor/notas", {
+    headers: { "Idempotency-Key": randomUUID() },
+    data: {
+      ...scope, turma_disciplina_id: config.TEST_AUDIT_TURMA_DISCIPLINA_ID,
+      tipo_avaliacao: "MAC", notas: [{ aluno_id: config.TEST_AUDIT_ALUNO_ID, valor: 18 }],
+    },
+  });
+  expect([403, 409]).toContain(forbiddenGrade.status());
+  const unchanged = await teacher.request.get(`/api/professor/pauta?${readParams}`);
+  const unchangedRows = await unchanged.json();
+  expect(unchangedRows.find((row: { aluno_id: string }) =>
+    row.aluno_id === config.TEST_AUDIT_ALUNO_ID)?.componentes?.MAC).toBe(15);
   await teacher.close();
   await director.close();
   await foreign.close();
