@@ -73,8 +73,10 @@ export async function loadSchoolLogoBytes({
   }
 
   if (!bytes) {
-    // Nunca consultar endereços internos ou esquemas arbitrários como fonte de marca.
-    if (!path && !parsed.hostname.endsWith(".supabase.co")) {
+    // A URL externa de fallback só pode apontar ao Storage público do Supabase.
+    // Mesmo que um host arbitrário simule o mesmo pathname, não o contactar:
+    // isso evitaria transformar o gerador PDF numa chamada SSRF.
+    if (!parsed.hostname.endsWith(".supabase.co")) {
       throw new SchoolLogoUnavailableError();
     }
     try {
