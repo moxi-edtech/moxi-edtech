@@ -52,10 +52,12 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
           slotPerfil={(
             <div className="space-y-5">
               <DossierPerfilSection aluno={aluno} canEditNome={canEditNome} />
-              <CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId} />
+              <CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId}
+                alunoNome={aluno.perfil.nome} canManageDesistencia={role === "admin" || role === "secretaria"} />
             </div>
           )}
-          slotMatricula={<CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId} />}
+          slotMatricula={<CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId}
+            alunoNome={aluno.perfil.nome} canManageDesistencia={role === "admin" || role === "secretaria"} />}
           slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} escolaId={resolvedEscolaId} servicos={servicos} />}
           slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role={role} escolaId={resolvedEscolaId} />}
           slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit={canEditHistoricoTransitado} />}
