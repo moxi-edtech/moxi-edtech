@@ -66,7 +66,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         return NextResponse.json({ ok: false, error: "Campos sensíveis reservados à Direcção" }, { status: 403 });
       }
     }
-    const fallbackLogoUrl = `${new URL(req.url).origin}/insignia_med.png`;
+    const logoBaseUrl = new URL(req.url).origin;
 
     if (format === "pdf") {
       const enableQr = searchParams.get("qr") === "true";
@@ -88,7 +88,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         camposSensiveis,
         emissor: user.email ?? user.id,
         onRowsCount: (count) => { linhasExportadas = count; },
-        fallbackLogoUrl,
+        logoBaseUrl,
       });
 
       if (!month && !isAttendance && !isAlbum) {
