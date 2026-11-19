@@ -9,6 +9,22 @@ COMMENT ON COLUMN public.matriculas.motivo_fecho IS
 COMMENT ON COLUMN public.matriculas.data_fecho IS
   'Instante UTC do encerramento administrativo; na desistência, preenchido no registo da escola.';
 
+-- Impedir alteração manual do estado por PostgREST, mesmo que o actor
+-- tenha UPDATE/INSERT amplo na matrícula. A RPC SECURITY DEFINER é executada
+-- como postgres (BYPASSRLS) e valida papel, ano, motivo, histórico e concorrência.
+-- Política restritiva: apenas bloqueia escrever 'desistente' diretamente,
+-- sem mexer nas regras de matrícula dos outros estados.
+DROP POLICY IF EXISTS matriculas_desistencia_insert_rpc_only ON public.matriculas;
+CREATE POLICY matriculas_desistencia_insert_rpc_only ON public.matriculas
+  AS RESTRICTIVE FOR INSERT TO authenticated
+  WITH CHECK (status <> 'desistente');
+
+DROP POLICY IF EXISTS matriculas_desistencia_update_rpc_only ON public.matriculas;
+CREATE POLICY matriculas_desistencia_update_rpc_only ON public.matriculas
+  AS RESTRICTIVE FOR UPDATE TO authenticated
+  USING (true)
+  WITH CHECK (status <> 'desistente');
+
 CREATE TABLE IF NOT EXISTS public.matricula_desistencia_sinalizacoes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   escola_id uuid NOT NULL REFERENCES public.escolas(id),
