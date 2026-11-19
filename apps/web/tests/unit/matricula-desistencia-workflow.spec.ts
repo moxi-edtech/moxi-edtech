@@ -44,6 +44,10 @@ test("somente funções autenticadas; professor não encerra, só sinaliza turma
   assert.match(teacher, /FROM public\.turma_disciplinas td/);
   assert.match(teacher, /tdp\.professor_id=v_professor_id/);
   assert.match(teacher, /td\.professor_id=v_professor_id/);
+  assert.match(teacher, /FROM public\.escola_users eu/);
+  assert.match(teacher, /eu\.escola_id=v_m\.escola_id AND eu\.user_id=v_user/);
+  assert.match(migration, /eu\.escola_id = matricula_desistencia_sinalizacoes\.escola_id/);
+  assert.match(migration, /SINALIZACAO_JA_CONFIRMADA/);
   assert.doesNotMatch(teacher, /UPDATE public\.matriculas SET/);
   assert.match(migration, /uq_sinalizacao_desistencia_pendente/);
 });
