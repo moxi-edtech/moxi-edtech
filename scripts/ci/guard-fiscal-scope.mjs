@@ -130,6 +130,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // PR #378: calendário escolar operacional; RLS e auditoria append-only, sem notas ou fiscal.
   "20261119145630_calendario_avaliacoes_auditado_20261119.sql",
   "20261119150953_calendario_avaliacoes_evitar_sobreposicao.sql",
+  // Calendário: validação exclusiva de turma ativa e ano corrente; sem alterações de matrícula ou notas.
+  "20261119155654_calendario_avaliacoes_turma_ativa_20261119.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
@@ -195,6 +197,24 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
       }
       if (/(?:DROP\s|TRUNCATE\s|DISABLE\s|INSERT\s|UPDATE\s|DELETE\s)/i.test(executableSql)) {
         violations.push("Assessment conflict migration may only install the exclusion constraint: " + path);
+      }
+    }
+    if (name === "20261119155654_calendario_avaliacoes_turma_ativa_20261119.sql") {
+      for (const token of [
+        "CREATE OR REPLACE FUNCTION public.calendario_avaliacoes_turma_ativa_guard()",
+        "SECURITY INVOKER",
+        "t.ano_letivo_id = NEW.ano_letivo_id",
+        "t.session_id = NEW.ano_letivo_id",
+        "t.status_validacao = 'ativo'",
+        "a.ativo IS TRUE",
+        "CALENDARIO_TURMA_INATIVA_OU_ANO_INCORRETO",
+        "REVOKE ALL ON FUNCTION public.calendario_avaliacoes_turma_ativa_guard()",
+        "CREATE TRIGGER trg_calendario_avaliacoes_turma_ativa",
+      ]) {
+        if (!content.includes(token)) violations.push("Calendar active-class guard missing: " + token);
+      }
+      if (/(?:DROP\\s+TABLE|TRUNCATE\\s|ALTER\\s+TABLE|INSERT\\s+INTO|UPDATE\\s+public\\.|DELETE\\s+FROM)/i.test(executableSql)) {
+        violations.push("Calendar active-class migration cannot change table data or schema: " + path);
       }
     }
     if (FISCAL_SQL.test(executableSql)) {
