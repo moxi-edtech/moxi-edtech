@@ -13,6 +13,7 @@ const escolaRoles = [
 ] as const;
 
 const querySchema = z.object({
+  escola_id: z.string().uuid(),
   aluno_id: z.string().uuid(),
   turma_id: z.string().uuid(),
   ano_letivo_id: z.string().uuid().optional(),
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return fail("Não autenticado.", 401);
 
-  const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+  const escolaId = await resolveEscolaIdForUser(supabase, user.id, parsed.data.escola_id);
   if (!escolaId) return fail("Sem acesso à escola.", 403);
   const guard = await requireRoleInSchool({ supabase, escolaId, roles: [...escolaRoles] });
   if (guard.error) return guard.error;
@@ -107,10 +108,9 @@ export async function POST(request: NextRequest) {
   if (action.acao !== "sinalizar") {
     const { data: matricula } = action.acao === "confirmar"
       ? await supabase.from("matriculas").select("escola_id").eq("id", action.matricula_id).maybeSingle()
-      : { data: null };
-    const escolaId = action.acao === "confirmar"
-      ? await resolveEscolaIdForUser(supabase, user.id, matricula?.escola_id ?? null)
-      : await resolveEscolaIdForUser(supabase, user.id);
+      : await supabase.from("matricula_desistencia_sinalizacoes")
+        .select("escola_id").eq("id", action.sinalizacao_id).maybeSingle();
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, matricula?.escola_id ?? null);
     if (!escolaId) return fail("Sem permissão.", 403);
     const guard = await requireRoleInSchool({ supabase, escolaId, roles: [...escolaRoles] });
     if (guard.error) return guard.error;
