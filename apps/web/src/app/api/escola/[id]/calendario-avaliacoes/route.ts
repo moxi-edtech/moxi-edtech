@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const ROLES = [
-  "secretaria", "secretaria_financeiro", "admin_secretaria",
+  "secretaria", "secretaria_financeiro", "admin_secretaria", "admin_secretario",
   "admin", "admin_escola", "staff_admin", "admin_financeiro", "diretor",
 ] as const;
 
