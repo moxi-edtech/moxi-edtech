@@ -171,13 +171,39 @@ export async function GET(
       }
     }
 
+    if (!current && !inconsistent) {
+      // A desistência não é "sem matrícula": o registo original persiste.
+      const { data: withdrawn, error: withdrawnError } = await db.from("matriculas")
+        .select("id,turma_id,session_id,motivo_fecho,data_fecho,ano_letivo")
+        .eq("escola_id", escolaId).eq("aluno_id", studentId)
+        .eq("session_id", activeYear!.id).eq("status", "desistente").eq("ativo", false)
+        .limit(2);
+      if (withdrawnError) return NextResponse.json(
+        { ok: false, error: "Não foi possível verificar a desistência." }, { status: 503 },
+      );
+      if ((withdrawn ?? []).length > 1) {
+        result.estado = "reconciliacao";
+        result.reason = "Há registos de desistência duplicados; requer reconciliação administrativa.";
+      } else if (withdrawn?.length === 1 && withdrawn[0].turma_id) {
+        result.estado = "cancelada";
+        result.reason = "Desistência registada neste ano. O histórico permanece preservado.";
+        result.desistencia = {
+          matriculaId: withdrawn[0].id,
+          turmaId: withdrawn[0].turma_id,
+          anoLetivoId: activeYear!.id,
+          motivo: withdrawn[0].motivo_fecho,
+          data: withdrawn[0].data_fecho,
+        };
+      }
+    }
+
     const cicloVida = await carregarCicloVidaAluno(db, escolaId, studentId).catch(() => null);
     result.cicloVida = cicloVida;
     result.cicloVidaIndisponivel = cicloVida === null;
     // A ausência de matrícula ativa não significa que a matrícula não exista.
     // Fecho, cancelamento e estado legado do ano selecionado mantêm a identidade.
     const registroAno = cicloVida?.matriculas.find((item) => item.anoLetivo === activeYear!.ano);
-    if (!current && !inconsistent && registroAno) {
+    if (!current && !inconsistent && registroAno && !result.desistencia) {
       if (registroAno.estadoOperacional === "encerrada" || registroAno.estadoOperacional === "cancelada") {
         result.estado = registroAno.estadoOperacional;
         result.reason = registroAno.estadoOperacional === "encerrada"
