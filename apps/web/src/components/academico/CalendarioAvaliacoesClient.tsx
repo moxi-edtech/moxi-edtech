@@ -40,6 +40,7 @@ export default function CalendarioAvaliacoesClient() {
   const [editing, setEditing] = useState<string | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
   const [audits, setAudits] = useState<Audit[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const reload = useCallback(async () => {
     const result = await fetch(endpoint, { cache: "no-store" });
@@ -70,6 +71,7 @@ export default function CalendarioAvaliacoesClient() {
   const periodMap = new Map((data?.periodos || []).map((p) => [p.id, p]));
   const items = (data?.items || []).filter((i) => periodMap.get(i.periodo_letivo_id)?.numero === num);
   const draft = items.filter((i) => i.estado === "rascunho");
+  const selectedDrafts = draft.filter((i) => selectedIds.includes(i.id));
   const subjects = (data?.disciplinas || []).filter((s) => classIds.includes(s.turma_id)
     && (s.nome + " " + (classMap.get(s.turma_id)?.nome || "")).toLowerCase().includes(search.toLowerCase()));
   const periodFor = (s: Subject) => {
@@ -120,8 +122,8 @@ export default function CalendarioAvaliacoesClient() {
   };
 
   const publish = () => {
-    if (!draft.length || saving || !window.confirm("Publicar " + draft.length + " avaliações? Os alunos e professores poderão consultá-las.")) return;
-    void mutate({ action: "publish", ids: draft.map((i) => i.id) }, "Calendário publicado com sucesso.");
+    if (!selectedDrafts.length || saving || !window.confirm("Publicar apenas as " + selectedDrafts.length + " avaliações selecionadas? Os alunos e professores poderão consultá-las.")) return;
+    void mutate({ action: "publish", ids: selectedDrafts.map((i) => i.id) }, "Avaliações selecionadas publicadas com sucesso.").then((ok) => { if (ok) setSelectedIds([]); });
   };
 
   const showHistory = async (id: string) => {
@@ -154,15 +156,15 @@ export default function CalendarioAvaliacoesClient() {
           <p className="text-xs text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano + 1}</p>
           <label htmlFor="ava-period" className="mb-1 block text-sm font-medium">Trimestre</label>
           <select id="ava-period" className={control} value={num} onChange={(e) => {
-            const n = Number(e.target.value); setNum(n); setChosen([]);
+            const n = Number(e.target.value); setNum(n); setChosen([]); setSelectedIds([]);
             const p = data.periodos.find((v) => v.numero === n);
             if (p) setDate(today() >= p.data_inicio && today() <= p.data_fim ? today() : p.data_inicio);
           }}>{numbers.map((n) => <option key={n} value={n}>{n}.º Trimestre</option>)}</select>
         </div>
         <p className="text-sm text-muted-foreground"><strong className="text-lg text-foreground">{draft.length}</strong> rascunhos · <strong className="text-lg text-foreground">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</p>
-        <button type="button" disabled={saving || !draft.length} onClick={publish}
+        <button type="button" disabled={saving || !selectedDrafts.length} onClick={publish}
           className={action + " bg-amber px-4 text-white"}>
-          <Check size={16} /> Publicar {draft.length} avaliações
+          <Check size={16} /> Publicar selecionadas ({selectedDrafts.length})
         </button>
       </section>
       <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
@@ -178,7 +180,7 @@ export default function CalendarioAvaliacoesClient() {
           <div role="group" aria-label="Turmas" className="flex max-h-32 flex-wrap gap-2 overflow-auto">
             {data.turmas.map((t) => <button type="button" key={t.id} aria-pressed={classIds.includes(t.id)} onClick={() => {
               setClassIds((v) => v.includes(t.id) ? v.filter((x) => x !== t.id) : [...v, t.id]);
-              setChosen((v) => v.filter((x) => subjectMap.get(x)?.turma_id !== t.id));
+              if (classIds.includes(t.id)) setChosen((v) => v.filter((x) => subjectMap.get(x)?.turma_id !== t.id));
             }} className={action + " rounded-full border px-3 py-1 text-xs " + (classIds.includes(t.id) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground")}>{t.nome}</button>)}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -216,11 +218,19 @@ export default function CalendarioAvaliacoesClient() {
           <p className="text-xs text-muted-foreground">Só avaliações publicadas aparecem nos portais.</p></div>
           <span className="text-xs text-muted-foreground">{items.length} registo(s)</span>
         </div>
-        <div className="divide-y divide-slate-100">{items.map((item) => <div key={item.id}>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3">
+           <button type="button" className={action + " border border-border"} disabled={!draft.length} onClick={() =>
+             setSelectedIds((prev) => draft.every((i) => prev.includes(i.id)) ? [] : draft.map((i) => i.id))}>
+             <Check size={16}/> {draft.length && selectedDrafts.length === draft.length ? "Desmarcar todos" : "Selecionar rascunhos"}
+           </button>
+           <span className="text-xs text-muted-foreground">{selectedDrafts.length} selecionadas para publicar</span>
+         </div>
+         <div className="divide-y divide-border">{items.map((item) => <div key={item.id}>
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div><p className="font-semibold">{subjectMap.get(item.turma_disciplina_id)?.nome || "Disciplina"} · {item.tipo}</p>
+            <div className="flex items-start gap-3">{item.estado === "rascunho" && <input type="checkbox" aria-label={"Selecionar " + (subjectMap.get(item.turma_disciplina_id)?.nome || "avaliação") + " para publicação"} className="mt-1 accent-primary" checked={selectedIds.includes(item.id)} onChange={(e) => setSelectedIds((prev) => e.target.checked ? [...new Set([...prev, item.id])] : prev.filter((id) => id !== item.id))}/>}
+             <div><p className="font-semibold">{subjectMap.get(item.turma_disciplina_id)?.nome || "Disciplina"} · {item.tipo}</p>
               <p className="text-sm text-muted-foreground">{classMap.get(item.turma_id)?.nome} · {fmt(item.data)} às {item.inicio.slice(0,5)}</p>
-              {item.descricao && <p className="text-xs text-muted-foreground">{item.descricao}</p>}</div>
+              {item.descricao && <p className="text-xs text-muted-foreground">{item.descricao}</p>}</div></div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-muted px-2 py-1 text-xs">{item.estado}</span>
               {item.estado !== "cancelado" && <button type="button" className={action + " border border-border"} onClick={() => {
