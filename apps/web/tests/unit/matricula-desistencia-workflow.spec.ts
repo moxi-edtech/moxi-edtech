@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { classifyMatricula, selectMatriculasDaLista } from "../../src/lib/documentos/listaNominalPolicy";
 import { normalizarEstadoMatricula } from "../../src/lib/matriculas/student-lifecycle";
+import { canConfirmarDesistencia, DESISTENCIA_CONFIRMACAO_PAPEIS } from "../../src/lib/matriculas/desistencia-permissions";
 
 const source = (path: string) => readFileSync(new URL("../../src/" + path, import.meta.url), "utf8");
 const migration = readFileSync(
@@ -107,4 +108,42 @@ test("as quatro interfaces reutilizam a mesma ação e as permissões próprias"
   assert.match(perfil, /canManageDesistencia/);
   assert.match(fetchProfessor, /matricula_id: row\.id/);
   assert.match(fetchProfessor, /\.eq\("ativo", true\)/);
+});
+
+test("as rotas reais de Operações usam a lista e o dossiê com a ação", () => {
+  const turmaRoute = source("app/escola/[id]/(portal)/operacoes/turmas/[turmaId]/page.tsx");
+  const alunoRoute = source("app/escola/[id]/(portal)/operacoes/alunos/[alunoId]/page.tsx");
+  const turmaAdmin = source("app/escola/[id]/(portal)/admin/turmas/[turmaId]/page.tsx");
+  const alunoAdmin = source("app/escola/[id]/(portal)/admin/alunos/[alunoId]/page.tsx");
+  const turmaClient = source("components/secretaria/TurmaDetailClient.tsx");
+  const perfil = source("components/aluno/AlunoPerfilPage.tsx");
+
+  assert.match(turmaRoute, /admin\/turmas\/\[turmaId\]\/page/);
+  assert.match(alunoRoute, /admin\/alunos\/\[alunoId\]\/page/);
+  assert.match(turmaAdmin, /<TurmaDetailClient/);
+  assert.match(alunoAdmin, /<AlunoPerfilPage/);
+  assert.match(turmaClient, /<DesistenciaMatriculaAction/);
+  assert.match(turmaClient, /canManageDesistencia=\{data\?\.canManageDesistencia === true\}/);
+  assert.match(turmaClient, /alunoId=\{aluno\.aluno_id\}/);
+  assert.match(turmaClient, /matriculaId=\{aluno\.matricula_id\}/);
+  assert.match(perfil, /<CurrentYearEnrollmentPanel/);
+  assert.match(perfil, /canManageDesistencia=\{canManageDesistencia\}/);
+  assert.match(perfil, /canConfirmarDesistencia\(member\?\.papel\)/);
+  assert.doesNotMatch(perfil, /canManageDesistencia=\{role === "admin"/);
+});
+
+test("Operações respeita a permissão do DB e não confunde URL com autorização", () => {
+  const details = source("app/api/secretaria/turmas/[id]/detalhes/route.ts");
+  assert.match(details, /\.from\('escola_users'\)/);
+  assert.match(details, /\.eq\('escola_id', escolaId\)/);
+  assert.match(details, /\.eq\('user_id', user\.id\)/);
+  assert.match(details, /canConfirmarDesistencia\(member\?\.papel\)/);
+  assert.match(details, /canManageDesistencia,/);
+  for (const role of ["diretor", "admin", "admin_escola", "staff_admin", "admin_secretaria", "secretaria", "secretaria_financeiro", "admin_financeiro"]) {
+    assert.equal(canConfirmarDesistencia(role), true, role);
+    assert.ok(DESISTENCIA_CONFIRMACAO_PAPEIS.includes(role as never));
+  }
+  for (const role of ["professor", "aluno", "financeiro", "formador", null, undefined]) {
+    assert.equal(canConfirmarDesistencia(role), false, String(role));
+  }
 });
