@@ -62,7 +62,9 @@ export function BalcaoNotasComplementares({ matriculaId, ano, onSaved }: {
 
   const save = useCallback(async () => {
     if (!snapshot?.pode_complementar || !snapshot.nota_maxima || savingRef.current || loading) return;
-    const items = snapshot.disciplinas.flatMap(subject => kinds.flatMap(kind =>
+    let items: Array<{ disciplina_id: string; trimestre: number; tipo_avaliacao: Kind; valor: number }>;
+    try {
+      items = snapshot.disciplinas.flatMap(subject => kinds.flatMap(kind =>
       [1, 2, 3].flatMap(term => {
         const key = gradeKey(subject.disciplina_id, term, kind);
         const raw = draft[key]?.trim();
@@ -75,6 +77,10 @@ export function BalcaoNotasComplementares({ matriculaId, ano, onSaved }: {
         }
         return [{ disciplina_id: subject.disciplina_id, trimestre: term, tipo_avaliacao: kind, valor }];
       })));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Verifique as notas antes de guardar.");
+      return;
+    }
     if (!items.length) { setError("Preencha pelo menos uma nota em falta."); return; }
     savingRef.current = true; setSaving(true); setError(""); setNotice("");
     try {
