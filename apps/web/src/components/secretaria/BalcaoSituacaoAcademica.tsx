@@ -67,7 +67,7 @@ export function useBalcaoSituacaoAcademica(
 
 export function BalcaoSituacaoAcademica({
   snapshot, loading, error, refresh, onNavigate, onCurrentGrade, onHistoricalGrade, hasFinancialPending,
-  pendingSourceMatriculaId, pendingDisciplines, onAcademicUpdated, onClassCorrected, onContinueEnrollment, canContinueEnrollment, onRegularizeDebt, percurso, percursoBusy = false,
+  pendingSourceMatriculaId, pendingDisciplines, onAcademicUpdated, onClassCorrected, onContinueEnrollment, canContinueEnrollment, onResumePreparedReenrollment, onRegularizeDebt, percurso, percursoBusy = false,
 }: {
   snapshot: SituacaoBalcaoPayload | null;
   loading: boolean;
@@ -85,6 +85,8 @@ export function BalcaoSituacaoAcademica({
   onContinueEnrollment?: () => void;
   /** From the server's verified rematrícula status (READY), not from grades or payment assumptions. */
   canContinueEnrollment?: boolean;
+  /** Only present after the backend has verified a pending destination and the canonical fee flow. */
+  onResumePreparedReenrollment?: () => void;
   onRegularizeDebt?: () => void;
   percurso?: import("react").ReactNode;
   percursoBusy?: boolean;
@@ -129,6 +131,12 @@ export function BalcaoSituacaoAcademica({
         onNavigate?.(situation.action);
         break;
       case "reenrollment": {
+        // Uma matrícula 2026/27 já reservada deve abrir a cobrança real.
+        // O scroll para a descrição do estado não inicia qualquer operação.
+        if (current?.situacao_contextual === "aguarda_confirmacao") {
+          onResumePreparedReenrollment?.();
+          break;
+        }
         if (!current && previous && snapshot.ano.ativo && canContinueEnrollment && onContinueEnrollment) {
           onContinueEnrollment();
           break;
@@ -169,9 +177,13 @@ export function BalcaoSituacaoAcademica({
         ? "Concluir rematrícula de " + snapshot?.ano.ano
         : "Ver pendências da rematrícula"
     : situation?.actionLabel;
-  const mainActionIsAvailable = Boolean(canContinueEnrollment && onContinueEnrollment) || situation?.action === "grade" ||
-    (situation?.action === "historical" && Boolean(historicalReviewTarget || historicalTarget)) ||
-    Boolean(onNavigate);
+  const preparedFeeAction = situation?.action === "reenrollment" &&
+    current?.situacao_contextual === "aguarda_confirmacao";
+  const mainActionIsAvailable = (preparedFeeAction
+    ? Boolean(onResumePreparedReenrollment)
+    : Boolean(canContinueEnrollment && onContinueEnrollment) || Boolean(onNavigate)) ||
+    situation?.action === "grade" ||
+    (situation?.action === "historical" && Boolean(historicalReviewTarget || historicalTarget));
 
   return (
     <section aria-label="Estado do aluno no ano letivo" className="mb-4 rounded-xl border border-border bg-card p-4 sm:p-5">
