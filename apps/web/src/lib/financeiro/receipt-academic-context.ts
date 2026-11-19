@@ -14,7 +14,7 @@ export type ReceiptAcademicContext = {
 };
 
 export async function resolveReceiptAcademicContext(
-  db: { from: (table: string) => any },
+  db: any,
   params: { escolaId: string; alunoId: string | null; mensalidadeId: string | null },
 ): Promise<ReceiptAcademicContext | null> {
   const { escolaId, alunoId, mensalidadeId } = params;
@@ -64,6 +64,8 @@ export async function resolveReceiptAcademicContext(
     turmaTurno: turma.turno ?? null,
     classeNome: classe?.nome ?? null,
     cursoNome: curso?.nome ?? null,
-    anoLetivo: Number.isFinite(Number(matricula.ano_letivo)) ? Number(matricula.ano_letivo) : null,
+    anoLetivo: matricula.ano_letivo != null && Number.isFinite(Number(matricula.ano_letivo))
+      ? Number(matricula.ano_letivo)
+      : null,
   };
 }
