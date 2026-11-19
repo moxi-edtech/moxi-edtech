@@ -84,8 +84,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
       .eq('session_id', turmaResult.session_id)
-      .eq('ativo', true)
-      .in('status', ACTIVE_MATRICULA_STATUSES);
+      .in('status', [...ACTIVE_MATRICULA_STATUSES, 'desistente']);
 
     if (ocupacaoError) {
       console.error('Error fetching ocupacao:', ocupacaoError);
@@ -123,6 +122,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         numero_chamada,
         numero_matricula,
         status,
+        ativo,
         alunos!inner (
           id,
           nome,
@@ -379,6 +379,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt', { sensitivity: 'base' });
     });
 
+    // O aluno permanece no histórico da turma, mas não ocupa vaga.
+    const alunosAtivos = alunos.filter((m) => m.status_matricula !== 'desistente');
+    const alunosDesistentes = alunos.filter((m) => m.status_matricula === 'desistente');
     const ocupacaoFinal = ocupacao ?? 0;
 
     // 6. Montar resposta final
@@ -421,7 +424,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const responseData = {
       turma,
-      alunos,
+      alunos: alunosAtivos,
+      desistentes: alunosDesistentes,
       disciplinas,
       canEmitLista: true, // A rota já exigiu authorizeTurmasManage.
       canManageDesistencia,
