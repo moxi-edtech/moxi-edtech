@@ -128,7 +128,16 @@ export async function GET(req: Request, context: Context) {
         .eq("escola_id", escolaId).eq("avaliacao_id", auditId)
         .order("ocorrido_em", { ascending: false }).limit(100);
       if (error) throw error;
-      historico = data ?? [];
+      const logs = data ?? [];
+      const userIds = [...new Set(logs.map((h: { actor_id: string }) => h.actor_id).filter(Boolean))];
+      const people = userIds.length
+        ? await db.from("profiles").select("user_id,nome")
+            .eq("escola_id", escolaId).in("user_id", userIds).limit(100)
+        : { data: [], error: null };
+      // Auditoria continua disponível mesmo quando a política de perfis restringe nomes.
+      const byUser = new Map<string, string>((people.data ?? []).map((p: { user_id: string; nome: string }): [string, string] =>
+        [p.user_id, p.nome]));
+      historico = logs.map((h: { actor_id: string }) => ({ ...h, actor_nome: byUser.get(h.actor_id) ?? null }));
     }
     return NextResponse.json({ ok: true, ano, periodos: periods.data, turmas: classes.data,
       disciplinas, ofertas: offerings.data, items: saved.data, historico }, { headers: { "Cache-Control": "no-store" } });
@@ -174,7 +183,13 @@ export async function POST(request: Request, context: Context) {
       result = await db.rpc("publicar_calendario_avaliacoes", { p_ids: input.ids });
     }
     if (result.error) {
-      return NextResponse.json({ ok: false, error: result.error.message }, { status: 409 });
+      const conflict = result.error.code === "23P01" || result.error.message?.includes("calendario_avaliacoes_turma_sem_sobreposicao");
+      const duplicate = result.error.code === "23505";
+      const message = conflict
+        ? "Esta turma já tem uma avaliação que coincide com esse horário. Escolha outra hora ou data."
+        : duplicate ? "Já existe esta avaliação com os mesmos dados. Consulte a agenda antes de criar outra."
+        : result.error.message;
+      return NextResponse.json({ ok: false, error: message }, { status: 409 });
     }
     if (input.action !== "publish" && (!result.data || result.data.length === 0)) {
       return NextResponse.json({ ok: false, error: "Avaliação não encontrada ou sem alterações." }, { status: 404 });
