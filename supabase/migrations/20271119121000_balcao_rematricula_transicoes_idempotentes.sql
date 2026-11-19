@@ -98,6 +98,25 @@ BEGIN
             AND (COALESCE((v_regime->>'modulo_numero')::integer,0)=3
                  OR COALESCE((v_regime->>'ano_numero')::integer,0)=2))
       );
+
+      -- Many schools mark 6ª as an exam class. The exam flag must not
+      -- suppress an explicitly configured, open 7ª secondary continuation.
+      IF v_historic.resultado='aprovado'
+         AND v_regime->>'nivel_ensino'='primario'
+         AND (v_regime->>'classe_num')::integer=6
+         AND EXISTS (
+           SELECT 1 FROM public.matriculas src
+           JOIN public.anos_letivos ay ON ay.escola_id=src.escola_id
+             AND ay.ano=src.ano_letivo+1 AND ay.ativo=true
+           JOIN public.turmas dt ON dt.escola_id=src.escola_id
+             AND dt.session_id=ay.id AND dt.ano_letivo=ay.ano
+             AND dt.nivel_ensino='secundario'
+             AND lower(coalesce(dt.status_fecho,'aberto'))='aberto'
+           JOIN public.classes dc ON dc.id=dt.classe_id
+             AND dc.escola_id=dt.escola_id AND dc.numero=7
+           WHERE src.id=p_matricula_id AND src.escola_id=p_escola_id
+         )
+      THEN v_terminale := false; END IF;
       RETURN jsonb_build_object(
         'decision', CASE WHEN v_terminale THEN 'concluiu' ELSE
           CASE v_historic.resultado WHEN 'aprovado' THEN 'transitou'
