@@ -81,6 +81,16 @@ test("API aplica papel de escola e RPC, nunca altera matrícula diretamente", ()
   assert.match(api, /Cache-Control.*private, no-store/);
 });
 
+test("ocupação usa matrículas ativas da sessão, sem materialized view desatualizada", () => {
+  const details = source("app/api/secretaria/turmas/[id]/detalhes/route.ts");
+  assert.match(details, /count: 'exact', head: true/);
+  assert.match(details, /\.eq\('session_id', turmaResult\.session_id\)/);
+  assert.match(details, /\.eq\('ativo', true\)/);
+  assert.match(details, /\.in\('status', ACTIVE_MATRICULA_STATUSES\)/);
+  assert.doesNotMatch(details, /from\('vw_turmas_para_matricula'\)/);
+  assert.match(details, /const ocupacaoFinal = ocupacao \?\? 0/);
+});
+
 test("as quatro interfaces reutilizam a mesma ação e as permissões próprias", () => {
   const action = source("components/matriculas/DesistenciaMatriculaAction.tsx");
   const turma = source("components/secretaria/TurmaDetailClient.tsx");
