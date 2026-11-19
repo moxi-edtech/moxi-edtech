@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(process.cwd(), "../..");
 const read = (name: string) => readFileSync(resolve(root, name), "utf8");
-const schema = read("supabase/migrations/20261119110000_calendario_avaliacoes_auditado.sql");
+const schema = read("supabase/migrations/20261119145630_calendario_avaliacoes_auditado_20261119.sql");
 const api = read("apps/web/src/app/api/escola/[id]/calendario-avaliacoes/route.ts");
 const client = read("apps/web/src/components/academico/CalendarioAvaliacoesClient.tsx");
 const nav = read("apps/web/src/lib/sidebarNav.ts");
@@ -65,4 +65,16 @@ test("Easy access in all administrative portals and academic operations", () => 
   ]) assert.ok(nav.includes(path));
   assert.match(client, /Publicar/);
   assert.match(client, /Guardar rascunho/);
+});
+
+test("Schedule conflict protection and conscious publication are explicit", () => {
+  const collision = read("supabase/migrations/20261119150953_calendario_avaliacoes_evitar_sobreposicao.sql");
+  assert.match(collision, /EXCLUDE USING gist/);
+  assert.match(collision, /tsrange\(/);
+  assert.match(collision, /estado <> 'cancelado'/);
+  assert.match(client, /selectedDrafts\.map/);
+  assert.doesNotMatch(client, /ids: draft\.map/);
+  assert.match(client, /Selecionar rascunhos visíveis/);
+  assert.match(client, /Agenda por turma/);
+  assert.match(api, /result\.error\.code === "23P01"/);
 });
