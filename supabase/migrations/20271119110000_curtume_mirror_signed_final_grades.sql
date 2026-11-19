@@ -9,12 +9,15 @@ CREATE OR REPLACE FUNCTION public.curtume_2025_mfd_mirror_valid(
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path TO 'pg_catalog','public'
 AS $fn$
-  SELECT public.safe_auth_uid() IS NOT NULL
-    AND public.current_tenant_escola_id()=p_escola_id
-    AND p_escola_id='3744879f-2e19-4671-8995-78604302d8c5'::uuid
-    AND p_metadata->>'fonte'='historico_disciplinas'
-    AND p_metadata->>'tipo_nota'='HIST_FINAL'
-    AND EXISTS(
+  -- Fast-path: ordinary grades in any school never run the historic joins.
+  SELECT CASE
+    WHEN p_escola_id IS DISTINCT FROM '3744879f-2e19-4671-8995-78604302d8c5'::uuid
+      OR p_metadata->>'tipo_nota' IS DISTINCT FROM 'HIST_FINAL'
+      OR p_metadata->>'fonte' IS DISTINCT FROM 'historico_disciplinas'
+      THEN false
+    ELSE public.safe_auth_uid() IS NOT NULL
+      AND public.current_tenant_escola_id()=p_escola_id
+      AND EXISTS(
       SELECT 1 FROM public.historico_anos h
       JOIN public.matriculas m ON m.id=h.matricula_id AND m.escola_id=h.escola_id
       JOIN public.historico_disciplinas hd ON hd.historico_ano_id=h.id
@@ -53,7 +56,8 @@ AS $fn$
             AND l.historico_ano_id=h.id AND l.ano_letivo_id=m.session_id
             AND l.status='fechado'
         )
-    );
+    )
+  END;
 $fn$;
 
 -- A scoped, authenticated migration token is only a first factor; all note
