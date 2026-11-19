@@ -107,5 +107,5 @@ export default async function SecretariaLandingPage({
     fecho_trimestre: null,
   };
 
-  return <SecretariaDashboardPage initialCounts={dashboardCounts} initialRecentes={dashboardRecentes} />;
+  return <SecretariaDashboardPage initialCounts={dashboardCounts} initialRecentes={dashboardRecentes} escolaId={resolvedEscolaId} />;
 }
