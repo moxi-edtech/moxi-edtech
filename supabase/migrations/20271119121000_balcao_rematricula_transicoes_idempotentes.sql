@@ -1,105 +1,20 @@
 -- Historical grade decisions remain signed and immutable.
 -- Legitimate cross-cycle 6->7 and Pré->1 progressions plus read-only retry.
 BEGIN;
-CREATE OR REPLACE FUNCTION public.resolve_raa_progression_for_matricula(p_escola_id uuid, p_matricula_id uuid)
- RETURNS jsonb
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-DECLARE
-  v_legal jsonb;
-  v_authorized record;
-  v_historic record;
-  v_regime jsonb;
-  v_terminale boolean;
+-- Preserve whichever production RAA implementation is installed:
+-- signed historic mirror may have been applied independently of GitHub main.
+-- Patch only the final-stage decision, failing on an unexpected schema drift.
+DO $raa_bridge$
+DECLARE v_definition text; v_needle text; v_insertion text; v_matches integer;
 BEGIN
-  -- The final legal snapshot is the authority only for a documented
-  -- school decision in a valid, approved 2025->2026 historical cohort.
-  -- This branch never changes grades or automatically decides an outcome.
-  IF public.safe_auth_uid() IS NOT NULL
-     AND public.current_tenant_escola_id() IS NOT DISTINCT FROM p_escola_id
-  THEN
-    SELECT m.id AS matricula_id, m.turma_id, h.id AS historico_id,
-           h.resultado_final AS resultado
-      INTO v_historic
-    FROM public.matriculas m
-    JOIN public.historico_anos h
-      ON h.escola_id=m.escola_id AND h.aluno_id=m.aluno_id
-      AND h.matricula_id=m.id AND h.ano_letivo=m.ano_letivo
-      AND h.ano_letivo_id=m.session_id
-    WHERE m.escola_id=p_escola_id AND m.id=p_matricula_id
-      AND m.status='concluido' AND m.ativo=false
-      AND m.status_fecho_origem='override_admin'
-      AND h.snapshot_status='fechado'
-      AND h.resultado_final IN ('aprovado','reprovado','concluido')
-      AND EXISTS (
-        SELECT 1 FROM public.historico_snapshot_locks sl
-        WHERE sl.escola_id=p_escola_id AND sl.matricula_id=m.id
-          AND sl.ano_letivo_id=m.session_id AND sl.status='fechado'
-          AND sl.historico_ano_id=h.id
-      )
-      AND (public.balcao_origem_percurso_elegivel(p_escola_id,p_matricula_id) OR EXISTS (
-        SELECT 1 FROM public.academic_transition_cohort_members cm
-        JOIN public.academic_transition_cohorts c
-          ON c.id=cm.cohort_id AND c.escola_id=cm.escola_id
-        WHERE cm.escola_id=p_escola_id
-          AND cm.matricula_origem_id=m.id
-          AND cm.aluno_id=m.aluno_id AND cm.status='elegivel'
-          AND c.ativo AND c.modo='virada_assistida_sem_notas'
-          AND c.ano_origem=m.ano_letivo
-          AND c.ano_destino=m.ano_letivo+1
-          AND (c.expira_em IS NULL OR c.expira_em >= (now() AT TIME ZONE 'Africa/Luanda')::date)
-      ))
-      AND (NOT EXISTS (
-        SELECT 1 FROM public.notas n
-        WHERE n.escola_id=p_escola_id AND n.matricula_id=m.id
-          AND NOT public.curtume_2025_mfd_mirror_valid(
-            n.escola_id,n.matricula_id,n.avaliacao_id,n.valor,n.metadata)
-      ) OR public.curtume_2025_notas_conferidas_validas(p_escola_id,m.id))
-      AND EXISTS (
-        SELECT 1 FROM public.audit_logs a
-        WHERE a.escola_id=p_escola_id
-          AND a.entity_id=m.id::text
-          AND a.actor_id IS NOT NULL
-          AND a.action='MATRICULA_ORIGEM_RESULTADO_ACADEMICO_REGISTADO'
-          AND a.details->>'fonte'='declaracao_administrativa_escola'
-          AND a.details->>'ratificacao'='true'
-          AND a.details->>'papel_autorizado' IN ('secretaria','admin_secretaria','admin_secretario','admin_financeiro','admin','admin_escola','staff_admin','diretor')
-          AND a.details->>'historico_ano_id'=h.id::text
-          AND a.details->>'resultado_final'=h.resultado_final
-          AND length(btrim(coalesce(a.details->>'referencia_documental','')))>=8
-          AND length(btrim(coalesce(a.details->>'motivo','')))>=12
-      )
-    LIMIT 1;
-    IF v_historic.matricula_id IS NOT NULL THEN
-      v_regime := public.resolve_regime_academico(v_historic.turma_id);
-      -- Approved final-cycle learners have completed the cycle: do not
-      -- reinterpret their ratified 9th-class approval as an ordinary move.
-      v_terminale := v_historic.resultado = 'aprovado' AND (
-        COALESCE((v_regime->>'eh_classe_exame')::boolean,false)
-        OR (v_regime->>'nivel_ensino'='primario'
-            AND (v_regime->>'classe_num')::integer=6
-            AND NOT EXISTS (
-              SELECT 1 FROM public.matriculas src
-              JOIN public.anos_letivos ay ON ay.escola_id=src.escola_id
-                AND ay.ano=src.ano_letivo+1 AND ay.ativo IS TRUE
-              JOIN public.turmas dt ON dt.escola_id=src.escola_id
-                AND dt.session_id=ay.id AND dt.ano_letivo=ay.ano
-                AND dt.nivel_ensino='secundario'
-                AND lower(coalesce(dt.status_fecho,'aberto'))='aberto'
-              JOIN public.classes dc ON dc.id=dt.classe_id
-                AND dc.escola_id=dt.escola_id AND dc.numero=7
-              WHERE src.id=p_matricula_id AND src.escola_id=p_escola_id
-            ))
-        OR (v_regime->>'nivel_ensino'='secundario'
-            AND (v_regime->>'classe_num')::integer=12)
-        OR (v_regime->>'nivel_ensino'='eja'
-            AND (COALESCE((v_regime->>'modulo_numero')::integer,0)=3
-                 OR COALESCE((v_regime->>'ano_numero')::integer,0)=2))
-      );
-
-      -- Many schools mark 6ª as an exam class. The exam flag must not
+  SELECT pg_get_functiondef(p.oid) INTO STRICT v_definition
+  FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public'
+    AND p.proname='resolve_raa_progression_for_matricula'
+    AND pg_get_function_identity_arguments(p.oid)='p_escola_id uuid, p_matricula_id uuid';
+  v_needle:=$needle$      RETURN jsonb_build_object(
+        'decision', CASE WHEN v_terminale THEN 'concluiu' ELSE$needle$;
+  v_insertion:=$insertion$      -- Many schools mark 6ª as an exam class. The exam flag must not
       -- suppress an explicitly configured, open 7ª secondary continuation.
       IF v_historic.resultado='aprovado'
          AND v_regime->>'nivel_ensino'='primario'
@@ -118,62 +33,15 @@ BEGIN
          )
       THEN v_terminale := false; END IF;
       RETURN jsonb_build_object(
-        'decision', CASE WHEN v_terminale THEN 'concluiu' ELSE
-          CASE v_historic.resultado WHEN 'aprovado' THEN 'transitou'
-               WHEN 'reprovado' THEN 'retido' ELSE 'concluiu' END END,
-        'destino', CASE WHEN v_terminale THEN 'conclusao' ELSE
-          CASE v_historic.resultado WHEN 'aprovado' THEN 'proxima_etapa'
-               WHEN 'reprovado' THEN 'mesma_etapa' ELSE 'conclusao' END END,
-        'motivo','historico_documental_ratificado',
-        'fonte_decisao','historico_documental_ratificado',
-        'historico_ano_id',v_historic.historico_id,
-        'disciplina_ids_pendentes','[]'::jsonb,
-        'regime',v_regime,
-        'etapa_destino',null,
-        'efetivacao_matricula_bloqueada',false
-      );
-    END IF;
-  END IF;
+        'decision', CASE WHEN v_terminale THEN 'concluiu' ELSE$insertion$;
+  IF strpos(v_definition,$sentinel$IF v_historic.resultado='aprovado'
+         AND v_regime->>'nivel_ensino'='primario'$sentinel$)>0 THEN RETURN; END IF;
+  v_matches:=(length(v_definition)-length(replace(v_definition,v_needle,'')))/length(v_needle);
+  IF v_matches<>1 THEN RAISE EXCEPTION 'RAA_DOCUMENTARY_BRIDGE_SOURCE_DRIFT expected=1 found=%',v_matches; END IF;
+  EXECUTE replace(v_definition,v_needle,v_insertion);
+END
+$raa_bridge$;
 
-  SELECT id, pendencias, motivo INTO v_authorized
-  FROM public.promocoes_com_pendencias
-  WHERE escola_id = p_escola_id
-    AND matricula_origem_id = p_matricula_id
-    AND status = 'autorizada'
-  ORDER BY created_at DESC
-  LIMIT 1;
-
-  IF v_authorized.id IS NOT NULL THEN
-    RETURN jsonb_build_object(
-      'decision', 'transitou',
-      'destino', 'proxima_etapa',
-      'motivo', 'promovido_com_pendencias',
-      'autorizacao_id', v_authorized.id,
-      'disciplina_ids_pendentes', v_authorized.pendencias,
-      'proximo_passo', 'Lançar e fechar as notas pendentes da matrícula de origem.'
-    );
-  END IF;
-
-  v_legal := public.resolve_raa_decreto_for_matricula(p_escola_id, p_matricula_id);
-  IF v_legal IS NOT NULL THEN
-    RETURN v_legal;
-  END IF;
-
-  BEGIN
-    RETURN public.resolve_raa_progression_for_matricula_generic(p_escola_id, p_matricula_id);
-  EXCEPTION WHEN OTHERS THEN
-    IF SQLERRM LIKE '%RAA_PROGRESSION_POLICY_NOT_CONFIGURED%' THEN
-      RETURN jsonb_build_object(
-        'decision', 'pendente', 'destino', 'aguardar_dados', 'motivo', 'dados_pendentes',
-        'disciplina_ids_pendentes', '[]'::jsonb,
-        'proximo_passo', 'Configurar a política de progressão e concluir as notas finais da matrícula.'
-      );
-    END IF;
-    RAISE;
-  END;
-END;
-$function$
-;
 CREATE OR REPLACE FUNCTION public.preparar_aluno_para_rematricula(p_escola_id uuid, p_aluno_id uuid, p_from_session_id uuid, p_to_session_id uuid, p_turma_destino_id uuid DEFAULT NULL::uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
