@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { CalendarCheck, Check, History, Pencil, Plus, RefreshCw, X } from "lucide-react";
+import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X } from "lucide-react";
 
 type Period = { id: string; numero: number; data_inicio: string; data_fim: string; offering_id: string | null };
 type Class = { id: string; nome: string; curso_id: string };
 type Subject = { id: string; turma_id: string; nome: string };
 type Entry = { id: string; turma_id: string; turma_disciplina_id: string; periodo_letivo_id: string; data: string; inicio: string; fim: string | null; descricao: string | null; tipo: string; estado: string };
-type Audit = { id: number; acao: string; actor_id: string; ocorrido_em: string; antes: Entry | null; depois: Entry | null };
+type Audit = { id: number; acao: string; actor_id: string; actor_nome?: string | null; ocorrido_em: string; antes: Entry | null; depois: Entry | null };
 type Data = {
   ok: boolean; error?: string; ano: { ano: number } | null; periodos: Period[];
   turmas: Class[]; disciplinas: Subject[]; ofertas: Array<{ id: string; course_id: string }>;
@@ -19,6 +19,8 @@ const control = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text
 const action = "inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50";
 const today = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Africa/Luanda", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const fmt = (v: string) => v ? v.slice(0, 10).split("-").reverse().join("/") : "—";
+const stepDay = (s:string,n:number) => { const d=new Date(s+"T12:00:00Z"); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
+const startWeek = (s:string) => stepDay(s,-((new Date(s+"T12:00:00Z").getUTCDay()+6)%7));
 
 export default function CalendarioAvaliacoesClient() {
   const params = useParams<{ id: string }>();
@@ -41,6 +43,10 @@ export default function CalendarioAvaliacoesClient() {
   const [auditId, setAuditId] = useState<string | null>(null);
   const [audits, setAudits] = useState<Audit[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [mode,setMode] = useState<"semana"|"lista">("semana");
+  const [week,setWeek] = useState(() => startWeek(today()));
+  const [classFilter,setClassFilter] = useState("");
+  const [agendaSearch,setAgendaSearch] = useState("");
 
   const reload = useCallback(async () => {
     const result = await fetch(endpoint, { cache: "no-store" });
@@ -57,7 +63,7 @@ export default function CalendarioAvaliacoesClient() {
       if (!alive) return;
       const p = body.periodos.find((v) => v.data_inicio <= today() && v.data_fim >= today())
         || body.periodos.find((v) => v.numero === 1) || body.periodos[0];
-      if (p) { setNum(p.numero); setDate(today() >= p.data_inicio && today() <= p.data_fim ? today() : p.data_inicio); }
+      if (p) { const d = today() >= p.data_inicio && today() <= p.data_fim ? today() : p.data_inicio; setNum(p.numero); setDate(d); setWeek(startWeek(d)); }
       if (body.turmas[0]) setClassIds([body.turmas[0].id]);
     }).catch((e) => { if (alive) setErr(e.message); })
       .finally(() => { if (alive) setLoading(false); });
@@ -71,7 +77,12 @@ export default function CalendarioAvaliacoesClient() {
   const periodMap = new Map((data?.periodos || []).map((p) => [p.id, p]));
   const items = (data?.items || []).filter((i) => periodMap.get(i.periodo_letivo_id)?.numero === num);
   const draft = items.filter((i) => i.estado === "rascunho");
-  const selectedDrafts = draft.filter((i) => selectedIds.includes(i.id));
+  const days = Array.from({length:7},(_,n)=>stepDay(week,n));
+  const visible = items.filter(i => (!classFilter || i.turma_id === classFilter) &&
+    (mode === "lista" || days.includes(i.data)) &&
+    ((subjectMap.get(i.turma_disciplina_id)?.nome || "") + " " + (classMap.get(i.turma_id)?.nome || "") + " " + i.tipo).toLowerCase().includes(agendaSearch.toLowerCase().trim()));
+  const visibleDrafts = visible.filter(i => i.estado === "rascunho");
+  const selectedDrafts = visibleDrafts.filter((i) => selectedIds.includes(i.id));
   const subjects = (data?.disciplinas || []).filter((s) => classIds.includes(s.turma_id)
     && (s.nome + " " + (classMap.get(s.turma_id)?.nome || "")).toLowerCase().includes(search.toLowerCase()));
   const periodFor = (s: Subject) => {
@@ -158,7 +169,7 @@ export default function CalendarioAvaliacoesClient() {
           <select id="ava-period" className={control} value={num} onChange={(e) => {
             const n = Number(e.target.value); setNum(n); setChosen([]); setSelectedIds([]);
             const p = data.periodos.find((v) => v.numero === n);
-            if (p) setDate(today() >= p.data_inicio && today() <= p.data_fim ? today() : p.data_inicio);
+            if (p) { const d = today() >= p.data_inicio && today() <= p.data_fim ? today() : p.data_inicio; setDate(d); setWeek(startWeek(d)); }
           }}>{numbers.map((n) => <option key={n} value={n}>{n}.º Trimestre</option>)}</select>
         </div>
         <p className="text-sm text-muted-foreground"><strong className="text-lg text-foreground">{draft.length}</strong> rascunhos · <strong className="text-lg text-foreground">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</p>
@@ -218,14 +229,48 @@ export default function CalendarioAvaliacoesClient() {
           <p className="text-xs text-muted-foreground">Só avaliações publicadas aparecem nos portais.</p></div>
           <span className="text-xs text-muted-foreground">{items.length} registo(s)</span>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3">
-           <button type="button" className={action + " border border-border"} disabled={!draft.length} onClick={() =>
-             setSelectedIds((prev) => draft.every((i) => prev.includes(i.id)) ? [] : draft.map((i) => i.id))}>
-             <Check size={16}/> {draft.length && selectedDrafts.length === draft.length ? "Desmarcar todos" : "Selecionar rascunhos"}
+        <div className="space-y-3 border-b border-border p-4">
+  <div className="flex flex-wrap items-center justify-between gap-2">
+    <h3 className="font-semibold text-primary">Agenda por turma</h3>
+    <div className="flex gap-1" role="group" aria-label="Vista da agenda">
+      <button type="button" aria-pressed={mode==="semana"} onClick={()=>setMode("semana")} className={action+(mode==="semana"?" bg-muted":" border border-border")}><CalendarDays size={16}/> Semana</button>
+      <button type="button" aria-pressed={mode==="lista"} onClick={()=>setMode("lista")} className={action+(mode==="lista"?" bg-muted":" border border-border")}><List size={16}/> Lista</button>
+    </div>
+  </div>
+  <div className="grid gap-2 sm:grid-cols-2">
+    <label className="text-xs font-semibold">Turma<select className={control+" mt-1"} value={classFilter} onChange={e=>setClassFilter(e.target.value)}>
+      <option value="">Todas as turmas</option>{data.turmas.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
+    </select></label>
+    <label className="text-xs font-semibold">Pesquisar<input className={control+" mt-1"} placeholder="Disciplina, turma ou tipo…" value={agendaSearch} onChange={e=>setAgendaSearch(e.target.value)}/></label>
+  </div>
+  {mode==="semana" && <div className="flex flex-wrap items-center justify-between gap-2">
+    <strong className="text-sm">{fmt(days[0])} — {fmt(days[6])}</strong>
+    <div className="flex gap-2">
+      <button type="button" className={action+" border border-border"} onClick={()=>setWeek(startWeek(today()))}>Hoje</button>
+      <button type="button" aria-label="Semana anterior" className={action+" border border-border"} onClick={()=>setWeek(stepDay(week,-7))}><ChevronLeft size={16}/></button>
+      <button type="button" aria-label="Semana seguinte" className={action+" border border-border"} onClick={()=>setWeek(stepDay(week,7))}><ChevronRight size={16}/></button>
+    </div>
+  </div>}
+</div>
+{mode==="semana" && <div className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-7">
+  {days.map(day=><div key={day} className="space-y-2 rounded-xl border border-border bg-muted/30 p-2">
+    <h4 className="text-xs font-semibold text-primary">{fmt(day).slice(0,5)}</h4>
+    {visible.filter(i=>i.data===day).map(i=><div key={i.id} className="rounded-xl border border-border bg-card p-2 text-xs">
+      <p className="break-words font-semibold">{subjectMap.get(i.turma_disciplina_id)?.nome || "Disciplina"}</p>
+      <p className="text-muted-foreground">{classMap.get(i.turma_id)?.nome} · {i.inicio.slice(0,5)} · {i.estado}</p>
+      {i.estado==="rascunho" && <label className="mt-2 flex items-center gap-1"><input type="checkbox" className="accent-primary" checked={selectedIds.includes(i.id)} onChange={e=>setSelectedIds(p=>e.target.checked?[...new Set([...p,i.id])]:p.filter(id=>id!==i.id))}/> Selecionar</label>}
+    </div>)}
+    {!visible.some(i=>i.data===day) && <p className="py-3 text-xs text-muted-foreground">Sem avaliações</p>}
+  </div>)}
+</div>}
+<div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3">
+           <button type="button" className={action + " border border-border"} disabled={!visibleDrafts.length} onClick={() =>
+             setSelectedIds((prev) => visibleDrafts.every(i=>prev.includes(i.id)) ? prev.filter(id=>!visibleDrafts.some(i=>i.id===id)) : [...new Set([...prev,...visibleDrafts.map(i=>i.id)])])}>
+             <Check size={16}/> {visibleDrafts.length && selectedDrafts.length === visibleDrafts.length ? "Desmarcar visíveis" : "Selecionar rascunhos visíveis"}
            </button>
            <span className="text-xs text-muted-foreground">{selectedDrafts.length} selecionadas para publicar</span>
          </div>
-         <div className="divide-y divide-border">{items.map((item) => <div key={item.id}>
+         <div className={mode==="lista"?"divide-y divide-border":"hidden"}>{visible.map((item) => <div key={item.id}>
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div className="flex items-start gap-3">{item.estado === "rascunho" && <input type="checkbox" aria-label={"Selecionar " + (subjectMap.get(item.turma_disciplina_id)?.nome || "avaliação") + " para publicação"} className="mt-1 accent-primary" checked={selectedIds.includes(item.id)} onChange={(e) => setSelectedIds((prev) => e.target.checked ? [...new Set([...prev, item.id])] : prev.filter((id) => id !== item.id))}/>}
              <div><p className="font-semibold">{subjectMap.get(item.turma_disciplina_id)?.nome || "Disciplina"} · {item.tipo}</p>
@@ -246,7 +291,7 @@ export default function CalendarioAvaliacoesClient() {
           {auditId === item.id && <div className="space-y-2 border-t border-border bg-muted p-4">
             <h3 className="text-sm font-semibold">Histórico de alterações</h3>
             {audits.map((h) => <div key={h.id} className="rounded-xl border bg-card p-2 text-xs text-muted-foreground">
-              <p><strong>{h.acao}</strong> · {new Date(h.ocorrido_em).toLocaleString("pt-PT", { timeZone: "Africa/Luanda" })} · Utilizador {h.actor_id}</p>
+              <p><strong>{h.acao}</strong> · {new Date(h.ocorrido_em).toLocaleString("pt-PT", { timeZone: "Africa/Luanda" })} · {h.actor_nome || "Utilizador da escola"}</p>
               {h.antes && <p>Antes: {fmt(h.antes.data)} · {h.antes.inicio} · {h.antes.estado}</p>}
               {h.depois && <p>Depois: {fmt(h.depois.data)} · {h.depois.inicio} · {h.depois.estado}</p>}
             </div>)}
