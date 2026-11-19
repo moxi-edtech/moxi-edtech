@@ -400,3 +400,24 @@ test("closing a successful reenrollment refreshes the lifecycle card alongside d
   assert.match(modal, /onPagamentoConcluido\?\.\(\)/);
   assert.match(modal, /dossier\.load\(dossier\.aluno!\.id\)/);
 });
+
+
+test("reserva 2026/2027 abre cobrança real, nunca faz scroll para aviso informativo", () => {
+  const ui = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoSituacaoAcademica.tsx"), "utf8");
+  const workspace = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
+  const hook = readFileSync(resolve(process.cwd(), "src/hooks/useRematriculaBalcao.ts"), "utf8");
+  const writer = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/balcao/rematriculas/route.ts"), "utf8");
+  assert.match(ui, /current\?\.situacao_contextual === "aguarda_confirmacao"\) \{\s*onResumePreparedReenrollment\?\.\(\)/);
+  assert.match(ui, /preparedFeeAction[\s\S]*?Boolean\(onResumePreparedReenrollment\)/);
+  assert.match(workspace, /onResumePreparedReenrollment=\{[\s\S]*?rematricula\.cardState === "RECONFIRMATION_REQUIRED"/);
+  assert.match(workspace, /rematricula\.destinoMatriculaId === situacaoAcademica\.data\?\.current\?\.matricula_id/);
+  assert.match(workspace, /rematricula\.destinoTurmaId === situacaoAcademica\.data\?\.current\?\.turma_id/);
+  assert.match(workspace, /rematricula\.academic\?\.source\?\.matricula_id === situacaoAcademica\.data\?\.previous\?\.matricula_id/);
+  assert.match(workspace, /\? rematricula\.openModal\s*:\s*undefined/);
+  assert.match(workspace, /querySelector<HTMLElement>\("#balcao-rematricula-wizard"\)/);
+  assert.doesNotMatch(workspace, /Rematrícula fora de época · Pode concluir normalmente/);
+  assert.match(hook, /setModalOpen\(true\)/);
+  assert.match(hook, /setSelectedTurmaId\(destinoTurmaId\)/);
+  assert.match(writer, /else if \(matriculaDestino\) \{[\s\S]*?rpc\("finalizar_rematricula_balcao"/);
+  assert.match(writer, /REMATRICULA_TARGET_ALREADY_ENROLLED/);
+});
