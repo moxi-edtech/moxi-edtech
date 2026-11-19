@@ -3,7 +3,7 @@ import { getDefaultK12PortalPathForRole } from "@/lib/permissions";
 import { K12_OPERACOES_PRIMARY_ROLE } from "@/lib/roles";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { DBWithRPC } from "@/types/supabase-augment";
-import { getLiveSecretariaEnrollmentCounts } from "@/lib/secretaria/dashboard-enrollment-counts";
+import { getLiveSecretariaAcademicCounts } from "@/lib/secretaria/dashboard-enrollment-counts";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { redirect } from "next/navigation";
 import type { DashboardCounts, DashboardRecentes } from "@/app/secretaria/(portal-secretaria)/types";
@@ -81,8 +81,7 @@ export default async function SecretariaLandingPage({
     redirect(`${dest}${query ? `?${query}` : ""}`);
   }
 
-  const [countsRes, recentesRes, anoLetivoRes] = await Promise.all([
-    supabase.from("vw_secretaria_dashboard_counts").select("turmas_total").eq("escola_id", resolvedEscolaId).maybeSingle(),
+  const [recentesRes, anoLetivoRes] = await Promise.all([
     supabase.from("vw_secretaria_dashboard_kpis").select("pendencias_importacao, novas_matriculas, avisos_recentes").eq("escola_id", resolvedEscolaId).maybeSingle(),
     supabase.from("anos_letivos").select("id, ano").eq("escola_id", resolvedEscolaId).eq("ativo", true).order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
@@ -90,14 +89,14 @@ export default async function SecretariaLandingPage({
   if (anoLetivoRes.error) throw anoLetivoRes.error;
   const anoLetivo = anoLetivoRes.data?.ano ?? null;
   const anoLetivoId = anoLetivoRes.data?.id ?? null;
-  const liveCounts = await getLiveSecretariaEnrollmentCounts(supabase, resolvedEscolaId, anoLetivo);
+  const liveCounts = await getLiveSecretariaAcademicCounts(supabase, resolvedEscolaId, anoLetivo, anoLetivoId);
 
-  const dashboardCounts: DashboardCounts | null = countsRes.error ? null : {
+  const dashboardCounts: DashboardCounts = {
     alunos: liveCounts.alunos,
     matriculas: liveCounts.matriculasHoje,
     anoLetivo,
     anoLetivoId,
-    turmas: countsRes.data?.turmas_total ?? 0,
+    turmas: liveCounts.turmas,
     pendencias: recentesRes.error ? 0 : Number(recentesRes.data?.pendencias_importacao ?? 0),
   };
 
