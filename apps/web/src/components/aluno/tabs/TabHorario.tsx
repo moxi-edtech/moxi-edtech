@@ -344,7 +344,7 @@ export function TabHorario() {
             </article>
           ))}
           {academicEvents.length > 0 && (
-            <p className="text-xs text-muted-foreground">Mostramos até três eventos futuros. As datas vêm do calendário da escola.</p>
+            <p className="text-xs text-muted-foreground">As avaliações publicadas pela escola aparecem aqui com as datas atualizadas.</p>
           )}
         </section>
       )}
