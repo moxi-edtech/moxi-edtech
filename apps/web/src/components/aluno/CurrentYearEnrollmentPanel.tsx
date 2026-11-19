@@ -181,7 +181,7 @@ export function CurrentYearEnrollmentPanel({
             {" · "}<strong>Turma:</strong> {state.matricula.turmaNome}
           </p>
           {canManageDesistencia && (
-            <div className="border-t border-slate-100 pt-3">
+            <div className="border-t border-border pt-3">
               <DesistenciaMatriculaAction
                 tipo="confirmar"
                 alunoId={alunoId}
