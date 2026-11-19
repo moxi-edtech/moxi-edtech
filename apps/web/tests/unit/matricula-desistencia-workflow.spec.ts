@@ -34,6 +34,10 @@ test("processo exige motivo, matrícula ativa, ano corrente e histórico não fe
 
 test("somente funções autenticadas; professor não encerra, só sinaliza turma atribuída", () => {
   assert.match(migration, /ALTER TABLE public\.matricula_desistencia_sinalizacoes ENABLE ROW LEVEL SECURITY/);
+  assert.match(migration, /AS RESTRICTIVE FOR INSERT TO authenticated/);
+  assert.match(migration, /AS RESTRICTIVE FOR UPDATE TO authenticated/);
+  assert.match(migration, /WITH CHECK \(status <> 'desistente'\)/);
+  assert.match(migration, /DROP POLICY IF EXISTS matriculas_desistencia_update_rpc_only/);
   assert.match(migration, /REVOKE ALL ON public\.matricula_desistencia_sinalizacoes FROM PUBLIC, anon, authenticated/);
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.registar_desistencia_matricula\(uuid,text\) FROM PUBLIC,anon/);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.registar_desistencia_matricula\(uuid,text\) TO authenticated/);
