@@ -33,6 +33,7 @@ export type DocumentoEmitido = {
   public_id: string;
   escola_id: string;
   aluno_id?: string | null;
+  mensalidade_id?: string | null;
   tipo: string;
   created_at: string;
   hash_validacao?: string | null;
@@ -75,7 +76,7 @@ export async function getDocumentoEmitido(
 
   const { data: doc, error } = await supabase
     .from("documentos_emitidos")
-    .select("id, public_id, escola_id, aluno_id, tipo, created_at, dados_snapshot, numero_sequencial, hash_validacao, print_count, last_printed_at")
+    .select("id, public_id, escola_id, aluno_id, mensalidade_id, tipo, created_at, dados_snapshot, numero_sequencial, hash_validacao, print_count, last_printed_at")
     .eq("id", docId)
     .single();
 
@@ -184,6 +185,7 @@ export async function getDocumentoEmitido(
       public_id: doc.public_id,
       escola_id: doc.escola_id,
       aluno_id: doc.aluno_id ?? null,
+      mensalidade_id: doc.mensalidade_id ?? null,
       tipo: doc.tipo,
       created_at: doc.created_at,
       hash_validacao: doc.hash_validacao ?? null,
