@@ -170,6 +170,13 @@ export function Dashboard({
   }, []);
 
   const dashboardTitle = userName ? `${greeting}, ${userName}!` : "Secretaria";
+  const anoLetivoLabel = counts?.anoLetivo != null
+    ? `${counts.anoLetivo}/${counts.anoLetivo + 1}`
+    : "ano atual";
+  const matriculadosHref = buildPortalHref(
+    escolaParam,
+    `/secretaria/alunos${counts?.anoLetivoId ? `?ano_letivo_id=${encodeURIComponent(counts.anoLetivoId)}` : ""}`
+  );
 
   const handleNoticeAction = (item: any) => {
     if (item.type === 'FICHA_RAPIDA' && item.aluno_id) {
@@ -403,14 +410,20 @@ export function Dashboard({
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard label="Total Alunos" value={counts?.alunos} icon={<Users size={16} />} tone="default" />
               <StatCard
-                label="Matrículas Hoje"
+                label={`Matriculados · ${anoLetivoLabel}`}
+                value={counts?.alunos}
+                icon={<Users size={16} />}
+                href={matriculadosHref}
+                tone="default"
+              />
+              <StatCard
+                label="Matrículas criadas hoje"
                 value={counts?.matriculas}
                 icon={<UserPlus size={16} />}
                 tone="default"
               />
-              <StatCard label="Turmas Ativas" value={counts?.turmas} icon={<Building size={16} />} tone="default" />
+              <StatCard label={`Turmas · ${anoLetivoLabel}`} value={counts?.turmas} icon={<Building size={16} />} tone="default" />
               <StatCard
                 label="Pendências"
                 value={recentes?.pendencias ?? counts?.pendencias}

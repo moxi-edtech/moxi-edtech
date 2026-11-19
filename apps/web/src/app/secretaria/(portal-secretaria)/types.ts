@@ -3,6 +3,8 @@ import type { PlanTier } from "@/config/plans";
 export type DashboardCounts = {
   alunos: number;
   matriculas: number;
+  anoLetivo?: number | null;
+  anoLetivoId?: string | null;
   turmas: number;
   pendencias: number;
 };
