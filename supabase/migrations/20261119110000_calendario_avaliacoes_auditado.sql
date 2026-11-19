@@ -166,7 +166,7 @@ CREATE POLICY calendario_avaliacoes_alunos ON public.calendario_avaliacoes
       JOIN public.alunos a ON a.id = m.aluno_id AND a.escola_id = m.escola_id
       WHERE m.escola_id = calendario_avaliacoes.escola_id
         AND m.turma_id = calendario_avaliacoes.turma_id
-        AND m.ano_letivo_id = calendario_avaliacoes.ano_letivo_id
+        AND m.session_id = calendario_avaliacoes.ano_letivo_id
         AND (
           a.profile_id = (SELECT auth.uid())
           OR EXISTS (
@@ -216,3 +216,45 @@ CREATE POLICY calendario_avaliacoes_auditoria_gestao ON public.calendario_avalia
 
 REVOKE ALL ON FUNCTION public.calendario_avaliacoes_audit_trigger() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.calendario_avaliacoes_validate() FROM PUBLIC, anon, authenticated;
+
+
+-- A publicação múltipla é uma única operação transacional:
+-- nenhuma turma fica publicada se algum item do lote estiver inválido.
+CREATE OR REPLACE FUNCTION public.publicar_calendario_avaliacoes(p_ids uuid[])
+RETURNS integer LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
+AS $$
+DECLARE
+  v_escola uuid := public.current_tenant_escola_id();
+  v_total integer;
+  v_updated integer;
+BEGIN
+  IF (SELECT auth.uid()) IS NULL OR v_escola IS NULL OR
+     NOT public.user_has_role_in_school(v_escola,
+       ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria',
+             'secretaria','secretaria_financeiro','diretor']::text[]) THEN
+    RAISE EXCEPTION 'CALENDARIO_SEM_PERMISSAO' USING ERRCODE = '42501';
+  END IF;
+  v_total := coalesce(array_length(p_ids, 1), 0);
+  IF v_total < 1 OR v_total > 100 OR
+     v_total IS DISTINCT FROM (SELECT count(DISTINCT i) FROM unnest(p_ids) i) THEN
+    RAISE EXCEPTION 'CALENDARIO_LOTE_INVALIDO' USING ERRCODE = '22023';
+  END IF;
+  -- Lock first to prevent competing publish/edit requests from racing.
+  PERFORM 1 FROM public.calendario_avaliacoes c
+    WHERE c.id = ANY(p_ids) AND c.escola_id = v_escola
+    ORDER BY c.id FOR UPDATE;
+  IF (SELECT count(*) FROM public.calendario_avaliacoes c
+      WHERE c.id = ANY(p_ids) AND c.escola_id = v_escola AND c.estado = 'rascunho') <> v_total THEN
+    RAISE EXCEPTION 'CALENDARIO_ITENS_INVALIDOS_OU_JA_PUBLICADOS' USING ERRCODE = '23514';
+  END IF;
+  UPDATE public.calendario_avaliacoes c SET estado = 'publicado'
+    WHERE c.id = ANY(p_ids) AND c.escola_id = v_escola AND c.estado = 'rascunho';
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated <> v_total THEN
+    RAISE EXCEPTION 'CALENDARIO_LOTE_INCOMPLETO' USING ERRCODE = '23514';
+  END IF;
+  RETURN v_updated;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.publicar_calendario_avaliacoes(uuid[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.publicar_calendario_avaliacoes(uuid[]) TO authenticated;
