@@ -1300,7 +1300,6 @@ function Catalogo({
   rematriculaPrice,
   rematriculaAnoLabel,
   rematriculaContextYear,
-  rematriculaWindow,
   rematriculaAcademic,
   rematriculaOrigemAno,
   rematriculaCanWriteGrades,
@@ -1340,7 +1339,6 @@ function Catalogo({
   rematriculaPrice: number | null;
   rematriculaAnoLabel: string | null;
   rematriculaContextYear: { id: string; ano: number; label: string } | null;
-  rematriculaWindow: { configured: boolean; open: boolean; data_inicio?: string | null; data_fim?: string | null } | null | undefined;
   rematriculaAcademic: RaaBalcaoAcademic | null | undefined;
   rematriculaOrigemAno: number | null;
   rematriculaCanWriteGrades: boolean;
@@ -1604,11 +1602,6 @@ function Catalogo({
                 </p>
                 <CodigoEstado estado="TARGET_YEAR_NOT_CONFIGURED" />
               </div>
-            ) : null}
-            {view === "reenrollment" && rematriculaWindow && !rematriculaWindow.open && rematriculaReady ? (
-              <p role="status" className="mb-3 rounded-xl border border-amber/25 bg-amber/5 px-3 py-2 text-xs font-medium text-foreground">
-                Rematrícula fora de época · Pode concluir normalmente. O registo fica auditado.
-              </p>
             ) : null}
             {view === "reenrollment" && rematriculaState === "SOURCE_RECORD_REQUIRED" && (
               <div role="status" className="mb-3 rounded-xl border border-border bg-muted/20 p-4">
@@ -2815,6 +2808,19 @@ export default function BalcaoAtendimento({
     void dossier.load(selectedAlunoId);
   }, [selectedAlunoId, effectiveAcademicYearId]);
 
+  // Abre a cobrança na área visível. O botão de Situação académica não deve
+  // apenas deslizar até um aviso de calendário, nem deixar o wizard fora do ecrã.
+  useEffect(() => {
+    if (view !== "reenrollment" || !rematricula.modalOpen ||
+        !rematricula.anoLetivo || !rematricula.service) return;
+    const frame = window.requestAnimationFrame(() => {
+      const target = workspaceRootRef.current?.querySelector<HTMLElement>("#balcao-rematricula-wizard");
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      target?.querySelector<HTMLInputElement>("input:not([disabled])")?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [view, rematricula.modalOpen, rematricula.anoLetivo?.id, rematricula.service?.id]);
+
   // The document sub-flow remains inside Rematrícula. Switching students
   // closes it without clearing the shared checkout or rematrícula draft.
   useEffect(() => { setRaaDocumentsOpen(false); }, [selectedAlunoId]);
@@ -3088,6 +3094,18 @@ export default function BalcaoAtendimento({
             situacaoAcademica.data?.aluno_id === dossier.aluno.id
           }
           onContinueEnrollment={rematricula.openModal}
+          onResumePreparedReenrollment={
+            rematricula.cardState === "RECONFIRMATION_REQUIRED" &&
+            !rematricula.loading &&
+            rematricula.service !== null &&
+            rematricula.anoLetivo?.id === effectiveAcademicYearId &&
+            rematricula.destinoMatriculaId === situacaoAcademica.data?.current?.matricula_id &&
+            rematricula.destinoTurmaId === situacaoAcademica.data?.current?.turma_id &&
+            rematricula.academic?.source?.matricula_id === situacaoAcademica.data?.previous?.matricula_id &&
+            situacaoAcademica.data?.aluno_id === dossier.aluno.id
+              ? rematricula.openModal
+              : undefined
+          }
         />
       )}
       {(dossier.loading || (visible && (refreshingRevision || refreshRevision > lastRevisionRef.current))) && !dossier.aluno ? (
@@ -3158,7 +3176,6 @@ export default function BalcaoAtendimento({
                   rematriculaPrice={rematricula.service?.valor_base ?? null}
                   rematriculaAnoLabel={rematricula.targetYearLabel ?? rematricula.anoLetivo?.label ?? null}
                   rematriculaContextYear={rematricula.anoLetivo}
-                  rematriculaWindow={rematricula.rematriculaWindow}
                   rematriculaAcademic={rematricula.academic}
                   rematriculaOrigemAno={rematricula.academic?.source?.ano_letivo_ano ?? null}
                   rematriculaCanWriteGrades={rematricula.canWriteGrades}
