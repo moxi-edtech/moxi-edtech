@@ -436,7 +436,19 @@ export default function ProfessorCalendarioPage() {
                                   </div>
                                   <h4 className="mt-1.5 text-sm font-semibold leading-snug text-foreground sm:text-lg sm:font-black">{item.nome}</h4>
                                   <p className="mt-1 text-xs font-medium text-muted-foreground">{formatCompactDateRange(item.data_inicio, item.data_fim)}</p>
-                                  {item.descricao ? <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">{item.descricao}</p> : null}
+                                  {item.descricao ? (
+                                    <>
+                                      <p className="mt-1 hidden text-sm leading-relaxed text-muted-foreground sm:block">{item.descricao}</p>
+                                      <details className="group mt-1 text-xs leading-relaxed text-muted-foreground sm:hidden">
+                                        <summary className="cursor-pointer list-none rounded-lg py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold">
+                                          <span className="line-clamp-2 group-open:hidden">{item.descricao}</span>
+                                          <span className="mt-1 inline-flex font-semibold text-klasse-green group-open:hidden">Ver detalhes</span>
+                                          <span className="hidden font-semibold text-klasse-green group-open:inline">Ocultar detalhes</span>
+                                        </summary>
+                                        <p className="mt-1">{item.descricao}</p>
+                                      </details>
+                                    </>
+                                  ) : null}
                                 </div>
                               </div>
                             </article>
