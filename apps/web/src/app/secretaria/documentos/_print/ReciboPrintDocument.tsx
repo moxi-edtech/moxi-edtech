@@ -3,6 +3,7 @@ import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocum
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { ReciboPagamentoDuasVias } from "@/components/financeiro/ReciboPagamentoCompacto";
 import { formatReceiptDate } from "@/lib/financeiro/receiptDate";
+import { resolveReceiptAcademicContext } from "@/lib/financeiro/receipt-academic-context";
 import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 import { formatTurmaDisplayName } from "@/utils/formatters";
 
@@ -48,30 +49,22 @@ export async function ReciboPrintDocument({
       .from("alunos")
       .select("nome, bi_numero")
       .eq("id", doc.aluno_id)
+      .eq("escola_id", doc.escola_id)
       .maybeSingle();
     fallbackAlunoNome = aluno?.nome ?? null;
     fallbackAlunoBi = aluno?.bi_numero ?? null;
 
-    const { data: matricula } = await supabase
-      .from("matriculas")
-      .select(`
-        id,
-        aluno_id,
-        turmas (
-          nome,
-          classes ( nome ),
-          cursos ( nome )
-        )
-      `)
-      .eq("aluno_id", doc.aluno_id)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const turma = (matricula as any)?.turmas;
-    fallbackTurmaNome = turma?.nome ?? null;
-    fallbackClasseNome = turma?.classes?.nome ?? null;
-    fallbackCursoNome = turma?.cursos?.nome ?? null;
+    // The receipt's mensalidade determines the historical enrollment.
+    // Never pick the student's latest updated enrollment (2025 reconciliations
+    // can be newer than the active 2026/2027 enrollment).
+    const academia = await resolveReceiptAcademicContext(supabase, {
+      escolaId: doc.escola_id,
+      alunoId: doc.aluno_id,
+      mensalidadeId: doc.mensalidade_id,
+    });
+    fallbackTurmaNome = academia?.turmaNome ?? null;
+    fallbackClasseNome = academia?.classeNome ?? null;
+    fallbackCursoNome = academia?.cursoNome ?? null;
   }
 
   const baseUrl = normalizeValidationBaseUrl(
