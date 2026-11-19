@@ -235,7 +235,7 @@ BEGIN
     RAISE EXCEPTION 'CALENDARIO_SEM_PERMISSAO' USING ERRCODE = '42501';
   END IF;
   v_total := coalesce(array_length(p_ids, 1), 0);
-  IF v_total < 1 OR v_total > 100 OR
+  IF v_total < 1 OR v_total > 1000 OR
      v_total IS DISTINCT FROM (SELECT count(DISTINCT i) FROM unnest(p_ids) i) THEN
     RAISE EXCEPTION 'CALENDARIO_LOTE_INVALIDO' USING ERRCODE = '22023';
   END IF;
