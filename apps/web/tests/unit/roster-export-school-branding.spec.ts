@@ -8,6 +8,7 @@ import {
   SchoolLogoUnavailableError,
 } from "../../src/lib/documentos/schoolLogo";
 import { renderNominalA4 } from "../../src/lib/documentos/nominalA4";
+import { createInstitutionalPdf } from "../../src/lib/pdf/documentTemplate";
 
 const escolaId = "3744879f-2e19-4671-8995-78604302d8c5";
 const anotherEscolaId = "00000000-0000-4000-8000-000000000000";
@@ -59,6 +60,23 @@ test("o PDF usa o logótipo carregado do Storage da própria escola", async () =
   const xObjects = resources?.lookup(PDFName.of("XObject"), PDFDict);
   assert.ok(xObjects);
   assert.ok(xObjects.keys().length >= 1, "o logótipo escolar deve ser embutido no PDF");
+});
+
+test("o modelo institucional de mapas usa o PNG do tenant sem buscar a insígnia", async () => {
+  const bytes = await createInstitutionalPdf({
+    title: "Mapa de Turma Sintético",
+    school: {
+      name: "ESCOLA DE TESTE",
+      logoUrl: null,
+      logoBytes: logo,
+      fallbackLogoUrl: "https://app.klasse.ao/insignia_med.png",
+    },
+    content: async () => {},
+  });
+  const pdf = await PDFDocument.load(bytes);
+  const xObjects = pdf.getPage(0).node.Resources()?.lookup(PDFName.of("XObject"), PDFDict);
+  assert.ok(xObjects);
+  assert.ok(xObjects.keys().length >= 1);
 });
 
 test("sem logótipo configurado não se consulta Storage nem se injeta insígnia", async () => {
