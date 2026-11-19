@@ -19,3 +19,21 @@ export function isPrimarySecondaryBridge(input: {
     input.destinationLevel?.trim().toLowerCase() === "secundario" &&
     (input.mode === "regular" || input.mode === "conditional");
 }
+
+/**
+ * Only the source Pré-Escolar legally transitions into 1ª Primário
+ * across courses. The decision must already be signed and eligible.
+ */
+export function isPreschoolPrimaryBridge(input: {
+  sourceClassName: string | null | undefined;
+  sourceLevel: string | null | undefined;
+  destinationClass: number | null | undefined;
+  destinationLevel: string | null | undefined;
+  mode: "regular" | "conditional" | "repeat" | null | undefined;
+}): boolean {
+  return input.sourceClassName === "Pré-Escolar"
+    && input.sourceLevel?.trim().toLowerCase() === "pre_escolar"
+    && input.destinationClass === 1
+    && input.destinationLevel?.trim().toLowerCase() === "primario"
+    && (input.mode === "regular" || input.mode === "conditional");
+}

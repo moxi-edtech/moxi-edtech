@@ -15,7 +15,7 @@ import type { Database } from "~types/supabase";
 import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { resolveValorConfirmacao } from "@/lib/financeiro/resolve-confirmacao";
 import { classifyRematriculaAcademicEligibility } from "@/lib/rematricula/eligibility";
-import { isPrimarySecondaryBridge } from "@/lib/rematricula/primary-secondary-bridge";
+import { isPreschoolPrimaryBridge, isPrimarySecondaryBridge } from "@/lib/rematricula/primary-secondary-bridge";
 import { summarizeOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { isSourceYearStillInEarlyTrimester } from "@/lib/rematricula/raa-balcao-early-trimester";
 
@@ -353,8 +353,12 @@ export async function POST(request: Request) {
       ? await supabase.from("classes").select("id, nome, numero").eq("escola_id", escolaId).in("id", classeIds)
       : { data: [] };
     const classeById = new Map((classes || []).map((classe: any) => [classe.id, classe]));
-    const numeroOrigem = classeNumero(classeById.get(turmaOrigem?.classe_id));
+    const classeOrigem = classeById.get(turmaOrigem?.classe_id);
+    const numeroOrigem = classeNumero(classeOrigem);
     const numeroDestino = classeNumero(classeById.get(turmaDestino?.classe_id));
+    const preEscolarOrigem = (numeroOrigem === 0 || numeroOrigem == null)
+      && classeOrigem?.nome === "Pré-Escolar"
+      && turmaOrigem?.nivel_ensino === "pre_escolar";
     // A matrícula destino preexistente já passou por uma operação anterior.
     // Para uma nova rematrícula, porém, a autoridade académica é sempre o RAA.
     const { data: raaAtual, error: raaAtualError } = await (supabase as any).rpc(
@@ -400,6 +404,23 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
 
+    // Null is the canonical class number for Pré-Escolar; it is not a
+    // universal bypass for arbitrary unknown classes or inter-course moves.
+    if (preEscolarOrigem && (academicEligibility.mode === "repeat"
+        || numeroDestino !== 1 || turmaDestino?.nivel_ensino !== "primario")) {
+      return NextResponse.json({
+        ok: false,
+        error: "Pré-Escolar só pode prosseguir para a 1.ª classe do Ensino Primário.",
+        code: "REMATRICULA_PROGRESSION_INVALID",
+      }, { status: 409 });
+    }
+    if ((numeroOrigem == null || numeroOrigem === 0) && !preEscolarOrigem) {
+      return NextResponse.json({
+        ok: false,
+        error: "Não foi possível identificar a classe de origem para a progressão.",
+        code: "REMATRICULA_PROGRESSION_INVALID",
+      }, { status: 409 });
+    }
     if (numeroOrigem !== null && numeroDestino !== null) {
       if (academicEligibility.mode === "repeat") {
         if (numeroDestino !== numeroOrigem) {
@@ -429,10 +450,16 @@ export async function POST(request: Request) {
       destinationLevel: turmaDestino?.nivel_ensino,
       mode: academicEligibility.mode,
     });
+    const preschoolPrimaryBridge = isPreschoolPrimaryBridge({
+      sourceClassName: classeOrigem?.nome,
+      sourceLevel: turmaOrigem?.nivel_ensino,
+      destinationClass: numeroDestino,
+      destinationLevel: turmaDestino?.nivel_ensino,
+      mode: academicEligibility.mode,
+    });
     if (turmaOrigem?.curso_id && turmaDestino?.curso_id &&
         turmaOrigem.curso_id !== turmaDestino.curso_id &&
-        !(numeroOrigem === 0 && numeroDestino === 1) &&
-        !primarySecondaryBridge) {
+        !preschoolPrimaryBridge && !primarySecondaryBridge) {
       return NextResponse.json({
         ok: false,
         error: numeroOrigem != null && numeroDestino != null && numeroDestino !== numeroOrigem + 1

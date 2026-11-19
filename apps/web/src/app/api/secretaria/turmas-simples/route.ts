@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { authorizeBalcaoPendingAcademicWrite } from "@/lib/academico/authorize-balcao-academic-write";
-import { isPrimarySecondaryBridge } from "@/lib/rematricula/primary-secondary-bridge";
+import { isPreschoolPrimaryBridge, isPrimarySecondaryBridge } from "@/lib/rematricula/primary-secondary-bridge";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveRaaProgressionForMatricula, RaaProgressionUnavailableError } from "@/lib/academico/raa-progression-server";
@@ -210,7 +210,11 @@ export async function GET(req: Request) {
         : { data: [] };
       const classeById = new Map((classesProgressao || []).map((classe: any) => [classe.id, classe]));
       const numeroClasse = resolveClasseNumero;
-      const origemClasseNumero = numeroClasse(classeById.get(classeOrigemId));
+      const origemClasse = classeById.get(classeOrigemId);
+      const origemClasseNumero = numeroClasse(origemClasse);
+      const origemPreEscolar = (origemClasseNumero === 0 || origemClasseNumero == null)
+        && turmaOrigem?.nivel_ensino === "pre_escolar"
+        && origemClasse?.nome === "Pré-Escolar";
       let progressionResult: Awaited<ReturnType<typeof resolveRaaProgressionForMatricula>> | null = null;
       let progressionError: string | null = null;
       try {
@@ -254,7 +258,7 @@ export async function GET(req: Request) {
           ? origemClasseNumero
           : podeProgredir
             ? (progressionResult?.progression.etapaDestino?.classeNum
-              ?? (origemClasseNumero != null ? origemClasseNumero + 1 : null))
+              ?? (origemPreEscolar ? 1 : origemClasseNumero != null ? origemClasseNumero + 1 : null))
             : null;
       // Filter by the academically eligible class first. The 6th-primary ->
       // 7th-secondary bridge has a different course, but it is not a skipped
@@ -265,8 +269,11 @@ export async function GET(req: Request) {
       const crossoverCandidates = classCandidates.filter((item: any) =>
         cursoOrigemId && item.curso_id && item.curso_id !== cursoOrigemId);
       const crossLevelById = new Map<string, string>();
-      if (crossoverCandidates.length && origemClasseNumero === 6 &&
-          classeDestinoNumero === 7 && turmaOrigem?.nivel_ensino === "primario") {
+      if (crossoverCandidates.length && (
+          (origemClasseNumero === 6 && classeDestinoNumero === 7
+            && turmaOrigem?.nivel_ensino === "primario") ||
+          (origemPreEscolar && classeDestinoNumero === 1)
+        )) {
         const { data: targetLevels, error: targetLevelsError } = await supabase
           .from("turmas").select("id, nivel_ensino")
           .eq("escola_id", escolaId).eq("session_id", sessionId)
@@ -280,8 +287,15 @@ export async function GET(req: Request) {
         : condicionalAutorizada ? "conditional" as const
         : aprovado ? "regular" as const : null;
       items = classCandidates.filter((item: any) =>
-        origemClasseNumero === 0 || !cursoOrigemId || !item.curso_id ||
+        !cursoOrigemId || !item.curso_id ||
         item.curso_id === cursoOrigemId ||
+        isPreschoolPrimaryBridge({
+          sourceClassName: origemClasse?.nome,
+          sourceLevel: turmaOrigem?.nivel_ensino,
+          destinationClass: classeDestinoNumero,
+          destinationLevel: crossLevelById.get(String(item.id)) ?? null,
+          mode: academicMode,
+        }) ||
         isPrimarySecondaryBridge({
           sourceClass: origemClasseNumero,
           destinationClass: classeDestinoNumero,
@@ -291,7 +305,7 @@ export async function GET(req: Request) {
         }));
 
       progressao = {
-        aplicada: origemClasseNumero != null,
+        aplicada: origemClasseNumero != null || origemPreEscolar,
         modo: concluido ? 'indefinida' : modo,
         estado: concluido
           ? 'concluido'
@@ -301,7 +315,7 @@ export async function GET(req: Request) {
               ? 'retencao_faltas'
               : progressionDecision === 'retido_por_indisciplina'
                 ? 'retencao_indisciplina'
-                : origemClasseNumero == null
+                : origemClasseNumero == null && !origemPreEscolar
               ? 'classe_nao_identificada'
               : condicionalAutorizada
                 ? 'condicional'
@@ -323,7 +337,7 @@ export async function GET(req: Request) {
                 : [{ id: 'rever_dados', label: 'Rever dados académicos', href: '/secretaria/fechamento-academico', prioridade: 'principal' as const }],
             }
           : null),
-        mensagem: origemClasseNumero == null
+        mensagem: origemClasseNumero == null && !origemPreEscolar
           ? 'A classe de origem não foi identificada; configure a classe antes de rematricular.'
           : progressionError
             ? progressionError

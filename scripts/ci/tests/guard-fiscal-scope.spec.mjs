@@ -18,7 +18,7 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 71);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 72);
   const exactDiagnostics = "20271118130000_curtume_2025_persist_fecho_diagnostics.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(exactDiagnostics));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + exactDiagnostics]), []);
@@ -378,5 +378,17 @@ test("documentary RAA migrations are individually allowed but cannot activate fi
   }
   assert.match(checkFiscalAndSchemaScope([
     "supabase/migrations/20271109010001_unreviewed_history.sql",
+  ])[0] ?? "", /Unapproved database migration/);
+});
+
+test("reviewed rematrícula cross-cycle RPC patch remains fiscal-frozen", () => {
+  const file = "20271119121000_balcao_rematricula_transicoes_idempotentes.sql";
+  const path = "supabase/migrations/" + file;
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.has(file), true);
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "CREATE TABLE public.fiscal_ativacao(enabled boolean);")[0] ?? "", /Fiscal[/]AGT activation/);
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271119121001_unreviewed_reenrollment.sql",
   ])[0] ?? "", /Unapproved database migration/);
 });

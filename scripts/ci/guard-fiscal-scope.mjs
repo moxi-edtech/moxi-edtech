@@ -125,6 +125,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // PR #374: matrícula desistente, sinalização docente e RLS por escola.
   // Apenas esta migração auditada; fiscal/AGT/SAF-T continua bloqueado.
   "20271119090000_matricula_desistencia_operacional_v1.sql",
+  // RAA 6ª→7ª and Pré→1ª; replay is read-only and the financial guard is preserved.
+  "20271119121000_balcao_rematricula_transicoes_idempotentes.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
