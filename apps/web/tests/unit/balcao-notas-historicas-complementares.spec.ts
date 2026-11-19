@@ -52,6 +52,7 @@ test("one selected student receives only their existing year and subjects", () =
 test("Balcão offers a single inline grade supplement editor even for an already homologated year", () => {
   assert.match(percurso, /<BalcaoNotasComplementares/);
   assert.match(percurso, /active\.situacao_resultado === "homologado"/);
+  assert.match(percurso, /snapshot\.can_recover_historical && active\.situacao_resultado/);
   assert.match(percurso, /active\.status_persistido === "concluido"/);
   assert.match(ui, /Completar notas/);
   assert.match(ui, /Guardar/);
