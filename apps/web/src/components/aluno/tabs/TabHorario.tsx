@@ -38,6 +38,7 @@ type TimetableData = {
 type AcademicEvent = {
   id: string;
   nome: string;
+  descricao?: string | null;
   tipo: string;
   data_inicio: string;
   data_fim: string;
@@ -149,7 +150,7 @@ export function TabHorario() {
             && typeof item.tipo === "string" && typeof item.data_inicio === "string"
             && typeof item.data_fim === "string";
         });
-        setAcademicEvents(items.slice(0, 3));
+        setAcademicEvents(items.slice(0, 100));
       } catch {
         if (!ctrl.signal.aborted) setAgendaError("Não foi possível carregar os eventos do teu curso.");
       } finally {
@@ -334,6 +335,9 @@ export function TabHorario() {
                 <FileCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">{item.nome}</p>
+                  {item.tipo === "AVALIACAO_ESCOLAR" && item.descricao && (
+                    <p className="mt-1 text-xs text-[#1F6B3B]">{item.descricao}</p>
+                  )}
                   <p className="mt-1 text-sm text-muted-foreground">
                     {formatAcademicDate(item.data_inicio)}
                     {item.data_fim.slice(0, 10) !== item.data_inicio.slice(0, 10)
