@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, Loader2, RotateCcw, UserRoundX } from "lucide-react";
 
 type Signal = { id: string; motivo: string; criado_em: string };
@@ -23,6 +24,7 @@ export function DesistenciaMatriculaAction({
   alunoId, escolaId, alunoNome, turmaId, anoLetivoId, matriculaId, tipo, variant = "button", onTriggerClick, onChanged,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [motivo, setMotivo] = useState("");
@@ -35,6 +37,8 @@ export function DesistenciaMatriculaAction({
 
   const staff = tipo !== "sinalizar";
   const reativar = tipo === "reativar";
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const el = dialog.current;
@@ -144,7 +148,7 @@ export function DesistenciaMatriculaAction({
           : <UserRoundX size={16} className="text-muted-foreground" aria-hidden />}
         {reativar ? "Reativar matrícula" : tipo === "confirmar" ? "Marcar desistente" : "Sinalizar desistência"}
       </button>
-      <dialog ref={dialog} onCancel={(e) => { e.preventDefault(); setOpen(false); }}
+      {mounted && createPortal(<dialog ref={dialog} onCancel={(e) => { e.preventDefault(); setOpen(false); }}
         className="w-[min(94vw,500px)] max-h-[85dvh] overflow-y-auto rounded-xl border border-border bg-card p-5 text-foreground shadow-xl backdrop:bg-foreground/40"
         aria-label={`${reativar ? "Reativar matrícula" : staff ? "Registar desistência" : "Sinalizar possível desistência"} de ${alunoNome}`}>
         <h3 className="text-base font-semibold text-klasse-green">
@@ -211,7 +215,7 @@ export function DesistenciaMatriculaAction({
             </button>
           )}
         </div>
-      </dialog>
+      </dialog>, document.body)}
     </>
   );
 }
