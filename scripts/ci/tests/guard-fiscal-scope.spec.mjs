@@ -18,7 +18,11 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 74);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 75);
+  const reativacao = "20271119093000_matricula_desistencia_reativacao_v2.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(reativacao));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + reativacao]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271119093001_unreviewed_reactivation.sql"])[0] ?? "", /Unapproved database migration/);
   const exactDiagnostics = "20271118130000_curtume_2025_persist_fecho_diagnostics.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(exactDiagnostics));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + exactDiagnostics]), []);
