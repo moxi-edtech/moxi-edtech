@@ -231,6 +231,14 @@ BEGIN
        JOIN public.avaliacoes a ON a.id=n.avaliacao_id AND a.escola_id=n.escola_id
        WHERE n.escola_id=p_escola_id AND n.matricula_id=s.matricula_id
          AND a.tipo='HIST_FINAL' AND a.turma_disciplina_id=s.turma_disciplina_id
+     ) as espelho_existente,
+     EXISTS(
+       SELECT 1 FROM public.notas n
+       JOIN public.avaliacoes a ON a.id=n.avaliacao_id AND a.escola_id=n.escola_id
+       WHERE n.escola_id=p_escola_id AND n.matricula_id=s.matricula_id
+         AND a.tipo='HIST_FINAL' AND a.turma_disciplina_id=s.turma_disciplina_id
+         AND public.curtume_2025_mfd_mirror_valid(
+           n.escola_id,n.matricula_id,n.avaliacao_id,n.valor,n.metadata)
      ) as ja_migrada
    FROM src s
  ), classes AS (
@@ -246,6 +254,7 @@ BEGIN
        OR classe_num NOT BETWEEN 1 AND 12 OR turma_disciplina_id IS NULL
        OR nota_final IS NULL OR NOT escala_valida OR NOT fonte_completa
         THEN 'inconsistencia'
+      WHEN espelho_existente AND NOT ja_migrada THEN 'inconsistencia'
       WHEN ja_migrada THEN 'sincronizada'
       ELSE 'elegivel' END AS categoria
    FROM flags
