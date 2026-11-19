@@ -18,7 +18,7 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 75);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 76);
   const reativacao = "20271119093000_matricula_desistencia_reativacao_v2.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(reativacao));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + reativacao]), []);
@@ -418,5 +418,17 @@ test("reviewed rematrícula cross-cycle RPC patch remains fiscal-frozen", () => 
     "CREATE TABLE public.fiscal_ativacao(enabled boolean);")[0] ?? "", /Fiscal[/]AGT activation/);
   assert.match(checkFiscalAndSchemaScope([
     "supabase/migrations/20271119121001_unreviewed_reenrollment.sql",
+  ])[0] ?? "", /Unapproved database migration/);
+});
+
+test("calendar only accepts active current-year class and exact migration guard", () => {
+  const filename = "20261119155654_calendario_avaliacoes_turma_ativa_20261119.sql";
+  const path = "supabase/migrations/" + filename;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(filename));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "DROP TABLE public.turmas;")[0] ?? "", /Calendar active-class guard missing|Calendar active-class migration cannot change/);
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20261119155655_unreviewed_calendar_writer.sql",
   ])[0] ?? "", /Unapproved database migration/);
 });
