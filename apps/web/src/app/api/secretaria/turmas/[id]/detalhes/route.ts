@@ -4,6 +4,7 @@ import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status";
+import { canConfirmarDesistencia } from "@/lib/matriculas/desistencia-permissions";
 import type { Database } from "~types/supabase";
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!authz.allowed) {
       return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
     }
+
+    // A permissão vem de escola_users, não do endereço /operacoes ou /admin.
+    const { data: member, error: memberError } = await supabase
+      .from('escola_users')
+      .select('papel')
+      .eq('escola_id', escolaId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const canManageDesistencia = !memberError && canConfirmarDesistencia(member?.papel);
 
     const disciplinaClient = supabase;
 
@@ -414,6 +424,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       alunos,
       disciplinas,
       canEmitLista: true, // A rota já exigiu authorizeTurmasManage.
+      canManageDesistencia,
     };
 
     console.log('API response prepared for turma:', turmaId);
