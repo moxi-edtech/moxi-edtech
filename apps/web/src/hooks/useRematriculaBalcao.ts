@@ -621,8 +621,16 @@ export function useRematriculaBalcao(opts: {
     setModalOpen(true);
     setResult(null);
     setApiError(null);
-    if (!selectedTurmaId && ["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING"].includes(cardState ?? "")) {
+    // Matrícula de destino já preparada: usa a turma confirmada no servidor
+    // e entra directamente na cobrança, sem repetir a escolha académica.
+    if (cardState === "RECONFIRMATION_REQUIRED" && destinoTurmaId) {
       setSelectedTurmaId(destinoTurmaId);
+      setStep(2);
+    } else {
+      setStep(1);
+      if (!selectedTurmaId && ["DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING"].includes(cardState ?? "")) {
+        setSelectedTurmaId(destinoTurmaId);
+      }
     }
     if (["RECONFIRMATION_REQUIRED", "DOCUMENT_PENDING", "ACADEMIC_HISTORY_PENDING"].includes(cardState ?? "")) {
       setDecisaoResultado("aprovado");
