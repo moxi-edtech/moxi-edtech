@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Loader2, UserRoundX } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Check, Loader2, RotateCcw, UserRoundX } from "lucide-react";
 
 type Signal = { id: string; motivo: string; criado_em: string };
 type Lookup = { ok?: boolean; error?: string; matricula_id?: string; sinalizacoes?: Signal[] };
@@ -12,15 +13,18 @@ type Props = {
   turmaId: string;
   anoLetivoId?: string | null;
   matriculaId?: string | null;
-  tipo: "confirmar" | "sinalizar";
+  tipo: "confirmar" | "sinalizar" | "reativar";
+  variant?: "button" | "menu";
+  onTriggerClick?: () => void;
   onChanged?: () => void;
 };
 
 /** Uma operação administrativa por matrícula, utilizada em todos os portais. */
 export function DesistenciaMatriculaAction({
-  alunoId, escolaId, alunoNome, turmaId, anoLetivoId, matriculaId, tipo, onChanged,
+  alunoId, escolaId, alunoNome, turmaId, anoLetivoId, matriculaId, tipo, variant = "button", onTriggerClick, onChanged,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [motivo, setMotivo] = useState("");
@@ -31,7 +35,10 @@ export function DesistenciaMatriculaAction({
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
 
-  const staff = tipo === "confirmar";
+  const staff = tipo !== "sinalizar";
+  const reativar = tipo === "reativar";
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const el = dialog.current;
@@ -55,6 +62,7 @@ export function DesistenciaMatriculaAction({
     try {
       const params = new URLSearchParams({ escola_id: escolaId, aluno_id: alunoId, turma_id: turmaId });
       if (anoLetivoId) params.set("ano_letivo_id", anoLetivoId);
+      params.set("estado", reativar ? "desistente" : "ativo");
       const res = await fetch(`/api/matriculas/desistencia?${params}`, { cache: "no-store" });
       const body = await res.json().catch(() => null) as Lookup | null;
       if (!res.ok || !body?.ok || !body.matricula_id) {
@@ -132,25 +140,30 @@ export function DesistenciaMatriculaAction({
 
   return (
     <>
-      <button type="button" ref={opener} onClick={showDialog}
-        className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold hover:text-klasse-green focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold">
-        <UserRoundX size={16} className="text-muted-foreground" aria-hidden />
-        {staff ? "Marcar desistente" : "Sinalizar desistência"}
+      <button type="button" ref={opener} onClick={() => { onTriggerClick?.(); showDialog(); }}
+        className={variant === "menu"
+          ? "flex min-h-10 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-klasse-gold"
+          : "inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold hover:text-klasse-green focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold"}>
+        {reativar ? <RotateCcw size={16} className="text-klasse-green" aria-hidden />
+          : <UserRoundX size={16} className="text-muted-foreground" aria-hidden />}
+        {reativar ? "Reativar matrícula" : tipo === "confirmar" ? "Marcar desistente" : "Sinalizar desistência"}
       </button>
-      <dialog ref={dialog} onCancel={(e) => { e.preventDefault(); setOpen(false); }}
+      {mounted && createPortal(<dialog ref={dialog} onCancel={(e) => { e.preventDefault(); setOpen(false); }}
         className="w-[min(94vw,500px)] max-h-[85dvh] overflow-y-auto rounded-xl border border-border bg-card p-5 text-foreground shadow-xl backdrop:bg-foreground/40"
-        aria-label={`${staff ? "Registar desistência" : "Sinalizar possível desistência"} de ${alunoNome}`}>
+        aria-label={`${reativar ? "Reativar matrícula" : staff ? "Registar desistência" : "Sinalizar possível desistência"} de ${alunoNome}`}>
         <h3 className="text-base font-semibold text-klasse-green">
-          {staff ? "Registar desistência" : "Sinalizar possível desistência"}
+          {reativar ? "Reativar matrícula" : staff ? "Registar desistência" : "Sinalizar possível desistência"}
         </h3>
         <p className="mt-1 text-sm font-semibold">{alunoNome}</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          {staff
-            ? "Encerra apenas a matrícula deste ano. As notas, presenças, documentos e valores financeiros anteriores serão preservados. Não atribui aprovação ou reprovação."
-            : "A Secretaria verificará a situação. O aluno permanece matriculado até uma decisão autorizada."}
+          {reativar
+            ? "Reativa a mesma matrícula deste ano, se houver vaga e o histórico ainda estiver aberto. O motivo da desistência anterior fica auditado; não cria outra matrícula, cobrança ou resultado académico."
+            : staff
+              ? "Encerra apenas a matrícula deste ano. As notas, presenças, documentos e valores financeiros anteriores serão preservados. Não atribui aprovação ou reprovação."
+              : "A Secretaria verificará a situação. O aluno permanece matriculado até uma decisão autorizada."}
         </p>
         {loading && <p role="status" className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 size={16} className="animate-spin" /> A verificar matrícula…</p>}
-        {staff && !loading && (lookup?.sinalizacoes?.length ?? 0) > 0 && (
+        {tipo === "confirmar" && !loading && (lookup?.sinalizacoes?.length ?? 0) > 0 && (
           <div className="mt-3 space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
             <p className="text-sm font-semibold text-foreground">Sinalizações dos professores</p>
             {lookup?.sinalizacoes?.map((signal) => (
@@ -167,19 +180,19 @@ export function DesistenciaMatriculaAction({
         {!done && (
           <>
             <label htmlFor={`desistencia-motivo-${alunoId}-${tipo}`} className="mt-4 block text-sm font-semibold">
-              {staff ? "Motivo da desistência" : "Indício observado"}
+              {reativar ? "Justificativa da reativação" : staff ? "Motivo da desistência" : "Indício observado"}
             </label>
             <textarea id={`desistencia-motivo-${alunoId}-${tipo}`}
               value={motivo} onChange={(event) => setMotivo(event.target.value)}
               maxLength={500} rows={3} required
-              placeholder={staff ? "Descreva o motivo administrativo confirmado pela escola…" : "Descreva a situação que precisa de verificação…"}
+              placeholder={reativar ? "Explique por que a matrícula deve voltar a ficar ativa…" : staff ? "Descreva o motivo administrativo confirmado pela escola…" : "Descreva a situação que precisa de verificação…"}
               className="mt-1 w-full rounded-xl border border-border p-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20" />
             <p className="text-right text-xs text-muted-foreground">{motivo.trim().length}/500 · mínimo 10</p>
             {staff && (
               <label className="mt-3 flex items-start gap-2 text-sm text-foreground">
                 <input type="checkbox" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)}
                   className="mt-1 accent-klasse-green" />
-                <span>Confirmei a desistência, a matrícula e o ano letivo. Os acertos financeiros são tratados separadamente.</span>
+                <span>{reativar ? "Confirmei a identidade, a turma e o ano letivo. Esta reativação não regulariza automaticamente dívidas." : "Confirmei a desistência, a matrícula e o ano letivo. Os acertos financeiros são tratados separadamente."}</span>
               </label>
             )}
           </>
@@ -187,7 +200,7 @@ export function DesistenciaMatriculaAction({
         {error && <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{error}</p>}
         {done && (
           <p role="status" className="mt-4 flex items-center gap-2 text-sm font-semibold text-klasse-green">
-            <Check size={16} /> {staff ? "Desistência registada." : "Sinalização enviada à Secretaria."}
+            <Check size={16} /> {reativar ? "Matrícula reativada." : staff ? "Desistência registada." : "Sinalização enviada à Secretaria."}
           </p>
         )}
         <div className="mt-5 flex flex-wrap justify-end gap-2">
@@ -198,11 +211,11 @@ export function DesistenciaMatriculaAction({
           {!done && (
             <button type="button" onClick={() => void submit()} disabled={!canSubmit}
               className="min-h-10 rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-40">
-              {saving ? "A guardar…" : staff ? "Confirmar desistência" : "Enviar sinalização"}
+              {saving ? "A guardar…" : reativar ? "Confirmar reativação" : staff ? "Confirmar desistência" : "Enviar sinalização"}
             </button>
           )}
         </div>
-      </dialog>
+      </dialog>, document.body)}
     </>
   );
 }

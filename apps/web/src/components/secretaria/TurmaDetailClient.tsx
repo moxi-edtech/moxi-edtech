@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  RefreshCw, UsersRound, BookOpen, UserCheck, Download, Search,
+  RefreshCw, UsersRound, BookOpen, UserCheck, Download, Search, Eye,
   MoreVertical, UserPlus, FileText, CalendarCheck, Settings,
   School, LayoutDashboard, GraduationCap, MapPin, X,
   AlertCircle, CheckCircle2, Lock, Unlock, ChevronLeft,
@@ -72,6 +72,7 @@ type TurmaData = {
     curso_nome?: string | null;
   };
   alunos:      Aluno[];
+  desistentes?: Aluno[];
   disciplinas: Array<{
     id:               string;
     nome:             string;
@@ -295,16 +296,19 @@ function PillTabs({ active, onChange, count }: {
 // ─── Status badges ────────────────────────────────────────────────────────────
 
 function MatriculaBadge({ status }: { status: string }) {
-  const ok = ["ativa", "ativo"].includes(status.toLowerCase());
+  const canonical = status.toLowerCase();
+  const ok = ["ativa", "ativo"].includes(canonical);
+  const desistente = canonical === "desistente";
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+      className={`inline-flex items-center w-fit rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
         ok
-          ? "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20"
+          ? "bg-klasse-green/10 text-klasse-green border-klasse-green/20"
+          : desistente ? "bg-muted text-muted-foreground border-border"
           : "bg-rose-50 text-rose-700 border-rose-200"
       }`}
     >
-      {status}
+      {desistente ? "Desistente" : status}
     </span>
   );
 }
@@ -351,8 +355,35 @@ function AlunoRow({
   canManageDesistencia: boolean;
   style?: React.CSSProperties;
 }) {
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => {
+      if (popoverRef.current?.matches(":popover-open")) popoverRef.current.hidePopover();
+    };
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [menuOpen]);
+
+  function toggleMenu(event: React.MouseEvent<HTMLButtonElement>) {
+    const el = popoverRef.current;
+    if (!el) return;
+    if (el.matches(":popover-open")) { el.hidePopover(); return; }
+    const rect = event.currentTarget.getBoundingClientRect();
+    // O popover nativo entra na top layer: não é cortado pelo scroll virtual.
+    const width = 208;
+    el.style.left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8)) + "px";
+    el.style.top = Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - 116)) + "px";
+    el.showPopover();
+  }
+
   return (
-    <tr className="group hover:bg-slate-50/80 transition-colors" style={style}>
+    <tr className="group hover:bg-muted/40 transition-colors" style={style}>
       <td className="px-5 py-3.5 text-[10px] font-semibold text-slate-400">
         {String(aluno.numero).padStart(2, "0")}
       </td>
@@ -385,27 +416,44 @@ function AlunoRow({
           ) : null}
         </div>
       </td>
-      <td className="px-5 py-3.5 text-right">
-        <div className="flex flex-wrap items-center justify-end gap-2">
-        {canManageDesistencia && <DesistenciaMatriculaAction
-          tipo="confirmar"
-          alunoId={aluno.aluno_id}
-          alunoNome={aluno.nome}
-          escolaId={escolaId}
-          turmaId={turmaId}
-          anoLetivoId={anoLetivoId}
-          matriculaId={aluno.matricula_id}
-          onChanged={() => onDesistencia(aluno.matricula_id)}
-        />}
-        <Link
-          href={profileHref}
-          title="Ver perfil do aluno"
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:border-[#1F6B3B] hover:text-[#1F6B3B]"
-        >
-          <MoreVertical size={15} />
-          <span className="hidden lg:inline">Perfil</span>
-        </Link>
-        </div>
+      <td className="px-4 py-2.5 text-right">
+        {canManageDesistencia ? (
+          <>
+            <button type="button" onClick={toggleMenu}
+              aria-haspopup="true" aria-expanded={menuOpen}
+              aria-controls={`aluno-actions-${aluno.matricula_id}`}
+              aria-label={`Ações de ${aluno.nome}`}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:border-klasse-gold focus-visible:outline-2 focus-visible:outline-klasse-gold">
+              <MoreVertical size={16} aria-hidden /> Ações
+            </button>
+            <div ref={popoverRef} id={`aluno-actions-${aluno.matricula_id}`}
+              popover="auto" onToggle={() => setMenuOpen(Boolean(popoverRef.current?.matches(":popover-open")))}
+              className="fixed z-50 w-52 rounded-xl border border-border bg-card p-1.5 shadow-lg"
+              style={{ right: "auto", bottom: "auto", margin: 0 }}>
+              <Link href={profileHref} onClick={() => popoverRef.current?.hidePopover()}
+                className="flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted">
+                <Eye size={16} className="text-muted-foreground" aria-hidden /> Ver perfil
+              </Link>
+              <div className="my-1 border-t border-border" />
+              <DesistenciaMatriculaAction
+                tipo={aluno.status_matricula === "desistente" ? "reativar" : "confirmar"}
+                variant="menu"
+                onTriggerClick={() => { if (popoverRef.current?.matches(":popover-open")) popoverRef.current.hidePopover(); }}
+                alunoId={aluno.aluno_id}
+                alunoNome={aluno.nome}
+                escolaId={escolaId}
+                turmaId={turmaId}
+                anoLetivoId={anoLetivoId}
+                matriculaId={aluno.matricula_id}
+                onChanged={() => onDesistencia(aluno.matricula_id)}
+              />
+            </div>
+          </>
+        ) : (
+          <Link href={profileHref} className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-muted">
+            <Eye size={16} aria-hidden /> Perfil
+          </Link>
+        )}
       </td>
     </tr>
   );
@@ -510,6 +558,8 @@ export default function TurmaDetailClient({
   const [professoresLoading, setProfessoresLoading] = useState(false);
   const [professorSearch, setProfessorSearch] = useState("");
   const [alunoSearch, setAlunoSearch] = useState("");
+  const [estadoFilter, setEstadoFilter] = useState<"ativos" | "desistentes" | "todos">("ativos");
+  const [rosterRevision, setRosterRevision] = useState(0);
   const [alunoFinanceiroFilter, setAlunoFinanceiroFilter] = useState<"todos" | "em_dia" | "atraso">("todos");
   const [selectedProfessorUserId, setSelectedProfessorUserId] = useState("");
   const [assigningProfessor, setAssigningProfessor] = useState(false);
@@ -528,12 +578,21 @@ export default function TurmaDetailClient({
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
 
   const alunosScrollRef               = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    alunosScrollRef.current?.scrollTo({ top: 0 });
+  }, [estadoFilter, alunoSearch, alunoFinanceiroFilter]);
   const { isEnabled: canQrDocs }      = usePlanFeature("doc_qr_code");
   const alunos                        = data?.alunos ?? EMPTY_ALUNOS;
+  const desistentes = data?.desistentes ?? EMPTY_ALUNOS;
+  const alunosVisiveis = useMemo(() => {
+    if (estadoFilter === "desistentes") return desistentes;
+    if (estadoFilter === "todos") return [...alunos, ...desistentes].sort((a, b) => a.numero - b.numero);
+    return alunos;
+  }, [alunos, desistentes, estadoFilter]);
   const alunosFiltrados = useMemo(() => {
     const termo = alunoSearch.trim().toLowerCase();
 
-    return alunos.filter((aluno) => {
+    return alunosVisiveis.filter((aluno) => {
       const matchesSearch = !termo || [aluno.nome, aluno.bi, aluno.numero_matricula]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(termo));
@@ -542,7 +601,7 @@ export default function TurmaDetailClient({
 
       return matchesSearch && matchesFinanceiro;
     });
-  }, [alunoFinanceiroFilter, alunoSearch, alunos]);
+  }, [alunoFinanceiroFilter, alunoSearch, alunosVisiveis]);
   const { escolaSlug } = useEscolaId();
   const escolaId = data?.turma.escola_id;
   const escolaParam = explicitEscolaParam || escolaSlug || escolaId;
@@ -574,7 +633,7 @@ export default function TurmaDetailClient({
   const alunosVirtualizer = useVirtualizer({
     count:            alunosFiltrados.length,
     getScrollElement: () => alunosScrollRef.current,
-    estimateSize:     () => 72,
+    estimateSize:     () => 66,
     overscan:         6,
   });
 
@@ -594,7 +653,7 @@ export default function TurmaDetailClient({
       }
     }
     load();
-  }, [turmaId]);
+  }, [turmaId, rosterRevision]);
 
 
   useEffect(() => {
@@ -1510,7 +1569,15 @@ export default function TurmaDetailClient({
                 className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm font-medium text-slate-900 outline-none transition focus:border-[#1F6B3B] focus:ring-4 focus:ring-[#1F6B3B]/10"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="aluno-estado-filter" className="text-xs font-bold text-muted-foreground">Estado</label>
+              <select id="aluno-estado-filter" value={estadoFilter}
+                onChange={(event) => setEstadoFilter(event.target.value as typeof estadoFilter)}
+                className="min-h-10 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-klasse-gold">
+                <option value="ativos">Ativos ({alunos.length})</option>
+                <option value="desistentes">Desistentes ({desistentes.length})</option>
+                <option value="todos">Todos ({alunos.length + desistentes.length})</option>
+              </select>
               <label htmlFor="aluno-financeiro-filter" className="text-xs font-bold text-slate-500">Financeiro</label>
               <select
                 id="aluno-financeiro-filter"
@@ -1518,7 +1585,7 @@ export default function TurmaDetailClient({
                 onChange={(event) => setAlunoFinanceiroFilter(event.target.value as typeof alunoFinanceiroFilter)}
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#1F6B3B]"
               >
-                <option value="todos">Todos ({alunos.length})</option>
+                <option value="todos">Todos ({alunosVisiveis.length})</option>
                 <option value="em_dia">Em dia</option>
                 <option value="atraso">Em atraso</option>
               </select>
@@ -1536,12 +1603,12 @@ export default function TurmaDetailClient({
                       <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aluno</th>
                       <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Matrícula</th>
                       <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Financeiro</th>
-                      <th className="px-5 py-3 text-right text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-60">Ações</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-28">Ações</th>
                     </tr>
                   </thead>
                   <tbody
                     className="divide-y divide-slate-50"
-                    style={alunos.length > 0 ? {
+                    style={alunosFiltrados.length > 0 ? {
                       position: "relative",
                       display: "block",
                       height: alunosVirtualizer.getTotalSize(),
@@ -1552,7 +1619,9 @@ export default function TurmaDetailClient({
                         <td colSpan={5} className="py-16 text-center">
                           <Search className="mx-auto mb-3 h-7 w-7 text-slate-300" />
                           <p className="text-sm text-slate-400">
-                            {alunos.length === 0 ? "Nenhum aluno matriculado nesta turma." : "Nenhum aluno corresponde aos filtros."}
+                            {alunosVisiveis.length === 0
+                              ? estadoFilter === "desistentes" ? "Nenhum desistente nesta turma." : "Nenhum aluno neste estado."
+                              : "Nenhum aluno corresponde aos filtros."}
                           </p>
                         </td>
                       </tr>
@@ -1573,11 +1642,7 @@ export default function TurmaDetailClient({
                             turmaId={turmaId}
                             anoLetivoId={academicYearId}
                             canManageDesistencia={data?.canManageDesistencia === true}
-                            onDesistencia={(matriculaId) => setData((current) => current ? {
-                              ...current,
-                              turma: { ...current.turma, ocupacao: Math.max(0, current.turma.ocupacao - 1) },
-                              alunos: current.alunos.filter((item) => item.matricula_id !== matriculaId),
-                            } : current)}
+                            onDesistencia={() => setRosterRevision((previous) => previous + 1)}
                             style={{
                               position: "absolute",
                               top: 0,

@@ -147,3 +147,68 @@ test("Operações respeita a permissão do DB e não confunde URL com autorizaç
     assert.equal(canConfirmarDesistencia(role), false, String(role));
   }
 });
+
+
+const reversalMigration = readFileSync(
+  new URL("../../../../supabase/migrations/20271119093000_matricula_desistencia_reativacao_v2.sql", import.meta.url),
+  "utf8",
+);
+
+test("reativação restaura a mesma matrícula sem apagar o histórico", () => {
+  assert.match(reversalMigration, /CREATE OR REPLACE FUNCTION public\.reativar_matricula_desistente/);
+  assert.match(reversalMigration, /SELECT \* INTO v_m FROM public\.matriculas WHERE id=p_matricula_id FOR UPDATE/);
+  assert.match(reversalMigration, /v_m\.status <> 'desistente' OR v_m\.ativo IS DISTINCT FROM FALSE/);
+  assert.match(reversalMigration, /al\.ativo IS TRUE/);
+  assert.match(reversalMigration, /ha\.snapshot_status='fechado'/);
+  assert.match(reversalMigration, /FOR UPDATE;/);
+  assert.match(reversalMigration, /v_occupied >= v_t\.capacidade_maxima/);
+  assert.match(reversalMigration, /REATIVACAO_MATRICULA_DUPLICADA/);
+  assert.match(reversalMigration, /INSERT INTO public\.matricula_desistencia_reativacoes/);
+  assert.match(reversalMigration, /motivo_desistencia_anterior,data_desistencia_anterior/);
+  assert.match(reversalMigration, /status='ativo', ativo=true, motivo_fecho=NULL, data_fecho=NULL/);
+  assert.match(reversalMigration, /status_fecho_origem=NULL, updated_by=v_user/);
+  assert.doesNotMatch(reversalMigration, /DELETE\s+FROM\s+public\.(?:matriculas|alunos|notas|mensalidades)/i);
+  assert.doesNotMatch(reversalMigration, /UPDATE\s+public\.(?:notas|mensalidades|historico_anos|alunos)\s+SET/i);
+});
+
+test("não é possível reativar diretamente via UPDATE nem cruzar polo", () => {
+  assert.match(reversalMigration, /AS RESTRICTIVE FOR UPDATE TO authenticated/);
+  assert.match(reversalMigration, /USING \(status <> 'desistente'\)/);
+  assert.match(reversalMigration, /WITH CHECK \(status <> 'desistente'\)/);
+  assert.match(reversalMigration, /cc_security\.allowed_turma\(v_m\.escola_id,v_m\.turma_id,v_m\.ano_letivo\)/);
+  assert.match(reversalMigration, /REVOKE ALL ON FUNCTION public\.reativar_matricula_desistente\(uuid,text\) FROM PUBLIC,anon/);
+  assert.match(reversalMigration, /GRANT EXECUTE ON FUNCTION public\.reativar_matricula_desistente\(uuid,text\) TO authenticated/);
+  assert.match(reversalMigration, /matricula_desistencia_reativacoes ENABLE ROW LEVEL SECURITY/);
+  assert.match(reversalMigration, /public\.user_has_role_in_school\(escola_id/);
+});
+
+test("API e perfil devolvem estado de desistência e a reativação via RPC", () => {
+  const api = source("app/api/matriculas/desistencia/route.ts");
+  const corrente = source("app/api/secretaria/alunos/[id]/matricula-corrente/route.ts");
+  const panel = source("components/aluno/CurrentYearEnrollmentPanel.tsx");
+  const action = source("components/matriculas/DesistenciaMatriculaAction.tsx");
+  assert.match(api, /acao: z\.literal\("reativar"\)/);
+  assert.match(api, /reativar_matricula_desistente/);
+  assert.match(api, /estado: z\.enum\(\["ativo", "desistente"\]\)/);
+  assert.match(corrente, /result\.desistencia = \{/);
+  assert.match(corrente, /\.eq\("status", "desistente"\)\.eq\("ativo", false\)/);
+  assert.match(panel, /tipo="reativar"/);
+  assert.match(panel, /Desistente neste ano letivo/);
+  assert.match(panel, /state\.desistencia\.matriculaId/);
+  assert.match(action, /variant\?: "button" \| "menu"/);
+  assert.match(action, /createPortal\(/);
+});
+
+test("lista compacta localiza desistentes, oferece menu e recarrega estado real", () => {
+  const turma = source("components/secretaria/TurmaDetailClient.tsx");
+  const details = source("app/api/secretaria/turmas/[id]/detalhes/route.ts");
+  assert.match(turma, /estadoFilter/);
+  assert.match(turma, /Desistentes \(\{desistentes\.length\}\)/);
+  assert.match(turma, /popover="auto"/);
+  assert.match(turma, /tipo=\{aluno\.status_matricula === "desistente" \? "reativar" : "confirmar"\}/);
+  assert.match(turma, /setRosterRevision\(\(previous\) => previous \+ 1\)/);
+  assert.match(details, /\.in\('status', \[\.\.\.ACTIVE_MATRICULA_STATUSES, 'desistente'\]\)/);
+  assert.match(details, /desistentes: alunosDesistentes/);
+  assert.match(details, /alunos: alunosAtivos/);
+  assert.match(details, /count: 'exact', head: true/);
+});
