@@ -74,9 +74,9 @@ export async function GET(req: Request, context: Context) {
     yearQuery = requestedYear ? yearQuery.eq("id", requestedYear) : yearQuery.eq("ativo", true);
     const { data: ano, error: yearError } = await yearQuery.maybeSingle();
     if (yearError) throw yearError;
-    if (!ano) return NextResponse.json({ ok: true, ano: null, periodos: [], turmas: [], disciplinas: [], items: [], historico: [] });
+    if (!ano) return NextResponse.json({ ok: true, ano: null, periodos: [], turmas: [], disciplinas: [], ofertas: [], items: [], historico: [] });
 
-    const [periods, classes, saved] = await Promise.all([
+    const [periods, classes, saved, offerings] = await Promise.all([
       db.from("periodos_letivos").select("id,numero,data_inicio,data_fim,offering_id")
         .eq("escola_id", escolaId).eq("ano_letivo_id", ano.id).order("numero").limit(150),
       db.from("turmas").select("id,nome,curso_id")
@@ -84,8 +84,10 @@ export async function GET(req: Request, context: Context) {
       db.from("calendario_avaliacoes")
         .select("id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,tipo,descricao,data,inicio,fim,estado,updated_at,updated_by,published_at")
         .eq("escola_id", escolaId).eq("ano_letivo_id", ano.id).order("data").limit(2000),
+      db.from("school_education_offerings").select("id,course_id")
+        .eq("escola_id", escolaId).eq("status", "active").limit(500),
     ]);
-    if (periods.error || classes.error || saved.error) throw periods.error ?? classes.error ?? saved.error;
+    if (periods.error || classes.error || saved.error || offerings.error) throw periods.error ?? classes.error ?? saved.error ?? offerings.error;
     if ((periods.data ?? []).length >= 150 || (classes.data ?? []).length >= 500 || (saved.data ?? []).length >= 2000) {
       return NextResponse.json({ ok: false, error: "O catálogo excede o limite seguro. Contacte a administração." }, { status: 409 });
     }
@@ -129,7 +131,7 @@ export async function GET(req: Request, context: Context) {
       historico = data ?? [];
     }
     return NextResponse.json({ ok: true, ano, periodos: periods.data, turmas: classes.data,
-      disciplinas, items: saved.data, historico }, { headers: { "Cache-Control": "no-store" } });
+      disciplinas, ofertas: offerings.data, items: saved.data, historico }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[calendario-avaliacoes/GET]", error);
     return NextResponse.json({ ok: false, error: "Não foi possível consultar o calendário." }, { status: 500 });
