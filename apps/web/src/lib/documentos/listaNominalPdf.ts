@@ -282,7 +282,7 @@ export async function renderListaNominalPdfBuffer({
       : yearValue;
     const estados: Record<string, string> = {
       activa: "Activa", concluida: "Concluída", transferida: "Transferida",
-      trancada: "Trancada", cancelada: "Cancelada",
+      trancada: "Trancada", cancelada: "Cancelada", desistente: "Desistente",
       pendente: "Pendente", desconhecida: "Não definido",
     };
     const linhas: NominalA4Row[] = alunos.map((row) => ({
@@ -559,7 +559,7 @@ export async function renderListaNominalPdfBuffer({
 
           // Identificação explícita: transferida/cancelada não aparece como activa.
           for (const aluno of alunos) {
-            if (["transferida", "trancada", "cancelada", "pendente", "desconhecida"].includes(String(aluno.categoria))) {
+            if (["transferida", "trancada", "cancelada", "desistente", "pendente", "desconhecida"].includes(String(aluno.categoria))) {
               aluno.nome = String(aluno.nome) + " [" + String(aluno.status).toUpperCase() + "]";
             }
           }
