@@ -164,7 +164,7 @@ export async function GET(req: Request) {
     const merged = [...visible, ...assessments]
       .sort((a, b) => a.data_inicio.localeCompare(b.data_inicio) || a.id.localeCompare(b.id));
 
-    return NextResponse.json({ ok: true, items: merged.slice(0, 3) }, {
+    return NextResponse.json({ ok: true, items: merged.slice(0, 100) }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (cause: unknown) {
