@@ -32,11 +32,11 @@ const fields = z.object({
   message: "A hora de término deve ser posterior ao início.",
 });
 const payload = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("create"), items: z.array(fields).min(1).max(100) }),
+  z.object({ action: z.literal("create"), items: z.array(fields).min(1).max(500) }),
   z.object({ action: z.literal("edit"), id: uuid, data: date, inicio: hour,
     fim: hour.nullable(), descricao: z.string().trim().max(500).nullable(),
     tipo: z.enum(["Teste", "Prova trimestral", "Trabalho", "Outra"]) }),
-  z.object({ action: z.literal("publish"), ids: z.array(uuid).min(1).max(100) }),
+  z.object({ action: z.literal("publish"), ids: z.array(uuid).min(1).max(1000) }),
   z.object({ action: z.literal("cancel"), id: uuid }),
 ]);
 
