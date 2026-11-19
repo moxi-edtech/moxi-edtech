@@ -593,36 +593,90 @@ export default function Page() {
           </section>
 
           {/* AGENDA COMPACTA */}
-          <section className="space-y-4">
-             <div className="flex items-center justify-between px-2">
-                <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Agenda de {dayLabel(todayKey)}</h2>
-                <Link href={professorHref("/professor/calendario")} className="text-[10px] font-black uppercase text-slate-500 hover:text-slate-900 transition-colors">Calendário completo</Link>
-             </div>
-
-             <div className="rounded-[2.5rem] bg-white border border-slate-200 p-6 shadow-sm divide-y divide-slate-100">
-                {loadError ? (
-                   <p role="status" className="py-8 text-center text-sm text-slate-600">Agenda indisponível. Utilize «Tentar novamente» acima.</p>
-                ) : loading ? (
-                   <ProfessorAgendaSkeleton />
-                ) : (agendaByDay.get(todayKey) || []).length === 0 ? (
-                   <div className="py-12 text-center space-y-3">
-                      <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center mx-auto text-slate-300">
-                         <MapIcon className="h-6 w-6" />
-                      </div>
-                      <p className="text-xs font-bold text-slate-400">Sem aulas agendadas para hoje.</p>
-                   </div>
-                ) : (
-                  (agendaByDay.get(todayKey) || []).map((item, idx) => {
-                    const query = item.turma_id && item.disciplina_id ? `?turma_id=${encodeURIComponent(item.turma_id)}&disciplina_id=${encodeURIComponent(item.disciplina_id)}` : "";
-                    const content = <><div className="flex items-center gap-4"><div className="flex flex-col items-center"><span className="text-[10px] font-black text-slate-900 leading-none">{item.inicio.split(":")[0]}</span><span className="text-[8px] font-bold text-slate-400 uppercase">{item.inicio.split(":")[1]}</span></div><div className="h-8 w-[2px] bg-slate-100 rounded-full" /><div><p className="text-xs font-black text-slate-900 group-hover:text-amber transition-colors">{item.disciplina_nome}</p><p className="text-[10px] font-bold text-slate-400">{formatTurmaDisplayName({ turma_nome: item.turma_nome })}{item.sala_nome && ` • Sala ${item.sala_nome}`}</p></div></div><div className="shrink-0 h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all"><PencilSquareIcon className="h-4 w-4" /></div></>;
+          <section className="space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-between gap-2 px-1 sm:px-2">
+              <h2 className="text-sm font-semibold text-foreground">Agenda de {dayLabel(todayKey)}</h2>
+              <Link href={professorHref("/professor/calendario")} className="text-xs font-semibold text-klasse-green hover:underline">Ver calendário</Link>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
+              {loadError ? (
+                <p role="status" className="py-4 text-sm text-muted-foreground">Agenda indisponível. Utilize «Tentar novamente» acima.</p>
+              ) : loading ? (
+                <ProfessorAgendaSkeleton />
+              ) : (agendaByDay.get(todayKey) || []).length === 0 ? (
+                <p role="status" className="py-3 text-sm text-muted-foreground">Sem aulas agendadas para hoje.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {(agendaByDay.get(todayKey) || []).map((item, idx) => {
                     const key = `${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`;
-                    const isCurrentLesson = aulaAtiva?.turma_id === item.turma_id && aulaAtiva?.disciplina_id === item.disciplina_id && (aulaAtiva?.slot_id ?? aulaAtiva?.inicio) === (item.slot_id ?? item.inicio);
-                    return item.turma_id && item.disciplina_id ? <div key={idx} className="group rounded-xl py-4 first:pt-0 last:pb-0 hover:bg-slate-50/80"><div className="flex items-center justify-between gap-4 px-2">{content}</div><div className="mt-2 flex flex-wrap gap-2 pl-16 text-[10px] font-black uppercase tracking-wide">{isCurrentLesson ? <>{item.status === "em_andamento" ? <><button type="button" onClick={() => { setFinalizingKey(key); setFinalizeSummary(""); }} disabled={!item.aula_id} className="text-emerald-700 hover:underline disabled:opacity-50">Sair da sala</button><span className="text-emerald-700">Em andamento</span></> : item.status === "finalizada" ? <span className="text-blue-700">Finalizada</span> : <button type="button" onClick={() => void startLesson(item)} disabled={startingKey === key} className="text-amber-700 hover:underline disabled:opacity-50">{startingKey === key ? "A confirmar..." : "Entrar na sala"}</button>}<Link href={professorHref(`/professor/frequencias${query}`)} className="text-emerald-700 hover:underline">Abrir chamada</Link><Link href={professorHref(`/professor/notas${query}`)} className="text-blue-700 hover:underline">Lançar nota</Link><Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(item.turma_id)}&disciplina_id=${encodeURIComponent(item.disciplina_id)}`)} className="text-amber-700 hover:underline">Abrir plano</Link></> : <span className="text-slate-400">Disponível das {item.inicio} às {item.fim}</span>}</div>{finalizingKey === key && <div className="mx-2 mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3"><textarea value={finalizeSummary} onChange={(event) => setFinalizeSummary(event.target.value)} rows={2} placeholder="Resumo breve da aula (opcional)" className="w-full rounded-lg border border-emerald-200 bg-white p-2 text-xs outline-none focus:ring-2 focus:ring-emerald-300" /><div className="mt-2 flex gap-2"><button type="button" onClick={() => void finalizeLesson(item)} disabled={finalizing} className="rounded-lg bg-emerald-700 px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-50">{finalizing ? "A finalizar..." : "Confirmar saída"}</button><button type="button" onClick={() => setFinalizingKey(null)} disabled={finalizing} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-600">Cancelar</button></div></div>}</div> : <div key={idx} className="group py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4">{content}</div>;
-                  })
-                )}
-             </div>
+                    const canNavigate = Boolean(item.turma_id && item.disciplina_id);
+                    const query = canNavigate
+                      ? `?turma_id=${encodeURIComponent(item.turma_id!)}&disciplina_id=${encodeURIComponent(item.disciplina_id!)}`
+                      : "";
+                    const isCurrentLesson = aulaAtiva?.turma_id === item.turma_id
+                      && aulaAtiva?.disciplina_id === item.disciplina_id
+                      && (aulaAtiva?.slot_id ?? aulaAtiva?.inicio) === (item.slot_id ?? item.inicio);
+                    return (
+                      <div key={`${key}:${idx}`} className="py-3 first:pt-0 last:pb-0">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="w-11 shrink-0 text-center text-xs font-semibold tabular-nums text-foreground">
+                            {item.inicio.slice(0, 5)}
+                          </span>
+                          <span className="h-9 w-px shrink-0 bg-border" aria-hidden="true" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold leading-snug text-foreground">
+                              {item.disciplina_nome ?? "Disciplina"}
+                            </p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                              {formatTurmaDisplayName({ turma_nome: item.turma_nome })}
+                              {item.sala_nome && ` · Sala ${item.sala_nome}`}
+                            </p>
+                          </div>
+                        </div>
+                        {canNavigate && isCurrentLesson ? (
+                          <>
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-14 text-xs">
+                              {item.status === "em_andamento" ? (
+                                <>
+                                  <span className="font-semibold text-klasse-green">Em andamento</span>
+                                  <button type="button" onClick={() => { setFinalizingKey(key); setFinalizeSummary(""); }} disabled={!item.aula_id} className="inline-flex min-h-10 items-center rounded-xl border border-border px-2.5 font-semibold text-foreground disabled:opacity-50">
+                                    Finalizar aula
+                                  </button>
+                                </>
+                              ) : item.status === "finalizada" ? (
+                                <span className="font-semibold text-muted-foreground">Finalizada</span>
+                              ) : (
+                                <button type="button" onClick={() => void startLesson(item)} disabled={startingKey === key} className="inline-flex min-h-10 items-center rounded-xl border border-border px-2.5 font-semibold text-klasse-green disabled:opacity-50">
+                                  {startingKey === key ? "A confirmar..." : "Entrar na sala"}
+                                </button>
+                              )}
+                              <Link href={professorHref(`/professor/frequencias${query}`)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Chamada</Link>
+                              <Link href={professorHref(`/professor/notas${query}`)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Notas</Link>
+                              <Link href={professorHref(`/professor/planos-aula${query}`)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Plano</Link>
+                            </div>
+                            {finalizingKey === key && (
+                              <div className="mt-2 space-y-2 rounded-xl border border-border bg-muted p-3">
+                                <label className="block text-xs font-semibold text-foreground" htmlFor={`resumo-${idx}`}>Resumo da aula (opcional)</label>
+                                <textarea id={`resumo-${idx}`} value={finalizeSummary} onChange={(event) => setFinalizeSummary(event.target.value)} rows={2} className="w-full rounded-xl border border-border bg-card p-2 text-sm text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20" />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <button type="button" onClick={() => void finalizeLesson(item)} disabled={finalizing} className="min-h-11 rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-slate-950 disabled:opacity-50">
+                                    {finalizing ? "A finalizar..." : "Confirmar saída"}
+                                  </button>
+                                  <button type="button" onClick={() => setFinalizingKey(null)} disabled={finalizing} className="min-h-11 rounded-xl border border-border bg-card px-2 text-xs font-semibold text-foreground disabled:opacity-50">Cancelar</button>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <p className="mt-1 pl-14 text-xs text-muted-foreground">Das {item.inicio} às {item.fim}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </section>
-
         </div>
       </div>
     </div>
