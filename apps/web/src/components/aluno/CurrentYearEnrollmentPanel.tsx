@@ -26,6 +26,13 @@ type CurrentEnrollmentState = {
     }>;
     pendenciasGerais: Array<{ codigo: string; mensagem: string }>;
   };
+  desistencia?: {
+    matriculaId: string;
+    turmaId: string;
+    anoLetivoId: string;
+    motivo: string | null;
+    data: string | null;
+  };
   matricula?: {
     id: string;
     status: string;
@@ -248,8 +255,8 @@ export function CurrentYearEnrollmentPanel({
       {!loading && state && (state.estado === "encerrada" || state.estado === "cancelada") && (
         <div role="status" className="space-y-1 rounded-lg border border-border bg-muted p-3">
           <p className="text-sm font-semibold text-foreground">
-            {registroAno?.estadoOperacional === "cancelada" && registroAno?.situacaoContextual === "desistente"
-              ? "Desistência registada neste ano"
+            {state.desistencia || (registroAno?.estadoOperacional === "cancelada" && registroAno?.situacaoContextual === "desistente")
+              ? "Desistente neste ano letivo"
               : state.estado === "encerrada" ? "Matrícula encerrada neste ano" : "Matrícula cancelada neste ano"}
           </p>
           <p className="text-xs text-muted-foreground">
@@ -257,6 +264,28 @@ export function CurrentYearEnrollmentPanel({
               ? `Resultado académico oficial: ${registroAno.academico.resultadoOficial}.`
               : "Resultado académico ainda não oficializado no histórico; consulte o fechamento escolar."}
           </p>
+          {state.desistencia?.data && (
+            <p className="text-xs text-muted-foreground">
+              Registada em {new Date(state.desistencia.data).toLocaleDateString("pt-AO")}.
+            </p>
+          )}
+          {state.desistencia?.motivo && (
+            <p className="text-xs text-foreground">Motivo: {state.desistencia.motivo}</p>
+          )}
+          {state.desistencia && canManageDesistencia && (
+            <div className="border-t border-border pt-3">
+              <DesistenciaMatriculaAction
+                tipo="reativar"
+                alunoId={alunoId}
+                alunoNome={alunoNome}
+                escolaId={escolaId}
+                turmaId={state.desistencia.turmaId}
+                matriculaId={state.desistencia.matriculaId}
+                anoLetivoId={state.desistencia.anoLetivoId}
+                onChanged={refresh}
+              />
+            </div>
+          )}
           <Link href="/secretaria/fechamento-academico" className="text-xs font-bold text-foreground underline underline-offset-2">
             Consultar fechamento académico
           </Link>
