@@ -336,7 +336,7 @@ export function TabHorario() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground">{item.nome}</p>
                   {item.tipo === "AVALIACAO_ESCOLAR" && item.descricao && (
-                    <p className="mt-1 text-xs text-[#1F6B3B]">{item.descricao}</p>
+                    <p className="mt-1 text-xs text-primary">{item.descricao}</p>
                   )}
                   <p className="mt-1 text-sm text-muted-foreground">
                     {formatAcademicDate(item.data_inicio)}
