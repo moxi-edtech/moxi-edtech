@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ProfessorSkeletonBone } from "@/components/professor/ProfessorLoadingSkeletons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ClipboardCheck, Clock3 } from "lucide-react";
 import { reopeningFeedback, type ReopeningDisplayState } from "@/lib/academico/reopening-display";
@@ -82,7 +83,14 @@ export default function ProfessorReopeningRequests({
         <ClipboardCheck className="h-5 w-5 text-klasse-green" aria-hidden="true" />
         <h2 className="text-sm font-semibold text-klasse-green">Pedidos de reabertura</h2>
       </div>
-      {loading ? <p className="mt-3 text-sm text-muted-foreground">A consultar pedidos...</p> :
+      {loading ? (
+        <div role="status" aria-label="A carregar pedidos de reabertura" className="mt-3 space-y-2 motion-safe:animate-pulse">
+          <span className="sr-only">A carregar pedidos de reabertura</span>
+          <ProfessorSkeletonBone className="h-4 w-3/5 max-w-52" />
+          <ProfessorSkeletonBone className="h-3 w-2/5 max-w-40" />
+          <ProfessorSkeletonBone className="h-3 w-4/5 max-w-72" />
+        </div>
+      ) :
         error ? <button type="button" onClick={() => void load()} className="mt-3 text-sm font-semibold text-klasse-green">{sessionExpired ? "Sessão expirada. Volta a autenticar-te." : "Não foi possível actualizar. Tentar novamente"}</button> :
           <div className="mt-3 space-y-3" aria-live="polite" aria-relevant="text">
             {recent.length === 0 && <p className="text-sm text-muted-foreground">Sem pedidos de reabertura.</p>}
