@@ -362,3 +362,15 @@ test("documentary RAA migrations are individually allowed but cannot activate fi
     "supabase/migrations/20271109010001_unreviewed_history.sql",
   ])[0] ?? "", /Unapproved database migration/);
 });
+
+test("only the explicit Curtume final-grade mirror migration is allowlisted without fiscal activation", () => {
+  const name = "20271119110000_curtume_mirror_signed_final_grades.sql";
+  const path = "supabase/migrations/" + name;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "CREATE TABLE public.fiscal_ativacao (enabled boolean);")[0] ?? "", new RegExp("Fiscal/AGT activation"));
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271119110001_unreviewed_historical_write.sql",
+  ])[0] ?? "", /Unapproved database migration/);
+});

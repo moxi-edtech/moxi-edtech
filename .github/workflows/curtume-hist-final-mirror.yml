@@ -1,0 +1,48 @@
+name: Curtume HIST_FINAL Mirror
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20271119110000_curtume_mirror_signed_final_grades.sql"
+      - "supabase/ops/tests/curtume_final_mirror/**"
+      - "apps/web/src/app/api/secretaria/operacoes-academicas/sincronizar-notas-finais/**"
+      - "apps/web/src/components/secretaria/CurtumeSincronizarNotasFinais.tsx"
+      - "apps/web/tests/unit/curtume-historic-mfd-sync.spec.ts"
+      - ".github/workflows/curtume-hist-final-mirror.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-signed-final-mirror:
+    name: Synthetic signed finals, tenant lock and RAA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: curtume_mirror_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d curtume_mirror_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGURL: postgresql://postgres:postgres@127.0.0.1:5432/curtume_mirror_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build disposable academic source fixture
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/curtume_final_mirror/fixture.sql
+      - name: Install exact migration and verify source, transaction, RAA, audit, isolation
+        run: psql "$PGURL" -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/curtume_final_mirror/regression.sql
+
+  web-contract:
+    name: Curtume final-grade mirror API and UX contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --test --experimental-strip-types apps/web/tests/unit/curtume-historic-mfd-sync.spec.ts
