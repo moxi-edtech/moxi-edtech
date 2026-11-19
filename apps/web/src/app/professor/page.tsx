@@ -6,9 +6,8 @@ import ProfessorReopeningRequests from "@/components/professor/ProfessorReopenin
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { formatTurmaDisplayName } from "@/utils/formatters";
-import { ClipboardDocumentListIcon, PencilSquareIcon, MapIcon, BookOpenIcon, CalendarDaysIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import { BookOpen, CalendarDays, ChevronDown, ClipboardCheck, Pencil, RefreshCw, School, UsersRound } from "lucide-react";
 import Link from "next/link";
-import { ChevronDown, UsersRound } from "lucide-react";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
@@ -351,7 +350,7 @@ export default function Page() {
           
           <div className="hidden items-center gap-3 sm:flex">
              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm">
-                <MapIcon className="w-6 h-6" />
+                <School className="w-6 h-6" />
              </div>
              <div className="hidden sm:block">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</p>
@@ -378,7 +377,7 @@ export default function Page() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-start gap-2.5">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-klasse-green-700/70 text-white sm:h-11 sm:w-11">
-                  <CalendarDaysIcon className="h-5 w-5" aria-hidden="true" />
+                  <CalendarDays className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -403,14 +402,14 @@ export default function Page() {
                     href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(aulaAtiva.turma_id)}&disciplina_id=${encodeURIComponent(aulaAtiva.disciplina_id)}`)}
                     className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-klasse-gold px-2.5 py-2 text-xs font-semibold text-klasse-gold-900 transition-colors hover:brightness-95 sm:px-4"
                   >
-                    <ClipboardDocumentListIcon className="h-4 w-4" aria-hidden="true" />
+                    <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
                     Fazer chamada
                   </Link>
                   <Link
                     href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(aulaAtiva.turma_id)}&disciplina_id=${encodeURIComponent(aulaAtiva.disciplina_id)}`)}
                     className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-klasse-green-700 bg-klasse-green-700/60 px-2.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-klasse-green-700 sm:px-4"
                   >
-                    <PencilSquareIcon className="h-4 w-4" aria-hidden="true" />
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
                     Lançar notas
                   </Link>
                 </div>
@@ -465,7 +464,7 @@ export default function Page() {
             { 
                title: "Registrar Presenças", 
                desc: "Controle diário de assiduidade", 
-               icon: ClipboardDocumentListIcon, 
+               icon: ClipboardCheck, 
                href: "/professor/frequencias",
                color: "from-emerald-500 to-teal-600",
                light: "bg-emerald-50 text-emerald-600"
@@ -473,7 +472,7 @@ export default function Page() {
             { 
                title: "Lançar Notas", 
                desc: "Gestão de avaliações e médias", 
-               icon: PencilSquareIcon, 
+               icon: Pencil, 
                href: "/professor/notas",
                color: "from-amber-500 to-orange-600",
                light: "bg-amber-50 text-amber-600"
@@ -481,7 +480,7 @@ export default function Page() {
             { 
                title: "Materiais de Estudo", 
                desc: "Upload de guias e manuais", 
-               icon: BookOpenIcon, 
+               icon: BookOpen, 
                href: "/professor/materiais",
                color: "from-blue-500 to-indigo-600",
                light: "bg-muted text-foreground"
@@ -489,7 +488,7 @@ export default function Page() {
             {
                title: "Planos de Aula",
                desc: "Preparação e revisão pedagógica",
-               icon: ClipboardDocumentListIcon,
+               icon: ClipboardCheck,
                href: "/professor/planos-aula",
                color: "from-emerald-500 to-green-700",
                light: "bg-emerald-50 text-emerald-600"
@@ -497,7 +496,7 @@ export default function Page() {
             { 
                title: "Calendário Académico", 
                desc: "Prazos, exames e marcos lectivos", 
-               icon: CalendarDaysIcon, 
+               icon: CalendarDays, 
                href: "/professor/calendario",
                color: "from-slate-600 to-slate-800",
                light: "bg-slate-100 text-slate-600"
@@ -518,7 +517,7 @@ export default function Page() {
                {/* Arrow Icon on Hover */}
                <div className="absolute bottom-6 right-6 hidden opacity-0 transition-opacity group-hover:opacity-100 sm:block">
                   <div className="h-8 w-8 rounded-full bg-slate-900 text-white flex items-center justify-center">
-                     <PencilSquareIcon className="h-4 w-4" />
+                     <Pencil className="h-4 w-4" />
                   </div>
                </div>
             </Link>
@@ -540,7 +539,7 @@ export default function Page() {
                 <p className="font-semibold">Não foi possível carregar as turmas.</p>
                 <p className="mt-1 text-xs">Verifique a ligação e tente novamente.</p>
                 <button type="button" onClick={loadAgain} className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl bg-rose-700 px-3 text-xs font-semibold text-white hover:bg-rose-800">
-                  <ArrowPathIcon className="h-4 w-4" /> Tentar novamente
+                  <RefreshCw className="h-4 w-4" /> Tentar novamente
                 </button>
               </div>
             ) : loading ? (
