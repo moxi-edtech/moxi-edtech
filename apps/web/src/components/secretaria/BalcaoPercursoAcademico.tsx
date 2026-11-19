@@ -7,6 +7,7 @@ import type { SituacaoBalcaoPayload, SituacaoBalcaoRow } from "@/lib/balcao/stud
 import { useBalcaoDraftForm } from "./command-center/BalcaoDraftState";
 import { BalcaoPautaGrid } from "./BalcaoPautaGrid";
 import { BalcaoPautaSourceClassPicker } from "./BalcaoPautaSourceClassPicker";
+import { BalcaoNotasComplementares } from "./BalcaoNotasComplementares";
 
 const endpoint = "/api/secretaria/operacoes-academicas/reconciliacao-historica";
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
@@ -54,6 +55,10 @@ export function BalcaoPercursoAcademico(props: Props) {
         {needsResult(active) && snapshot.can_recover_historical && <YearWork key={active.matricula_id+":"+active.turma_id}
           row={active} blocked={Boolean(gap)} onBusyChange={setBusy}
           onUpdated={async () => { await onUpdated(); setSelected(null); }} />}
+        {active.situacao_resultado === "homologado" && active.status_persistido === "concluido" && (
+          <BalcaoNotasComplementares key={active.matricula_id} matriculaId={active.matricula_id}
+            ano={active.ano_letivo} onSaved={onUpdated} />
+        )}
         {financialVerified && debt(active.matricula_id)>0 && <button type="button" disabled={busy} onClick={() => { setSelected(null); onPay(active.matricula_id); }} className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm">
           <Wallet size={16}/>Liquidar {money.format(debt(active.matricula_id))} aqui</button>}
       </>}
