@@ -369,7 +369,7 @@ test("only the explicit Curtume final-grade mirror migration is allowlisted with
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
   assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
   assert.match(checkFiscalAndSchemaScope([path], () =>
-    "CREATE TABLE public.fiscal_ativacao (enabled boolean);")[0] ?? "", /Fiscal\\/AGT activation/);
+    "CREATE TABLE public.fiscal_ativacao (enabled boolean);")[0] ?? "", new RegExp("Fiscal/AGT activation"));
   assert.match(checkFiscalAndSchemaScope([
     "supabase/migrations/20271119110001_unreviewed_historical_write.sql",
   ])[0] ?? "", /Unapproved database migration/);
