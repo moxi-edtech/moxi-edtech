@@ -327,7 +327,7 @@ export default function Page() {
       <div className="mx-auto max-w-6xl space-y-5 p-3 sm:space-y-8 sm:p-6">
         
         {/* HEADER PREMIUM */}
-        <header aria-busy={loading} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <header aria-busy={loading} className="flex flex-col justify-between gap-2 sm:gap-4 md:flex-row md:items-center">
           <div className="space-y-1">
              <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-amber animate-pulse" />
@@ -349,8 +349,8 @@ export default function Page() {
              </p>
           </div>
           
-          <div className="flex items-center gap-3">
-             <div className="h-12 w-12 rounded-2xl bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-400">
+          <div className="hidden items-center gap-3 sm:flex">
+             <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm">
                 <MapIcon className="w-6 h-6" />
              </div>
              <div className="hidden sm:block">
