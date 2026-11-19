@@ -26,15 +26,16 @@ export function ProfessorTurmasSkeleton() {
         <div
           key={item}
           aria-hidden="true"
-          className="rounded-xl border border-border bg-card p-3 shadow-sm motion-safe:animate-pulse sm:rounded-[1.5rem] sm:p-5"
+          className="rounded-xl border border-border bg-card p-3 shadow-sm motion-safe:animate-pulse sm:p-4"
         >
-          <div className="flex items-start justify-between">
-            <ProfessorSkeletonBone className="h-10 w-10 rounded-xl" />
-            <ProfessorSkeletonBone className="h-5 w-20 rounded-full" />
+          <div className="flex min-h-14 items-center gap-3">
+            <ProfessorSkeletonBone className="h-9 w-9 rounded-xl" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <ProfessorSkeletonBone className="h-4 w-3/5 max-w-52" />
+              <ProfessorSkeletonBone className="h-3 w-4/5 max-w-64" />
+            </div>
+            <ProfessorSkeletonBone className="h-4 w-4" />
           </div>
-          <ProfessorSkeletonBone className="mt-4 h-4 w-3/5 max-w-52" />
-          <ProfessorSkeletonBone className="mt-2 h-3 w-4/5 max-w-64" />
-          <ProfessorSkeletonBone className="mt-3 h-2.5 w-1/2 max-w-40" />
         </div>
       ))}
     </div>
@@ -46,23 +47,19 @@ export function ProfessorAgendaSkeleton() {
     <div role="status" aria-label="A carregar agenda" className="divide-y divide-border">
       <span className="sr-only">A carregar agenda</span>
       {[0, 1, 2].map((item) => (
-        <div key={item} aria-hidden="true" className="px-2 py-4 motion-safe:animate-pulse">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="flex w-6 shrink-0 flex-col items-center gap-1">
-                <ProfessorSkeletonBone className="h-3 w-5" />
-                <ProfessorSkeletonBone className="h-2 w-4" />
-              </div>
-              <div className="h-8 w-[2px] shrink-0 rounded-full bg-border" />
-              <div className="min-w-0 space-y-2">
-                <ProfessorSkeletonBone className="h-3 w-28 max-w-full" />
-                <ProfessorSkeletonBone className="h-2.5 w-36 max-w-full" />
-              </div>
+        <div key={item} aria-hidden="true" className="py-3 first:pt-0 last:pb-0 motion-safe:animate-pulse">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex w-11 shrink-0 justify-center">
+              <ProfessorSkeletonBone className="h-3 w-10" />
             </div>
-            <ProfessorSkeletonBone className="h-8 w-8 rounded-full" />
+            <div className="h-9 w-px shrink-0 bg-border" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <ProfessorSkeletonBone className="h-4 w-3/5 max-w-44" />
+              <ProfessorSkeletonBone className="h-3 w-4/5 max-w-56" />
+            </div>
           </div>
-          <div className="mt-2 pl-16">
-            <ProfessorSkeletonBone className="h-2.5 w-36 max-w-full" />
+          <div className="mt-1 pl-14">
+            <ProfessorSkeletonBone className="h-3 w-32 max-w-full" />
           </div>
         </div>
       ))}
