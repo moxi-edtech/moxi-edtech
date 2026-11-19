@@ -40,8 +40,8 @@ export function CurtumeSincronizarNotasFinais({ onComplete }: { onComplete?: () 
   const running = useRef(false);
 
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
-  const refresh = useCallback(async () => {
-    setLoading(true); setError("");
+  const refresh = useCallback(async (preserveError = false) => {
+    setLoading(true); if (!preserveError) setError("");
     try {
       const output = await request(API) as Preview;
       if (mounted.current) { setPreview(output); setForbidden(false); }
@@ -84,7 +84,7 @@ export function CurtumeSincronizarNotasFinais({ onComplete }: { onComplete?: () 
       if (mounted.current) {
         setSaving(false);
         // A leitura canónica é a verdade após qualquer falha de rede.
-        void refresh();
+        void refresh(true);
       }
     }
   }
