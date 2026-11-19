@@ -212,7 +212,7 @@ export async function GET(req: Request) {
       const numeroClasse = resolveClasseNumero;
       const origemClasse = classeById.get(classeOrigemId);
       const origemClasseNumero = numeroClasse(origemClasse);
-      const origemPreEscolar = origemClasseNumero == null
+      const origemPreEscolar = (origemClasseNumero === 0 || origemClasseNumero == null)
         && turmaOrigem?.nivel_ensino === "pre_escolar"
         && origemClasse?.nome === "Pré-Escolar";
       let progressionResult: Awaited<ReturnType<typeof resolveRaaProgressionForMatricula>> | null = null;
