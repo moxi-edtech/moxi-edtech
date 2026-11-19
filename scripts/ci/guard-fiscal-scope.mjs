@@ -125,6 +125,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // PR #374: matrícula desistente, sinalização docente e RLS por escola.
   // Apenas esta migração auditada; fiscal/AGT/SAF-T continua bloqueado.
   "20271119090000_matricula_desistencia_operacional_v1.sql",
+  // PR #379: migração de rematrícula entre ciclos sem mudanças fiscais.
+  "20271119121000_balcao_rematricula_transicoes_idempotentes.sql",
   // PR #378: calendário escolar operacional; RLS e auditoria append-only, sem notas ou fiscal.
   "20261119145630_calendario_avaliacoes_auditado_20261119.sql",
   "20261119150953_calendario_avaliacoes_evitar_sobreposicao.sql",

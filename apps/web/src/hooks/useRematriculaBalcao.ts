@@ -560,7 +560,17 @@ export function useRematriculaBalcao(opts: {
       }
       // Revalidate only after fresh options arrive. Status refreshes and
       // callback identity changes must not erase the user-selected destination.
-      setSelectedTurmaId(current => current && data.items.some((t: TurmaPayload) => t.id === current) ? current : null);
+      const available = (data.items as TurmaPayload[]).filter((turma) =>
+        turma.capacidade_maxima == null ||
+        Number(turma.ocupacao_atual ?? 0) < Number(turma.capacidade_maxima));
+      // No unnecessary click when there is exactly one eligible destination.
+      // No default is chosen for multiple classes, full classes or blocked RAA.
+      setSelectedTurmaId(current =>
+        current && available.some((turma) => turma.id === current)
+          ? current
+          : available.length === 1 &&
+            ["aprovado", "condicional", "reprovado"].includes(data.progressao?.estado ?? "")
+            ? available[0].id : null);
       setProgressao(data.progressao ?? null);
       if (Array.isArray(data.items)) {
         setTurmas(
