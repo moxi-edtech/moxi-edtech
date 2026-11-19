@@ -4,6 +4,7 @@ import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status";
+import { canConfirmarDesistencia } from "@/lib/matriculas/desistencia-permissions";
 import type { Database } from "~types/supabase";
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!authz.allowed) {
       return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
     }
+
+    // A permissão vem de escola_users, não do endereço /operacoes ou /admin.
+    const { data: member, error: memberError } = await supabase
+      .from('escola_users')
+      .select('papel')
+      .eq('escola_id', escolaId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const canManageDesistencia = !memberError && canConfirmarDesistencia(member?.papel);
 
     const disciplinaClient = supabase;
 
@@ -65,19 +75,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }, { status: 409 });
     }
 
-    // 2. Ocupação da turma
-    const { data: ocupacaoRow, error: ocupacaoError } = await supabase
-      .from('vw_turmas_para_matricula')
-      .select('ocupacao_atual')
+    // 2. Ocupação real. A vw_turmas_para_matricula lê uma MATERIALIZED VIEW,
+    // que não é atualizada imediatamente após uma desistência. Não usá-la como
+    // fonte de contagem operacional; consultar diretamente matrículas atuais.
+    const { count: ocupacao, error: ocupacaoError } = await supabase
+      .from('matriculas')
+      .select('id', { count: 'exact', head: true })
       .eq('escola_id', escolaId)
-      .eq('id', turmaId)
-      .maybeSingle();
+      .eq('turma_id', turmaId)
+      .eq('session_id', turmaResult.session_id)
+      .eq('ativo', true)
+      .in('status', ACTIVE_MATRICULA_STATUSES);
 
     if (ocupacaoError) {
       console.error('Error fetching ocupacao:', ocupacaoError);
       return NextResponse.json({ ok: false, error: 'Erro ao buscar ocupação' }, { status: 500 });
     }
-    const ocupacao = Number(ocupacaoRow?.ocupacao_atual ?? 0);
 
     // 3. Buscar diretor separadamente para evitar problemas de relacionamento
     let diretor: { id: string; nome: string; email: string } | null = null;
@@ -366,7 +379,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt', { sensitivity: 'base' });
     });
 
-    const ocupacaoFinal = Number.isFinite(ocupacao) && ocupacao > 0 ? ocupacao : alunos.length;
+    const ocupacaoFinal = ocupacao ?? 0;
 
     // 6. Montar resposta final
     const turma = {
@@ -411,6 +424,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       alunos,
       disciplinas,
       canEmitLista: true, // A rota já exigiu authorizeTurmasManage.
+      canManageDesistencia,
     };
 
     console.log('API response prepared for turma:', turmaId);

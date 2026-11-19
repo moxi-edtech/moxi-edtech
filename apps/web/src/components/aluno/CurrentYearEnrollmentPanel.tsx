@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, RefreshCw, ShieldAlert } from "lucide-react";
 import { RetificarMatriculaAction } from "@/components/aluno/RetificarMatriculaAction";
+import { DesistenciaMatriculaAction } from "@/components/matriculas/DesistenciaMatriculaAction";
 import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
 
 type CurrentEnrollmentState = {
@@ -44,10 +45,14 @@ type CurrentEnrollmentState = {
 export function CurrentYearEnrollmentPanel({
   alunoId,
   escolaId,
+  alunoNome = "Aluno",
+  canManageDesistencia = false,
   onChanged,
 }: {
   alunoId: string;
   escolaId: string;
+  alunoNome?: string;
+  canManageDesistencia?: boolean;
   onChanged?: () => void;
 }) {
   const [state, setState] = useState<CurrentEnrollmentState | null>(null);
@@ -175,6 +180,20 @@ export function CurrentYearEnrollmentPanel({
             <strong>Classe:</strong> {state.matricula.classeNome ?? "Não indicada"}
             {" · "}<strong>Turma:</strong> {state.matricula.turmaNome}
           </p>
+          {canManageDesistencia && (
+            <div className="border-t border-border pt-3">
+              <DesistenciaMatriculaAction
+                tipo="confirmar"
+                alunoId={alunoId}
+                alunoNome={alunoNome}
+                escolaId={escolaId}
+                turmaId={state.matricula.turmaId}
+                matriculaId={state.matricula.id}
+                anoLetivoId={state.matricula.anoLetivoId}
+                onChanged={refresh}
+              />
+            </div>
+          )}
           {state.canRectifyClass && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
               <p className="max-w-md text-xs text-slate-500">
@@ -229,7 +248,9 @@ export function CurrentYearEnrollmentPanel({
       {!loading && state && (state.estado === "encerrada" || state.estado === "cancelada") && (
         <div role="status" className="space-y-1 rounded-lg border border-border bg-muted p-3">
           <p className="text-sm font-semibold text-foreground">
-            {state.estado === "encerrada" ? "Matrícula encerrada neste ano" : "Matrícula cancelada neste ano"}
+            {registroAno?.estadoOperacional === "cancelada" && registroAno?.situacaoContextual === "desistente"
+              ? "Desistência registada neste ano"
+              : state.estado === "encerrada" ? "Matrícula encerrada neste ano" : "Matrícula cancelada neste ano"}
           </p>
           <p className="text-xs text-muted-foreground">
             {registroAno?.academico.resultadoOficial

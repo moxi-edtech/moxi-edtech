@@ -16,6 +16,7 @@ import { rotuloSituacaoMatricula, isSituacaoMatriculaContextual } from "@/lib/ma
 import { ExplorerRosterControls } from "@/components/secretaria/command-center/ExplorerRosterControls";
 import { ExplorerRosterExportButton } from "@/components/secretaria/command-center/ExplorerRosterExportButton";
 import { ExplorerStudentActions } from "@/components/secretaria/command-center/ExplorerStudentActions";
+import { DesistenciaMatriculaAction } from "@/components/matriculas/DesistenciaMatriculaAction";
 import type { ExplorerActionId } from "@/lib/command-center/student-capabilities";
 import type { ExplorerViewState } from "@/lib/command-center/explorer-return-context";
 import { useTurmaContext } from "@/hooks/useTurmaContext";
@@ -289,6 +290,17 @@ export function TurmaContextView({
                 )}
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               </button>
+  {!turma.anoLetivo.historico && selectedStudentId === student.id && (
+    <DesistenciaMatriculaAction
+      tipo="confirmar"
+      escolaId={context.escolaId}
+      alunoId={student.id}
+      alunoNome={student.nome}
+      turmaId={turma.id}
+      anoLetivoId={turma.anoLetivo.id}
+      onChanged={() => { void retry(); void roster.retry(); }}
+    />
+  )}
   <ExplorerStudentActions escolaId={context.escolaId} alunoId={student.id} alunoNome={student.nome}
     onAction={(action) => onStudentAction(action, { id: student.id, label: student.nome })} />
 </div>

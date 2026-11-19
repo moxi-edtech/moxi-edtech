@@ -18,7 +18,7 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 70);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 71);
   const exactDiagnostics = "20271118130000_curtume_2025_persist_fecho_diagnostics.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(exactDiagnostics));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + exactDiagnostics]), []);
@@ -74,6 +74,24 @@ test("allows only audited enrollment and historical evidence migrations", () => 
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + physicalPautaSource]), []);
   assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271112030001_unreviewed_history_override.sql"])[0] ?? "", /Unapproved database migration/);
   assert.deepEqual(checkFiscalAndSchemaScope([firstLifecycle, finalLifecycle], () => "CREATE VIEW enrollment AS SELECT 1;"), []);
+});
+
+
+test("only the audited school withdrawal RPC migration is allowed without fiscal/AGT exceptions", () => {
+  const name = "20271119090000_matricula_desistencia_operacional_v1.sql";
+  const path = "supabase/migrations/" + name;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  for (const hostile of [
+    "CREATE TABLE public.fiscal_activacao (enabled boolean);",
+    "CREATE FUNCTION public.agt_sync() RETURNS void LANGUAGE sql AS $$ SELECT 1; $$;",
+    "CREATE TABLE public.saft_exports (id uuid);",
+  ]) {
+    assert.match(checkFiscalAndSchemaScope([path], () => hostile)[0] ?? "", /Fiscal[/]AGT activation/);
+  }
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271119090001_unreviewed_withdrawal.sql",
+  ])[0] ?? "", /Unapproved database migration/);
 });
 
 test("allows precisely the six audited Curtume academic migrations", () => {

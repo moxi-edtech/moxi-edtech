@@ -7,6 +7,7 @@ import type { Database } from "~types/supabase";
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
 type MatriculaAlunoRow = {
+  id: string;
   aluno_id: string | null;
   alunos?: { id?: string | null; nome?: string | null } | null;
 }
@@ -94,10 +95,11 @@ export async function GET(
       .eq("escola_id", escolaId)
       .eq("turma_id", turmaId)
       .eq("session_id", academicContext.anoLetivoId)
+      .eq("ativo", true)
       .in("status", ACTIVE_MATRICULA_STATUSES)
       .order("created_at", { ascending: true });
 
-    query = applyKf2ListInvariants(query);
+    query = applyKf2ListInvariants(query, { defaultLimit: 200, maxLimit: 200 });
 
     const { data, error } = await query;
     if (error) {
@@ -105,6 +107,7 @@ export async function GET(
     }
 
     const items = (data || []).map((row: MatriculaAlunoRow) => ({
+      matricula_id: row.id,
       id: row.aluno_id ?? row?.alunos?.id ?? null,
       nome: row?.alunos?.nome ?? null,
     }));

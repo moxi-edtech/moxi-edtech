@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { canCorrigirNomeAluno } from "@/lib/aluno/nome-permissions";
 import { AcoesRapidasBalcao } from "@/components/secretaria/AcoesRapidasBalcao";
 import { CurrentYearEnrollmentPanel } from "@/components/aluno/CurrentYearEnrollmentPanel";
+import { canConfirmarDesistencia } from "@/lib/matriculas/desistencia-permissions";
 import { DossierHeader } from "@/components/aluno/DossierHeader";
 import { DossierTabs } from "@/components/aluno/DossierTabs";
 import {
@@ -41,6 +42,8 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
     .eq("user_id", user.id)
     .maybeSingle();
   const canEditNome = canCorrigirNomeAluno(member?.papel) && aluno.perfil.escola_id === resolvedEscolaId;
+  const canManageDesistencia = canConfirmarDesistencia(member?.papel)
+    && aluno.perfil.escola_id === resolvedEscolaId;
 
   return (
     <div className={workspace ? "min-w-0" : embedded ? "bg-slate-50" : "min-h-screen bg-slate-50"}>
@@ -52,10 +55,12 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
           slotPerfil={(
             <div className="space-y-5">
               <DossierPerfilSection aluno={aluno} canEditNome={canEditNome} />
-              <CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId} />
+              <CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId}
+                alunoNome={aluno.perfil.nome} canManageDesistencia={canManageDesistencia} />
             </div>
           )}
-          slotMatricula={<CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId} />}
+          slotMatricula={<CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId}
+            alunoNome={aluno.perfil.nome} canManageDesistencia={canManageDesistencia} />}
           slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} escolaId={resolvedEscolaId} servicos={servicos} />}
           slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role={role} escolaId={resolvedEscolaId} />}
           slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit={canEditHistoricoTransitado} />}

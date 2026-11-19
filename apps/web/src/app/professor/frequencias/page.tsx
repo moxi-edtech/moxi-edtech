@@ -8,13 +8,14 @@ import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useToast } from '@/components/feedback/FeedbackSystem';
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import { DesistenciaMatriculaAction } from "@/components/matriculas/DesistenciaMatriculaAction";
 import { useSearchParams } from "next/navigation";
 
 import { Printer, CheckCircle2, XCircle, Clock, UserCheck, Search, RotateCcw } from 'lucide-react'
 
 type Atrib = { id: string; turma: { id: string; nome: string | null }; disciplina: { id: string; nome: string | null } }
-type Aluno = { id: string; nome: string }
-type AlunoApi = { id?: string; aluno_id?: string; profile_id?: string; nome?: string; aluno_nome?: string }
+type Aluno = { id: string; nome: string; matriculaId?: string | null }
+type AlunoApi = { id?: string; aluno_id?: string; matricula_id?: string; profile_id?: string; nome?: string; aluno_nome?: string }
 type AttendanceStatus = 'presente' | 'falta' | 'atraso'
 
 function academicContextNextStep(message: string) {
@@ -88,7 +89,7 @@ export default function ProfessorFrequenciasPage() {
         setStudentsError(json?.message || json?.error || 'Não foi possível carregar os alunos desta turma.')
         return
       }
-      setAlunos((json.items as AlunoApi[] || []).map((r) => ({ id: r.id || r.aluno_id || r.profile_id || '', nome: r.nome || r.aluno_nome || 'Aluno' })).filter((r) => r.id))
+      setAlunos((json.items as AlunoApi[] || []).map((r) => ({ id: r.id || r.aluno_id || r.profile_id || '', nome: r.nome || r.aluno_nome || 'Aluno', matriculaId: r.matricula_id ?? null })).filter((r) => r.id))
     })()
   }, [turmaId, disciplinaId, academicYearId])
 
@@ -417,6 +418,10 @@ export default function ProfessorFrequenciasPage() {
                           {index + 1}
                         </span>
                         <p className="text-xs sm:text-sm font-bold text-slate-900">{a.nome}</p>
+                        {a.matriculaId && turmaId && (
+                          <DesistenciaMatriculaAction tipo="sinalizar" alunoId={a.id} alunoNome={a.nome}
+                            turmaId={turmaId} matriculaId={a.matriculaId} />
+                        )}
                       </div>
 
                       {/* Botões de Ação por Toque Rápido */}
