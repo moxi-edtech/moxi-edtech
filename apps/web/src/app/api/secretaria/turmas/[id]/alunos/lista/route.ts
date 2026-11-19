@@ -3,23 +3,18 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireFeature } from "@/lib/plan/requireFeature";
-import { applyKf2ListInvariants } from "@/lib/kf2";
+import { loadNominalRoster, NominalRosterError } from "@/lib/documentos/listaNominalService";
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
 import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission";
 
-type TurmaRow = {
-  id: string;
-  nome: string | null;
-  classe_id?: string | null;
-  escola_id?: string | null;
-  turno?: string | null;
-  sala?: string | null;
-};
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await supabaseServerTyped<any>();
     const headers = new Headers();
+    headers.set("Cache-Control", "private, no-store");
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
 
@@ -121,55 +116,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return new NextResponse(pdfBytes as any, { headers });
     }
 
-    const { data: turma, error: turmaError } = await supabase
-      .from("turmas")
-      .select(
-        `
-        id,
-        nome,
-        escola_id,
-        classe_id,
-        turno,
-        sala
-      `
-      )
-      .eq("id", turmaId)
-      .eq("escola_id", escolaId)
-      .single<TurmaRow>();
-
-    if (turmaError || !turma) {
-      return NextResponse.json({ ok: false, error: "Turma não encontrada" }, { status: 404, headers });
-    }
-
-    const [{ data: escola }, { data: classe }] = await Promise.all([
-      supabase.from("escolas").select("id, nome").eq("id", escolaId).maybeSingle(),
-      turma.classe_id
-        ? supabase.from("classes").select("nome").eq("id", turma.classe_id).eq("escola_id", escolaId).maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
-    const classeNome = (classe as any)?.nome || "—";
-
-    let matriculasQuery = supabase
-      .from("matriculas")
-      .select(camposSensiveis
-        ? "id,numero_chamada,status,alunos(id,nome,numero_processo,sexo,bi_numero,naturalidade,provincia,telefone,responsavel,telefone_responsavel)"
-        : "id,numero_chamada,status,alunos(id,nome,numero_processo,sexo)"
-      )
-      .eq("turma_id", turmaId)
-      .eq("escola_id", escolaId)
-      .in("status", ["ativo", "ativa"])
-      .order("numero_chamada", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: true });
-
-    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 50 });
-
-    const { data: matriculas, error: matriculasError } = await matriculasQuery;
-    if (matriculasError) {
-      return NextResponse.json({ ok: false, error: matriculasError.message }, { status: 500, headers });
-    }
+    // A lista JSON partilha a mesma leitura paginada e política dos documentos PDF/XLSX.
+    // Não omitir alunos depois da posição 50 nem consultar outra fonte.
+    const roster = await loadNominalRoster({
+      supabase: supabase as any,
+      escolaId,
+      turmaId,
+      mode,
+      includeAllStatus,
+      jsonFields: true,
+      extendedStudentFields: camposSensiveis,
+    });
 
     let numero = 1;
-    const alunosOrdenados = (matriculas ?? []).flatMap((m) => {
+    const alunosOrdenados = roster.sortedMatriculas.flatMap((m) => {
       const alunoData = (m as any)?.alunos;
       const alunosArray = Array.isArray(alunoData) ? alunoData : alunoData ? [alunoData] : [];
 
@@ -196,20 +156,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       {
         ok: true,
         turma: {
-          id: turma.id,
-          nome: turma.nome,
+          id: roster.turma.id,
+          nome: roster.turma.nome,
           codigo: null,
-          classe: classeNome,
-          turno: turma.turno ?? null,
-          sala: turma.sala ?? null,
-          escola_nome: escola?.nome ?? null,
+          classe: roster.classeNome,
+          turno: roster.turma.turno ?? null,
+          sala: roster.turma.sala ?? null,
+          escola_nome: roster.escola.nome ?? null,
         },
         total: alunosOrdenados.length,
         alunos: alunosOrdenados,
       },
       { headers }
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof NominalRosterError) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ ok: false, error: "Não foi possível consultar a lista" }, { status: 500 });
   }
 }
