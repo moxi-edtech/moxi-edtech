@@ -40,7 +40,10 @@ DROP POLICY IF EXISTS sinalizacoes_desistencia_select ON public.matricula_desist
 CREATE POLICY sinalizacoes_desistencia_select ON public.matricula_desistencia_sinalizacoes
   FOR SELECT TO authenticated
   USING (
-    criado_por = (select auth.uid())
+    (criado_por = (select auth.uid())
+      AND EXISTS (SELECT 1 FROM public.escola_users eu
+                  WHERE eu.escola_id = matricula_desistencia_sinalizacoes.escola_id
+                    AND eu.user_id = (select auth.uid())))
     OR public.user_has_role_in_school(escola_id,
       ARRAY['diretor','admin','admin_escola','staff_admin','admin_secretaria',
             'secretaria','secretaria_financeiro','admin_financeiro']::text[])
@@ -142,6 +145,10 @@ BEGIN
   SELECT p.id INTO v_professor_id FROM public.professores p
   WHERE p.profile_id=v_user AND p.escola_id=v_m.escola_id LIMIT 1;
   IF v_professor_id IS NULL
+     OR NOT EXISTS (
+       SELECT 1 FROM public.escola_users eu
+       WHERE eu.escola_id=v_m.escola_id AND eu.user_id=v_user
+     )
      OR v_m.status<>'ativo' OR v_m.ativo IS DISTINCT FROM TRUE
      OR v_m.turma_id IS NULL
      OR NOT EXISTS (
@@ -192,6 +199,9 @@ BEGIN
      ARRAY['diretor','admin','admin_escola','staff_admin','admin_secretaria',
            'secretaria','secretaria_financeiro','admin_financeiro']::text[]) THEN
     RAISE EXCEPTION 'SEM_PERMISSAO' USING ERRCODE='42501';
+  END IF;
+  IF v_row.status='confirmada' THEN
+    RAISE EXCEPTION 'SINALIZACAO_JA_CONFIRMADA' USING ERRCODE='23514';
   END IF;
   IF v_row.status='pendente' THEN
     UPDATE public.matricula_desistencia_sinalizacoes
