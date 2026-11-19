@@ -3,7 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
-import { requireRoleInSchool } from "@/lib/auth/requireRoleInSchool";
+import { requireRoleInSchool } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -18,7 +18,7 @@ const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((s) => {
   const d = new Date(s + "T12:00:00Z");
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }, "Data inválida");
-const hour = z.string().regex(/^\d{2}:\d{2}$/).refine((s) => s <= "23:59", "Hora inválida");
+const hour = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora inválida");
 const fields = z.object({
   turma_id: uuid,
   turma_disciplina_id: uuid,
