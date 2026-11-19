@@ -461,7 +461,7 @@ export async function POST(req: NextRequest) {
             docId: legacyDocId,
             escolaId,
             alunoId: mensalidade.aluno_id ?? null,
-      mensalidadeId,
+            mensalidadeId,
             extraSnapshot: {
               tipo_comprovativo: receiptType,
               itens_pagamento: receiptItems,
