@@ -258,7 +258,7 @@ export default function ProfessorCalendarioPage() {
                 <div className="relative z-10 space-y-3 sm:space-y-6">
                   <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
                     <div className="space-y-1 sm:space-y-2">
-                      <p className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-white/80 sm:gap-2 sm:px-3 sm:text-[11px] sm:font-black sm:uppercase sm:tracking-[0.18em]">
+                      <p className="inline-flex items-center gap-1.5 rounded-full border border-klasse-green-700 bg-klasse-green-700/40 px-2 py-1 text-[10px] font-semibold text-white/80 sm:gap-2 sm:px-3 sm:text-[11px] sm:font-black sm:uppercase sm:tracking-[0.18em]">
                         <Sparkles className="h-3.5 w-3.5" />
                         Sincronizado com o portal
                       </p>
@@ -274,7 +274,7 @@ export default function ProfessorCalendarioPage() {
                         ) : "Ainda não há ano letivo activo. Consulta os próximos eventos disponíveis."}
                       </p>
                     </div>
-                    <div className="w-full rounded-xl border border-white/10 bg-white/5 p-3 sm:w-auto sm:rounded-2xl sm:p-4">
+                    <div className="w-full rounded-xl border border-klasse-green-700 bg-klasse-green-700/40 p-3 sm:w-auto sm:rounded-2xl sm:p-4">
                       <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Próximo marco</p>
                       {nextEvent ? (
                         <div className="mt-2 space-y-1">
@@ -298,7 +298,7 @@ export default function ProfessorCalendarioPage() {
                       { label: "Próximos eventos", value: upcomingItems.length, icon: Clock3 },
                       { label: "Períodos lectivos", value: periodos.length, icon: GraduationCap },
                     ].map((stat) => (
-                      <div key={stat.label} className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-2 sm:rounded-2xl sm:p-4">
+                      <div key={stat.label} className="min-w-0 rounded-xl border border-klasse-green-700 bg-klasse-green-700/40 p-2 sm:rounded-2xl sm:p-4">
                         <div className="flex items-center justify-between">
                           <p className="text-[10px] font-medium leading-tight text-white/80 sm:text-[11px] sm:font-black sm:uppercase sm:tracking-[0.18em]">{stat.label}</p>
                           <stat.icon className="hidden h-4 w-4 text-white/70 sm:block" />
@@ -310,14 +310,14 @@ export default function ProfessorCalendarioPage() {
                 </div>
               </section>
 
-              <aside className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
+              <aside className="rounded-xl border border-border bg-card p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Ritmo lectivo</p>
-                    <h2 className="text-sm font-semibold text-slate-900 sm:text-lg sm:font-black">Períodos do ano</h2>
+                    <h2 className="text-sm font-semibold text-foreground sm:text-lg sm:font-black">Períodos do ano</h2>
                   </div>
-                  <button type="button" onClick={() => setShowPeriodsOnMobile((value) => !value)} aria-expanded={showPeriodsOnMobile} className="ml-auto min-h-10 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 lg:hidden">
+                  <button type="button" onClick={() => setShowPeriodsOnMobile((value) => !value)} aria-expanded={showPeriodsOnMobile} className="ml-auto min-h-10 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-foreground lg:hidden">
                     {showPeriodsOnMobile ? "Ocultar" : "Ver períodos"}
                   </button>
                 </div>
@@ -377,23 +377,23 @@ export default function ProfessorCalendarioPage() {
               </aside>
             </div>
 
-            <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
+            <section className="rounded-xl border border-border bg-card p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Linha do tempo</p>
-                  <h2 className="text-lg font-bold text-slate-900 sm:text-xl sm:font-black">Calendário do professor</h2>
+                  <h2 className="text-lg font-bold text-foreground sm:text-xl sm:font-black">Calendário do professor</h2>
                 </div>
                 {pastEventsCount > 0 && (
                   <button
                     type="button"
                     onClick={() => setShowPastEvents((value) => !value)}
                     aria-pressed={showPastEvents}
-                    className="inline-flex min-h-10 items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-klasse-green hover:border-klasse-green"
+                    className="inline-flex min-h-10 items-center rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-green"
                   >
                     {showPastEvents ? "Só próximos" : `Ver anteriores (${pastEventsCount})`}
                   </button>
                 )}
-                <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 sm:inline-flex">
+                <div className="hidden items-center gap-2 rounded-full border border-border bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground sm:inline-flex">
                   <Loader2 className="h-3.5 w-3.5" />
                   Fonte: calendário académico + eventos gerais da escola
                 </div>
@@ -402,7 +402,7 @@ export default function ProfessorCalendarioPage() {
               {eventGroups.length === 0 ? (
                 <div className="mt-8 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
                   <CalendarDays className="mx-auto h-10 w-10 text-slate-300" />
-                  <p className="mt-4 text-sm font-black text-slate-700">{items.length > 0 ? "Não há próximos eventos." : "Ainda não há eventos sincronizados."}</p>
+                  <p className="mt-4 text-sm font-black text-foreground">{items.length > 0 ? "Não há próximos eventos." : "Ainda não há eventos sincronizados."}</p>
                   <p className="mt-2 text-sm font-medium text-slate-500">
                     {items.length > 0 ? "Consulta os eventos anteriores para rever o histórico." : "Assim que a secretaria ou o admin actualizarem o calendário oficial, ele aparece aqui automaticamente."}
                   </p>
@@ -413,7 +413,7 @@ export default function ProfessorCalendarioPage() {
                     <div key={group.key} className="space-y-2 sm:space-y-4">
                       <div className="flex items-center gap-3">
                         <div className="h-px flex-1 bg-slate-200" />
-                        <h3 className="text-xs font-semibold text-slate-600 sm:text-sm sm:font-black sm:uppercase sm:tracking-[0.18em]">{group.label}</h3>
+                        <h3 className="text-xs font-semibold text-muted-foreground sm:text-sm sm:font-black sm:uppercase sm:tracking-[0.18em]">{group.label}</h3>
                         <div className="h-px flex-1 bg-slate-200" />
                       </div>
 
@@ -422,23 +422,23 @@ export default function ProfessorCalendarioPage() {
                           const status = getRelativeLabel(item.data_inicio, item.data_fim, todayIso);
                           const eventMonth = capitalize(new Intl.DateTimeFormat(locale, { month: "short" }).format(parseLocalDate(item.data_inicio)));
                           return (
-                            <article key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 transition-colors hover:border-slate-300 sm:rounded-[1.5rem] sm:p-5">
+                            <article key={item.id} className="rounded-xl border border-border bg-muted p-3 transition-colors hover:border-ring sm:rounded-[1.5rem] sm:p-5">
                               <div className="flex items-start gap-3">
-                                <time dateTime={item.data_inicio} className="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-2 py-2 text-slate-900">
+                                <time dateTime={item.data_inicio} className="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl border border-border bg-card px-2 py-2 text-foreground">
                                   <span className="text-xl font-bold leading-none">{item.data_inicio.slice(8, 10)}</span>
-                                  <span className="mt-1 text-[11px] font-medium capitalize text-slate-500">{eventMonth}</span>
+                                  <span className="mt-1 text-[11px] font-medium capitalize text-muted-foreground">{eventMonth}</span>
                                 </time>
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-card px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
                                       {capitalize(getEventTypeLabel(item.tipo))}
                                     </span>
-                                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">{status}</span>
+                                    <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{status}</span>
                                   </div>
-                                  <h4 className="mt-1.5 text-sm font-semibold leading-snug text-slate-900 sm:text-lg sm:font-black">{item.nome}</h4>
-                                  <p className="mt-1 text-xs font-medium text-slate-600">{formatCompactDateRange(item.data_inicio, item.data_fim)}</p>
-                                  {item.descricao ? <p className="mt-1 text-xs leading-relaxed text-slate-500 sm:text-sm">{item.descricao}</p> : null}
+                                  <h4 className="mt-1.5 text-sm font-semibold leading-snug text-foreground sm:text-lg sm:font-black">{item.nome}</h4>
+                                  <p className="mt-1 text-xs font-medium text-muted-foreground">{formatCompactDateRange(item.data_inicio, item.data_fim)}</p>
+                                  {item.descricao ? <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">{item.descricao}</p> : null}
                                 </div>
                               </div>
                             </article>
