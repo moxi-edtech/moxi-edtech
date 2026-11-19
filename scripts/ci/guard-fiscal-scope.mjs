@@ -213,7 +213,7 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
       ]) {
         if (!content.includes(token)) violations.push("Calendar active-class guard missing: " + token);
       }
-      if (/(?:DROP\\s+TABLE|TRUNCATE\\s|ALTER\\s+TABLE|INSERT\\s+INTO|UPDATE\\s+public\\.|DELETE\\s+FROM)/i.test(executableSql)) {
+      if (/(?:DROP\s+TABLE|TRUNCATE\s|ALTER\s+TABLE|INSERT\s+INTO|UPDATE\s+public\.|DELETE\s+FROM)/i.test(executableSql)) {
         violations.push("Calendar active-class migration cannot change table data or schema: " + path);
       }
     }
