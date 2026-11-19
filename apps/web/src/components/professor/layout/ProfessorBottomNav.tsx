@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ProfessorNavLink } from "@/lib/professorNav";
+import { getActiveProfessorNavHref, type ProfessorNavLink } from "@/lib/professorNav";
 
 type Props = {
   items: ProfessorNavLink[];
@@ -12,21 +12,10 @@ const compactLabels: Record<string, string> = {
   "/professor/calendario": "Agenda",
 };
 
-function isMatchingRoute(activePath: string, item: ProfessorNavLink) {
-  return (
-    activePath === item.href ||
-    activePath.startsWith(`${item.href}/`) ||
-    activePath === item.path ||
-    activePath.startsWith(`${item.path}/`)
-  );
-}
-
 export function ProfessorBottomNav({ items, activePath }: Props) {
   // A rota /professor é prefixo de todas as outras; só a correspondência
   // mais específica pode estar activa (nunca Início + Calendário).
-  const activeItem = items
-    .filter((item) => isMatchingRoute(activePath, item))
-    .sort((a, b) => b.path.length - a.path.length)[0];
+  const activeHref = getActiveProfessorNavHref(items, activePath);
 
   return (
     <nav
@@ -36,7 +25,7 @@ export function ProfessorBottomNav({ items, activePath }: Props) {
     >
       <div className="mx-auto grid w-full max-w-5xl grid-cols-6 gap-0.5 px-1 py-1.5 sm:gap-1 sm:py-2">
         {items.map(({ href, path, label, icon: Icon }) => {
-          const active = activeItem?.href === href;
+          const active = activeHref === href;
           return (
             <Link
               key={href}
