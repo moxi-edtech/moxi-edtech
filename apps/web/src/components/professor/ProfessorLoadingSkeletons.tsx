@@ -152,3 +152,30 @@ export function ProfessorCalendarSkeleton() {
     </div>
   );
 }
+
+/**
+ * Só os dados remotos dos planos precisam de skeleton. O formulário é estático,
+ * por isso mantém a estrutura real e nunca desaparece à espera da API.
+ */
+export function ProfessorLessonPlansListSkeleton() {
+  return (
+    <div role="status" aria-label="A carregar os planos de aula" className="space-y-3">
+      <span className="sr-only">A carregar os planos de aula</span>
+      {[0, 1].map((item) => (
+        <div key={item} aria-hidden="true" className="rounded-xl border border-border bg-card p-3 motion-safe:animate-pulse sm:p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-2">
+              <ProfessorSkeletonBone className="h-4 w-4/5 max-w-44" />
+              <ProfessorSkeletonBone className="h-3 w-20" />
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <ProfessorSkeletonBone className="h-5 w-16 rounded-full" />
+              <ProfessorSkeletonBone className="h-8 w-8 rounded-xl" />
+            </div>
+          </div>
+          <ProfessorSkeletonBone className="mt-3 h-3 w-3/5 max-w-48" />
+        </div>
+      ))}
+    </div>
+  );
+}
