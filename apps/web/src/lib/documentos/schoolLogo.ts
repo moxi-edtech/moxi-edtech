@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { detectImageFormat, fetchImageBytes } from "@/lib/pdf/documentTemplate";
+import { NominalRosterError } from "@/lib/documentos/listaNominalService";
 
 /**
  * A identidade da escola é a única origem de logótipo nos documentos nominais.
@@ -27,10 +28,9 @@ export function schoolBrandingObjectPath(
   return `escolas/${escolaId}/logo/${filename}`;
 }
 
-export class SchoolLogoUnavailableError extends Error {
-  readonly status = 503;
+export class SchoolLogoUnavailableError extends NominalRosterError {
   constructor() {
-    super("Não foi possível carregar o logótipo configurado da escola. Tente novamente ou verifique a identidade visual.");
+    super("Não foi possível carregar o logótipo configurado da escola. Tente novamente ou verifique a identidade visual.", 503);
     this.name = "SchoolLogoUnavailableError";
   }
 }
