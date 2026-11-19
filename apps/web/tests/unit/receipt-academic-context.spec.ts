@@ -103,3 +103,16 @@ test("print and issuer use the same resolver and never select most recently upda
   assert.match(loader, /aluno_id, mensalidade_id, tipo/);
   assert.doesNotMatch(print + issuer, /\.order\("updated_at", \{ ascending: false \}\)/);
 });
+
+test("operational and system issuance record the enrollment of the charged monthly fee", () => {
+  const migration = readFileSync(
+    new URL("../../../../supabase/migrations/20271119103000_receipts_class_from_charged_enrollment.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /FUNCTION public\._emitir_recibo_operacional_internal/);
+  assert.match(migration, /FUNCTION public\.emitir_recibo_system/);
+  assert.equal((migration.match(/FROM public\.matriculas mt/g) ?? []).length, 2);
+  assert.equal((migration.match(/mt\.id = v_m\.matricula_id/g) ?? []).length, 2);
+  assert.doesNotMatch(migration, /FROM public\.historico_anos/);
+  assert.doesNotMatch(migration, /UPDATE public\.documentos_emitidos/i);
+});
