@@ -1,40 +1,11 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DBWithRPC } from "@/types/supabase-augment";
+import { getLuandaDayBounds } from "./luanda-day";
 
 // Mantém o mesmo conjunto de estados que a lista nominal
 // (secretaria_list_alunos_kf2), sem contar históricos ou anuladas.
 const ACTIVE_ENROLLMENT_STATUSES = ["ativo", "ativa", "active"] as const;
-const LUANDA_TIMEZONE = "Africa/Luanda";
-
-/**
- * Limites UTC para o dia civil em Angola (UTC+01, sem horário de verão).
- * Não depende do timezone do servidor Vercel nem do navegador.
- */
-export function getLuandaDayBounds(now = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: LUANDA_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((item) => item.type === type)?.value;
-  const year = part("year");
-  const month = part("month");
-  const day = part("day");
-  if (!year || !month || !day) throw new Error("Não foi possível obter a data em Angola");
-
-  const startMs = Date.parse(`${year}-${month}-${day}T00:00:00+01:00`);
-  if (!Number.isFinite(startMs)) throw new Error("Dia de Angola inválido");
-
-  return {
-    startUtc: new Date(startMs).toISOString(),
-    endUtc: new Date(startMs + 86_400_000).toISOString(),
-  };
-}
-
 /**
  * Totais da Secretaria em tempo real, filtrados por escola e ano letivo.
  * count:exact + head:true evita carregar registos de alunos no dashboard.
