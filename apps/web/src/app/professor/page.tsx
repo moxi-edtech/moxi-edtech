@@ -331,7 +331,7 @@ export default function Page() {
                 <span className="h-2 w-2 rounded-full bg-amber animate-pulse" />
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Portal do Professor</span>
              </div>
-             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+             <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                 Olá, <span className="text-klasse-green">{overview?.primeiro_nome || "Professor"}</span>
              </h1>
              <p className="text-sm font-medium text-slate-500">
@@ -423,7 +423,7 @@ export default function Page() {
                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400/70">Resumo do dia</p>
                    <h2 className="mt-0.5 text-lg font-bold text-white sm:mt-1 sm:text-2xl">Sua Agenda</h2>
                 </div>
-                <p className="hidden text-xs font-medium leading-relaxed text-slate-300 sm:block">
+                <p className="hidden text-xs font-medium leading-relaxed text-white/75 sm:block">
                    Acompanhe suas aulas e tarefas pendentes para manter o ciclo académico em dia.
                 </p>
              </div>
@@ -435,7 +435,7 @@ export default function Page() {
                   { label: "Avaliações", value: avaliacoesPendentes, color: "text-amber-400", alert: avaliacoesPendentes > 0 },
                   { label: "Faltas", value: faltasALancar, color: "text-rose-400", alert: faltasALancar > 0 },
                 ].map((item) => (
-                  <div key={item.label} className="group relative rounded-xl border border-white/10 bg-white/5 p-2.5 transition-colors hover:bg-white/10 sm:rounded-3xl sm:p-4">
+                  <div key={item.label} className="group relative rounded-xl border border-klasse-green-700 bg-klasse-green-700/40 p-2.5 transition-colors hover:bg-klasse-green-700/60 sm:rounded-3xl sm:p-4">
                     <p className="mb-0.5 text-[11px] font-medium text-white/75 sm:mb-1 sm:text-[9px] sm:font-black sm:uppercase sm:tracking-widest">{item.label}</p>
                     <div className="flex items-center gap-2">
                        <p className={`text-xl font-bold sm:text-2xl ${item.color}`}>{loading ? "—" : item.value}</p>
@@ -494,14 +494,14 @@ export default function Page() {
             <Link 
                key={action.title} 
                href={professorHref(action.href)} 
-               className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-klasse-gold/50 sm:rounded-[2rem] sm:p-6 sm:hover:-translate-y-1 sm:hover:shadow-md last:col-span-2 sm:last:col-span-1 last:flex last:items-center last:gap-3 sm:last:block"
+               className="group relative overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm transition-colors hover:border-klasse-gold/50 sm:rounded-[2rem] sm:p-6 sm:hover:-translate-y-1 sm:hover:shadow-md last:col-span-2 sm:last:col-span-1 last:flex last:items-center last:gap-3 sm:last:block"
             >
                <div className={`mb-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105 sm:mb-4 sm:h-14 sm:w-14 sm:rounded-2xl ${action.light}`}>
                   <action.icon className="h-5 w-5 sm:h-7 sm:w-7" />
                </div>
                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold leading-snug text-slate-900 sm:text-base sm:font-black">{action.title}</h3>
-                  <p className="hidden text-[11px] font-medium text-slate-500 sm:block">{action.desc}</p>
+                  <h3 className="text-sm font-semibold leading-snug text-foreground sm:text-base sm:font-black">{action.title}</h3>
+                  <p className="hidden text-[11px] font-medium text-muted-foreground sm:block">{action.desc}</p>
                </div>
                {/* Arrow Icon on Hover */}
                <div className="absolute bottom-6 right-6 hidden opacity-0 transition-opacity group-hover:opacity-100 sm:block">
@@ -536,7 +536,7 @@ export default function Page() {
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 {turmaMap.map((turma) => (
-                    <div key={turma.id} className={`group rounded-xl border bg-white p-3 shadow-sm transition-all sm:rounded-[1.5rem] sm:p-5 ${expandedTurmaId === turma.id ? "border-amber/50 ring-2 ring-amber/10" : "border-slate-200 hover:border-amber/40"}`}>
+                    <div key={turma.id} className={`group rounded-xl border bg-card p-3 shadow-sm transition-all sm:rounded-[1.5rem] sm:p-5 ${expandedTurmaId === turma.id ? "border-amber/50 ring-2 ring-amber/10" : "border-border hover:border-klasse-gold/40"}`}>
                     <button type="button" onClick={() => setExpandedTurmaId((current) => current === turma.id ? null : turma.id)} aria-expanded={expandedTurmaId === turma.id} className="block w-full text-left">
                     <div className="flex items-start justify-between">
                        <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber/10 group-hover:text-amber transition-colors font-black text-xs">
