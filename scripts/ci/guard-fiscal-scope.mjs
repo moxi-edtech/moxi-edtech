@@ -125,6 +125,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // PR #374: matrícula desistente, sinalização docente e RLS por escola.
   // Apenas esta migração auditada; fiscal/AGT/SAF-T continua bloqueado.
   "20271119090000_matricula_desistencia_operacional_v1.sql",
+  // PR #378: calendário escolar operacional; RLS e auditoria append-only, sem notas ou fiscal.
+  "20261119110000_calendario_avaliacoes_auditado.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
@@ -152,6 +154,38 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
     // Comments are documentation, not executable SQL.
     // Scan executable SQL to prevent hidden fiscal activation.
     const executableSql = content.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    // Aprovar exclusivamente este esquema revisto: sem permissões amplas,
+    // sem desativar RLS e sem escrever em notas, matrículas ou financeiro.
+    if (name === "20261119110000_calendario_avaliacoes_auditado.sql") {
+      const expected = [
+        "CREATE TABLE IF NOT EXISTS public.calendario_avaliacoes (",
+        "CREATE TABLE IF NOT EXISTS public.calendario_avaliacoes_auditoria (",
+        "ENABLE ROW LEVEL SECURITY",
+        "CREATE POLICY calendario_avaliacoes_gestao",
+        "CREATE POLICY calendario_avaliacoes_alunos",
+        "CREATE POLICY calendario_avaliacoes_professor",
+        "CREATE POLICY calendario_avaliacoes_auditoria_gestao",
+        "current_tenant_escola_id()",
+        "user_has_role_in_school",
+        "m.ativo IS TRUE",
+        "to_jsonb(OLD)",
+        "to_jsonb(NEW)",
+        "CREATE TRIGGER trg_calendario_avaliacoes_audit",
+        "CREATE OR REPLACE FUNCTION public.publicar_calendario_avaliacoes",
+        "FOR UPDATE",
+        "REVOKE ALL ON public.calendario_avaliacoes_auditoria",
+        "GRANT SELECT ON public.calendario_avaliacoes_auditoria TO authenticated",
+      ];
+      for (const token of expected) {
+        if (!content.includes(token)) {
+          violations.push("Reviewed evaluation calendar migration missing guard: " + token);
+        }
+      }
+      if (/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+public\.(?:notas|avaliacoes|matriculas|pagamentos|mensalidades|financeiro_\w+)\b/i.test(executableSql)) {
+        violations.push("Evaluation calendar migration cannot mutate grade, enrollment or finance tables: " + path);
+      }
+    }
+
     if (FISCAL_SQL.test(executableSql)) {
       violations.push(`Fiscal/AGT activation marker in lifecycle migration: ${path}`);
     }
