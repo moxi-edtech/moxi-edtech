@@ -401,7 +401,7 @@ export default function Page() {
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
                   <Link
                     href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(aulaAtiva.turma_id)}&disciplina_id=${encodeURIComponent(aulaAtiva.disciplina_id)}`)}
-                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-klasse-gold px-2.5 py-2 text-xs font-semibold text-slate-950 transition-colors hover:brightness-95 sm:px-4"
+                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-klasse-gold px-2.5 py-2 text-xs font-semibold text-klasse-gold-900 transition-colors hover:brightness-95 sm:px-4"
                   >
                     <ClipboardDocumentListIcon className="h-4 w-4" aria-hidden="true" />
                     Fazer chamada
@@ -579,7 +579,7 @@ export default function Page() {
                         id={`turma-acoes-${turma.id}`}
                         className={expanded ? "mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3" : "hidden"}
                       >
-                        <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-slate-950 hover:brightness-95">Chamada</Link>
+                        <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95">Chamada</Link>
                         <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Notas</Link>
                         <Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Plano de aula</Link>
                         <Link href={professorHref(`/professor/materiais?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Materiais</Link>
@@ -659,7 +659,7 @@ export default function Page() {
                                 <label className="block text-xs font-semibold text-foreground" htmlFor={`resumo-${idx}`}>Resumo da aula (opcional)</label>
                                 <textarea id={`resumo-${idx}`} value={finalizeSummary} onChange={(event) => setFinalizeSummary(event.target.value)} rows={2} className="w-full rounded-xl border border-border bg-card p-2 text-sm text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20" />
                                 <div className="grid grid-cols-2 gap-2">
-                                  <button type="button" onClick={() => void finalizeLesson(item)} disabled={finalizing} className="min-h-11 rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-slate-950 disabled:opacity-50">
+                                  <button type="button" onClick={() => void finalizeLesson(item)} disabled={finalizing} className="min-h-11 rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 disabled:opacity-50">
                                     {finalizing ? "A finalizar..." : "Confirmar saída"}
                                   </button>
                                   <button type="button" onClick={() => setFinalizingKey(null)} disabled={finalizing} className="min-h-11 rounded-xl border border-border bg-card px-2 text-xs font-semibold text-foreground disabled:opacity-50">Cancelar</button>
