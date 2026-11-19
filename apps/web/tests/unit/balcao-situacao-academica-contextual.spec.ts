@@ -418,6 +418,11 @@ test("reserva 2026/2027 abre cobrança real, nunca faz scroll para aviso informa
   assert.doesNotMatch(workspace, /Rematrícula fora de época · Pode concluir normalmente/);
   assert.match(hook, /setModalOpen\(true\)/);
   assert.match(hook, /setSelectedTurmaId\(destinoTurmaId\)/);
+  assert.match(hook, /cardState === "RECONFIRMATION_REQUIRED" && destinoTurmaId/);
+  assert.match(hook, /setStep\(2\)/);
+  const modal = readFileSync(resolve(process.cwd(), "src/components/secretaria/RematriculaBalcaoModal.tsx"), "utf8");
+  assert.match(modal, /minStep=\{skipTurmaSelection && !paymentAlreadyValidated \? 2 : 1\}/);
+  assert.match(modal, /step > minStep \? setStep\(step - 1\) : onClose\(\)/);
   assert.match(writer, /else if \(matriculaDestino\) \{[\s\S]*?rpc\("finalizar_rematricula_balcao"/);
   assert.match(writer, /REMATRICULA_TARGET_ALREADY_ENROLLED/);
 });
