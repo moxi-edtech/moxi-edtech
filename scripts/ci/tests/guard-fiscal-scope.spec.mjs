@@ -18,7 +18,12 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 69);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 70);
+  const exactDiagnostics = "20271118130000_curtume_2025_persist_fecho_diagnostics.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(exactDiagnostics));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + exactDiagnostics]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + exactDiagnostics], () =>
+    "CREATE TABLE public.fiscal_config (enabled boolean);")[0] ?? "", /Fiscal[/]AGT activation/);
   const batchPauta = "20271117190000_curtume_fechar_pautas_2025_lote.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(batchPauta));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + batchPauta]), []);

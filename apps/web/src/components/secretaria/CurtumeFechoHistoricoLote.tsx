@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { getHistoricBatchIssueAdvice, isHistoricBatchAcademicIssue } from "@/lib/academico/curtume-historic-batch-issues";
+import { getHistoricBatchIssueAdvice } from "@/lib/academico/curtume-historic-batch-issues";
 
 type Problema = {
   matricula_id: string;
@@ -39,6 +39,7 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [permitted, setPermitted] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -50,12 +51,15 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
         }
         const data = await response.json();
         if (!response.ok || data?.ok !== true) throw Error(data.error || "Não foi possível obter o total.");
-        if (live) setAbertos(Number(data.abertos ?? 0));
+        if (live) {
+          setAbertos(Number(data.abertos ?? 0));
+          setPendencias(Array.isArray(data.pendencias) ? data.pendencias : []);
+        }
         return data;
       })
       .catch((cause) => { if (live) setError(cause instanceof Error ? cause.message : "Falha ao consultar."); });
     return () => { live = false; };
-  }, []);
+  }, [refreshKey]);
 
   async function concluir() {
     if (running) return;
@@ -115,11 +119,13 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
         throw Error("O lote ultrapassou o limite de páginas. Execute novamente para retomar.");
       setDone(true);
       setAbertos(rejected);
+      setRefreshKey((value) => value + 1);
       onComplete?.();
     } catch (cause) {
       // Already-committed pupils remain legally closed. Retrying starts from
       // still-open records: no duplicate grades or repeated legal close.
       setError(cause instanceof Error ? cause.message : "Não foi possível concluir o lote.");
+      setRefreshKey((value) => value + 1);
       onComplete?.();
     } finally {
       setRunning(false);
@@ -159,27 +165,24 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
       {error && <p role="alert" className="mt-3 flex items-start gap-2 text-red-700">
         <AlertTriangle className="h-4 w-4 shrink-0" />{error}
       </p>}
-      {pendencias.some((issue) => !isHistoricBatchAcademicIssue(issue.codigo)) && (
-        <p role="alert" className="mt-3 text-xs text-amber">
-          Alguns registos não puderam ser processados por uma falha de validação.
-          Repita o fecho; se persistir, contacte o suporte.
-        </p>
-      )}
-      {pendencias.some((issue) => isHistoricBatchAcademicIssue(issue.codigo)) && (
+      {pendencias.length > 0 && (
         <section aria-label="Casos que exigem intervenção" className="mt-4 border-t border-border pt-4">
-          <h3 className="font-semibold text-foreground">{pendencias.filter((issue) => isHistoricBatchAcademicIssue(issue.codigo)).length} casos para intervenção</h3>
-          <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+          <h3 className="font-semibold text-foreground">
+            {pendencias.length} históricos por resolver
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Cada motivo identificado corresponde à validação real da RPC.
+            Os casos ainda não analisados estão assinalados sem inventar um diagnóstico.
+          </p>
+          <div className="mt-3 max-h-96 space-y-2 overflow-y-auto">
             {pendencias.map((issue, index) => {
-              if (!isHistoricBatchAcademicIssue(issue.codigo)) return null;
               const advice = getHistoricBatchIssueAdvice(issue.codigo);
-              const params = new URLSearchParams({
-                alunoId: issue.aluno_id ?? "",
-                action: "reenrollment",
-                historicMatriculaId: issue.matricula_id,
-                returnTo: balcaoHref ? balcaoHref.replace(/\/secretaria\/balcao(?:\?.*)?$/, "/operacoes/academico") : "/operacoes/academico",
+              const base = balcaoHref?.split("/secretaria/balcao")[0] ?? "";
+              const query = new URLSearchParams({
+                tipo: "historicos", ano: "2025", matricula_id: issue.matricula_id,
               });
-              const href = balcaoHref
-                ? balcaoHref + (balcaoHref.includes("?") ? "&" : "?") + params.toString()
+              const href = base
+                ? base + "/operacoes/academico/reconciliacao-historica?" + query.toString()
                 : null;
               return (
                 <div key={issue.matricula_id + "-" + index}
@@ -200,7 +203,7 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
                   {href && issue.aluno_id && (
                     <Link href={href}
                       className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-emerald hover:bg-muted">
-                      Resolver no Balcão
+                      Resolver na Reconciliação
                       <ExternalLink className="h-3.5 w-3.5" />
                     </Link>
                   )}
