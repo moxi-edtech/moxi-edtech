@@ -356,7 +356,7 @@ export async function POST(request: Request) {
     const classeOrigem = classeById.get(turmaOrigem?.classe_id);
     const numeroOrigem = classeNumero(classeOrigem);
     const numeroDestino = classeNumero(classeById.get(turmaDestino?.classe_id));
-    const preEscolarOrigem = numeroOrigem == null
+    const preEscolarOrigem = (numeroOrigem === 0 || numeroOrigem == null)
       && classeOrigem?.nome === "Pré-Escolar"
       && turmaOrigem?.nivel_ensino === "pre_escolar";
     // A matrícula destino preexistente já passou por uma operação anterior.
@@ -414,7 +414,7 @@ export async function POST(request: Request) {
         code: "REMATRICULA_PROGRESSION_INVALID",
       }, { status: 409 });
     }
-    if (numeroOrigem == null && !preEscolarOrigem) {
+    if ((numeroOrigem == null || numeroOrigem === 0) && !preEscolarOrigem) {
       return NextResponse.json({
         ok: false,
         error: "Não foi possível identificar a classe de origem para a progressão.",
