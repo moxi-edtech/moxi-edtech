@@ -334,7 +334,7 @@ export default function Page() {
              </div>
              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
                 Olá, {loading ? (
-                  <ProfessorSkeletonBone className="inline-block h-6 w-28 align-middle motion-safe:animate-pulse sm:h-8" />
+                  <span className="inline-block align-middle"><ProfessorSkeletonBone className="h-6 w-28 motion-safe:animate-pulse sm:h-8" /></span>
                 ) : (
                   <span className="text-klasse-green">{overview?.primeiro_nome || "Professor"}</span>
                 )}
