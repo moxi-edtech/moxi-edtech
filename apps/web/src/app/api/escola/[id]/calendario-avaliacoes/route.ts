@@ -112,8 +112,8 @@ export async function GET(req: Request, context: Context) {
           .eq("escola_id", escolaId).in("id", subjectIds).limit(3000)
       : { data: [], error: null };
     if (catalog.error) throw catalog.error;
-    const idToSubject = new Map<string, string>((catalog.data ?? []).map((v: any) => [v.id, v.nome]));
-    const matrixToSubject = new Map<string, string>((matrices.data ?? []).map((v: any) => [v.id, idToSubject.get(v.disciplina_id) ?? "Disciplina"]));
+    const idToSubject = new Map<string, string>((catalog.data ?? []).map((v: any): [string, string] => [v.id, v.nome]));
+    const matrixToSubject = new Map<string, string>((matrices.data ?? []).map((v: any): [string, string] => [v.id, idToSubject.get(v.disciplina_id) ?? "Disciplina"]));
     const disciplinas = (td.data ?? []).map((v: any) => ({
       id: v.id, turma_id: v.turma_id,
       nome: matrixToSubject.get(v.curso_matriz_id) ?? "Disciplina não identificada",
