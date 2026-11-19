@@ -8,6 +8,7 @@ import { drawTable, type Column } from "@/lib/pdf/table";
 import { renderNominalA4, type NominalA4Row } from "@/lib/documentos/nominalA4";
 import { LISTA_NOMINAL_MODES, classifyMatricula, resumoExclusoes, type ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
 import { loadNominalRoster } from "@/lib/documentos/listaNominalService";
+import { loadSchoolLogoBytes } from "@/lib/documentos/schoolLogo";
 
 type Client = SupabaseClient<Database>;
 
@@ -33,7 +34,7 @@ type ListaNominalPdfParams = {
   camposSensiveis?: boolean;
   emissor?: string;
   onRowsCount?: (count: number) => void;
-  fallbackLogoUrl?: string | null;
+  logoBaseUrl?: string | null;
 };
 
 function mapStatus(status: string) {
@@ -79,12 +80,12 @@ function fitMetaLines(parts: string[], maxWidth: number, font: any, size: number
   return lines;
 }
 
-function getLogoBaseUrl(fallbackLogoUrl?: string | null) {
-  if (fallbackLogoUrl) {
+function getLogoBaseUrl(logoBaseUrl?: string | null) {
+  if (logoBaseUrl) {
     try {
-      return new URL(fallbackLogoUrl).origin;
+      return new URL(logoBaseUrl).origin;
     } catch {
-      // Ignore invalid fallback URLs and use environment fallbacks below.
+      // Ignore invalid base URLs and use environment fallbacks below.
     }
   }
 
@@ -99,7 +100,7 @@ function getLogoBaseUrl(fallbackLogoUrl?: string | null) {
   return null;
 }
 
-function normalizePdfLogoUrl(value: string | null | undefined, fallbackLogoUrl?: string | null) {
+function normalizePdfLogoUrl(value: string | null | undefined, logoBaseUrl?: string | null) {
   const trimmed = value?.trim();
   if (!trimmed) return null;
 
@@ -111,7 +112,7 @@ function normalizePdfLogoUrl(value: string | null | undefined, fallbackLogoUrl?:
   try {
     return new URL(trimmed).toString();
   } catch {
-    const baseUrl = getLogoBaseUrl(fallbackLogoUrl);
+    const baseUrl = getLogoBaseUrl(logoBaseUrl);
     if (!baseUrl) return trimmed;
     const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
     return `${baseUrl.replace(/\/$/, "")}${path}`;
@@ -134,7 +135,7 @@ export async function renderListaNominalPdfBuffer({
   camposSensiveis = false,
   emissor = "Sistema KLASSE",
   onRowsCount,
-  fallbackLogoUrl,
+  logoBaseUrl,
 }: ListaNominalPdfParams) {
   const normalizedYear = year || String(new Date().getFullYear());
   const roster = await loadNominalRoster({
@@ -253,19 +254,14 @@ export async function renderListaNominalPdfBuffer({
   onRowsCount?.(alunos.length);
   const verificationToken = enableQr ? randomUUID() : undefined;
   const validationBase = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? undefined;
-  const logoUrl = normalizePdfLogoUrl(escola?.logo_url, fallbackLogoUrl);
+  const logoUrl = normalizePdfLogoUrl(escola?.logo_url, logoBaseUrl);
+  // A lista adopta exclusivamente a identidade configurada da própria escola.
+  // O Storage autenticado é prioritário; insígnias nacionais nunca são fallback.
+  const logoBytes = await loadSchoolLogoBytes({ supabase, escolaId, logoUrl });
 
   // Documento nominal diário: layout próprio, paginação real e minimização de dados.
   // Mapas, pautas de chamada e álbum preservam o renderer anterior.
   if (!month && !isAttendance && !isAlbum) {
-    let logoBytes: Uint8Array | undefined;
-    if (logoUrl) {
-      try {
-        logoBytes = (await fetchImageBytes(logoUrl)).bytes;
-      } catch {
-        // Um logótipo temporariamente indisponível não bloqueia a lista.
-      }
-    }
     let qrImageBytes: Uint8Array | undefined;
     if (enableQr) {
       if (!validationBase || !verificationToken) {
@@ -325,8 +321,9 @@ export async function renderListaNominalPdfBuffer({
       nif: escola?.nif,
       address: escola?.endereco,
       contacts: "",
-      logoUrl,
-      fallbackLogoUrl,
+      logoUrl: null,
+      logoBytes,
+      fallbackLogoUrl: null,
       validationBaseUrl: validationBase,
     },
     verificationToken,
