@@ -503,6 +503,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
           ) : (
             <FooterWizard
               step={step}
+              minStep={skipTurmaSelection && !paymentAlreadyValidated ? 2 : 1}
               setStep={setStep}
               onClose={onClose}
               submitting={submitting}
@@ -1390,6 +1391,7 @@ function FooterSuccess({
 
 function FooterWizard({
   step,
+  minStep,
   setStep,
   onClose,
   submitting,
@@ -1406,6 +1408,7 @@ function FooterWizard({
   submit,
 }: {
   step: number;
+  minStep: number;
   setStep: (n: number) => void;
   onClose: () => void;
   submitting: boolean;
@@ -1425,11 +1428,11 @@ function FooterWizard({
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
         <button
-          onClick={() => (step > 1 ? setStep(step - 1) : onClose())}
+          onClick={() => (step > minStep ? setStep(step - 1) : onClose())}
           disabled={submitting}
           className="rounded-xl px-3 py-2.5 text-sm font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
         >
-          {step > 1 ? "Voltar" : "Cancelar"}
+          {step > minStep ? "Voltar" : "Cancelar"}
         </button>
 
         {step < 3 && !academicOnly && !(step === 2 && paymentTotal <= 0 && financialReady) ? (

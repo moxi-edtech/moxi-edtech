@@ -68,7 +68,7 @@ test("Balcão permite rematrícula fora de época sem solicitar reabertura", () 
   const balcao = readFileSync(new URL("../../src/components/secretaria/BalcaoAtendimento.tsx", import.meta.url), "utf8");
   const status = readFileSync(new URL("../../src/app/api/secretaria/balcao/rematriculas/status/route.ts", import.meta.url), "utf8");
   const confirm = readFileSync(new URL("../../src/app/api/secretaria/balcao/rematriculas/route.ts", import.meta.url), "utf8");
-  assert.match(balcao, /Rematrícula fora de época/);
+  // Fora de época continua permitido no backend, mas não substitui a ação real por um aviso.\n  assert.doesNotMatch(balcao, /Rematrícula fora de época · Pode concluir normalmente/);
   assert.doesNotMatch(balcao, /rematriculaState === "WINDOW_CLOSED"/);
   assert.doesNotMatch(balcao, /<RematriculaWindowRecovery/);
   assert.doesNotMatch(balcao, /<BalcaoLateRematriculaAuthorization/);
