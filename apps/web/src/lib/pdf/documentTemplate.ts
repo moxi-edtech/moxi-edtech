@@ -10,6 +10,8 @@ export type InstitutionalPdfOptions = {
     address?: string | null;
     contacts?: string | null;
     logoUrl?: string | null;
+    /** Imagem já carregada do Storage do próprio tenant. */
+    logoBytes?: Uint8Array;
     fallbackLogoUrl?: string | null;
     validationBaseUrl?: string | null;
   };
@@ -91,6 +93,14 @@ async function embedSchoolLogo(
   pdfDoc: PDFDocument,
   school: InstitutionalPdfOptions["school"]
 ) {
+  if (school.logoBytes?.length) {
+    const format = detectImageFormat(school.logoBytes, null, school.logoUrl ?? "");
+    const image = format === "png"
+      ? await pdfDoc.embedPng(school.logoBytes)
+      : await pdfDoc.embedJpg(school.logoBytes);
+    return { image, sourceUrl: "school-branding" };
+  }
+
   const candidates = [school.logoUrl, school.fallbackLogoUrl]
     .map((value) => value?.trim() || null)
     .filter((value, index, list): value is string => Boolean(value) && list.indexOf(value) === index);
