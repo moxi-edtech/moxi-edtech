@@ -296,16 +296,19 @@ function PillTabs({ active, onChange, count }: {
 // ─── Status badges ────────────────────────────────────────────────────────────
 
 function MatriculaBadge({ status }: { status: string }) {
-  const ok = ["ativa", "ativo"].includes(status.toLowerCase());
+  const canonical = status.toLowerCase();
+  const ok = ["ativa", "ativo"].includes(canonical);
+  const desistente = canonical === "desistente";
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+      className={`inline-flex items-center w-fit rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
         ok
-          ? "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20"
+          ? "bg-klasse-green/10 text-klasse-green border-klasse-green/20"
+          : desistente ? "bg-muted text-muted-foreground border-border"
           : "bg-rose-50 text-rose-700 border-rose-200"
       }`}
     >
-      {status}
+      {desistente ? "Desistente" : status}
     </span>
   );
 }
@@ -1579,7 +1582,7 @@ export default function TurmaDetailClient({
                 onChange={(event) => setAlunoFinanceiroFilter(event.target.value as typeof alunoFinanceiroFilter)}
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#1F6B3B]"
               >
-                <option value="todos">Todos ({alunos.length})</option>
+                <option value="todos">Todos ({alunosVisiveis.length})</option>
                 <option value="em_dia">Em dia</option>
                 <option value="atraso">Em atraso</option>
               </select>
