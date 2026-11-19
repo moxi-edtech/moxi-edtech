@@ -55,7 +55,7 @@ export function BalcaoPercursoAcademico(props: Props) {
         {needsResult(active) && snapshot.can_recover_historical && <YearWork key={active.matricula_id+":"+active.turma_id}
           row={active} blocked={Boolean(gap)} onBusyChange={setBusy}
           onUpdated={async () => { await onUpdated(); setSelected(null); }} />}
-        {active.situacao_resultado === "homologado" && active.status_persistido === "concluido" && (
+        {snapshot.can_recover_historical && active.situacao_resultado === "homologado" && active.status_persistido === "concluido" && (
           <BalcaoNotasComplementares key={active.matricula_id} matriculaId={active.matricula_id}
             ano={active.ano_letivo} onSaved={onUpdated} />
         )}
