@@ -290,7 +290,7 @@ export function TurmaContextView({
                 )}
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
               </button>
-  {!turma.anoLetivo.historico && (
+  {!turma.anoLetivo.historico && selectedStudentId === student.id && (
     <DesistenciaMatriculaAction
       tipo="confirmar"
       escolaId={context.escolaId}
