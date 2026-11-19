@@ -88,6 +88,7 @@ export const sidebarConfig: SidebarConfig = {
       ],
       children: [
         { href: "/escola/[escolaId]/operacoes/academico", label: "Visão geral" },
+        { href: "/escola/[escolaId]/operacoes/academico/calendario-avaliacoes", label: "Calendário de avaliações" },
         { href: "/escola/[escolaId]/operacoes/academico/pendencias-pos-virada", label: "Pendências pós-virada", badge: "Resolver" },
         { href: "/escola/[escolaId]/operacoes/academico/reconciliacao-historica", label: "Reconciliação Histórica" },
         { href: "/escola/[escolaId]/operacoes/academico/reclassificacao-finalistas", label: "Reclassificação de Finalistas" },
@@ -224,6 +225,7 @@ export const sidebarConfig: SidebarConfig = {
       icon: "Activity",
       children: [
         { href: "/escola/[escolaId]/admin/operacoes-academicas", label: "Visão geral" },
+        { href: "/escola/[escolaId]/admin/operacoes-academicas/calendario-avaliacoes", label: "Calendário de avaliações" },
         { href: "/escola/[escolaId]/admin/operacoes-academicas/reconciliacao-historica", label: "Reconciliação Histórica" },
       ],
     },
@@ -324,6 +326,7 @@ export const sidebarConfig: SidebarConfig = {
       icon: "Activity",
       children: [
         { href: "/escola/[escolaId]/secretaria/operacoes-academicas", label: "Visão geral" },
+        { href: "/escola/[escolaId]/secretaria/operacoes-academicas/calendario-avaliacoes", label: "Calendário de avaliações" },
         { href: "/escola/[escolaId]/operacoes/academico/pendencias-pos-virada", label: "Pendências pós-virada", badge: "Resolver" },
         { href: "/escola/[escolaId]/secretaria/operacoes-academicas/reconciliacao-historica", label: "Reconciliação Histórica" },
         { href: "/escola/[escolaId]/secretaria/operacoes-academicas/reclassificacao-finalistas", label: "Reclassificação de Finalistas" },
