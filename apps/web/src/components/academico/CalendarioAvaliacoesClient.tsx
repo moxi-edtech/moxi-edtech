@@ -22,7 +22,7 @@ const fmt = (v: string) => v ? v.slice(0, 10).split("-").reverse().join("/") : "
 
 export default function CalendarioAvaliacoesClient() {
   const params = useParams<{ id: string }>();
-  const endpoint = "/api/escola/" + encodeURIComponent(params.id) + "/calendario-avaliacoes";
+  const endpoint = "/api/escola/" + encodeURIComponent(params?.id ?? "") + "/calendario-avaliacoes";
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
