@@ -5,6 +5,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { parsePlanTier } from "@/config/plans";
 import { AlunoStatusSchema } from "@moxi/tenant-sdk/aluno";
+import { getLiveSecretariaEnrollmentCounts } from "@/lib/secretaria/dashboard-enrollment-counts";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -100,16 +101,11 @@ export async function GET() {
     if (roleError) return roleError;
 
     const nowIso = new Date().toISOString();
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(startOfDay);
-    endOfDay.setDate(endOfDay.getDate() + 1);
-
     const queryStart = shouldLog ? performance.now() : 0;
-    const [countsRes, recentesRes, escolaRes, anoLetivoRes, matriculasHojeRes, slugRes] = await Promise.all([
+    const [countsRes, recentesRes, escolaRes, anoLetivoRes, slugRes] = await Promise.all([
       supabase
         .from("vw_secretaria_dashboard_counts")
-        .select("alunos_ativos, matriculas_total, turmas_total")
+        .select("turmas_total")
         .eq("escola_id", escolaId)
         .maybeSingle(),
       supabase
@@ -124,18 +120,12 @@ export async function GET() {
         .maybeSingle(),
       supabase
         .from("anos_letivos")
-        .select("id")
+        .select("id, ano")
         .eq("escola_id", escolaId)
         .eq("ativo", true)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
-      supabase
-        .from("matriculas")
-        .select("id", { count: "exact", head: true })
-        .eq("escola_id", escolaId)
-        .gte("created_at", startOfDay.toISOString())
-        .lt("created_at", endOfDay.toISOString()),
       supabase
         .from("escolas")
         .select("slug")
@@ -156,9 +146,6 @@ export async function GET() {
     if (anoLetivoRes.error) {
       return NextResponse.json({ ok: false, error: anoLetivoRes.error.message }, { status: 500 });
     }
-    if (matriculasHojeRes.error) {
-      return NextResponse.json({ ok: false, error: matriculasHojeRes.error.message }, { status: 500 });
-    }
     if (slugRes.error) {
       return NextResponse.json({ ok: false, error: slugRes.error.message }, { status: 500 });
     }
@@ -172,6 +159,8 @@ export async function GET() {
     const pendenciasImportacao = Number(recentesRes.data?.pendencias_importacao ?? 0);
     const pendencias = pendenciasMatriculas + pendenciasImportacao;
     const anoLetivoId = anoLetivoRes.data?.id ?? null;
+    const anoLetivo = anoLetivoRes.data?.ano ?? null;
+    const liveCounts = await getLiveSecretariaEnrollmentCounts(supabase, escolaId, anoLetivo);
     const periodoStart = shouldLog ? performance.now() : 0;
     const { data: periodoFecho, error: periodoError } = anoLetivoId
       ? await supabase
@@ -193,8 +182,10 @@ export async function GET() {
     const response = NextResponse.json({
       ok: true,
       counts: {
-        alunos: countsRes.data?.alunos_ativos ?? 0,
-        matriculas: matriculasHojeRes.count ?? 0,
+        alunos: liveCounts.alunos,
+        matriculas: liveCounts.matriculasHoje,
+        anoLetivoId,
+        anoLetivo,
         turmas: countsRes.data?.turmas_total ?? 0,
         pendencias,
       },
