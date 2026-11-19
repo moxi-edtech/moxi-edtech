@@ -1536,7 +1536,7 @@ export default function TurmaDetailClient({
                       <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aluno</th>
                       <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Matrícula</th>
                       <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Financeiro</th>
-                      <th className="px-5 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest w-60">Ações</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-60">Ações</th>
                     </tr>
                   </thead>
                   <tbody
