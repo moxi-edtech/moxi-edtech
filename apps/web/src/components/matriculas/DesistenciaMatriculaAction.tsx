@@ -7,6 +7,7 @@ type Signal = { id: string; motivo: string; criado_em: string };
 type Lookup = { ok?: boolean; error?: string; matricula_id?: string; sinalizacoes?: Signal[] };
 type Props = {
   alunoId: string;
+  escolaId?: string;
   alunoNome: string;
   turmaId: string;
   anoLetivoId?: string | null;
@@ -17,7 +18,7 @@ type Props = {
 
 /** Uma operação administrativa por matrícula, utilizada em todos os portais. */
 export function DesistenciaMatriculaAction({
-  alunoId, alunoNome, turmaId, anoLetivoId, matriculaId, tipo, onChanged,
+  alunoId, escolaId, alunoNome, turmaId, anoLetivoId, matriculaId, tipo, onChanged,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -48,10 +49,11 @@ export function DesistenciaMatriculaAction({
 
   async function loadCurrent() {
     if (!staff) return;
+    if (!escolaId) { setError("Escola não identificada."); return; }
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ aluno_id: alunoId, turma_id: turmaId });
+      const params = new URLSearchParams({ escola_id: escolaId, aluno_id: alunoId, turma_id: turmaId });
       if (anoLetivoId) params.set("ano_letivo_id", anoLetivoId);
       const res = await fetch(`/api/matriculas/desistencia?${params}`, { cache: "no-store" });
       const body = await res.json().catch(() => null) as Lookup | null;
