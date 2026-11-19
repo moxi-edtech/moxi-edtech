@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { ProfessorCalendarSkeleton } from "@/components/professor/ProfessorLoadingSkeletons";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import {
@@ -235,10 +236,7 @@ export default function ProfessorCalendarioPage() {
         />
 
         {loading ? (
-          <div className="grid gap-3 sm:gap-4 lg:grid-cols-[1.4fr_1fr]">
-            <div className="h-60 animate-pulse rounded-[2rem] border border-slate-200 bg-white" />
-            <div className="h-60 animate-pulse rounded-[2rem] border border-slate-200 bg-white" />
-          </div>
+          <ProfessorCalendarSkeleton />
         ) : error ? (
           <div className="rounded-[2rem] border border-rose-200 bg-rose-50 p-6 text-rose-900">
             <div className="flex items-start gap-3">
