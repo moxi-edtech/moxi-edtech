@@ -18,7 +18,7 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 71);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 72);
   const exactDiagnostics = "20271118130000_curtume_2025_persist_fecho_diagnostics.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(exactDiagnostics));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + exactDiagnostics]), []);
@@ -378,5 +378,21 @@ test("documentary RAA migrations are individually allowed but cannot activate fi
   }
   assert.match(checkFiscalAndSchemaScope([
     "supabase/migrations/20271109010001_unreviewed_history.sql",
+  ])[0] ?? "", /Unapproved database migration/);
+});
+
+test("calendar planning migration is narrowly allowed with RLS, audit and fiscal freeze", () => {
+  const name = "20261119110000_calendario_avaliacoes_auditado.sql";
+  const path = "supabase/migrations/" + name;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "CREATE TABLE public.calendario_avaliacoes (id uuid);")[0] ?? "",
+    /Reviewed evaluation calendar migration missing guard/);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "CREATE TABLE public.fiscal_config (id uuid);")[0] ?? "",
+    /Reviewed evaluation calendar migration missing guard|Fiscal\/AGT activation/);
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20261119110001_unreviewed_assessment_writer.sql"
   ])[0] ?? "", /Unapproved database migration/);
 });
