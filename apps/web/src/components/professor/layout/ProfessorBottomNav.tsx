@@ -6,34 +6,51 @@ type Props = {
   activePath: string;
 };
 
+const compactLabels: Record<string, string> = {
+  "/professor/frequencias": "Chamada",
+  "/professor/materiais": "Material",
+  "/professor/calendario": "Agenda",
+};
+
+function isMatchingRoute(activePath: string, item: ProfessorNavLink) {
+  return (
+    activePath === item.href ||
+    activePath.startsWith(`${item.href}/`) ||
+    activePath === item.path ||
+    activePath.startsWith(`${item.path}/`)
+  );
+}
+
 export function ProfessorBottomNav({ items, activePath }: Props) {
+  // A rota /professor é prefixo de todas as outras; só a correspondência
+  // mais específica pode estar activa (nunca Início + Calendário).
+  const activeItem = items
+    .filter((item) => isMatchingRoute(activePath, item))
+    .sort((a, b) => b.path.length - a.path.length)[0];
+
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navegação do portal do professor"
     >
-      <div className="mx-auto grid w-full max-w-5xl grid-cols-6 gap-1 px-1 py-2">
+      <div className="mx-auto grid w-full max-w-5xl grid-cols-6 gap-0.5 px-1 py-1.5 sm:gap-1 sm:py-2">
         {items.map(({ href, path, label, icon: Icon }) => {
-          const active =
-            activePath === href ||
-            activePath.startsWith(`${href}/`) ||
-            activePath === path ||
-            activePath.startsWith(`${path}/`);
+          const active = activeItem?.href === href;
           return (
             <Link
               key={href}
               href={href}
               prefetch
-              className={`relative flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[10px] font-semibold transition ${
-                active
-                  ? "bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold/30"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-              }`}
+              aria-label={label}
               aria-current={active ? "page" : undefined}
+              className={`relative flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5 text-[9px] font-semibold transition-colors min-[390px]:text-[10px] ${active
+                ? "bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold/30"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
             >
-              <Icon className="h-4 w-4" />
-              {label}
+              <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+              <span className="max-w-full truncate text-center">{compactLabels[path] ?? label}</span>
             </Link>
           );
         })}
