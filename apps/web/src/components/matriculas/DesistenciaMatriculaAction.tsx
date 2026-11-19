@@ -133,31 +133,31 @@ export function DesistenciaMatriculaAction({
   return (
     <>
       <button type="button" ref={opener} onClick={showDialog}
-        className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-klasse-gold hover:text-klasse-green focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold">
-        <UserRoundX size={16} className="text-slate-400" aria-hidden />
+        className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold hover:text-klasse-green focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold">
+        <UserRoundX size={16} className="text-muted-foreground" aria-hidden />
         {staff ? "Marcar desistente" : "Sinalizar desistência"}
       </button>
       <dialog ref={dialog} onCancel={(e) => { e.preventDefault(); setOpen(false); }}
-        className="w-[min(94vw,500px)] max-h-[85dvh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-5 text-slate-900 shadow-xl backdrop:bg-slate-950/50"
+        className="w-[min(94vw,500px)] max-h-[85dvh] overflow-y-auto rounded-xl border border-border bg-card p-5 text-foreground shadow-xl backdrop:bg-foreground/40"
         aria-label={`${staff ? "Registar desistência" : "Sinalizar possível desistência"} de ${alunoNome}`}>
         <h3 className="text-base font-semibold text-klasse-green">
           {staff ? "Registar desistência" : "Sinalizar possível desistência"}
         </h3>
         <p className="mt-1 text-sm font-semibold">{alunoNome}</p>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-muted-foreground">
           {staff
             ? "Encerra apenas a matrícula deste ano. As notas, presenças, documentos e valores financeiros anteriores serão preservados. Não atribui aprovação ou reprovação."
             : "A Secretaria verificará a situação. O aluno permanece matriculado até uma decisão autorizada."}
         </p>
-        {loading && <p role="status" className="mt-3 flex items-center gap-2 text-xs text-slate-600"><Loader2 size={16} className="animate-spin" /> A verificar matrícula…</p>}
+        {loading && <p role="status" className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><Loader2 size={16} className="animate-spin" /> A verificar matrícula…</p>}
         {staff && !loading && (lookup?.sinalizacoes?.length ?? 0) > 0 && (
           <div className="mt-3 space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
-            <p className="text-sm font-semibold text-slate-900">Sinalizações dos professores</p>
+            <p className="text-sm font-semibold text-foreground">Sinalizações dos professores</p>
             {lookup?.sinalizacoes?.map((signal) => (
               <div key={signal.id} className="flex items-start justify-between gap-3 border-t border-amber-200 pt-2">
-                <p className="break-words text-xs text-slate-700">{signal.motivo}</p>
+                <p className="break-words text-xs text-foreground">{signal.motivo}</p>
                 <button type="button" onClick={() => void discard(signal.id)} disabled={saving}
-                  className="shrink-0 text-xs font-semibold text-slate-700 underline disabled:opacity-50">
+                  className="shrink-0 text-xs font-semibold text-foreground underline disabled:opacity-50">
                   Descartar
                 </button>
               </div>
@@ -173,10 +173,10 @@ export function DesistenciaMatriculaAction({
               value={motivo} onChange={(event) => setMotivo(event.target.value)}
               maxLength={500} rows={3} required
               placeholder={staff ? "Descreva o motivo administrativo confirmado pela escola…" : "Descreva a situação que precisa de verificação…"}
-              className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20" />
-            <p className="text-right text-xs text-slate-500">{motivo.trim().length}/500 · mínimo 10</p>
+              className="mt-1 w-full rounded-xl border border-border p-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20" />
+            <p className="text-right text-xs text-muted-foreground">{motivo.trim().length}/500 · mínimo 10</p>
             {staff && (
-              <label className="mt-3 flex items-start gap-2 text-sm text-slate-700">
+              <label className="mt-3 flex items-start gap-2 text-sm text-foreground">
                 <input type="checkbox" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)}
                   className="mt-1 accent-klasse-green" />
                 <span>Confirmei a desistência, a matrícula e o ano letivo. Os acertos financeiros são tratados separadamente.</span>
@@ -192,7 +192,7 @@ export function DesistenciaMatriculaAction({
         )}
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button type="button" onClick={() => setOpen(false)} disabled={saving}
-            className="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 disabled:opacity-50">
+            className="min-h-10 rounded-xl border border-border px-4 text-sm font-semibold text-foreground disabled:opacity-50">
             {done ? "Fechar" : "Cancelar"}
           </button>
           {!done && (
