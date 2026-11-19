@@ -126,7 +126,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // Apenas esta migração auditada; fiscal/AGT/SAF-T continua bloqueado.
   "20271119090000_matricula_desistencia_operacional_v1.sql",
   // PR #378: calendário escolar operacional; RLS e auditoria append-only, sem notas ou fiscal.
-  "20261119110000_calendario_avaliacoes_auditado.sql",
+  "20261119145630_calendario_avaliacoes_auditado_20261119.sql",
+  "20261119150953_calendario_avaliacoes_evitar_sobreposicao.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
@@ -156,7 +157,7 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
     const executableSql = content.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
     // Aprovar exclusivamente este esquema revisto: sem permissões amplas,
     // sem desativar RLS e sem escrever em notas, matrículas ou financeiro.
-    if (name === "20261119110000_calendario_avaliacoes_auditado.sql") {
+    if (name === "20261119145630_calendario_avaliacoes_auditado_20261119.sql") {
       const expected = [
         "CREATE TABLE IF NOT EXISTS public.calendario_avaliacoes (",
         "CREATE TABLE IF NOT EXISTS public.calendario_avaliacoes_auditoria (",
@@ -186,6 +187,14 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
       }
     }
 
+    if (name === "20261119150953_calendario_avaliacoes_evitar_sobreposicao.sql") {
+      for (const token of ["ALTER TABLE public.calendario_avaliacoes", "EXCLUDE USING gist", "turma_id WITH =", "tsrange(", "WHERE (estado <> 'cancelado')"]) {
+        if (!content.includes(token)) violations.push("Assessment conflict guard missing: " + token);
+      }
+      if (/(?:DROP\s|TRUNCATE\s|DISABLE\s|INSERT\s|UPDATE\s|DELETE\s)/i.test(executableSql)) {
+        violations.push("Assessment conflict migration may only install the exclusion constraint: " + path);
+      }
+    }
     if (FISCAL_SQL.test(executableSql)) {
       violations.push(`Fiscal/AGT activation marker in lifecycle migration: ${path}`);
     }
