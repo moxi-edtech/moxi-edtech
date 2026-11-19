@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readPublishedAssessmentEvents } from "@/lib/academico/published-assessment-events";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { CanonicalPeriodReadError, verifyCanonicalPeriodsRead } from "@/lib/academico/verify-canonical-periods-read";
 import {
@@ -207,7 +208,12 @@ export async function GET(req: Request) {
     }>).map((event) => ({
       ...event, descricao: "Evento do Calendário Académico", publico_alvo: "todos",
     }));
-    const items: EventoRow[] = [...genericItems, ...calendarItems]
+    const assessments = await readPublishedAssessmentEvents(supabase, {
+      escolaId, anoLetivoId: academicContext.anoLetivoId,
+      turmaIds: teacherClasses.map((c: { id: string }) => c.id),
+      rangeStart, rangeEnd, limit: 120,
+    });
+    const items: EventoRow[] = [...genericItems, ...calendarItems, ...assessments]
       .sort((a, b) => a.data_inicio.localeCompare(b.data_inicio) || a.id.localeCompare(b.id))
       .slice(0, 120);
 
