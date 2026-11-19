@@ -137,6 +137,7 @@ export default function ProfessorCalendarioPage() {
   const [periodos, setPeriodos] = useState<PeriodoLetivo[]>([]);
   const [anoLetivo, setAnoLetivo] = useState<AnoLetivo | null>(null);
   const [showPeriodsOnMobile, setShowPeriodsOnMobile] = useState(false);
+  const [showPastEvents, setShowPastEvents] = useState(false);
   const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
@@ -182,7 +183,7 @@ export default function ProfessorCalendarioPage() {
   );
 
   const nextEvent = useMemo(
-    () => items.find((item) => item.data_fim >= todayIso) ?? null,
+    () => items.filter((item) => item.data_fim >= todayIso).sort((a, b) => a.data_inicio.localeCompare(b.data_inicio))[0] ?? null,
     [items, todayIso]
   );
 
@@ -191,10 +192,13 @@ export default function ProfessorCalendarioPage() {
     [items, todayIso]
   );
 
+  const pastEventsCount = items.filter((item) => item.data_fim < todayIso).length;
+
   const eventGroups = useMemo<EventGroup[]>(() => {
     const groups = new Map<string, EventGroup>();
 
-    for (const item of items) {
+    for (const item of [...items].sort((a, b) => a.data_inicio.localeCompare(b.data_inicio))) {
+      if (!showPastEvents && item.data_fim < todayIso) continue;
       const monthKey = item.data_inicio.slice(0, 7);
       const label = capitalize(monthFormatter.format(parseLocalDate(item.data_inicio)));
       const existing = groups.get(monthKey);
@@ -207,7 +211,7 @@ export default function ProfessorCalendarioPage() {
     }
 
     return Array.from(groups.values());
-  }, [items]);
+  }, [items, showPastEvents, todayIso]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -379,6 +383,16 @@ export default function ProfessorCalendarioPage() {
                   <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Linha do tempo</p>
                   <h2 className="text-lg font-bold text-slate-900 sm:text-xl sm:font-black">Calendário do professor</h2>
                 </div>
+                {pastEventsCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPastEvents((value) => !value)}
+                    aria-pressed={showPastEvents}
+                    className="inline-flex min-h-10 items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-klasse-green hover:border-klasse-green"
+                  >
+                    {showPastEvents ? "Só próximos" : `Ver anteriores (${pastEventsCount})`}
+                  </button>
+                )}
                 <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 sm:inline-flex">
                   <Loader2 className="h-3.5 w-3.5" />
                   Fonte: calendário académico + eventos gerais da escola
@@ -388,9 +402,9 @@ export default function ProfessorCalendarioPage() {
               {eventGroups.length === 0 ? (
                 <div className="mt-8 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
                   <CalendarDays className="mx-auto h-10 w-10 text-slate-300" />
-                  <p className="mt-4 text-sm font-black text-slate-700">Ainda não há eventos sincronizados.</p>
+                  <p className="mt-4 text-sm font-black text-slate-700">{items.length > 0 ? "Não há próximos eventos." : "Ainda não há eventos sincronizados."}</p>
                   <p className="mt-2 text-sm font-medium text-slate-500">
-                    Assim que a secretaria ou o admin actualizarem o calendário oficial, ele aparece aqui automaticamente.
+                    {items.length > 0 ? "Consulta os eventos anteriores para rever o histórico." : "Assim que a secretaria ou o admin actualizarem o calendário oficial, ele aparece aqui automaticamente."}
                   </p>
                 </div>
               ) : (
