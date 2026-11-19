@@ -17,10 +17,16 @@ const querySchema = z.object({
   aluno_id: z.string().uuid(),
   turma_id: z.string().uuid(),
   ano_letivo_id: z.string().uuid().optional(),
+  estado: z.enum(["ativo", "desistente"]).default("ativo"),
 });
 const payloadSchema = z.discriminatedUnion("acao", [
   z.object({
     acao: z.literal("confirmar"),
+    matricula_id: z.string().uuid(),
+    motivo: z.string().trim().min(10).max(500),
+  }).strict(),
+  z.object({
+    acao: z.literal("reativar"),
     matricula_id: z.string().uuid(),
     motivo: z.string().trim().min(10).max(500),
   }).strict(),
@@ -47,6 +53,7 @@ function mapDbError(error: { code?: string; message?: string }) {
     "A matrícula já não está ativa, o ano foi encerrado ou existe histórico fechado. Atualize a lista.",
     409, "ESTADO_INCOMPATIVEL",
   );
+  if (code === "23505") return fail("Já existe uma matrícula que impede a reativação. Reveja a situação académica.", 409, "CONFLITO_MATRICULA");
   if (code === "22023") return fail("A matrícula, a sinalização ou o motivo é inválido.", 400, "VALIDACAO");
   if (code === "PGRST202" || code === "42883") return fail(
     "O procedimento de desistência ainda não está disponível nesta instalação.",
@@ -70,16 +77,16 @@ export async function GET(request: NextRequest) {
   const guard = await requireRoleInSchool({ supabase, escolaId, roles: [...escolaRoles] });
   if (guard.error) return guard.error;
 
-  const { aluno_id, turma_id, ano_letivo_id } = parsed.data;
+  const { aluno_id, turma_id, ano_letivo_id, estado } = parsed.data;
   let query = supabase.from("matriculas")
-    .select("id,aluno_id,turma_id,status,ativo,session_id")
+    .select("id,aluno_id,turma_id,status,ativo,session_id,motivo_fecho,data_fecho")
     .eq("escola_id", escolaId).eq("aluno_id", aluno_id).eq("turma_id", turma_id)
-    .eq("status", "ativo").eq("ativo", true)
+    .eq("status", estado).eq("ativo", estado === "ativo")
     .limit(2);
   if (ano_letivo_id) query = query.eq("session_id", ano_letivo_id);
   const { data: items, error } = await query;
   if (error) return fail("Não foi possível consultar a matrícula.", 503);
-  if (!items?.length) return fail("Não existe matrícula ativa deste aluno nesta turma.", 404, "SEM_MATRICULA_ATIVA");
+  if (!items?.length) return fail("Não existe matrícula com o estado solicitado nesta turma.", 404, "SEM_MATRICULA_ELEGIVEL");
   if (items.length > 1) return fail("Há mais de uma matrícula ativa neste contexto. Revise antes de alterar.", 409);
 
   const matricula = items[0];
@@ -93,6 +100,8 @@ export async function GET(request: NextRequest) {
     ok: true,
     matricula_id: matricula.id,
     status: matricula.status,
+    motivo_fecho: matricula.motivo_fecho,
+    data_fecho: matricula.data_fecho,
     sinalizacoes: sinalizacoes ?? [],
   }, { headers: noStore });
 }
@@ -106,7 +115,7 @@ export async function POST(request: NextRequest) {
 
   const action = parsed.data;
   if (action.acao !== "sinalizar") {
-    const { data: matricula } = action.acao === "confirmar"
+    const { data: matricula } = action.acao === "confirmar" || action.acao === "reativar"
       ? await supabase.from("matriculas").select("escola_id").eq("id", action.matricula_id).maybeSingle()
       : await supabase.from("matricula_desistencia_sinalizacoes")
         .select("escola_id").eq("id", action.sinalizacao_id).maybeSingle();
@@ -118,7 +127,9 @@ export async function POST(request: NextRequest) {
 
   const rpc = action.acao === "confirmar"
     ? ["registar_desistencia_matricula", { p_matricula_id: action.matricula_id, p_motivo: action.motivo }]
-    : action.acao === "sinalizar"
+    : action.acao === "reativar"
+      ? ["reativar_matricula_desistente", { p_matricula_id: action.matricula_id, p_motivo: action.motivo }]
+      : action.acao === "sinalizar"
       ? ["sinalizar_desistencia_matricula", { p_matricula_id: action.matricula_id, p_motivo: action.motivo }]
       : ["descartar_sinalizacao_desistencia", { p_sinalizacao_id: action.sinalizacao_id }];
   const { data, error } = await supabase.rpc(rpc[0] as string, rpc[1]);
