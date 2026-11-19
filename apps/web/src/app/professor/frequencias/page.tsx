@@ -439,7 +439,7 @@ export default function ProfessorFrequenciasPage() {
                         {([
                           { value: 'presente', label: 'Presente', icon: CheckCircle2, selected: 'border-klasse-green bg-klasse-green text-white' },
                           { value: 'falta', label: 'Falta', icon: XCircle, selected: 'border-rose-600 bg-rose-600 text-white' },
-                          { value: 'atraso', label: 'Atraso', icon: Clock, selected: 'border-amber-500 bg-amber-500 text-slate-950' },
+                          { value: 'atraso', label: 'Atraso', icon: Clock, selected: 'border-amber-500 bg-amber-500 text-klasse-gold-900' },
                         ] as const).map((opt) => {
                           const Icon = opt.icon;
                           const active = current === opt.value;
