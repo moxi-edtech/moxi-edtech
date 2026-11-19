@@ -8,6 +8,7 @@ import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { ClipboardDocumentListIcon, PencilSquareIcon, MapIcon, BookOpenIcon, CalendarDaysIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
+import { ChevronDown, UsersRound } from "lucide-react";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
@@ -371,51 +372,49 @@ export default function Page() {
         <AssignmentsBanner loading={loading} hasAssignments={atribs.length > 0} hasError={Boolean(loadError)} academicYearLabel={academicYearLabel} />
         <ProfessorReopeningRequests assignments={atribs} notesHref={professorHref("/professor/notas")} />
 
-        {/* WIDGET AULA ATIVA EM DECORRÊNCIA */}
+        {/* Aula actual: só mostra o estado real da aula, não presume que já começou. */}
         {aulaAtiva && (
-          <section className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-klasse-green p-3 text-white shadow-sm sm:rounded-[2rem] sm:p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-inner">
-                  <CalendarDaysIcon className="h-6 w-6 animate-pulse" />
+          <section className="rounded-xl border border-klasse-green-700 bg-klasse-green p-3 text-white shadow-sm sm:rounded-[2rem] sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-klasse-green-700/70 text-white sm:h-11 sm:w-11">
+                  <CalendarDaysIcon className="h-5 w-5" aria-hidden="true" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[9px] font-black uppercase text-emerald-300">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                      Aula em Decorrência
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="rounded-full bg-klasse-green-700/70 px-2 py-0.5 text-[11px] font-semibold text-white">
+                      {aulaAtiva.status === "em_andamento" ? "Em andamento" : aulaAtiva.status === "finalizada" ? "Finalizada" : "Aula agora"}
                     </span>
-                    <span className="text-xs font-bold text-slate-300 font-mono">
+                    <span className="text-xs font-medium tabular-nums text-white/80">
                       {aulaAtiva.inicio} – {aulaAtiva.fim}
                     </span>
                   </div>
-                  <h3 className="text-lg font-black text-white mt-1">
-                    {aulaAtiva.disciplina_nome} — <span className="text-emerald-300">{formatTurmaDisplayName({ turma_nome: aulaAtiva.turma_nome })}</span>
+                  <h3 className="mt-1 text-sm font-semibold leading-snug text-white sm:text-lg">
+                    {aulaAtiva.disciplina_nome} · {formatTurmaDisplayName({ turma_nome: aulaAtiva.turma_nome })}
                   </h3>
                   {aulaAtiva.sala_nome && (
-                    <p className="text-xs font-semibold text-slate-400 mt-0.5">
-                      Sala de Aula: {aulaAtiva.sala_nome}
-                    </p>
+                    <p className="mt-0.5 text-xs text-white/75">Sala {aulaAtiva.sala_nome}</p>
                   )}
                 </div>
               </div>
-
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <Link
-                  href={professorHref(`/professor/frequencias?turma_id=${aulaAtiva.turma_id ?? ''}&disciplina_id=${aulaAtiva.disciplina_id ?? ''}`)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2.5 text-xs font-semibold text-klasse-gold-900 shadow-md hover:brightness-95 active:scale-95 transition-all"
-                >
-                  <ClipboardDocumentListIcon className="h-4 w-4" />
-                  <span>Fazer Chamada Rápida (1-Click)</span>
-                </Link>
-                <Link
-                  href={professorHref(`/professor/notas?turma_id=${aulaAtiva.turma_id ?? ''}&disciplina_id=${aulaAtiva.disciplina_id ?? ''}`)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 border border-white/15 px-3.5 py-2.5 text-xs font-bold text-white hover:bg-white/20 active:scale-95 transition-all"
-                >
-                  <PencilSquareIcon className="h-4 w-4 text-amber-400" />
-                  <span>Lançar Notas</span>
-                </Link>
-              </div>
+              {aulaAtiva.turma_id && aulaAtiva.disciplina_id && (
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+                  <Link
+                    href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(aulaAtiva.turma_id)}&disciplina_id=${encodeURIComponent(aulaAtiva.disciplina_id)}`)}
+                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-klasse-gold px-2.5 py-2 text-xs font-semibold text-slate-950 transition-colors hover:brightness-95 sm:px-4"
+                  >
+                    <ClipboardDocumentListIcon className="h-4 w-4" aria-hidden="true" />
+                    Fazer chamada
+                  </Link>
+                  <Link
+                    href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(aulaAtiva.turma_id)}&disciplina_id=${encodeURIComponent(aulaAtiva.disciplina_id)}`)}
+                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-klasse-green-700 bg-klasse-green-700/60 px-2.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-klasse-green-700 sm:px-4"
+                  >
+                    <PencilSquareIcon className="h-4 w-4" aria-hidden="true" />
+                    Lançar notas
+                  </Link>
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -530,50 +529,65 @@ export default function Page() {
         <div className="grid gap-5 sm:gap-8 lg:grid-cols-[1.5fr_1fr]">
           
           {/* TURMAS */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between px-2">
-              <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Minhas Turmas Ativas</h2>
-              <Link href={professorHref("/professor/frequencias")} className="text-[10px] font-black uppercase text-amber hover:underline">Novo Registro</Link>
+          <section className="space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-between gap-2 px-1 sm:px-2">
+              <h2 className="text-sm font-semibold text-foreground">Minhas turmas</h2>
+              <Link href={professorHref("/professor/frequencias")} className="text-xs font-semibold text-klasse-green hover:underline">Registar presença</Link>
             </div>
-            
+
             {loadError ? (
-              <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"><p className="font-black">Não foi possível carregar a agenda.</p><p className="mt-1 text-xs">Verifique a ligação e tente novamente.</p><button type="button" onClick={loadAgain} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white hover:bg-rose-800"><ArrowPathIcon className="h-4 w-4" /> Tentar novamente</button></div>
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                <p className="font-semibold">Não foi possível carregar as turmas.</p>
+                <p className="mt-1 text-xs">Verifique a ligação e tente novamente.</p>
+                <button type="button" onClick={loadAgain} className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl bg-rose-700 px-3 text-xs font-semibold text-white hover:bg-rose-800">
+                  <ArrowPathIcon className="h-4 w-4" /> Tentar novamente
+                </button>
+              </div>
             ) : loading ? (
               <ProfessorTurmasSkeleton />
             ) : turmaMap.length === 0 ? (
-              <div role="status" className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+              <div role="status" className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
                 Ainda não existem turmas atribuídas. Contacte a direcção ou secretaria da escola.
               </div>
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
-                {turmaMap.map((turma) => (
-                    <div key={turma.id} className={`group rounded-xl border bg-card p-3 shadow-sm transition-all sm:rounded-[1.5rem] sm:p-5 ${expandedTurmaId === turma.id ? "border-amber/50 ring-2 ring-amber/10" : "border-border hover:border-klasse-gold/40"}`}>
-                    <button type="button" onClick={() => setExpandedTurmaId((current) => current === turma.id ? null : turma.id)} aria-expanded={expandedTurmaId === turma.id} className="block w-full text-left">
-                    <div className="flex items-start justify-between">
-                       <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber/10 group-hover:text-amber transition-colors font-black text-xs">
-                          {turma.nome?.split("-")[0]}
-                       </div>
-                       <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-600 border border-emerald-100">
-                          Confirmada
-                       </span>
+                {turmaMap.map((turma) => {
+                  const expanded = expandedTurmaId === turma.id;
+                  return (
+                    <div key={turma.id} className={`rounded-xl border bg-card p-3 shadow-sm transition-colors sm:p-4 ${expanded ? "border-klasse-gold/50" : "border-border hover:border-klasse-gold/30"}`}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedTurmaId((current) => current === turma.id ? null : turma.id)}
+                        aria-expanded={expanded}
+                        aria-controls={`turma-acoes-${turma.id}`}
+                        className="flex min-h-14 w-full items-center gap-3 text-left"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-klasse-green" aria-hidden="true">
+                          <UsersRound className="h-[18px] w-[18px]" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold leading-snug text-foreground">
+                            {formatTurmaDisplayName({ nome: turma.nome })}
+                          </span>
+                          <span className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                            {turma.disciplinas.join(" · ")}
+                          </span>
+                        </span>
+                        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
+                      </button>
+                      <div
+                        id={`turma-acoes-${turma.id}`}
+                        className={expanded ? "mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3" : "hidden"}
+                      >
+                        <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-slate-950 hover:brightness-95">Chamada</Link>
+                        <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Notas</Link>
+                        <Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Plano de aula</Link>
+                        <Link href={professorHref(`/professor/materiais?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Materiais</Link>
+                        <Link href={professorHref(`/professor/turmas/${turma.id}/horario`)} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-2 text-xs font-semibold text-foreground hover:bg-muted">Horário da turma</Link>
+                      </div>
                     </div>
-                    <div className="mt-4">
-                       <h3 className="font-black text-slate-900">{formatTurmaDisplayName({ nome: turma.nome })}</h3>
-                       <p className="mt-1 text-[10px] font-bold text-slate-400 line-clamp-1 italic">
-                          {turma.disciplinas.join(" • ")}
-                       </p>
-                       <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">{expandedTurmaId === turma.id ? "Escolha uma acção" : "Clique para ver as acções"}</p>
-                    </div>
-                    </button>
-                    {expandedTurmaId === turma.id && <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4">
-                      <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-emerald-50 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-emerald-700 hover:bg-emerald-100">Presenças</Link>
-                      <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-klasse-green-50 px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wide text-klasse-green hover:bg-klasse-green-100">Notas</Link>
-                      <Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-amber-50 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-amber-700 hover:bg-amber-100">Plano de aula</Link>
-                      <Link href={professorHref(`/professor/materiais?turma_id=${encodeURIComponent(turma.id)}`)} className="rounded-xl bg-muted px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wide text-foreground hover:bg-muted/70">Material</Link>
-                      <Link href={professorHref(`/professor/turmas/${turma.id}/horario`)} className="col-span-2 rounded-xl border border-slate-200 px-3 py-2.5 text-center text-[10px] font-black uppercase tracking-wide text-slate-600 hover:bg-slate-50">Horário compartilhado</Link>
-                    </div>}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
