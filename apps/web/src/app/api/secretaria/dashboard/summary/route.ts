@@ -43,7 +43,7 @@ function normalizeStatus(status: string) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const shouldLog = process.env.NODE_ENV !== "production";
     const logId = shouldLog
@@ -67,16 +67,20 @@ export async function GET() {
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? undefined;
+    const requestedEscolaId = new URL(request.url).searchParams.get("escolaId");
     const resolveStart = shouldLog ? performance.now() : 0;
     const escolaId = await resolveEscolaIdForUser(
       supabase,
       user.id,
-      null,
+      requestedEscolaId,
       metaEscolaId ? String(metaEscolaId) : null
     );
     if (shouldLog) log("resolve", performance.now() - resolveStart);
 
     if (!escolaId) {
+      if (requestedEscolaId) {
+        return NextResponse.json({ ok: false, error: "Escola não autorizada" }, { status: 403 });
+      }
       if (shouldLog) log("total", performance.now() - totalStart);
       return NextResponse.json({
         ok: true,
