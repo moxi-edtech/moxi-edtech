@@ -322,7 +322,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-24">
-      <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-8">
+      <div className="mx-auto max-w-6xl space-y-5 p-3 sm:space-y-8 sm:p-6">
         
         {/* HEADER PREMIUM */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -331,8 +331,8 @@ export default function Page() {
                 <span className="h-2 w-2 rounded-full bg-amber animate-pulse" />
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Portal do Professor</span>
              </div>
-             <h1 className="text-3xl font-black tracking-tight text-slate-900">
-                Olá, <span className="text-amber">{overview?.primeiro_nome || "Professor"}</span>
+             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                Olá, <span className="text-klasse-green">{overview?.primeiro_nome || "Professor"}</span>
              </h1>
              <p className="text-sm font-medium text-slate-500">
                 {overview?.escola_nome || "Bem-vindo de volta ao seu painel académico."}
@@ -364,7 +364,7 @@ export default function Page() {
 
         {/* WIDGET AULA ATIVA EM DECORRÊNCIA */}
         {aulaAtiva && (
-          <section className="relative overflow-hidden rounded-[2rem] border border-emerald-500/30 bg-klasse-green p-5 text-white shadow-lg">
+          <section className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-klasse-green p-3 text-white shadow-sm sm:rounded-[2rem] sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3.5">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-inner">
@@ -412,33 +412,33 @@ export default function Page() {
         )}
 
         {/* RESUMO DE IMPACTO */}
-        <section className="relative overflow-hidden rounded-[2rem] bg-klasse-green p-6 text-white shadow-2xl shadow-amber/10">
+        <section className="relative overflow-hidden rounded-xl bg-klasse-green p-3 text-white shadow-sm sm:rounded-[2rem] sm:p-6">
           {/* Background Elements */}
           <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-amber/10 blur-3xl" />
           <div className="absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-emerald-500/5 blur-3xl" />
           
-          <div className="relative z-10 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-             <div className="space-y-4 col-span-full lg:col-span-1">
+          <div className="relative z-10 grid gap-3 sm:gap-8 md:grid-cols-2 lg:grid-cols-4">
+             <div className="col-span-full space-y-1 sm:space-y-4 lg:col-span-1">
                 <div>
                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400/70">Resumo do dia</p>
-                   <h2 className="text-2xl font-black text-white mt-1">Sua Agenda</h2>
+                   <h2 className="mt-0.5 text-lg font-bold text-white sm:mt-1 sm:text-2xl">Sua Agenda</h2>
                 </div>
-                <p className="text-xs font-medium text-slate-400 leading-relaxed">
+                <p className="hidden text-xs font-medium leading-relaxed text-slate-300 sm:block">
                    Acompanhe suas aulas e tarefas pendentes para manter o ciclo académico em dia.
                 </p>
              </div>
 
-             <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-4">
+             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-4 lg:col-span-3">
                 {[
                   { label: "Aulas hoje", value: aulasHoje, color: "text-white" },
                   { label: "Turmas", value: turmasAtivas, color: "text-white" },
                   { label: "Avaliações", value: avaliacoesPendentes, color: "text-amber-400", alert: avaliacoesPendentes > 0 },
                   { label: "Faltas", value: faltasALancar, color: "text-rose-400", alert: faltasALancar > 0 },
                 ].map((item) => (
-                  <div key={item.label} className="group relative rounded-3xl bg-white/5 border border-white/10 p-4 transition-all hover:bg-white/10">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">{item.label}</p>
+                  <div key={item.label} className="group relative rounded-xl border border-white/10 bg-white/5 p-2.5 transition-colors hover:bg-white/10 sm:rounded-3xl sm:p-4">
+                    <p className="mb-0.5 text-[11px] font-medium text-white/75 sm:mb-1 sm:text-[9px] sm:font-black sm:uppercase sm:tracking-widest">{item.label}</p>
                     <div className="flex items-center gap-2">
-                       <p className={`text-2xl font-black ${item.color}`}>{loading ? "—" : item.value}</p>
+                       <p className={`text-xl font-bold sm:text-2xl ${item.color}`}>{loading ? "—" : item.value}</p>
                        {item.alert && <span className="h-2 w-2 rounded-full bg-current animate-ping" />}
                     </div>
                   </div>
@@ -448,7 +448,7 @@ export default function Page() {
         </section>
 
         {/* GRID DE OPERAÇÕES */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[
             { 
                title: "Registrar Presenças", 
@@ -494,17 +494,17 @@ export default function Page() {
             <Link 
                key={action.title} 
                href={professorHref(action.href)} 
-               className="group relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:border-amber/20"
+               className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-colors hover:border-klasse-gold/50 sm:rounded-[2rem] sm:p-6 sm:hover:-translate-y-1 sm:hover:shadow-md last:col-span-2 sm:last:col-span-1 last:flex last:items-center last:gap-3 sm:last:block"
             >
-               <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl shadow-inner transition-transform group-hover:scale-110 ${action.light}`}>
-                  <action.icon className="h-7 w-7" />
+               <div className={`mb-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105 sm:mb-4 sm:h-14 sm:w-14 sm:rounded-2xl ${action.light}`}>
+                  <action.icon className="h-5 w-5 sm:h-7 sm:w-7" />
                </div>
                <div className="space-y-1">
-                  <h3 className="font-black text-slate-900 leading-tight">{action.title}</h3>
-                  <p className="text-[11px] font-medium text-slate-500">{action.desc}</p>
+                  <h3 className="text-sm font-semibold leading-snug text-slate-900 sm:text-base sm:font-black">{action.title}</h3>
+                  <p className="hidden text-[11px] font-medium text-slate-500 sm:block">{action.desc}</p>
                </div>
                {/* Arrow Icon on Hover */}
-               <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+               <div className="absolute bottom-6 right-6 hidden opacity-0 transition-opacity group-hover:opacity-100 sm:block">
                   <div className="h-8 w-8 rounded-full bg-slate-900 text-white flex items-center justify-center">
                      <PencilSquareIcon className="h-4 w-4" />
                   </div>
@@ -514,7 +514,7 @@ export default function Page() {
         </div>
 
         {/* CONTEÚDO ACADÊMICO */}
-        <div className="grid lg:grid-cols-[1.5fr_1fr] gap-8">
+        <div className="grid gap-5 sm:gap-8 lg:grid-cols-[1.5fr_1fr]">
           
           {/* TURMAS */}
           <section className="space-y-4">
@@ -526,7 +526,7 @@ export default function Page() {
             {loadError ? (
               <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"><p className="font-black">Não foi possível carregar a agenda.</p><p className="mt-1 text-xs">Verifique a ligação e tente novamente.</p><button type="button" onClick={loadAgain} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white hover:bg-rose-800"><ArrowPathIcon className="h-4 w-4" /> Tentar novamente</button></div>
             ) : loading ? (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 rounded-[1.5rem] bg-white border border-slate-200 animate-pulse" />)}
               </div>
             ) : turmaMap.length === 0 ? (
@@ -534,9 +534,9 @@ export default function Page() {
                 Ainda não existem turmas atribuídas. Contacte a direcção ou secretaria da escola.
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {turmaMap.map((turma) => (
-                    <div key={turma.id} className={`group rounded-[1.5rem] border bg-white p-5 shadow-sm transition-all ${expandedTurmaId === turma.id ? "border-amber/50 ring-2 ring-amber/10" : "border-slate-200 hover:border-amber/40"}`}>
+                    <div key={turma.id} className={`group rounded-xl border bg-white p-3 shadow-sm transition-all sm:rounded-[1.5rem] sm:p-5 ${expandedTurmaId === turma.id ? "border-amber/50 ring-2 ring-amber/10" : "border-slate-200 hover:border-amber/40"}`}>
                     <button type="button" onClick={() => setExpandedTurmaId((current) => current === turma.id ? null : turma.id)} aria-expanded={expandedTurmaId === turma.id} className="block w-full text-left">
                     <div className="flex items-start justify-between">
                        <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber/10 group-hover:text-amber transition-colors font-black text-xs">
