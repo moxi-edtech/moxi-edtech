@@ -78,3 +78,27 @@ test("Schedule conflict protection and conscious publication are explicit", () =
   assert.match(client, /Agenda por turma/);
   assert.match(api, /result\.error\.code === "23P01"/);
 });
+
+test("Planner only shows active school-year classes; archives never enter the selection", () => {
+  const activeGuard = read("supabase/migrations/20261119155654_calendario_avaliacoes_turma_ativa_20261119.sql");
+  // The active year is always resolved by the server: callers cannot request a prior year.
+  assert.match(api, /\.eq\("ativo", true\)/);
+  assert.match(api, /requestedYear !== ano\.id/);
+  assert.match(api, /\.eq\("ano_letivo_id", ano\.id\)/);
+  assert.match(api, /\.eq\("session_id", ano\.id\)/);
+  assert.match(api, /\.eq\("status_validacao", "ativo"\)/);
+  assert.match(api, /idsAtivos\.has\(item\.turma_id\)/);
+  assert.match(api, /items: itemsAtivos/);
+  // Client options and class-subject links come exclusively from the filtered endpoint.
+  assert.match(client, /data\.turmas\.map/);
+  assert.match(api, /\.in\("turma_id", turmaIds\)/);
+  // DB constraints reject inserts/edits/publication even with a forged archived class ID.
+  assert.match(activeGuard, /SECURITY INVOKER/);
+  assert.match(activeGuard, /t\.escola_id = NEW\.escola_id/);
+  assert.match(activeGuard, /t\.ano_letivo_id = NEW\.ano_letivo_id/);
+  assert.match(activeGuard, /t\.session_id = NEW\.ano_letivo_id/);
+  assert.match(activeGuard, /t\.status_validacao = 'ativo'/);
+  assert.match(activeGuard, /a\.ativo IS TRUE/);
+  assert.match(activeGuard, /BEFORE INSERT OR UPDATE/);
+  assert.match(api, /CALENDARIO_TURMA_INATIVA_OU_ANO_INCORRETO/);
+});
