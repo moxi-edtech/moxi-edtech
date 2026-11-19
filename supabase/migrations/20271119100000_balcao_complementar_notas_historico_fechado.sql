@@ -39,7 +39,7 @@ BEGIN
     OR NOT EXISTS (
       SELECT 1 FROM public.escola_users eu
       WHERE eu.escola_id=p_escola_id AND eu.user_id=v_actor
-        AND eu.papel IN ('secretaria','admin_secretaria','admin_secretario','admin','admin_escola','staff_admin','diretor')
+        AND eu.papel IN ('secretaria','admin_secretaria','admin_secretario','admin_financeiro','admin','admin_escola','staff_admin','diretor')
     ) THEN
     RAISE EXCEPTION 'AUTH: sem autorização académica nesta escola' USING ERRCODE='42501';
   END IF;
@@ -90,6 +90,7 @@ BEGIN
   RETURN jsonb_build_object('ok',true,'matricula_id',v_m.id,'ano',v_m.ano_letivo,
     'resultado_oficial',v_h.resultado_final,'historico_fechado',v_h.snapshot_status='fechado',
     'pode_complementar',v_m.status='concluido' AND v_h.snapshot_status='fechado'
+      AND (SELECT y.ativo FROM public.anos_letivos y WHERE y.id=v_m.session_id AND y.escola_id=p_escola_id) IS FALSE
       AND v_escala IN ('quantitativa_primario','quantitativa_secundario')
       AND EXISTS (
         SELECT 1 FROM public.historico_snapshot_locks l
@@ -125,7 +126,7 @@ BEGIN
   IF v_actor IS NULL OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
     OR NOT EXISTS (
       SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id AND eu.user_id=v_actor
-        AND eu.papel IN ('secretaria','admin_secretaria','admin_secretario','admin','admin_escola','staff_admin','diretor')
+        AND eu.papel IN ('secretaria','admin_secretaria','admin_secretario','admin_financeiro','admin','admin_escola','staff_admin','diretor')
     ) THEN RAISE EXCEPTION 'AUTH: sem autorização académica nesta escola' USING ERRCODE='42501'; END IF;
 
   IF p_notas IS NULL OR jsonb_typeof(p_notas)<>'array'
