@@ -400,3 +400,18 @@ test("closing a successful reenrollment refreshes the lifecycle card alongside d
   assert.match(modal, /onPagamentoConcluido\?\.\(\)/);
   assert.match(modal, /dossier\.load\(dossier\.aluno!\.id\)/);
 });
+
+test("Balcão encontra matrícula histórica concluída como origem da rematrícula", () => {
+  const workspace = readFileSync(resolve(process.cwd(), "src/components/secretaria/BalcaoAtendimento.tsx"), "utf8");
+  const status = readFileSync(resolve(process.cwd(), "src/app/api/secretaria/balcao/rematriculas/status/route.ts"), "utf8");
+  const previousLookup = workspace.match(/const \{ data: previousMatricula \} = await supabase[\s\S]*?\.maybeSingle\(\);/)?.[0] ?? "";
+  assert.ok(previousLookup, "A ficha deve consultar a última matrícula de origem diretamente por aluno e escola");
+  assert.match(previousLookup, /\.eq\("escola_id", escolaId\)/);
+  assert.match(previousLookup, /\.eq\("aluno_id", alunoId\)/);
+  assert.match(previousLookup, /\.lt\("ano_letivo", targetAcademicYear\)/);
+  assert.match(previousLookup, /"concluido", "concluida"/,
+    "O encerramento administrativo não pode ocultar a matrícula histórica aprovada");
+  assert.match(workspace, /matriculaOrigem = previousMatricula \?\? matriculaOrigem/);
+  assert.match(status, /const MATRICULA_STATUS_REAIS = \[[\s\S]*?"concluido"/,
+    "O endpoint de rematrícula deve aceitar a mesma origem histórica");
+});

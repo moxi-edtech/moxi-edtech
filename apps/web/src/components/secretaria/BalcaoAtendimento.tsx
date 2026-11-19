@@ -331,7 +331,10 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
             .eq("escola_id", escolaId)
             .eq("aluno_id", alunoId)
             .lt("ano_letivo", targetAcademicYear)
-            .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido"])
+            // Matrículas históricas concluídas continuam a ser fontes válidas da rematrícula.
+            // A lista operacional não pode saltar para uma origem mais antiga ou deixar
+            // a ficha sem matrícula apenas porque o ano anterior foi fechado.
+            .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido", "concluido", "concluida"])
             .order("ano_letivo", { ascending: false })
             .limit(1)
             .maybeSingle();
