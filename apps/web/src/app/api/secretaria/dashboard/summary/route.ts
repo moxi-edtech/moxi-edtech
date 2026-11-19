@@ -5,7 +5,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { parsePlanTier } from "@/config/plans";
 import { AlunoStatusSchema } from "@moxi/tenant-sdk/aluno";
-import { getLiveSecretariaEnrollmentCounts } from "@/lib/secretaria/dashboard-enrollment-counts";
+import { getLiveSecretariaAcademicCounts } from "@/lib/secretaria/dashboard-enrollment-counts";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -102,12 +102,7 @@ export async function GET() {
 
     const nowIso = new Date().toISOString();
     const queryStart = shouldLog ? performance.now() : 0;
-    const [countsRes, recentesRes, escolaRes, anoLetivoRes, slugRes] = await Promise.all([
-      supabase
-        .from("vw_secretaria_dashboard_counts")
-        .select("turmas_total")
-        .eq("escola_id", escolaId)
-        .maybeSingle(),
+    const [recentesRes, escolaRes, anoLetivoRes, slugRes] = await Promise.all([
       supabase
         .from("vw_secretaria_dashboard_kpis")
         .select("pendencias_importacao, resumo_status, novas_matriculas, avisos_recentes")
@@ -134,9 +129,6 @@ export async function GET() {
     ]);
     if (shouldLog) log("queries.parallel", performance.now() - queryStart);
 
-    if (countsRes.error) {
-      return NextResponse.json({ ok: false, error: countsRes.error.message }, { status: 500 });
-    }
     if (recentesRes.error) {
       return NextResponse.json({ ok: false, error: recentesRes.error.message }, { status: 500 });
     }
@@ -160,7 +152,7 @@ export async function GET() {
     const pendencias = pendenciasMatriculas + pendenciasImportacao;
     const anoLetivoId = anoLetivoRes.data?.id ?? null;
     const anoLetivo = anoLetivoRes.data?.ano ?? null;
-    const liveCounts = await getLiveSecretariaEnrollmentCounts(supabase, escolaId, anoLetivo);
+    const liveCounts = await getLiveSecretariaAcademicCounts(supabase, escolaId, anoLetivo, anoLetivoId);
     const periodoStart = shouldLog ? performance.now() : 0;
     const { data: periodoFecho, error: periodoError } = anoLetivoId
       ? await supabase
@@ -186,7 +178,7 @@ export async function GET() {
         matriculas: liveCounts.matriculasHoje,
         anoLetivoId,
         anoLetivo,
-        turmas: countsRes.data?.turmas_total ?? 0,
+        turmas: liveCounts.turmas,
         pendencias,
       },
       recentes: {
