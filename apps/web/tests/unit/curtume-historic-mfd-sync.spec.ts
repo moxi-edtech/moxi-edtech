@@ -17,7 +17,7 @@ test("only a genuine, legally locked Curtume 2025 final enters notas", () => {
   assert.match(sql, /'fonte','historico_disciplinas'/);
   assert.match(sql, /'tipo_nota','HIST_FINAL'/);
   assert.match(sql, /hd\.notas_detalhe->>'ano_letivo' IN \('2025','2025\/2026'\)/);
-  assert.match(sql, /'2023\[-_\/]\?/);
+  assert.match(sql, /2023\[-_\/ \]\?24/);
   assert.match(sql, /v_source\.nota_final/);
   assert.match(sql, /c\.numero BETWEEN 1 AND 12/);
   assert.doesNotMatch(sql, /session_replication_role|DISABLE TRIGGER/i);
