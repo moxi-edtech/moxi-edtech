@@ -69,7 +69,7 @@ AS $fn$
     AND EXISTS (
       SELECT 1 FROM public.escola_users eu
       WHERE eu.escola_id=p_escola_id AND eu.user_id=public.safe_auth_uid()
-        AND eu.papel IN ('admin','admin_escola','diretor','admin_secretaria','admin_secretario')
+        AND eu.papel IN ('admin','admin_escola','diretor','admin_secretaria','admin_secretario','admin_financeiro')
     )
     AND public.curtume_2025_mfd_mirror_valid(
       p_escola_id,p_matricula_id,p_avaliacao_id,p_valor,p_metadata);
@@ -88,7 +88,7 @@ AS $fn$
    AND EXISTS (
      SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id
        AND eu.user_id=public.safe_auth_uid()
-       AND eu.papel IN ('admin','admin_escola','diretor','admin_secretaria','admin_secretario'))
+       AND eu.papel IN ('admin','admin_escola','diretor','admin_secretaria','admin_secretario','admin_financeiro'))
    AND EXISTS (
       SELECT 1 FROM public.turma_disciplinas td
       JOIN public.turmas t ON t.id=td.turma_id AND t.escola_id=td.escola_id
@@ -194,7 +194,7 @@ BEGIN
    OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
    OR NOT EXISTS (SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id
      AND eu.user_id=v_actor AND eu.papel IN
-       ('admin','admin_escola','diretor','admin_secretaria','admin_secretario')) THEN
+       ('admin','admin_escola','diretor','admin_secretaria','admin_secretario','admin_financeiro')) THEN
    RAISE EXCEPTION 'AUTH: sincronização histórica reservada à direção/secretaria académica'
       USING ERRCODE='42501';
  END IF;
@@ -277,7 +277,7 @@ BEGIN
      OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
      OR NOT EXISTS (SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id
        AND eu.user_id=v_actor AND eu.papel IN
-         ('admin','admin_escola','diretor','admin_secretaria','admin_secretario')) THEN
+         ('admin','admin_escola','diretor','admin_secretaria','admin_secretario','admin_financeiro')) THEN
     RAISE EXCEPTION 'AUTH: sincronização histórica não autorizada' USING ERRCODE='42501';
   END IF;
   IF p_limite IS NULL OR p_limite NOT BETWEEN 1 AND 100 THEN
