@@ -56,6 +56,7 @@ const EMPTY_ALUNOS: Aluno[] = [];
 
 type TurmaData = {
   canEmitLista?: boolean;
+  canManageDesistencia?: boolean;
   turma: {
     id:          string;
     escola_id:   string;
@@ -338,6 +339,7 @@ function AlunoRow({
   turmaId,
   anoLetivoId,
   onDesistencia,
+  canManageDesistencia,
   style,
 }: {
   aluno: Aluno;
@@ -346,6 +348,7 @@ function AlunoRow({
   turmaId: string;
   anoLetivoId?: string | null;
   onDesistencia: (matriculaId: string) => void;
+  canManageDesistencia: boolean;
   style?: React.CSSProperties;
 }) {
   return (
@@ -384,7 +387,7 @@ function AlunoRow({
       </td>
       <td className="px-5 py-3.5 text-right">
         <div className="flex flex-wrap items-center justify-end gap-2">
-        <DesistenciaMatriculaAction
+        {canManageDesistencia && <DesistenciaMatriculaAction
           tipo="confirmar"
           alunoId={aluno.aluno_id}
           alunoNome={aluno.nome}
@@ -393,7 +396,7 @@ function AlunoRow({
           anoLetivoId={anoLetivoId}
           matriculaId={aluno.matricula_id}
           onChanged={() => onDesistencia(aluno.matricula_id)}
-        />
+        />}
         <Link
           href={profileHref}
           title="Ver perfil do aluno"
@@ -571,7 +574,7 @@ export default function TurmaDetailClient({
   const alunosVirtualizer = useVirtualizer({
     count:            alunosFiltrados.length,
     getScrollElement: () => alunosScrollRef.current,
-    estimateSize:     () => 64,
+    estimateSize:     () => 72,
     overscan:         6,
   });
 
@@ -1533,7 +1536,7 @@ export default function TurmaDetailClient({
                       <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aluno</th>
                       <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Matrícula</th>
                       <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Financeiro</th>
-                      <th className="px-5 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest w-16">—</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest w-60">Ações</th>
                     </tr>
                   </thead>
                   <tbody
@@ -1569,6 +1572,7 @@ export default function TurmaDetailClient({
                             escolaId={escolaId ?? ""}
                             turmaId={turmaId}
                             anoLetivoId={academicYearId}
+                            canManageDesistencia={data?.canManageDesistencia === true}
                             onDesistencia={(matriculaId) => setData((current) => current ? {
                               ...current,
                               turma: { ...current.turma, ocupacao: Math.max(0, current.turma.ocupacao - 1) },
