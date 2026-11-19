@@ -167,6 +167,7 @@ CREATE POLICY calendario_avaliacoes_alunos ON public.calendario_avaliacoes
       WHERE m.escola_id = calendario_avaliacoes.escola_id
         AND m.turma_id = calendario_avaliacoes.turma_id
         AND m.session_id = calendario_avaliacoes.ano_letivo_id
+        AND m.ativo IS TRUE
         AND (
           a.profile_id = (SELECT auth.uid())
           OR EXISTS (
