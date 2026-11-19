@@ -1,6 +1,7 @@
 "use client";
 
 import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
+import { ProfessorAgendaSkeleton, ProfessorSkeletonBone, ProfessorTurmasSkeleton } from "@/components/professor/ProfessorLoadingSkeletons";
 import ProfessorReopeningRequests from "@/components/professor/ProfessorReopeningRequests";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
@@ -325,17 +326,25 @@ export default function Page() {
       <div className="mx-auto max-w-6xl space-y-5 p-3 sm:space-y-8 sm:p-6">
         
         {/* HEADER PREMIUM */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <header aria-busy={loading} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
              <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-amber animate-pulse" />
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Portal do Professor</span>
              </div>
              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                Olá, <span className="text-klasse-green">{overview?.primeiro_nome || "Professor"}</span>
+                Olá, {loading ? (
+                  <ProfessorSkeletonBone className="inline-block h-6 w-28 align-middle motion-safe:animate-pulse sm:h-8" />
+                ) : (
+                  <span className="text-klasse-green">{overview?.primeiro_nome || "Professor"}</span>
+                )}
              </h1>
              <p className="text-sm font-medium text-slate-500">
-                {overview?.escola_nome || "Bem-vindo de volta ao seu painel académico."}
+                {loading ? (
+                  <ProfessorSkeletonBone className="h-4 w-52 max-w-full motion-safe:animate-pulse" />
+                ) : (
+                  overview?.escola_nome || "Bem-vindo de volta ao seu painel académico."
+                )}
              </p>
           </div>
           
@@ -412,7 +421,7 @@ export default function Page() {
         )}
 
         {/* RESUMO DE IMPACTO */}
-        <section className="relative overflow-hidden rounded-xl bg-klasse-green p-3 text-white shadow-sm sm:rounded-[2rem] sm:p-6">
+        <section aria-busy={loading} className="relative overflow-hidden rounded-xl bg-klasse-green p-3 text-white shadow-sm sm:rounded-[2rem] sm:p-6">
           {/* Background Elements */}
           <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-amber/10 blur-3xl" />
           <div className="absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-emerald-500/5 blur-3xl" />
@@ -438,7 +447,11 @@ export default function Page() {
                   <div key={item.label} className="group relative rounded-xl border border-klasse-green-700 bg-klasse-green-700/40 p-2.5 transition-colors hover:bg-klasse-green-700/60 sm:rounded-3xl sm:p-4">
                     <p className="mb-0.5 text-[11px] font-medium text-white/75 sm:mb-1 sm:text-[9px] sm:font-black sm:uppercase sm:tracking-widest">{item.label}</p>
                     <div className="flex items-center gap-2">
-                       <p className={`text-xl font-bold sm:text-2xl ${item.color}`}>{loading ? "—" : item.value}</p>
+                       {loading ? (
+                         <ProfessorSkeletonBone inverse className="mt-1 h-6 w-9 motion-safe:animate-pulse sm:h-7" />
+                       ) : (
+                         <p className={`text-xl font-bold sm:text-2xl ${item.color}`}>{item.value}</p>
+                       )}
                        {item.alert && <span className="h-2 w-2 rounded-full bg-current animate-ping" />}
                     </div>
                   </div>
@@ -526,9 +539,7 @@ export default function Page() {
             {loadError ? (
               <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"><p className="font-black">Não foi possível carregar a agenda.</p><p className="mt-1 text-xs">Verifique a ligação e tente novamente.</p><button type="button" onClick={loadAgain} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white hover:bg-rose-800"><ArrowPathIcon className="h-4 w-4" /> Tentar novamente</button></div>
             ) : loading ? (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 rounded-[1.5rem] bg-white border border-slate-200 animate-pulse" />)}
-              </div>
+              <ProfessorTurmasSkeleton />
             ) : turmaMap.length === 0 ? (
               <div role="status" className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
                 Ainda não existem turmas atribuídas. Contacte a direcção ou secretaria da escola.
@@ -578,7 +589,7 @@ export default function Page() {
                 {loadError ? (
                    <p role="status" className="py-8 text-center text-sm text-slate-600">Agenda indisponível. Utilize «Tentar novamente» acima.</p>
                 ) : loading ? (
-                   [1,2,3].map(i => <div key={i} className="py-4 h-16 animate-pulse" />)
+                   <ProfessorAgendaSkeleton />
                 ) : (agendaByDay.get(todayKey) || []).length === 0 ? (
                    <div className="py-12 text-center space-y-3">
                       <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center mx-auto text-slate-300">
