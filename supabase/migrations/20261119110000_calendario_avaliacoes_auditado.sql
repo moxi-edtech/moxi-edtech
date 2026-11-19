@@ -53,7 +53,7 @@ DECLARE
 BEGIN
   IF (SELECT auth.uid()) IS NULL
     OR NOT public.user_has_role_in_school(NEW.escola_id,
-      ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria',
+      ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria','admin_secretario',
             'secretaria','secretaria_financeiro','diretor']::text[])
     OR NEW.escola_id IS DISTINCT FROM public.current_tenant_escola_id() THEN
     RAISE EXCEPTION 'CALENDARIO_SEM_PERMISSAO' USING ERRCODE = '42501';
@@ -145,12 +145,12 @@ CREATE POLICY calendario_avaliacoes_gestao ON public.calendario_avaliacoes
   FOR ALL TO authenticated USING (
     escola_id = (SELECT public.current_tenant_escola_id())
     AND public.user_has_role_in_school(escola_id,
-      ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria',
+      ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria','admin_secretario',
             'secretaria','secretaria_financeiro','diretor']::text[])
   ) WITH CHECK (
     escola_id = (SELECT public.current_tenant_escola_id())
     AND public.user_has_role_in_school(escola_id,
-      ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria',
+      ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria','admin_secretario',
             'secretaria','secretaria_financeiro','diretor']::text[])
   );
 
@@ -210,7 +210,7 @@ CREATE POLICY calendario_avaliacoes_auditoria_gestao ON public.calendario_avalia
   FOR SELECT TO authenticated USING (
     escola_id = (SELECT public.current_tenant_escola_id())
     AND public.user_has_role_in_school(escola_id,
-      ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria',
+      ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria','admin_secretario',
             'secretaria','secretaria_financeiro','diretor']::text[])
   );
 
@@ -230,7 +230,7 @@ DECLARE
 BEGIN
   IF (SELECT auth.uid()) IS NULL OR v_escola IS NULL OR
      NOT public.user_has_role_in_school(v_escola,
-       ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria',
+       ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria','admin_secretario',
              'secretaria','secretaria_financeiro','diretor']::text[]) THEN
     RAISE EXCEPTION 'CALENDARIO_SEM_PERMISSAO' USING ERRCODE = '42501';
   END IF;
