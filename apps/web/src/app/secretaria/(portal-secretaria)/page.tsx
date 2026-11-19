@@ -65,6 +65,36 @@ export default function SecretariaDashboardPage({ initialCounts = null, initialR
     return () => { mounted = false };
   }, [hasInitialData]);
 
+  // Dados já vêm no SSR; recarrega discretamente ao regressar à aba
+  // para que novos atendimentos apareçam sem F5 nem polling permanente.
+  useEffect(() => {
+    let active = true;
+    let lastFetchedAt = Date.now();
+
+    const refreshOnFocus = () => {
+      if (document.visibilityState !== "visible" || Date.now() - lastFetchedAt < 15_000) return;
+      lastFetchedAt = Date.now();
+      void fetchDashboardSummary()
+        .then((summary) => {
+          if (!active) return;
+          setCounts(summary.counts ?? null);
+          setRecentes(summary.recentes ?? null);
+          setError(null);
+        })
+        .catch(() => {
+          // Mantém os indicadores existentes em caso de falha de rede.
+        });
+    };
+
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshOnFocus);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshOnFocus);
+    };
+  }, []);
+
   if (loading) {
     return <DashboardSkeleton />;
   }
