@@ -9,7 +9,9 @@ CREATE OR REPLACE FUNCTION public.curtume_2025_mfd_mirror_valid(
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path TO 'pg_catalog','public'
 AS $fn$
-  SELECT p_escola_id='3744879f-2e19-4671-8995-78604302d8c5'::uuid
+  SELECT public.safe_auth_uid() IS NOT NULL
+    AND public.current_tenant_escola_id()=p_escola_id
+    AND p_escola_id='3744879f-2e19-4671-8995-78604302d8c5'::uuid
     AND p_metadata->>'fonte'='historico_disciplinas'
     AND p_metadata->>'tipo_nota'='HIST_FINAL'
     AND EXISTS(
@@ -378,6 +380,11 @@ $fn$;
 REVOKE ALL ON FUNCTION public.curtume_2025_mfd_mirror_valid(uuid,uuid,uuid,numeric,jsonb) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.curtume_2025_pode_espelhar_nota(uuid,uuid,uuid,numeric,jsonb) FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON FUNCTION public.curtume_2025_pode_criar_avaliacao_final(uuid,uuid,uuid,integer,text,integer) FROM PUBLIC,anon,authenticated;
+-- Invoker triggers must be able to call these fail-closed predicates for
+-- ordinary grade writes too; all helpers return false outside tenant/role.
+GRANT EXECUTE ON FUNCTION public.curtume_2025_mfd_mirror_valid(uuid,uuid,uuid,numeric,jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.curtume_2025_pode_espelhar_nota(uuid,uuid,uuid,numeric,jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.curtume_2025_pode_criar_avaliacao_final(uuid,uuid,uuid,integer,text,integer) TO authenticated;
 REVOKE ALL ON FUNCTION public.curtume_2025_prever_espelhamento_notas(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.curtume_2025_prever_espelhamento_notas(uuid) TO authenticated;
 REVOKE ALL ON FUNCTION public.curtume_2025_espelhar_notas_finais(uuid,integer) FROM PUBLIC,anon;
