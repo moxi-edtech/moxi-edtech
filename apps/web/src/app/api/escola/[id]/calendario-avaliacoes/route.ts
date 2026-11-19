@@ -69,18 +69,27 @@ export async function GET(req: Request, context: Context) {
     if (requestedYear && !uuid.safeParse(requestedYear).success) {
       return NextResponse.json({ ok: false, error: "Ano letivo inválido" }, { status: 400 });
     }
-    let yearQuery = db.from("anos_letivos").select("id,ano,ativo,data_inicio,data_fim")
-      .eq("escola_id", escolaId).order("ano", { ascending: false }).limit(1);
-    yearQuery = requestedYear ? yearQuery.eq("id", requestedYear) : yearQuery.eq("ativo", true);
-    const { data: ano, error: yearError } = await yearQuery.maybeSingle();
+    // O calendário operacional usa exclusivamente o ano letivo ativo da escola.
+    // Um query param não pode reativar turmas históricas/arquivadas.
+    const { data: ano, error: yearError } = await db.from("anos_letivos")
+      .select("id,ano,ativo,data_inicio,data_fim")
+      .eq("escola_id", escolaId).eq("ativo", true)
+      .order("ano", { ascending: false }).limit(1).maybeSingle();
     if (yearError) throw yearError;
     if (!ano) return NextResponse.json({ ok: true, ano: null, periodos: [], turmas: [], disciplinas: [], ofertas: [], items: [], historico: [] });
+    if (requestedYear && requestedYear !== ano.id) {
+      return NextResponse.json({ ok: false, error: "O calendário apresenta apenas o ano letivo ativo desta escola." }, { status: 409 });
+    }
 
     const [periods, classes, saved, offerings] = await Promise.all([
       db.from("periodos_letivos").select("id,numero,data_inicio,data_fim,offering_id")
         .eq("escola_id", escolaId).eq("ano_letivo_id", ano.id).order("numero").limit(150),
       db.from("turmas").select("id,nome,curso_id")
-        .eq("escola_id", escolaId).eq("ano_letivo_id", ano.id).order("nome").limit(500),
+        .eq("escola_id", escolaId)
+        .eq("ano_letivo_id", ano.id)
+        .eq("session_id", ano.id)
+        .eq("status_validacao", "ativo")
+        .order("nome").limit(500),
       db.from("calendario_avaliacoes")
         .select("id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,tipo,descricao,data,inicio,fim,estado,updated_at,updated_by,published_at")
         .eq("escola_id", escolaId).eq("ano_letivo_id", ano.id).order("data").limit(2000),
@@ -91,7 +100,10 @@ export async function GET(req: Request, context: Context) {
     if ((periods.data ?? []).length >= 150 || (classes.data ?? []).length >= 500 || (saved.data ?? []).length >= 2000) {
       return NextResponse.json({ ok: false, error: "O catálogo excede o limite seguro. Contacte a administração." }, { status: 409 });
     }
+    // Preserva eventos antigos na base/auditoria, mas não os apresenta no planeamento atual.
     const turmaIds = (classes.data ?? []).map((v: any) => v.id);
+    const idsAtivos = new Set<string>(turmaIds);
+    const itemsAtivos = (saved.data ?? []).filter((item: any) => idsAtivos.has(item.turma_id));
     const td = turmaIds.length
       ? await db.from("turma_disciplinas").select("id,turma_id,curso_matriz_id")
           .eq("escola_id", escolaId).in("turma_id", turmaIds).limit(3000)
@@ -140,7 +152,7 @@ export async function GET(req: Request, context: Context) {
       historico = logs.map((h: { actor_id: string }) => ({ ...h, actor_nome: byUser.get(h.actor_id) ?? null }));
     }
     return NextResponse.json({ ok: true, ano, periodos: periods.data, turmas: classes.data,
-      disciplinas, ofertas: offerings.data, items: saved.data, historico }, { headers: { "Cache-Control": "no-store" } });
+      disciplinas, ofertas: offerings.data, items: itemsAtivos, historico }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[calendario-avaliacoes/GET]", error);
     return NextResponse.json({ ok: false, error: "Não foi possível consultar o calendário." }, { status: 500 });
@@ -185,8 +197,10 @@ export async function POST(request: Request, context: Context) {
     if (result.error) {
       const conflict = result.error.code === "23P01" || result.error.message?.includes("calendario_avaliacoes_turma_sem_sobreposicao");
       const duplicate = result.error.code === "23505";
+      const inactiveClass = result.error.message?.includes("CALENDARIO_TURMA_INATIVA_OU_ANO_INCORRETO");
       const message = conflict
         ? "Esta turma já tem uma avaliação que coincide com esse horário. Escolha outra hora ou data."
+        : inactiveClass ? "A turma não está ativa no ano letivo atual. Atualize a página e escolha uma turma disponível."
         : duplicate ? "Já existe esta avaliação com os mesmos dados. Consulte a agenda antes de criar outra."
         : result.error.message;
       return NextResponse.json({ ok: false, error: message }, { status: 409 });
