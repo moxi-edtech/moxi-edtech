@@ -136,6 +136,7 @@ export default function ProfessorCalendarioPage() {
   const [items, setItems] = useState<EventoCalendario[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoLetivo[]>([]);
   const [anoLetivo, setAnoLetivo] = useState<AnoLetivo | null>(null);
+  const [showPeriodsOnMobile, setShowPeriodsOnMobile] = useState(false);
   const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
@@ -210,7 +211,7 @@ export default function ProfessorCalendarioPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-5 sm:p-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:p-6">
         <DashboardHeader
           title="Calendário Académico"
           description="Eventos oficiais, marcos lectivos e janelas académicas sincronizadas com o portal da escola."
@@ -230,7 +231,7 @@ export default function ProfessorCalendarioPage() {
         />
 
         {loading ? (
-          <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <div className="grid gap-3 sm:gap-4 lg:grid-cols-[1.4fr_1fr]">
             <div className="h-60 animate-pulse rounded-[2rem] border border-slate-200 bg-white" />
             <div className="h-60 animate-pulse rounded-[2rem] border border-slate-200 bg-white" />
           </div>
@@ -246,31 +247,34 @@ export default function ProfessorCalendarioPage() {
           </div>
         ) : (
           <>
-            <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-              <section className="relative overflow-hidden rounded-[2rem] border border-klasse-green-700 bg-klasse-green p-6 text-white shadow-sm">
+            <div className="grid gap-3 sm:gap-4 lg:grid-cols-[1.4fr_1fr]">
+              <section className="relative overflow-hidden rounded-xl border border-klasse-green-700 bg-klasse-green p-4 text-white shadow-sm sm:rounded-[2rem] sm:p-6">
                 <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-amber/10 blur-3xl" />
                 <div className="absolute -bottom-10 left-0 h-32 w-32 rounded-full bg-emerald-400/10 blur-3xl" />
-                <div className="relative z-10 space-y-6">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-2">
-                      <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-300">
+                <div className="relative z-10 space-y-3 sm:space-y-6">
+                  <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
+                    <div className="space-y-1 sm:space-y-2">
+                      <p className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-white/80 sm:gap-2 sm:px-3 sm:text-[11px] sm:font-black sm:uppercase sm:tracking-[0.18em]">
                         <Sparkles className="h-3.5 w-3.5" />
                         Sincronizado com o portal
                       </p>
-                      <h2 className="text-2xl font-black tracking-tight">
-                        {anoLetivo?.ano ? `Ano Lectivo ${anoLetivo.ano}` : "Calendário activo da escola"}
+                      <h2 className="text-xl font-bold tracking-tight sm:text-2xl sm:font-black">
+                        {anoLetivo ? `Ano Lectivo ${anoLetivo.data_inicio.slice(0, 4)}/${anoLetivo.data_fim.slice(0, 4)}` : "Calendário activo da escola"}
                       </h2>
-                      <p className="max-w-2xl text-sm font-medium text-slate-300">
-                        {anoLetivo
-                          ? `Período escolar: ${formatDateRange(anoLetivo.data_inicio, anoLetivo.data_fim)}.`
-                          : "Ainda não há ano letivo activo. Consulta os próximos eventos disponíveis."}
+                      <p className="max-w-2xl text-xs font-medium text-white/80 sm:text-sm">
+                        {anoLetivo ? (
+                          <>
+                            <span className="sm:hidden">Período: {anoLetivo.data_inicio.slice(8, 10)}/{anoLetivo.data_inicio.slice(5, 7)}/{anoLetivo.data_inicio.slice(0, 4)} – {anoLetivo.data_fim.slice(8, 10)}/{anoLetivo.data_fim.slice(5, 7)}/{anoLetivo.data_fim.slice(0, 4)}</span>
+                            <span className="hidden sm:inline">Período escolar: {formatDateRange(anoLetivo.data_inicio, anoLetivo.data_fim)}.</span>
+                          </>
+                        ) : "Ainda não há ano letivo activo. Consulta os próximos eventos disponíveis."}
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="w-full rounded-xl border border-white/10 bg-white/5 p-3 sm:w-auto sm:rounded-2xl sm:p-4">
                       <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Próximo marco</p>
                       {nextEvent ? (
                         <div className="mt-2 space-y-1">
-                          <p className="text-lg font-black">{nextEvent.nome}</p>
+                          <p className="text-sm font-semibold leading-snug sm:text-lg sm:font-black">{nextEvent.nome}</p>
                           <p className="text-xs font-medium text-slate-300">
                             {formatCompactDateRange(nextEvent.data_inicio, nextEvent.data_fim)}
                           </p>
@@ -284,45 +288,49 @@ export default function ProfessorCalendarioPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
                     {[
                       { label: "Eventos no período", value: items.length, icon: CalendarRange },
                       { label: "Próximos eventos", value: upcomingItems.length, icon: Clock3 },
                       { label: "Períodos lectivos", value: periodos.length, icon: GraduationCap },
                     ].map((stat) => (
-                      <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div key={stat.label} className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-2 sm:rounded-2xl sm:p-4">
                         <div className="flex items-center justify-between">
-                          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{stat.label}</p>
-                          <stat.icon className="h-4 w-4 text-white/70" />
+                          <p className="text-[10px] font-medium leading-tight text-white/80 sm:text-[11px] sm:font-black sm:uppercase sm:tracking-[0.18em]">{stat.label}</p>
+                          <stat.icon className="hidden h-4 w-4 text-white/70 sm:block" />
                         </div>
-                        <p className="mt-3 text-3xl font-black">{stat.value}</p>
+                        <p className="mt-1 text-xl font-bold sm:mt-3 sm:text-3xl sm:font-black">{stat.value}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               </section>
 
-              <aside className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <aside className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Ritmo lectivo</p>
-                    <h2 className="text-lg font-black text-slate-900">Períodos do ano</h2>
+                    <h2 className="text-sm font-semibold text-slate-900 sm:text-lg sm:font-black">Períodos do ano</h2>
                   </div>
+                  <button type="button" onClick={() => setShowPeriodsOnMobile((value) => !value)} aria-expanded={showPeriodsOnMobile} className="ml-auto min-h-10 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 lg:hidden">
+                    {showPeriodsOnMobile ? "Ocultar" : "Ver períodos"}
+                  </button>
                 </div>
 
+                <div className={showPeriodsOnMobile ? "block" : "hidden lg:block"}>
                 {periodos.length === 0 ? (
                   <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-500">
                     Os períodos lectivos ainda não foram configurados para este ano.
                   </div>
                 ) : (
-                  <div className="mt-6 space-y-3">
+                  <div className="mt-3 space-y-2 sm:mt-6 sm:space-y-3">
                     {periodos.map((periodo) => {
                       const isActive = periodo.data_inicio <= todayIso && periodo.data_fim >= todayIso;
                       return (
                         <div
                           key={periodo.id}
-                          className={`rounded-2xl border p-4 transition ${
+                          className={`rounded-xl border p-3 transition sm:rounded-2xl sm:p-4 ${
                             isActive ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"
                           }`}
                         >
@@ -353,7 +361,7 @@ export default function ProfessorCalendarioPage() {
                 )}
 
                 {currentPeriodo ? (
-                  <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:mt-6 sm:rounded-2xl sm:p-4">
                     <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Período actual</p>
                     <p className="mt-2 text-sm font-black text-slate-900">{getPeriodLabel(currentPeriodo)}</p>
                     <p className="mt-1 text-xs font-medium text-slate-600">
@@ -361,16 +369,17 @@ export default function ProfessorCalendarioPage() {
                     </p>
                   </div>
                 ) : null}
+                </div>
               </aside>
             </div>
 
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Linha do tempo</p>
-                  <h2 className="text-xl font-black text-slate-900">Calendário do professor</h2>
+                  <h2 className="text-lg font-bold text-slate-900 sm:text-xl sm:font-black">Calendário do professor</h2>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+                <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 sm:inline-flex">
                   <Loader2 className="h-3.5 w-3.5" />
                   Fonte: calendário académico + eventos gerais da escola
                 </div>
@@ -385,61 +394,37 @@ export default function ProfessorCalendarioPage() {
                   </p>
                 </div>
               ) : (
-                <div className="mt-8 space-y-8">
+                <div className="mt-4 space-y-5 sm:mt-8 sm:space-y-8">
                   {eventGroups.map((group) => (
-                    <div key={group.key} className="space-y-4">
+                    <div key={group.key} className="space-y-2 sm:space-y-4">
                       <div className="flex items-center gap-3">
                         <div className="h-px flex-1 bg-slate-200" />
-                        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-500">{group.label}</h3>
+                        <h3 className="text-xs font-semibold text-slate-600 sm:text-sm sm:font-black sm:uppercase sm:tracking-[0.18em]">{group.label}</h3>
                         <div className="h-px flex-1 bg-slate-200" />
                       </div>
 
-                      <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="grid gap-2 sm:gap-4 lg:grid-cols-2">
                         {group.items.map((item) => {
                           const status = getRelativeLabel(item.data_inicio, item.data_fim, todayIso);
+                          const eventMonth = capitalize(new Intl.DateTimeFormat(locale, { month: "short" }).format(parseLocalDate(item.data_inicio)));
                           return (
-                            <article
-                              key={item.id}
-                              className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 transition hover:border-slate-300 hover:bg-white"
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="space-y-2">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span
-                                      className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-700"
-                                      style={{
-                                        backgroundColor: `${item.cor_hex ?? "#cbd5e1"}22`,
-                                      }}
-                                    >
-                                      <span
-                                        className="h-2 w-2 rounded-full"
-                                        style={{ backgroundColor: item.cor_hex ?? "#64748b" }}
-                                      />
+                            <article key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 transition-colors hover:border-slate-300 sm:rounded-[1.5rem] sm:p-5">
+                              <div className="flex items-start gap-3">
+                                <time dateTime={item.data_inicio} className="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-2 py-2 text-slate-900">
+                                  <span className="text-xl font-bold leading-none">{item.data_inicio.slice(8, 10)}</span>
+                                  <span className="mt-1 text-[11px] font-medium capitalize text-slate-500">{eventMonth}</span>
+                                </time>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
                                       {capitalize(getEventTypeLabel(item.tipo))}
                                     </span>
-                                    <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
-                                      {status}
-                                    </span>
+                                    <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">{status}</span>
                                   </div>
-                                  <h4 className="text-lg font-black tracking-tight text-slate-900">{item.nome}</h4>
-                                  <p className="text-sm font-medium text-slate-500">
-                                    {item.descricao || "Evento sincronizado com o calendário oficial da escola."}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="mt-5 flex items-end justify-between gap-4">
-                                <div>
-                                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">Período</p>
-                                  <p className="mt-1 text-sm font-semibold text-slate-700">
-                                    {formatDateRange(item.data_inicio, item.data_fim)}
-                                  </p>
-                                </div>
-                                <div className="rounded-2xl bg-white px-4 py-3 text-right">
-                                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">Janela curta</p>
-                                  <p className="mt-1 text-sm font-black text-slate-900">
-                                    {formatCompactDateRange(item.data_inicio, item.data_fim)}
-                                  </p>
+                                  <h4 className="mt-1.5 text-sm font-semibold leading-snug text-slate-900 sm:text-lg sm:font-black">{item.nome}</h4>
+                                  <p className="mt-1 text-xs font-medium text-slate-600">{formatCompactDateRange(item.data_inicio, item.data_fim)}</p>
+                                  {item.descricao ? <p className="mt-1 text-xs leading-relaxed text-slate-500 sm:text-sm">{item.descricao}</p> : null}
                                 </div>
                               </div>
                             </article>
