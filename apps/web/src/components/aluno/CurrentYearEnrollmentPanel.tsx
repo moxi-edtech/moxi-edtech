@@ -260,9 +260,11 @@ export function CurrentYearEnrollmentPanel({
               : state.estado === "encerrada" ? "Matrícula encerrada neste ano" : "Matrícula cancelada neste ano"}
           </p>
           <p className="text-xs text-muted-foreground">
-            {registroAno?.academico.resultadoOficial
-              ? `Resultado académico oficial: ${registroAno.academico.resultadoOficial}.`
-              : "Resultado académico ainda não oficializado no histórico; consulte o fechamento escolar."}
+            {state.desistencia
+              ? "Desistência é um estado administrativo, não uma aprovação ou reprovação. Notas, frequência e obrigações financeiras anteriores são preservadas."
+              : registroAno?.academico.resultadoOficial
+                ? `Resultado académico oficial: ${registroAno.academico.resultadoOficial}.`
+                : "Resultado académico ainda não oficializado no histórico; consulte o fechamento escolar."}
           </p>
           {state.desistencia?.data && (
             <p className="text-xs text-muted-foreground">
@@ -286,9 +288,11 @@ export function CurrentYearEnrollmentPanel({
               />
             </div>
           )}
-          <Link href="/secretaria/fechamento-academico" className="text-xs font-bold text-foreground underline underline-offset-2">
-            Consultar fechamento académico
-          </Link>
+          {!state.desistencia && (
+            <Link href="/secretaria/fechamento-academico" className="text-xs font-bold text-foreground underline underline-offset-2">
+              Consultar fechamento académico
+            </Link>
+          )}
         </div>
       )}
       {!loading && state && (state.estado === "reconciliacao" || state.estado === "sem_matricula") && (
