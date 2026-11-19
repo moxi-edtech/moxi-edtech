@@ -122,6 +122,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271118120000_guard_turma_assessment_identity_install.sql",
   // Reviewed CURTUME 2025 legal-close diagnostics only; fiscal freeze remains active.
   "20271118130000_curtume_2025_persist_fecho_diagnostics.sql",
+  // Curtume 2025: exactly one reviewed HIST_FINAL mirror; keep fiscal scanner enforced.
+  "20271119110000_curtume_mirror_signed_final_grades.sql",
 ]);
 
 const FISCAL_PATH = /^(?:apps\/web\/src\/(?:app\/api\/(?:fiscal|agt)(?:\/|\.|-|$)|lib\/(?:server\/)?(?:fiscal|agt)(?:\/|\.|-|$))|supabase\/(?:functions\/[^/]*(?:fiscal|agt|saft)|migrations\/[^/]*(?:fiscal|agt|saft)))/i;
