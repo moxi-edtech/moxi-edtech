@@ -3,6 +3,14 @@
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 
+-- Sem esta política, um utilizador com UPDATE amplo poderia alterar
+-- diretamente 'desistente' para 'ativo', contornando a RPC e a auditoria.
+DROP POLICY IF EXISTS matriculas_desistencia_update_rpc_only ON public.matriculas;
+CREATE POLICY matriculas_desistencia_update_rpc_only ON public.matriculas
+  AS RESTRICTIVE FOR UPDATE TO authenticated
+  USING (status <> 'desistente')
+  WITH CHECK (status <> 'desistente');
+
 CREATE TABLE IF NOT EXISTS public.matricula_desistencia_reativacoes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   escola_id uuid NOT NULL REFERENCES public.escolas(id),
