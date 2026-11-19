@@ -89,7 +89,7 @@ BEGIN
   WHERE hd.historico_ano_id=v_h.id;
   RETURN jsonb_build_object('ok',true,'matricula_id',v_m.id,'ano',v_m.ano_letivo,
     'resultado_oficial',v_h.resultado_final,'historico_fechado',v_h.snapshot_status='fechado',
-    'pode_complementar',v_m.status='concluido' AND v_h.snapshot_status='fechado'
+    'pode_complementar',v_m.status='concluido' AND v_h.snapshot_status='fechado' AND v_h.resultado_final IS NOT NULL
       AND (SELECT y.ativo FROM public.anos_letivos y WHERE y.id=v_m.session_id AND y.escola_id=p_escola_id) IS FALSE
       AND v_escala IN ('quantitativa_primario','quantitativa_secundario')
       AND EXISTS (
