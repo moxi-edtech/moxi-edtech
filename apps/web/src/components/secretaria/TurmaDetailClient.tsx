@@ -19,6 +19,7 @@ import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf"
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { gradePeriodState } from "@/lib/academico/grade-period-context";
 import { ImprimirListaTurmaButton } from "@/components/secretaria/ImprimirListaTurmaButton";
+import { DesistenciaMatriculaAction } from "@/components/matriculas/DesistenciaMatriculaAction";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 //
@@ -333,10 +334,18 @@ function formatKz(valor?: number) {
 function AlunoRow({
   aluno,
   profileHref,
+  escolaId,
+  turmaId,
+  anoLetivoId,
+  onDesistencia,
   style,
 }: {
   aluno: Aluno;
   profileHref: string;
+  escolaId: string;
+  turmaId: string;
+  anoLetivoId?: string | null;
+  onDesistencia: (matriculaId: string) => void;
   style?: React.CSSProperties;
 }) {
   return (
@@ -374,6 +383,17 @@ function AlunoRow({
         </div>
       </td>
       <td className="px-5 py-3.5 text-right">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+        <DesistenciaMatriculaAction
+          tipo="confirmar"
+          alunoId={aluno.aluno_id}
+          alunoNome={aluno.nome}
+          escolaId={escolaId}
+          turmaId={turmaId}
+          anoLetivoId={anoLetivoId}
+          matriculaId={aluno.matricula_id}
+          onChanged={() => onDesistencia(aluno.matricula_id)}
+        />
         <Link
           href={profileHref}
           title="Ver perfil do aluno"
@@ -382,6 +402,7 @@ function AlunoRow({
           <MoreVertical size={15} />
           <span className="hidden lg:inline">Perfil</span>
         </Link>
+        </div>
       </td>
     </tr>
   );
@@ -1545,6 +1566,14 @@ export default function TurmaDetailClient({
                             key={aluno.aluno_id}
                             aluno={aluno}
                             profileHref={profileHref}
+                            escolaId={escolaId ?? ""}
+                            turmaId={turmaId}
+                            anoLetivoId={academicYearId}
+                            onDesistencia={(matriculaId) => setData((current) => current ? {
+                              ...current,
+                              turma: { ...current.turma, ocupacao: Math.max(0, current.turma.ocupacao - 1) },
+                              alunos: current.alunos.filter((item) => item.matricula_id !== matriculaId),
+                            } : current)}
                             style={{
                               position: "absolute",
                               top: 0,
