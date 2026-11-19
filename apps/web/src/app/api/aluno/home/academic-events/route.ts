@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readPublishedAssessmentEvents } from "@/lib/academico/published-assessment-events";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
@@ -150,7 +151,20 @@ export async function GET(req: Request) {
         (!event.source_template_id && event.tipo === "EVENTO_GERAL"));
     }
 
-    return NextResponse.json({ ok: true, items: visible.slice(0, 3) }, {
+    // Only the selected student's validated enrolment controls turma visibility.
+    const assessments = matricula?.turma_id
+      ? await readPublishedAssessmentEvents(supabase, {
+          escolaId: ctx.escolaId,
+          anoLetivoId: context.anoLetivoId,
+          turmaIds: [matricula.turma_id],
+          rangeStart: schoolCalendarDate(new Date(), context.timezone),
+          limit: 60,
+        })
+      : [];
+    const merged = [...visible, ...assessments]
+      .sort((a, b) => a.data_inicio.localeCompare(b.data_inicio) || a.id.localeCompare(b.id));
+
+    return NextResponse.json({ ok: true, items: merged.slice(0, 100) }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (cause: unknown) {

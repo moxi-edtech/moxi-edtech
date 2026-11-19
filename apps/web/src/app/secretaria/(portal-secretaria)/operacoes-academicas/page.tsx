@@ -1,7 +1,7 @@
 import AuditPageView from "@/components/audit/AuditPageView";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
-import { AlertTriangle, CheckCircle2, Clock, FileText, GraduationCap } from "lucide-react";
+import { AlertTriangle, CalendarCheck, CheckCircle2, Clock, FileText, GraduationCap } from "lucide-react";
 import { buildPortalHref } from "@/lib/navigation";
 import Link from "next/link";
 import { buildCutoverHealthReport, type CutoverHealthReport } from "@/lib/operacoes-academicas/cutover-health";
@@ -265,6 +265,13 @@ export default async function OperacoesAcademicasPage({
             ]}
           />
           <div className="flex items-center gap-4 flex-wrap">
+            <Link
+              href={buildPortalHref(escolaParam, "/operacoes/academico/calendario-avaliacoes")}
+              className="inline-flex items-center gap-2 rounded-xl bg-amber px-3 py-2 text-xs font-semibold text-white hover:brightness-95"
+            >
+              <CalendarCheck className="h-4 w-4" />
+              Calendário de avaliações
+            </Link>
             <Link
               href={buildPortalHref(escolaParam, "/operacoes/academico/wizard")}
               className="text-xs font-semibold text-emerald hover:underline"

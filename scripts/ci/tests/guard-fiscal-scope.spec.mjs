@@ -18,7 +18,7 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 72);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 74);
   const exactDiagnostics = "20271118130000_curtume_2025_persist_fecho_diagnostics.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(exactDiagnostics));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + exactDiagnostics]), []);
@@ -379,6 +379,30 @@ test("documentary RAA migrations are individually allowed but cannot activate fi
   assert.match(checkFiscalAndSchemaScope([
     "supabase/migrations/20271109010001_unreviewed_history.sql",
   ])[0] ?? "", /Unapproved database migration/);
+});
+
+test("calendar planning migration is narrowly allowed with RLS, audit and fiscal freeze", () => {
+  const name = "20261119145630_calendario_avaliacoes_auditado_20261119.sql";
+  const path = "supabase/migrations/" + name;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "CREATE TABLE public.calendario_avaliacoes (id uuid);")[0] ?? "",
+    /Reviewed evaluation calendar migration missing guard/);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "CREATE TABLE public.fiscal_config (id uuid);")[0] ?? "",
+    /Reviewed evaluation calendar migration missing guard|Fiscal\/AGT activation/);
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20261119110001_unreviewed_assessment_writer.sql"
+  ])[0] ?? "", /Unapproved database migration/);
+});
+
+test("calendar overlap migration is exact, additive, guarded and already ledger-aligned", () => {
+  const filename = "20261119150953_calendario_avaliacoes_evitar_sobreposicao.sql";
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(filename));
+  assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + filename]), []);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/" + filename],
+    () => "DROP TABLE public.calendario_avaliacoes;")[0] ?? "", /Assessment conflict guard/);
 });
 
 test("reviewed rematrícula cross-cycle RPC patch remains fiscal-frozen", () => {
