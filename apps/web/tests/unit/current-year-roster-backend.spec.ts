@@ -45,3 +45,16 @@ test("enrolment counts are independent of the page of rows returned", () => {
   assert.match(route, /pendingCount\.count \?\? 0/);
   assert.doesNotMatch(route, /const total = rows\.length/);
 });
+
+test("lista JSON de uma turma usa a leitura canónica paginada e não corta na posição 50", () => {
+  const json = source("app/api/secretaria/turmas/[id]/alunos/lista/route.ts");
+  const service = source("lib/documentos/listaNominalService.ts");
+  assert.match(json, /loadNominalRoster\(/);
+  assert.match(json, /jsonFields: true/);
+  assert.match(json, /extendedStudentFields: camposSensiveis/);
+  assert.match(json, /Cache-Control.*private, no-store/);
+  assert.doesNotMatch(json, /\.from\("matriculas"\)/);
+  assert.doesNotMatch(json, /defaultLimit:\s*50/);
+  assert.match(service, /optionalJsonFields/);
+  assert.match(service, /for \(let offset = 0; offset <= maxRoster; offset \+= pageSize\)/);
+});
