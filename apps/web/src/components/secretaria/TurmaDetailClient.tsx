@@ -376,7 +376,7 @@ function AlunoRow({
     if (el.matches(":popover-open")) { el.hidePopover(); return; }
     const rect = event.currentTarget.getBoundingClientRect();
     // O popover nativo entra na top layer: não é cortado pelo scroll virtual.
-    const width = 216;
+    const width = 208;
     el.style.left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8)) + "px";
     el.style.top = Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - 116)) + "px";
     el.showPopover();
@@ -428,7 +428,7 @@ function AlunoRow({
             </button>
             <div ref={popoverRef} id={`aluno-actions-${aluno.matricula_id}`}
               popover="auto" onToggle={() => setMenuOpen(Boolean(popoverRef.current?.matches(":popover-open")))}
-              className="fixed z-50 w-54 rounded-xl border border-border bg-card p-1.5 shadow-lg"
+              className="fixed z-50 w-52 rounded-xl border border-border bg-card p-1.5 shadow-lg"
               style={{ right: "auto", bottom: "auto", margin: 0 }}>
               <Link href={profileHref} onClick={() => popoverRef.current?.hidePopover()}
                 className="flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted">
@@ -438,7 +438,7 @@ function AlunoRow({
               <DesistenciaMatriculaAction
                 tipo={aluno.status_matricula === "desistente" ? "reativar" : "confirmar"}
                 variant="menu"
-                onTriggerClick={() => popoverRef.current?.hidePopover()}
+                onTriggerClick={() => { if (popoverRef.current?.matches(":popover-open")) popoverRef.current.hidePopover(); }}
                 alunoId={aluno.aluno_id}
                 alunoNome={aluno.nome}
                 escolaId={escolaId}
