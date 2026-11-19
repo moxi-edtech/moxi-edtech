@@ -12,6 +12,7 @@ import { requireApiTenantGuard } from "@/lib/api/requireApiTenantGuard";
 import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
 import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
+import { resolveReceiptAcademicContext } from "@/lib/financeiro/receipt-academic-context";
 
 const PayloadSchema = z.object({
   mensalidadeId: z.string().uuid(),
@@ -130,12 +131,14 @@ async function enrichReciboSnapshot({
   docId,
   escolaId,
   alunoId,
+  mensalidadeId,
   extraSnapshot = {},
 }: {
   supabase: any;
   docId: string;
   escolaId: string;
   alunoId: string | null;
+  mensalidadeId: string;
   extraSnapshot?: Record<string, unknown>;
 }) {
   if (!docId) return;
@@ -143,7 +146,7 @@ async function enrichReciboSnapshot({
   const [
     { data: escolaRow },
     { data: alunoRow },
-    { data: matriculaRow },
+    academicContext,
     { data: existingDoc },
   ] = await Promise.all([
     supabase
@@ -158,25 +161,7 @@ async function enrichReciboSnapshot({
           .eq("id", alunoId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
-    alunoId
-      ? supabase
-          .from("matriculas")
-          .select(`
-            aluno_id,
-            turmas (
-              id,
-              nome,
-              turno,
-              ano_letivo,
-              classes ( nome ),
-              cursos ( nome )
-            )
-          `)
-          .eq("aluno_id", alunoId)
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+    resolveReceiptAcademicContext(supabase, { escolaId, alunoId, mensalidadeId }),
     supabase
       .from("documentos_emitidos")
       .select("dados_snapshot")
@@ -194,15 +179,7 @@ async function enrichReciboSnapshot({
         bi_numero?: string | null;
       }
     | null;
-  const turma = ((matriculaRow as any)?.turmas ?? null) as
-    | {
-        nome?: string | null;
-        turno?: string | null;
-        ano_letivo?: number | null;
-        classes?: { nome?: string | null } | null;
-        cursos?: { nome?: string | null } | null;
-      }
-    | null;
+
 
   const patch = {
     escola_nome: branding?.nome ?? null,
@@ -213,11 +190,12 @@ async function enrichReciboSnapshot({
     escola_kwik_chave: rawPagamento?.kwik_chave ?? null,
     aluno_nome: aluno?.nome_completo ?? aluno?.nome ?? null,
     aluno_bi: aluno?.bi_numero ?? null,
-    turma_nome: turma?.nome ?? null,
-    turma_turno: turma?.turno ?? null,
-    classe_nome: turma?.classes?.nome ?? null,
-    curso_nome: turma?.cursos?.nome ?? null,
-    ano_letivo: turma?.ano_letivo ?? null,
+    // Issued snapshot values are historical evidence: never overwrite them.
+    turma_nome: existingSnapshot.turma_nome ?? academicContext?.turmaNome ?? null,
+    turma_turno: existingSnapshot.turma_turno ?? academicContext?.turmaTurno ?? null,
+    classe_nome: existingSnapshot.classe_nome ?? academicContext?.classeNome ?? null,
+    curso_nome: existingSnapshot.curso_nome ?? academicContext?.cursoNome ?? null,
+    ano_letivo: existingSnapshot.ano_letivo ?? academicContext?.anoLetivo ?? null,
   } satisfies Record<string, unknown>;
 
   await supabase
@@ -229,7 +207,8 @@ async function enrichReciboSnapshot({
         ...extraSnapshot,
       } as Json,
     })
-    .eq("id", docId);
+    .eq("id", docId)
+    .eq("escola_id", escolaId);
 }
 
 async function resolveReciboPrintPayload({
@@ -482,6 +461,7 @@ export async function POST(req: NextRequest) {
             docId: legacyDocId,
             escolaId,
             alunoId: mensalidade.aluno_id ?? null,
+      mensalidadeId,
             extraSnapshot: {
               tipo_comprovativo: receiptType,
               itens_pagamento: receiptItems,
@@ -662,6 +642,7 @@ export async function POST(req: NextRequest) {
       docId: fiscal.documento_id,
       escolaId,
       alunoId: mensalidade.aluno_id ?? null,
+      mensalidadeId,
       extraSnapshot: {
         tipo_comprovativo: receiptType,
         itens_pagamento: receiptItems,
