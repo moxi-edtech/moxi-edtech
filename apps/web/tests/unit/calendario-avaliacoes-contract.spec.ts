@@ -19,7 +19,7 @@ test("Calendário is operational, separate from MED official dates and notes", (
   assert.match(schema, /FOREIGN KEY|REFERENCES public\.turma_disciplinas\(id\)/);
   assert.match(schema, /NEW\.data < v_periodo\.data_inicio/);
   assert.match(schema, /NEW\.data > v_periodo\.data_fim/);
-  assert.match(schema, /v_turma\.ano_letivo_id/);
+  assert.match(schema, /ano_letivo_id = NEW\.ano_letivo_id/);
 });
 
 test("School rights include secretaria, admins, and director, not professor writes", () => {
