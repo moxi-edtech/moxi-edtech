@@ -15,7 +15,7 @@ type Data = {
   items: Entry[]; historico: Audit[];
 };
 const types = ["Teste", "Prova trimestral", "Trabalho", "Outra"];
-const control = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20";
+const control = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-ring/20";
 const action = "inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50";
 const today = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Africa/Luanda", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const fmt = (v: string) => v ? v.slice(0, 10).split("-").reverse().join("/") : "—";
@@ -134,24 +134,24 @@ export default function CalendarioAvaliacoesClient() {
     } catch (e) { setErr(e instanceof Error ? e.message : "Falha no histórico."); }
   };
 
-  if (loading) return <p className="p-6 text-sm text-slate-600">A carregar calendário de avaliações…</p>;
+  if (loading) return <p className="p-6 text-sm text-muted-foreground">A carregar calendário de avaliações…</p>;
   return <main className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p className="text-xs font-semibold uppercase text-slate-500">Operações Académicas / Avaliações</p>
-        <h1 className="text-2xl font-bold text-[#1F6B3B]">Calendário de avaliações</h1>
-        <p className="text-sm text-slate-600">Planear por turma e disciplina, publicar em lote e consultar alterações.</p>
+        <p className="text-xs font-semibold uppercase text-muted-foreground">Operações Académicas / Avaliações</p>
+        <h1 className="text-2xl font-bold text-primary">Calendário de avaliações</h1>
+        <p className="text-sm text-muted-foreground">Planear por turma e disciplina, publicar em lote e consultar alterações.</p>
       </div>
-      <button type="button" className={action + " border border-slate-200"} onClick={() => void reload().catch((e) => setErr(e.message))}>
+      <button type="button" className={action + " border border-border"} onClick={() => void reload().catch((e) => setErr(e.message))}>
         <RefreshCw size={16} /> Atualizar
       </button>
     </header>
-    {err && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p>}
-    {notice && <p role="status" className="rounded-xl border border-slate-200 p-3 text-sm text-[#1F6B3B]">{notice}</p>}
+    {err && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{err}</p>}
+    {notice && <p role="status" className="rounded-xl border border-border p-3 text-sm text-primary">{notice}</p>}
     {!data?.ano ? <p className="rounded-xl border p-6 text-sm">Configure um ano letivo ativo antes de planear avaliações.</p> : <>
-      <section className="flex flex-wrap items-end justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="flex flex-wrap items-end justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
         <div>
-          <p className="text-xs text-slate-500">Ano letivo {data.ano.ano}/{data.ano.ano + 1}</p>
+          <p className="text-xs text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano + 1}</p>
           <label htmlFor="ava-period" className="mb-1 block text-sm font-medium">Trimestre</label>
           <select id="ava-period" className={control} value={num} onChange={(e) => {
             const n = Number(e.target.value); setNum(n); setChosen([]);
@@ -159,19 +159,19 @@ export default function CalendarioAvaliacoesClient() {
             if (p) setDate(today() >= p.data_inicio && today() <= p.data_fim ? today() : p.data_inicio);
           }}>{numbers.map((n) => <option key={n} value={n}>{n}.º Trimestre</option>)}</select>
         </div>
-        <p className="text-sm text-slate-600"><strong className="text-lg text-slate-900">{draft.length}</strong> rascunhos · <strong className="text-lg text-slate-900">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</p>
+        <p className="text-sm text-muted-foreground"><strong className="text-lg text-foreground">{draft.length}</strong> rascunhos · <strong className="text-lg text-foreground">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</p>
         <button type="button" disabled={saving || !draft.length} onClick={publish}
-          className={action + " bg-[#E3B23C] px-4 text-white"}>
+          className={action + " bg-amber px-4 text-white"}>
           <Check size={16} /> Publicar {draft.length} avaliações
         </button>
       </section>
-      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h2 className="flex items-center gap-2 font-semibold text-[#1F6B3B]">{editing ? <Pencil size={17} /> : <Plus size={17} />} {editing ? "Editar avaliação" : "Planear avaliações"}</h2>
-            <p className="text-xs text-slate-500">Datas e horas por turma e disciplina; sem repetir configurações curriculares.</p>
+            <h2 className="flex items-center gap-2 font-semibold text-primary">{editing ? <Pencil size={17} /> : <Plus size={17} />} {editing ? "Editar avaliação" : "Planear avaliações"}</h2>
+            <p className="text-xs text-muted-foreground">Datas e horas por turma e disciplina; sem repetir configurações curriculares.</p>
           </div>
-          {editing && <button type="button" className={action + " border border-slate-200"} onClick={() => setEditing(null)}><X size={16} /> Sair da edição</button>}
+          {editing && <button type="button" className={action + " border border-border"} onClick={() => setEditing(null)}><X size={16} /> Sair da edição</button>}
         </div>
         {!editing && <>
           <label className="block text-sm font-semibold">Turmas</label>
@@ -179,24 +179,24 @@ export default function CalendarioAvaliacoesClient() {
             {data.turmas.map((t) => <button type="button" key={t.id} aria-pressed={classIds.includes(t.id)} onClick={() => {
               setClassIds((v) => v.includes(t.id) ? v.filter((x) => x !== t.id) : [...v, t.id]);
               setChosen((v) => v.filter((x) => subjectMap.get(x)?.turma_id !== t.id));
-            }} className={action + " rounded-full border px-3 py-1 text-xs " + (classIds.includes(t.id) ? "border-[#1F6B3B] bg-green-50 text-[#1F6B3B]" : "border-slate-200 text-slate-600")}>{t.nome}</button>)}
+            }} className={action + " rounded-full border px-3 py-1 text-xs " + (classIds.includes(t.id) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground")}>{t.nome}</button>)}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <label htmlFor="ava-search" className="text-sm font-semibold">Disciplinas</label>
-            <button type="button" className="text-xs font-semibold text-[#1F6B3B]" onClick={() => setChosen((v) => {
+            <button type="button" className="text-xs font-semibold text-primary" onClick={() => setChosen((v) => {
               const all = subjects.map((s) => s.id);
               return all.every((id) => v.includes(id)) ? v.filter((id) => !all.includes(id)) : [...new Set([...v, ...all])];
             })}>Selecionar / limpar visíveis</button>
           </div>
           <input id="ava-search" className={control} placeholder="Filtrar disciplina ou turma…" value={search} onChange={(e) => setSearch(e.target.value)} />
           <div className="grid max-h-52 gap-2 overflow-auto sm:grid-cols-2">
-            {subjects.map((s) => <label key={s.id} className="flex gap-2 rounded-xl border border-slate-100 p-2 text-sm">
-              <input type="checkbox" checked={chosen.includes(s.id)} onChange={(e) => setChosen((v) => e.target.checked ? [...v, s.id] : v.filter((id) => id !== s.id))} className="accent-[#1F6B3B]" />
-              <span>{s.nome}<small className="block text-xs text-slate-500">{classMap.get(s.turma_id)?.nome}</small></span>
+            {subjects.map((s) => <label key={s.id} className="flex gap-2 rounded-xl border border-border p-2 text-sm">
+              <input type="checkbox" checked={chosen.includes(s.id)} onChange={(e) => setChosen((v) => e.target.checked ? [...v, s.id] : v.filter((id) => id !== s.id))} className="accent-primary" />
+              <span>{s.nome}<small className="block text-xs text-muted-foreground">{classMap.get(s.turma_id)?.nome}</small></span>
             </label>)}
-            {!subjects.length && <p className="text-sm text-slate-500">Selecione uma turma com disciplinas associadas.</p>}
+            {!subjects.length && <p className="text-sm text-muted-foreground">Selecione uma turma com disciplinas associadas.</p>}
           </div>
-          <p className="text-xs text-slate-500">{chosen.length} disciplina(s) selecionada(s).</p>
+          <p className="text-xs text-muted-foreground">{chosen.length} disciplina(s) selecionada(s).</p>
         </>}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className="text-xs font-semibold">Tipo<select className={control + " mt-1"} value={kind} onChange={(e) => setKind(e.target.value)}>{types.map((t) => <option key={t}>{t}</option>)}</select></label>
@@ -208,42 +208,42 @@ export default function CalendarioAvaliacoesClient() {
           <input className={control + " mt-1"} maxLength={500} value={details} placeholder="Conteúdo, sala ou instruções…" onChange={(e) => setDetails(e.target.value)} />
         </label>
         <div className="flex justify-end"><button type="button" disabled={saving || (!editing && !chosen.length)} onClick={() => void save()}
-          className={action + " bg-[#E3B23C] px-4 text-white"}><Check size={16} /> {editing ? "Guardar alteração" : "Guardar rascunho"}</button></div>
+          className={action + " bg-amber px-4 text-white"}><Check size={16} /> {editing ? "Guardar alteração" : "Guardar rascunho"}</button></div>
       </section>
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex justify-between gap-2 border-b border-slate-100 p-4">
-          <div><h2 className="font-semibold text-[#1F6B3B]">Avaliações do trimestre</h2>
-          <p className="text-xs text-slate-500">Só avaliações publicadas aparecem nos portais.</p></div>
-          <span className="text-xs text-slate-500">{items.length} registo(s)</span>
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex justify-between gap-2 border-b border-border p-4">
+          <div><h2 className="font-semibold text-primary">Avaliações do trimestre</h2>
+          <p className="text-xs text-muted-foreground">Só avaliações publicadas aparecem nos portais.</p></div>
+          <span className="text-xs text-muted-foreground">{items.length} registo(s)</span>
         </div>
         <div className="divide-y divide-slate-100">{items.map((item) => <div key={item.id}>
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div><p className="font-semibold">{subjectMap.get(item.turma_disciplina_id)?.nome || "Disciplina"} · {item.tipo}</p>
-              <p className="text-sm text-slate-600">{classMap.get(item.turma_id)?.nome} · {fmt(item.data)} às {item.inicio.slice(0,5)}</p>
-              {item.descricao && <p className="text-xs text-slate-500">{item.descricao}</p>}</div>
+              <p className="text-sm text-muted-foreground">{classMap.get(item.turma_id)?.nome} · {fmt(item.data)} às {item.inicio.slice(0,5)}</p>
+              {item.descricao && <p className="text-xs text-muted-foreground">{item.descricao}</p>}</div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{item.estado}</span>
-              {item.estado !== "cancelado" && <button type="button" className={action + " border border-slate-200"} onClick={() => {
+              <span className="rounded-full bg-muted px-2 py-1 text-xs">{item.estado}</span>
+              {item.estado !== "cancelado" && <button type="button" className={action + " border border-border"} onClick={() => {
                 setEditing(item.id); setDate(item.data); setKind(item.tipo); setStart(item.inicio.slice(0,5)); setEnd(item.fim?.slice(0,5) || ""); setDetails(item.descricao || "");
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}><Pencil size={16} /> Editar</button>}
-              <button type="button" className={action + " border border-slate-200"} onClick={() => void showHistory(item.id)}><History size={16} /> Histórico</button>
-              {item.estado !== "cancelado" && <button type="button" className={action + " border border-slate-200"} onClick={() => {
+              <button type="button" className={action + " border border-border"} onClick={() => void showHistory(item.id)}><History size={16} /> Histórico</button>
+              {item.estado !== "cancelado" && <button type="button" className={action + " border border-border"} onClick={() => {
                 if (window.confirm("Cancelar avaliação? O histórico será preservado.")) void mutate({ action: "cancel", id: item.id }, "Avaliação cancelada e auditada.");
               }}><X size={16} /> Cancelar</button>}
             </div>
           </div>
-          {auditId === item.id && <div className="space-y-2 border-t border-slate-100 bg-slate-50 p-4">
+          {auditId === item.id && <div className="space-y-2 border-t border-border bg-muted p-4">
             <h3 className="text-sm font-semibold">Histórico de alterações</h3>
-            {audits.map((h) => <div key={h.id} className="rounded-xl border bg-white p-2 text-xs text-slate-600">
+            {audits.map((h) => <div key={h.id} className="rounded-xl border bg-card p-2 text-xs text-muted-foreground">
               <p><strong>{h.acao}</strong> · {new Date(h.ocorrido_em).toLocaleString("pt-PT", { timeZone: "Africa/Luanda" })} · Utilizador {h.actor_id}</p>
               {h.antes && <p>Antes: {fmt(h.antes.data)} · {h.antes.inicio} · {h.antes.estado}</p>}
               {h.depois && <p>Depois: {fmt(h.depois.data)} · {h.depois.inicio} · {h.depois.estado}</p>}
             </div>)}
           </div>}
         </div>)}
-        {!items.length && <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-slate-500">
-          <CalendarCheck size={26} /><strong className="text-slate-800">Nenhuma avaliação planeada</strong>
+        {!items.length && <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
+          <CalendarCheck size={26} /><strong className="text-foreground">Nenhuma avaliação planeada</strong>
           Selecione a turma e a disciplina acima para criar a primeira data.
         </div>}</div>
       </section>
