@@ -6,7 +6,7 @@
 export type ListaNominalMode = "ano_letivo" | "operacional";
 export type ListaNominalCategoria =
   | "activa" | "concluida" | "transferida" | "trancada"
-  | "cancelada" | "pendente" | "desconhecida";
+  | "cancelada" | "desistente" | "pendente" | "desconhecida";
 export type MatriculaParaLista = { status: string | null; ativo: boolean | null };
 export const LISTA_NOMINAL_MODES: Record<ListaNominalMode, string> = {
   ano_letivo: "Lista do ano letivo (histórica)",
@@ -29,6 +29,7 @@ export function classifyMatricula(status: string | null): ListaNominalCategoria 
   if (["concluido", "concluida"].includes(v)) return "concluida";
   if (["transferido", "transferida"].includes(v)) return "transferida";
   if (["trancado", "trancada"].includes(v)) return "trancada";
+  if (v === "desistente") return "desistente";
   if (["cancelado", "cancelada"].includes(v)) return "cancelada";
   if (["pendente", "pending"].includes(v)) return "pendente";
   return "desconhecida";
@@ -39,13 +40,13 @@ export function selectMatriculasDaLista<T extends MatriculaParaLista>(
   const incluidos: T[] = [];
   const excluidos: Record<ListaNominalCategoria, number> = {
     activa: 0, concluida: 0, transferida: 0, trancada: 0,
-    cancelada: 0, pendente: 0, desconhecida: 0,
+    cancelada: 0, desistente: 0, pendente: 0, desconhecida: 0,
   };
   for (const matricula of matriculas) {
     const categoria = classifyMatricula(matricula.status);
     const incluir = includeAllStatus ||
       (mode === "ano_letivo"
-        ? ["activa", "concluida", "transferida", "trancada"].includes(categoria)
+        ? ["activa", "concluida", "transferida", "trancada", "desistente"].includes(categoria)
         : categoria === "activa" && matricula.ativo === true);
     if (incluir) incluidos.push(matricula);
     else excluidos[categoria] += 1;
@@ -55,7 +56,7 @@ export function selectMatriculasDaLista<T extends MatriculaParaLista>(
 export function resumoExclusoes(excluidos: Record<ListaNominalCategoria, number>): string {
   const rotulos: Record<ListaNominalCategoria, string> = {
     activa: "inactivas", concluida: "concluídas", transferida: "transferidas",
-    trancada: "trancadas", cancelada: "canceladas", pendente: "pendentes",
+    trancada: "trancadas", cancelada: "canceladas", desistente: "desistentes", pendente: "pendentes",
     desconhecida: "estado desconhecido",
   };
   const parts = (Object.keys(excluidos) as ListaNominalCategoria[])
