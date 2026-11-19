@@ -578,6 +578,9 @@ export default function TurmaDetailClient({
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
 
   const alunosScrollRef               = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    alunosScrollRef.current?.scrollTo({ top: 0 });
+  }, [estadoFilter, alunoSearch, alunoFinanceiroFilter]);
   const { isEnabled: canQrDocs }      = usePlanFeature("doc_qr_code");
   const alunos                        = data?.alunos ?? EMPTY_ALUNOS;
   const desistentes = data?.desistentes ?? EMPTY_ALUNOS;
