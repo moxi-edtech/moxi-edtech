@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ProfessorSkeletonBone } from "@/components/professor/ProfessorLoadingSkeletons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ClipboardCheck, Clock3 } from "lucide-react";
 import { reopeningFeedback, type ReopeningDisplayState } from "@/lib/academico/reopening-display";
@@ -76,49 +77,82 @@ export default function ProfessorReopeningRequests({
 
   const recent = useMemo(() => items.slice(0, 4), [items]);
 
+  // Um estado vazio não deve ocupar espaço antes das acções do professor.
+  // Erros de sessão continuam visíveis para que não se ocultem problemas de acesso.
+  if (!loading && !error && recent.length === 0) return null;
+
   return (
-    <section aria-label="Pedidos de reabertura de notas" className="rounded-xl border border-border bg-card p-4 shadow-sm">
+    <section aria-label="Pedidos de reabertura de notas" className="rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4">
       <div className="flex items-center gap-2">
-        <ClipboardCheck className="h-5 w-5 text-klasse-green" aria-hidden="true" />
-        <h2 className="text-sm font-semibold text-klasse-green">Pedidos de reabertura</h2>
+        <ClipboardCheck className="h-4 w-4 text-klasse-green" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-foreground">Pedidos de reabertura</h2>
+        {!loading && !error && (
+          <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{recent.length}</span>
+        )}
       </div>
-      {loading ? <p className="mt-3 text-sm text-muted-foreground">A consultar pedidos...</p> :
-        error ? <button type="button" onClick={() => void load()} className="mt-3 text-sm font-semibold text-klasse-green">{sessionExpired ? "Sessão expirada. Volta a autenticar-te." : "Não foi possível actualizar. Tentar novamente"}</button> :
-          <div className="mt-3 space-y-3" aria-live="polite" aria-relevant="text">
-            {recent.length === 0 && <p className="text-sm text-muted-foreground">Sem pedidos de reabertura.</p>}
-            {recent.map((item) => {
-              const feedback = reopeningFeedback[item.status] ?? reopeningFeedback.EXPIRADO;
-              const disciplinaCurricular = item.disciplina_catalogo_id ?? item.disciplina_id;
-              const atrib = assignments.find((a) => a.turma.id === item.turma_id && a.disciplina.id === disciplinaCurricular);
-              const query = new URLSearchParams({
-                turma_id: item.turma_id,
-                ...(disciplinaCurricular ? { disciplina_id: disciplinaCurricular } : {}),
-                ano_letivo_id: item.ano_letivo_id,
-                trimestre: String(item.trimestre),
-              });
-              const href = notesHref + (notesHref.includes("?") ? "&" : "?") + query.toString();
-              return (
-                <div key={item.id} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
-                  <p className="text-sm font-medium text-foreground">
-                    {atrib?.disciplina.nome ?? "Disciplina"} · {atrib?.turma.nome ?? "Turma"} · {item.trimestre}.º trimestre
-                  </p>
-                  <p data-testid="reopening-state" className="mt-1 text-xs font-semibold text-foreground">{feedback.label}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{feedback.next}</p>
-                  {item.status === "APROVADO" && item.expira_em && (
-                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
-                      Válido até {new Intl.DateTimeFormat("pt-AO", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Luanda" }).format(new Date(item.expira_em))}
+      {loading ? (
+        <div role="status" aria-label="A carregar pedidos de reabertura" className="mt-3 space-y-2 motion-safe:animate-pulse">
+          <span className="sr-only">A carregar pedidos de reabertura</span>
+          <ProfessorSkeletonBone className="h-4 w-3/5 max-w-52" />
+          <ProfessorSkeletonBone className="h-3 w-2/5 max-w-40" />
+        </div>
+      ) : error ? (
+        <button type="button" onClick={() => void load()} className="mt-3 min-h-10 text-left text-sm font-semibold text-klasse-green">
+          {sessionExpired ? "Sessão expirada. Volta a autenticar-te." : "Não foi possível actualizar. Tentar novamente"}
+        </button>
+      ) : (
+        <div className="mt-2 divide-y divide-border" aria-live="polite" aria-relevant="text">
+          {recent.map((item) => {
+            const feedback = reopeningFeedback[item.status] ?? reopeningFeedback.EXPIRADO;
+            const disciplinaCurricular = item.disciplina_catalogo_id ?? item.disciplina_id;
+            const atrib = assignments.find((a) => a.turma.id === item.turma_id && a.disciplina.id === disciplinaCurricular);
+            const query = new URLSearchParams({
+              turma_id: item.turma_id,
+              ...(disciplinaCurricular ? { disciplina_id: disciplinaCurricular } : {}),
+              ano_letivo_id: item.ano_letivo_id,
+              trimestre: String(item.trimestre),
+            });
+            const href = notesHref + (notesHref.includes("?") ? "&" : "?") + query.toString();
+            const formatDate = (value: string) => new Intl.DateTimeFormat("pt-AO", {
+              dateStyle: "short",
+              timeStyle: "short",
+              timeZone: "Africa/Luanda",
+            }).format(new Date(value));
+            return (
+              <div key={item.id} className="py-2.5 first:pt-0 last:pb-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold leading-snug text-foreground">
+                      {atrib?.disciplina.nome ?? "Disciplina"} · {atrib?.turma.nome ?? "Turma"} · {item.trimestre}.º trimestre
                     </p>
-                  )}
-                  {item.decisao_motivo && <p className="mt-1 text-xs text-muted-foreground">Decisão: {item.decisao_motivo}</p>}
-                  <p className="mt-1 text-xs text-muted-foreground">Pedido em {new Intl.DateTimeFormat("pt-AO", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Luanda" }).format(new Date(item.created_at))}{item.decidido_em ? ` · Decidido em ${new Intl.DateTimeFormat("pt-AO", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Luanda" }).format(new Date(item.decidido_em))}` : ""}</p>
-                  <Link href={href} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-klasse-green hover:underline">
-                    Abrir pauta <span aria-hidden="true">›</span>
+                    <p data-testid="reopening-state" className="mt-0.5 text-xs font-semibold text-klasse-green">{feedback.label}</p>
+                  </div>
+                  <Link href={href} className="inline-flex min-h-10 shrink-0 items-center rounded-xl border border-border px-2.5 text-xs font-semibold text-klasse-green hover:bg-muted">
+                    Abrir pauta <span aria-hidden="true" className="ml-1">›</span>
                   </Link>
                 </div>
-              );
-            })}
-          </div>}
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{feedback.next}</p>
+                <details className="group mt-1 text-xs text-muted-foreground">
+                  <summary className="w-fit cursor-pointer py-1 font-medium text-foreground">
+                    <span className="group-open:hidden">Ver detalhes do pedido</span>
+                    <span className="hidden group-open:inline">Ocultar detalhes</span>
+                  </summary>
+                  <div className="mt-1 space-y-1 rounded-xl bg-muted p-2.5">
+                    {item.status === "APROVADO" && item.expira_em && (
+                      <p className="flex items-center gap-1">
+                        <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
+                        Válido até {formatDate(item.expira_em)}
+                      </p>
+                    )}
+                    {item.decisao_motivo && <p>Decisão: {item.decisao_motivo}</p>}
+                    <p>Pedido em {formatDate(item.created_at)}{item.decidido_em ? ` · Decidido em ${formatDate(item.decidido_em)}` : ""}</p>
+                  </div>
+                </details>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

@@ -26,3 +26,17 @@ export const professorNavItems: ProfessorNavItem[] = [
   { path: "/professor/calendario", label: "Calendário", icon: CalendarDays },
   { path: "/professor/perfil", label: "Perfil", icon: User },
 ];
+
+/**
+ * Devolve uma única navegação activa. "/professor" é prefixo de todas
+ * as páginas; é indispensável escolher a rota mais específica.
+ */
+export function getActiveProfessorNavHref(items: ProfessorNavLink[], activePath: string): string | null {
+  const matches = items.filter(({ href, path }) =>
+    activePath === href ||
+    activePath.startsWith(`${href}/`) ||
+    activePath === path ||
+    activePath.startsWith(`${path}/`),
+  );
+  return matches.sort((a, b) => b.path.length - a.path.length)[0]?.href ?? null;
+}
