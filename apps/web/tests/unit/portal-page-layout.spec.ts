@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   isWidePortalPage,
   PORTAL_PAGE_INSET,
+  PORTAL_PAGE_HORIZONTAL_INSET,
   PORTAL_PAGE_WIDE_INSET,
 } from "../../src/lib/layout/portal-page";
 
@@ -37,6 +38,7 @@ test("only the timetable canvas opts into the wider limit", () => {
   ]) assert.equal(isWidePortalPage(path), false, path);
 
   assert.match(PORTAL_PAGE_WIDE_INSET, /max-w-7xl/);
+  assert.match(PORTAL_PAGE_HORIZONTAL_INSET, /max-w-6xl px-6/);
 });
 
 test("AppShell preserves print bypass and route-aware timetable width", () => {
@@ -68,6 +70,30 @@ test("principal operational pages use the same inset", () => {
   for (const file of standardized) {
     assert.match(source(file), /PORTAL_PAGE_INSET/, file);
   }
+  for (const file of [
+    "app/escola/[id]/(portal)/professores/page.tsx",
+    "app/secretaria/(portal-secretaria)/rematricula/page.tsx",
+    "app/secretaria/(portal-secretaria)/rematricula/janelas/page.tsx",
+    "app/escola/[id]/(portal)/financeiro/configuracoes/precos/page.tsx",
+    "app/escola/[id]/(portal)/financeiro/relatorios/detalhados/page.tsx",
+    "app/escola/[id]/(portal)/admin/avisos/novo/page.tsx",
+  ]) assert.match(source(file), /PORTAL_PAGE_INSET/, file);
+
+  const turma = source("components/secretaria/TurmaDetailClient.tsx");
+  assert.equal((turma.match(/PORTAL_PAGE_HORIZONTAL_INSET/g) ?? []).length, 4);
+  assert.doesNotMatch(turma, /max-w-7xl mx-auto px-6/);
+
+  const configShell = source("components/escola/settings/ConfigSystemShell.tsx");
+  assert.match(configShell, /embedded \? "h-full w-full min-w-0 space-y-6"/);
+  assert.match(configShell, /\: `\$\{PORTAL_PAGE_INSET\} space-y-6`/);
+
+  const auditReport = source("app/escola/[id]/(portal)/financeiro/relatorios/detalhados/page.tsx");
+  assert.match(auditReport, /overflow-x-auto/);
+
+  const notices = source("app/escola/[id]/(portal)/admin/avisos/novo/page.tsx");
+  assert.match(notices, /<header className="max-w-3xl">/);
+  assert.match(notices, /className="max-w-3xl rounded-xl/);
+
   assert.doesNotMatch(
     source("components/layout/escola-admin/EscolaAdminDashboard.tsx"),
     /min-\[1700px\]:p-8/,
