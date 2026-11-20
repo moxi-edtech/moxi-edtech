@@ -1,5 +1,4 @@
 import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
-import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 import { supabaseServer } from "@/lib/supabaseServer";
 import AuditPageView from "@/components/audit/AuditPageView";
 import ProfessoresListClient from "@/components/secretaria/ProfessoresListClient";

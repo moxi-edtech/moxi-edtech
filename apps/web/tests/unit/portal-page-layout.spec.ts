@@ -176,6 +176,7 @@ test("delegated Secretaria headers align without adding an extra page inset to t
     const file = `app/secretaria/(portal-secretaria)/${name}`;
     const contents = source(file);
     assert.match(contents, /PORTAL_PAGE_HORIZONTAL_INSET/, file);
+    assert.equal((contents.match(/import \{ PORTAL_PAGE_HORIZONTAL_INSET \} from/g) ?? []).length, 1, `duplicate portal inset import in ${file}`);
     assert.doesNotMatch(contents, /PORTAL_PAGE_INSET/, `Nested page inset in ${file}`);
   }
 });

@@ -1,5 +1,4 @@
 import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
-import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 import AuditPageView from "@/components/audit/AuditPageView";
 import SecretariaDocumentosWorkspace from "@/components/secretaria/SecretariaDocumentosWorkspace";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
