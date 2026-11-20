@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
+import { readNominalBatchKey } from "@/lib/documentos/rosterBatchPolicy"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -26,7 +27,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const { id: jobId } = await ctx.params
     const { data: job, error } = await supabase
       .from("pautas_lote_jobs")
-      .select("zip_path, manifest_path, zip_checksum_sha256, status")
+      .select("zip_path, manifest_path, zip_checksum_sha256, status, documento_tipo, idempotency_key")
       .eq("id", jobId)
       .eq("escola_id", escolaId)
       .maybeSingle()
@@ -40,9 +41,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     const expiresInSec = 60 * 30
+    // O nome do objecto em Storage continua estável; o nome apresentado ao utilizador é legível.
+    // O download deve ser configurado no URL assinado, pois a resposta é um redirecionamento.
+    const nominalPrefs = job.documento_tipo === "lista_nominal"
+      ? readNominalBatchKey(job.idempotency_key)
+      : null
+    const nominalOrderLabel = nominalPrefs?.order === "nome_desc" ? "Z-A"
+      : nominalPrefs?.order === "nome_asc" ? "A-Z" : "Chamada"
+    const downloadOptions = job.documento_tipo === "lista_nominal"
+      ? { download: `Listas de Turmas - ${nominalOrderLabel}.zip` }
+      : undefined
     const { data: signed, error: signError } = await supabase.storage
       .from("pautas_zip")
-      .createSignedUrl(job.zip_path, expiresInSec)
+      .createSignedUrl(job.zip_path, expiresInSec, downloadOptions)
 
     if (signError || !signed?.signedUrl) {
       return NextResponse.json({ ok: false, error: signError?.message || "Falha ao gerar link" }, { status: 500 })

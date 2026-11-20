@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
@@ -19,6 +20,7 @@ import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf"
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { gradePeriodState } from "@/lib/academico/grade-period-context";
 import { ImprimirListaTurmaButton } from "@/components/secretaria/ImprimirListaTurmaButton";
+import type { NominalNameOrder } from "@/lib/documentos/nominalExportOptions";
 import { DesistenciaMatriculaAction } from "@/components/matriculas/DesistenciaMatriculaAction";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -882,6 +884,7 @@ export default function TurmaDetailClient({
   const [includeAllStatus, setIncludeAllStatus] = useState(false);
   const canPrint = data?.canEmitLista === true;
   const [listaMode, setListaMode] = useState<"auto" | "ano_letivo" | "operacional">("auto");
+  const [nominalOrder, setNominalOrder] = useState<NominalNameOrder>("nome_asc");
   const [isAlbum, setIsAlbum] = useState(false);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -891,6 +894,7 @@ export default function TurmaDetailClient({
     if (isAlbum) params.set("album", "true");
     if (includeAllStatus) params.set("all_status", "true");
     if (listaMode !== "auto") params.set("mode", listaMode);
+    params.set("order", nominalOrder);
     const extra = params.toString() ? `?${params.toString()}` : "";
     window.open(`/api/secretaria/turmas/${turmaId}/alunos/pdf${extra}`, "_blank");
   };
@@ -1388,11 +1392,11 @@ export default function TurmaDetailClient({
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="min-h-full bg-background pb-24">
 
       {/* ── HERO — dark green, strong identity ───────────────────────────── */}
       <div className="bg-slate-50/50">
-        <div className="max-w-7xl mx-auto px-6 pt-6 pb-8">
+        <div className="${PORTAL_PAGE_HORIZONTAL_INSET} pt-6 pb-8">
 
           {/* Breadcrumb */}
           <Link
@@ -1445,7 +1449,7 @@ export default function TurmaDetailClient({
 
             {/* Actions — settings subtle, matricular gold */}
             <div className="flex flex-wrap gap-3 flex-shrink-0">
-              {canPrint && <ImprimirListaTurmaButton turmaId={turma.id} />}
+              {canPrint && <ImprimirListaTurmaButton turmaId={turma.id} order={nominalOrder} />}
               <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors">
                 <Settings size={17} />
               </button>
@@ -1540,7 +1544,7 @@ export default function TurmaDetailClient({
         </div>
 
         {/* ── Tab bar — sits at bottom of hero, transitions into content ── */}
-        <div className="max-w-7xl mx-auto px-6 pb-0">
+        <div className="${PORTAL_PAGE_HORIZONTAL_INSET} pb-0">
           <div className="flex items-center justify-between border-t border-slate-200 pt-4 pb-0">
             <PillTabs
               active={activeTab}
@@ -1552,7 +1556,7 @@ export default function TurmaDetailClient({
       </div>
 
       {/* ── Content area ─────────────────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="${PORTAL_PAGE_HORIZONTAL_INSET} py-8">
 
       {/* Alunos */}
       {activeTab === "alunos" && (
@@ -1938,6 +1942,18 @@ export default function TurmaDetailClient({
                   <option value="auto">Conforme ano letivo seleccionado</option>
                   <option value="ano_letivo">Lista do ano letivo (histórica)</option>
                   <option value="operacional">Lista operacional actual</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
+                Ordem dos alunos na lista
+                <select
+                  aria-label="Ordenar alunos por nome na lista da turma"
+                  className="rounded-xl border border-border bg-card px-2 py-1.5 text-sm"
+                  value={nominalOrder}
+                  onChange={(event) => setNominalOrder(event.target.value as NominalNameOrder)}
+                >
+                  <option value="nome_asc">Nome A–Z</option>
+                  <option value="nome_desc">Nome Z–A</option>
                 </select>
               </label>
               <label className="flex items-center gap-2 cursor-pointer group">

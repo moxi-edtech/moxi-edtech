@@ -4,13 +4,14 @@ import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
 import { inngest } from "@/inngest/client"
-import { MAX_TURMAS_POR_LOTE, MAX_LOTES_NOMINAIS_POR_HORA, uniqueTurmaIds } from "@/lib/documentos/rosterBatchPolicy"
+import { MAX_TURMAS_POR_LOTE, MAX_LOTES_NOMINAIS_POR_HORA, uniqueTurmaIds, makeNominalBatchKey } from "@/lib/documentos/rosterBatchPolicy"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 const Body = z.object({
   turma_ids: z.array(z.string().uuid()).min(1).max(MAX_TURMAS_POR_LOTE).refine(uniqueTurmaIds),
+  order: z.enum(["nome_asc", "nome_desc"]).optional(),
 })
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -55,7 +56,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // We'll use the same infra as pautas-lote but with tipo='lista_nominal'.
     
     const sortedTurmas = [...parsed.data.turma_ids].sort()
-    const idempotencyKey = `lista_nominal:${effectiveEscolaId}:${user.id}:${selectedTurmas[0].session_id}:${sortedTurmas.join(",")}`
+    const order = parsed.data.order ?? "nome_asc"
+    // Mesmo contrato v3 e mesmas preferências da API canónica: reprocessamento seguro.
+    const idempotencyKey = makeNominalBatchKey({
+      actorId: user.id,
+      academicYearId: selectedTurmas[0].session_id,
+      mode: undefined,
+      order,
+      month: undefined,
+      isAlbum: false,
+      includeAllStatus: false,
+    }, sortedTurmas)
 
     const { data: existingByKey } = await supabase
       .from("pautas_lote_jobs")
@@ -126,6 +137,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         tipo: "lista_nominal",
         documento_tipo: "lista_nominal",
         mode: undefined,
+        order,
       },
     })
 

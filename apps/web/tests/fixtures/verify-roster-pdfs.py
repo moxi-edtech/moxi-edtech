@@ -11,7 +11,13 @@ directory = Path(sys.argv[1]).resolve()
 large = directory / "lista_sintetica_55.pdf"
 sensitive = directory / "lista_sintetica_55_sensivel.pdf"
 empty = directory / "lista_sintetica_vazia.pdf"
-for file in (large, sensitive, empty):
+lacunas = directory / "lista_sintetica_61_lacunas.pdf"
+logo_square = directory / "lista_sintetica_logo_quadrado.pdf"
+logo_wide = directory / "lista_sintetica_logo_horizontal.pdf"
+logo_tall = directory / "lista_sintetica_logo_vertical.pdf"
+logo_files = (logo_square, logo_wide, logo_tall)
+all_files = (large, sensitive, empty, lacunas, *logo_files)
+for file in all_files:
     assert file.exists() and file.stat().st_size > 1000, f"PDF vazio ou ausente: {file.name}"
 
 def output(*args: str) -> str:
@@ -27,26 +33,36 @@ large_pages = pages(large)
 assert large_pages >= 2, f"Lista de 55 alunos exige paginação: {large_pages}"
 assert pages(empty) >= 1
 
-for file in (large, sensitive, empty):
+for file in all_files:
     text = output("pdftotext", "-layout", str(file), "-")
     assert "LISTA NOMINAL DE ALUNOS" in text, file.name
     assert "Ano letivo: 2025/2026" in text, file.name
     assert "Modo:" in text, file.name
     assert "Página 1 de" in text, file.name
     assert "Assinatura da Direcção" in text, file.name
-    assert "INSTITUTO FICTÍCIO DE TESTES" in text, file.name
+    assert "Gerado pelo KLASSE | Sistema de Gestão Escolar Inteligente | www.klasse.ao" in text, file.name
+    expected_school = "IDENTIDADE ESCOLAR FICTICIA" if file in logo_files else "INSTITUTO FICTÍCIO DE TESTES"
+    assert expected_school in re.sub(r"\\s+", " ", text), file.name
     if file == empty:
         assert "Sem alunos matriculados neste período" in text
         assert "Total de alunos: 0" in text
+    elif file == lacunas:
+        assert "Total de alunos: 61" in text
+        assert re.search(r"(?m)^\s*61\s+P-0061\b", text), "A última linha deve ser Nº 61"
+        assert not re.search(r"(?m)^\s*74\s+P-0061\b", text), "Número de chamada não é Nº da lista"
+    elif file in logo_files:
+        assert "Total de alunos: 5" in text
+        assert "P-0001" in text and "P-0005" in text
     else:
         assert "Total de alunos: 55" in text
         assert "P-0001" in text and "P-0055" in text
         assert "Pessoa Simulada de Nome Repetido" in text
         assert "Conceição" in text and "Acentuação" in text
-        for page_no in range(1, pages(file) + 1):
-            single_page = output("pdftotext", "-f", str(page_no), "-l", str(page_no), str(file), "-")
-            assert "INSTITUTO FICTÍCIO DE TESTES" in single_page, (file.name, page_no, "header")
-            assert "Página " + str(page_no) + " de " in single_page, (file.name, page_no, "footer")
+    for page_no in range(1, pages(file) + 1):
+        single_page = output("pdftotext", "-f", str(page_no), "-l", str(page_no), str(file), "-")
+        assert expected_school in re.sub(r"\\s+", " ", single_page), (file.name, page_no, "header")
+        assert "Gerado pelo KLASSE | Sistema de Gestão Escolar Inteligente | www.klasse.ao" in single_page, (file.name, page_no, "brand")
+        assert "Página " + str(page_no) + " de " in single_page, (file.name, page_no, "footer")
     if file == sensitive:
         assert "INFORMAÇÃO SENSÍVEL" in text and "BI-TESTE" in text
     else:
@@ -58,6 +74,22 @@ for file in (large, sensitive, empty):
     ns = {"x": "http://www.w3.org/1999/xhtml"}
     count = 0
     for page_el in root.findall(".//x:page", ns):
+        if file in logo_files:
+            words = page_el.findall(".//x:word", ns)
+            school_word = next((w for w in words if w.text == "IDENTIDADE"), None)
+            title_word = next((w for w in words if w.text == "LISTA"), None)
+            assert school_word is not None and title_word is not None, (file.name, "header words")
+            title_top = float(title_word.attrib["yMin"])
+            school_top = float(school_word.attrib["yMin"])
+            school_bottom = max(
+                float(w.attrib["yMax"]) for w in words if float(w.attrib["yMin"]) < title_top
+            )
+            assert school_top >= 20 and title_top - school_bottom >= 12, (
+                file.name, "header spacing", school_top, school_bottom, title_top
+            )
+            if file != logo_wide:  # cabeçalho de uma linha: centro do nome e do logótipo
+                school_center = (school_top + float(school_word.attrib["yMax"])) / 2
+                assert abs(school_center - 55) <= 10, (file.name, "vertical alignment", school_center)
         w = float(page_el.attrib["width"])
         h = float(page_el.attrib["height"])
         for word in page_el.findall(".//x:word", ns):
