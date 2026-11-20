@@ -28,6 +28,7 @@ const Body = z.object({
   is_album: z.boolean().optional(),
   include_all_status: z.boolean().optional(),
   mode: z.enum(["ano_letivo", "operacional"]).optional(),
+  order: z.enum(["nome_asc", "nome_desc"]).optional(),
 })
 
 type PautasLoteJobRow = Database["public"]["Tables"]["pautas_lote_jobs"]["Row"]
@@ -214,6 +215,7 @@ export async function POST(req: Request) {
           actorId: user.id,
           academicYearId: academicContext.anoLetivoId,
           mode: parsed.data.mode,
+          order: parsed.data.tipo === "lista_nominal" ? (parsed.data.order ?? "nome_asc") : undefined,
           month: parsed.data.month,
           isAlbum: parsed.data.is_album ?? false,
           includeAllStatus: parsed.data.include_all_status ?? false,
@@ -327,6 +329,7 @@ export async function POST(req: Request) {
         is_album: parsed.data.is_album,
         include_all_status: parsed.data.include_all_status,
         mode: parsed.data.mode,
+        order: parsed.data.tipo === "lista_nominal" ? (parsed.data.order ?? "nome_asc") : undefined,
       },
     })
 
@@ -341,6 +344,7 @@ export async function POST(req: Request) {
         documento_tipo: documentoTipo,
         turma_ids: parsed.data.turma_ids,
         modo: parsed.data.mode ?? "automatico",
+        ordem: parsed.data.order ?? "nome_asc",
         quantidade_turmas: parsed.data.turma_ids.length,
         inclui_campos_sensiveis: false,
       },

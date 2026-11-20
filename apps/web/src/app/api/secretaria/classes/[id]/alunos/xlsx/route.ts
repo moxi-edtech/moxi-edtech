@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resumoExclusoes, type ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
 import { renderNominalXlsx } from "@/lib/documentos/listaNominalXlsx";
+import { nominalContentDisposition, nominalExportFilename, parseNominalNameOrder } from "@/lib/documentos/nominalExportOptions";
 import {
   authorizeNominalExport, loadNominalRoster, NominalRosterError, toNominalXlsxRows,
 } from "@/lib/documentos/listaNominalService";
@@ -26,6 +27,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (site && site !== "same-origin" && site !== "none") {
     return deny("Origem da exportação não autorizada", 403);
   }
+  const order = parseNominalNameOrder(url.searchParams.get("order"));
+  if (!order) return deny("Ordenação alfabética inválida", 400);
   const requestedMode = url.searchParams.get("mode");
   if (requestedMode && requestedMode !== "ano_letivo" && requestedMode !== "operacional") {
     return deny("Modo de lista inválido", 400);
@@ -44,6 +47,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const roster = await loadNominalRoster({
       supabase, escolaId, classeId, year,
       mode: requestedMode as ListaNominalMode | undefined,
+      order,
       includeAllStatus: url.searchParams.get("all_status") === "true",
     });
     const rows = toNominalXlsxRows(roster);
@@ -62,7 +66,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       tabela: "classes", entity: "classes", entity_id: classeId,
       details: {
         actor_id: auth.user.id, classe_id: classeId, ano_letivo_id: roster.sessionId,
-        ano: Number(year), modo: roster.mode, turmas: roster.turmaIds.length,
+        ano: Number(year), modo: roster.mode, ordem: order, turmas: roster.turmaIds.length,
         linhas: rows.length, total_originais: roster.seleccao.totalOrigem,
         total_excluidos: roster.seleccao.totalOrigem - rows.length,
         campos_sensiveis: false,
@@ -72,8 +76,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return new NextResponse(new Uint8Array(workbook), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": 'attachment; filename="lista_classe_' +
-          classeId + "_" + roster.anoLabel.replace("/", "-") + '.xlsx"',
+        "Content-Disposition": nominalContentDisposition(nominalExportFilename({ scope: "classe", classe: roster.classeNome, ano: roster.anoLabel, extension: "xlsx" })),
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
         "X-Lista-Mode": roster.mode,

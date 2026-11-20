@@ -8,6 +8,7 @@ import {
   type ListaNominalMode, type ListaNominalCategoria,
 } from "@/lib/documentos/listaNominalPolicy";
 import type { NominalXlsxRow } from "@/lib/documentos/listaNominalXlsx";
+import type { NominalOrder } from "@/lib/documentos/nominalExportOptions";
 
 type Client = SupabaseClient<Database>;
 
@@ -83,6 +84,27 @@ function alunoDaMatricula(matricula: NominalMatricula): NominalAluno | null {
   return (Array.isArray(matricula.alunos) ? matricula.alunos[0] : matricula.alunos) ?? null;
 }
 
+/** Acentos e nomes compostos usam o mesmo collation em todos os formatos. */
+function compareByStudentName(
+  a: NominalMatricula, b: NominalMatricula,
+  order: "nome_asc" | "nome_desc",
+  turmaById: ReadonlyMap<string, Pick<NominalTurma, "nome">>,
+): number {
+  const alunoA = alunoDaMatricula(a);
+  const alunoB = alunoDaMatricula(b);
+  const nomeA = (alunoA?.nome ?? "").trim();
+  const nomeB = (alunoB?.nome ?? "").trim();
+  // Registos sem nome ficam no fim em ambas as direções.
+  if (!nomeA && nomeB) return 1;
+  if (nomeA && !nomeB) return -1;
+  const primary = nomeA.localeCompare(nomeB, "pt-PT", { sensitivity: "base", numeric: true });
+  if (primary) return order === "nome_desc" ? -primary : primary;
+  return compareNominalSortableRows(
+    { turma: turmaById.get(a.turma_id ?? "")?.nome ?? "", chamada: a.numero_chamada, nome: nomeA, processo: alunoA?.numero_processo ?? "" },
+    { turma: turmaById.get(b.turma_id ?? "")?.nome ?? "", chamada: b.numero_chamada, nome: nomeB, processo: alunoB?.numero_processo ?? "" },
+  ) || a.id.localeCompare(b.id);
+}
+
 /**
  * Verificação única de vínculo escola/utilizador para as rotas HTTP nominal PDF/XLSX.
  * Acesso por polo continua limitado pela RLS RESTRICTIVE da consulta autenticada.
@@ -117,10 +139,13 @@ export function selectAndSortNominalMatriculas(
     includeAllStatus?: boolean;
     isClasseScope: boolean;
     turmaById: ReadonlyMap<string, Pick<NominalTurma, "nome">>;
+    order?: NominalOrder;
   },
 ): { seleccao: NominalSelection; sortedMatriculas: NominalMatricula[] } {
   const seleccao = selectMatriculasDaLista(matriculas, options.mode, options.includeAllStatus);
-  const sortedMatriculas = options.isClasseScope
+  const sortedMatriculas = options.order && options.order !== "chamada"
+    ? [...seleccao.incluidos].sort((a, b) => compareByStudentName(a, b, options.order as "nome_asc" | "nome_desc", options.turmaById))
+    : options.isClasseScope
     ? [...seleccao.incluidos].sort((a, b) => {
         const alunoA = alunoDaMatricula(a);
         const alunoB = alunoDaMatricula(b);
@@ -159,7 +184,7 @@ export function toNominalXlsxRows(roster: NominalRoster): NominalXlsxRow[] {
  */
 export async function loadNominalRoster({
   supabase, escolaId, turmaId, classeId, year,
-  mode: requestedMode, includeAllStatus = false,
+  mode: requestedMode, includeAllStatus = false, order = "chamada",
   pdfFields = false, extendedStudentFields = false,
 }: {
   supabase: Client;
@@ -169,6 +194,7 @@ export async function loadNominalRoster({
   year?: string | null;
   mode?: ListaNominalMode;
   includeAllStatus?: boolean;
+  order?: NominalOrder;
   pdfFields?: boolean;
   extendedStudentFields?: boolean;
 }): Promise<NominalRoster> {
@@ -282,7 +308,7 @@ export async function loadNominalRoster({
     if ((data?.length ?? 0) < limit) break;
   }
   const { seleccao, sortedMatriculas } = selectAndSortNominalMatriculas(matriculas, {
-    mode, includeAllStatus, isClasseScope, turmaById,
+    mode, includeAllStatus, isClasseScope, turmaById, order,
   });
   return {
     turma, turmaIds, turmaById, classeNome, cursoNome, escola, sessao,

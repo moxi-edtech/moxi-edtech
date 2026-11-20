@@ -12,6 +12,7 @@ import { buildPautaAnualPayload, renderPautaAnualBuffer } from "@/lib/pedagogico
 import { renderBoletimPdfBuffer, renderCertificadoPdfBuffer } from "@/lib/documentos/oficiaisBatchServer"
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf"
 import { progressoLote, statusFinalLote, parcialLote } from "@/lib/documentos/rosterBatchPolicy"
+import { nominalExportFilename, type NominalOrder } from "@/lib/documentos/nominalExportOptions"
 
 type PautaLoteTipo = "trimestral" | "anual" | "boletim_trimestral" | "certificado" | "lista_nominal" | "attendance"
 
@@ -27,6 +28,7 @@ type PautasLoteEventData = {
   is_album?: boolean
   include_all_status?: boolean
   mode?: "ano_letivo" | "operacional"
+  order?: NominalOrder
 }
 
 const getSupabaseAdmin = () => {
@@ -66,7 +68,7 @@ export const pautasLote = inngest.createFunction(
         throw new Error("Turmas não autorizadas neste lote")
       }
       const { data: schoolTurmas, error: scopeError } = await supabase
-        .from("turmas").select("id").eq("escola_id", escola_id).in("id", turma_ids)
+        .from("turmas").select("id,nome,ano_letivo").eq("escola_id", escola_id).in("id", turma_ids)
       if (scopeError || schoolTurmas?.length !== new Set(turma_ids).size) {
         throw new Error("Turmas fora da escola do lote")
       }
@@ -175,6 +177,7 @@ export const pautasLote = inngest.createFunction(
                   isAlbum: event.data.is_album,
                   includeAllStatus: event.data.include_all_status,
                   mode: event.data.mode,
+                  order: event.data.order,
                    onRowsCount: (count) => { nominalRows = count },
                 })
                 filePrefix = tipo
@@ -288,6 +291,7 @@ export const pautasLote = inngest.createFunction(
                 emissor_id: currentJob.created_by ?? null,
                 ano: event.data.year ?? "sessao_da_turma",
                 modo: event.data.mode ?? "conforme_sessao",
+                ordem: event.data.order ?? "chamada",
                 linhas: "nominalRows" in item && typeof item.nominalRows === "number" ? item.nominalRows : 0,
                 campos_sensiveis: false,
               },
@@ -354,11 +358,16 @@ export const pautasLote = inngest.createFunction(
       archive.on("error", (err) => { throw err })
       archive.pipe(output)
 
-      for (const item of successItems) {
+      const turmaMap = new Map((schoolTurmas ?? []).map(turma => [turma.id, turma]))
+      for (const [index, item] of successItems.entries()) {
         const { data, error } = await supabase.storage.from("pautas_oficiais_fechadas").download(item.pdfPath)
         if (error) throw new Error(error.message)
         const buffer = Buffer.from(await data.arrayBuffer())
-        const filename = item.pdfPath.split("/").slice(-2).join("_")
+        const turma = turmaMap.get(item.turmaId)
+        const ano = turma?.ano_letivo
+        const filename = tipo === "lista_nominal"
+          ? `${String(index + 1).padStart(2, "0")} - ${nominalExportFilename({ scope: "turma", turma: turma?.nome ?? "Turma", ano: ano ? `${ano}-${ano + 1}` : undefined, extension: "pdf" })}`
+          : item.pdfPath.split("/").slice(-2).join("_")
         archive.append(buffer, { name: filename })
       }
 

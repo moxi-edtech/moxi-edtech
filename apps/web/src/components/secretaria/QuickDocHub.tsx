@@ -21,6 +21,7 @@ import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf"
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { MAX_TURMAS_POR_LOTE } from "@/lib/documentos/rosterBatchPolicy";
 import type { ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
+import { downloadFilenameFromDisposition, nominalExportFilename, type NominalNameOrder } from "@/lib/documentos/nominalExportOptions";
 
 type TurmaItem = {
   id: string;
@@ -213,7 +214,8 @@ function buildDocUrl(
   periodoNumero: number | null,
   isAlbum: boolean = false,
   includeAllStatus: boolean = false,
-  mode: ListaNominalMode = "operacional"
+  mode: ListaNominalMode = "operacional",
+  order: NominalNameOrder = "nome_asc"
 ) {
   const params = new URLSearchParams();
   if (isAlbum) params.set("album", "true");
@@ -225,6 +227,7 @@ function buildDocUrl(
       return `/api/secretaria/turmas/${turmaId}/alunos/pdf?month=${month}${year ? `&year=${year}` : ""}${extra}`;
     case "nominal":
       params.set("mode", mode);
+      params.set("order", order);
       return `/api/secretaria/turmas/${turmaId}/alunos/pdf?${params.toString()}`;
     case "blank":
       return `/api/secretaria/turmas/${turmaId}/pauta-branca`;
@@ -246,12 +249,14 @@ function buildClasseDocUrl(
   year: number | null,
   includeAllStatus: boolean = false,
   mode: ListaNominalMode = "operacional",
-  format: FormatKey = "pdf_individual"
+  format: FormatKey = "pdf_individual",
+  order: NominalNameOrder = "nome_asc"
 ) {
   const params = new URLSearchParams();
   if (year) params.set("year", String(year));
   if (includeAllStatus) params.set("all_status", "true");
   params.set("mode", mode);
+  params.set("order", order);
   const query = params.toString();
   return `/api/secretaria/classes/${classeId}/alunos/${format === "excel" ? "xlsx" : "pdf"}${query ? `?${query}` : ""}`;
 }
@@ -270,7 +275,7 @@ async function downloadNominalExcel(url: string, filename: string) {
   const blobUrl = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = blobUrl;
-  anchor.download = filename;
+  anchor.download = downloadFilenameFromDisposition(response.headers.get("content-disposition")) ?? filename;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -311,6 +316,7 @@ export default function QuickDocHub({
   const [format, setFormat] = useState<FormatKey>("pdf_individual");
   const [scope, setScope] = useState<ScopeKey>("turma");
   const [modeOverride, setModeOverride] = useState<ListaNominalMode | null>(null);
+  const [nominalOrder, setNominalOrder] = useState<NominalNameOrder>("nome_asc");
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
   const [directHistory, setDirectHistory] = useState<DirectHistoryItem[]>([]);
@@ -642,9 +648,9 @@ export default function QuickDocHub({
       const doc = selectedDocDefs.find((item) => item.key === "nominal");
       if (!doc) return;
 
-      const url = buildClasseDocUrl(selectedClasse.id, anoLetivo, includeAllStatus, modoLista, format);
+      const url = buildClasseDocUrl(selectedClasse.id, anoLetivo, includeAllStatus, modoLista, format, nominalOrder);
       if (format === "excel") {
-        await downloadNominalExcel(url, `lista_nominal_classe_${selectedClasse.id}.xlsx`);
+        await downloadNominalExcel(url, nominalExportFilename({ scope: "classe", classe: selectedClasse.nome, ano: anoLetivo ? `${anoLetivo}-${anoLetivo + 1}` : undefined, extension: "xlsx" }));
       } else {
         window.open(url, "_blank");
       }
@@ -673,7 +679,7 @@ export default function QuickDocHub({
       }
 
       const url = doc.key === "nominal" && format === "excel"
-        ? `/api/secretaria/turmas/${selectedTurma.id}/alunos/xlsx?${new URLSearchParams({ mode: modoLista, ...(includeAllStatus ? { all_status: "true" } : {}) }).toString()}`
+        ? `/api/secretaria/turmas/${selectedTurma.id}/alunos/xlsx?${new URLSearchParams({ mode: modoLista, order: nominalOrder, ...(includeAllStatus ? { all_status: "true" } : {}) }).toString()}`
         : buildDocUrl(
         doc.key,
         selectedTurma.id,
@@ -683,10 +689,11 @@ export default function QuickDocHub({
         selectedPeriodo?.numero ?? null,
         isAlbum,
         includeAllStatus,
-        modoLista
+        modoLista,
+        nominalOrder
       );
       if (doc.key === "nominal" && format === "excel") {
-        await downloadNominalExcel(url, `lista_nominal_turma_${selectedTurma.id}.xlsx`);
+        await downloadNominalExcel(url, nominalExportFilename({ scope: "turma", classe: selectedTurma.classe_nome, turma: selectedTurma.turma_nome ?? selectedTurma.nome, ano: anoLetivo ? `${anoLetivo}-${anoLetivo + 1}` : undefined, extension: "xlsx" }));
       } else {
         window.open(url, "_blank");
       }
@@ -704,6 +711,7 @@ export default function QuickDocHub({
     includeAllStatus,
     isAlbum,
     modoLista,
+    nominalOrder,
     month,
     periodoId,
     scope,
@@ -759,6 +767,7 @@ export default function QuickDocHub({
           is_album: isAlbum,
           include_all_status: includeAllStatus,
           mode: modoLista,
+          ...(doc.key === "nominal" ? { order: nominalOrder } : {}),
         });
         continue;
       }
@@ -770,7 +779,7 @@ export default function QuickDocHub({
         ...(tipo === "trimestral" ? { periodo_letivo_id: periodoId } : {}),
       });
     }
-  }, [academicYearIdFromUrl, anoLetivo, anosLetivos, escolaId, includeAllStatus, isAlbum, modoLista, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
+  }, [academicYearIdFromUrl, anoLetivo, anosLetivos, escolaId, includeAllStatus, isAlbum, modoLista, nominalOrder, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
 
   const canSubmit =
     selectedDocs.length > 0 &&
@@ -1056,6 +1065,20 @@ export default function QuickDocHub({
                 </select>
               </label>
             )}
+            {(scope === "classe" || selectedDocs.includes("nominal")) && (
+              <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
+                Ordenar alunos por nome
+                <select
+                  aria-label="Ordenar alunos por nome"
+                  value={nominalOrder}
+                  onChange={(event) => setNominalOrder(event.target.value as NominalNameOrder)}
+                  className="rounded-xl border border-border bg-card px-3 py-2 text-sm"
+                >
+                  <option value="nome_asc">A–Z (ascendente)</option>
+                  <option value="nome_desc">Z–A (decrescente)</option>
+                </select>
+              </label>
+            )}
             <label className="flex items-center gap-2 cursor-pointer group">
               <input
                 type="checkbox"
@@ -1100,7 +1123,6 @@ export default function QuickDocHub({
           <Field label="Formato de saída">
             <div className="grid gap-2 md:grid-cols-3">
               {(Object.keys(formatLabels) as FormatKey[])
-                .filter((item) => !(scope === "classe" && item === "excel"))
                 .map((item) => (
                   <button
                     key={item}

@@ -17,6 +17,14 @@ const sample: NominalA4Row[] = Array.from({ length: 55 }, (_, i) => ({
   estado: i % 6 === 0 ? "Transferida" : "Concluída",
 }));
 
+const sample61ComLacunas: NominalA4Row[] = Array.from({ length: 61 }, (_, i) => ({
+  numero: String(i < 30 ? i + 1 : i + 14), // 61 matriculados, último número de chamada: 74
+  processo: "P-" + String(i + 1).padStart(4, "0"),
+  nome: "Estudante Sintético " + String(i + 1),
+  turma: "EP-6ª Classe-M-A",
+  estado: "Activa",
+}));
+
 const output = process.env.ROSTER_PDF_OUTPUT ?? "roster-artifacts";
 await mkdir(output, { recursive: true });
 
@@ -27,6 +35,7 @@ for (const [filename, rows, sensitive] of [
     bi: "BI-TESTE-" + x.processo,
   })), true],
   ["lista_sintetica_vazia.pdf", [], false],
+  ["lista_sintetica_61_lacunas.pdf", sample61ComLacunas, false],
 ] as const) {
   const bytes = await renderNominalA4({
     escola: "INSTITUTO FICTÍCIO DE TESTES",

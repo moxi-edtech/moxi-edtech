@@ -27,6 +27,7 @@ import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { ImprimirListaTurmaButton } from "@/components/secretaria/ImprimirListaTurmaButton";
 import { MAX_TURMAS_POR_LOTE } from "@/lib/documentos/rosterBatchPolicy";
+import type { NominalNameOrder } from "@/lib/documentos/nominalExportOptions";
 import type { TurmaItem } from "~/types/turmas";
 
 // ─── Design tokens (single source of truth) ───────────────────────────────────
@@ -359,7 +360,7 @@ function HealthDetail({
 
 function SecretaryCardView({
   items, detailHrefBase, secretariaBase, onEdit, onAssignProfessors, onManageCurriculum, onOpenHorario, canManagePedagogy, pedagogicoStats,
-  selectedIds, onToggleSelect, canPrint,
+  selectedIds, onToggleSelect, canPrint, nominalOrder,
 }: {
   items:           TurmaItem[];
   detailHrefBase:  string;
@@ -370,6 +371,7 @@ function SecretaryCardView({
   onOpenHorario?:  (t: TurmaItem) => void;
   canManagePedagogy: boolean;
   canPrint: boolean;
+  nominalOrder: NominalNameOrder;
   pedagogicoStats: Record<string, PedagogicoTurmaStat>;
   selectedIds:     Set<string>;
   onToggleSelect:  (id: string) => void;
@@ -460,7 +462,7 @@ function SecretaryCardView({
                   </div>
 
                   {canPrint && !isDraft && (
-                    <ImprimirListaTurmaButton turmaId={turma.id} className="mb-3 w-full justify-center" />
+                    <ImprimirListaTurmaButton turmaId={turma.id} order={nominalOrder} className="mb-3 w-full justify-center" />
                   )}
 
                   {/* Occupancy bar */}
@@ -568,7 +570,7 @@ function TurmaRow({
   turma, isExpanded, onToggleExpand, onEdit, onAssignProfessors, onManageCurriculum, onOpenHorario, canManagePedagogy, style,
   detailHrefBase, secretariaBase, financeiro, pedagogico,
   editingCell, onStartEdit, onCancelEdit, onSaveEdit, loadingCell,
-  isSelected, onToggleSelect, canPrint,
+  isSelected, onToggleSelect, canPrint, nominalOrder,
 }: {
   turma:          TurmaItem;
   isExpanded:     boolean;
@@ -579,6 +581,7 @@ function TurmaRow({
   onOpenHorario?:  (t: TurmaItem) => void;
   canManagePedagogy: boolean;
   canPrint: boolean;
+  nominalOrder: NominalNameOrder;
   style?:         CSSProperties;
   detailHrefBase: string;
   secretariaBase: string;
@@ -763,7 +766,7 @@ function TurmaRow({
       {/* Ações */}
       <td className="px-5 py-4 text-right">
         <div className="flex flex-wrap items-center justify-end gap-1">
-          {canPrint && !isDraft && <ImprimirListaTurmaButton turmaId={turma.id} />}
+          {canPrint && !isDraft && <ImprimirListaTurmaButton turmaId={turma.id} order={nominalOrder} />}
           {isDraft ? (
             <button onClick={() => onEdit(turma)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-[#E3B23C] text-white hover:brightness-95 rounded-xl text-xs font-bold shadow-sm transition-all">
@@ -920,6 +923,7 @@ export default function TurmasListClient({
 
   // Selection state (Fase 3)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [nominalOrder, setNominalOrder] = useState<NominalNameOrder>("nome_asc");
   const [bulkPrinting, setBulkPrinting] = useState(false);
   const bulkPrintingLock = useRef(false);
 
@@ -1037,6 +1041,7 @@ export default function TurmasListClient({
         body: JSON.stringify({
           turma_ids: Array.from(selectedIds),
           tipo: "lista_nominal",
+          order: nominalOrder,
           ano_letivo_id: years[0],
         }),
       });
@@ -1432,6 +1437,22 @@ export default function TurmasListClient({
           viewMode={viewMode}
           onViewModeChange={setViewMode}
         />
+        {canPrint && (
+          <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border bg-card px-4 py-3">
+            <label htmlFor="turmas-lista-nominal-order" className="text-xs font-semibold text-muted-foreground">
+              Ordem dos alunos na impressão
+            </label>
+            <select
+              id="turmas-lista-nominal-order"
+              value={nominalOrder}
+              onChange={(event) => setNominalOrder(event.target.value as NominalNameOrder)}
+              className="min-h-9 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+            >
+              <option value="nome_asc">Nome A–Z</option>
+              <option value="nome_desc">Nome Z–A</option>
+            </select>
+          </div>
+        )}
 
         {isInitialLoading ? (
           <div className="p-5 space-y-3">
@@ -1459,6 +1480,7 @@ export default function TurmasListClient({
             secretariaBase={secretariaBase}
             canManagePedagogy={canManagePedagogy}
             canPrint={canPrint}
+            nominalOrder={nominalOrder}
             pedagogicoStats={pedagogicoStats}
             onEdit={(t) => { setEditingTurma(t); setShowForm(true); }}
             onAssignProfessors={(t) => setAssignProfTurma(t)}
@@ -1730,6 +1752,7 @@ export default function TurmasListClient({
                           onOpenHorario={(t) => setHorarioTurma(t)}
                           canManagePedagogy={canManagePedagogy}
                           canPrint={canPrint}
+                          nominalOrder={nominalOrder}
                           detailHrefBase={detailHrefBase}
                           secretariaBase={secretariaBase}
                           financeiro={financeiroStats[row.turma.id]}
@@ -1961,6 +1984,19 @@ export default function TurmasListClient({
                 Mover alunos
               </button>
             )}
+            {canPrint && <label className="flex items-center gap-2 text-xs font-semibold text-slate-200">
+              Ordem
+              <select
+                aria-label="Ordem dos alunos na impressão em lote"
+                value={nominalOrder}
+                onChange={(event) => setNominalOrder(event.target.value as NominalNameOrder)}
+                disabled={bulkPrinting}
+                className="min-h-9 rounded-xl border border-border bg-card px-2 py-1 text-xs font-semibold text-foreground focus:border-klasse-gold focus:outline-none focus:ring-2 focus:ring-klasse-gold/20"
+              >
+                <option value="nome_asc">A–Z</option>
+                <option value="nome_desc">Z–A</option>
+              </select>
+            </label>}
             {canPrint && <button
               type="button"
               onClick={() => void handleBulkPrint()}

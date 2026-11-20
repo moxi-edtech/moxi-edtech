@@ -28,6 +28,11 @@ export type NominalA4Options = {
 type CellColumn = { key: keyof NominalA4Row; label: string; width: number };
 type PreparedRow = { columns: string[][]; height: number };
 
+/** O Nº impresso é a posição na lista exportada, não o número de chamada guardado. */
+export function numberNominalA4Rows(rows: readonly NominalA4Row[]): NominalA4Row[] {
+  return rows.map((row, index) => ({ ...row, numero: String(index + 1) }));
+}
+
 const A4_PORTRAIT: [number, number] = [595.28, 841.89];
 const A4_LANDSCAPE: [number, number] = [841.89, 595.28];
 const MARGIN = 32;
@@ -182,7 +187,7 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
     return { page, y };
   };
 
-  const prepared: PreparedRow[] = alunos.map((row) => {
+  const prepared: PreparedRow[] = numberNominalA4Rows(alunos).map((row) => {
     const lines = cols.map((col) => wrap(String(row[col.key] ?? "—"), col.width, font));
     return {
       columns: lines,
@@ -244,17 +249,21 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
   const pages = doc.getPages();
   pages.forEach((p, idx) => {
     p.drawLine({
-      start: { x: MARGIN, y: FOOTER_BOTTOM + 16 },
-      end: { x: pageW - MARGIN, y: FOOTER_BOTTOM + 16 },
+      start: { x: MARGIN, y: FOOTER_BOTTOM + 24 },
+      end: { x: pageW - MARGIN, y: FOOTER_BOTTOM + 24 },
       thickness: 0.5, color: rgb(0.84, 0.86, 0.89),
     });
     const left = "Emitido em " + dateLabel + "  |  Utilizador: " + printable(emissor, font);
     const safeLeft = wrap(left, available - 90, font, 7)[0] ?? "Emissão KLASSE";
-    p.drawText(safeLeft, { x: MARGIN, y: FOOTER_BOTTOM + 5, font, size: 7 });
+    p.drawText(safeLeft, { x: MARGIN, y: FOOTER_BOTTOM + 12, font, size: 7 });
+    p.drawText("Gerado pelo KLASSE | Sistema de Gestão Escolar Inteligente | www.klasse.ao", {
+      x: MARGIN, y: FOOTER_BOTTOM - 1, font: bold, size: 7,
+      color: rgb(0.12, 0.40, 0.23),
+    });
     const label = "Página " + (idx + 1) + " de " + pages.length;
     p.drawText(label, {
       x: pageW - MARGIN - bold.widthOfTextAtSize(label, 8),
-      y: FOOTER_BOTTOM + 5, font: bold, size: 8,
+      y: FOOTER_BOTTOM + 12, font: bold, size: 8,
     });
   });
   return doc.save();
