@@ -79,6 +79,7 @@ test("frontend reconhece cada turma e usa endpoint canónico sem bypass", () => 
   assert.match(turmas, /\/api\/secretaria\/documentos-oficiais\/lote/);
   assert.match(turmas, /const years = Array\.from\(new Set/);
   assert.match(endpoint, /MAX_TURMAS_POR_LOTE/);
+  assert.match(endpoint, /parsed\.data\.order \?\? "nome_asc"/);
   assert.match(legacy, /if \(!userEscolaId\)/);
   assert.doesNotMatch(legacy, /userEscolaId \?\? requestedEscolaId/);
 });
@@ -91,7 +92,7 @@ test("chave versionada preserva modo e exclusões no reprocessamento", () => {
     isAlbum: false, includeAllStatus: true,
   }, ["00000000-0000-4000-8000-000000000003"]);
   assert.deepEqual(readNominalBatchKey(key), {
-    actorId, academicYearId, mode: "ano_letivo",
+    actorId, academicYearId, mode: "ano_letivo", order: "nome_asc",
     month: "03", isAlbum: false, includeAllStatus: true,
   });
   assert.equal(readNominalBatchKey("legacy:uncertain"), null);
@@ -111,4 +112,50 @@ test("reprocessamento bloqueia modo original irrecuperável", () => {
   assert.match(retry, /prefs\.actorId !== job\.created_by/);
   assert.match(retry, /include_all_status: prefs\.includeAllStatus/);
   assert.match(retry, /canExportSensitiveRosterFields/);
+});
+
+test("reprocessamento restaura nomes das turmas concluídas antes de refazer ZIP", () => {
+  const worker = source("inngest/functions/pautas-lote.ts");
+  assert.match(worker, /const missingTurmaIds = successItems/);
+  assert.match(worker, /\.filter\(turmaId => !turmaMap\.has\(turmaId\)\)/);
+  assert.match(worker, /\.eq\("escola_id", escola_id\)\s*\.in\("id", missingTurmaIds\)/);
+  assert.match(worker, /previousTurmas\?\.length !== missingTurmaIds\.length/);
+  assert.ok(worker.indexOf("const missingTurmaIds") < worker.indexOf("for (const [index, item] of successItems.entries())"));
+});
+
+test("lote conserva ordem Z–A ao reprocessar e aceita chaves v2 já existentes", () => {
+  const actorId = "00000000-0000-4000-8000-000000000001";
+  const academicYearId = "00000000-0000-4000-8000-000000000002";
+  const turmaId = "00000000-0000-4000-8000-000000000003";
+  const key = makeNominalBatchKey({
+    actorId, academicYearId, mode: "operacional", order: "nome_desc",
+    month: undefined, isAlbum: false, includeAllStatus: false,
+  }, [turmaId]);
+  assert.equal(readNominalBatchKey(key)?.order, "nome_desc");
+  assert.equal(readNominalBatchKey(key.replace(":nome_desc:", ":unknown:")), null);
+  const previous = ["roster", "v2", actorId, academicYearId, "operacional", "none", "standard", "padrao", turmaId].join(":");
+  assert.equal(readNominalBatchKey(previous)?.order, "chamada");
+});
+
+test("ambas as rotas de lote enviam a ordem ao worker e permitem reprocessar", () => {
+  const canonical = source("app/api/secretaria/documentos-oficiais/lote/route.ts");
+  const legacy = source("app/api/escola/[id]/admin/turmas/bulk-print/route.ts");
+  const list = source("components/secretaria/TurmasListClient.tsx");
+  const worker = source("inngest/functions/pautas-lote.ts");
+  const retry = source("app/api/secretaria/documentos-oficiais/lote/reprocess/route.ts");
+  const download = source("app/api/secretaria/documentos-oficiais/lote/[id]/download/route.ts");
+  for (const endpoint of [canonical, legacy]) {
+    assert.match(endpoint, /makeNominalBatchKey/);
+    assert.match(endpoint, /order:/);
+  }
+  assert.match(legacy, /order: z\.enum\(\["nome_asc", "nome_desc"\]\)/);
+  assert.match(legacy, /const order = parsed\.data\.order \?\? "nome_asc"/);
+  assert.match(legacy, /mode: undefined,\s+order,/);
+  assert.match(list, /order: nominalOrder/);
+  assert.match(list, /Ordem dos alunos na impressão em lote/);
+  assert.match(worker, /order: event\.data\.order/);
+  assert.match(retry, /order: prefs\.order/);
+  assert.match(download, /readNominalBatchKey/);
+  assert.match(download, /download: `Listas de Turmas - \$\{nominalOrderLabel\}\.zip`/);
+  assert.match(download, /createSignedUrl\(job\.zip_path, expiresInSec, downloadOptions\)/);
 });

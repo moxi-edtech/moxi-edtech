@@ -1,4 +1,6 @@
 /** Política conservadora de emissão em lote. Valores estáveis por escola e operador. */
+import type { NominalOrder } from "@/lib/documentos/nominalExportOptions";
+
 export const MAX_TURMAS_POR_LOTE = 10;
 export const MAX_LOTES_NOMINAIS_POR_HORA = 10;
 
@@ -33,6 +35,7 @@ export type NominalBatchPreferences = {
   actorId: string;
   academicYearId: string;
   mode: "ano_letivo" | "operacional" | undefined;
+  order?: NominalOrder;
   month: string | undefined;
   isAlbum: boolean;
   includeAllStatus: boolean;
@@ -47,29 +50,34 @@ export function makeNominalBatchKey(
     throw new Error("IDs inválidos para idempotência");
   }
   return [
-    "roster", "v2", preferences.actorId, preferences.academicYearId,
+    "roster", "v3", preferences.actorId, preferences.academicYearId,
     preferences.mode ?? "auto", preferences.month || "none",
     preferences.isAlbum ? "album" : "standard",
     preferences.includeAllStatus ? "todos" : "padrao",
+    preferences.order ?? "nome_asc",
     [...turmaIds].sort().join(","),
   ].join(":");
 }
 export function readNominalBatchKey(key: string | null | undefined): NominalBatchPreferences | null {
   if (!key) return null;
   const parts = key.split(":");
-  if (parts.length !== 9 || parts[0] !== "roster" || parts[1] !== "v2" ||
+  // v2 jobs remain replayable with their original chamada ordering.
+  const legacy = parts[1] === "v2";
+  if ((legacy ? parts.length !== 9 : parts.length !== 10) || parts[0] !== "roster" || !["v2", "v3"].includes(parts[1]) ||
       !uuid.test(parts[2]) || !uuid.test(parts[3]) ||
       !["auto", "ano_letivo", "operacional"].includes(parts[4]) ||
       !/^(?:none|0[1-9]|1[0-2])$/.test(parts[5]) ||
       !["album", "standard"].includes(parts[6]) ||
       !["todos", "padrao"].includes(parts[7]) ||
-      !parts[8].split(",").every(id => uuid.test(id))) {
+      (!legacy && !["nome_asc", "nome_desc", "chamada"].includes(parts[8])) ||
+      !(legacy ? parts[8] : parts[9]).split(",").every(id => uuid.test(id))) {
     return null;
   }
   return {
     actorId: parts[2],
     academicYearId: parts[3],
     mode: parts[4] === "auto" ? undefined : parts[4] as "ano_letivo" | "operacional",
+    order: legacy ? "chamada" : parts[8] as NominalOrder,
     month: parts[5] === "none" ? undefined : parts[5],
     isAlbum: parts[6] === "album",
     includeAllStatus: parts[7] === "todos",

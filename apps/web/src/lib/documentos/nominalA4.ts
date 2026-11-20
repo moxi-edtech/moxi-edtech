@@ -28,6 +28,11 @@ export type NominalA4Options = {
 type CellColumn = { key: keyof NominalA4Row; label: string; width: number };
 type PreparedRow = { columns: string[][]; height: number };
 
+/** O Nº impresso é a posição na lista exportada, não o número de chamada guardado. */
+export function numberNominalA4Rows(rows: readonly NominalA4Row[]): NominalA4Row[] {
+  return rows.map((row, index) => ({ ...row, numero: String(index + 1) }));
+}
+
 const A4_PORTRAIT: [number, number] = [595.28, 841.89];
 const A4_LANDSCAPE: [number, number] = [841.89, 595.28];
 const MARGIN = 32;
@@ -145,21 +150,37 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
 
   const openPage = (): { page: PDFPage; y: number } => {
     const page = doc.addPage([pageW, pageH]);
-    let y = pageH - MARGIN;
-    if (embeddedLogo) {
-      const size = embeddedLogo.scaleToFit(42, 42);
-      page.drawImage(embeddedLogo, {
-        x: MARGIN, y: y - 44, width: size.width, height: size.height,
-      });
-    }
+    // Cabeçalho institucional: logótipo e nome partilham o mesmo centro vertical.
+    // Reservar a altura efetiva do nome (sem truncar escolas com nomes extensos)
+    // e manter sempre uma folga antes da linha divisória.
+    const headerTop = pageH - MARGIN;
+    const logoBox = 42;
+    const schoolFontSize = 12;
+    const schoolLineHeight = 15;
     const left = embeddedLogo ? MARGIN + 50 : MARGIN;
     const headingWidth = available - (embeddedLogo ? 50 : 0);
-    const schoolLines = wrap(escola, headingWidth, bold, 12).slice(0, 2);
-    for (const line of schoolLines) {
-      page.drawText(line, { x: left, y: y - 13, font: bold, size: 12, color: rgb(0.12, 0.40, 0.23) });
-      y -= 15;
+    const schoolLines = wrap(escola, headingWidth, bold, schoolFontSize);
+    const schoolHeight = schoolFontSize + (schoolLines.length - 1) * schoolLineHeight;
+    const headerHeight = Math.max(embeddedLogo ? 46 : 30, schoolHeight + 12);
+
+    if (embeddedLogo) {
+      const size = embeddedLogo.scaleToFit(logoBox, logoBox);
+      page.drawImage(embeddedLogo, {
+        x: MARGIN + (logoBox - size.width) / 2,
+        y: headerTop - (headerHeight + size.height) / 2,
+        width: size.width,
+        height: size.height,
+      });
     }
-    y = Math.min(y, pageH - 75);
+
+    const firstBaseline = headerTop - (headerHeight - schoolHeight) / 2 - schoolFontSize;
+    schoolLines.forEach((line, index) => {
+      page.drawText(line, {
+        x: left, y: firstBaseline - index * schoolLineHeight,
+        font: bold, size: schoolFontSize, color: rgb(0.13, 0.17, 0.23),
+      });
+    });
+    let y = headerTop - headerHeight - 9;
     page.drawLine({ start: { x: MARGIN, y }, end: { x: pageW - MARGIN, y }, thickness: 0.9, color: rgb(0.84, 0.86, 0.89) });
     y -= 22;
     page.drawText("LISTA NOMINAL DE ALUNOS", { x: MARGIN, y, font: bold, size: 13, color: rgb(0.13, 0.17, 0.23) });
@@ -182,7 +203,7 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
     return { page, y };
   };
 
-  const prepared: PreparedRow[] = alunos.map((row) => {
+  const prepared: PreparedRow[] = numberNominalA4Rows(alunos).map((row) => {
     const lines = cols.map((col) => wrap(String(row[col.key] ?? "—"), col.width, font));
     return {
       columns: lines,
@@ -244,17 +265,21 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
   const pages = doc.getPages();
   pages.forEach((p, idx) => {
     p.drawLine({
-      start: { x: MARGIN, y: FOOTER_BOTTOM + 16 },
-      end: { x: pageW - MARGIN, y: FOOTER_BOTTOM + 16 },
+      start: { x: MARGIN, y: FOOTER_BOTTOM + 24 },
+      end: { x: pageW - MARGIN, y: FOOTER_BOTTOM + 24 },
       thickness: 0.5, color: rgb(0.84, 0.86, 0.89),
     });
     const left = "Emitido em " + dateLabel + "  |  Utilizador: " + printable(emissor, font);
     const safeLeft = wrap(left, available - 90, font, 7)[0] ?? "Emissão KLASSE";
-    p.drawText(safeLeft, { x: MARGIN, y: FOOTER_BOTTOM + 5, font, size: 7 });
+    p.drawText(safeLeft, { x: MARGIN, y: FOOTER_BOTTOM + 12, font, size: 7 });
+    p.drawText("Gerado pelo KLASSE | Sistema de Gestão Escolar Inteligente | www.klasse.ao", {
+      x: MARGIN, y: FOOTER_BOTTOM - 1, font: bold, size: 7,
+      color: rgb(0.12, 0.40, 0.23),
+    });
     const label = "Página " + (idx + 1) + " de " + pages.length;
     p.drawText(label, {
       x: pageW - MARGIN - bold.widthOfTextAtSize(label, 8),
-      y: FOOTER_BOTTOM + 5, font: bold, size: 8,
+      y: FOOTER_BOTTOM + 12, font: bold, size: 8,
     });
   });
   return doc.save();

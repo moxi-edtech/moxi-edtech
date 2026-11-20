@@ -32,6 +32,12 @@ test("a execução não duplica cliques e tem erro recuperável", () => {
   assert.match(component, /PDF pronto/);
 });
 
+test("detalhe de Turmas aplica as margens partilhadas como expressões JSX", () => {
+  const detail = from("components/secretaria/TurmaDetailClient.tsx");
+  assert.equal((detail.match(/className=\{`\$\{PORTAL_PAGE_HORIZONTAL_INSET\}/g) ?? []).length, 3);
+  assert.doesNotMatch(detail, /className="\$\{PORTAL_PAGE_HORIZONTAL_INSET\}/);
+});
+
 test("a impressão directa aparece nas listas e no detalhe", () => {
   const list = from("components/secretaria/TurmasListClient.tsx");
   const detail = from("components/secretaria/TurmaDetailClient.tsx");
@@ -39,4 +45,19 @@ test("a impressão directa aparece nas listas e no detalhe", () => {
   assert.match(detail, /<ImprimirListaTurmaButton/);
   assert.match(list, /canPrint &&/);
   assert.match(detail, /canPrint &&/);
+});
+
+test("todos os atalhos individuais utilizam a mesma ordem nominal explícita", () => {
+  const button = from("components/secretaria/ImprimirListaTurmaButton.tsx");
+  const list = from("components/secretaria/TurmasListClient.tsx");
+  const detail = from("components/secretaria/TurmaDetailClient.tsx");
+  assert.match(button, /order = "nome_asc"/);
+  assert.match(button, /encodeURIComponent\(order\)/);
+  assert.match(button, /\[turmaId, order\]/);
+  assert.ok((list.match(/order=\{nominalOrder\}/g) ?? []).length >= 2);
+  assert.match(list, /nominalOrder=\{nominalOrder\}/);
+  assert.match(list, /Ordem dos alunos na impressão/);
+  assert.match(detail, /order=\{nominalOrder\}/);
+  assert.match(detail, /params\.set\("order", nominalOrder\)/);
+  assert.match(detail, /Ordenar alunos por nome na lista da turma/);
 });

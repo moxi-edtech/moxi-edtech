@@ -8,6 +8,7 @@ import { drawTable, type Column } from "@/lib/pdf/table";
 import { renderNominalA4, type NominalA4Row } from "@/lib/documentos/nominalA4";
 import { LISTA_NOMINAL_MODES, classifyMatricula, resumoExclusoes, type ListaNominalMode } from "@/lib/documentos/listaNominalPolicy";
 import { loadNominalRoster } from "@/lib/documentos/listaNominalService";
+import type { NominalOrder } from "@/lib/documentos/nominalExportOptions";
 
 type Client = SupabaseClient<Database>;
 
@@ -29,6 +30,8 @@ type ListaNominalPdfParams = {
   isAlbum?: boolean;
   includeAllStatus?: boolean;
   mode?: ListaNominalMode;
+  order?: NominalOrder;
+  onRoster?: (meta: { classeNome: string; turmaNome: string; anoLabel: string }) => void;
   enableQr?: boolean;
   camposSensiveis?: boolean;
   emissor?: string;
@@ -130,6 +133,8 @@ export async function renderListaNominalPdfBuffer({
   isAlbum = false,
   includeAllStatus = false,
   mode: requestedMode,
+  order = "chamada",
+  onRoster,
   enableQr = false,
   camposSensiveis = false,
   emissor = "Sistema KLASSE",
@@ -139,13 +144,14 @@ export async function renderListaNominalPdfBuffer({
   const normalizedYear = year || String(new Date().getFullYear());
   const roster = await loadNominalRoster({
     supabase, escolaId, turmaId, classeId, year: normalizedYear,
-    mode: requestedMode, includeAllStatus, pdfFields: true,
+    mode: requestedMode, includeAllStatus, order: isAttendance || month ? "chamada" : order, pdfFields: true,
     extendedStudentFields: camposSensiveis || isAlbum || Boolean(month) || isAttendance,
   });
   const {
     turma, turmaIds, turmaById, classeNome, cursoNome, escola,
     sessao, mode, isClasseScope, seleccao, sortedMatriculas,
   } = roster;
+  onRoster?.({ classeNome, turmaNome: turma.nome ?? "Turma", anoLabel: roster.anoLabel });
 
   const extraDataRes = disciplinaId && turmaId
     ? await Promise.all([

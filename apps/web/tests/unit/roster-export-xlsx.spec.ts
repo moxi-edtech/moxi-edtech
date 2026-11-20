@@ -157,9 +157,26 @@ test("PDF e Excel de classe/turma usam o mesmo leitor sem consultas nominais dup
 
 test("Central de Documentos permite Excel da classe sem depender de aluno selecionado", () => {
   const hub = readFileSync(new URL("../../src/components/secretaria/QuickDocHub.tsx", import.meta.url), "utf8");
-  assert.match(hub, /buildClasseDocUrl\(selectedClasse\.id, anoLetivo, includeAllStatus, modoLista, format\)/);
+  assert.match(hub, /buildClasseDocUrl\(selectedClasse\.id, anoLetivo, includeAllStatus, modoLista, format, nominalOrder\)/);
   assert.match(hub, /format === "excel" \? "xlsx" : "pdf"/);
   assert.match(hub, /downloadNominalExcel\(url,/);
   assert.doesNotMatch(hub, /Lista nominal por classe não tem versão Excel/);
   assert.doesNotMatch(hub, /current === "excel" \? "pdf_individual"/);
+});
+
+test("Excel/PDF recebem a mesma ordenação nominal e nome descritivo", () => {
+  const src = (path: string) => readFileSync(new URL("../../src/" + path, import.meta.url), "utf8");
+  const hub = src("components/secretaria/QuickDocHub.tsx");
+  assert.match(hub, /A–Z \(ascendente\)/);
+  assert.match(hub, /Z–A \(decrescente\)/);
+  assert.match(hub, /order: nominalOrder/);
+  for (const format of ["xlsx", "pdf"] as const) {
+    for (const scope of ["turmas", "classes"] as const) {
+      const path = `app/api/secretaria/${scope}/[id]/alunos/${format}/route.ts`;
+      const route = src(path);
+      assert.match(route, /parseNominalNameOrder/);
+      assert.match(route, /nominalExportFilename/);
+      assert.match(route, /nominalContentDisposition/);
+    }
+  }
 });
