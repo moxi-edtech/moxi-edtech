@@ -99,3 +99,79 @@ test("principal operational pages use the same inset", () => {
     /min-\[1700px\]:p-8/,
   );
 });
+
+test("Secretaria and Admin module content follows the shared school gutter", () => {
+  const fullPageModules = [
+    "app/secretaria/(portal-secretaria)/exportacoes/page.tsx",
+    "app/secretaria/(portal-secretaria)/importacoes/page.tsx",
+    "app/secretaria/(portal-secretaria)/importacoes/[id]/page.tsx",
+    "app/secretaria/(portal-secretaria)/admissoes/nova/page.tsx",
+    "app/secretaria/(portal-secretaria)/alertas/page.tsx",
+    "app/secretaria/(portal-secretaria)/acesso-alunos/page.tsx",
+    "app/secretaria/(portal-secretaria)/calendario/page.tsx",
+    "app/secretaria/(portal-secretaria)/fecho/page.tsx",
+    "app/secretaria/(portal-secretaria)/fechamento-academico/page.tsx",
+    "app/secretaria/(portal-secretaria)/fechamento-academico/sanidade/page.tsx",
+    "app/secretaria/(portal-secretaria)/fechamento-academico/cockpit/page.tsx",
+    "app/secretaria/(portal-secretaria)/notas/page.tsx",
+    "app/secretaria/(portal-secretaria)/operacoes-academicas/page.tsx",
+    "app/secretaria/(portal-secretaria)/operacoes-academicas/reclassificacao-finalistas/page.tsx",
+    "app/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/page.tsx",
+    "app/secretaria/(portal-secretaria)/rematricula/confirmar/page.tsx",
+    "app/secretaria/(portal-secretaria)/rematricula/reconciliacao/page.tsx",
+    "app/secretaria/(portal-secretaria)/relatorios/page.tsx",
+    "app/secretaria/(portal-secretaria)/raa/dependencias/page.tsx",
+    "app/secretaria/(portal-secretaria)/raa/indisciplina/page.tsx",
+    "app/secretaria/(portal-secretaria)/raa/reapreciacoes/page.tsx",
+    "app/secretaria/(portal-secretaria)/migracao/historico/page.tsx",
+    "app/secretaria/(portal-secretaria)/migracao/alunos/page.tsx",
+    "app/secretaria/(portal-secretaria)/fluxo-academico/page.tsx",
+    "app/secretaria/(portal-secretaria)/candidaturas/[id]/editar/page.tsx",
+    "app/secretaria/(portal-secretaria)/alunos/[id]/editar/page.tsx",
+    "app/escola/[id]/(portal)/admin/ai/KlasseAiCockpitClient.tsx",
+    "app/escola/[id]/(portal)/admin/ai/actions/AiActionsCenterClient.tsx",
+    "app/escola/[id]/(portal)/admin/operacoes-academicas/wizard/page.tsx",
+    "app/escola/[id]/(portal)/admin/configuracoes/avaliacao-frequencia/page.tsx",
+    "components/secretaria/DocumentosOficiaisBatchClient.tsx",
+    "components/secretaria/OcupacaoClient.tsx",
+    "components/secretaria/ProfessoresListClient.tsx",
+    "components/secretaria/ClasseDetailClient.tsx",
+    "components/secretaria/MigracaoPautasPage.tsx",
+  ];
+
+  for (const file of fullPageModules) {
+    assert.match(source(file), /PORTAL_PAGE_INSET/, file);
+  }
+
+  const adminSettings = source("app/escola/[id]/(portal)/admin/configuracoes/page.tsx");
+  assert.match(adminSettings, /PORTAL_PAGE_HORIZONTAL_INSET/);
+  assert.doesNotMatch(adminSettings, /max-w-6xl mx-auto pt-6 px-6/);
+  assert.doesNotMatch(adminSettings, /bg-muted min-h-screen/);
+
+  const migration = source("components/secretaria/MigracaoPautasPage.tsx");
+  assert.doesNotMatch(migration, /max-w-\[1600px\]/);
+  const edits = source("app/secretaria/(portal-secretaria)/alunos/[id]/editar/page.tsx");
+  assert.match(edits, /PORTAL_PAGE_HORIZONTAL_INSET/);
+  assert.doesNotMatch(edits, /max-w-5xl mx-auto px-4/);
+});
+
+test("delegated Secretaria headers align without adding an extra page inset to their clients", () => {
+  const headerDelegates = [
+    "alunos/page.tsx",
+    "alunos/[id]/page.tsx",
+    "classes/page.tsx",
+    "classes/[id]/page.tsx",
+    "turmas/page.tsx",
+    "turmas/[id]/page.tsx",
+    "turmas/ocupacao/page.tsx",
+    "professores/page.tsx",
+    "documentos-oficiais/page.tsx",
+    "documentos/page.tsx",
+  ];
+  for (const name of headerDelegates) {
+    const file = `app/secretaria/(portal-secretaria)/${name}`;
+    const contents = source(file);
+    assert.match(contents, /PORTAL_PAGE_HORIZONTAL_INSET/, file);
+    assert.doesNotMatch(contents, /PORTAL_PAGE_INSET/, `Nested page inset in ${file}`);
+  }
+});
