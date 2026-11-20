@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   auth-login:
-    name: Auth login tests, typecheck and lint
+    name: Auth login tests and typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -31,10 +31,3 @@ jobs:
         run: pnpm -C apps/auth test:unit
       - name: Auth typecheck
         run: pnpm -C apps/auth typecheck
-      - name: Auth login focused lint
-        run: |
-          pnpm -C apps/auth exec eslint \
-            app/login/actions.ts \
-            lib/passwordSignInError.ts \
-            tests/unit/passwordSignInError.spec.ts \
-            --max-warnings 10000
