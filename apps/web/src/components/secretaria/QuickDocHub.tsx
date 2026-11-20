@@ -1123,7 +1123,6 @@ export default function QuickDocHub({
           <Field label="Formato de saída">
             <div className="grid gap-2 md:grid-cols-3">
               {(Object.keys(formatLabels) as FormatKey[])
-                .filter((item) => !(scope === "classe" && item === "excel"))
                 .map((item) => (
                   <button
                     key={item}
