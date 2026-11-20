@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X } from "lucide-react";
+import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X, AlertTriangle, Search, Clock3 } from "lucide-react";
+import { assessmentPlanOverlaps, type AssessmentScheduleSlot } from "@/lib/academico/assessment-plan-overlaps";
 
 type Period = { id: string; numero: number; data_inicio: string; data_fim: string; offering_id: string | null };
 type Class = { id: string; nome: string; curso_id: string };
 type Subject = { id: string; turma_id: string; nome: string };
 type Entry = { id: string; turma_id: string; turma_disciplina_id: string; periodo_letivo_id: string; data: string; inicio: string; fim: string | null; descricao: string | null; tipo: string; estado: string };
+type ScheduledAssessment = { data: string; inicio: string; fim: string; descricao: string };
+const blankSchedule = (): ScheduledAssessment => ({ data: "", inicio: "", fim: "", descricao: "" });
+
 type Audit = { id: number; acao: string; actor_id: string; actor_nome?: string | null; ocorrido_em: string; antes: Entry | null; depois: Entry | null };
 type Data = {
   ok: boolean; error?: string; ano: { ano: number } | null; periodos: Period[];
@@ -33,6 +37,9 @@ export default function CalendarioAvaliacoesClient() {
   const [num, setNum] = useState(1);
   const [classIds, setClassIds] = useState<string[]>([]);
   const [chosen, setChosen] = useState<string[]>([]);
+  const [schedule, setSchedule] = useState<Record<string, ScheduledAssessment>>({});
+  const [classSearch, setClassSearch] = useState("");
+  const [sharedDate, setSharedDate] = useState("");
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState("Teste");
   const [date, setDate] = useState("");
@@ -84,7 +91,10 @@ export default function CalendarioAvaliacoesClient() {
   const visibleDrafts = visible.filter(i => i.estado === "rascunho");
   const selectedDrafts = visibleDrafts.filter((i) => selectedIds.includes(i.id));
   const subjects = (data?.disciplinas || []).filter((s) => classIds.includes(s.turma_id)
-    && (s.nome + " " + (classMap.get(s.turma_id)?.nome || "")).toLowerCase().includes(search.toLowerCase()));
+    && (s.nome + " " + (classMap.get(s.turma_id)?.nome || "")).toLocaleLowerCase("pt").includes(search.trim().toLocaleLowerCase("pt")));
+  const selectedSubjects = (data?.disciplinas || []).filter((s) => chosen.includes(s.id) && classIds.includes(s.turma_id));
+  const updateSchedule = (id: string, key: keyof ScheduledAssessment, value: string) =>
+    setSchedule((current) => ({ ...current, [id]: { ...(current[id] ?? blankSchedule()), [key]: value } }));
   const periodFor = (s: Subject) => {
     const courseId = classMap.get(s.turma_id)?.curso_id;
     const offeringId = data?.ofertas?.find((o) => o.course_id === courseId)?.id;
@@ -92,6 +102,34 @@ export default function CalendarioAvaliacoesClient() {
       || periods.find((p) => p.offering_id === null)
       || (periods.length === 1 ? periods[0] : undefined);
   };
+
+  const rows = selectedSubjects.map((s) => ({
+    id: s.id, turma_id: s.turma_id, turma_disciplina_id: s.id, periodo_letivo_id: periodFor(s)?.id,
+    tipo: kind, data: schedule[s.id]?.data ?? "", inicio: schedule[s.id]?.inicio ?? "",
+    fim: schedule[s.id]?.fim || null, descricao: schedule[s.id]?.descricao?.trim() || null,
+  }));
+  const overlaps = assessmentPlanOverlaps(rows as AssessmentScheduleSlot[], data?.items ?? []);
+  const issues: Record<string, string[]> = {};
+  for (const row of rows) {
+    const errors: string[] = [];
+    const p = periodMap.get(row.periodo_letivo_id ?? "");
+    if (!p) errors.push("Período lectivo não configurado para a turma.");
+    else if (!row.data) errors.push("Defina a data.");
+    else if (row.data < p.data_inicio || row.data > p.data_fim) errors.push("A data deve pertencer ao trimestre desta turma.");
+    if (!row.inicio) errors.push("Defina a hora de início.");
+    if (row.fim && row.fim <= row.inicio) errors.push("O fim deve ser posterior ao início.");
+    for (const collision of overlaps[row.id] ?? []) {
+      const other = collision.source === "existing"
+        ? data?.items.find((item) => item.id === collision.withId)
+        : rows.find((item) => item.id === collision.withId);
+      const otherName = other ? subjectMap.get(other.turma_disciplina_id)?.nome : null;
+      errors.push("Conflito com " + (otherName ?? "outra avaliação") + " · " +
+        fmt(other?.data ?? "") + " às " + (other?.inicio?.slice(0, 5) ?? "—"));
+    }
+    if (errors.length) issues[row.id] = errors;
+  }
+  const ready = rows.length > 0 && rows.every((r) => !issues[r.id]?.length);
+  const pendingCount = rows.filter((r) => issues[r.id]?.length).length;
 
   const mutate = async (body: unknown, msg: string) => {
     setSaving(true); setErr(""); setNotice("");
@@ -110,25 +148,26 @@ export default function CalendarioAvaliacoesClient() {
   };
 
   const save = async () => {
-    if (!date || !start || (end && end <= start)) { setErr("Confirme a data e as horas da avaliação."); return; }
+    if (saving) return;
     if (editing) {
-      if (await mutate({ action: "edit", id: editing, tipo: kind, data: date, inicio: start, fim: end || null, descricao: details || null }, "Alteração guardada e auditada.")) {
-        setEditing(null); setDetails("");
+      if (!date || !start || (end && end <= start)) {
+        setErr("Confirme a data e as horas da avaliação."); return;
       }
+      const current = data?.items.find((i) => i.id === editing);
+      if (!current) { setErr("Avaliação não encontrada. Atualize a agenda."); return; }
+      const updated: AssessmentScheduleSlot = { id: editing, turma_id: current.turma_id, data, inicio: start, fim: end || null };
+      if (assessmentPlanOverlaps([updated], data?.items ?? [])[editing]?.length) {
+        setErr("O novo horário coincide com outra avaliação desta turma. Ajuste a data ou as horas."); return;
+      }
+      if (await mutate({ action: "edit", id: editing, tipo: kind, data, inicio: start, fim: end || null, descricao: details || null },
+        "Alteração guardada e auditada.")) { setEditing(null); setDetails(""); }
       return;
     }
-    const selected = (data?.disciplinas || []).filter((s) => chosen.includes(s.id));
-    if (!selected.length) { setErr("Selecione pelo menos uma disciplina."); return; }
-    const rows = selected.map((s) => ({
-      turma_id: s.turma_id, turma_disciplina_id: s.id, periodo_letivo_id: periodFor(s)?.id,
-      tipo: kind, data: date, inicio: start, fim: end || null, descricao: details || null,
-    }));
-    if (rows.some((r) => {
-      const p = periodMap.get(r.periodo_letivo_id || "");
-      return !p || date < p.data_inicio || date > p.data_fim;
-    })) { setErr("Escolha uma data pertencente ao trimestre de todas as turmas selecionadas."); return; }
-    if (await mutate({ action: "create", items: rows }, "Avaliações guardadas como rascunho.")) {
-      setChosen([]); setDetails("");
+    if (!rows.length) { setErr("Selecione pelo menos uma disciplina."); return; }
+    if (!ready) { setErr("Corrija os campos ou conflitos assinalados antes de guardar."); return; }
+    if (await mutate({ action: "create", items: rows.map(({ id: _localId, ...row }) => row) },
+      "Avaliações guardadas como rascunho.")) {
+      setChosen([]); setSchedule({}); setSharedDate("");
     }
   };
 
