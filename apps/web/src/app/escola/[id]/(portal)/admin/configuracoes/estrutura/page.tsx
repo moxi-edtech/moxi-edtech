@@ -16,7 +16,7 @@ export default function EstruturaPage({ params }: Props) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-10 font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-50 px-6 py-8 font-sans text-slate-900">
       <div className="max-w-6xl mx-auto space-y-8">
         <div>
           <Link
