@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useState } from "react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -31,11 +32,11 @@ export default function HistoricoImportacao() {
   }, []);
 
   if (loading) {
-    return <div className="p-6">Carregando histórico…</div>;
+    return <div className={PORTAL_PAGE_INSET}>Carregando histórico…</div>;
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
       <div>
         <DashboardHeader
           title="Histórico de Importações"

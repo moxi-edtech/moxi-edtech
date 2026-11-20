@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -98,7 +99,7 @@ export default function DependenciasAcademicasPage() {
   const resolvidas = items.filter((item) => item.status === "resolvida_aprovada").length;
 
   return (
-    <div className="space-y-5">
+    <div className={`${PORTAL_PAGE_INSET} space-y-5`}>
       <DashboardHeader
         title="Dependências académicas"
         description="Acompanhe disciplinas carregadas entre anos letivos. O resultado é atualizado pelo RAA; esta fila não altera notas manualmente."

@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { Loader2, FileText, Image as ImageIcon, CheckCircle2, XCircle } from "lucide-react";
 import { isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
@@ -141,7 +142,7 @@ export default function PagamentosPendentesWindow({ escolaId }: { escolaId: stri
   }
 
   return (
-    <section className="mx-auto w-full max-w-7xl space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className={`${PORTAL_PAGE_INSET} space-y-4 rounded-2xl border border-border bg-card shadow-sm`}>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Janela de recebimento</h1>

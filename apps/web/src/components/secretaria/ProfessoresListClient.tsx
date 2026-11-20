@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -121,7 +122,7 @@ export default function ProfessoresListClient() {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6 p-6 bg-muted rounded-xl">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6 rounded-xl bg-muted`}>
       {/* --- BOTÃO VOLTAR --- */}
       <div className="flex items-center gap-3">
         <button 

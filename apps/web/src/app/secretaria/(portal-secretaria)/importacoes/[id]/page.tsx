@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
@@ -75,7 +76,7 @@ export default async function ImportacaoDetailPage({ params }: { params: Promise
     : { total: 0, imported: 0, errors: erros.length, remaining: 0 };
 
   return (
-    <div className="space-y-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href="../" className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-teal-700">

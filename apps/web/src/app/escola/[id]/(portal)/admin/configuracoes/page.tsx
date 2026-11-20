@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 
 import { useState, useEffect, use } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -238,9 +239,9 @@ export default function ConfiguracoesPage({ params }: Props) {
   // 4. MODO WIZARD (apenas quando forçado)
   if (forceWizard) {
     return (
-      <div className="bg-muted min-h-screen">
+      <div className="min-h-full bg-muted">
         {cameFromPublicOnboarding && (
-          <div className="max-w-6xl mx-auto pt-6 px-6">
+          <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-6`}>
             <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-foreground shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -263,7 +264,7 @@ export default function ConfiguracoesPage({ params }: Props) {
         )}
         {/* Botão de voltar (só aparece se for edição manual) */}
         {setupComplete && (
-          <div className="max-w-6xl mx-auto pt-6 px-6">
+          <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-6`}>
             <button 
               onClick={() => setForceWizard(false)} 
               className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
@@ -288,8 +289,8 @@ export default function ConfiguracoesPage({ params }: Props) {
 
   // 5. MODO HUB (Painel de Configurações)
   return (
-    <div className="bg-muted min-h-screen">
-      <div className="max-w-6xl mx-auto px-6 pt-6">
+    <div className="min-h-full bg-muted">
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-6`}>
         {cameFromPublicOnboarding && (
           <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-foreground shadow-sm">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

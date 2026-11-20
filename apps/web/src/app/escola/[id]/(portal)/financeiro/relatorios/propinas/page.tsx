@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
@@ -139,7 +140,7 @@ export default function Page() {
   }, [selectedSession, anoLetivoAtivo, escolaId]);
 
   return (
-    <div className="space-y-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Relatório de Propinas</h1>

@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -40,7 +41,7 @@ export default async function ReclassificacaoFinalistasPage({
 
   if (!escolaId) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className={PORTAL_PAGE_INSET}>
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
           Escola não identificada para este utilizador.
         </div>
@@ -49,7 +50,7 @@ export default async function ReclassificacaoFinalistasPage({
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <AuditPageView
         portal="secretaria"
         acao="PAGE_VIEW"

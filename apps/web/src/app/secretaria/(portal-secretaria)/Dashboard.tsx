@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
@@ -344,8 +345,8 @@ export function Dashboard({
   return (
     <div className="flex flex-col min-h-full bg-slate-50 font-sans text-slate-900">
       <div className="flex-1 flex">
-        <div className="flex-1 p-6 lg:p-8 pb-32">
-          <div className="max-w-5xl mx-auto space-y-8">
+        <div className="min-w-0 flex-1 pb-32">
+          <div className={`${PORTAL_PAGE_INSET} space-y-8`}>
             <DashboardHeader
               title={dashboardTitle}
               description="Resumo operacional do dia"

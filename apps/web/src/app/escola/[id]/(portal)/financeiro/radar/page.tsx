@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Plus, X } from "lucide-react";
@@ -186,7 +187,7 @@ export default function SistemaCobrancas() {
       {/* Sem `<main>` próprio: o AppShell já abre um e soma `p-4 md:p-6`. Dois
           `<main>` aninhados são HTML inválido e duplicam a goteira. A largura e
           a goteira seguem o `AlunosListClient`. */}
-      <div className="mx-auto w-full max-w-6xl space-y-6 px-6 py-8">
+      <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
         
         {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

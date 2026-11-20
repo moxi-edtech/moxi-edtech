@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -215,7 +216,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-8 bg-background min-h-full sm:px-8 sm:py-10 sm:space-y-10">
+    <div className={`${PORTAL_PAGE_INSET} min-h-full space-y-8 bg-background sm:space-y-10`}>
 
       {/* ── 1. PAGE HEADER ───────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">

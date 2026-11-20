@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Filter, SlidersHorizontal } from "lucide-react";
@@ -74,7 +75,7 @@ export default function OcupacaoClient() {
   }, [data]);
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6 p-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <h1 className="text-2xl font-bold text-moxinexa-navy">Ocupação de Turmas</h1>
         <p className="text-sm text-slate-500 mt-1">

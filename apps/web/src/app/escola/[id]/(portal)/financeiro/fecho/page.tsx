@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -169,7 +170,7 @@ export default function FechoCaixaPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className={`${PORTAL_PAGE_INSET} space-y-8`}>
       
       {/* HEADER DE GESTÃO */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-200 pb-6">

@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { supabaseServer } from "@/lib/supabaseServer";
 import type { ComponentProps } from "react";
 import AuditPageView from "@/components/audit/AuditPageView";
@@ -94,8 +95,8 @@ export default async function Page({ params }: PageProps = {}) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="px-6 pt-6">
+    <div className={`${PORTAL_PAGE_INSET} flex flex-col gap-4`}>
+      <div>
         <DashboardHeader
           title="Gestão de Admissões"
           description="Acompanhe e processe novas matrículas online com foco em produtividade."

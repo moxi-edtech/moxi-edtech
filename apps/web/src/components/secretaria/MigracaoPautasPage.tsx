@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, BookOpen, CheckCircle2, Loader2, RefreshCw, Save, Users } from "lucide-react";
@@ -522,7 +523,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
   const portalLabel = portal === "admin" ? "Admin" : "Secretaria";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-6 md:px-6">
+    <div className={`${PORTAL_PAGE_INSET} flex flex-col gap-6`}>
       <DashboardHeader
         title={pageTitle}
         description="Selecione a turma actual, escolha a classe passada e lance as notas de todos os alunos numa única grelha."

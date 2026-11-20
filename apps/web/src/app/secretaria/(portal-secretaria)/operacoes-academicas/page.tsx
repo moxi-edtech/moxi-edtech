@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -253,7 +254,7 @@ export default async function OperacoesAcademicasPage({
   return (
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="operacoes_academicas" />
-      <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className={`${PORTAL_PAGE_INSET} space-y-6 rounded-xl border border-border bg-card shadow-sm`}>
         <div className="flex flex-col gap-2">
           <DashboardHeader
             title="Operações Académicas"

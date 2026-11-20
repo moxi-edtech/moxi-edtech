@@ -9,6 +9,10 @@ on:
       - 'apps/web/src/components/layout/operacoes/OperacoesDashboard.tsx'
       - 'apps/web/src/components/layout/klasse/Sidebar.tsx'
       - 'apps/web/src/components/layout/klasse/Topbar.tsx'
+      - 'apps/web/src/lib/layout/portal-page.ts'
+      - 'apps/web/src/components/layout/klasse/AppShell.tsx'
+      - 'apps/web/src/components/escola/settings/**'
+      - 'apps/web/tests/unit/portal-page-layout.spec.ts'
       - '.github/workflows/notebook-dashboard-layout.yml'
 
 permissions:
@@ -31,7 +35,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Web TypeScript
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: pnpm -C apps/web typecheck
+      - name: Portal page gutters and wide canvas contracts
+        run: pnpm -C apps/web exec node --test --import tsx tests/unit/portal-page-layout.spec.ts
       - name: Lint affected dashboard components
         run: |
           pnpm -C apps/web exec eslint \

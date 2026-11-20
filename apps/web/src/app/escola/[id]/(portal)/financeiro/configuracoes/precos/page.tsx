@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import AuditPageView from "@/components/audit/AuditPageView"
 import PrecosClient from "@/app/escola/[id]/(portal)/financeiro/configuracoes/precos/PrecosClient"
 import { supabaseServer } from "@/lib/supabaseServer"
@@ -29,6 +30,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return (
     <>
       <AuditPageView portal="financeiro" acao="PAGE_VIEW" entity="financeiro_precos" />
+      <div className={PORTAL_PAGE_INSET}>
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
         <div>
@@ -87,6 +89,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         ) : (
           <div className="text-sm text-slate-500">Escola não identificada para carregar o preçário.</div>
         )}
+      </div>
       </div>
     </>
   )

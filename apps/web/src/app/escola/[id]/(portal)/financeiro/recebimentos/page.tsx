@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import Link from "next/link";
 import { ArrowRight, Clock3, History, Plus } from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -37,7 +38,7 @@ export default async function RecebimentosPage({
     : null;
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <DashboardHeader
         title="Recebimentos"
         description="Registe entradas, valide comprovativos e consulte o histórico num único lugar."

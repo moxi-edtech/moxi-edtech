@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -23,6 +24,7 @@ export default async function RecebimentosPage() {
 
   return (
     <div className="space-y-4">
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-8`}>
       <DashboardHeader
         title="Recebimentos"
         breadcrumbs={[
@@ -31,6 +33,7 @@ export default async function RecebimentosPage() {
           { label: "Recebimentos" },
         ]}
       />
+      </div>
       <PagamentosPendentesWindow escolaId={escolaId} />
     </div>
   );

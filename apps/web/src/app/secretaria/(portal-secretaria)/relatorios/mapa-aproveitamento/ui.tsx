@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useMemo, useState } from "react";
 import { BarChart3, Filter } from "lucide-react";
@@ -69,7 +70,7 @@ export default function MapaAproveitamentoClient() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2 text-[#1F6B3B]">
           <BarChart3 className="h-5 w-5" />

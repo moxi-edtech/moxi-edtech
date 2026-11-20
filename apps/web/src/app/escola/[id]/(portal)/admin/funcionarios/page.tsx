@@ -1,6 +1,5 @@
 "use client";
-
-"use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useState } from "react";
 import FuncionariosPage from "../../funcionarios/page";
@@ -10,7 +9,7 @@ export default function AdminFuncionariosPage() {
   const [tab, setTab] = useState<"listar" | "cadastrar">("listar");
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <div className="flex border-b border-slate-200">
         <button
           type="button"

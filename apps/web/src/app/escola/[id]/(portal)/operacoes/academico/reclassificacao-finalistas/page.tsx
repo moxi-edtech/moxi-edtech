@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { buildPortalHref } from "@/lib/navigation";
@@ -13,7 +14,7 @@ export default async function ReclassificacaoFinalistasOperacoesPage({
   const { id } = await params;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <AuditPageView
         portal="admin_escola"
         acao="PAGE_VIEW"

@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 import AuditPageView from "@/components/audit/AuditPageView";
 import SecretariaDocumentosWorkspace from "@/components/secretaria/SecretariaDocumentosWorkspace";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -16,9 +17,9 @@ export default async function DocumentosPage() {
     return (
       <>
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="documentos" />
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+        <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} py-8`}><div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           Vincule seu perfil a uma escola para emitir documentos.
-        </div>
+        </div></div>
       </>
     );
   }
@@ -26,6 +27,7 @@ export default async function DocumentosPage() {
   return (
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="documentos" />
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-8`}>
       <DashboardHeader
         title="Documentos"
         breadcrumbs={[
@@ -34,6 +36,7 @@ export default async function DocumentosPage() {
           { label: "Documentos" },
         ]}
       />
+      </div>
       <SecretariaDocumentosWorkspace escolaId={escolaId} />
     </>
   );

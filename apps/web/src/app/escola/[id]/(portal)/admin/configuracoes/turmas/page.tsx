@@ -242,11 +242,15 @@ export default function TurmasConfiguracoesPage() {
       }
     } catch (e) {
       console.error(e);
-      error("Erro ao carregar dados acadêmicos.");
+      rawToast({
+        variant: "error",
+        title: "Erro ao carregar dados acadêmicos.",
+        duration: 6000,
+      });
     } finally {
       setLoading(false);
     }
-  }, [error, escolaId, escolaParam]);
+  }, [rawToast, escolaId, escolaParam]);
 
   useEffect(() => {
     loadData();

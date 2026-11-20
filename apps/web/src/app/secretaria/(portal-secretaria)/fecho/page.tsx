@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -64,7 +65,7 @@ export default function SecretariaFechoPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
       <DashboardHeader
         title="Fecho de Caixa (Secretaria)"
         breadcrumbs={[

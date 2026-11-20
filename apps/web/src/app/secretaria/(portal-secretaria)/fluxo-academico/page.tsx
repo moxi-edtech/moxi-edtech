@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import Mermaid from "@/components/Mermaid";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export default function Page() {
   return (
-    <>
+    <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="fluxo_academico" />
       <div className="mb-4">
         <DashboardHeader
@@ -20,6 +21,6 @@ export default function Page() {
         />
       </div>
       <Mermaid chart={fluxoAcademico} className="overflow-auto rounded-lg border bg-white p-4" />
-    </>
+    </div>
   );
 }

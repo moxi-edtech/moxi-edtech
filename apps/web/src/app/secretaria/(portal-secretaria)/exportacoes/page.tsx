@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { supabaseServer } from "@/lib/supabaseServer";
@@ -22,9 +23,9 @@ export default async function Page() {
     return (
       <>
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="exportacoes" />
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
+        <div className={`${PORTAL_PAGE_INSET} text-sm`}><div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
           Vincule seu perfil a uma escola para acessar exportações.
-        </div>
+        </div></div>
       </>
     )
   }
@@ -40,7 +41,7 @@ export default async function Page() {
   return (
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="exportacoes" />
-      <div className="bg-white rounded-xl shadow border p-5">
+      <div className={`${PORTAL_PAGE_INSET} space-y-5`}>
         <DashboardHeader
           title="Exportações (Secretaria)"
           breadcrumbs={[

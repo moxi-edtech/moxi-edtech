@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
@@ -250,7 +251,7 @@ export default function CockpitPedagogicoPage() {
   };
 
   return (
-    <div className="space-y-6 p-6 max-w-6xl mx-auto">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       {/* Back button and Header */}
       <div className="flex flex-col gap-4">
         <Link

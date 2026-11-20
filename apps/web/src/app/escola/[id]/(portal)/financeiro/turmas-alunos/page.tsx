@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import Link from 'next/link';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -286,7 +287,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
   // Goteira própria `px-6 py-8` sobre a do AppShell e `max-w-6xl` — é exactamente a
   // casca do `AlunosListClient`, a página com que esta tem de parecer irmã.
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5 px-6 py-8 print:space-y-6 print:p-0">
+    <div className={`${PORTAL_PAGE_INSET} space-y-5 print:space-y-6 print:p-0`}>
       
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {

@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Link from "next/link";
@@ -226,7 +227,7 @@ function HorariosSlotsContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 font-sans">
-      <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
+      <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold">Estrutura de Horários</h1>

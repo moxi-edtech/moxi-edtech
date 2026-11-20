@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useState, useEffect } from "react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -108,7 +109,7 @@ export default function CalendarioPage() {
   };
 
   return (
-    <div className="bg-background rounded-xl shadow border p-5 space-y-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6 rounded-xl border border-border bg-card shadow-sm`}>
       <DashboardHeader
         title="Calendário Unificado da Escola"
         description="Visualização de eventos genéricos e calendário académico (MED)."

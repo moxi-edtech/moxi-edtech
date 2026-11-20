@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useState } from "react";
 import { BookOpen } from "lucide-react";
@@ -52,7 +53,7 @@ export default function ClassesListClient() {
   }, [escolaId]);
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6 p-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <div className="bg-card p-5 rounded-xl border border-border shadow-sm">
         <h1 className="text-2xl font-bold text-moxinexa-navy">Classes</h1>
         <p className="text-sm text-muted-foreground mt-1">

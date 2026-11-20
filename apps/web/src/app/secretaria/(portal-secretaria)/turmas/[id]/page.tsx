@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 import TurmaDetailClient from "@/components/secretaria/TurmaDetailClient";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -12,6 +13,7 @@ export default async function Page({
   return (
     <div className="space-y-4">
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="turma_detail" entityId={id} />
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-8`}>
       <DashboardHeader
         title="Detalhe da Turma"
         breadcrumbs={[
@@ -21,6 +23,7 @@ export default async function Page({
           { label: "Detalhe" },
         ]}
       />
+      </div>
       <TurmaDetailClient turmaId={id} />
     </div>
   );

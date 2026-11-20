@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 import { redirect } from "next/navigation";
 import AuditPageView from "@/components/audit/AuditPageView";
 import AlunosSecretariaPage from "@/components/secretaria/AlunosSecretariaPage";
@@ -26,6 +27,7 @@ export default async function Page() {
   return (
     <div className="space-y-4">
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="alunos_list" />
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-8`}>
       <DashboardHeader
         title="Alunos"
         breadcrumbs={[
@@ -34,6 +36,7 @@ export default async function Page() {
           { label: "Alunos" },
         ]}
       />
+      </div>
       <AlunosSecretariaPage />
     </div>
   );

@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -71,7 +72,7 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
   }, [escolaId, search]);
 
   return (
-    <div className={`${embedded ? "" : "mx-auto w-full max-w-6xl space-y-6 px-4 py-6"}`}>
+    <div className={embedded ? "" : `${PORTAL_PAGE_INSET} space-y-6`}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <UserGroupIcon className="w-7 h-7 text-emerald" />

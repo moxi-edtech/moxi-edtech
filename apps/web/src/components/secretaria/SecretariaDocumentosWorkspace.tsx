@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,7 +15,7 @@ export default function SecretariaDocumentosWorkspace({ escolaId }: { escolaId: 
   const recebimentosHref = buildPortalHref(escolaParam, "/secretaria/recebimentos");
 
   return (
-    <div className="p-4 md:p-6">
+    <div className={PORTAL_PAGE_INSET}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4">
         <div>
           <p className="text-sm font-bold text-slate-900">Boletim de notas: pagamento e liberação</p>

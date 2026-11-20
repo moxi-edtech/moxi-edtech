@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -131,7 +132,7 @@ export default function ConfirmarRematriculaPage() {
   }, []);
 
   return (
-    <div className="bg-white rounded-xl shadow border p-5">
+    <div className={`${PORTAL_PAGE_INSET} rounded-xl border border-border bg-card shadow-sm`}>
       <div className="mb-4">
         <DashboardHeader
           title="Confirmar Rematrícula em Massa"

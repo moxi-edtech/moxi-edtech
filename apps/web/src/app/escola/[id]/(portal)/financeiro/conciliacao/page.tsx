@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -485,7 +486,7 @@ const ConciliacaoBancaria: React.FC = () => {
 
   // -------- Render
   return (
-    <div className="space-y-8">
+    <div className={`${PORTAL_PAGE_INSET} space-y-8`}>
       {/* Top header */}
       <header className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-ring">
         <div className="h-1 bg-gradient-to-r from-transparent via-amber/60 to-transparent" />

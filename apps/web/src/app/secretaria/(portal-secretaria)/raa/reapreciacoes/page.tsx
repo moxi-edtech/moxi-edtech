@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, Clock3, RefreshCw, XCircle } from "lucide-react";
@@ -98,7 +99,7 @@ export default function ReapreciacoesPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className={`${PORTAL_PAGE_INSET} space-y-5`}>
       <DashboardHeader
         title="Reapreciações RAA"
         description="Uma fila única para analisar pedidos, decidir e manter o protocolo rastreável."

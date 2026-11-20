@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { ExtratoActions } from "@/components/financeiro/ExtratoActions";
@@ -40,7 +41,7 @@ export default async function Page({
   }
 
   return (
-    <div className="space-y-4">
+    <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Extratos de Alunos</h1>

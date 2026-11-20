@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -225,7 +226,7 @@ export default function RematriculaJanelasPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="${PORTAL_PAGE_INSET} space-y-6">
       <DashboardHeader
         title="Janelas de Rematrícula"
         description="Abra ou feche o período em que alunos podem confirmar a rematrícula pelo portal."

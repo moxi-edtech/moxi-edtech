@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { Landmark, LockKeyhole } from "lucide-react";
 import { InstantWorkspaceTabs } from "@/components/financeiro/InstantWorkspaceTabs";
 import ConciliacaoPage from "../conciliacao/page";
@@ -15,7 +16,7 @@ export default async function ControleCaixaPage({
   const vista = query.vista === "fecho" ? "fecho" : "conciliacao";
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <InstantWorkspaceTabs
         initialTab={vista}
         ariaLabel="Vistas de controlo de caixa"
