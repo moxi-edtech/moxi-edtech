@@ -215,7 +215,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-8 bg-background min-h-full sm:px-8 sm:py-10 sm:space-y-10">
+    <div className="mx-auto min-h-full w-full max-w-6xl space-y-8 bg-background px-6 py-8 sm:space-y-10">
 
       {/* ── 1. PAGE HEADER ───────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
