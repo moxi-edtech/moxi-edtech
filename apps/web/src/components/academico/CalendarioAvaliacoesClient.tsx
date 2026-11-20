@@ -363,35 +363,41 @@ export default function CalendarioAvaliacoesClient() {
                   const conflicts = warnings.filter((value) => value.startsWith("Conflito") || value.startsWith("A data deve") || value.startsWith("O fim deve") || value.startsWith("Período"));
                   const isScheduled = Boolean(current.data && current.inicio && !warnings.length);
                   return (
-                    <div key={subject.id} className={"space-y-3 rounded-xl border p-3 " + (conflicts.length ? "border-destructive/50 bg-destructive/5" : "border-border bg-card")}>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-semibold text-foreground">{subject.nome}</h4>
-                          <p className="text-xs text-muted-foreground">{classMap.get(subject.turma_id)?.nome}</p>
+                    <div key={subject.id} className={"space-y-2 rounded-xl border p-3 " + (conflicts.length ? "border-destructive/50 bg-destructive/5" : "border-border bg-card")}>
+                      <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(180px,1fr)_minmax(150px,190px)_minmax(105px,135px)_minmax(105px,135px)]">
+                        <div className="col-span-2 flex min-w-0 items-center justify-between gap-2 sm:col-span-3 lg:col-span-1 lg:flex-wrap">
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-semibold leading-snug text-foreground">{subject.nome}</h4>
+                            <p className="text-xs text-muted-foreground">{classMap.get(subject.turma_id)?.nome}</p>
+                          </div>
+                          <span className={"shrink-0 rounded-full px-2 py-1 text-[11px] font-medium " + (conflicts.length ? "bg-destructive/10 text-destructive" : isScheduled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                            {conflicts.length ? "Conflito" : isScheduled ? "Pronta" : "Por agendar"}
+                          </span>
                         </div>
-                        <span className={"rounded-full px-2 py-1 text-xs font-medium " + (conflicts.length ? "bg-destructive/10 text-destructive" : isScheduled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-                          {conflicts.length ? "Conflito" : isScheduled ? "Pronta" : "Por agendar"}
-                        </span>
-                      </div>
-                      <div className="grid gap-2 sm:grid-cols-3">
-                        <label className="text-xs font-semibold text-foreground">Data
+                        <label className="col-span-2 text-xs font-semibold text-foreground sm:col-span-1">Data
                           <input type="date" className={control + " mt-1"} value={current.data}
                             min={period?.data_inicio} max={period?.data_fim}
                             onChange={(e) => updateSchedule(subject.id, "data", e.target.value)} />
                         </label>
-                        <label className="text-xs font-semibold text-foreground">Início
+                        <label className="min-w-0 text-xs font-semibold text-foreground">Início
                           <input type="time" className={control + " mt-1"} value={current.inicio}
                             onChange={(e) => updateSchedule(subject.id, "inicio", e.target.value)} />
                         </label>
-                        <label className="text-xs font-semibold text-foreground">Fim (opcional)
+                        <label className="min-w-0 text-xs font-semibold text-foreground">Fim (opcional)
                           <input type="time" className={control + " mt-1"} value={current.fim}
                             onChange={(e) => updateSchedule(subject.id, "fim", e.target.value)} />
                         </label>
                       </div>
-                      <label className="block text-xs font-semibold text-foreground">Observação (opcional)
-                        <input className={control + " mt-1"} value={current.descricao} maxLength={500}
-                          placeholder="Conteúdo, sala ou instruções…" onChange={(e) => updateSchedule(subject.id, "descricao", e.target.value)} />
-                      </label>
+                      <details className="text-xs text-muted-foreground">
+                        <summary className="w-fit cursor-pointer py-1 font-medium text-primary">
+                          {current.descricao ? "Ver ou editar observação" : "Adicionar observação (opcional)"}
+                        </summary>
+                        <label className="mt-1 block text-xs font-semibold text-foreground">
+                          Conteúdo, sala ou instruções
+                          <input className={control + " mt-1"} value={current.descricao} maxLength={500}
+                            placeholder="Observação desta disciplina…" onChange={(e) => updateSchedule(subject.id, "descricao", e.target.value)} />
+                        </label>
+                      </details>
                       {conflicts.length > 0 && (
                         <div role="alert" className="space-y-1 text-xs font-semibold text-destructive">
                           {conflicts.map((warning) => <p key={warning} className="flex items-start gap-1.5"><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />{warning}</p>)}
