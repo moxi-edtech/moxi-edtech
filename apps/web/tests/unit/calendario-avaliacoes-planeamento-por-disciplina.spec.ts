@@ -42,3 +42,8 @@ test("publicação continua explícita, apenas rascunhos selecionados e auditada
   assert.match(client, /Publicar selecionadas/);
   assert.match(backend, /db\.rpc\("publicar_calendario_avaliacoes"/);
 });
+
+test("edição utiliza a data do formulário e não o objeto de dados carregados", () => {
+  assert.match(client, /id: editing, turma_id: current\.turma_id, data: date, inicio: start/);
+  assert.match(client, /action: "edit", id: editing, tipo: kind, data: date, inicio: start/);
+});
