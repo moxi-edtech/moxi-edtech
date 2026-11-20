@@ -91,7 +91,7 @@ test("chave versionada preserva modo e exclusões no reprocessamento", () => {
     isAlbum: false, includeAllStatus: true,
   }, ["00000000-0000-4000-8000-000000000003"]);
   assert.deepEqual(readNominalBatchKey(key), {
-    actorId, academicYearId, mode: "ano_letivo",
+    actorId, academicYearId, mode: "ano_letivo", order: "nome_asc",
     month: "03", isAlbum: false, includeAllStatus: true,
   });
   assert.equal(readNominalBatchKey("legacy:uncertain"), null);
@@ -111,4 +111,18 @@ test("reprocessamento bloqueia modo original irrecuperável", () => {
   assert.match(retry, /prefs\.actorId !== job\.created_by/);
   assert.match(retry, /include_all_status: prefs\.includeAllStatus/);
   assert.match(retry, /canExportSensitiveRosterFields/);
+});
+
+test("lote conserva ordem Z–A ao reprocessar e aceita chaves v2 já existentes", () => {
+  const actorId = "00000000-0000-4000-8000-000000000001";
+  const academicYearId = "00000000-0000-4000-8000-000000000002";
+  const turmaId = "00000000-0000-4000-8000-000000000003";
+  const key = makeNominalBatchKey({
+    actorId, academicYearId, mode: "operacional", order: "nome_desc",
+    month: undefined, isAlbum: false, includeAllStatus: false,
+  }, [turmaId]);
+  assert.equal(readNominalBatchKey(key)?.order, "nome_desc");
+  assert.equal(readNominalBatchKey(key.replace(":nome_desc:", ":unknown:")), null);
+  const previous = ["roster", "v2", actorId, academicYearId, "operacional", "none", "standard", "padrao", turmaId].join(":");
+  assert.equal(readNominalBatchKey(previous)?.order, "chamada");
 });
