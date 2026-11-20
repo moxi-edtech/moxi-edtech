@@ -164,6 +164,7 @@ export default async function EscolaAdminDashboardData({
     curriculoOk:           false,
     turmasOk:              false,
     setupComplete:         false,
+    validationUnavailable: true,
   };
 
   const emptyKpis: KpiStats = { alunos: 0, turmas: 0, professores: 0, avaliacoes: 0 };
@@ -206,7 +207,6 @@ export default async function EscolaAdminDashboardData({
       pendingTurmasResult,
       draftCurriculosResult,
       admissoesCountsResult,
-      setupStatusResult,
       configResult,
       anoLetivoResult,
       matriculasPendentesResult,
@@ -249,11 +249,6 @@ export default async function EscolaAdminDashboardData({
         .eq("escola_id", validId)
         .maybeSingle(),
 
-      s.from("vw_escola_setup_status")
-        .select("has_ano_letivo_ativo, has_3_trimestres, has_curriculo_published, has_turmas_no_ano")
-        .eq("escola_id", validId)
-        .maybeSingle(),
-
       s.from("configuracoes_escola")
         .select("frequencia_modelo, frequencia_min_percent, modelo_avaliacao, avaliacao_config")
         .eq("escola_id", validId)
@@ -261,7 +256,7 @@ export default async function EscolaAdminDashboardData({
 
       // Fetch active ano_letivo year for the header badge
       s.from("anos_letivos")
-        .select("ano")
+        .select("id, ano")
         .eq("escola_id", validId)
         .eq("ativo", true)
         .maybeSingle(),
@@ -355,8 +350,53 @@ export default async function EscolaAdminDashboardData({
     ]);
 
     // ─── Setup status ──────────────────────────────────────────────────────
-    const setupData  = setupStatusResult.data;
-    const config     = configResult.data;
+    // Estado em tempo real do ano letivo ativo, com queries RLS e limites.
+    // A antiga MV podia ficar sem registo e produzir um falso bloqueio.
+    const activeYear = anoLetivoResult.data;
+    const setupData = {
+      has_ano_letivo_ativo: Boolean(activeYear?.id),
+      has_3_trimestres: false,
+      has_curriculo_published: false,
+      has_turmas_no_ano: false,
+    };
+    let setupReadError = Boolean(anoLetivoResult.error || configResult.error);
+
+    if (activeYear?.id && typeof activeYear.ano === "number") {
+      const [periodosResult, curriculosResult, turmasResult] = await Promise.all([
+        s.from("periodos_letivos")
+          .select("id")
+          .eq("escola_id", validId)
+          .eq("ano_letivo_id", activeYear.id)
+          .eq("tipo", "TRIMESTRE")
+          .limit(3),
+        s.from("curso_curriculos")
+          .select("id")
+          .eq("escola_id", validId)
+          .eq("ano_letivo_id", activeYear.id)
+          .eq("status", "published")
+          .limit(1),
+        s.from("turmas")
+          .select("id")
+          .eq("escola_id", validId)
+          .eq("ano_letivo", activeYear.ano)
+          .limit(1),
+      ]);
+
+      if (periodosResult.error || curriculosResult.error || turmasResult.error) {
+        setupReadError = true;
+        console.error("Falha ao validar a base académica", {
+          periodos: periodosResult.error,
+          curriculos: curriculosResult.error,
+          turmas: turmasResult.error,
+        });
+      } else {
+        setupData.has_3_trimestres = (periodosResult.data?.length ?? 0) >= 3;
+        setupData.has_curriculo_published = (curriculosResult.data?.length ?? 0) > 0;
+        setupData.has_turmas_no_ano = (turmasResult.data?.length ?? 0) > 0;
+      }
+    }
+
+    const config = configResult.data;
     const avaliacaoConfig = config?.avaliacao_config as { componentes?: { code: string }[] } | null | undefined;
     const avaliacaoOk           = hasComponentes(avaliacaoConfig ?? undefined);
     const frequenciaOk          = Boolean(config?.frequencia_modelo)
@@ -372,6 +412,7 @@ export default async function EscolaAdminDashboardData({
       curriculoOk:           Boolean(setupData?.has_curriculo_published),
       turmasOk:              Boolean(setupData?.has_turmas_no_ano),
       setupComplete:         false,
+      validationUnavailable: setupReadError,
     };
     setupStatus.setupComplete = (
       setupStatus.anoLetivoOk &&
