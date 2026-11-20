@@ -22,6 +22,7 @@ type SetupStatus = {
   curriculoOk: boolean;
   turmasOk: boolean;
   setupComplete: boolean;
+  validationUnavailable?: boolean;
 };
 
 type Props = {
@@ -51,12 +52,23 @@ export default function PostWizardChecklist({
   const steps = useMemo(() => {
     if (!escolaParam) return [];
 
+    const missingAcademicItems = [
+      !setupStatus.anoLetivoOk ? "ano letivo" : null,
+      !setupStatus.periodosOk ? "trimestres" : null,
+      !setupStatus.avaliacaoFrequenciaOk ? "avaliação e frequência" : null,
+      !setupStatus.curriculoOk ? "currículo publicado" : null,
+      !setupStatus.turmasOk ? "turmas" : null,
+    ].filter(Boolean);
+    const academicDescription = missingAcademicItems.length
+      ? `Por concluir: ${missingAcademicItems.join(", ")}.`
+      : "Ano letivo, períodos, currículo e turmas prontos.";
+
     if (portalBase === "operacoes") {
       return [
         {
           id: "academico",
           title: "Base Académica",
-          description: "Ano letivo, períodos, currículo e turmas prontos.",
+          description: academicDescription,
           completed: setupStatus.setupComplete,
           current: !setupStatus.setupComplete,
           href: onboardingHref,
@@ -105,7 +117,7 @@ export default function PostWizardChecklist({
       {
         id: "academico",
         title: "Estrutura Académica",
-        description: "Ano letivo, períodos e currículo base.",
+        description: academicDescription,
         completed: setupStatus.setupComplete,
         current: !setupStatus.setupComplete,
         href: onboardingHref,
@@ -154,8 +166,20 @@ export default function PostWizardChecklist({
   const completedSteps = steps.filter(s => s.completed).length;
   const progressPct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
-  // Não renderiza se o contexto não estiver pronto ou se tudo estiver concluído
-  if (!escolaParam || totalSteps === 0 || completedSteps === totalSteps) return null;
+  if (!escolaParam || totalSteps === 0) return null;
+
+  if (setupStatus.validationUnavailable) {
+    return (
+      <section className="rounded-xl border border-border bg-card p-4">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Ativação da Escola</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Não foi possível verificar a Base Académica agora. Atualize o painel para tentar novamente.
+        </p>
+      </section>
+    );
+  }
+
+  if (completedSteps === totalSteps) return null;
 
   return (
     <section className="space-y-4 animate-in fade-in duration-500">

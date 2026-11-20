@@ -7,4 +7,6 @@ export type SetupStatus = {
   curriculoOk: boolean;
   turmasOk: boolean;
   setupComplete: boolean;
+  /** Falha de leitura: nunca tratar como pendência da escola. */
+  validationUnavailable?: boolean;
 };
