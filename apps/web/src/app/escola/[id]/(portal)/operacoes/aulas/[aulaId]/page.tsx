@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -87,11 +88,11 @@ export default function RelatorioAulaPage() {
     }
   };
 
-  if (loading) return <div className="mx-auto max-w-6xl p-6"><div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-8 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> A carregar o relatório...</div></div>;
-  if (error || !report) return <div className="mx-auto max-w-6xl space-y-5 p-6"><Link href={`/escola/${escolaId}/operacoes/dashboard`} className="inline-flex items-center gap-2 text-sm font-bold text-klasse-blue-700"><ArrowLeft className="h-4 w-4" /> Voltar para Operações</Link><div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-700"><p>{error ?? "Relatório não encontrado."}</p><button type="button" onClick={() => void load()} className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white hover:bg-rose-800">Tentar novamente</button></div></div>;
+  if (loading) return <div className={PORTAL_PAGE_INSET}><div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-8 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> A carregar o relatório...</div></div>;
+  if (error || !report) return <div className={`${PORTAL_PAGE_INSET} space-y-5`}><Link href={`/escola/${escolaId}/operacoes/dashboard`} className="inline-flex items-center gap-2 text-sm font-bold text-klasse-blue-700"><ArrowLeft className="h-4 w-4" /> Voltar para Operações</Link><div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-700"><p>{error ?? "Relatório não encontrado."}</p><button type="button" onClick={() => void load()} className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white hover:bg-rose-800">Tentar novamente</button></div></div>;
 
   const { aula, attendance, attendanceRows, turma, disciplina, professor, plano, atividades } = report;
-  return <div className="mx-auto max-w-6xl space-y-6 p-6">
+  return <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
     <DashboardHeader title="Relatório da aula" description="Resumo operacional e pedagógico recebido pela escola." breadcrumbs={[{ label: "Início", href: `/escola/${escolaId}` }, { label: "Operações", href: `/escola/${escolaId}/operacoes/dashboard` }, { label: "Relatório da aula" }]} />
     <div className="flex flex-wrap items-center justify-between gap-3">
       <Link href={`/escola/${escolaId}/operacoes/dashboard`} className="inline-flex items-center gap-2 text-sm font-bold text-klasse-blue-700"><ArrowLeft className="h-4 w-4" /> Voltar para Operações</Link>

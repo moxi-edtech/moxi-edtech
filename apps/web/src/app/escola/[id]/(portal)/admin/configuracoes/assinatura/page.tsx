@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import AssinaturaKlasseClient from "@/components/escola/configuracoes/AssinaturaKlasseClient";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -8,7 +9,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const { id: escolaId } = await params;
   
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-6 py-8">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <AuditPageView portal="admin_escola" acao="PAGE_VIEW" entity="billing_settings" />
       <DashboardHeader
         title="Assinatura Klasse"

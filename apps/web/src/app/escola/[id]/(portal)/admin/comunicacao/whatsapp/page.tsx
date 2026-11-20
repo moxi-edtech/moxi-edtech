@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import Link from "next/link";
 import { use, useEffect, useMemo, useState, useRef } from "react";
@@ -579,8 +580,8 @@ export default function WhatsAppKlassePage({ params }: Props) {
       : null;
 
   return (
-    <div className="bg-slate-50 p-4 md:p-6">
-      <div className="mx-auto flex max-w-6xl flex-col gap-5">
+    <div className="bg-background">
+      <div className={`${PORTAL_PAGE_INSET} flex flex-col gap-5`}>
         <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-medium text-emerald-700">Comunicação</p>
