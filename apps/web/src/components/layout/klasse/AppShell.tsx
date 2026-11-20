@@ -406,13 +406,13 @@ export default function AppShell({
           />
           <Suspense fallback={null}>
             <div className="border-b border-border/70 bg-muted px-4 py-2">
-              <div className="flex max-w-7xl items-center justify-end">
+              <div className="mx-auto flex w-full max-w-6xl items-center justify-end">
                 <AcademicContextChrome escolaId={escolaIdFromSession} />
               </div>
             </div>
           </Suspense>
           <MaintenanceBanner />
-          <main className={mobileNav ? "p-4 pb-24 md:p-6" : "p-4 md:p-6"}>
+          <main className={mobileNav ? "p-4 md:p-6 pb-24" : "p-4 md:p-6"}>
             <div className="mx-auto w-full min-w-0 max-w-6xl">{children}</div>
           </main>
         </div>
