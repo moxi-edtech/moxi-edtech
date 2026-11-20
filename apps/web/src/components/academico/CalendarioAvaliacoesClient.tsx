@@ -201,67 +201,202 @@ export default function CalendarioAvaliacoesClient() {
     {err && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{err}</p>}
     {notice && <p role="status" className="rounded-xl border border-border p-3 text-sm text-primary">{notice}</p>}
     {!data?.ano ? <p className="rounded-xl border p-6 text-sm">Configure um ano letivo ativo antes de planear avaliações.</p> : <>
-      <section className="flex flex-wrap items-end justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
-        <div>
-          <p className="text-xs text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano + 1}</p>
-          <label htmlFor="ava-period" className="mb-1 block text-sm font-medium">Trimestre</label>
-          <select id="ava-period" className={control} value={num} onChange={(e) => {
-            const n = Number(e.target.value); setNum(n); setChosen([]); setSelectedIds([]);
+
+      <section className="grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm sm:grid-cols-[minmax(180px,1fr)_auto_auto] sm:items-end sm:p-4">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano + 1}</p>
+          <label htmlFor="ava-period" className="mt-1 block text-xs font-semibold text-foreground">Trimestre</label>
+          <select id="ava-period" className={control + " mt-1"} value={num} onChange={(e) => {
+            const n = Number(e.target.value);
+            setNum(n); setChosen([]); setSchedule({}); setSelectedIds([]); setSharedDate(""); setEditing(null);
             const p = data.periodos.find((v) => v.numero === n);
             if (p) { const d = today() >= p.data_inicio && today() <= p.data_fim ? today() : p.data_inicio; setDate(d); setWeek(startWeek(d)); }
           }}>{numbers.map((n) => <option key={n} value={n}>{n}.º Trimestre</option>)}</select>
         </div>
-        <p className="text-sm text-muted-foreground"><strong className="text-lg text-foreground">{draft.length}</strong> rascunhos · <strong className="text-lg text-foreground">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</p>
-        <button type="button" disabled={saving || !selectedDrafts.length} onClick={publish}
-          className={action + " bg-amber px-4 text-white"}>
-          <Check size={16} /> Publicar selecionadas ({selectedDrafts.length})
-        </button>
-      </section>
-      <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h2 className="flex items-center gap-2 font-semibold text-primary">{editing ? <Pencil size={17} /> : <Plus size={17} />} {editing ? "Editar avaliação" : "Planear avaliações"}</h2>
-            <p className="text-xs text-muted-foreground">Datas e horas por turma e disciplina; sem repetir configurações curriculares.</p>
-          </div>
-          {editing && <button type="button" className={action + " border border-border"} onClick={() => setEditing(null)}><X size={16} /> Sair da edição</button>}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground sm:pb-2">
+          <span><strong className="text-lg font-semibold text-foreground">{draft.length}</strong> rascunhos</span>
+          <span><strong className="text-lg font-semibold text-foreground">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</span>
         </div>
-        {!editing && <>
-          <label className="block text-sm font-semibold">Turmas</label>
-          <div role="group" aria-label="Turmas" className="flex max-h-32 flex-wrap gap-2 overflow-auto">
-            {data.turmas.map((t) => <button type="button" key={t.id} aria-pressed={classIds.includes(t.id)} onClick={() => {
-              setClassIds((v) => v.includes(t.id) ? v.filter((x) => x !== t.id) : [...v, t.id]);
-              if (classIds.includes(t.id)) setChosen((v) => v.filter((x) => subjectMap.get(x)?.turma_id !== t.id));
-            }} className={action + " rounded-full border px-3 py-1 text-xs " + (classIds.includes(t.id) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground")}>{t.nome}</button>)}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <label htmlFor="ava-search" className="text-sm font-semibold">Disciplinas</label>
-            <button type="button" className="text-xs font-semibold text-primary" onClick={() => setChosen((v) => {
-              const all = subjects.map((s) => s.id);
-              return all.every((id) => v.includes(id)) ? v.filter((id) => !all.includes(id)) : [...new Set([...v, ...all])];
-            })}>Selecionar / limpar visíveis</button>
-          </div>
-          <input id="ava-search" className={control} placeholder="Filtrar disciplina ou turma…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <div className="grid max-h-52 gap-2 overflow-auto sm:grid-cols-2">
-            {subjects.map((s) => <label key={s.id} className="flex gap-2 rounded-xl border border-border p-2 text-sm">
-              <input type="checkbox" checked={chosen.includes(s.id)} onChange={(e) => setChosen((v) => e.target.checked ? [...v, s.id] : v.filter((id) => id !== s.id))} className="accent-primary" />
-              <span>{s.nome}<small className="block text-xs text-muted-foreground">{classMap.get(s.turma_id)?.nome}</small></span>
-            </label>)}
-            {!subjects.length && <p className="text-sm text-muted-foreground">Selecione uma turma com disciplinas associadas.</p>}
-          </div>
-          <p className="text-xs text-muted-foreground">{chosen.length} disciplina(s) selecionada(s).</p>
-        </>}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="text-xs font-semibold">Tipo<select className={control + " mt-1"} value={kind} onChange={(e) => setKind(e.target.value)}>{types.map((t) => <option key={t}>{t}</option>)}</select></label>
-          <label className="text-xs font-semibold">Data<input type="date" className={control + " mt-1"} value={date} onChange={(e) => setDate(e.target.value)} /></label>
-          <label className="text-xs font-semibold">Início<input type="time" className={control + " mt-1"} value={start} onChange={(e) => setStart(e.target.value)} /></label>
-          <label className="text-xs font-semibold">Fim (opcional)<input type="time" className={control + " mt-1"} value={end} onChange={(e) => setEnd(e.target.value)} /></label>
-        </div>
-        <label className="block text-xs font-semibold">Observação (opcional)
-          <input className={control + " mt-1"} maxLength={500} value={details} placeholder="Conteúdo, sala ou instruções…" onChange={(e) => setDetails(e.target.value)} />
-        </label>
-        <div className="flex justify-end"><button type="button" disabled={saving || (!editing && !chosen.length)} onClick={() => void save()}
-          className={action + " bg-amber px-4 text-white"}><Check size={16} /> {editing ? "Guardar alteração" : "Guardar rascunho"}</button></div>
+        <a href="#avaliacoes-agenda" className={action + " min-h-10 border border-border bg-card text-foreground hover:bg-muted"}>Ver agenda</a>
       </section>
+
+      {editing ? (
+        <section className="space-y-4 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-5">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="flex items-center gap-2 font-semibold text-primary"><Pencil size={17} /> Editar avaliação</h2>
+              <p className="mt-1 text-xs text-muted-foreground">A alteração fica auditada. A turma e disciplina permanecem vinculadas ao registo.</p>
+            </div>
+            <button type="button" className={action + " border border-border"} onClick={() => setEditing(null)}><X size={16} /> Sair da edição</button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="text-xs font-semibold">Tipo<select className={control + " mt-1"} value={kind} onChange={(e) => setKind(e.target.value)}>{types.map((t) => <option key={t}>{t}</option>)}</select></label>
+            <label className="text-xs font-semibold">Data<input type="date" className={control + " mt-1"} value={date} onChange={(e) => setDate(e.target.value)} /></label>
+            <label className="text-xs font-semibold">Início<input type="time" className={control + " mt-1"} value={start} onChange={(e) => setStart(e.target.value)} /></label>
+            <label className="text-xs font-semibold">Fim (opcional)<input type="time" className={control + " mt-1"} value={end} onChange={(e) => setEnd(e.target.value)} /></label>
+          </div>
+          <label className="block text-xs font-semibold">Observação (opcional)
+            <input className={control + " mt-1"} maxLength={500} value={details} placeholder="Conteúdo, sala ou instruções…" onChange={(e) => setDetails(e.target.value)} />
+          </label>
+          <div className="flex justify-end">
+            <button type="button" disabled={saving} onClick={() => void save()} className={action + " min-h-11 bg-klasse-gold px-4 text-klasse-gold-900"}>
+              <Check size={16} /> Guardar alteração
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="space-y-5 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-5">
+          <div className="flex items-start gap-2">
+            <Plus size={20} className="mt-0.5 text-primary" aria-hidden="true" />
+            <div>
+              <h2 className="font-semibold text-primary">Planear avaliações</h2>
+              <p className="text-xs text-muted-foreground">Várias disciplinas numa operação, cada uma com a sua data e horário.</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">1 · Selecionar turma</h3>
+            <div className="grid gap-2 sm:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)]">
+              <label className="relative block">
+                <span className="sr-only">Pesquisar turma por classe ou turno</span>
+                <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input className={control + " pl-9"} type="search" value={classSearch}
+                  placeholder="Pesquisar classe ou turno…" onChange={(e) => setClassSearch(e.target.value)} />
+              </label>
+              <label>
+                <span className="sr-only">Turma do ano letivo</span>
+                <select className={control} value={classIds[0] ?? ""} onChange={(e) => {
+                  setClassIds(e.target.value ? [e.target.value] : []);
+                  setChosen([]); setSchedule({}); setSearch(""); setSharedDate("");
+                }}>
+                  <option value="">Selecionar turma</option>
+                  {data.turmas.map((t) => ({ turma: t, match: t.nome.toLocaleLowerCase("pt").includes(classSearch.trim().toLocaleLowerCase("pt")) }))
+                    .filter(({ turma, match }) => match || turma.id === classIds[0])
+                    .map(({ turma }) => <option key={turma.id} value={turma.id}>{turma.nome}</option>)}
+                </select>
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground">Apenas turmas ativas do ano letivo {data.ano.ano}/{data.ano.ano + 1}, conforme os vínculos curriculares.</p>
+          </div>
+
+          <div className="space-y-2 border-t border-border pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-foreground">2 · Escolher disciplinas</h3>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" disabled={!subjects.length} className="text-xs font-semibold text-primary disabled:opacity-50"
+                  onClick={() => setChosen((current) => [...new Set([...current, ...subjects.map((subject) => subject.id)])])}>Selecionar visíveis</button>
+                <button type="button" disabled={!subjects.length} className="text-xs font-semibold text-muted-foreground disabled:opacity-50"
+                  onClick={() => setChosen((current) => current.filter((id) => !subjects.some((subject) => subject.id === id)))}>Limpar visíveis</button>
+              </div>
+            </div>
+            <label htmlFor="ava-search" className="sr-only">Filtrar disciplinas</label>
+            <input id="ava-search" className={control} placeholder="Pesquisar disciplinas…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <div className="grid max-h-48 gap-2 overflow-auto sm:grid-cols-2">
+              {subjects.map((subject) => (
+                <label key={subject.id} className="flex min-h-11 items-center gap-2 rounded-xl border border-border p-2 text-sm hover:bg-muted/30">
+                  <input type="checkbox" checked={chosen.includes(subject.id)}
+                    onChange={(e) => setChosen((current) => e.target.checked ? [...new Set([...current, subject.id])] : current.filter((id) => id !== subject.id))} className="h-4 w-4 accent-primary" />
+                  <span className="min-w-0"><span className="block font-medium text-foreground">{subject.nome}</span><small className="text-xs text-muted-foreground">{classMap.get(subject.turma_id)?.nome}</small></span>
+                </label>
+              ))}
+              {!classIds.length && <p className="text-sm text-muted-foreground">Selecione uma turma para ver as disciplinas.</p>}
+              {classIds.length > 0 && subjects.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma disciplina encontrada para esta turma ou pesquisa.</p>}
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">{selectedSubjects.length} disciplina(s) selecionada(s).</p>
+          </div>
+
+          <div className="space-y-3 border-t border-border pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">3 · Agendar por disciplina</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">Sem hora de fim, considera-se uma duração de 60 minutos.</p>
+              </div>
+              <label className="text-xs font-semibold text-foreground">Tipo de avaliação
+                <select className={control + " mt-1"} value={kind} onChange={(e) => setKind(e.target.value)}>
+                  {types.map((t) => <option key={t}>{t}</option>)}
+                </select>
+              </label>
+            </div>
+            {selectedSubjects.length > 1 && (
+              <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-muted/40 p-2.5">
+                <label className="min-w-40 flex-1 text-xs font-semibold text-foreground">Data comum (opcional)
+                  <input type="date" className={control + " mt-1"} value={sharedDate} onChange={(e) => setSharedDate(e.target.value)} />
+                </label>
+                <button type="button" disabled={!sharedDate || saving} className={action + " min-h-10 border border-border bg-card text-foreground"}
+                  onClick={() => setSchedule((current) => Object.fromEntries(selectedSubjects.map((subject) => [
+                    subject.id, { ...(current[subject.id] ?? blankSchedule()), data: sharedDate },
+                  ])))}>
+                  Aplicar data a todas
+                </button>
+              </div>
+            )}
+            {selectedSubjects.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border px-3 py-5 text-sm text-muted-foreground">Selecione uma ou mais disciplinas acima para definir a agenda.</p>
+            ) : (
+              <div className="space-y-2">
+                {selectedSubjects.map((subject) => {
+                  const current = schedule[subject.id] ?? blankSchedule();
+                  const period = periodFor(subject);
+                  const warnings = issues[subject.id] ?? [];
+                  const conflicts = warnings.filter((value) => value.startsWith("Conflito") || value.startsWith("A data deve") || value.startsWith("O fim deve") || value.startsWith("Período"));
+                  const isScheduled = Boolean(current.data && current.inicio && !warnings.length);
+                  return (
+                    <div key={subject.id} className={"space-y-3 rounded-xl border p-3 " + (conflicts.length ? "border-destructive/50 bg-destructive/5" : "border-border bg-card")}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-semibold text-foreground">{subject.nome}</h4>
+                          <p className="text-xs text-muted-foreground">{classMap.get(subject.turma_id)?.nome}</p>
+                        </div>
+                        <span className={"rounded-full px-2 py-1 text-xs font-medium " + (conflicts.length ? "bg-destructive/10 text-destructive" : isScheduled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                          {conflicts.length ? "Conflito" : isScheduled ? "Pronta" : "Por agendar"}
+                        </span>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <label className="text-xs font-semibold text-foreground">Data
+                          <input type="date" className={control + " mt-1"} value={current.data}
+                            min={period?.data_inicio} max={period?.data_fim}
+                            onChange={(e) => updateSchedule(subject.id, "data", e.target.value)} />
+                        </label>
+                        <label className="text-xs font-semibold text-foreground">Início
+                          <input type="time" className={control + " mt-1"} value={current.inicio}
+                            onChange={(e) => updateSchedule(subject.id, "inicio", e.target.value)} />
+                        </label>
+                        <label className="text-xs font-semibold text-foreground">Fim (opcional)
+                          <input type="time" className={control + " mt-1"} value={current.fim}
+                            onChange={(e) => updateSchedule(subject.id, "fim", e.target.value)} />
+                        </label>
+                      </div>
+                      <label className="block text-xs font-semibold text-foreground">Observação (opcional)
+                        <input className={control + " mt-1"} value={current.descricao} maxLength={500}
+                          placeholder="Conteúdo, sala ou instruções…" onChange={(e) => updateSchedule(subject.id, "descricao", e.target.value)} />
+                      </label>
+                      {conflicts.length > 0 && (
+                        <div role="alert" className="space-y-1 text-xs font-semibold text-destructive">
+                          {conflicts.map((warning) => <p key={warning} className="flex items-start gap-1.5"><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />{warning}</p>)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+            <div aria-live="polite">
+              <h3 className="text-sm font-semibold text-foreground">4 · Rever e guardar</h3>
+              <p className="text-xs text-muted-foreground">
+                {rows.length - pendingCount} pronta(s) · {pendingCount} por corrigir · {rows.length} selecionada(s)
+              </p>
+            </div>
+            <button type="button" disabled={saving || !ready} onClick={() => void save()}
+              className={action + " min-h-11 bg-klasse-gold px-4 text-klasse-gold-900"}>
+              <Check size={16} /> Guardar rascunhos ({rows.length})
+            </button>
+          </div>
+          {rows.length > 0 && !ready && <p className="text-xs text-muted-foreground">Preencha as datas e horas de todas as disciplinas e resolva os conflitos antes de guardar.</p>}
+        </section>
+      )}
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex justify-between gap-2 border-b border-border p-4">
           <div><h2 className="font-semibold text-primary">Avaliações do trimestre</h2>
