@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { supabaseServer } from "@/lib/supabaseServer";
 import AuditPageView from "@/components/audit/AuditPageView";
 import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
@@ -29,13 +30,13 @@ export default async function Page({ params }: PageProps = {}) {
     return (
       <>
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="admissao_wizard" />
-          Vincule seu perfil a uma escola para iniciar uma nova admissão.
+        <div className={PORTAL_PAGE_INSET}>Vincule seu perfil a uma escola para iniciar uma nova admissão.</div>
       </>
     )
   }
 
   return (
-    <div className="p-6">
+    <div className={PORTAL_PAGE_INSET}>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="admissoes_wizard" />
       <DashboardHeader
         title="Nova Admissão"

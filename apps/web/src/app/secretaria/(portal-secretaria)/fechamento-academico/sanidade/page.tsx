@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useState } from "react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -49,7 +50,7 @@ export default function SanidadeFechamentoPage() {
   };
 
   return (
-    <div className="space-y-4 p-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
       <DashboardHeader
         title="Sanidade Pré-Fechamento Acadêmico"
         breadcrumbs={[
