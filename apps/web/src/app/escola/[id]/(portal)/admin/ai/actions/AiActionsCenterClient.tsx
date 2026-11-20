@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Eye, RefreshCw, Search, ShieldCheck, X } from "lucide-react";
@@ -194,8 +195,8 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <div className="min-h-full bg-background text-foreground">
+      <div className={`${PORTAL_PAGE_INSET} flex flex-col gap-6`}>
         <header className="flex flex-col gap-3 border-b border-slate-200 pb-5 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">KLASSE AI</p>

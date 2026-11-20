@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -432,7 +433,7 @@ export default function DocumentosOficiaisBatchClient() {
   }, [periodoNumero, periodos, tipo]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-950 flex items-center gap-2">

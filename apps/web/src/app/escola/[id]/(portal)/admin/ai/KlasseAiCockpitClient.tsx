@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -220,7 +221,7 @@ export default function KlasseAiCockpitClient({ schoolId }: { schoolId: string }
   }
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <div className={`${PORTAL_PAGE_INSET} flex flex-col gap-6`}>
       <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
