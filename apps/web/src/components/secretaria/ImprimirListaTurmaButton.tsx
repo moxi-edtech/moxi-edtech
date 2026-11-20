@@ -1,5 +1,6 @@
 "use client";
 
+import { downloadFilenameFromDisposition } from "@/lib/documentos/nominalExportOptions";
 import { useCallback, useRef, useState } from "react";
 import { Check, Download, Loader2, Printer, RotateCw } from "lucide-react";
 
@@ -46,7 +47,7 @@ export function ImprimirListaTurmaButton({
       const blobUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = blobUrl;
-      anchor.download = "lista_nominal_turma_" + turmaId + ".pdf";
+      anchor.download = downloadFilenameFromDisposition(response.headers.get("content-disposition")) ?? "Lista de Turma.pdf";
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
