@@ -35,7 +35,7 @@ for file in (large, sensitive, empty, lacunas):
     assert "Modo:" in text, file.name
     assert "Página 1 de" in text, file.name
     assert "Assinatura da Direcção" in text, file.name
-    assert "Gerado pelo KLASSE | app.klasse.ao" in text, file.name
+    assert "Gerado pelo KLASSE | Sistema de Gestão Escolar Inteligente | www.klasse.ao" in text, file.name
     assert "INSTITUTO FICTÍCIO DE TESTES" in text, file.name
     if file == empty:
         assert "Sem alunos matriculados neste período" in text
@@ -52,7 +52,7 @@ for file in (large, sensitive, empty, lacunas):
         for page_no in range(1, pages(file) + 1):
             single_page = output("pdftotext", "-f", str(page_no), "-l", str(page_no), str(file), "-")
             assert "INSTITUTO FICTÍCIO DE TESTES" in single_page, (file.name, page_no, "header")
-            assert "Gerado pelo KLASSE" in single_page, (file.name, page_no, "brand")
+            assert "Gerado pelo KLASSE | Sistema de Gestão Escolar Inteligente | www.klasse.ao" in single_page, (file.name, page_no, "brand")
             assert "Página " + str(page_no) + " de " in single_page, (file.name, page_no, "footer")
     if file == sensitive:
         assert "INFORMAÇÃO SENSÍVEL" in text and "BI-TESTE" in text
