@@ -47,3 +47,15 @@ test("edição utiliza a data do formulário e não o objeto de dados carregados
   assert.match(client, /id: editing, turma_id: current\.turma_id, data: date, inicio: start/);
   assert.match(client, /action: "edit", id: editing, tipo: kind, data: date, inicio: start/);
 });
+
+test("após guardar rascunhos abre lista da turma, sem esconder datas fora da semana", () => {
+  assert.match(client, /setMode\("lista"\); setClassFilter\(rows\[0\]\?\.turma_id \?\? ""\)/);
+  assert.match(client, /setAgendaSearch\(""\); setSelectedIds\(\[\]\)/);
+});
+
+test("campos obrigatórios em falta são indicados na própria linha", () => {
+  assert.match(client, /const missing = warnings\.filter/);
+  assert.match(client, /missing\.join\(" "\)/);
+  assert.match(client, /Defina a data\./);
+  assert.match(client, /Defina a hora de início\./);
+});
