@@ -1,6 +1,7 @@
 "use client"
 
 import Sidebar from "./Sidebar";
+import { isWidePortalPage } from "@/lib/layout/portal-page";
 import Topbar from "./Topbar";
 import MaintenanceBanner from "./MaintenanceBanner";
 import AiChatWidget, { type AiWidgetContext } from "@/components/ai/AiChatWidget";
@@ -351,6 +352,7 @@ export default function AppShell({
 
   const topbarLabels = navRole ? TOPBAR_LABELS[navRole] : null;
   const isPrintView = safePathname.includes("/print");
+  const isWidePage = isWidePortalPage(safePathname);
   // Operations is a portal, not an authorization role. The client-side
   // profile can be normalized differently from the school membership role;
   // never use it to hide the launcher. /api/admin/ai/access remains the
@@ -406,14 +408,14 @@ export default function AppShell({
           />
           <Suspense fallback={null}>
             <div className="border-b border-border/70 bg-muted px-4 py-2">
-              <div className="mx-auto flex w-full max-w-6xl items-center justify-end">
+              <div className={`mx-auto flex w-full items-center justify-end ${isWidePage ? "max-w-7xl" : "max-w-6xl"}`}>
                 <AcademicContextChrome escolaId={escolaIdFromSession} />
               </div>
             </div>
           </Suspense>
           <MaintenanceBanner />
           <main className={mobileNav ? "p-4 md:p-6 pb-24" : "p-4 md:p-6"}>
-            <div className="mx-auto w-full min-w-0 max-w-6xl">{children}</div>
+            <div className={`mx-auto w-full min-w-0 ${isWidePage ? "max-w-7xl" : "max-w-6xl"}`}>{children}</div>
           </main>
         </div>
       </div>

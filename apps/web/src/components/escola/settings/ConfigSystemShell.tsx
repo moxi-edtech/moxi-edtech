@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import Link from "next/link";
 
 type MenuItem = {
@@ -58,7 +59,7 @@ export default function ConfigSystemShell({
   const hasActionControls = Boolean(onSave || testHref);
   const showRightPanel = hasStatusData || hasActionControls;
   return (
-    <div className={`mx-auto w-full max-w-6xl space-y-6 px-6 py-8${embedded ? " h-full" : ""}`}>
+    <div className={`${PORTAL_PAGE_INSET} space-y-6${embedded ? " h-full" : ""}`}>
       <header className="flex flex-col gap-2">
         {!embedded && backHref && (
           <Link

@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -416,7 +417,7 @@ export default function CalendarioConfigPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50 text-left">
-      <div className="mx-auto max-w-6xl px-6 py-8 space-y-8">
+      <div className={`${PORTAL_PAGE_INSET} space-y-8`}>
         
         {/* HEADER */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

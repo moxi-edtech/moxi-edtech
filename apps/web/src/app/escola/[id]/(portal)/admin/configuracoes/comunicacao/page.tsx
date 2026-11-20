@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -177,7 +178,7 @@ export default function ComunicacaoConfigPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-6xl px-6 py-8 space-y-8">
+      <div className={`${PORTAL_PAGE_INSET} space-y-8`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link

@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import OperacoesDashboardData from "./OperacoesDashboardData";
 
 type Props = {
@@ -14,7 +15,7 @@ type Props = {
  */
 export default function OperacoesDashboard({ escolaId, escolaNome }: Props) {
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className={PORTAL_PAGE_INSET}>
       <OperacoesDashboardData escolaId={escolaId} escolaNome={escolaNome} />
     </div>
   );
