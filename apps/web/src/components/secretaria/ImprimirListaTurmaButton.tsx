@@ -1,6 +1,6 @@
 "use client";
 
-import { downloadFilenameFromDisposition } from "@/lib/documentos/nominalExportOptions";
+import { downloadFilenameFromDisposition, type NominalNameOrder } from "@/lib/documentos/nominalExportOptions";
 import { useCallback, useRef, useState } from "react";
 import { Check, Download, Loader2, Printer, RotateCw } from "lucide-react";
 
@@ -13,9 +13,11 @@ type Estado = "pronto" | "a_gerar" | "concluido" | "erro";
 export function ImprimirListaTurmaButton({
   turmaId,
   className = "",
+  order = "nome_asc",
 }: {
   turmaId: string;
   className?: string;
+  order?: NominalNameOrder;
 }) {
   const [estado, setEstado] = useState<Estado>("pronto");
   const [erro, setErro] = useState<string | null>(null);
@@ -29,7 +31,7 @@ export function ImprimirListaTurmaButton({
 
     try {
       const response = await fetch(
-        "/api/secretaria/turmas/" + encodeURIComponent(turmaId) + "/alunos/pdf",
+        "/api/secretaria/turmas/" + encodeURIComponent(turmaId) + "/alunos/pdf?order=" + encodeURIComponent(order),
         { credentials: "same-origin", cache: "no-store" }
       );
       if (!response.ok) {
@@ -59,7 +61,7 @@ export function ImprimirListaTurmaButton({
     } finally {
       ocupado.current = false;
     }
-  }, [turmaId]);
+  }, [turmaId, order]);
 
   return (
     <span className={"inline-flex flex-col items-start gap-1 " + className}>
