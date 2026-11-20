@@ -108,18 +108,21 @@ export async function listAlunos(
     }
   }
 
-  let turmaNome: string | null = null;
   if (filters.turmaId) {
+    // A rota de gestão de alunos não recebe academicYearId. Nunca comparar
+    // session_id com string vazia: isso exclui todas as turmas válidas.
     const { data: turmaRow, error: turmaErr } = await supabase
       .from("turmas")
-      .select("nome, session_id")
+      .select("id, session_id, ano_letivo")
       .eq("id", filters.turmaId)
       .eq("escola_id", escolaId)
-      .eq("session_id", options.academicYearId ?? "")
       .maybeSingle();
     if (turmaErr) throw turmaErr;
-    turmaNome = turmaRow?.nome ?? null;
-    if (!turmaNome) {
+    // A turma tem de pertencer ao ano selecionado e, se fornecida, à
+    // sessão oficial exata. Recusar divergências em vez de trocar de ano.
+    if (!turmaRow?.session_id ||
+        (options.academicYearId && turmaRow.session_id !== options.academicYearId) ||
+        (targetAno && turmaRow.ano_letivo !== targetAno)) {
       return {
         items: [],
         page: { limit: pageLimit, offset: from, nextOffset: null, hasMore: false, nextCursor: null },
@@ -252,7 +255,8 @@ export async function listAlunos(
       } else if (targetAno) {
         matriculasQuery = matriculasQuery.eq("ano_letivo", targetAno);
       }
-      const { data: matriculas } = await matriculasQuery;
+      const { data: matriculas, error: matriculasError } = await matriculasQuery;
+      if (matriculasError) throw matriculasError;
 
       const turmaIds = Array.from(
         new Set(
@@ -397,8 +401,9 @@ export async function listAlunos(
       });
     }
 
-    if (turmaNome) {
-      enriched = enriched.filter((row) => row.turma_nome === turmaNome || row.turma_id === filters.turmaId);
+    if (filters.turmaId) {
+      // Nomes de turmas podem repetir-se entre anos, turnos e polos.
+      enriched = enriched.filter((row) => row.turma_id === filters.turmaId);
     }
 
     if (filters.situacaoFinanceira) {

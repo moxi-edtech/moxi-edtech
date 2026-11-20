@@ -46,7 +46,7 @@ export async function GET(
         return NextResponse.json({ ok: false, error: "Campos sensíveis reservados à Direcção" }, { status: 403 });
       }
     }
-    const fallbackLogoUrl = `${new URL(req.url).origin}/insignia_med.png`;
+    const logoBaseUrl = new URL(req.url).origin;
 
     headers.set('Deprecation', 'true');
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
@@ -67,7 +67,7 @@ export async function GET(
       camposSensiveis,
       emissor: user.email ?? user.id,
       onRowsCount: (count) => { linhasExportadas = count; },
-      fallbackLogoUrl,
+      logoBaseUrl,
     });
 
     if (!isAlbum && !isAttendance && !month) {
