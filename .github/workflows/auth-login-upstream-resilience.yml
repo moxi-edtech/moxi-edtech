@@ -1,0 +1,33 @@
+name: Auth Login Upstream Resilience
+
+on:
+  pull_request:
+    paths:
+      - "apps/auth/app/login/actions.ts"
+      - "apps/auth/lib/passwordSignInError.ts"
+      - "apps/auth/tests/unit/**"
+      - ".github/workflows/auth-login-upstream-resilience.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  auth-login:
+    name: Auth login tests and typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Auth unit tests
+        run: pnpm -C apps/auth test:unit
+      - name: Auth typecheck
+        run: pnpm -C apps/auth typecheck

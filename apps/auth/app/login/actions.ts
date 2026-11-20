@@ -9,6 +9,7 @@ import { readEnv } from "@/lib/env";
 import { checkLoginRateLimit } from "@/lib/rateLimit";
 import { getUserTenants } from "@/lib/getUserTenants";
 import { setTenantContextCookie, clearTenantContextCookie } from "@/lib/tenantContextCookie";
+import { classifyPasswordSignInError } from "@/lib/passwordSignInError";
 
 type ResolveIdentifierJobResponse = {
   ok?: boolean;
@@ -218,6 +219,7 @@ async function resolveIdentifierToEmails(identifier: string): Promise<string[]> 
       },
       body: JSON.stringify({ action: "resolveIdentifierToEmail", payload: { identifier } }),
       cache: "no-store",
+      signal: AbortSignal.timeout(2500),
     });
 
     const json = (await response.json().catch(() => null)) as ResolveIdentifierJobResponse | null;
@@ -263,6 +265,7 @@ async function recordUserAccess(params: {
         },
       }),
       cache: "no-store",
+      signal: AbortSignal.timeout(2500),
     });
   } catch {
     // Login não deve falhar por telemetria operacional.
@@ -314,11 +317,8 @@ export async function loginAction(_: unknown, formData: FormData) {
     }
 
     const supabase = await supabaseRouteClient();
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // Best-effort cleanup of any stale shared session before issuing a new one.
-    }
+    // Avoid a network signOut on the critical login path: an overloaded
+    // Auth provider can make it stall before password verification.
     await clearExistingAuthCookies();
     await clearTenantContextCookie();
 
@@ -329,11 +329,17 @@ export async function loginAction(_: unknown, formData: FormData) {
         email,
         password: parsed.data.password,
       });
-      if (!error && data.user) {
-        signedInUserId = data.user.id;
-        signedInUserAppMetadata = (data.user.app_metadata as Record<string, unknown> | null) ?? null;
-        break;
+      if (error) {
+        const failure = classifyPasswordSignInError(error);
+        if (failure === "invalid_credentials") continue;
+        if (failure === "rate_limited") throw new Error("AUTH_RATE_LIMITED");
+        if (failure === "email_unconfirmed") throw new Error("EMAIL_UNCONFIRMED");
+        throw new Error("AUTH_UPSTREAM_UNAVAILABLE");
       }
+      if (!data.user?.id) throw new Error("AUTH_UPSTREAM_UNAVAILABLE");
+      signedInUserId = data.user.id;
+      signedInUserAppMetadata = (data.user.app_metadata as Record<string, unknown> | null) ?? null;
+      break;
     }
 
     if (!signedInUserId) {
@@ -403,12 +409,29 @@ export async function loginAction(_: unknown, formData: FormData) {
     if (message.includes("Supabase env")) {
       return { ok: false, message: "Configuração de autenticação inválida no servidor." };
     }
+    const reason =
+      message === "INVALID_CREDENTIALS" ? "invalid_credentials"
+      : message === "AUTH_RATE_LIMITED" ? "rate_limited"
+      : message === "EMAIL_UNCONFIRMED" ? "email_not_confirmed"
+      : "auth_unavailable";
     logAuthEvent({
       action: "deny",
       route: "/login",
-      details: { reason: "invalid_credentials", ip: rate.ip },
+      details: { reason, ip: rate.ip },
     });
-    return { ok: false, message: "Credenciais inválidas. Verifique os dados e tente novamente." };
+    if (reason === "invalid_credentials") {
+      return { ok: false, message: "Credenciais inválidas. Verifique os dados e tente novamente." };
+    }
+    if (reason === "rate_limited") {
+      return { ok: false, message: "Muitas tentativas. Tente novamente em alguns minutos." };
+    }
+    if (reason === "email_not_confirmed") {
+      return { ok: false, message: "E-mail não confirmado. Verifique sua caixa de entrada." };
+    }
+    return {
+      ok: false,
+      message: "Serviço de autenticação temporariamente indisponível. Tente novamente em instantes, sem alterar sua senha.",
+    };
   }
 
   const returnTo = normalizeReturnTo(parsed.data.redirect_to);
