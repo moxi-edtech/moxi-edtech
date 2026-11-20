@@ -215,7 +215,7 @@ export async function POST(req: Request) {
           actorId: user.id,
           academicYearId: academicContext.anoLetivoId,
           mode: parsed.data.mode,
-          order: parsed.data.order,
+          order: parsed.data.tipo === "lista_nominal" ? (parsed.data.order ?? "nome_asc") : undefined,
           month: parsed.data.month,
           isAlbum: parsed.data.is_album ?? false,
           includeAllStatus: parsed.data.include_all_status ?? false,
@@ -329,7 +329,7 @@ export async function POST(req: Request) {
         is_album: parsed.data.is_album,
         include_all_status: parsed.data.include_all_status,
         mode: parsed.data.mode,
-        order: parsed.data.order,
+        order: parsed.data.tipo === "lista_nominal" ? (parsed.data.order ?? "nome_asc") : undefined,
       },
     })
 
