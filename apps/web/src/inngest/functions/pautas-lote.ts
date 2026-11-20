@@ -359,6 +359,25 @@ export const pautasLote = inngest.createFunction(
       archive.pipe(output)
 
       const turmaMap = new Map((schoolTurmas ?? []).map(turma => [turma.id, turma]))
+      // Uma tentativa de reprocessamento pode incluir apenas turmas falhadas,
+      // enquanto o ZIP inclui também as já concluídas. Recuperar os nomes
+      // dessas turmas numa única consulta, limitada à escola do próprio job.
+      if (tipo === "lista_nominal") {
+        const missingTurmaIds = successItems
+          .map(item => item.turmaId)
+          .filter(turmaId => !turmaMap.has(turmaId))
+        if (missingTurmaIds.length > 0) {
+          const { data: previousTurmas, error: namesError } = await supabase
+            .from("turmas")
+            .select("id,nome,ano_letivo")
+            .eq("escola_id", escola_id)
+            .in("id", missingTurmaIds)
+          if (namesError || previousTurmas?.length !== missingTurmaIds.length) {
+            throw new Error("Não foi possível identificar todas as turmas do lote nominal")
+          }
+          for (const turma of previousTurmas) turmaMap.set(turma.id, turma)
+        }
+      }
       for (const [index, item] of successItems.entries()) {
         const { data, error } = await supabase.storage.from("pautas_oficiais_fechadas").download(item.pdfPath)
         if (error) throw new Error(error.message)

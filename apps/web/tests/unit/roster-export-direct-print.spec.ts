@@ -32,6 +32,12 @@ test("a execução não duplica cliques e tem erro recuperável", () => {
   assert.match(component, /PDF pronto/);
 });
 
+test("detalhe de Turmas aplica as margens partilhadas como expressões JSX", () => {
+  const detail = from("components/secretaria/TurmaDetailClient.tsx");
+  assert.equal((detail.match(/className=\{`\$\{PORTAL_PAGE_HORIZONTAL_INSET\}/g) ?? []).length, 3);
+  assert.doesNotMatch(detail, /className="\$\{PORTAL_PAGE_HORIZONTAL_INSET\}/);
+});
+
 test("a impressão directa aparece nas listas e no detalhe", () => {
   const list = from("components/secretaria/TurmasListClient.tsx");
   const detail = from("components/secretaria/TurmaDetailClient.tsx");
