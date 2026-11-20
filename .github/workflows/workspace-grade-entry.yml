@@ -41,6 +41,8 @@ jobs:
         working-directory: apps/web
         run: node --test --import tsx tests/unit/grade-class-picker.spec.ts tests/unit/grade-save.spec.ts tests/unit/balcao-grade-flow-contract.spec.ts tests/unit/balcao-return-context-reconciliation.spec.ts
       - name: Typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: pnpm -C apps/web typecheck
       - name: ESLint for affected flow
         working-directory: apps/web
