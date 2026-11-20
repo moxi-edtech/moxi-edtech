@@ -11,7 +11,7 @@ import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { DesistenciaMatriculaAction } from "@/components/matriculas/DesistenciaMatriculaAction";
 import { useSearchParams } from "next/navigation";
 
-import { Printer, CheckCircle2, XCircle, Clock, UserCheck, Search, RotateCcw } from 'lucide-react'
+import { Printer, CheckCircle2, XCircle, Clock, UserCheck, Search, RotateCcw, Ellipsis } from 'lucide-react'
 
 type Atrib = { id: string; turma: { id: string; nome: string | null }; disciplina: { id: string; nome: string | null } }
 type Aluno = { id: string; nome: string; matriculaId?: string | null }
@@ -38,6 +38,7 @@ export default function ProfessorFrequenciasPage() {
   const [disciplinaId, setDisciplinaId] = useState('')
   const [alunos, setAlunos] = useState<Aluno[]>([])
   const [searchFilter, setSearchFilter] = useState('')
+  const [openActionsId, setOpenActionsId] = useState<string | null>(null)
   const [data, setData] = useState(() => new Date().toISOString().slice(0,10))
   const [saving, setSaving] = useState(false)
   const [statusMap, setStatusMap] = useState<Record<string, 'presente'|'falta'|'atraso'>>({})
@@ -95,6 +96,7 @@ export default function ProfessorFrequenciasPage() {
 
   useEffect(() => {
     setSubmitStatus('idle')
+    setOpenActionsId(null)
   }, [turmaId, disciplinaId, data])
 
   const atribsByTurma = useMemo(() => atribs.reduce((acc, a) => {
@@ -103,6 +105,8 @@ export default function ProfessorFrequenciasPage() {
     acc.set(a.turma.id, arr)
     return acc
   }, new Map<string, Atrib[]>()), [atribs])
+
+  const studentNumbers = useMemo(() => new Map(alunos.map((a, index) => [a.id, index + 1])), [alunos]);
 
   const filteredAlunos = useMemo(() => {
     if (!searchFilter.trim()) return alunos;
@@ -127,6 +131,7 @@ export default function ProfessorFrequenciasPage() {
     const next: Record<string, 'presente'> = {};
     for (const a of alunos) next[a.id] = 'presente';
     setStatusMap(next);
+    setSubmitStatus('idle');
     success("Presença em Lote", "Todos os alunos foram marcados como Presentes.");
   };
 
@@ -134,10 +139,12 @@ export default function ProfessorFrequenciasPage() {
     const next: Record<string, 'falta'> = {};
     for (const a of alunos) next[a.id] = 'falta';
     setStatusMap(next);
+    setSubmitStatus('idle');
   };
 
   const handleResetStatus = () => {
     setStatusMap({});
+    setSubmitStatus('idle');
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -396,62 +403,66 @@ export default function ProfessorFrequenciasPage() {
             </div>
           )}
 
-          {/* LISTA DE ALUNOS (Mobile & Desktop) */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          {/* Chamada por exceção: a desistência fica nas opções secundárias. */}
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             {alunos.length === 0 ? (
-              <div className="p-12 text-center space-y-3">
-                <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto text-slate-300">
-                  <UserCheck size={24} />
-                </div>
-                <p className="text-xs font-bold text-slate-400">
-                  Selecione a turma e disciplina no painel lateral para carregar os estudantes.
-                </p>
+              <div className="space-y-2 px-4 py-8 text-center">
+                <UserCheck size={24} className="mx-auto text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm text-muted-foreground">Selecione a turma e disciplina para carregar os alunos.</p>
               </div>
+            ) : filteredAlunos.length === 0 ? (
+              <p role="status" className="p-5 text-center text-sm text-muted-foreground">Nenhum aluno encontrado para esta pesquisa.</p>
             ) : (
-              <div className="divide-y divide-slate-100">
-                {filteredAlunos.map((a, index) => {
-                  const current = statusMap[a.id] || 'presente'
+              <div className="divide-y divide-border">
+                {filteredAlunos.map((a) => {
+                  const current = statusMap[a.id] || 'presente';
+                  const number = studentNumbers.get(a.id);
+                  const actionsOpen = openActionsId === a.id;
                   return (
-                    <div key={a.id} className="p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-slate-500">
-                          {index + 1}
-                        </span>
-                        <p className="text-xs sm:text-sm font-bold text-slate-900">{a.nome}</p>
+                    <div key={a.id} className="space-y-2.5 px-3 py-3 transition-colors hover:bg-muted/30 sm:px-4">
+                      <div className="flex min-w-0 items-start justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums text-muted-foreground" aria-label={'Aluno número ' + number}>{number}</span>
+                          <p className="min-w-0 flex-1 break-words pt-0.5 text-sm font-semibold leading-snug text-foreground">{a.nome}</p>
+                        </div>
                         {a.matriculaId && turmaId && (
-                          <DesistenciaMatriculaAction tipo="sinalizar" alunoId={a.id} alunoNome={a.nome}
-                            turmaId={turmaId} matriculaId={a.matriculaId} />
+                          <button type="button"
+                            onClick={() => setOpenActionsId((value) => value === a.id ? null : a.id)}
+                            aria-expanded={actionsOpen} aria-controls={'opcoes-aluno-' + a.id}
+                            aria-label={'Outras ações para ' + a.nome}
+                            className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-xl border border-border px-2 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold">
+                            <Ellipsis size={16} aria-hidden="true" /><span>Opções</span>
+                          </button>
                         )}
                       </div>
-
-                      {/* Botões de Ação por Toque Rápido */}
-                      <div className="flex items-center gap-1.5 self-end sm:self-center">
-                        {[
-                          { value: 'presente', label: 'Presente', icon: CheckCircle2, cls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-black' },
-                          { value: 'falta', label: 'Falta', icon: XCircle, cls: 'bg-rose-600 text-white border-rose-600 shadow-2xs font-black' },
-                          { value: 'atraso', label: 'Atraso', icon: Clock, cls: 'bg-amber-500 text-white border-amber-500 shadow-2xs font-black' },
-                        ].map((opt) => {
-                          const IconComp = opt.icon;
+                      <div role="group" aria-label={'Presença de ' + a.nome} className="grid grid-cols-3 gap-1.5">
+                        {([
+                          { value: 'presente', label: 'Presente', icon: CheckCircle2, selected: 'border-klasse-green bg-klasse-green text-white' },
+                          { value: 'falta', label: 'Falta', icon: XCircle, selected: 'border-rose-600 bg-rose-600 text-white' },
+                          { value: 'atraso', label: 'Atraso', icon: Clock, selected: 'border-amber-500 bg-amber-500 text-klasse-gold-900' },
+                        ] as const).map((opt) => {
+                          const Icon = opt.icon;
                           const active = current === opt.value;
                           return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => setStatusMap((s) => ({ ...s, [a.id]: opt.value as AttendanceStatus }))}
-                              className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs transition-all active:scale-95 ${
-                                active
-                                  ? opt.cls
-                                  : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 font-medium'
-                              }`}
-                            >
-                              <IconComp size={14} />
-                              <span>{opt.label}</span>
+                            <button key={opt.value} type="button" aria-pressed={active}
+                              onClick={() => {
+                                setStatusMap((previous) => ({ ...previous, [a.id]: opt.value }));
+                                setSubmitStatus('idle');
+                              }}
+                              className={'inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold sm:gap-1.5 sm:px-3 ' + (active ? opt.selected : 'border-border bg-card text-muted-foreground hover:bg-muted')}>
+                              <Icon size={15} className="shrink-0" aria-hidden="true" /><span>{opt.label}</span>
                             </button>
                           );
                         })}
                       </div>
+                      {a.matriculaId && turmaId && actionsOpen && (
+                        <div id={'opcoes-aluno-' + a.id} className="rounded-xl border border-border bg-muted/40 p-1.5">
+                          <DesistenciaMatriculaAction variant="menu" tipo="sinalizar" alunoId={a.id}
+                            alunoNome={a.nome} turmaId={turmaId} matriculaId={a.matriculaId} />
+                        </div>
+                      )}
                     </div>
-                  )
+                  );
                 })}
               </div>
             )}
