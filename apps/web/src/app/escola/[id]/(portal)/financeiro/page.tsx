@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import {
   Wallet,
   TrendingUp,
@@ -267,7 +268,7 @@ export default async function FinanceiroDashboardPage({
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <DashboardHeader
         title="Financeiro"
         description="Controlo total do mês em um único ecrã operacional."

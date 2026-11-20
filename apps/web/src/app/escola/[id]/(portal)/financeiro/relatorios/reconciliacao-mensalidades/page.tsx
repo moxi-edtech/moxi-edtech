@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { Fragment, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
@@ -161,7 +162,7 @@ export default function ReconciliacaoMensalidadesPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className={`${PORTAL_PAGE_INSET} space-y-5`}>
       <div>
         <h1 className="text-2xl font-bold text-slate-950">Reconciliação de Mensalidades</h1>
         <p className="mt-1 text-sm text-slate-600">

@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
@@ -12,7 +13,7 @@ export default async function RelatoriosPage({
   const { id: escolaId } = await params;
 
   return (
-    <div className="space-y-4">
+    <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
       <DashboardHeader
         title="Relatórios Financeiros"
         breadcrumbs={[

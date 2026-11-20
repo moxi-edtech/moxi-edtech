@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { use } from "react";
 import Link from "next/link";
@@ -16,8 +17,8 @@ export default function EstruturaPage({ params }: Props) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-background px-6 py-8 font-sans text-foreground">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-background font-sans text-foreground">
+      <div className={`${PORTAL_PAGE_INSET} space-y-8`}>
         <div>
           <Link
             href={buildContextualPortalHref(escolaId, "/admin/configuracoes", pathname)}

@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -441,7 +442,7 @@ export default function AlunosPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className={PORTAL_PAGE_INSET}>
         <div className="mb-4">
           <button
             type="button"

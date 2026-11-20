@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
@@ -46,7 +47,7 @@ export default function Page() {
   }, [escolaId, anoLetivoId]);
 
   return (
-    <div className="space-y-4">
+    <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
       <h1 className="text-2xl font-bold">Fluxo de Caixa (diário)</h1>
 
       {loading && (
