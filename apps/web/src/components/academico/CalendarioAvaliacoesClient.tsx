@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X } from "lucide-react";
+import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X, AlertTriangle, Search } from "lucide-react";
+import { assessmentPlanOverlaps, type AssessmentScheduleSlot } from "@/lib/academico/assessment-plan-overlaps";
 
 type Period = { id: string; numero: number; data_inicio: string; data_fim: string; offering_id: string | null };
 type Class = { id: string; nome: string; curso_id: string };
 type Subject = { id: string; turma_id: string; nome: string };
 type Entry = { id: string; turma_id: string; turma_disciplina_id: string; periodo_letivo_id: string; data: string; inicio: string; fim: string | null; descricao: string | null; tipo: string; estado: string };
+type ScheduledAssessment = { data: string; inicio: string; fim: string; descricao: string };
+const blankSchedule = (): ScheduledAssessment => ({ data: "", inicio: "", fim: "", descricao: "" });
+
 type Audit = { id: number; acao: string; actor_id: string; actor_nome?: string | null; ocorrido_em: string; antes: Entry | null; depois: Entry | null };
 type Data = {
   ok: boolean; error?: string; ano: { ano: number } | null; periodos: Period[];
@@ -33,6 +37,9 @@ export default function CalendarioAvaliacoesClient() {
   const [num, setNum] = useState(1);
   const [classIds, setClassIds] = useState<string[]>([]);
   const [chosen, setChosen] = useState<string[]>([]);
+  const [schedule, setSchedule] = useState<Record<string, ScheduledAssessment>>({});
+  const [classSearch, setClassSearch] = useState("");
+  const [sharedDate, setSharedDate] = useState("");
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState("Teste");
   const [date, setDate] = useState("");
@@ -84,7 +91,10 @@ export default function CalendarioAvaliacoesClient() {
   const visibleDrafts = visible.filter(i => i.estado === "rascunho");
   const selectedDrafts = visibleDrafts.filter((i) => selectedIds.includes(i.id));
   const subjects = (data?.disciplinas || []).filter((s) => classIds.includes(s.turma_id)
-    && (s.nome + " " + (classMap.get(s.turma_id)?.nome || "")).toLowerCase().includes(search.toLowerCase()));
+    && (s.nome + " " + (classMap.get(s.turma_id)?.nome || "")).toLocaleLowerCase("pt").includes(search.trim().toLocaleLowerCase("pt")));
+  const selectedSubjects = (data?.disciplinas || []).filter((s) => chosen.includes(s.id) && classIds.includes(s.turma_id));
+  const updateSchedule = (id: string, key: keyof ScheduledAssessment, value: string) =>
+    setSchedule((current) => ({ ...current, [id]: { ...(current[id] ?? blankSchedule()), [key]: value } }));
   const periodFor = (s: Subject) => {
     const courseId = classMap.get(s.turma_id)?.curso_id;
     const offeringId = data?.ofertas?.find((o) => o.course_id === courseId)?.id;
@@ -92,6 +102,34 @@ export default function CalendarioAvaliacoesClient() {
       || periods.find((p) => p.offering_id === null)
       || (periods.length === 1 ? periods[0] : undefined);
   };
+
+  const rows = selectedSubjects.map((s) => ({
+    id: s.id, turma_id: s.turma_id, turma_disciplina_id: s.id, periodo_letivo_id: periodFor(s)?.id,
+    tipo: kind, data: schedule[s.id]?.data ?? "", inicio: schedule[s.id]?.inicio ?? "",
+    fim: schedule[s.id]?.fim || null, descricao: schedule[s.id]?.descricao?.trim() || null,
+  }));
+  const overlaps = assessmentPlanOverlaps(rows as AssessmentScheduleSlot[], data?.items ?? []);
+  const issues: Record<string, string[]> = {};
+  for (const row of rows) {
+    const errors: string[] = [];
+    const p = periodMap.get(row.periodo_letivo_id ?? "");
+    if (!p) errors.push("Período lectivo não configurado para a turma.");
+    else if (!row.data) errors.push("Defina a data.");
+    else if (row.data < p.data_inicio || row.data > p.data_fim) errors.push("A data deve pertencer ao trimestre desta turma.");
+    if (!row.inicio) errors.push("Defina a hora de início.");
+    if (row.fim && row.fim <= row.inicio) errors.push("O fim deve ser posterior ao início.");
+    for (const collision of overlaps[row.id] ?? []) {
+      const other = collision.source === "existing"
+        ? data?.items.find((item) => item.id === collision.withId)
+        : rows.find((item) => item.id === collision.withId);
+      const otherName = other ? subjectMap.get(other.turma_disciplina_id)?.nome : null;
+      errors.push("Conflito com " + (otherName ?? "outra avaliação") + " · " +
+        fmt(other?.data ?? "") + " às " + (other?.inicio?.slice(0, 5) ?? "—"));
+    }
+    if (errors.length) issues[row.id] = errors;
+  }
+  const ready = rows.length > 0 && rows.every((r) => !issues[r.id]?.length);
+  const pendingCount = rows.filter((r) => issues[r.id]?.length).length;
 
   const mutate = async (body: unknown, msg: string) => {
     setSaving(true); setErr(""); setNotice("");
@@ -110,25 +148,27 @@ export default function CalendarioAvaliacoesClient() {
   };
 
   const save = async () => {
-    if (!date || !start || (end && end <= start)) { setErr("Confirme a data e as horas da avaliação."); return; }
+    if (saving) return;
     if (editing) {
-      if (await mutate({ action: "edit", id: editing, tipo: kind, data: date, inicio: start, fim: end || null, descricao: details || null }, "Alteração guardada e auditada.")) {
-        setEditing(null); setDetails("");
+      if (!date || !start || (end && end <= start)) {
+        setErr("Confirme a data e as horas da avaliação."); return;
       }
+      const current = data?.items.find((i) => i.id === editing);
+      if (!current) { setErr("Avaliação não encontrada. Atualize a agenda."); return; }
+      const updated: AssessmentScheduleSlot = { id: editing, turma_id: current.turma_id, data: date, inicio: start, fim: end || null };
+      if (assessmentPlanOverlaps([updated], data?.items ?? [])[editing]?.length) {
+        setErr("O novo horário coincide com outra avaliação desta turma. Ajuste a data ou as horas."); return;
+      }
+      if (await mutate({ action: "edit", id: editing, tipo: kind, data: date, inicio: start, fim: end || null, descricao: details || null },
+        "Alteração guardada e auditada.")) { setEditing(null); setDetails(""); }
       return;
     }
-    const selected = (data?.disciplinas || []).filter((s) => chosen.includes(s.id));
-    if (!selected.length) { setErr("Selecione pelo menos uma disciplina."); return; }
-    const rows = selected.map((s) => ({
-      turma_id: s.turma_id, turma_disciplina_id: s.id, periodo_letivo_id: periodFor(s)?.id,
-      tipo: kind, data: date, inicio: start, fim: end || null, descricao: details || null,
-    }));
-    if (rows.some((r) => {
-      const p = periodMap.get(r.periodo_letivo_id || "");
-      return !p || date < p.data_inicio || date > p.data_fim;
-    })) { setErr("Escolha uma data pertencente ao trimestre de todas as turmas selecionadas."); return; }
-    if (await mutate({ action: "create", items: rows }, "Avaliações guardadas como rascunho.")) {
-      setChosen([]); setDetails("");
+    if (!rows.length) { setErr("Selecione pelo menos uma disciplina."); return; }
+    if (!ready) { setErr("Corrija os campos ou conflitos assinalados antes de guardar."); return; }
+    if (await mutate({ action: "create", items: rows.map(({ id: _localId, ...row }) => row) },
+      "Avaliações guardadas como rascunho.")) {
+      setChosen([]); setSchedule({}); setSharedDate("");
+      setMode("lista"); setClassFilter(rows[0]?.turma_id ?? ""); setAgendaSearch(""); setSelectedIds([]);
     }
   };
 
@@ -147,7 +187,29 @@ export default function CalendarioAvaliacoesClient() {
     } catch (e) { setErr(e instanceof Error ? e.message : "Falha no histórico."); }
   };
 
-  if (loading) return <p className="p-6 text-sm text-muted-foreground">A carregar calendário de avaliações…</p>;
+  if (loading) return (
+    <main role="status" aria-label="A carregar calendário de avaliações" className="mx-auto max-w-6xl space-y-4 p-3 sm:p-6">
+      <span className="sr-only">A carregar calendário de avaliações</span>
+      <div aria-hidden="true" className="space-y-4 motion-safe:animate-pulse">
+        <div className="space-y-2"><div className="h-5 w-40 rounded-lg bg-muted" /><div className="h-8 w-64 max-w-full rounded-lg bg-muted" /></div>
+        <div className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-3">
+          <div className="space-y-2"><div className="h-3 w-28 rounded-lg bg-muted" /><div className="h-10 w-40 rounded-xl bg-muted" /></div>
+          <div className="h-8 w-44 rounded-xl bg-muted sm:self-center" />
+          <div className="h-10 w-28 rounded-xl bg-muted sm:justify-self-end" />
+        </div>
+        <div className="space-y-4 rounded-xl border border-border bg-card p-4">
+          <div className="h-5 w-48 rounded-lg bg-muted" />
+          <div className="h-10 w-full rounded-xl bg-muted" />
+          <div className="h-4 w-36 rounded-lg bg-muted" />
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((n) => <div key={n} className="h-12 rounded-xl border border-border bg-muted/50" />)}
+          </div>
+          <div className="h-5 w-44 rounded-lg bg-muted" />
+          <div className="h-32 rounded-xl border border-border bg-muted/50" />
+        </div>
+      </div>
+    </main>
+  );
   return <main className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
@@ -162,68 +224,213 @@ export default function CalendarioAvaliacoesClient() {
     {err && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{err}</p>}
     {notice && <p role="status" className="rounded-xl border border-border p-3 text-sm text-primary">{notice}</p>}
     {!data?.ano ? <p className="rounded-xl border p-6 text-sm">Configure um ano letivo ativo antes de planear avaliações.</p> : <>
-      <section className="flex flex-wrap items-end justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
-        <div>
-          <p className="text-xs text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano + 1}</p>
-          <label htmlFor="ava-period" className="mb-1 block text-sm font-medium">Trimestre</label>
-          <select id="ava-period" className={control} value={num} onChange={(e) => {
-            const n = Number(e.target.value); setNum(n); setChosen([]); setSelectedIds([]);
+
+      <section className="grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm sm:grid-cols-[minmax(180px,1fr)_auto_auto] sm:items-end sm:p-4">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano + 1}</p>
+          <label htmlFor="ava-period" className="mt-1 block text-xs font-semibold text-foreground">Trimestre</label>
+          <select id="ava-period" className={control + " mt-1"} value={num} onChange={(e) => {
+            const n = Number(e.target.value);
+            setNum(n); setChosen([]); setSchedule({}); setSelectedIds([]); setSharedDate(""); setEditing(null);
             const p = data.periodos.find((v) => v.numero === n);
             if (p) { const d = today() >= p.data_inicio && today() <= p.data_fim ? today() : p.data_inicio; setDate(d); setWeek(startWeek(d)); }
           }}>{numbers.map((n) => <option key={n} value={n}>{n}.º Trimestre</option>)}</select>
         </div>
-        <p className="text-sm text-muted-foreground"><strong className="text-lg text-foreground">{draft.length}</strong> rascunhos · <strong className="text-lg text-foreground">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</p>
-        <button type="button" disabled={saving || !selectedDrafts.length} onClick={publish}
-          className={action + " bg-amber px-4 text-white"}>
-          <Check size={16} /> Publicar selecionadas ({selectedDrafts.length})
-        </button>
-      </section>
-      <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h2 className="flex items-center gap-2 font-semibold text-primary">{editing ? <Pencil size={17} /> : <Plus size={17} />} {editing ? "Editar avaliação" : "Planear avaliações"}</h2>
-            <p className="text-xs text-muted-foreground">Datas e horas por turma e disciplina; sem repetir configurações curriculares.</p>
-          </div>
-          {editing && <button type="button" className={action + " border border-border"} onClick={() => setEditing(null)}><X size={16} /> Sair da edição</button>}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground sm:pb-2">
+          <span><strong className="text-lg font-semibold text-foreground">{draft.length}</strong> rascunhos</span>
+          <span><strong className="text-lg font-semibold text-foreground">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</span>
         </div>
-        {!editing && <>
-          <label className="block text-sm font-semibold">Turmas</label>
-          <div role="group" aria-label="Turmas" className="flex max-h-32 flex-wrap gap-2 overflow-auto">
-            {data.turmas.map((t) => <button type="button" key={t.id} aria-pressed={classIds.includes(t.id)} onClick={() => {
-              setClassIds((v) => v.includes(t.id) ? v.filter((x) => x !== t.id) : [...v, t.id]);
-              if (classIds.includes(t.id)) setChosen((v) => v.filter((x) => subjectMap.get(x)?.turma_id !== t.id));
-            }} className={action + " rounded-full border px-3 py-1 text-xs " + (classIds.includes(t.id) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground")}>{t.nome}</button>)}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <label htmlFor="ava-search" className="text-sm font-semibold">Disciplinas</label>
-            <button type="button" className="text-xs font-semibold text-primary" onClick={() => setChosen((v) => {
-              const all = subjects.map((s) => s.id);
-              return all.every((id) => v.includes(id)) ? v.filter((id) => !all.includes(id)) : [...new Set([...v, ...all])];
-            })}>Selecionar / limpar visíveis</button>
-          </div>
-          <input id="ava-search" className={control} placeholder="Filtrar disciplina ou turma…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <div className="grid max-h-52 gap-2 overflow-auto sm:grid-cols-2">
-            {subjects.map((s) => <label key={s.id} className="flex gap-2 rounded-xl border border-border p-2 text-sm">
-              <input type="checkbox" checked={chosen.includes(s.id)} onChange={(e) => setChosen((v) => e.target.checked ? [...v, s.id] : v.filter((id) => id !== s.id))} className="accent-primary" />
-              <span>{s.nome}<small className="block text-xs text-muted-foreground">{classMap.get(s.turma_id)?.nome}</small></span>
-            </label>)}
-            {!subjects.length && <p className="text-sm text-muted-foreground">Selecione uma turma com disciplinas associadas.</p>}
-          </div>
-          <p className="text-xs text-muted-foreground">{chosen.length} disciplina(s) selecionada(s).</p>
-        </>}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="text-xs font-semibold">Tipo<select className={control + " mt-1"} value={kind} onChange={(e) => setKind(e.target.value)}>{types.map((t) => <option key={t}>{t}</option>)}</select></label>
-          <label className="text-xs font-semibold">Data<input type="date" className={control + " mt-1"} value={date} onChange={(e) => setDate(e.target.value)} /></label>
-          <label className="text-xs font-semibold">Início<input type="time" className={control + " mt-1"} value={start} onChange={(e) => setStart(e.target.value)} /></label>
-          <label className="text-xs font-semibold">Fim (opcional)<input type="time" className={control + " mt-1"} value={end} onChange={(e) => setEnd(e.target.value)} /></label>
-        </div>
-        <label className="block text-xs font-semibold">Observação (opcional)
-          <input className={control + " mt-1"} maxLength={500} value={details} placeholder="Conteúdo, sala ou instruções…" onChange={(e) => setDetails(e.target.value)} />
-        </label>
-        <div className="flex justify-end"><button type="button" disabled={saving || (!editing && !chosen.length)} onClick={() => void save()}
-          className={action + " bg-amber px-4 text-white"}><Check size={16} /> {editing ? "Guardar alteração" : "Guardar rascunho"}</button></div>
+        <a href="#avaliacoes-agenda" className={action + " min-h-10 border border-border bg-card text-foreground hover:bg-muted"}>Ver agenda</a>
       </section>
-      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+
+      {editing ? (
+        <section className="space-y-4 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-5">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="flex items-center gap-2 font-semibold text-primary"><Pencil size={17} /> Editar avaliação</h2>
+              <p className="mt-1 text-xs text-muted-foreground">A alteração fica auditada. A turma e disciplina permanecem vinculadas ao registo.</p>
+            </div>
+            <button type="button" className={action + " border border-border"} onClick={() => setEditing(null)}><X size={16} /> Sair da edição</button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="text-xs font-semibold">Tipo<select className={control + " mt-1"} value={kind} onChange={(e) => setKind(e.target.value)}>{types.map((t) => <option key={t}>{t}</option>)}</select></label>
+            <label className="text-xs font-semibold">Data<input type="date" className={control + " mt-1"} value={date} onChange={(e) => setDate(e.target.value)} /></label>
+            <label className="text-xs font-semibold">Início<input type="time" className={control + " mt-1"} value={start} onChange={(e) => setStart(e.target.value)} /></label>
+            <label className="text-xs font-semibold">Fim (opcional)<input type="time" className={control + " mt-1"} value={end} onChange={(e) => setEnd(e.target.value)} /></label>
+          </div>
+          <label className="block text-xs font-semibold">Observação (opcional)
+            <input className={control + " mt-1"} maxLength={500} value={details} placeholder="Conteúdo, sala ou instruções…" onChange={(e) => setDetails(e.target.value)} />
+          </label>
+          <div className="flex justify-end">
+            <button type="button" disabled={saving} onClick={() => void save()} className={action + " min-h-11 bg-klasse-gold px-4 text-klasse-gold-900"}>
+              <Check size={16} /> Guardar alteração
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="space-y-5 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-5">
+          <div className="flex items-start gap-2">
+            <Plus size={20} className="mt-0.5 text-primary" aria-hidden="true" />
+            <div>
+              <h2 className="font-semibold text-primary">Planear avaliações</h2>
+              <p className="text-xs text-muted-foreground">Várias disciplinas numa operação, cada uma com a sua data e horário.</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">1 · Selecionar turma</h3>
+            <div className="grid gap-2 sm:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)]">
+              <label className="relative block">
+                <span className="sr-only">Pesquisar turma por classe ou turno</span>
+                <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input className={control + " pl-9"} type="search" value={classSearch}
+                  placeholder="Pesquisar classe ou turno…" onChange={(e) => setClassSearch(e.target.value)} />
+              </label>
+              <label>
+                <span className="sr-only">Turma do ano letivo</span>
+                <select className={control} value={classIds[0] ?? ""} onChange={(e) => {
+                  setClassIds(e.target.value ? [e.target.value] : []);
+                  setChosen([]); setSchedule({}); setSearch(""); setSharedDate("");
+                }}>
+                  <option value="">Selecionar turma</option>
+                  {data.turmas.map((t) => ({ turma: t, match: t.nome.toLocaleLowerCase("pt").includes(classSearch.trim().toLocaleLowerCase("pt")) }))
+                    .filter(({ turma, match }) => match || turma.id === classIds[0])
+                    .map(({ turma }) => <option key={turma.id} value={turma.id}>{turma.nome}</option>)}
+                </select>
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground">Apenas turmas ativas do ano letivo {data.ano.ano}/{data.ano.ano + 1}, conforme os vínculos curriculares.</p>
+          </div>
+
+          <div className="space-y-2 border-t border-border pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-foreground">2 · Escolher disciplinas</h3>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" disabled={!subjects.length} className="text-xs font-semibold text-primary disabled:opacity-50"
+                  onClick={() => setChosen((current) => [...new Set([...current, ...subjects.map((subject) => subject.id)])])}>Selecionar visíveis</button>
+                <button type="button" disabled={!subjects.length} className="text-xs font-semibold text-muted-foreground disabled:opacity-50"
+                  onClick={() => setChosen((current) => current.filter((id) => !subjects.some((subject) => subject.id === id)))}>Limpar visíveis</button>
+              </div>
+            </div>
+            <label htmlFor="ava-search" className="sr-only">Filtrar disciplinas</label>
+            <input id="ava-search" className={control} placeholder="Pesquisar disciplinas…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <div className="grid max-h-48 gap-2 overflow-auto sm:grid-cols-2">
+              {subjects.map((subject) => (
+                <label key={subject.id} className="flex min-h-11 items-center gap-2 rounded-xl border border-border p-2 text-sm hover:bg-muted/30">
+                  <input type="checkbox" checked={chosen.includes(subject.id)}
+                    onChange={(e) => setChosen((current) => e.target.checked ? [...new Set([...current, subject.id])] : current.filter((id) => id !== subject.id))} className="h-4 w-4 accent-primary" />
+                  <span className="min-w-0"><span className="block font-medium text-foreground">{subject.nome}</span><small className="text-xs text-muted-foreground">{classMap.get(subject.turma_id)?.nome}</small></span>
+                </label>
+              ))}
+              {!classIds.length && <p className="text-sm text-muted-foreground">Selecione uma turma para ver as disciplinas.</p>}
+              {classIds.length > 0 && subjects.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma disciplina encontrada para esta turma ou pesquisa.</p>}
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">{selectedSubjects.length} disciplina(s) selecionada(s).</p>
+          </div>
+
+          <div className="space-y-3 border-t border-border pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">3 · Agendar por disciplina</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">Sem hora de fim, considera-se uma duração de 60 minutos.</p>
+              </div>
+              <label className="text-xs font-semibold text-foreground">Tipo de avaliação
+                <select className={control + " mt-1"} value={kind} onChange={(e) => setKind(e.target.value)}>
+                  {types.map((t) => <option key={t}>{t}</option>)}
+                </select>
+              </label>
+            </div>
+            {selectedSubjects.length > 1 && (
+              <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-muted/40 p-2.5">
+                <label className="min-w-40 flex-1 text-xs font-semibold text-foreground">Data comum (opcional)
+                  <input type="date" className={control + " mt-1"} value={sharedDate} onChange={(e) => setSharedDate(e.target.value)} />
+                </label>
+                <button type="button" disabled={!sharedDate || saving} className={action + " min-h-10 border border-border bg-card text-foreground"}
+                  onClick={() => setSchedule((current) => Object.fromEntries(selectedSubjects.map((subject) => [
+                    subject.id, { ...(current[subject.id] ?? blankSchedule()), data: sharedDate },
+                  ])))}>
+                  Aplicar data a todas
+                </button>
+              </div>
+            )}
+            {selectedSubjects.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border px-3 py-5 text-sm text-muted-foreground">Selecione uma ou mais disciplinas acima para definir a agenda.</p>
+            ) : (
+              <div className="space-y-2">
+                {selectedSubjects.map((subject) => {
+                  const current = schedule[subject.id] ?? blankSchedule();
+                  const period = periodFor(subject);
+                  const warnings = issues[subject.id] ?? [];
+                  const conflicts = warnings.filter((value) => value.startsWith("Conflito") || value.startsWith("A data deve") || value.startsWith("O fim deve") || value.startsWith("Período"));
+                  const missing = warnings.filter((value) => value.startsWith("Defina"));
+                  const isScheduled = Boolean(current.data && current.inicio && !warnings.length);
+                  return (
+                    <div key={subject.id} className={"space-y-2 rounded-xl border p-3 " + (conflicts.length ? "border-destructive/50 bg-destructive/5" : "border-border bg-card")}>
+                      <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(180px,1fr)_minmax(150px,190px)_minmax(105px,135px)_minmax(105px,135px)]">
+                        <div className="col-span-2 flex min-w-0 items-center justify-between gap-2 sm:col-span-3 lg:col-span-1 lg:flex-wrap">
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-semibold leading-snug text-foreground">{subject.nome}</h4>
+                            <p className="text-xs text-muted-foreground">{classMap.get(subject.turma_id)?.nome}</p>
+                          </div>
+                          <span className={"shrink-0 rounded-full px-2 py-1 text-[11px] font-medium " + (conflicts.length ? "bg-destructive/10 text-destructive" : isScheduled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                            {conflicts.length ? "Conflito" : isScheduled ? "Pronta" : "Por agendar"}
+                          </span>
+                        </div>
+                        <label className="col-span-2 text-xs font-semibold text-foreground sm:col-span-1">Data
+                          <input type="date" className={control + " mt-1"} value={current.data}
+                            min={period?.data_inicio} max={period?.data_fim}
+                            onChange={(e) => updateSchedule(subject.id, "data", e.target.value)} />
+                        </label>
+                        <label className="min-w-0 text-xs font-semibold text-foreground">Início
+                          <input type="time" className={control + " mt-1"} value={current.inicio}
+                            onChange={(e) => updateSchedule(subject.id, "inicio", e.target.value)} />
+                        </label>
+                        <label className="min-w-0 text-xs font-semibold text-foreground">Fim (opcional)
+                          <input type="time" className={control + " mt-1"} value={current.fim}
+                            onChange={(e) => updateSchedule(subject.id, "fim", e.target.value)} />
+                        </label>
+                      </div>
+                      <details className="text-xs text-muted-foreground">
+                        <summary className="w-fit cursor-pointer py-1 font-medium text-primary">
+                          {current.descricao ? "Ver ou editar observação" : "Adicionar observação (opcional)"}
+                        </summary>
+                        <label className="mt-1 block text-xs font-semibold text-foreground">
+                          Conteúdo, sala ou instruções
+                          <input className={control + " mt-1"} value={current.descricao} maxLength={500}
+                            placeholder="Observação desta disciplina…" onChange={(e) => updateSchedule(subject.id, "descricao", e.target.value)} />
+                        </label>
+                      </details>
+                      {missing.length > 0 && (
+                        <p className="text-xs text-muted-foreground" role="status">{missing.join(" ")}</p>
+                      )}
+                      {conflicts.length > 0 && (
+                        <div role="alert" className="space-y-1 text-xs font-semibold text-destructive">
+                          {conflicts.map((warning) => <p key={warning} className="flex items-start gap-1.5"><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />{warning}</p>)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+            <div aria-live="polite">
+              <h3 className="text-sm font-semibold text-foreground">4 · Rever e guardar</h3>
+              <p className="text-xs text-muted-foreground">
+                {rows.length - pendingCount} pronta(s) · {pendingCount} por corrigir · {rows.length} selecionada(s)
+              </p>
+            </div>
+            <button type="button" disabled={saving || !ready} onClick={() => void save()}
+              className={action + " min-h-11 bg-klasse-gold px-4 text-klasse-gold-900"}>
+              <Check size={16} /> Guardar rascunhos ({rows.length})
+            </button>
+          </div>
+          {rows.length > 0 && !ready && <p className="text-xs text-muted-foreground">Preencha as datas e horas de todas as disciplinas e resolva os conflitos antes de guardar.</p>}
+        </section>
+      )}
+      <section id="avaliacoes-agenda" className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex justify-between gap-2 border-b border-border p-4">
           <div><h2 className="font-semibold text-primary">Avaliações do trimestre</h2>
           <p className="text-xs text-muted-foreground">Só avaliações publicadas aparecem nos portais.</p></div>
@@ -268,7 +475,13 @@ export default function CalendarioAvaliacoesClient() {
              setSelectedIds((prev) => visibleDrafts.every(i=>prev.includes(i.id)) ? prev.filter(id=>!visibleDrafts.some(i=>i.id===id)) : [...new Set([...prev,...visibleDrafts.map(i=>i.id)])])}>
              <Check size={16}/> {visibleDrafts.length && selectedDrafts.length === visibleDrafts.length ? "Desmarcar visíveis" : "Selecionar rascunhos visíveis"}
            </button>
-           <span className="text-xs text-muted-foreground">{selectedDrafts.length} selecionadas para publicar</span>
+           <div className="flex flex-wrap items-center gap-2">
+             <span className="text-xs text-muted-foreground">{selectedDrafts.length} selecionada(s) para publicar</span>
+             <button type="button" disabled={saving || !selectedDrafts.length} onClick={publish}
+               className={action + " min-h-10 bg-klasse-gold px-4 text-klasse-gold-900"}>
+               <Check size={16} /> Publicar selecionadas ({selectedDrafts.length})
+             </button>
+           </div>
          </div>
          <div className={mode==="lista"?"divide-y divide-border":"hidden"}>{visible.map((item) => <div key={item.id}>
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
