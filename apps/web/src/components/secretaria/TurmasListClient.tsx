@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import {
   useEffect, useMemo, useState, useCallback, useRef, type CSSProperties,
@@ -1404,7 +1405,7 @@ export default function TurmasListClient({
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="w-full max-w-6xl mx-auto p-6 space-y-6 pb-24">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6 pb-24`}>
 
       {/* ... (Header, KPIs, Pending banner) ... */}
 

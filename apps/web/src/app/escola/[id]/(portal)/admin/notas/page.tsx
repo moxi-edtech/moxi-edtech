@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { BookOpen, Search, Filter, ArrowUpDown, Users, BookCheck, GraduationCap, BarChart3 } from "lucide-react";
@@ -218,7 +219,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6 p-6 bg-slate-50 rounded-xl">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6 rounded-xl bg-background`}>
       {/* --- HEADER COM MÉTRICAS --- */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">

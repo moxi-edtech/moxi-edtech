@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -151,7 +152,7 @@ export default function FiscalRetificarPage() {
 
   if (loading) {
     return (
-      <div className="bg-slate-50 p-4 md:p-6">
+      <div className={`${PORTAL_PAGE_INSET} bg-background`}>
         <div className="grid min-h-[60vh] place-items-center rounded-xl border border-slate-200 bg-white">
           <div className="inline-flex items-center gap-2 text-sm text-slate-600">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -163,7 +164,7 @@ export default function FiscalRetificarPage() {
   }
 
   return (
-    <div className="space-y-4 bg-slate-50 p-4 md:p-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-4 bg-background`}>
       <section className="rounded-xl border border-slate-200 bg-white p-4">
         <Link
           prefetch

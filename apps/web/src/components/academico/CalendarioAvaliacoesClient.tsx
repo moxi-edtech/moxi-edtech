@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
@@ -188,7 +189,7 @@ export default function CalendarioAvaliacoesClient() {
   };
 
   if (loading) return (
-    <main role="status" aria-label="A carregar calendário de avaliações" className="mx-auto max-w-6xl space-y-4 p-3 sm:p-6">
+    <main role="status" aria-label="A carregar calendário de avaliações" className={`${PORTAL_PAGE_INSET} space-y-4` }>
       <span className="sr-only">A carregar calendário de avaliações</span>
       <div aria-hidden="true" className="space-y-4 motion-safe:animate-pulse">
         <div className="space-y-2"><div className="h-5 w-40 rounded-lg bg-muted" /><div className="h-8 w-64 max-w-full rounded-lg bg-muted" /></div>
@@ -210,7 +211,7 @@ export default function CalendarioAvaliacoesClient() {
       </div>
     </main>
   );
-  return <main className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
+  return <main className={`${PORTAL_PAGE_INSET} space-y-5`}>
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
         <p className="text-xs font-semibold uppercase text-muted-foreground">Operações Académicas / Avaliações</p>
