@@ -79,6 +79,7 @@ test("frontend reconhece cada turma e usa endpoint canónico sem bypass", () => 
   assert.match(turmas, /\/api\/secretaria\/documentos-oficiais\/lote/);
   assert.match(turmas, /const years = Array\.from\(new Set/);
   assert.match(endpoint, /MAX_TURMAS_POR_LOTE/);
+  assert.match(endpoint, /parsed\.data\.order \?\? "nome_asc"/);
   assert.match(legacy, /if \(!userEscolaId\)/);
   assert.doesNotMatch(legacy, /userEscolaId \?\? requestedEscolaId/);
 });
