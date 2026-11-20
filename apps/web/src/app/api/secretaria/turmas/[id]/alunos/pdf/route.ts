@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { renderListaNominalPdfBuffer } from "@/lib/documentos/listaNominalPdf";
+import { nominalContentDisposition, nominalExportFilename, parseNominalNameOrder } from "@/lib/documentos/nominalExportOptions";
 import { authorizeNominalExport, NominalRosterError } from "@/lib/documentos/listaNominalService";
 import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission";
 
@@ -34,6 +35,8 @@ export async function GET(
     const enableQr = searchParams.get("qr") === "true";
     if (enableQr || isAlbum || isAttendance || month) await requireFeature("doc_qr_code", { requestedEscolaId: escolaId });
     const includeAllStatus = searchParams.get("all_status") === "true";
+    const order = parseNominalNameOrder(searchParams.get("order"));
+    if (!order) return NextResponse.json({ ok: false, error: "Ordenação alfabética inválida" }, { status: 400 });
     const modeParam = searchParams.get("mode");
     if (modeParam && modeParam !== "ano_letivo" && modeParam !== "operacional") {
       return NextResponse.json({ ok: false, error: "Modo de lista inválido" }, { status: 400 });
@@ -52,6 +55,7 @@ export async function GET(
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
 
     let linhasExportadas = 0;
+    const exportMeta: { value?: { classeNome: string; turmaNome: string; anoLabel: string } } = {};
     const pdfBytes = await renderListaNominalPdfBuffer({
       supabase: supabase as any,
       escolaId,
@@ -63,6 +67,8 @@ export async function GET(
       isAlbum,
       includeAllStatus,
       mode,
+      order,
+      onRoster: (meta) => { exportMeta.value = meta; },
       enableQr,
       camposSensiveis,
       emissor: user.email ?? user.id,
@@ -77,7 +83,7 @@ export async function GET(
         tabela: "turmas", entity: "turmas", entity_id: turmaId,
         details: {
           actor_id: user.id, turma_id: turmaId,
-          modo: mode ?? "conforme_sessao", ano: year,
+          modo: mode ?? "conforme_sessao", ordem: order, ano: year,
           linhas: linhasExportadas,
           campos_sensiveis: camposSensiveis,
           campos: camposSensiveis ? ["nascimento", "naturalidade", "bi"] : [],
@@ -91,7 +97,7 @@ export async function GET(
     headers.set("Content-Type", "application/pdf");
     headers.set(
       "Content-Disposition",
-      `attachment; filename="lista_escola_${escolaId}_turma_${turmaId}_${year}_${new Date().toISOString().slice(0,10)}.pdf"`
+      nominalContentDisposition(nominalExportFilename({ scope: "turma", classe: exportMeta.value?.classeNome, turma: exportMeta.value?.turmaNome, ano: exportMeta.value?.anoLabel, extension: "pdf" }))
     );
     return new NextResponse(pdfBytes as any, {
       headers,
