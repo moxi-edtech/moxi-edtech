@@ -45,13 +45,13 @@ const output = process.env.ROSTER_PDF_OUTPUT ?? "roster-artifacts";
 await mkdir(output, { recursive: true });
 
 for (const [filename, rows, sensitive, logoBytes, escolaNome] of [
-  ["lista_sintetica_55.pdf", sample, false],
+  ["lista_sintetica_55.pdf", sample, false, undefined, undefined],
   ["lista_sintetica_55_sensivel.pdf", sample.map(x => ({
     ...x, nascimento: "01/01/2010", naturalidade: "Localidade Simulada",
     bi: "BI-TESTE-" + x.processo,
-  })), true],
-  ["lista_sintetica_vazia.pdf", [], false],
-  ["lista_sintetica_61_lacunas.pdf", sample61ComLacunas, false],
+  })), true, undefined, undefined],
+  ["lista_sintetica_vazia.pdf", [], false, undefined, undefined],
+  ["lista_sintetica_61_lacunas.pdf", sample61ComLacunas, false, undefined, undefined],
   ["lista_sintetica_logo_quadrado.pdf", sample.slice(0, 5), false, logoQuadrado, "IDENTIDADE ESCOLAR FICTICIA"],
   ["lista_sintetica_logo_horizontal.pdf", sample.slice(0, 5), false, logoHorizontal, escolaLonga],
   ["lista_sintetica_logo_vertical.pdf", sample.slice(0, 5), false, logoVertical, "IDENTIDADE ESCOLAR FICTICIA"],
