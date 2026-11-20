@@ -168,6 +168,7 @@ export default function CalendarioAvaliacoesClient() {
     if (await mutate({ action: "create", items: rows.map(({ id: _localId, ...row }) => row) },
       "Avaliações guardadas como rascunho.")) {
       setChosen([]); setSchedule({}); setSharedDate("");
+      setMode("lista"); setClassFilter(rows[0]?.turma_id ?? ""); setAgendaSearch(""); setSelectedIds([]);
     }
   };
 
@@ -361,6 +362,7 @@ export default function CalendarioAvaliacoesClient() {
                   const period = periodFor(subject);
                   const warnings = issues[subject.id] ?? [];
                   const conflicts = warnings.filter((value) => value.startsWith("Conflito") || value.startsWith("A data deve") || value.startsWith("O fim deve") || value.startsWith("Período"));
+                  const missing = warnings.filter((value) => value.startsWith("Defina"));
                   const isScheduled = Boolean(current.data && current.inicio && !warnings.length);
                   return (
                     <div key={subject.id} className={"space-y-2 rounded-xl border p-3 " + (conflicts.length ? "border-destructive/50 bg-destructive/5" : "border-border bg-card")}>
@@ -398,6 +400,9 @@ export default function CalendarioAvaliacoesClient() {
                             placeholder="Observação desta disciplina…" onChange={(e) => updateSchedule(subject.id, "descricao", e.target.value)} />
                         </label>
                       </details>
+                      {missing.length > 0 && (
+                        <p className="text-xs text-muted-foreground" role="status">{missing.join(" ")}</p>
+                      )}
                       {conflicts.length > 0 && (
                         <div role="alert" className="space-y-1 text-xs font-semibold text-destructive">
                           {conflicts.map((warning) => <p key={warning} className="flex items-start gap-1.5"><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />{warning}</p>)}
