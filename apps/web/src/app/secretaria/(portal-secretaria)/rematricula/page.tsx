@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -552,7 +553,7 @@ export default function RematriculaPage() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-5xl mx-auto font-sans">
+    <div className="${PORTAL_PAGE_INSET} rounded-xl border border-border bg-card shadow-sm font-sans">
       
       {/* HEADER DA PÁGINA */}
       <div className="mb-8 border-b border-slate-100 pb-4">

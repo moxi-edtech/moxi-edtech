@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -56,6 +57,7 @@ export default async function Page({
   return (
     <>
       <AuditPageView portal="financeiro" acao="PAGE_VIEW" entity="relatorios_detalhados" />
+      <div className={PORTAL_PAGE_INSET}>
       <div className="bg-white rounded-xl shadow border p-5">
         <div className="flex items-end justify-between gap-4 mb-4">
           <div>
@@ -93,6 +95,7 @@ export default async function Page({
           </form>
         </div>
 
+        <div className="w-full overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
             <tr className="text-left text-gray-500 border-b">
@@ -126,6 +129,8 @@ export default async function Page({
             )}
           </tbody>
         </table>
+        </div>
+      </div>
       </div>
     </>
   )

@@ -6,6 +6,9 @@
 export const PORTAL_PAGE_INSET = "mx-auto w-full min-w-0 max-w-6xl px-6 py-8";
 
 /** Wide canvases (e.g. the timetable) are opt-in, never the default. */
+/** For multi-section pages that own their vertical rhythm (e.g. Turma details). */
+export const PORTAL_PAGE_HORIZONTAL_INSET = "mx-auto w-full min-w-0 max-w-6xl px-6";
+
 export const PORTAL_PAGE_WIDE_INSET = "mx-auto w-full min-w-0 max-w-7xl px-6 py-8";
 
 export function isWidePortalPage(pathname: string | null | undefined): boolean {

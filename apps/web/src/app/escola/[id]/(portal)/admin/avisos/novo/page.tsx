@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useState } from "react";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -57,14 +58,14 @@ export default function AvisosNovoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-3xl mx-auto p-6 space-y-6">
-        <header>
+    <div className="min-h-full bg-background">
+      <div className="${PORTAL_PAGE_INSET} space-y-6">
+        <header className="max-w-3xl">
           <h1 className="text-2xl font-bold text-slate-900">Criar aviso</h1>
           <p className="text-sm text-slate-500">Comunique algo importante para a comunidade escolar.</p>
         </header>
 
-        <form onSubmit={onSubmit} className="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+        <form onSubmit={onSubmit} className="max-w-3xl rounded-xl border border-border bg-card p-6 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700">Título</label>
             <input

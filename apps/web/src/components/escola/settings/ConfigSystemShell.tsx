@@ -59,7 +59,7 @@ export default function ConfigSystemShell({
   const hasActionControls = Boolean(onSave || testHref);
   const showRightPanel = hasStatusData || hasActionControls;
   return (
-    <div className={`${PORTAL_PAGE_INSET} space-y-6${embedded ? " h-full" : ""}`}>
+    <div className={embedded ? "h-full w-full min-w-0 space-y-6" : `${PORTAL_PAGE_INSET} space-y-6`}>
       <header className="flex flex-col gap-2">
         {!embedded && backHref && (
           <Link

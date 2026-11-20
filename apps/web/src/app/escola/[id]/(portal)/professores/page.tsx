@@ -1,4 +1,5 @@
 "use client"
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -1215,7 +1216,7 @@ export default function ProfessoresPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-6">
+    <div className="${PORTAL_PAGE_INSET} space-y-8">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4">
