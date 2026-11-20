@@ -28,7 +28,7 @@ export function nominalExportFilename(input: {
     prefix,
     filenamePart(input.classe),
     input.scope === "turma" ? filenamePart(input.turma) : "",
-    filenamePart(input.ano?.replaceAll("/", "-")),
+    filenamePart(input.ano?.replace(/\//g, "-")),
   ].filter(Boolean);
   return parts.join(" - ").slice(0, 180).trim() + "." + input.extension;
 }
