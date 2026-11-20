@@ -1437,15 +1437,15 @@ export default function TurmasListClient({
           onViewModeChange={setViewMode}
         />
         {canPrint && (
-          <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 bg-white px-4 py-3">
-            <label htmlFor="turmas-lista-nominal-order" className="text-xs font-semibold text-slate-600">
+          <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border bg-card px-4 py-3">
+            <label htmlFor="turmas-lista-nominal-order" className="text-xs font-semibold text-muted-foreground">
               Ordem dos alunos na impressão
             </label>
             <select
               id="turmas-lista-nominal-order"
               value={nominalOrder}
               onChange={(event) => setNominalOrder(event.target.value as NominalNameOrder)}
-              className="min-h-9 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+              className="min-h-9 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
             >
               <option value="nome_asc">Nome A–Z</option>
               <option value="nome_desc">Nome Z–A</option>
@@ -1990,7 +1990,7 @@ export default function TurmasListClient({
                 value={nominalOrder}
                 onChange={(event) => setNominalOrder(event.target.value as NominalNameOrder)}
                 disabled={bulkPrinting}
-                className="min-h-9 rounded-xl border border-slate-600 bg-slate-800 px-2 py-1 text-xs font-semibold text-white focus:border-klasse-gold focus:outline-none focus:ring-2 focus:ring-klasse-gold/20"
+                className="min-h-9 rounded-xl border border-border bg-card px-2 py-1 text-xs font-semibold text-foreground focus:border-klasse-gold focus:outline-none focus:ring-2 focus:ring-klasse-gold/20"
               >
                 <option value="nome_asc">A–Z</option>
                 <option value="nome_desc">Z–A</option>
