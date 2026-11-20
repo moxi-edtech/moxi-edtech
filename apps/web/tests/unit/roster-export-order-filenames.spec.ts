@@ -1,3 +1,4 @@
+import { numberNominalA4Rows } from "../../src/lib/documentos/nominalA4";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { selectAndSortNominalMatriculas, type NominalMatricula } from "../../src/lib/documentos/listaNominalService";
@@ -48,4 +49,19 @@ test("ficheiros têm nomes legíveis, sem separadores inseguros nem UUID", () =>
   assert.equal(unsafe.includes("\\"), false);
   assert.equal(unsafe.endsWith(".xlsx"), true);
   assert.equal(downloadFilenameFromDisposition('attachment; filename="../../etc/passwd"'), null);
+});
+
+test("PDF numera 61 linhas como 1..61 apesar de a última chamada ser 74", () => {
+  const originals = Array.from({ length: 61 }, (_, index) => ({
+    numero: String(index < 30 ? index + 1 : index + 14),
+    processo: "P-" + String(index + 1).padStart(4, "0"),
+    nome: "Aluno de Teste " + (index + 1),
+    turma: "6ª Classe M A",
+    estado: "Activa",
+  }));
+  assert.equal(originals.at(-1)?.numero, "74");
+  const printed = numberNominalA4Rows(originals);
+  assert.deepEqual(printed.map((row) => Number(row.numero)), Array.from({ length: 61 }, (_, index) => index + 1));
+  assert.equal(originals.at(-1)?.numero, "74", "nunca alterar o número de chamada de origem");
+  assert.equal(printed.length, originals.length);
 });
