@@ -256,7 +256,7 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
     const left = "Emitido em " + dateLabel + "  |  Utilizador: " + printable(emissor, font);
     const safeLeft = wrap(left, available - 90, font, 7)[0] ?? "Emissão KLASSE";
     p.drawText(safeLeft, { x: MARGIN, y: FOOTER_BOTTOM + 12, font, size: 7 });
-    p.drawText("Gerado pelo KLASSE | app.klasse.ao", {
+    p.drawText("Gerado pelo KLASSE | Sistema de Gestão Escolar Inteligente | www.klasse.ao", {
       x: MARGIN, y: FOOTER_BOTTOM - 1, font: bold, size: 7,
       color: rgb(0.12, 0.40, 0.23),
     });
