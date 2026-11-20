@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -213,7 +214,7 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
   }
 
   return (
-    <main className="space-y-6 bg-background p-4 text-foreground sm:p-6">
+    <main className={`${PORTAL_PAGE_INSET} space-y-6 bg-background text-foreground`}>
       <div className="space-y-2">
         <Link href={`/escola/${encodeURIComponent(escolaId)}/${inOperacoes ? "operacoes/academico" : "secretaria/operacoes-academicas"}`}
           className="text-sm font-medium text-emerald hover:underline">

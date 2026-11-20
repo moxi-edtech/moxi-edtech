@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET, PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -157,7 +158,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className={`${PORTAL_PAGE_INSET} flex min-h-[50vh] items-center justify-center`}>
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-moxinexa-teal"></div>
       </div>
     );
@@ -165,7 +166,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
 
   if (error && !form) {
     return (
-      <div className="max-w-4xl mx-auto p-8 text-center">
+      <div className={`${PORTAL_PAGE_INSET} text-center`}>
         <div className="bg-red-50 text-red-700 p-6 rounded-2xl border border-red-200">
           <h2 className="text-xl font-bold mb-2">Erro ao carregar dados</h2>
           <p className="mb-4">{error}</p>
@@ -176,8 +177,8 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      <div className="max-w-5xl mx-auto px-4 pt-4">
+    <div className="min-h-full bg-background pb-20">
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-4`}>
         <DashboardHeader
           title="Editar Aluno"
           breadcrumbs={[
@@ -190,7 +191,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
       </div>
       {/* Header Fixo */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} flex h-16 items-center justify-between`}>
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
@@ -226,7 +227,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} py-8`}>
         <OfflineBanner fromCache={offlineMeta.fromCache} updatedAt={offlineMeta.updatedAt} />
 
         {success && (

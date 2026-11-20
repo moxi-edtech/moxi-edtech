@@ -1,4 +1,5 @@
 'use client';
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useUserRole } from "@/hooks/useUserRole";
 import { createClient } from "@/lib/supabaseClient";
@@ -136,8 +137,8 @@ export default function EditarCandidaturaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-slate-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-full bg-background">
+      <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
         <div className="mb-4">
           <button
             type="button"

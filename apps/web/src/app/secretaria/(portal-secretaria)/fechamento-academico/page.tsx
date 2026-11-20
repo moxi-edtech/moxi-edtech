@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import React, { useEffect, useRef, useState, Suspense } from "react";
 import Link from "next/link";
@@ -389,7 +390,7 @@ function FechamentoAcademicoContent() {
   const isHistory = currentJobStep === "GENERATING_HISTORY" || currentJobStep === "COMPLETED";
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 max-w-4xl mx-auto">
+    <div className={`${PORTAL_PAGE_INSET} rounded-xl border border-border bg-card shadow-sm`}>
       <div className="mb-8 border-b border-slate-100 pb-6 space-y-4">
         <div>
           <DashboardHeader

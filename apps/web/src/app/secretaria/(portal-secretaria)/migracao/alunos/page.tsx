@@ -1,10 +1,11 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { Suspense } from "react";
 import AlunoMigrationWizard from "@/app/migracao/alunos/wizard";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 export default function Page() {
   return (
-    <div className="space-y-4">
+    <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
       <DashboardHeader
         title="Migração de Alunos"
         breadcrumbs={[

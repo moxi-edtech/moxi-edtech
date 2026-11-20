@@ -1,4 +1,5 @@
 "use client"
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useEffect, useMemo, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
@@ -43,7 +44,7 @@ type PautaDetalhadaRow = {
 export default function SecretariaNotasPage() {
   return (
     <Suspense fallback={
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
         <div className="animate-pulse bg-slate-200 h-10 w-48 rounded mb-6" />
         <div className="grid md:grid-cols-3 gap-3">
           <div className="h-10 bg-slate-100 rounded" />
@@ -344,7 +345,7 @@ function SecretariaNotasContent() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       <div>
         <DashboardHeader
           title="Lançamento de Notas"

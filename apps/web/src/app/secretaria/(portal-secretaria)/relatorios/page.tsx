@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { supabaseServer } from "@/lib/supabaseServer";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -54,7 +55,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
   return (
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="relatorios" />
-      <div className="bg-white rounded-xl shadow border p-5">
+      <div className={`${PORTAL_PAGE_INSET} space-y-4 rounded-xl border border-border bg-card shadow-sm`}>
         <div className="flex items-end justify-between gap-4 mb-4">
           <div>
             <DashboardHeader
@@ -136,6 +137,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
           </form>
         </div>
 
+        <div className="w-full overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
             <tr className="text-left text-gray-500 border-b">
@@ -171,6 +173,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </>
   );
