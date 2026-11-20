@@ -412,7 +412,9 @@ export default function AppShell({
             </div>
           </Suspense>
           <MaintenanceBanner />
-          <main className={mobileNav ? "p-4 md:p-6 pb-24" : "p-4 md:p-6"}>{children}</main>
+          <main className={mobileNav ? "p-4 pb-24 md:p-6" : "p-4 md:p-6"}>
+            <div className="mx-auto w-full min-w-0 max-w-6xl">{children}</div>
+          </main>
         </div>
       </div>
       {mobileNav ? <div className="md:hidden">{mobileNav}</div> : null}
