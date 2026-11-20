@@ -8,7 +8,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const { id: escolaId } = await params;
   
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-6 py-8">
       <AuditPageView portal="admin_escola" acao="PAGE_VIEW" entity="billing_settings" />
       <DashboardHeader
         title="Assinatura Klasse"
