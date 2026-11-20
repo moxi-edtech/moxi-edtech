@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 import AlunoPerfilPage from "@/components/aluno/AlunoPerfilPage";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
@@ -7,6 +8,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const selectedYear = query.ano && /^\d{4}$/.test(query.ano) ? Number(query.ano) : null;
   return (
     <div className="space-y-4">
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-8`}>
       <DashboardHeader
         title="Perfil do Aluno"
         breadcrumbs={[
@@ -16,6 +18,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           { label: "Perfil" },
         ]}
       />
+      </div>
       <AlunoPerfilPage alunoId={id} role="secretaria" selectedYear={selectedYear} />
     </div>
   );

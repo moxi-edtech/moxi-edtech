@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 import { supabaseServer } from "@/lib/supabaseServer";
 import AuditPageView from "@/components/audit/AuditPageView";
 import ProfessoresListClient from "@/components/secretaria/ProfessoresListClient";
@@ -34,6 +35,7 @@ export default async function Page() {
   return (
     <div className="space-y-4">
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="professores_list" />
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-8`}>
       <DashboardHeader
         title="Professores"
         breadcrumbs={[
@@ -42,6 +44,7 @@ export default async function Page() {
           { label: "Professores" },
         ]}
       />
+      </div>
       <ProfessoresListClient />
     </div>
   );

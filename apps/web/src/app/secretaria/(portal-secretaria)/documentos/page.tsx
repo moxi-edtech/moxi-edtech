@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 import AuditPageView from "@/components/audit/AuditPageView";
 import SecretariaDocumentosWorkspace from "@/components/secretaria/SecretariaDocumentosWorkspace";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -26,6 +27,7 @@ export default async function DocumentosPage() {
   return (
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="documentos" />
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-8`}>
       <DashboardHeader
         title="Documentos"
         breadcrumbs={[
@@ -34,6 +36,7 @@ export default async function DocumentosPage() {
           { label: "Documentos" },
         ]}
       />
+      </div>
       <SecretariaDocumentosWorkspace escolaId={escolaId} />
     </>
   );

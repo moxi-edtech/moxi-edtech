@@ -1,3 +1,4 @@
+import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 import ClasseDetailClient from "@/components/secretaria/ClasseDetailClient";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -7,6 +8,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   return (
     <div className="space-y-4">
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="classe_detail" entityId={id} />
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-8`}>
       <DashboardHeader
         title="Detalhe da Classe"
         breadcrumbs={[
@@ -16,6 +18,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           { label: "Detalhe" },
         ]}
       />
+      </div>
       <ClasseDetailClient classeId={id} />
     </div>
   );
