@@ -1396,7 +1396,7 @@ export default function TurmaDetailClient({
 
       {/* ── HERO — dark green, strong identity ───────────────────────────── */}
       <div className="bg-slate-50/50">
-        <div className="${PORTAL_PAGE_HORIZONTAL_INSET} pt-6 pb-8">
+        <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-6 pb-8`}>
 
           {/* Breadcrumb */}
           <Link
@@ -1544,7 +1544,7 @@ export default function TurmaDetailClient({
         </div>
 
         {/* ── Tab bar — sits at bottom of hero, transitions into content ── */}
-        <div className="${PORTAL_PAGE_HORIZONTAL_INSET} pb-0">
+        <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pb-0`}>
           <div className="flex items-center justify-between border-t border-slate-200 pt-4 pb-0">
             <PillTabs
               active={activeTab}
@@ -1556,7 +1556,7 @@ export default function TurmaDetailClient({
       </div>
 
       {/* ── Content area ─────────────────────────────────────────────────── */}
-      <div className="${PORTAL_PAGE_HORIZONTAL_INSET} py-8">
+      <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} py-8`}>
 
       {/* Alunos */}
       {activeTab === "alunos" && (

@@ -114,6 +114,15 @@ test("reprocessamento bloqueia modo original irrecuperável", () => {
   assert.match(retry, /canExportSensitiveRosterFields/);
 });
 
+test("reprocessamento restaura nomes das turmas concluídas antes de refazer ZIP", () => {
+  const worker = source("inngest/functions/pautas-lote.ts");
+  assert.match(worker, /const missingTurmaIds = successItems/);
+  assert.match(worker, /\.filter\(turmaId => !turmaMap\.has\(turmaId\)\)/);
+  assert.match(worker, /\.eq\("escola_id", escola_id\)\s*\.in\("id", missingTurmaIds\)/);
+  assert.match(worker, /previousTurmas\?\.length !== missingTurmaIds\.length/);
+  assert.ok(worker.indexOf("const missingTurmaIds") < worker.indexOf("for (const [index, item] of successItems.entries())"));
+});
+
 test("lote conserva ordem Z–A ao reprocessar e aceita chaves v2 já existentes", () => {
   const actorId = "00000000-0000-4000-8000-000000000001";
   const academicYearId = "00000000-0000-4000-8000-000000000002";
