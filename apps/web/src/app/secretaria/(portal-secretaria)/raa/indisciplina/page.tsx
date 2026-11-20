@@ -1,4 +1,5 @@
 "use client";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { FormEvent, useState } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
@@ -36,7 +37,7 @@ export default function IndisciplinaRaaPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className={`${PORTAL_PAGE_INSET} space-y-5`}>
       <DashboardHeader title="Indisciplina grave — RAA" description="Registe a ocorrência dentro da escola, ano letivo e matrícula corretos." breadcrumbs={[{ label: "Início", href: "/" }, { label: "Secretaria", href: "/secretaria" }, { label: "Indisciplina RAA" }]} />
       <section className="max-w-3xl rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><p>O evento fica auditável e pode influenciar a análise RAA. Registe apenas factos verificáveis.</p></div>

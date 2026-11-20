@@ -320,7 +320,7 @@ function FechamentoAcademicoContent() {
 
   if (currentState === "validando") {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+      <div className={`${PORTAL_PAGE_INSET} rounded-xl border border-border bg-card text-center shadow-sm`}>
         <RefreshCw className="w-10 h-10 text-[#1F6B3B] animate-spin mx-auto mb-4" />
         <h2 className="text-lg font-bold text-slate-900 font-sora">A preparar o fecho...</h2>
         <p className="text-slate-500 text-sm mt-2">Estamos a confirmar se está tudo pronto.</p>
@@ -330,7 +330,7 @@ function FechamentoAcademicoContent() {
 
   if (currentState === "bloqueado") {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
+      <div className={`${PORTAL_PAGE_INSET} overflow-hidden rounded-xl border border-red-200 bg-card shadow-sm`}>
         <div className="bg-red-50 p-6 border-b border-red-100 flex items-start gap-4">
           <div className="bg-red-100 p-3 rounded-xl text-red-600 flex-shrink-0">
             <AlertTriangle className="w-6 h-6" />

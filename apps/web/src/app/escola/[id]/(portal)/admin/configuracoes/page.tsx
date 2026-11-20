@@ -264,7 +264,7 @@ export default function ConfiguracoesPage({ params }: Props) {
         )}
         {/* Botão de voltar (só aparece se for edição manual) */}
         {setupComplete && (
-          <div className="max-w-6xl mx-auto pt-6 px-6">
+          <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-6`}>
             <button 
               onClick={() => setForceWizard(false)} 
               className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
@@ -289,7 +289,7 @@ export default function ConfiguracoesPage({ params }: Props) {
 
   // 5. MODO HUB (Painel de Configurações)
   return (
-    <div className="bg-muted min-h-screen">
+    <div className="min-h-full bg-muted">
       <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} pt-6`}>
         {cameFromPublicOnboarding && (
           <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-foreground shadow-sm">

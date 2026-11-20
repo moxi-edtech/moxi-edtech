@@ -1,7 +1,8 @@
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { use } from "react";
 // Fallback inline component used when the external AvaliacaoFrequenciaClient module is missing
 function AvaliacaoFrequenciaClient({ escolaId }: { escolaId: string }) {
-  return <div>Configurações de avaliação para escola {escolaId}</div>;
+  return <div className={PORTAL_PAGE_INSET}>Configurações de avaliação para escola {escolaId}</div>;
 }
 
 export const dynamic = 'force-dynamic';

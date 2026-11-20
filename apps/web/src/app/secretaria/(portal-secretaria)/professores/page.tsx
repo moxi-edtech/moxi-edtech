@@ -1,4 +1,5 @@
 import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
+import { PORTAL_PAGE_HORIZONTAL_INSET } from "@/lib/layout/portal-page";
 import { supabaseServer } from "@/lib/supabaseServer";
 import AuditPageView from "@/components/audit/AuditPageView";
 import ProfessoresListClient from "@/components/secretaria/ProfessoresListClient";
@@ -25,9 +26,9 @@ export default async function Page() {
     return (
       <>
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="professores_list" />
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
+        <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} py-8`}><div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           Vincule seu perfil a uma escola para ver professores.
-        </div>
+        </div></div>
       </>
     );
   }
