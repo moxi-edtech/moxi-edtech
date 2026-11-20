@@ -128,6 +128,8 @@ test("Secretaria and Admin module content follows the shared school gutter", () 
     "app/secretaria/(portal-secretaria)/fluxo-academico/page.tsx",
     "app/secretaria/(portal-secretaria)/candidaturas/[id]/editar/page.tsx",
     "app/secretaria/(portal-secretaria)/alunos/[id]/editar/page.tsx",
+    "app/secretaria/(portal-secretaria)/relatorios/mapa-aproveitamento/ui.tsx",
+    "components/secretaria/PagamentosPendentesWindow.tsx",
     "app/escola/[id]/(portal)/admin/ai/KlasseAiCockpitClient.tsx",
     "app/escola/[id]/(portal)/admin/ai/actions/AiActionsCenterClient.tsx",
     "app/escola/[id]/(portal)/admin/operacoes-academicas/wizard/page.tsx",
@@ -167,6 +169,8 @@ test("delegated Secretaria headers align without adding an extra page inset to t
     "professores/page.tsx",
     "documentos-oficiais/page.tsx",
     "documentos/page.tsx",
+    "recebimentos/page.tsx",
+    "relatorios/mapa-aproveitamento/page.tsx",
   ];
   for (const name of headerDelegates) {
     const file = `app/secretaria/(portal-secretaria)/${name}`;
