@@ -107,6 +107,7 @@ export async function POST(req: Request) {
           is_album: prefs.isAlbum,
           include_all_status: prefs.includeAllStatus,
           mode: prefs.mode,
+          order: prefs.order,
         } : {}),
       },
     })
