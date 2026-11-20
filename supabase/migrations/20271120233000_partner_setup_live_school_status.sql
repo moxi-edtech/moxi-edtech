@@ -12,11 +12,9 @@ DECLARE
   v_oid oid := to_regprocedure('public.get_influencer_member_portal_by_session(uuid,text)');
   v_definition text;
   v_old_field constant text := 'vs.has_turmas_no_ano,';
-  v_old_join constant text := $old$
-LEFT JOIN public.vw_escola_setup_status vs
+  v_old_join constant text := $old$LEFT JOIN public.vw_escola_setup_status vs
               ON vs.escola_id = obr.escola_id$old$;
-  v_new_field constant text := $new$
-CASE
+  v_new_field constant text := $new$CASE
                 WHEN obr.escola_id IS NULL THEN NULL
                 ELSE EXISTS (
                   SELECT 1
