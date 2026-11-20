@@ -306,7 +306,15 @@ export async function POST(request: Request) {
       p_reference: payload.reference ?? undefined,
       p_evidence_url: payload.evidence_url ?? undefined,
       p_gateway_ref: payload.gateway_ref ?? undefined,
-      p_meta: { ...meta, idempotency_key: idempotencyKey },
+      // Serviço sem mensalidade: o ano selecionado foi validado pelo servidor.
+      // Não confiar em meta.matricula_id do cliente (pode ser a origem da
+      // rematrícula, e uma reconciliação pode ter atualizado essa origem).
+      // O recibo seleciona a classe do mesmo ano letivo, nunca por updated_at.
+      p_meta: {
+        ...meta,
+        ...(payload.mensalidade_id ? {} : { ano_letivo_id: academicContext.anoLetivoId }),
+        idempotency_key: idempotencyKey,
+      },
     });
 
     if (pgError) {
