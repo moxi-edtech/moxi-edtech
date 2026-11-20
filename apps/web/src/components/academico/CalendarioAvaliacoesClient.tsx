@@ -155,11 +155,11 @@ export default function CalendarioAvaliacoesClient() {
       }
       const current = data?.items.find((i) => i.id === editing);
       if (!current) { setErr("Avaliação não encontrada. Atualize a agenda."); return; }
-      const updated: AssessmentScheduleSlot = { id: editing, turma_id: current.turma_id, data, inicio: start, fim: end || null };
+      const updated: AssessmentScheduleSlot = { id: editing, turma_id: current.turma_id, data: date, inicio: start, fim: end || null };
       if (assessmentPlanOverlaps([updated], data?.items ?? [])[editing]?.length) {
         setErr("O novo horário coincide com outra avaliação desta turma. Ajuste a data ou as horas."); return;
       }
-      if (await mutate({ action: "edit", id: editing, tipo: kind, data, inicio: start, fim: end || null, descricao: details || null },
+      if (await mutate({ action: "edit", id: editing, tipo: kind, data: date, inicio: start, fim: end || null, descricao: details || null },
         "Alteração guardada e auditada.")) { setEditing(null); setDetails(""); }
       return;
     }
