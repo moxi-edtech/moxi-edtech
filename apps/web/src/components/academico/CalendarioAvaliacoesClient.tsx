@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X, AlertTriangle, Search, Clock3 } from "lucide-react";
+import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X, AlertTriangle, Search } from "lucide-react";
 import { assessmentPlanOverlaps, type AssessmentScheduleSlot } from "@/lib/academico/assessment-plan-overlaps";
 
 type Period = { id: string; numero: number; data_inicio: string; data_fim: string; offering_id: string | null };
@@ -186,7 +186,29 @@ export default function CalendarioAvaliacoesClient() {
     } catch (e) { setErr(e instanceof Error ? e.message : "Falha no histórico."); }
   };
 
-  if (loading) return <p className="p-6 text-sm text-muted-foreground">A carregar calendário de avaliações…</p>;
+  if (loading) return (
+    <main role="status" aria-label="A carregar calendário de avaliações" className="mx-auto max-w-6xl space-y-4 p-3 sm:p-6">
+      <span className="sr-only">A carregar calendário de avaliações</span>
+      <div aria-hidden="true" className="space-y-4 motion-safe:animate-pulse">
+        <div className="space-y-2"><div className="h-5 w-40 rounded-lg bg-muted" /><div className="h-8 w-64 max-w-full rounded-lg bg-muted" /></div>
+        <div className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-3">
+          <div className="space-y-2"><div className="h-3 w-28 rounded-lg bg-muted" /><div className="h-10 w-40 rounded-xl bg-muted" /></div>
+          <div className="h-8 w-44 rounded-xl bg-muted sm:self-center" />
+          <div className="h-10 w-28 rounded-xl bg-muted sm:justify-self-end" />
+        </div>
+        <div className="space-y-4 rounded-xl border border-border bg-card p-4">
+          <div className="h-5 w-48 rounded-lg bg-muted" />
+          <div className="h-10 w-full rounded-xl bg-muted" />
+          <div className="h-4 w-36 rounded-lg bg-muted" />
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((n) => <div key={n} className="h-12 rounded-xl border border-border bg-muted/50" />)}
+          </div>
+          <div className="h-5 w-44 rounded-lg bg-muted" />
+          <div className="h-32 rounded-xl border border-border bg-muted/50" />
+        </div>
+      </div>
+    </main>
+  );
   return <main className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
@@ -397,7 +419,7 @@ export default function CalendarioAvaliacoesClient() {
           {rows.length > 0 && !ready && <p className="text-xs text-muted-foreground">Preencha as datas e horas de todas as disciplinas e resolva os conflitos antes de guardar.</p>}
         </section>
       )}
-      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <section id="avaliacoes-agenda" className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex justify-between gap-2 border-b border-border p-4">
           <div><h2 className="font-semibold text-primary">Avaliações do trimestre</h2>
           <p className="text-xs text-muted-foreground">Só avaliações publicadas aparecem nos portais.</p></div>
@@ -442,7 +464,13 @@ export default function CalendarioAvaliacoesClient() {
              setSelectedIds((prev) => visibleDrafts.every(i=>prev.includes(i.id)) ? prev.filter(id=>!visibleDrafts.some(i=>i.id===id)) : [...new Set([...prev,...visibleDrafts.map(i=>i.id)])])}>
              <Check size={16}/> {visibleDrafts.length && selectedDrafts.length === visibleDrafts.length ? "Desmarcar visíveis" : "Selecionar rascunhos visíveis"}
            </button>
-           <span className="text-xs text-muted-foreground">{selectedDrafts.length} selecionadas para publicar</span>
+           <div className="flex flex-wrap items-center gap-2">
+             <span className="text-xs text-muted-foreground">{selectedDrafts.length} selecionada(s) para publicar</span>
+             <button type="button" disabled={saving || !selectedDrafts.length} onClick={publish}
+               className={action + " min-h-10 bg-klasse-gold px-4 text-klasse-gold-900"}>
+               <Check size={16} /> Publicar selecionadas ({selectedDrafts.length})
+             </button>
+           </div>
          </div>
          <div className={mode==="lista"?"divide-y divide-border":"hidden"}>{visible.map((item) => <div key={item.id}>
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
