@@ -180,3 +180,10 @@ test("delegated Secretaria headers align without adding an extra page inset to t
     assert.doesNotMatch(contents, /PORTAL_PAGE_INSET/, `Nested page inset in ${file}`);
   }
 });
+
+test("production settings loading fix stays intact through the page-gutter rollout", () => {
+  const screen = source("app/escola/[id]/(portal)/admin/configuracoes/turmas/page.tsx");
+  assert.match(screen, /rawToast\(\{\s*variant: "error"/);
+  assert.ok(screen.includes("}, [rawToast, escolaId, escolaParam]);"));
+  assert.doesNotMatch(screen, /\}, \[error, escolaId, escolaParam\]\);/);
+});
