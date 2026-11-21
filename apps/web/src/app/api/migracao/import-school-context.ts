@@ -36,13 +36,14 @@ export async function resolveAuthorizedImportSchool(
 
 /** Validate cursor before composing PostgREST filter grammar. */
 export function parseImportHistoryCursor(raw: string | null):
-  | { createdAt: string; id: string }
+  | { createdAt: string | null; id: string }
   | null
   | "invalid" {
   if (!raw) return null;
   const parts = raw.split(",");
   if (parts.length !== 2 || !z.string().uuid().safeParse(parts[1]).success) return "invalid";
   const createdAt = parts[0]!;
+  if (createdAt === "null") return { createdAt: null, id: parts[1]! };
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(createdAt)) {
     return "invalid";
   }
