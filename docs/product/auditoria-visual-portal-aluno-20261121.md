@@ -34,3 +34,13 @@ Esta entrega modifica **apenas apresentação de React e classes Tailwind**, sem
 - Testes de contrato em `apps/web/tests/unit/aluno-visual-identity-ssot.spec.ts`, além da suite existente `portal-klasse-brand-academic-ux` e `portal-ui-standards`.
 - CI de TypeScript, regressões funcionais, temas e integridade de rotas obrigatório antes de integrar.
 - Pendente de verificação manual: telas autenticadas a 320/375/390/768/1280px, zoom 200%/400%, VoiceOver/Safari, estados com vários educandos, conta sem dados e módulos financeiros reais. Não alegar homologação WCAG 2.2 AA apenas por testes de código.
+
+
+## Continuação — hardening de navegação e identidade (21/11/2026)
+
+- A lista de actividades, a resolução e a Home legada usavam links `/aluno/...` sem reter `/escola/[slug]`, `aluno` e `ano_letivo_id`. O helper `buildStudentPortalHref` passa a preservar explicitamente estes campos (não transporta parâmetros alheios à navegação).
+- A rota contextual de execução expõe `[atividadeId]`, mas o runner partilhado espera `[id]`. Um adaptador tipado no reexport mapeia o ID antes de carregar o runner, sem alterar APIs nem submissões.
+- A cache offline do cartão digital usava `studentId` ou `default` como chave: insuficiente para multi-tenant. A chave v2 inclui utilizador autenticado no layout, escola e educando; pedidos abortados não atualizam cartões de outro contexto.
+- Os registos locais do formato anterior são eliminados por não permitirem comprovar a escola e a conta. **Na primeira utilização após a atualização, o cartão necessita de acesso online para reconstituir o cache offline de forma isolada.** O QR e a apresentação continuam disponíveis offline depois desse primeiro carregamento.
+- A separação por chave evita reutilização acidental entre sessões, mas **não cifra** os dados guardados no navegador. Em dispositivos partilhados, a retenção de dados pessoais offline continua a exigir política específica; não tratar localStorage como armazenamento confidencial.
+- Regressões adicionadas: helper contextual com isolamento de parâmetros, contrato de mapeamento `atividadeId`, emissão e recuperação offline com `AbortController`, sem suprimir ações de guardar/submeter.
