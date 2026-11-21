@@ -29,7 +29,9 @@ export function CartaoEstudante() {
   const scope = useAlunoPortalScope();
   // Separar cache por utilizador autenticado, escola e educando.
   // Não disponibilizar fallback offline fora do layout autenticado.
-  const cacheKey = scope ? `${STORAGE_KEY}v2:${scope.userId}:${scope.escolaId}:${studentId ?? "default"}` : null;
+  const cacheKey = scope && studentId
+    ? `${STORAGE_KEY}v2:${scope.userId}:${scope.escolaId}:${studentId}`
+    : null;
   
   const [data, setData] = useState<IdentidadeData | null>(null);
   const [loading, setLoading] = useState(true);
