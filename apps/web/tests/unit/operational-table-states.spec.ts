@@ -28,6 +28,8 @@ test("table search is accent-insensitive and pagination stays in range", () => {
   assert.equal(paginate("", -2).currentPage, 1);
   assert.equal(paginate("not found", 999).items.length, 0);
   assert.equal(paginate("not found", 999).currentPage, 1);
+  const withNull = filterAndPaginateOperationalRows({ rows: [{ professor_nome: null as unknown as string }], search: "José", getSearchText: row => row.professor_nome, page: 1, pageSize: 10 });
+  assert.equal(withNull.filteredCount, 0);
 });
 
 test("shared table loading skeleton has no interactive or fabricated rows", () => {
@@ -66,4 +68,7 @@ test("Secretary teacher-point report retains audit actions and uses shared table
   assert.match(source, /changeClosure\("reabrir"\)/);
   assert.match(source, /adjustAula\(aula\)/);
   assert.doesNotMatch(source, /window\.alert/);
+  assert.match(source, /requestSequence\.current/);
+  assert.match(source, /loadedMonth === month/);
+  assert.match(source, /disabled=\{!dataReady\}/);
 });
