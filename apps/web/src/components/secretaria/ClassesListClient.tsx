@@ -95,7 +95,7 @@ export default function ClassesListClient() {
         <OperationalTableErrorState
           title="Não foi possível consultar as classes"
           description={String(displayError)}
-          onRetry={() => setRetryKey((current) => current + 1)}
+          onRetry={() => { if (escolaId) setRetryKey((current) => current + 1); else window.location.reload(); }}
         />
       ) : pagination.filteredCount === 0 ? (
         <OperationalTableEmptyState
