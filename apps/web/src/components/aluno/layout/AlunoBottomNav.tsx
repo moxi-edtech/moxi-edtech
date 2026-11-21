@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { MoreHorizontal, X, ChevronRight } from "lucide-react";
@@ -41,10 +41,10 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
     });
   };
 
-  const closeMenu = () => {
+  const closeMenu = useCallback(() => {
     setIsMoreOpen(false);
     moreButtonRef.current?.focus();
-  };
+  }, []);
 
   // A navegação secundária é uma caixa de diálogo acessível, não uma segunda homepage.
   useEffect(() => {
@@ -75,7 +75,7 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [isMoreOpen]);
+  }, [isMoreOpen, closeMenu]);
 
   return (
     <>
