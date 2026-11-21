@@ -4,9 +4,9 @@ import { TabPerfil } from "@/components/aluno/tabs/TabPerfil";
 
 export default function PerfilPage() {
   return (
-    <div className="space-y-4 bg-slate-50">
+    <div className="min-w-0 space-y-4">
       <AuditPageView portal="aluno" acao="PAGE_VIEW" entity="perfil" />
-      <Suspense fallback={<div className="h-64 rounded-3xl bg-white animate-pulse" />}>
+      <Suspense fallback={<div role="status" aria-label="A carregar perfil" className="h-40 animate-pulse rounded-xl border border-border bg-card" />}>
         <TabPerfil />
       </Suspense>
     </div>
