@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { MoreHorizontal, X, IdCard, FileText, Bell, Settings, ChevronRight } from "lucide-react";
+import { MoreHorizontal, X, ChevronRight } from "lucide-react";
 import { preloadPortalData } from "../usePortalSWR";
 
 type NavItem = {
@@ -22,66 +21,93 @@ type Props = {
   withAlunoParam: (href: string) => string;
 };
 
+const matchesRoute = (item: NavItem, activePath: string) =>
+  activePath === item.href || activePath.startsWith(item.href + "/") ||
+  (item.path ? activePath === item.path || activePath.startsWith(item.path + "/") : false);
+
 export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const searchParams = useSearchParams();
-  const studentId = searchParams?.get("aluno") ?? null;
-
-  // Split items into main 4 bar items and drawer items
-  const mainItems = items.slice(0, 4); // Início, Horário, Académico, Financeiro
-  const drawerItems = items.slice(4); // ID Digital, Documentos, Avisos, Perfil
-
-  const isDrawerActive = drawerItems.some(
-    (item) =>
-      activePath === item.href ||
-      activePath.startsWith(`${item.href}/`) ||
-      (item.path ? activePath === item.path || activePath.startsWith(`${item.path}/`) : false)
-  );
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const mainItems = items.slice(0, 4);
+  const drawerItems = items.slice(4);
+  const isDrawerActive = drawerItems.some((item) => matchesRoute(item, activePath));
 
   const handlePreload = (item: NavItem) => {
     if (!item.preload) return;
-    item.preload.keys.forEach((key, idx) => {
-      const url = item.preload?.urls[idx];
+    item.preload.keys.forEach((key, index) => {
+      const url = item.preload?.urls[index];
       if (url) void preloadPortalData(key, url);
     });
   };
 
+  const closeMenu = () => {
+    setIsMoreOpen(false);
+    moreButtonRef.current?.focus();
+  };
+
+  // A navegação secundária é uma caixa de diálogo acessível, não uma segunda homepage.
+  useEffect(() => {
+    if (!isMoreOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialogRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMenu();
+      }
+      if (event.key !== "Tab") return;
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])');
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isMoreOpen]);
+
   return (
     <>
-      {/* Drawer "Mais" (BottomSheet Overlay) */}
       {isMoreOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60">
+          <button type="button" tabIndex={-1} aria-label="Fechar menu" onClick={closeMenu} className="absolute inset-0 cursor-default" />
           <div
-            className="fixed inset-0"
-            onClick={() => setIsMoreOpen(false)}
-            aria-hidden="true"
-          />
-          
-          <div className="relative w-full max-w-xl overflow-hidden rounded-t-[2.5rem] bg-white p-6 shadow-2xl ring-1 ring-slate-200 animate-in slide-in-from-bottom duration-300 z-10 pb-[calc(24px+env(safe-area-inset-bottom))]">
-            {/* Header do Drawer */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+            id="aluno-mais-areas"
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="aluno-mais-titulo"
+            className="relative z-10 w-full max-w-xl rounded-t-2xl border border-border bg-card px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-4 shadow-lg sm:px-5"
+          >
+            <div className="mb-3 flex items-start justify-between gap-3 border-b border-border pb-3">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Navegação Extendida</p>
-                <h3 className="text-lg font-black text-slate-900">Menu Principal</h3>
+                <h2 id="aluno-mais-titulo" className="text-base font-semibold text-primary">Outras áreas</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">Aceder aos restantes serviços do aluno</p>
               </div>
               <button
-                onClick={() => setIsMoreOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
-                aria-label="Fechar menu"
+                type="button"
+                onClick={closeMenu}
+                aria-label="Fechar outras áreas"
+                className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
               >
-                <X size={18} />
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
-
-            {/* Grid de Serviços do Drawer */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-2 gap-2">
               {drawerItems.map((item) => {
-                const { href, path, label, icon: Icon, badge } = item;
-                const active =
-                  activePath === href ||
-                  activePath.startsWith(`${href}/`) ||
-                  (path ? activePath === path || activePath.startsWith(`${path}/`) : false);
-
+                const { href, label, icon: Icon, badge } = item;
+                const active = matchesRoute(item, activePath);
                 return (
                   <Link
                     key={href}
@@ -89,50 +115,32 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
                     onClick={() => setIsMoreOpen(false)}
                     onPointerEnter={() => handlePreload(item)}
                     onTouchStart={() => handlePreload(item)}
-                    className={`relative flex items-center gap-3 rounded-2xl p-3.5 border transition-all active:scale-95 ${
-                      active
-                        ? "border-klasse-gold bg-klasse-gold-50 text-klasse-green shadow-sm"
-                        : "border-slate-100 bg-slate-50 text-slate-700 hover:bg-slate-100/80"
-                    }`}
+                    aria-current={active ? "page" : undefined}
+                    className={"flex min-h-14 min-w-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 " +
+                      (active ? "border-klasse-gold/40 bg-klasse-gold-50 text-klasse-gold-700" : "border-border bg-card text-foreground hover:bg-muted")}
                   >
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                      active ? "bg-klasse-green text-white" : "bg-card text-muted-foreground shadow-sm"
-                    }`}>
-                      <Icon size={20} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-black truncate">{label}</p>
-                    </div>
-                    {badge && badge > 0 ? (
-                      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white">
-                        {badge}
-                      </span>
-                    ) : (
-                      <ChevronRight size={14} className="text-slate-300" />
-                    )}
+                    <Icon className={"h-5 w-5 shrink-0 " + (active ? "text-klasse-gold-700" : "text-muted-foreground")} aria-hidden="true" />
+                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                    {badge && badge > 0
+                      ? <span className="rounded-full bg-destructive px-1.5 text-xs font-semibold text-white">{badge}</span>
+                      : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                   </Link>
                 );
               })}
             </div>
-
           </div>
         </div>
       )}
 
-      {/* Fixed Bottom Navigation Bar */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/90 backdrop-blur-lg shadow-lg"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Navegação do portal do aluno"
       >
-        <div className="mx-auto grid w-full max-w-5xl grid-cols-5 gap-1 px-2 py-1.5">
-          {/* Main 4 Items */}
+        <div className="mx-auto grid w-full max-w-[1200px] grid-cols-5 gap-0.5 px-1 py-1.5 sm:gap-1 sm:px-2">
           {mainItems.map((item) => {
-            const { href, path, label, icon: Icon, badge } = item;
-            const active =
-              activePath === href ||
-              activePath.startsWith(`${href}/`) ||
-              (path ? activePath === path || activePath.startsWith(`${path}/`) : false);
+            const { href, label, icon: Icon, badge } = item;
+            const active = matchesRoute(item, activePath);
             return (
               <Link
                 key={href}
@@ -140,56 +148,33 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
                 prefetch
                 onPointerEnter={() => handlePreload(item)}
                 onTouchStart={() => handlePreload(item)}
-                className={`relative flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 text-[10px] font-black transition-all duration-200 active:scale-90 ${
-                  active
-                    ? "text-klasse-gold-700 font-black"
-                    : "text-slate-400 hover:text-slate-600 font-bold"
-                }`}
                 aria-current={active ? "page" : undefined}
+                className={"relative flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 " +
+                  (active ? "bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold/30" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
               >
-                <div className={`relative flex h-8 w-12 items-center justify-center rounded-xl transition-all ${
-                  active ? "bg-klasse-gold-50 text-klasse-gold-700 shadow-2xs" : "bg-transparent text-muted-foreground"
-                }`}>
-                  <Icon className={`h-5 w-5 transition-transform duration-200 ${active ? "scale-110" : ""}`} />
-                  {active && (
-                    <span className="absolute -bottom-1 h-1 w-3 rounded-full bg-klasse-gold animate-in fade-in zoom-in duration-200" />
-                  )}
-                </div>
-                <span className={`transition-opacity duration-200 mt-0.5 ${active ? "opacity-100" : "opacity-75"}`}>
-                  {label}
-                </span>
+                <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+                <span className="max-w-full truncate text-center">{label}</span>
                 {badge && badge > 0 && (
-                  <span className="absolute right-2.5 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white shadow-sm ring-2 ring-white">
-                    {badge}
-                  </span>
+                  <span className="absolute right-1 top-0 rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-white">{badge}</span>
                 )}
               </Link>
             );
           })}
-
-          {/* 5th Item: "Mais" Button */}
           <button
+            ref={moreButtonRef}
             type="button"
             onClick={() => setIsMoreOpen(true)}
-            className={`relative flex flex-col items-center justify-center gap-0.5 rounded-2xl py-1.5 text-[10px] font-black transition-all duration-200 active:scale-90 ${
-              isDrawerActive || isMoreOpen
-                ? "text-klasse-gold-700 font-black"
-                : "text-slate-400 hover:text-slate-600 font-bold"
-            }`}
+            aria-label="Abrir mais áreas do Portal do Aluno"
+            aria-haspopup="dialog"
+            aria-controls="aluno-mais-areas"
+            aria-expanded={isMoreOpen}
+            className={"relative flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 " +
+              (isDrawerActive || isMoreOpen ? "bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold/30" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
-            <div className={`relative flex h-8 w-12 items-center justify-center rounded-xl transition-all ${
-              isDrawerActive || isMoreOpen ? "bg-klasse-gold-50 text-klasse-gold-700 shadow-2xs" : "bg-transparent text-muted-foreground"
-            }`}>
-              <MoreHorizontal className={`h-5 w-5 transition-transform duration-200 ${isDrawerActive || isMoreOpen ? "scale-110" : ""}`} />
-              {(isDrawerActive || isMoreOpen) && (
-                <span className="absolute -bottom-1 h-1 w-3 rounded-full bg-klasse-gold animate-in fade-in zoom-in duration-200" />
-              )}
-            </div>
-            <span className={`transition-opacity duration-200 mt-0.5 ${isDrawerActive || isMoreOpen ? "opacity-100" : "opacity-75"}`}>
-              Mais
-            </span>
-            {drawerItems.some(i => (i.badge ?? 0) > 0) && (
-              <span className="absolute right-3 top-1 flex h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
+            <MoreHorizontal className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+            <span>Mais</span>
+            {drawerItems.some((item) => (item.badge ?? 0) > 0) && (
+              <span className="absolute right-2 top-1 h-2 w-2 rounded-full bg-destructive" aria-hidden="true" />
             )}
           </button>
         </div>
@@ -197,4 +182,3 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
     </>
   );
 }
-
