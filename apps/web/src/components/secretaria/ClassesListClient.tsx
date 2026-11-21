@@ -54,9 +54,12 @@ export default function ClassesListClient() {
         if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar classes");
         const data = Array.isArray(json.items) ? json.items : Array.isArray(json.data) ? json.data : [];
         if (controller.signal.aborted) return;
-        setClasses(data.filter((item: unknown): item is Classe =>
-          typeof item === "object" && item !== null && typeof (item as Classe).id === "string"
-        ));
+        const safeClasses: Classe[] = data
+          .filter((item: unknown): item is { id: string; nome?: unknown } =>
+            typeof item === "object" && item !== null && typeof (item as { id?: unknown }).id === "string"
+          )
+          .map((item) => ({ id: item.id, nome: typeof item.nome === "string" ? item.nome : null }));
+        setClasses(safeClasses);
         setLoadedSchoolId(escolaId);
       } catch (cause) {
         if (controller.signal.aborted) return;
