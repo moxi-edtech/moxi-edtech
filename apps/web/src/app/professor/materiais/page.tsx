@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
+import { matchesProfessorResourceQuery } from "@/lib/professor/resource-search";
 import { ProfessorResourceEmptyState, ProfessorResourceErrorState, ProfessorResourceGridSkeleton } from "@/components/professor/ProfessorResourceStates";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import {
@@ -109,9 +110,7 @@ export default function ProfessorMateriaisPage() {
   }, []);
 
   const filteredMateriais = useMemo(() => {
-    const term = searchTerm.trim().toLocaleLowerCase("pt-AO");
-    if (!term) return materiais;
-    return materiais.filter((item) => `${item.titulo} ${item.descricao ?? ""}`.toLocaleLowerCase("pt-AO").includes(term));
+    return materiais.filter((item) => matchesProfessorResourceQuery(searchTerm, item.titulo, item.descricao));
   }, [materiais, searchTerm]);
 
   const onSubmit = async (e: React.FormEvent) => {
