@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Bell, BookOpen, FileText, Home, Wallet, Clock, IdCard, Settings, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { AlunoHeader } from "@/components/aluno/layout/AlunoHeader";
+import { AlunoPortalScopeContext } from "@/components/aluno/AlunoPortalScope";
 import { AlunoBottomNav } from "@/components/aluno/layout/AlunoBottomNav";
 import { NetworkStatus } from "@/components/aluno/layout/NetworkStatus";
 import { PWAInstallPrompt } from "@/components/aluno/layout/PWAInstallPrompt";
@@ -172,6 +173,8 @@ export default function AlunoLayoutClient({
     router.replace(`${pathname}?${params.toString()}`);
   };
 
+  const portalScope = useMemo(() => ({ escolaId, userId }), [escolaId, userId]);
+
   if (redirectTarget) return null;
 
   return (
@@ -189,7 +192,7 @@ export default function AlunoLayoutClient({
       <NetworkStatus />
 
       <main id="conteudo-aluno" className="mx-auto w-full max-w-[1200px] px-4 py-5 pb-[calc(96px+env(safe-area-inset-bottom))] md:px-6 md:py-6">
-        {children}
+        <AlunoPortalScopeContext.Provider value={portalScope}>{children}</AlunoPortalScopeContext.Provider>
 
         <AlunoBottomNav items={navItems} activePath={safePathname} withAlunoParam={withAlunoParam} />
       </main>
