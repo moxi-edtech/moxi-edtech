@@ -23,7 +23,8 @@ test("financeiro uses raw status for tone, never its human label", () => {
   for (const input of ["pendente", "em_aberto", "aguardando_pagamento"]) {
     assert.equal(getStatusTone(input, "financeiro"), "pending", input);
   }
-  for (const input of ["", "???", "isento", "cancelado", null, undefined]) {
+  // Substring matching "atras" would incorrectly mark a settled/no-debt status as overdue.
+  for (const input of ["", "???", "isento", "cancelado", "sem_atraso", "nao_atrasado", "atraso_resolvido", null, undefined]) {
     assert.equal(getStatusTone(input, "financeiro"), "neutral", String(input));
   }
   assert.equal(normalizeStatusKey(" EM DÍA "), "em_dia");
