@@ -138,12 +138,12 @@ export default function ProfessorMateriaisPage() {
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Erro ao guardar material");
 
-      success("Sucesso", "Material pedagógico guardado em rascunho com sucesso.");
+      success("Material guardado", "O material ficou em rascunho.");
       setShowModal(false);
       setForm({ titulo: "", descricao: "", conteudo: "", arquivo_url: "", turma_id: "", disciplina_id: "" });
       loadData();
     } catch (err) {
-      toastError("Erro", err instanceof Error ? err.message : String(err));
+      toastError("Não foi possível guardar o material", err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -161,10 +161,10 @@ export default function ProfessorMateriaisPage() {
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Erro ao alterar estado");
 
-      success("Estado Alterado", `Material marcado como ${newStatus}.`);
+      success(newStatus === "publicado" ? "Material publicado" : "Material despublicado");
       loadData();
     } catch (err) {
-      toastError("Erro", err instanceof Error ? err.message : String(err));
+      toastError("Não foi possível alterar a publicação", err instanceof Error ? err.message : String(err));
     } finally {
       setUpdatingId(null);
     }
