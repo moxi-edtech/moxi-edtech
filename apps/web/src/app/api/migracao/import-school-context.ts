@@ -48,7 +48,8 @@ export function parseImportHistoryCursor(raw: string | null):
   }
   const parsed = new Date(createdAt);
   if (!Number.isFinite(parsed.getTime())) return "invalid";
-  return { createdAt: parsed.toISOString(), id: parts[1]! };
+  // Preserve the full Postgres fractional precision: Date.toISOString() truncates microseconds.
+  return { createdAt, id: parts[1]! };
 }
 
 export function parseImportHistoryLimit(raw: string | null): number | null {
