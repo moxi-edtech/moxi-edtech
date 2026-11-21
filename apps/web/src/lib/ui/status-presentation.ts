@@ -13,7 +13,7 @@ const PAID = new Set(["pago", "em_dia", "quitado", "liquidado"]);
 const DUE = new Set(["pendente", "em_aberto", "aguardando_pagamento", "aguardando_validacao"]);
 const OVERDUE = new Set(["atrasado", "atrasada", "atraso", "em_atraso", "inadimplente", "vencido", "vencida"]);
 const NO_CHARGE = new Set(["isento", "cancelado", "anulado", "sem_cobranca"]);
-const ACTIVE = new Set(["ativo", "ativa", "confirmado", "confirmada", "matriculado", "matriculada"]);
+const ACTIVE = new Set(["ativo", "ativa", "confirmado", "confirmada", "matriculado", "matriculada", "aprovado", "aprovada"]);
 const INACTIVE = new Set(["arquivado", "arquivada", "inativo", "inativa", "desistente", "cancelado", "cancelada"]);
 const REJECTED = new Set(["rejeitado", "rejeitada", "indeferido", "indeferida"]);
 
@@ -42,7 +42,7 @@ export function getStatusTone(status?: string | null, variant: StatusVariant = "
   if (ACTIVE.has(key)) return "success";
   if (REJECTED.has(key)) return "danger";
   if (INACTIVE.has(key)) return "neutral";
-  if (key === "pendente" || key === "rascunho" || key === "em_analise" || key === "aguardando") return "pending";
+  if (key === "pendente" || key === "rascunho" || key === "em_analise" || key === "aguardando" || key === "submetida" || key === "submetido" || key === "suspenso" || key === "suspensa") return "pending";
   return "neutral";
 }
 

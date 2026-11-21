@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import StatusPill from "./StatusPill";
+import { StatusPill } from "@/components/ui/StatusPill";
 
 type Mensalidade = {
   id: string;
@@ -62,7 +62,7 @@ export function MensalidadesTable() {
               <td className="py-2 pr-4">{m.competencia}</td>
               <td className="py-2 pr-4">R$ {m.valor.toFixed(2)}</td>
               <td className="py-2 pr-4">{new Date(m.vencimento).toLocaleDateString()}</td>
-              <td className="py-2 pr-4"><StatusPill status={m.status} /></td>
+              <td className="py-2 pr-4"><StatusPill status={m.status} variant="financeiro" /></td>
               <td className="py-2">{m.pago_em ? new Date(m.pago_em).toLocaleDateString() : '-'}</td>
             </tr>
           ))}
