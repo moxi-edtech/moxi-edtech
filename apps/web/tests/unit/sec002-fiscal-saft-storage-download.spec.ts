@@ -6,7 +6,7 @@ const route = readFileSync(
   new URL("../../src/app/api/fiscal/saft/export/[exportId]/download/route.ts", import.meta.url), "utf8",
 );
 const migration = readFileSync(
-  new URL("../../../../supabase/migrations/20271121140000_fiscal_saft_authenticated_download_storage_rls.sql", import.meta.url), "utf8",
+  new URL("../../../../supabase/migrations/20261121171604_fiscal_saft_authenticated_download_storage_rls.sql", import.meta.url), "utf8",
 );
 const turmas = readFileSync(
   new URL("../../src/app/escola/[id]/(portal)/admin/configuracoes/turmas/page.tsx", import.meta.url), "utf8",
