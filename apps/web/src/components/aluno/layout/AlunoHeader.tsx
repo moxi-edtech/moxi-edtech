@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import SignOutButton from "@/components/auth/SignOutButton";
-import { UserCircle2, ChevronDown } from "lucide-react";
+import { ChevronDown, UserCircle2 } from "lucide-react";
 
 type Educando = { id: string; nome: string };
 
@@ -16,14 +16,7 @@ type Props = {
   actions?: ReactNode;
 };
 
-// --- Helpers Estáticos ---
-function shortSchoolName(nome: string | null): string {
-  if (!nome) return "Colégio KLASSE";
-  const parts = nome.trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 2) return nome;
-  return parts.slice(0, 2).join(" ");
-}
-
+/** O contexto escolar acompanha toda a navegação, sem competir com a página. */
 export function AlunoHeader({
   escolaNome,
   alunoSelecionadoNome,
@@ -34,80 +27,60 @@ export function AlunoHeader({
   actions,
 }: Props) {
   const hasMultiple = educandos.length > 1;
+  const schoolLabel = escolaNome?.trim() || "KLASSE";
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-border border-t-[3px] border-t-klasse-green bg-card/95 backdrop-blur-md shadow-sm font-sans">
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-        
-        {/* --- Lado Esquerdo: Marca e Contexto --- */}
-        <div className="flex items-center gap-3">
-          <Link href={homeHref} className="flex items-center gap-2.5 transition active:scale-95 group" aria-label="Ir para a home do aluno">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white border border-slate-200/70 shadow-sm transition-transform group-hover:scale-105">
-              <Image src="/logo-klasse-ui.png" alt="KLASSE" width={24} height={24} className="h-6 w-6 object-contain" />
-            </div>
-            <div className="hidden min-[400px]:block">
-              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 leading-none mb-1">
-                Portal do Aluno
-              </p>
-              <h1 className="text-sm font-semibold text-klasse-green leading-none tracking-tight">
-                {shortSchoolName(escolaNome)}
-              </h1>
-            </div>
-          </Link>
+    <header className="sticky top-0 z-30 w-full border-b border-border border-t-[3px] border-t-klasse-green bg-card/95 backdrop-blur-sm">
+      <div className="mx-auto flex min-h-16 w-full max-w-[1200px] items-center justify-between gap-2 px-4 md:px-6">
+        <Link
+          href={homeHref}
+          aria-label="Ir para o início do Portal do Aluno"
+          className="group flex min-w-0 items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card shadow-sm">
+            <Image src="/logo-klasse-ui.png" alt="KLASSE" width={24} height={24} className="h-6 w-6 object-contain" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[11px] leading-4 text-muted-foreground">Portal do Aluno</span>
+            <span className="block max-w-[32vw] truncate text-sm font-semibold leading-5 text-primary sm:max-w-72" title={schoolLabel}>
+              {schoolLabel}
+            </span>
+          </span>
+        </Link>
 
-          <div className="h-8 w-px bg-slate-200/70 hidden sm:block mx-1" />
-
-          {/* Contexto do Aluno Selecionado */}
-          <div className="flex items-center gap-2.5 bg-slate-50/90 border border-slate-200/60 rounded-2xl px-3 py-1.5 transition-all hover:bg-slate-100/90 shadow-2xs">
-            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-card border border-border text-klasse-green shadow-2xs">
-              <UserCircle2 className="h-4 w-4" />
-            </div>
-            <div className="max-w-[130px] sm:max-w-none">
-              <p className="hidden sm:block text-[9px] font-black uppercase tracking-widest text-klasse-green leading-none mb-0.5">
-                Utilizador
-              </p>
-              <p className="text-xs font-black text-slate-900 truncate">
-                {alunoSelecionadoNome || "—"}
-              </p>
-            </div>
-
-            {hasMultiple && (
-              <div className="relative group ml-1 flex items-center">
-                <div className="h-4 w-px bg-slate-200 mx-1.5" />
-                <div className="relative flex items-center">
-                  <select
-                    value={alunoSelecionadoId ?? ""}
-                    onChange={(e) => onSelectAluno(e.target.value)}
-                    className="appearance-none rounded-full border-none bg-klasse-green-50 px-2 py-0.5 pr-6 text-[10px] font-black text-klasse-green-700 focus:ring-0 cursor-pointer hover:bg-klasse-green-100 transition-colors uppercase tracking-tight"
-                  >
-                    <option value="" disabled>Trocar</option>
-                    {educandos.map((aluno) => (
-                      <option key={aluno.id} value={aluno.id} className="font-semibold text-slate-900 bg-white">
-                        {aluno.nome}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-klasse-green" />
-                </div>
+        <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-3">
+          <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-border bg-muted/40 px-2 sm:px-3">
+            <UserCircle2 className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            {hasMultiple ? (
+              <div className="relative min-w-0">
+                <select
+                  aria-label="Escolher educando"
+                  value={alunoSelecionadoId ?? ""}
+                  onChange={(event) => onSelectAluno(event.target.value)}
+                  className="min-h-11 max-w-[100px] appearance-none truncate bg-transparent py-2 pr-5 text-xs font-medium text-foreground outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 sm:max-w-52"
+                >
+                  <option value="" disabled>Selecionar aluno</option>
+                  {educandos.map((aluno) => (
+                    <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               </div>
+            ) : (
+              <span className="max-w-[72px] truncate py-3 text-xs font-medium text-foreground sm:max-w-48" title={alunoSelecionadoNome}>
+                {alunoSelecionadoNome || "Aluno"}
+              </span>
             )}
           </div>
-        </div>
-
-        {/* --- Lado Direito: Ações --- */}
-        <div className="flex items-center gap-3">
-          {actions && <div className="hidden sm:flex items-center gap-2">{actions}</div>}
-          
+          {actions && <div className="hidden items-center gap-2 sm:flex">{actions}</div>}
           <SignOutButton
             label="Sair"
-            title="Sair"
+            title="Sair da conta"
             variant="ghost"
-            className="h-9 px-3.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50/80 transition-all text-xs font-black uppercase tracking-widest"
+            className="min-h-11 rounded-xl px-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-4 focus-visible:ring-klasse-gold/20 sm:px-3"
           />
         </div>
-
       </div>
     </header>
   );
 }
-
