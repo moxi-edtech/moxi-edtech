@@ -1,106 +1,143 @@
 "use client";
-import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
-import { useEffect, useState } from "react";
-import { BookOpen } from "lucide-react";
-import { Skeleton } from "@/components/feedback/FeedbackSystem";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildEscolaUrl } from "@/lib/escola/url";
 import { buildPortalHref } from "@/lib/navigation";
+import { filterAndPaginateOperationalRows } from "@/lib/operacoes/operational-table";
+import {
+  OperationalTableEmptyState,
+  OperationalTableErrorState,
+  OperationalTableFilterBar,
+  OperationalTablePagination,
+  OperationalTableSkeleton,
+} from "@/components/ui/OperationalTableStates";
 
-type Classe = {
-  id: string;
-  nome: string;
-  // Add other properties as needed
-};
+type Classe = { id: string; nome: string | null };
+const PAGE_SIZE = 10;
 
+/** A list of the classes returned by the school-scoped API, not a global count. */
 export default function ClassesListClient() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [classes, setClasses] = useState<Classe[]>([]);
   const { escolaId, escolaSlug, isLoading: escolaLoading, error: escolaError } = useEscolaId();
   const pathname = usePathname();
   const classeBase = pathname?.includes("/operacoes/") ? "/operacoes/classes" : "/secretaria/classes";
+  const [classes, setClasses] = useState<Classe[]>([]);
+  const [loadedSchoolId, setLoadedSchoolId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!escolaId) return;
-      setLoading(true);
-      setError(null);
+    setClasses([]);
+    setLoadedSchoolId(null);
+    setError(null);
+    setPage(1);
+    if (!escolaId) {
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setLoading(true);
+    const fetchClasses = async () => {
       try {
-        const res = await fetch(buildEscolaUrl(escolaId, '/classes'));
-        const json = await res.json();
-        if (!res.ok || !json?.ok) {
-          throw new Error(json?.error || "Falha ao carregar classes");
-        }
-
-        const items = Array.isArray(json?.items)
-          ? json.items
-          : Array.isArray(json?.data)
-            ? json.data
-            : [];
-
-        setClasses(items);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Erro desconhecido");
+        const res = await fetch(buildEscolaUrl(escolaId, "/classes"), {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar classes");
+        const data = Array.isArray(json.items) ? json.items : Array.isArray(json.data) ? json.data : [];
+        if (controller.signal.aborted) return;
+        setClasses(data.filter((item: unknown): item is Classe =>
+          typeof item === "object" && item !== null && typeof (item as Classe).id === "string"
+        ));
+        setLoadedSchoolId(escolaId);
+      } catch (cause) {
+        if (controller.signal.aborted) return;
+        setError(cause instanceof Error ? cause.message : "Não foi possível carregar as classes.");
+        setLoadedSchoolId(escolaId);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
-    if (escolaId) loadData();
-  }, [escolaId]);
+    void fetchClasses();
+    return () => controller.abort();
+  }, [escolaId, retryKey]);
+
+  const pagination = useMemo(() => filterAndPaginateOperationalRows({
+    rows: classes,
+    search,
+    getSearchText: (classe) => classe.nome ?? "",
+    page,
+    pageSize: PAGE_SIZE,
+  }), [classes, search, page]);
+
+  const isPending = escolaLoading || Boolean(escolaId && (loading || loadedSchoolId !== escolaId));
+  const displayError = escolaError || (!escolaLoading && !escolaId ? "Escola não identificada." : error);
 
   return (
-    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
-      <div className="bg-card p-5 rounded-xl border border-border shadow-sm">
-        <h1 className="text-2xl font-bold text-moxinexa-navy">Classes</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Lista de todas as classes disponíveis.
-        </p>
-      </div>
-
-      {(loading || escolaLoading) && (
-        <div className="text-center p-8">
-          <div className="mx-auto space-y-2 max-w-xs">
-            <Skeleton className="h-4 w-40 mx-auto" />
-            <Skeleton className="h-3 w-56 mx-auto" />
-          </div>
-        </div>
-      )}
-
-      {(error || escolaError) && <div className="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200">{error || escolaError}</div>}
-
-      {!loading && !error && Array.isArray(classes) && classes.length > 0 && (
-        <div className="bg-card rounded-xl shadow border">
-          <table className="min-w-full divide-y divide-border">
-            <thead className="bg-muted">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Nome
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-card divide-y divide-border">
-              {classes.map((classe) => (
-                <tr key={classe.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
-                    {classe.nome}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link href={buildPortalHref(escolaSlug || escolaId, `${classeBase}/${classe.id}`)} className="text-emerald-600 hover:text-emerald-900">
-                        Ver Disciplinas
-                    </Link>
-                  </td>
+    <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
+      <OperationalTableFilterBar
+        label="Pesquisar classes"
+        placeholder="Pesquisar pelo nome da classe"
+        query={search}
+        onQueryChange={(value) => { setSearch(value); setPage(1); }}
+      />
+      {isPending ? (
+        <OperationalTableSkeleton label="A carregar classes" columns={2} rows={5} />
+      ) : displayError ? (
+        <OperationalTableErrorState
+          title="Não foi possível consultar as classes"
+          description={String(displayError)}
+          onRetry={() => setRetryKey((current) => current + 1)}
+        />
+      ) : pagination.filteredCount === 0 ? (
+        <OperationalTableEmptyState
+          title={search ? "Nenhuma classe corresponde à pesquisa." : "Ainda não há classes disponíveis."}
+          description={search ? "Experimente outro nome ou limpe a pesquisa." : "As classes configuradas pela escola aparecerão aqui."}
+        />
+      ) : (
+        <>
+          <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+            <table className="w-full min-w-[480px] divide-y divide-border text-left text-sm">
+              <caption className="sr-only">Classes disponíveis na escola</caption>
+              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th scope="col" className="px-4 py-3 font-semibold sm:px-6">Classe</th>
+                  <th scope="col" className="px-4 py-3 text-right font-semibold sm:px-6">Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {pagination.items.map((classe) => (
+                  <tr key={classe.id} className="hover:bg-muted/40">
+                    <td className="px-4 py-4 font-medium text-foreground sm:px-6">{classe.nome?.trim() || "Classe sem nome"}</td>
+                    <td className="px-4 py-3 text-right sm:px-6">
+                      <Link
+                        href={buildPortalHref(escolaSlug || escolaId, `${classeBase}/${classe.id}`)}
+                        className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+                      >
+                        Ver disciplinas
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <OperationalTablePagination
+            page={pagination.currentPage}
+            pageSize={PAGE_SIZE}
+            total={pagination.filteredCount}
+            onPageChange={setPage}
+          />
+          <p className="text-xs text-muted-foreground">Resultados entre as classes devolvidas pela escola, sem assumir um total global.</p>
+        </>
       )}
     </div>
   );
