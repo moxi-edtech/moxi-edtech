@@ -25,7 +25,7 @@ test("header mantém escola, logo, troca de educando, saída e foco acessível",
   assert.match(header, /logo-klasse-ui\.png/);
   assert.match(header, /const schoolLabel = escolaNome\?\.trim\(\) \|\| "KLASSE"/);
   assert.match(header, /title=\{schoolLabel\}/);
-  assert.match(header, /escolaNome, alunoSelecionadoNome,?/);
+  assert.match(header, /escolaNome,\s*alunoSelecionadoNome,/);
   assert.match(header, /onChange=\{\(event\) => onSelectAluno\(event\.target\.value\)\}/);
   assert.match(header, /<SignOutButton/);
   assert.match(header, /focus-visible:ring-4/);
