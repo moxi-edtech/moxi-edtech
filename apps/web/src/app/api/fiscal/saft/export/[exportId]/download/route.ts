@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { requireFiscalAccessByCompanyOrSchool } from "@/lib/server/fiscalAccess";
@@ -12,8 +11,6 @@ export const fetchCache = "force-no-store";
 
 const SAFT_BUCKET = "fiscal-saft";
 const SIGNED_URL_TTL_SECONDS = 300;
-
-type RouteSupabase = SupabaseClient<Database>;
 
 type SaftExportRow = Pick<
   Database["public"]["Tables"]["fiscal_saft_exports"]["Row"],
@@ -52,15 +49,6 @@ function jsonError(status: number, code: string, message: string, details?: Reco
     },
     { status }
   );
-}
-
-function getSupabaseAdmin() {
-  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
-  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
-  if (!url || !key) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY ausente");
-  }
-  return createClient<Database>(url, key);
 }
 
 export async function GET(
@@ -150,14 +138,15 @@ export async function GET(
       );
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
     const candidates = resolveStoragePathCandidates(exportRow.arquivo_storage_path);
     let signedUrl: string | null = null;
     let signErrorMessage: string | null = null;
     let resolvedPath: string | null = null;
 
     for (const pathCandidate of candidates) {
-      const { data: signed, error: signedError } = await supabaseAdmin.storage
+      // URL assinada emitida com o JWT do utilizador: storage.objects RLS
+      // valida a empresa e o ficheiro da exportacao antes de permitir SELECT.
+      const { data: signed, error: signedError } = await supabase.storage
         .from(SAFT_BUCKET)
         .createSignedUrl(pathCandidate, SIGNED_URL_TTL_SECONDS);
 
