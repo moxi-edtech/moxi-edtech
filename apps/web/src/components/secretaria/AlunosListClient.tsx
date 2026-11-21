@@ -7,7 +7,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import {
   Loader2,
-  Search,
   Filter,
   Plus,
   ArrowLeft,
@@ -20,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { OperationalCursorPagination, OperationalTableEmptyState, OperationalTableErrorState, OperationalTableFilterBar } from "@/components/ui/OperationalTableStates";
 
 /**
  * KLASSE UI notes:
@@ -146,15 +146,6 @@ function StatusBadge({ status }: { status?: string | null }) {
   );
 }
 
-function StatusBadgeEmpty({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div className="p-12 text-center">
-      <p className="text-sm font-semibold text-foreground">{title}</p>
-      {subtitle ? <p className="text-sm text-muted-foreground mt-1">{subtitle}</p> : null}
-    </div>
-  );
-}
-
 // -----------------------------
 // Main
 // -----------------------------
@@ -186,9 +177,10 @@ export default function AlunosListClient() {
 
   // Data
   const [items, setItems] = useState<Aluno[]>([]);
-  const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [pageCursors, setPageCursors] = useState<Array<Cursor | null>>([null]);
+  // A cursor changing must never itself retrigger the list request.
+  const pageCursorsRef = useRef<Array<Cursor | null>>([null]);
+  const requestSequence = useRef(0);
 
   // UI state
   const [loading, setLoading] = useState(true);
@@ -207,65 +199,52 @@ export default function AlunosListClient() {
 
   const hasRows = !loading && items.length > 0;
 
-  const load = useCallback(
-    async (p = page) => {
-      setLoading(true);
-      setFetchError(null);
-
-      try {
-        const cursor = pageCursors[p - 1] ?? null;
-
-        const params = new URLSearchParams({
-          q: debouncedQ,
-          status,
-          pageSize: String(pageSize),
-        });
-
-        if (cursor) {
-          params.set("cursor_created_at", cursor.created_at);
-          params.set("cursor_id", cursor.id);
-        } else {
-          params.set("page", String(p));
-        }
-
-        const json = await fetchJson<ApiResponse>(`/api/secretaria/alunos?${params.toString()}`);
-
-        if (!json?.ok) throw new Error(json?.error || "Falha ao carregar.");
-
-        setItems(json.items || []);
-        setTotal(json.total ?? json.items?.length ?? 0);
-
-        const more = Boolean(json.page?.hasMore);
-        setHasMore(more);
-
-        const nextCursor = json.page?.nextCursor ?? null;
-        setPageCursors((prev) => {
-          const next = [...prev];
-          next[p] = nextCursor;
-          return next;
-        });
-      } catch (e: any) {
-        setFetchError(e.message || "Erro inesperado.");
-        setItems([]);
-        setTotal(0);
-        setHasMore(false);
-      } finally {
-        setLoading(false);
+  const load = useCallback(async (p = 1, signal?: AbortSignal) => {
+    const requestId = ++requestSequence.current;
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const cursor = pageCursorsRef.current[p - 1] ?? null;
+      const params = new URLSearchParams({ q: debouncedQ, status, pageSize: String(pageSize) });
+      if (cursor) {
+        params.set("cursor_created_at", cursor.created_at);
+        params.set("cursor_id", cursor.id);
+      } else {
+        params.set("page", String(p));
       }
-    },
-    [debouncedQ, page, pageCursors, pageSize, status]
-  );
+      const json = await fetchJson<ApiResponse>(`/api/secretaria/alunos?${params.toString()}`, { signal });
+      if (!json?.ok) throw new Error(json?.error || "Falha ao carregar.");
+      if (requestId !== requestSequence.current || signal?.aborted) return;
+      setItems(json.items ?? []);
+      // The API's `total` is the count of the current batch, never the entire school.
+      setHasMore(Boolean(json.page?.hasMore));
+      pageCursorsRef.current[p] = json.page?.nextCursor ?? null;
+    } catch (cause) {
+      if (requestId !== requestSequence.current || signal?.aborted) return;
+      setFetchError(cause instanceof Error ? cause.message : "Erro inesperado.");
+      setItems([]);
+      setHasMore(false);
+    } finally {
+      if (requestId === requestSequence.current && !signal?.aborted) setLoading(false);
+    }
+  }, [debouncedQ, pageSize, status]);
 
-  // Reload triggers
   useEffect(() => {
+    pageCursorsRef.current = [null];
     setPage(1);
-    setPageCursors([null]);
-    load(1);
-  }, [debouncedQ, status, load]);
+  }, [debouncedQ, status]);
 
   useEffect(() => {
-    load(page);
-  }, [page, load]);
+    if (q !== debouncedQ) return;
+    // A filter change resets the cursor before the old page is allowed to load.
+    if (page > 1 && pageCursorsRef.current.length === 1) return;
+    const controller = new AbortController();
+    void load(page, controller.signal);
+    return () => {
+      controller.abort();
+      requestSequence.current += 1;
+    };
+  }, [page, load, q, debouncedQ]);
 
   // Actions
   const handleArchive = async (aluno: Aluno) => {
@@ -299,8 +278,10 @@ export default function AlunosListClient() {
       if (!json.ok) throw new Error(json.error || "Falha ao arquivar.");
 
       success("Processo arquivado", "O processo do aluno foi movido para o arquivo com sucesso.");
+      pageCursorsRef.current = [null];
+      setPage(1);
       await load(1);
-    } catch (e: any) {
+    } catch {
       error("Não foi possível arquivar", "Houve um erro técnico ao tentar arquivar o processo deste aluno. Por favor, tente novamente.");
     } finally {
       setDeleting(false);
@@ -353,23 +334,11 @@ export default function AlunosListClient() {
         </Link>
       </div>
 
-      {/* Error */}
-      {fetchError ? (
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700">
-          <div className="font-bold">Erro ao carregar</div>
-          <div className="mt-1">{fetchError}</div>
-          <button
-            onClick={() => load( page )}
-            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-card border border-rose-200 text-rose-700 hover:bg-rose-50"
-          >
-            Tentar novamente
-          </button>
-        </div>
-      ) : null}
+      {fetchError && <OperationalTableErrorState description={fetchError} onRetry={() => void load(page)} />}
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Total (página)" value={total} icon={Users} />
+        <KpiCard title="Registos nesta página" value={items.length} icon={Users} />
         <KpiCard title="Leads pendentes" value={stats.pendentes} icon={Filter} />
         <KpiCard title="Ativos" value={stats.ativos} icon={Shield} />
         <KpiCard title="Com responsável" value={stats.comResp} icon={Users} />
@@ -377,40 +346,33 @@ export default function AlunosListClient() {
 
       {/* Table card */}
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-        {/* Toolbar */}
-        <div className="p-5 border-b border-border bg-muted">
-          <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
-            <div className="relative w-full lg:max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar por nome, responsável, processo ou login…"
-                className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-xl text-sm outline-none
-                           focus:ring-4 focus:ring-amber/20 focus:border-amber"
-              />
-            </div>
-
-            <div className="flex gap-2 w-full lg:w-auto overflow-x-auto">
-              {statusOptions.map((s) => {
-                const active = status === s.value;
+        {/* Filters share one accessible surface; neither URL nor API query semantics change. */}
+        <div className="border-b border-border p-3 sm:p-4">
+          <OperationalTableFilterBar
+            label="Pesquisar alunos"
+            query={q}
+            onQueryChange={setQ}
+            placeholder="Pesquisar por nome, responsável, processo ou login…"
+            activeFilters={Number(status !== "pendente") + Number(Boolean(q.trim()))}
+            onClearFilters={() => { setQ(""); setStatus("pendente"); setPage(1); pageCursorsRef.current = [null]; }}
+          >
+            <div role="group" aria-label="Filtrar alunos por estado" className="flex min-w-0 flex-wrap items-center gap-2">
+              {statusOptions.map((option) => {
+                const active = status === option.value;
                 return (
                   <button
-                    key={s.value}
-                    onClick={() => setStatus(s.value)}
-                    className={[
-                      "whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold border transition-all",
-                      active
-                        ? "bg-card border-amber text-amber ring-1 ring-amber/25"
-                        : "bg-card border-border text-muted-foreground hover:text-foreground",
-                    ].join(" ")}
+                    key={option.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => { setStatus(option.value); setPage(1); pageCursorsRef.current = [null]; }}
+                    className={`min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${active ? "border-klasse-gold/50 bg-klasse-gold/10 text-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"}`}
                   >
-                    {s.label}
+                    {option.label}
                   </button>
                 );
               })}
             </div>
-          </div>
+          </OperationalTableFilterBar>
         </div>
 
         {/* Table */}
@@ -442,12 +404,12 @@ export default function AlunosListClient() {
                       Carregando…
                     </td>
                   </tr>
-                ) : items.length === 0 ? (
+                ) : fetchError ? null : items.length === 0 ? (
                   <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                     <td colSpan={5}>
-                      <StatusBadgeEmpty
-                        title="Nenhum registro encontrado."
-                        subtitle="Tente outro termo de busca ou ajuste o filtro."
+                      <OperationalTableEmptyState
+                        title="Nenhum registo encontrado"
+                        description={q.trim() || status !== "todos" ? "Ajuste a pesquisa ou selecione outro estado." : "Ainda não há alunos registados."}
                       />
                     </td>
                   </tr>
@@ -599,25 +561,14 @@ export default function AlunosListClient() {
           </div>
         </div>
 
-        {/* Pagination */}
-        <div className="bg-muted px-6 py-4 border-t border-border flex items-center justify-between text-sm text-muted-foreground">
-          <span className="font-semibold">Página {page}</span>
-          <div className="flex gap-2">
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="px-4 py-2 bg-card border border-border rounded-xl text-sm font-bold disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <button
-              disabled={!hasMore}
-              onClick={() => setPage((p) => p + 1)}
-              className="px-4 py-2 bg-card border border-border rounded-xl text-sm font-bold disabled:opacity-50"
-            >
-              Próximo
-            </button>
-          </div>
+        <div className="border-t border-border bg-muted/50 p-3 sm:p-4">
+          <OperationalCursorPagination
+            page={page}
+            visibleCount={items.length}
+            hasMore={hasMore}
+            disabled={loading || Boolean(fetchError)}
+            onPageChange={setPage}
+          />
         </div>
       </div>
     </div>

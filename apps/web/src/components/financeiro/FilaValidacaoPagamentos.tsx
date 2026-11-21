@@ -1,12 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getPagamentosPendentes, validarPagamentoAction } from "@/features/financeiro/actions";
 import type { PagamentoPendenteRow } from "@/hooks/usePagamentosPendentes";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { OperationalTableSkeleton, OperationalTablePagination, OperationalTableFilterBar, OperationalTableEmptyState, OperationalTableErrorState } from "@/components/ui/OperationalTableStates";
+import { filterAndPaginateOperationalRows } from "@/lib/operacoes/operational-table";
 import { Loader2, CheckCircle, XCircle, ExternalLink, Clock, AlertCircle } from "lucide-react";
+
+const PAGE_SIZE = 10;
+
+type EntityFilter = "todos" | "mensalidade" | "servico";
 
 interface FilaValidacaoPagamentosProps {
   escolaId: string;
@@ -16,48 +22,88 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
   const [pagamentos, setPagamentos] = useState<PagamentoPendenteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [entityFilter, setEntityFilter] = useState<EntityFilter>("todos");
+  const [page, setPage] = useState(1);
+  const requestSequence = useRef(0);
+  const activeSchool = useRef(escolaId);
   const [approvalTarget, setApprovalTarget] = useState<PagamentoPendenteRow | null>(null);
   
   const { success, error, warning } = useToast();
   const confirm = useConfirm();
 
-  const loadPagamentos = async () => {
+  useEffect(() => { activeSchool.current = escolaId; }, [escolaId]);
+
+  const loadPagamentos = useCallback(async () => {
+    // An old async payment decision must not reload another school's queue.
+    if (activeSchool.current !== escolaId) return;
+    const requestId = ++requestSequence.current;
     setLoading(true);
-    const data = await getPagamentosPendentes(escolaId);
-    const normalized = data.map((row) => {
-      // A Server Action ainda expõe a view gerada antes dos campos operacionais.
-      // Normalizamos a fronteira para o modelo usado pelo modal e pela fila.
-      const source = row as unknown as Partial<PagamentoPendenteRow>;
-      return {
-        ...source,
-        pagamento_id: source.pagamento_id ?? "",
-        escola_id: source.escola_id ?? escolaId,
-        mensalidade_id: source.mensalidade_id ?? "",
-        aluno_id: source.aluno_id ?? "",
-        aluno_nome: source.aluno_nome ?? "Aluno sem nome",
-        turma_codigo: source.turma_codigo ?? null,
-        valor_esperado: Number(source.valor_esperado ?? 0),
-        valor_enviado: Number(source.valor_enviado ?? 0),
-        comprovante_url: source.comprovante_url ?? null,
-        mensagem_aluno: source.mensagem_aluno ?? null,
-        reference: source.reference ?? null,
-        metodo: source.metodo ?? null,
-        tipo_entidade: source.tipo_entidade === "servico" ? "servico" : "mensalidade",
-        servico_codigo: source.servico_codigo ?? null,
-        servico_nome: source.servico_nome ?? null,
-        created_at: source.created_at ?? new Date(0).toISOString(),
-        estado_operacional: source.estado_operacional ?? "sem_comprovativo",
-        idade_horas: Number(source.idade_horas ?? 0),
-        prioridade: source.prioridade ?? "normal",
-      } satisfies PagamentoPendenteRow;
-    });
-    setPagamentos(normalized);
-    setLoading(false);
-  };
+    setFetchError(null);
+    // A change of school must never display records from a previous tenant.
+    setPagamentos([]);
+    try {
+      const data = await getPagamentosPendentes(escolaId);
+      const normalized = (Array.isArray(data) ? data : []).map((row) => {
+        // Preserve the operational model at the server-action boundary.
+        const source = row as unknown as Partial<PagamentoPendenteRow>;
+        return {
+          ...source,
+          pagamento_id: source.pagamento_id ?? "",
+          escola_id: source.escola_id ?? escolaId,
+          mensalidade_id: source.mensalidade_id ?? "",
+          aluno_id: source.aluno_id ?? "",
+          aluno_nome: source.aluno_nome ?? "Aluno sem nome",
+          turma_codigo: source.turma_codigo ?? null,
+          valor_esperado: Number(source.valor_esperado ?? 0),
+          valor_enviado: Number(source.valor_enviado ?? 0),
+          comprovante_url: source.comprovante_url ?? null,
+          mensagem_aluno: source.mensagem_aluno ?? null,
+          reference: source.reference ?? null,
+          metodo: source.metodo ?? null,
+          tipo_entidade: source.tipo_entidade === "servico" ? "servico" : "mensalidade",
+          servico_codigo: source.servico_codigo ?? null,
+          servico_nome: source.servico_nome ?? null,
+          created_at: source.created_at ?? new Date(0).toISOString(),
+          estado_operacional: source.estado_operacional ?? "sem_comprovativo",
+          idade_horas: Number(source.idade_horas ?? 0),
+          prioridade: source.prioridade ?? "normal",
+        } satisfies PagamentoPendenteRow;
+      });
+      if (requestId === requestSequence.current && activeSchool.current === escolaId) setPagamentos(normalized);
+    } catch {
+      if (requestId === requestSequence.current && activeSchool.current === escolaId) {
+        setFetchError("Não foi possível consultar os recebimentos. Os pagamentos não foram alterados.");
+        setPagamentos([]);
+      }
+    } finally {
+      if (requestId === requestSequence.current && activeSchool.current === escolaId) setLoading(false);
+    }
+  }, [escolaId]);
 
   useEffect(() => {
-    loadPagamentos();
-  }, [escolaId]);
+    setApprovalTarget(null);
+    setQuery("");
+    setEntityFilter("todos");
+    setPage(1);
+    void loadPagamentos();
+    return () => { requestSequence.current += 1; };
+  }, [loadPagamentos]);
+
+  const filterable = useMemo(() => pagamentos.filter((item) =>
+    entityFilter === "todos" || item.tipo_entidade === entityFilter
+  ), [pagamentos, entityFilter]);
+
+  const { items: pageItems, filteredCount, currentPage } = useMemo(() =>
+    filterAndPaginateOperationalRows({
+      rows: filterable,
+      search: query,
+      getSearchText: (item) => [item.aluno_nome, item.turma_codigo, item.reference, item.servico_nome, item.metodo].filter(Boolean).join(" "),
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+  [filterable, query, page]);
 
   const handleApprove = async (pagamento: PagamentoPendenteRow) => {
     setApprovalTarget(pagamento);
@@ -75,7 +121,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
         ? `Pagamento validado e serviço (${pagamento.servico_nome}) deferido.`
         : "Pagamento validado e mensalidade liquidada.";
       success("Sucesso", msg);
-      loadPagamentos();
+      void loadPagamentos();
     } else {
       error("Erro", res.error || "Não foi possível validar o pagamento.");
     }
@@ -104,7 +150,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
     
     if (res.success) {
       success("Sucesso", "Pagamento rejeitado com sucesso.");
-      loadPagamentos();
+      void loadPagamentos();
     } else {
       error("Erro", res.error || "Não foi possível rejeitar o pagamento.");
     }
@@ -126,14 +172,8 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
     { total: 0, mensalidades: 0, servicos: 0, mensalidadesCount: 0, servicosCount: 0 }
   );
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="w-8 h-8 animate-spin mb-4" />
-        <p className="text-sm font-medium">Carregando cockpit de receitas...</p>
-      </div>
-    );
-  }
+  if (loading) return <OperationalTableSkeleton label="A carregar pagamentos para validação" columns={6} rows={4} />;
+  if (fetchError) return <OperationalTableErrorState title="Não foi possível carregar os pagamentos" description={fetchError} onRetry={() => void loadPagamentos()} />;
 
   return (
     <div className="space-y-6">
@@ -170,6 +210,31 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
         </div>
       </div>
 
+      {pagamentos.length > 0 && (
+        <OperationalTableFilterBar
+          query={query}
+          onQueryChange={(next) => { setQuery(next); setPage(1); }}
+          label="Pesquisar recebimentos"
+          placeholder="Pesquisar aluno, turma, referência ou serviço…"
+          activeFilters={Number(Boolean(query.trim())) + Number(entityFilter !== "todos")}
+          onClearFilters={() => { setQuery(""); setEntityFilter("todos"); setPage(1); }}
+        >
+          <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted-foreground">
+            Tipo de recebimento
+            <select
+              value={entityFilter}
+              onChange={(event) => { setEntityFilter(event.target.value as EntityFilter); setPage(1); }}
+              className="min-h-11 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+            >
+              <option value="todos">Todos os tipos</option>
+              <option value="mensalidade">Mensalidades</option>
+              <option value="servico">Serviços</option>
+            </select>
+          </label>
+          <span aria-live="polite" className="text-xs font-semibold text-muted-foreground">{filteredCount} de {pagamentos.length} recebimentos</span>
+        </OperationalTableFilterBar>
+      )}
+
       {/* Conteúdo Dinâmico: Tabela ou Empty State */}
       {pagamentos.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted py-20">
@@ -179,30 +244,33 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          <div className="bg-muted px-6 py-4 border-b border-border flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted px-4 py-4 sm:px-6">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-amber" />
               <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Aguardando Validação</h2>
             </div>
             <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">
-              {pagamentos.length} Lançamentos
+              {filteredCount} de {pagamentos.length} lançamentos
             </span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table aria-label="Pagamentos aguardando validação" className="min-w-[840px] w-full text-left text-sm">
               <thead className="bg-card text-muted-foreground border-b border-border">
                 <tr>
-                  <th className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest">Aluno / Turma</th>
-                  <th className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest">Item / Serviço</th>
-                  <th className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest">Valor Enviado</th>
-                  <th className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest">Método / Referência</th>
-                  <th className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest text-center">Comprovativo</th>
-                  <th className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest text-right">Ações</th>
+                  <th scope="col" className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest">Aluno / Turma</th>
+                  <th scope="col" className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest">Item / Serviço</th>
+                  <th scope="col" className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest">Valor Enviado</th>
+                  <th scope="col" className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest">Método / Referência</th>
+                  <th scope="col" className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest text-center">Comprovativo</th>
+                  <th scope="col" className="px-6 py-4 font-semibold uppercase text-[10px] tracking-widest text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {pagamentos.map((p) => (
+                {filteredCount === 0 && (
+                  <tr><td colSpan={6}><OperationalTableEmptyState title="Nenhum recebimento corresponde aos filtros" description="Ajuste a pesquisa ou o tipo de recebimento para continuar." /></td></tr>
+                )}
+                {pageItems.map((p) => (
                   <tr key={p.pagamento_id} className="hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-bold text-foreground">{p.aluno_nome}</div>
@@ -235,7 +303,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
                           href={p.comprovante_url} 
                           target="_blank" 
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-foreground hover:bg-border transition-colors text-xs font-semibold"
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-muted px-3 py-2 text-foreground hover:bg-border transition-colors text-xs font-semibold"
                         >
                           Ver Doc <ExternalLink className="w-3 h-3" />
                         </a>
@@ -248,7 +316,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
                         <button
                           onClick={() => handleReject(p)}
                           disabled={processingId === p.pagamento_id}
-                          className="inline-flex items-center gap-2 bg-card hover:bg-rose-50 text-rose-600 border border-rose-200 px-3 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 bg-card px-3 py-2 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all disabled:opacity-50"
                           title="Rejeitar comprovativo"
                         >
                           {processingId === p.pagamento_id ? (
@@ -261,7 +329,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
                         <button
                           onClick={() => handleApprove(p)}
                           disabled={processingId === p.pagamento_id}
-                          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm shadow-emerald-600/20 disabled:opacity-50"
+                          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 text-xs font-bold transition-all shadow-sm shadow-emerald-600/20 disabled:opacity-50"
                         >
                           {processingId === p.pagamento_id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -278,7 +346,16 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
             </table>
           </div>
           
-          <div className="bg-muted px-6 py-3 border-t border-border">
+          <div className="border-t border-border p-3 sm:p-4">
+            <OperationalTablePagination
+              page={currentPage}
+              pageSize={PAGE_SIZE}
+              total={filteredCount}
+              onPageChange={setPage}
+              disabled={Boolean(processingId)}
+            />
+          </div>
+          <div className="bg-muted px-4 py-3 border-t border-border sm:px-6">
             <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground italic">
               <AlertCircle className="w-3 h-3" />
               A validação liquida automaticamente a mensalidade ou defere o serviço no Ledger da escola.
