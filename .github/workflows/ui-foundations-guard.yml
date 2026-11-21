@@ -1,0 +1,48 @@
+name: UI Foundations Guard
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/src/components/ui/Button.tsx"
+      - "apps/web/src/components/ui/Badge.tsx"
+      - "apps/web/src/components/ui/ModalShell.tsx"
+      - "apps/web/src/components/ui/StatusPill.tsx"
+      - "apps/web/src/lib/ui/status-presentation.ts"
+      - "apps/web/tests/unit/ui-foundations.spec.ts"
+      - ".github/workflows/ui-foundations-guard.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ui-foundations-contracts:
+    name: Safe action, status and dialog contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: UI foundations regressions
+        run: pnpm -C apps/web exec node --test --import tsx tests/unit/ui-foundations.spec.ts
+      - name: Focused UI primitives lint
+        run: |
+          pnpm -C apps/web exec eslint \
+            src/components/ui/Button.tsx \
+            src/components/ui/Badge.tsx \
+            src/components/ui/ModalShell.tsx \
+            src/components/ui/StatusPill.tsx \
+            src/lib/ui/status-presentation.ts \
+            tests/unit/ui-foundations.spec.ts \
+            --max-warnings 10000
