@@ -97,6 +97,10 @@ test("ModalShell keeps its Radix focus scope viewport-sized for fixed Balcão wo
   assert.match(modal, /translate-x-0 translate-y-0/);
   assert.match(modal, /<section[\s\S]*?overflow-hidden rounded-2xl/);
   assert.match(workspace, /fixed inset-0 z-\[70\]/);
+  // Escape must use the Balcão onClose guard, never close the parent Dialog directly.
+  assert.match(workspace, /onKeyDown=\{\(event\) => \{/);
+  assert.match(workspace, /event\.stopPropagation\(\)/);
+  assert.match(workspace, /onClose\?\.\(\); \/\/ Balcão validates unsaved work/);
   assert.match(search, /<BalcaoWorkspace/);
   assert.match(dashboard, /initialAction="payment"/);
   assert.match(dashboard, /initialAction="document"/);
