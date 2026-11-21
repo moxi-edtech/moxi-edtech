@@ -30,8 +30,8 @@ export default function SecretariaDocumentosWorkspace({ escolaId }: { escolaId: 
           Validar comprovativos
         </Link>
       </div>
-      <DocumentosAprovacoesQueue />
-      <FaltasJustificacoesQueue />
+      <DocumentosAprovacoesQueue key={escolaId} />
+      <FaltasJustificacoesQueue key={escolaId} />
       <DocumentosEmissaoHubClient escolaId={escolaId} />
     </div>
   );
