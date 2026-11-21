@@ -150,9 +150,6 @@ export function TabHome() {
                     </div>
                 )}
             </div>
-            <div className="sr-only">
-                <Star size={10} fill="white" />
-            </div>
         </Link>
       </header>
 
@@ -204,7 +201,6 @@ export function TabHome() {
             whileTap={{ scale: 0.98 }}
             className="group relative overflow-hidden rounded-xl border border-amber-200 bg-card p-4 text-foreground shadow-sm"
         >
-            <div className="absolute -right-4 -top-4 h-32 w-32 rounded-full bg-white/5 blur-2xl" />
             <div className="relative z-10 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
@@ -253,7 +249,6 @@ export function TabHome() {
             {/* NOTAS RECENTES INTEGRADO */}
             {restrictedGrades ? (
                 <div className="rounded-xl border border-border bg-card p-4 text-foreground shadow-sm">
-                    <div className="absolute -right-4 -top-4 h-32 w-32 rounded-full bg-primary/10 blur-2xl" />
                     <div className="relative z-10 flex flex-col items-center text-center">
                         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
                             <LockIcon size={24} />
