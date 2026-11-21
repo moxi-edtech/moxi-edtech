@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchJsonWithOffline } from "@/lib/offline/fetch";
 import { OfflineBanner } from "@/components/system/OfflineBanner";
@@ -73,14 +73,18 @@ export function PagamentosListClient({ escolaId }: { escolaId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revertingId, setRevertingId] = useState<string | null>(null);
+  // A prior tenant/filter request may resolve after a newer one (including offline cache).
+  const requestSequence = useRef(0);
   const [offlineMeta, setOfflineMeta] = useState<{ fromCache: boolean; updatedAt: string | null }>({
     fromCache: false,
     updatedAt: null,
   });
 
-  const load = useCallback(async (active = true) => {
+  const load = useCallback(async () => {
+    const currentRequest = ++requestSequence.current;
     setLoading(true);
     setError(null);
+    setItems([]);
     try {
       const params = new URLSearchParams({ q, days, escola_id: escolaId });
       const cacheKey = `financeiro:pagamentos:${params.toString()}`;
@@ -90,25 +94,22 @@ export function PagamentosListClient({ escolaId }: { escolaId: string }) {
         cacheKey
       );
       if (!data?.ok) throw new Error(data?.error || "Falha ao carregar pagamentos");
-      if (!active) return;
-      setItems(data.items || []);
+      if (currentRequest !== requestSequence.current) return;
+      setItems(Array.isArray(data.items) ? data.items : []);
       setOfflineMeta({ fromCache, updatedAt });
     } catch (e) {
-      if (!active) return;
+      if (currentRequest !== requestSequence.current) return;
       setError(e instanceof Error ? e.message : String(e));
       setItems([]);
       setOfflineMeta({ fromCache: false, updatedAt: null });
     } finally {
-      if (active) setLoading(false);
+      if (currentRequest === requestSequence.current) setLoading(false);
     }
   }, [days, escolaId, q]);
 
   useEffect(() => {
-    let active = true;
-    load(active);
-    return () => {
-      active = false;
-    };
+    void load();
+    return () => { requestSequence.current += 1; };
   }, [load]);
 
   const totalReceived = useMemo(
@@ -155,7 +156,7 @@ export function PagamentosListClient({ escolaId }: { escolaId: string }) {
       }
 
       success("Pagamento revertido", "A mensalidade foi recalculada e a reversão ficou auditada.");
-      await load(true);
+      await load();
     } catch (e) {
       toastError("Erro", e instanceof Error ? e.message : "Não foi possível reverter o pagamento.");
     } finally {
@@ -182,17 +183,17 @@ export function PagamentosListClient({ escolaId }: { escolaId: string }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 dark:border-emerald-800/50 dark:bg-emerald-950/25">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-            <Banknote className="h-4 w-4" /> Valor recebido
+            <Banknote className="h-4 w-4" /> Recebido nos registos apresentados
           </div>
           <p className="mt-2 text-2xl font-bold text-foreground">{moneyAOA.format(totalReceived)}</p>
-          <p className="text-xs text-muted-foreground">no período selecionado</p>
+          <p className="text-xs text-muted-foreground">Somatório parcial dos resultados devolvidos (máximo de 50). Não é o total do período.</p>
         </div>
         <div className="rounded-xl border border-border bg-muted/70 p-4">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-foreground/80">
-            <ReceiptText className="h-4 w-4" /> Pagamentos encontrados
+            <ReceiptText className="h-4 w-4" /> Pagamentos apresentados
           </div>
           <p className="mt-2 text-2xl font-bold text-foreground">{items.length}</p>
-          <p className="text-xs text-muted-foreground">máximo de 50 por consulta</p>
+          <p className="text-xs text-muted-foreground">Até 50 registos por consulta; não corresponde necessariamente ao total da escola.</p>
         </div>
       </div>
 

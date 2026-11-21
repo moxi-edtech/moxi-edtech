@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 
-export default function RowActions({ id, currentName }: { id: string; currentName: string | null }) {
+export default function RowActions({ id, escolaId, currentName, onChanged }: { id: string; escolaId: string; currentName: string | null; onChanged?: () => void }) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const { success, error } = useToast();
@@ -24,7 +24,7 @@ export default function RowActions({ id, currentName }: { id: string; currentNam
     if (!file_name || !file_name.trim()) return;
     setLoading("rename");
     try {
-      const res = await fetch(`/api/migracao/${id}`, {
+      const res = await fetch(`/api/migracao/${id}?escola_id=${encodeURIComponent(escolaId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ file_name: file_name.trim() }),
@@ -35,6 +35,7 @@ export default function RowActions({ id, currentName }: { id: string; currentNam
         return;
       }
       success("Nome actualizado", "O ficheiro foi renomeado com sucesso.");
+      onChanged?.();
       router.refresh();
     } finally {
       setLoading(null);
@@ -52,13 +53,14 @@ export default function RowActions({ id, currentName }: { id: string; currentNam
     if (!ok) return;
     setLoading("delete");
     try {
-      const res = await fetch(`/api/migracao/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/migracao/${id}?escola_id=${encodeURIComponent(escolaId)}`, { method: "DELETE" });
       if (!res.ok) {
         const { error: apiError } = await res.json().catch(() => ({ error: "Falha ao excluir" }));
         error("Erro ao excluir", "Não foi possível apagar esta importação. Por favor, tente novamente.");
         return;
       }
       success("Importação apagada", "O registo foi removido do sistema.");
+      onChanged?.();
       router.refresh();
     } finally {
       setLoading(null);

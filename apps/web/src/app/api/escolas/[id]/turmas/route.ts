@@ -4,6 +4,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../permissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { parseTurmaSearch } from "@/lib/ui/turma-search";
 import { validarCurriculoParaTurma } from "@/lib/academico/turma-gate";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
@@ -89,6 +90,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ? Math.min(Math.max(requestedLimit, 1), 200)
       : 100;
     const cursor = url.searchParams.get('cursor');
+    // Tenant/school constraints are applied independently of search's OR grammar.
+    const { value: search, valid: validSearch } = parseTurmaSearch(url.searchParams.get('busca'));
+    if (!validSearch) {
+      return NextResponse.json({ ok: false, error: 'Pesquisa inválida. Use até 80 caracteres.' }, { status: 400 });
+    }
 
     // 4. Query usando a view que resolve curso/classe
     let query = supabase
@@ -118,7 +124,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (normalizedTurno) query = query.eq('turno', normalizedTurno);
     if (cursoId) query = query.eq('curso_id', cursoId);
     if (status && status !== 'todos') query = query.eq('status_validacao', status);
-    
+    if (search) {
+      const pattern = `%${search}%`;
+      query = query.or(`turma_nome.ilike.${pattern},turma_codigo.ilike.${pattern},curso_nome.ilike.${pattern},classe_nome.ilike.${pattern},sala.ilike.${pattern}`);
+    }
+
     const isMissingColumn = (err: any) => {
       const msg = err?.message as string | undefined
       const code = err?.code as string | undefined
@@ -171,6 +181,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       if (normalizedTurno) fallbackQuery = fallbackQuery.eq('turno', normalizedTurno);
       if (cursoId) fallbackQuery = fallbackQuery.eq('curso_id', cursoId);
       if (status && status !== 'todos') fallbackQuery = fallbackQuery.eq('status_validacao', status);
+      if (search) {
+        const pattern = `%${search}%`;
+        fallbackQuery = fallbackQuery.or(`nome.ilike.${pattern},turma_codigo.ilike.${pattern},sala.ilike.${pattern}`);
+      }
 
       const fallbackStart = shouldLog ? performance.now() : 0;
       const { data: fallbackRows, error: fallbackError } = await fallbackQuery

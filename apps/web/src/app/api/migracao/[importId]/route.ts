@@ -1,115 +1,94 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createRouteClient } from "@/lib/supabase/route-client";
-import { applyKf2ListInvariants } from "@/lib/kf2";
-import { userHasAccessToEscola } from "../auth-helpers";
+import { resolveAuthorizedImportSchool } from "../import-school-context";
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ importId: string }> }
-) {
-  const { importId } = await params;
-  const routeClient = await createRouteClient();
-  const { data: userRes } = await routeClient.auth.getUser();
-  const authUser = userRes?.user;
-  if (!authUser) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+type Params = { params: Promise<{ importId: string }> };
+const importIdSchema = z.string().uuid();
 
-  let importQuery = routeClient
-    .from("import_migrations")
-    .select(
-      "id, escola_id, file_name, status, total_rows, imported_rows, error_rows, processed_at, created_at"
-    )
-    .eq("id", importId)
-
-  importQuery = applyKf2ListInvariants(importQuery, { defaultLimit: 1, order: [{ column: "id", ascending: true }] })
-
-  const { data: im } = await importQuery.maybeSingle();
-  const escolaId = (im as any)?.escola_id as string | undefined;
-  if (!escolaId || !im) {
-    return NextResponse.json({ error: "Importação não encontrada" }, { status: 404 });
+/** The selected school is checked before querying, editing or removing a row. */
+async function context(request: Request, params: Params) {
+  const { importId } = await params.params;
+  if (!importIdSchema.safeParse(importId).success) {
+    return { error: NextResponse.json({ error: "Importação inválida." }, { status: 400 }) } as const;
   }
-
-  const hasAccess = await userHasAccessToEscola(routeClient as any, escolaId, authUser.id);
-  if (!hasAccess) return NextResponse.json({ error: "Sem vínculo com a escola" }, { status: 403 });
-
-  return NextResponse.json({ ok: true, item: im });
+  const client = await createRouteClient();
+  const { data: auth } = await client.auth.getUser();
+  if (!auth.user) {
+    return { error: NextResponse.json({ error: "Não autenticado" }, { status: 401 }) } as const;
+  }
+  const scope = await resolveAuthorizedImportSchool(client as any, request, auth.user.id);
+  if (scope.error) return { error: scope.error } as const;
+  return { client, importId, escolaId: scope.escolaId, error: null } as const;
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ importId: string }> }
-) {
-  const { importId } = await params;
-  const routeClient = await createRouteClient();
-  const { data: userRes } = await routeClient.auth.getUser();
-  const authUser = userRes?.user;
-  if (!authUser) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-
-  const body = await request.json().catch(() => ({}));
-  const nextFileName = typeof body?.file_name === "string" ? body.file_name.trim() : undefined;
-  if (!nextFileName) {
-    return NextResponse.json({ error: "Nada para atualizar" }, { status: 400 });
-  }
-
-  const { data: im } = await routeClient
+export async function GET(request: Request, params: Params) {
+  const scope = await context(request, params);
+  if (scope.error) return scope.error;
+  const { data: item, error } = await scope.client
     .from("import_migrations")
-    .select("escola_id")
-    .eq("id", importId)
-    .order("id")
-    .limit(1)
+    .select("id,escola_id,file_name,status,total_rows,imported_rows,error_rows,processed_at,created_at")
+    .eq("id", scope.importId)
+    .eq("escola_id", scope.escolaId)
     .maybeSingle();
-  const escolaId = (im as any)?.escola_id as string | undefined;
-  if (!escolaId) return NextResponse.json({ error: "Importação não encontrada" }, { status: 404 });
+  if (error) return NextResponse.json({ error: "Não foi possível consultar a importação." }, { status: 500 });
+  if (!item) return NextResponse.json({ error: "Importação não encontrada." }, { status: 404 });
+  return NextResponse.json({ ok: true, item });
+}
 
-  const hasAccess = await userHasAccessToEscola(routeClient as any, escolaId, authUser.id);
-  if (!hasAccess) return NextResponse.json({ error: "Sem vínculo com a escola" }, { status: 403 });
-
-  const { error } = await routeClient
+export async function PATCH(request: Request, params: Params) {
+  const scope = await context(request, params);
+  if (scope.error) return scope.error;
+  const body = await request.json().catch(() => null);
+  const name = typeof body?.file_name === "string" ? body.file_name.trim() : "";
+  if (!name || name.length > 255) {
+    return NextResponse.json({ error: "Indique um nome válido (até 255 caracteres)." }, { status: 400 });
+  }
+  const { data: changed, error } = await scope.client
     .from("import_migrations")
-    .update({ file_name: nextFileName })
-    .eq("id", importId);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    .update({ file_name: name })
+    .eq("id", scope.importId)
+    .eq("escola_id", scope.escolaId)
+    .select("id")
+    .maybeSingle();
+  if (error) return NextResponse.json({ error: "Não foi possível renomear a importação." }, { status: 400 });
+  if (!changed) return NextResponse.json({ error: "Importação não encontrada nesta escola." }, { status: 404 });
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ importId: string }> }
-) {
-  const { importId } = await params;
-  const routeClient = await createRouteClient();
-  const { data: userRes } = await routeClient.auth.getUser();
-  const authUser = userRes?.user;
-  if (!authUser) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+export async function DELETE(request: Request, params: Params) {
+  const scope = await context(request, params);
+  if (scope.error) return scope.error;
 
-  const { data: im } = await routeClient
+  const { data: item, error: lookupError } = await scope.client
     .from("import_migrations")
-    .select("escola_id, storage_path")
-    .eq("id", importId)
-    .order("id")
-    .limit(1)
+    .select("id,storage_path")
+    .eq("id", scope.importId)
+    .eq("escola_id", scope.escolaId)
     .maybeSingle();
-  const escolaId = (im as any)?.escola_id as string | undefined;
-  const storagePath = (im as any)?.storage_path as string | undefined;
-  if (!escolaId) return NextResponse.json({ error: "Importação não encontrada" }, { status: 404 });
+  if (lookupError) return NextResponse.json({ error: "Não foi possível consultar a importação." }, { status: 500 });
+  if (!item) return NextResponse.json({ error: "Importação não encontrada nesta escola." }, { status: 404 });
 
-  const hasAccess = await userHasAccessToEscola(routeClient as any, escolaId, authUser.id);
-  if (!hasAccess) return NextResponse.json({ error: "Sem vínculo com a escola" }, { status: 403 });
-
-  // Limpa erros e staging antes de remover a importação, e tenta remover o arquivo do storage
+  // Existing lifecycle: delete staging/errors before the parent. The import
+  // was already verified to belong to the requested, authorized school.
   try {
-    await routeClient.from("import_errors").delete().eq("import_id", importId);
+    await scope.client.from("import_errors").delete().eq("import_id", scope.importId);
   } catch {}
   try {
-    await routeClient.from("staging_alunos").delete().eq("import_id", importId);
+    await scope.client.from("staging_alunos").delete().eq("import_id", scope.importId);
   } catch {}
   try {
-    if (storagePath) {
-      await routeClient.storage.from("migracoes").remove([storagePath]);
-    }
+    if (item.storage_path) await scope.client.storage.from("migracoes").remove([item.storage_path]);
   } catch {}
 
-  const { error } = await routeClient.from("import_migrations").delete().eq("id", importId);
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  const { data: deleted, error } = await scope.client
+    .from("import_migrations")
+    .delete()
+    .eq("id", scope.importId)
+    .eq("escola_id", scope.escolaId)
+    .select("id")
+    .maybeSingle();
+  if (error) return NextResponse.json({ error: "Não foi possível eliminar a importação." }, { status: 400 });
+  if (!deleted) return NextResponse.json({ error: "A importação já não está disponível." }, { status: 409 });
   return NextResponse.json({ ok: true });
 }
