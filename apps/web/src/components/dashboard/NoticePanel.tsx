@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Megaphone, Clock, Flame, ChevronDown } from "lucide-react";
+import { Megaphone, Clock, Flame } from "lucide-react";
 import { EstadoVazio } from "@/components/harmonia";
 
 export type NoticeItemData = {
@@ -14,7 +14,7 @@ export type NoticeItemData = {
   action_href?: string;
   aluno_id?: string;
   candidatura_id?: string;
-  type?: string; 
+  type?: string;
   is_priority?: boolean;
   priority_note?: string;
 };
@@ -52,28 +52,30 @@ export function NoticePanel({
   }, [items, filtro]);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white flex flex-col h-[500px]">
+    <div className="rounded-xl border border-border bg-card flex flex-col h-[500px]">
       {showHeader && (
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-xl bg-amber/10 text-amber ring-1 ring-amber/25 flex items-center justify-center">
               <Megaphone className="h-4 w-4" />
             </div>
-            <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
           </div>
         </div>
       )}
 
       {/* Barra de Filtros */}
-      <div className="px-2 py-2 border-b border-slate-50 flex gap-1 overflow-x-auto shrink-0 scrollbar-hide">
+      <div className="px-2 py-2 border-b border-border flex gap-1 overflow-x-auto shrink-0 scrollbar-hide">
          {CATEGORIAS.map(cat => (
            <button
              key={cat.id}
+             type="button"
+             aria-pressed={filtro === cat.id}
              onClick={() => setFiltro(cat.id)}
-             className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
-               filtro === cat.id 
-                 ? 'bg-slate-900 text-white shadow-sm' 
-                 : 'text-slate-500 hover:bg-slate-100'
+             className={`min-h-11 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
+               filtro === cat.id
+                 ? 'bg-klasse-gold/10 text-foreground ring-1 ring-klasse-gold/25'
+                 : 'text-muted-foreground hover:bg-muted'
              }`}
            >
              {cat.label}
@@ -81,7 +83,7 @@ export function NoticePanel({
          ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto divide-y divide-border scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
         {itemsFiltrados.length === 0 ? (
           <div className="p-12 text-center">
             <div className="opacity-50 grayscale contrast-125">
@@ -90,10 +92,10 @@ export function NoticePanel({
           </div>
         ) : (
           itemsFiltrados.map((item) => (
-            <NoticeItem 
-              key={item.id} 
-              item={item} 
-              onAction={onAction} 
+            <NoticeItem
+              key={item.id}
+              item={item}
+              onAction={onAction}
               onSnooze={onSnooze}
             />
           ))
@@ -103,12 +105,12 @@ export function NoticePanel({
   );
 }
 
-function NoticeItem({ 
-  item, 
+function NoticeItem({
+  item,
   onAction,
   onSnooze
-}: { 
-  item: NoticeItemData; 
+}: {
+  item: NoticeItemData;
   onAction?: (item: NoticeItemData) => void;
   onSnooze?: () => void;
 }) {
@@ -158,42 +160,45 @@ function NoticeItem({
   };
 
   return (
-    <div 
+    <div
       onClick={handleAction}
-      className={`p-4 hover:bg-slate-50 transition relative group cursor-pointer ${snoozing ? 'opacity-50 pointer-events-none' : ''} ${item.is_priority ? 'bg-rose-50/40' : ''}`}
+      className={`p-4 hover:bg-muted/50 transition relative group cursor-pointer ${snoozing ? 'opacity-50 pointer-events-none' : ''} ${item.is_priority ? 'bg-rose-50/40' : ''}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1 min-w-0">
           {item.is_priority && (
-            <span 
+            <span
               className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-rose-600 text-white w-fit shadow-sm"
               title={item.priority_note}
             >
-              <Flame size={8} fill="currentColor" /> 
+              <Flame size={8} fill="currentColor" />
               {item.priority_note || "Prioridade Admin"}
             </span>
           )}
-          <p className="text-sm font-semibold text-slate-900 truncate" title={item.titulo}>{item.titulo}</p>
+          <p className="text-sm font-semibold text-foreground truncate" title={item.titulo}>{item.titulo}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-           <span className="text-[11px] text-slate-400 whitespace-nowrap">
+           <span className="text-[11px] text-muted-foreground whitespace-nowrap">
              {new Date(item.data).toLocaleDateString()}
            </span>
-           
+
            <div className="relative" ref={menuRef}>
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setMenuOpen(!menuOpen);
                 }}
-                className="h-6 w-6 rounded-md hover:bg-slate-200 flex items-center justify-center text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                type="button"
+                aria-label="Postergar aviso"
+                aria-expanded={menuOpen}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground opacity-100 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
               >
                 <Clock size={12} />
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 top-full mt-1 z-50 w-48 rounded-xl border border-slate-200 bg-white shadow-xl py-1 animate-in slide-in-from-top-1 duration-100">
-                  <p className="px-3 py-1.5 text-[9px] font-bold uppercase text-slate-400 tracking-widest">Postergar para:</p>
+                <div className="absolute right-0 top-full mt-1 z-50 w-48 rounded-xl border border-border bg-card shadow-xl py-1 animate-in slide-in-from-top-1 duration-100">
+                  <p className="px-3 py-1.5 text-[9px] font-bold uppercase text-muted-foreground tracking-widest">Postergar para:</p>
                   {[
                     { days: 1, label: 'Amanhã (1 dia)' },
                     { days: 3, label: '3 dias' },
@@ -205,7 +210,7 @@ function NoticeItem({
                         e.stopPropagation();
                         handleSnooze(opt.days);
                       }}
-                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
                     >
                       {opt.label}
                     </button>
@@ -215,7 +220,7 @@ function NoticeItem({
                       e.stopPropagation();
                       handleSnooze(30);
                     }}
-                    className="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors border-t border-slate-50"
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors border-t border-border"
                   >
                     Próximo mês
                   </button>
@@ -224,21 +229,21 @@ function NoticeItem({
            </div>
         </div>
       </div>
-      <p className="mt-1 text-xs text-slate-600 leading-relaxed line-clamp-2">{item.resumo}</p>
-      
+      <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">{item.resumo}</p>
+
       {item.action_label && (
         <div className="mt-2 flex items-center gap-2">
           {item.action_href && !onAction ? (
             <Link
               href={item.action_href}
-              className="inline-flex items-center rounded-md border border-[#1F6B3B]/20 px-2.5 py-1 text-[10px] font-bold text-[#1F6B3B] hover:bg-[#1F6B3B]/5"
+              className="inline-flex items-center rounded-xl border border-klasse-green/20 px-2.5 py-1 text-[10px] font-bold text-klasse-green hover:bg-klasse-green/5"
             >
               {item.action_label}
             </Link>
           ) : (
             <button
               onClick={handleAction}
-              className="inline-flex items-center rounded-md border border-[#1F6B3B]/20 px-2.5 py-1 text-[10px] font-bold text-[#1F6B3B] hover:bg-[#1F6B3B]/5"
+              className="inline-flex items-center rounded-xl border border-klasse-green/20 px-2.5 py-1 text-[10px] font-bold text-klasse-green hover:bg-klasse-green/5"
             >
               {item.action_label}
             </button>

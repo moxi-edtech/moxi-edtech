@@ -123,7 +123,7 @@ export default function ProfessoresListClient() {
     switch (cargo) {
       case 'diretor': return 'bg-muted text-foreground';
       case 'coordenador': return 'bg-muted text-foreground';
-      case 'assistente': return 'bg-green-100 text-green-700';
+      case 'assistente': return 'bg-klasse-green/10 text-klasse-green';
       default: return 'bg-muted text-foreground';
     }
   };
@@ -138,12 +138,12 @@ export default function ProfessoresListClient() {
   };
 
   return (
-    <div className={`${PORTAL_PAGE_INSET} space-y-6 rounded-xl bg-muted`}>
+    <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
       {/* --- BOTÃO VOLTAR --- */}
       <div className="flex items-center gap-3">
         <button 
           onClick={() => window.history.back()}
-          className="inline-flex items-center gap-2 rounded-lg bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted border border-border transition-all"
+          className="inline-flex items-center gap-2 rounded-xl bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted border border-border transition-all"
         >
           <ArrowLeft className="h-4 w-4" />
           Voltar
@@ -153,14 +153,14 @@ export default function ProfessoresListClient() {
       {/* --- HEADER COM MÉTRICAS --- */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
-          <div className="text-2xl font-bold text-moxinexa-navy">{total}</div>
+          <div className="text-2xl font-bold text-foreground">{total}</div>
           <div className="text-sm text-muted-foreground flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Total de Professores
+            Professores encontrados
           </div>
         </div>
         <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
-          <div className="text-2xl font-bold text-orange-600">
+          <div className="text-2xl font-bold text-foreground">
             {Object.keys(professoresPorCargo).length}
           </div>
           <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -169,7 +169,7 @@ export default function ProfessoresListClient() {
           </div>
         </div>
         <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
-          <div className="text-2xl font-bold text-moxinexa-teal">
+          <div className="text-2xl font-bold text-klasse-green">
             {professoresComEmail}
           </div>
           <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -178,7 +178,7 @@ export default function ProfessoresListClient() {
           </div>
         </div>
         <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
-          <div className="text-2xl font-bold text-green-600">
+          <div className="text-2xl font-bold text-klasse-green">
             {professoresComTelefone}
           </div>
           <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -191,8 +191,7 @@ export default function ProfessoresListClient() {
       {/* --- HEADER DE AÇÃO --- */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card p-5 rounded-xl border border-border shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-moxinexa-navy flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-muted0" />
+          <h1 className="text-2xl font-bold text-klasse-green flex items-center gap-2">
             Gestão de Professores
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -203,7 +202,7 @@ export default function ProfessoresListClient() {
         <div className="flex items-center gap-3">
           <Link
             href="professores/novo"
-            className="inline-flex items-center gap-2 rounded-lg bg-moxinexa-teal px-5 py-3 text-sm font-bold text-white hover:bg-teal-600 shadow-lg shadow-teal-900/20 transition-all active:scale-95 transform hover:-translate-y-0.5"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-klasse-gold px-5 py-3 text-sm font-bold text-white hover:brightness-95 transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
           >
             <UserPlus className="h-4 w-4" />
             Novo Professor
@@ -353,7 +352,7 @@ export default function ProfessoresListClient() {
                       }}
                     >
                       <td className="px-4 py-4 text-foreground">
-                        <div className="font-bold text-moxinexa-navy">
+                        <div className="font-bold text-foreground">
                           {professor.nome}
                         </div>
                         <div className="text-xs text-muted-foreground space-y-1 mt-1">
@@ -405,14 +404,14 @@ export default function ProfessoresListClient() {
                         <div className="flex justify-center gap-1">
                           <Link
                             href={buildContextualPortalHref(escolaParam, `/secretaria/professores/${professor.user_id || professor.id}`, pathname)}
-                            className="text-muted-foreground hover:text-foreground hover:bg-muted p-2 rounded-lg transition-all"
+                            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
                             title="Ver detalhes"
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
                           <Link
                             href={escolaId ? `/escola/${escolaId}/professores?editar=${encodeURIComponent(professor.user_id || professor.id)}` : buildContextualPortalHref(escolaParam, `/secretaria/professores`, pathname)}
-                            className="text-green-600 hover:text-white hover:bg-green-600 p-2 rounded-lg transition-all"
+                            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-klasse-green transition-colors hover:bg-klasse-green/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
                             title="Editar professor"
                           >
                             <Edit className="w-4 h-4" />

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { StatusPill as StatusBadge } from "@/components/ui/StatusPill";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
@@ -121,7 +122,7 @@ function Breadcrumb({ items }: { items: BreadcrumbItem[] }) {
           <li key={index} className="flex items-center gap-1">
             {index > 0 && <Slash size={10} className="text-slate-300" />}
             {item.href ? (
-              <Link href={item.href} className="hover:text-[#1F6B3B] transition-colors">
+              <Link href={item.href} className="hover:text-klasse-green transition-colors">
                 {item.label}
               </Link>
             ) : (
@@ -147,7 +148,7 @@ const TABS: TabDef[] = [
     id: "ativos",
     label: "Activos",
     icon: <UserCheck size={13} />,
-    color: "bg-[#1F6B3B]/10 text-[#1F6B3B]",
+    color: "bg-klasse-green/10 text-klasse-green",
   },
   {
     id: "inadimplentes",
@@ -189,7 +190,7 @@ function TabBar({
             className={[
               "inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20",
               isActive
-                ? "border-[#1F6B3B] text-[#1F6B3B]"
+                ? "border-klasse-green text-klasse-green"
                 : "border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-300",
             ].join(" ")}
           >
@@ -202,29 +203,6 @@ function TabBar({
   );
 }
 
-function StatusBadge({ status }: { status?: string | null }) {
-  const st = (status || "pendente").toLowerCase();
-  const map: Record<string, string> = {
-    ativo: "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20",
-    matriculado: "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20",
-    pendente: "bg-amber-50 text-amber-800 border-amber-200",
-    submetida: "bg-amber-50 text-amber-800 border-amber-200",
-    em_analise: "bg-sky-50 text-sky-700 border-sky-200",
-    aprovada: "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20",
-    suspenso: "bg-amber-50 text-amber-800 border-amber-200",
-    inativo: "bg-rose-50 text-rose-700 border-rose-200",
-    arquivado: "bg-slate-100 text-slate-500 border-slate-200",
-  };
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border capitalize ${
-        map[st] ?? map.pendente
-      }`}
-    >
-      {st.replace(/_/g, " ")}
-    </span>
-  );
-}
 
 function formatKz(valor?: number) {
   if (!valor) return null;
@@ -238,8 +216,8 @@ function SituacaoFinanceiraChip({ situacao, meses, valor }: {
   valor?: number;
 }) {
   if (situacao === "em_dia") return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-[#1F6B3B]/10
-      px-2.5 py-1 text-[11px] font-bold text-[#1F6B3B]">
+    <span className="inline-flex items-center gap-1 rounded-full bg-klasse-green/10
+      px-2.5 py-1 text-[11px] font-bold text-klasse-green">
       <CheckCircle2 size={10} /> Em dia
     </span>
   );
@@ -293,7 +271,7 @@ function RowActions({
           type="button"
           onClick={() => onView(aluno)}
           title="Ver perfil"
-          className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-500 hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors"
+          className="flex items-center gap-1 rounded-xl border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-500 hover:border-klasse-green hover:text-klasse-green transition-colors"
         >
           <Eye size={12} />
         </button>
@@ -303,7 +281,7 @@ function RowActions({
         <Link
           href={`${secretariaBase}/alunos/${aluno.id}/editar`}
           title="Editar"
-          className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-colors"
+          className="flex items-center gap-1 rounded-xl border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-colors"
         >
           <Pencil size={12} />
         </Link>
@@ -313,7 +291,7 @@ function RowActions({
         <Link
           href={matriculaHref}
           title="Abrir matrícula"
-          className="flex items-center gap-1.5 rounded-lg border border-[#E3B23C]/40 px-2 py-1.5 text-xs font-bold text-[#9a7010] bg-[#E3B23C]/5 hover:bg-[#E3B23C]/10 transition-colors"
+          className="flex items-center gap-1.5 rounded-xl border border-klasse-gold/40 px-2 py-1.5 text-xs font-bold text-amber-800 bg-klasse-gold/5 hover:bg-klasse-gold/10 transition-colors"
         >
           <FileCheck size={12} />
           <span>Matricular</span>
@@ -325,7 +303,7 @@ function RowActions({
           type="button"
           onClick={() => onPagamento(aluno)}
           title="Registar pagamento"
-          className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-500 hover:border-[#E3B23C] hover:text-[#9a7010] transition-colors"
+          className="flex items-center gap-1 rounded-xl border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-500 hover:border-klasse-gold hover:text-amber-800 transition-colors"
         >
           <DollarSign size={12} />
         </button>
@@ -335,7 +313,7 @@ function RowActions({
         <button
           onClick={() => onArchive(aluno)}
           title="Arquivar"
-          className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-500 hover:border-rose-300 hover:text-rose-600 transition-colors"
+          className="flex items-center gap-1 rounded-xl border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-500 hover:border-rose-300 hover:text-rose-600 transition-colors"
         >
           <Archive size={12} />
         </button>
@@ -420,9 +398,9 @@ function ProfileDrawer({
       <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-white shadow-2xl
         border-l border-slate-200 flex flex-col transition-transform duration-300 translate-x-0">
 
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div>
-            <p className="text-sm font-black text-slate-900">Perfil do aluno</p>
+            <p className="text-sm font-black text-foreground">Perfil do aluno</p>
             <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[220px]">
               {displayName}
             </p>
@@ -722,13 +700,13 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
       <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-white shadow-2xl
         border-l border-slate-200 flex flex-col transition-transform duration-300 translate-x-0">
 
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-[#1F6B3B]/10">
-              <Receipt size={16} className="text-[#1F6B3B]" />
+            <div className="p-2 rounded-xl bg-klasse-green/10">
+              <Receipt size={16} className="text-klasse-green" />
             </div>
             <div>
-              <p className="text-sm font-black text-slate-900">Registar Pagamento</p>
+              <p className="text-sm font-black text-foreground">Registar Pagamento</p>
               <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[180px]">
                 {aluno?.nome ?? "—"}
               </p>
@@ -781,7 +759,7 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
                 onChange={(event) => setValor(event.target.value)}
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200
                   text-base font-bold focus:outline-none focus:ring-2
-                  focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                  focus:ring-klasse-gold/20 focus:border-klasse-green"
                 placeholder="0"
               />
             </div>
@@ -799,7 +777,7 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
                     onClick={() => setMetodo(item.id)}
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-colors
                       ${active
-                        ? "border-[#1F6B3B] bg-[#1F6B3B]/10 text-[#1F6B3B]"
+                        ? "border-klasse-green bg-klasse-green/10 text-klasse-green"
                         : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
                   >
                     {item.icon}
@@ -817,14 +795,14 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
               onChange={(event) => setRef(event.target.value)}
               placeholder="Opcional"
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2
-                focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                focus:ring-klasse-gold/20 focus:border-klasse-green"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-5 py-3 text-sm font-bold text-white hover:bg-[#185830] transition-colors disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-klasse-green px-5 py-3 text-sm font-bold text-white hover:brightness-95 transition-colors disabled:opacity-50"
           >
             {loading && <Loader2 size={14} className="animate-spin" />}
             Confirmar pagamento
@@ -893,7 +871,7 @@ function ArchiveModal({
       <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 animate-in zoom-in-95 duration-150">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h3 className="text-base font-black text-slate-900">Arquivar aluno</h3>
+            <h3 className="text-base font-black text-foreground">Arquivar aluno</h3>
             <p className="text-sm text-slate-500 mt-1">
               Confirma arquivar <span className="font-bold text-slate-700">{aluno.nome}</span>?
               O histórico financeiro e académico é preservado.
@@ -917,7 +895,7 @@ function ArchiveModal({
               setError(null);
             }}
             placeholder="Ex.: transferência, desistência, duplicado…"
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B] resize-none"
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-green resize-none"
           />
           {error && (
             <p className="text-xs text-rose-500 font-semibold mt-1.5 flex items-center gap-1">
@@ -990,7 +968,7 @@ function BulkArchiveModal({
       <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 animate-in zoom-in-95 duration-150">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h3 className="text-base font-black text-slate-900">Arquivar alunos</h3>
+            <h3 className="text-base font-black text-foreground">Arquivar alunos</h3>
             <p className="text-sm text-slate-500 mt-1">
               Confirma arquivar <span className="font-bold text-slate-700">{count}</span> aluno(s)?
               O histórico financeiro e académico é preservado.
@@ -1014,7 +992,7 @@ function BulkArchiveModal({
               setError(null);
             }}
             placeholder="Ex.: transferência, desistência, duplicado…"
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B] resize-none"
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-green resize-none"
           />
           {error && (
             <p className="text-xs text-rose-500 font-semibold mt-1.5 flex items-center gap-1">
@@ -1064,7 +1042,7 @@ function SkeletonRow() {
     <tr className="animate-pulse border-b border-slate-50">
       {[20, 200, 160, 140, 80, 100].map((width, index) => (
         <td key={index} className="px-5 py-4">
-          <div className="h-4 rounded-lg bg-slate-100" style={{ width }} />
+          <div className="h-4 rounded-xl bg-slate-100" style={{ width }} />
         </td>
       ))}
     </tr>
@@ -1433,7 +1411,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black text-[#1F6B3B] tracking-tight">Gestão de Alunos</h1>
+            <h1 className="text-2xl font-black text-klasse-green tracking-tight">Gestão de Alunos</h1>
             <p className="text-sm text-slate-500 mt-1">
               Leads, matrículas e histórico — num único lugar.
             </p>
@@ -1441,7 +1419,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
           <Link
             href={`${secretariaBase}/admissoes/nova`}
-            className="flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#185830] transition-colors shadow-sm flex-shrink-0"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-white transition-colors hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
           >
             <Plus size={14} />
             Nova Admissão
@@ -1456,7 +1434,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
           </div>
         )}
 
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           <div className="px-5 pt-4">
             <TabBar active={tab} onChange={handleTabChange} />
           </div>
@@ -1492,13 +1470,13 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                 onClick={() => setShowFilters((prev) => !prev)}
                 className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
                   activeFilters > 0
-                    ? "border-[#1F6B3B] bg-[#1F6B3B]/5 text-[#1F6B3B]"
+                    ? "border-klasse-green bg-klasse-green/5 text-klasse-green"
                     : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                 }`}
               >
                 <SlidersHorizontal size={12} /> Filtros
                 {activeFilters > 0 && (
-                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#1F6B3B] text-[9px] font-black text-white">
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-klasse-green text-[9px] font-black text-white">
                     {activeFilters}
                   </span>
                 )}
@@ -1520,7 +1498,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                       <select
                         value={filters.ano}
                         onChange={(event) => setFilters((prev) => ({ ...prev, ano: event.target.value }))}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-green"
                       >
                         <option value="">Todos</option>
                         {yearOptions.map((year) => (
@@ -1535,7 +1513,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                       <select
                         value={filters.turmaId}
                         onChange={(event) => setFilters((prev) => ({ ...prev, turmaId: event.target.value }))}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-green"
                       >
                         <option value="">Todas</option>
                         {turmas.map((turma) => (
@@ -1572,22 +1550,22 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
               <div className="relative">
                 <button
                   onClick={() => setShowExport((prev) => !prev)}
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                  className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                   title="Exportar CSV"
                 >
                   <Download size={12} /> Exportar
                 </button>
                 {showExport && (
-                  <div className="absolute right-0 mt-2 w-40 rounded-xl border border-slate-200 bg-white shadow-xl p-2 z-20">
+                  <div className="absolute right-0 mt-2 w-40 rounded-xl border border-border bg-card shadow-xl p-2 z-20">
                     <button
                       onClick={() => handleExport("page")}
-                      className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
                     >
                       Página atual
                     </button>
                     <button
                       onClick={() => handleExport("all")}
-                      className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
                     >
                       Tudo
                     </button>
@@ -1601,7 +1579,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                   if (page === 1) void load(1, tab, debouncedQ, filters);
                   else setPage(1);
                 }}
-                className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 hover:bg-slate-50 transition-colors"
+                className="rounded-xl border border-border bg-card p-2.5 text-slate-500 hover:bg-slate-50 transition-colors"
                 title="Actualizar"
               >
                 <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -1612,13 +1590,13 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
           <div className="overflow-x-auto">
             <table aria-label="Alunos da Secretaria" className="min-w-[840px] w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100">
+                <tr className="border-b border-border">
                   <th className="px-5 py-3 text-left">
                     <input
                       type="checkbox"
                       checked={items.length > 0 && items.every((item) => selected.has(item.id))}
                       onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-slate-300 text-[#1F6B3B] focus:ring-[#1F6B3B]/30"
+                      className="h-4 w-4 rounded border-slate-300 text-klasse-green focus:ring-klasse-gold/20"
                       aria-label="Selecionar todos"
                     />
                   </th>
@@ -1663,17 +1641,17 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                             type="checkbox"
                             checked={selected.has(aluno.id)}
                             onChange={() => toggleSelect(aluno.id)}
-                            className="h-4 w-4 rounded border-slate-300 text-[#1F6B3B] focus:ring-[#1F6B3B]/30"
+                            className="h-4 w-4 rounded border-slate-300 text-klasse-green focus:ring-klasse-gold/20"
                             aria-label={`Selecionar ${aluno.nome}`}
                           />
                         </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-xl bg-[#1F6B3B]/10 flex items-center justify-center flex-shrink-0 text-xs font-black text-[#1F6B3B]">
+                            <div className="h-9 w-9 rounded-xl bg-klasse-green/10 flex items-center justify-center flex-shrink-0 text-xs font-black text-klasse-green">
                               {initials(aluno.nome || "?")}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-slate-800 truncate">{aluno.nome}</p>
+                              <p className="font-bold text-foreground truncate">{aluno.nome}</p>
                               <div className="flex items-center gap-2 mt-0.5">
                                 {id && <span className="font-mono text-[10px] text-slate-400">{id}</span>}
                                 {isLead && (
@@ -1750,7 +1728,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
       {selected.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 rounded-2xl bg-slate-900 px-5 py-3.5 shadow-2xl shadow-black/30 animate-in slide-in-from-bottom-3 duration-200 border border-slate-700">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#E3B23C] text-xs font-black text-slate-900">
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-klasse-gold text-xs font-black text-foreground">
               {selected.size}
             </div>
             <span className="text-sm font-semibold text-white">

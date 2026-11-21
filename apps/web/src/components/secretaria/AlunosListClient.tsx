@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { StatusPill as StatusBadge } from "@/components/ui/StatusPill";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import {
   Loader2,
@@ -113,36 +114,6 @@ function KpiCard({
         <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
     </div>
-  );
-}
-
-function StatusBadge({ status }: { status?: string | null }) {
-  const st = (status || "pendente").toLowerCase();
-
-  // Ajusta conforme teus status reais do backend
-  const styles: Record<string, string> = {
-    ativo: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    matriculado: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    pendente: "bg-amber-50 text-amber-800 border-amber-200",
-    submetida: "bg-amber-50 text-amber-800 border-amber-200",
-    em_analise: "bg-sky-50 text-sky-700 border-sky-200",
-    aprovada: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    suspenso: "bg-amber-50 text-amber-800 border-amber-200",
-    inativo: "bg-rose-50 text-rose-700 border-rose-200",
-    arquivado: "bg-muted text-muted-foreground border-border",
-    todos: "bg-muted text-muted-foreground border-border",
-  };
-
-  return (
-    <span
-      className={[
-        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border capitalize",
-        styles[st] || styles.pendente,
-      ].join(" ")}
-      title={st}
-    >
-      {st.replace(/_/g, " ")}
-    </span>
   );
 }
 

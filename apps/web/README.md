@@ -168,10 +168,9 @@ A project is underway to refactor UI components to align with the **KLASSE Desig
 
 ### Recent Changes
 
-- **`NoticePanel` Component (`/secretaria/dashboard`)**:
-  - The "Avisos Gerais" (General Notices) widget on the Secretaria dashboard has been refactored.
-  - The old, yellow-tinted card has been replaced by the new `NoticePanel`, `NoticeItem`, and `EmptyNotices` components.
-  - **Standard**: Uses a clean white surface (`bg-white`), with `amber` as a subtle accent for icons and borders, moving away from distracting background colors.
+- **`NoticePanel` Component (`components/dashboard/NoticePanel.tsx`)**:
+  - The Secretaria dashboard consumes the canonical `@/components/dashboard` widget; obsolete copies under `components/secretaria/dashboard` were removed.
+  - Loading/empty states use the shared dashboard primitives and semantic `bg-card` / `bg-muted` colors, with gold reserved for interaction.
 
 - **`DashboardHeader` Component**:
   - A standardized internal page header, `DashboardHeader`, has been introduced.
