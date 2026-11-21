@@ -35,7 +35,15 @@ export function ModalShell({
         closeButton={false}
         overlayClassName="bg-black/40"
         onPointerDownOutside={(event) => event.preventDefault()}
-        className="fixed inset-0 left-0 top-0 z-50 flex h-[100dvh] w-full max-h-none max-w-none translate-x-0 translate-y-0 items-center justify-center gap-0 border-0 bg-transparent p-4 shadow-none sm:p-6"
+        onEscapeKeyDown={(event) => {
+          // Escape from the nested Balcão must be handled by its draft-aware close guard.
+          if ((event.target as HTMLElement | null)?.closest?.("[data-balcao-workspace-modal]")) {
+            event.preventDefault();
+          }
+        }}
+        // DialogContent defaults to transform-based animations: even a zero transform
+        // creates a containing block and can clip nested fixed workspaces on mobile.
+        className="fixed inset-0 left-0 top-0 z-50 flex h-[100dvh] w-full max-h-none max-w-none !transform-none !animate-none items-center justify-center gap-0 border-0 bg-transparent p-4 shadow-none sm:p-6"
       >
         <section
           className={[
