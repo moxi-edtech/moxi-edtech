@@ -1,5 +1,6 @@
-import { useId } from 'react';
+import * as React from 'react';
 import type { SelectHTMLAttributes, ReactNode } from 'react';
+import { fieldControlClass, fieldErrorClass, fieldFocusClass, fieldLabelClass } from './fieldStyles';
 
 type Option = { value: string; label: string };
 type Props = SelectHTMLAttributes<HTMLSelectElement> & {
@@ -9,15 +10,17 @@ type Props = SelectHTMLAttributes<HTMLSelectElement> & {
 };
 
 export function Select({ label, id, error, className = '', options, children, ...props }: Props) {
-  const reactId = useId();
+  const reactId = React.useId();
   const selectId = id ?? reactId;
+  const errorId = `${selectId}-error`;
+  const describedBy = [props["aria-describedby"], error ? errorId : null].filter(Boolean).join(" ") || undefined;
   const selectEl = (
     <select
       id={selectId}
-      className={`w-full rounded-xl border bg-card p-3 text-sm text-foreground outline-none transition-colors focus:ring-4 ${
-        error ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' : 'border-border focus:border-amber focus:ring-amber/20'
-      } ${className}`}
       {...props}
+      aria-invalid={error ? true : props["aria-invalid"]}
+      aria-describedby={describedBy}
+      className={`${fieldControlClass} ${error ? fieldErrorClass : fieldFocusClass} ${className}`}
     >
       {options && options.length > 0
         ? options.map((opt) => (
@@ -29,13 +32,15 @@ export function Select({ label, id, error, className = '', options, children, ..
     </select>
   );
 
-  if (!label) return selectEl;
+  if (!label && !error) return selectEl;
+
+  if (!label) return <div className="w-full">{selectEl}{error && <p id={errorId} className="mt-1.5 text-sm text-red-600 dark:text-red-400">{error}</p>}</div>;
 
   return (
     <div className="w-full">
-      <label htmlFor={selectId} className="mb-1.5 block text-sm font-medium text-foreground">{label}</label>
+      <label htmlFor={selectId} className={fieldLabelClass}>{label}</label>
       {selectEl}
-      {error && <p className="mt-1.5 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p id={errorId} className="mt-1.5 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }
