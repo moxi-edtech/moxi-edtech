@@ -2,21 +2,12 @@
 
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
+import { ProfessorAtividadeDetalheSkeleton } from "@/components/professor/ProfessorLoadingSkeletons";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { usePathname } from "next/navigation";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  Clock,
-  UserCheck,
-  AlertCircle,
-  FileText,
-  Send,
-  Layers,
-  Award
-} from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 
 type Submission = {
   id: string;
@@ -146,30 +137,28 @@ export default function ProfessorAtividadeDetalhesPage({
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-24">
-      <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-background text-foreground pb-24">
+      <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
         
-        <div className="flex items-center gap-3">
-          <Link
-            href={professorHref("/professor/atividades")}
-            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all shadow-2xs"
-          >
-            <ArrowLeft size={18} />
-          </Link>
-          <span className="text-xs font-black uppercase tracking-widest text-slate-400">Voltar para Actividades</span>
-        </div>
+        <Link
+          href={professorHref("/professor/atividades")}
+          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+        >
+          <ArrowLeft size={18} aria-hidden="true" />
+          Voltar às actividades
+        </Link>
 
         {loading ? (
-          <div className="h-64 animate-pulse rounded-3xl bg-white border border-slate-200" />
+          <ProfessorAtividadeDetalheSkeleton />
         ) : !activity ? (
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center">
+          <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
             <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
-            <h3 className="text-lg font-black text-slate-900">Actividade não encontrada</h3>
+            <h3 className="text-lg font-black text-foreground">Actividade não encontrada</h3>
           </div>
         ) : (
           <>
             {/* HERO CARD DA ACTIVIDADE */}
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -190,9 +179,9 @@ export default function ProfessorAtividadeDetalhesPage({
                 <button
                   type="button"
                   onClick={handleTogglePublish}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  className={`min-h-11 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                     activity.status === "publicada"
-                      ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      ? "bg-muted text-foreground hover:bg-muted"
                       : "klasse-portal-cta shadow-sm"
                   }`}
                 >
@@ -201,7 +190,7 @@ export default function ProfessorAtividadeDetalhesPage({
                 {activity.status === "rascunho" && (
                   <Link
                     href={professorHref(`/professor/atividades?edit=${id}`)}
-                    className="px-4 py-2.5 rounded-xl text-xs font-black border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    className="inline-flex min-h-11 items-center px-4 py-2.5 rounded-xl border border-border text-xs font-black text-foreground hover:bg-muted/50"
                   >
                     Editar rascunho
                   </Link>
@@ -209,32 +198,32 @@ export default function ProfessorAtividadeDetalhesPage({
               </div>
 
               {activity.instrucoes && (
-                <p className="text-xs font-medium text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                <p className="text-xs font-medium text-muted-foreground bg-muted/50 p-3 rounded-2xl border border-border">
                   {activity.instrucoes}
                 </p>
               )}
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Questões</span>
-                  <p className="text-base font-black text-slate-900 mt-0.5">
+                <div className="rounded-2xl border border-border bg-muted/50 p-3">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Questões</span>
+                  <p className="text-base font-black text-foreground mt-0.5">
                     {activity.atividade_questoes?.length ?? 0}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Nota Máxima</span>
+                <div className="rounded-2xl border border-border bg-muted/50 p-3">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Nota Máxima</span>
                   <p className="text-base font-black text-emerald-700 mt-0.5">
                     {activity.nota_maxima} pts
                   </p>
                 </div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Tentativas</span>
-                  <p className="text-base font-black text-slate-900 mt-0.5">
+                <div className="rounded-2xl border border-border bg-muted/50 p-3">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Tentativas</span>
+                  <p className="text-base font-black text-foreground mt-0.5">
                     {activity.tentativas_permitidas} máx
                   </p>
                 </div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Prazo</span>
+                <div className="rounded-2xl border border-border bg-muted/50 p-3">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Prazo</span>
                   <p className="text-base font-black text-amber-700 mt-0.5">
                     {activity.prazo ? new Date(activity.prazo).toLocaleDateString() : "Sem Prazo"}
                   </p>
@@ -243,22 +232,22 @@ export default function ProfessorAtividadeDetalhesPage({
             </div>
 
             {/* TABELA DE SUBMISSÕES DOS ALUNOS */}
-            <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden space-y-3">
-              <div className="p-4 border-b border-slate-200/80 bg-slate-50/80 flex items-center justify-between">
+            <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden space-y-3">
+              <div className="p-4 border-b border-border bg-muted/50 flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase">Entregas dos Alunos ({entregas.length})</h3>
-                  <p className="text-xs text-slate-500 font-medium">Acompanhe as submissões em tempo real</p>
+                  <h3 className="text-sm font-black text-foreground uppercase">Entregas dos Alunos ({entregas.length})</h3>
+                  <p className="text-xs text-muted-foreground font-medium">Acompanhe as submissões em tempo real</p>
                 </div>
               </div>
 
               {entregas.length === 0 ? (
-                <div className="p-8 text-center text-xs font-semibold text-slate-500">
+                <div className="p-8 text-center text-xs font-semibold text-muted-foreground">
                   Nenhuma entrega submetida até ao momento.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-wider border-b border-slate-200">
+                    <thead className="bg-muted/50 text-muted-foreground font-black uppercase text-[10px] tracking-wider border-b border-border">
                       <tr>
                         <th className="px-4 py-3">Aluno</th>
                         <th className="px-4 py-3 text-center">Tentativa</th>
@@ -270,11 +259,11 @@ export default function ProfessorAtividadeDetalhesPage({
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {entregas.map((ent) => (
-                        <tr key={ent.id} className="hover:bg-slate-50/80">
-                          <td className="px-4 py-3 font-bold text-slate-900">
+                        <tr key={ent.id} className="hover:bg-muted/50">
+                          <td className="px-4 py-3 font-bold text-foreground">
                             {ent.alunos?.nome || ent.alunos?.nome_completo || `Aluno ID: ${ent.aluno_id.slice(0, 8)}`}
                           </td>
-                          <td className="px-4 py-3 text-center font-mono font-bold text-slate-600">
+                          <td className="px-4 py-3 text-center font-mono font-bold text-muted-foreground">
                             #{ent.tentativa}
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -284,7 +273,7 @@ export default function ProfessorAtividadeDetalhesPage({
                               {ent.estado}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-center font-black text-slate-900">
+                          <td className="px-4 py-3 text-center font-black text-foreground">
                             {ent.nota !== null && ent.nota !== undefined ? `${ent.nota} pts` : "—"}
                           </td>
                           <td className="px-4 py-3 min-w-[260px]">
@@ -297,13 +286,13 @@ export default function ProfessorAtividadeDetalhesPage({
                                   value={gradingId === ent.id ? gradeValue : ent.nota ?? ""}
                                   onChange={(event) => { setGradingId(ent.id); setGradeValue(event.target.value); }}
                                   placeholder="Nota"
-                                  className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                                  className="w-20 rounded-lg border border-border px-2 py-1 text-xs"
                                 />
                                 <input
                                   value={gradingId === ent.id ? feedbackValue : ent.feedback ?? ""}
                                   onChange={(event) => { setGradingId(ent.id); setFeedbackValue(event.target.value); }}
                                   placeholder="Feedback opcional"
-                                  className="min-w-[130px] flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                                  className="min-w-[130px] flex-1 rounded-lg border border-border px-2 py-1 text-xs"
                                 />
                                 <button
                                   type="button"
@@ -314,9 +303,9 @@ export default function ProfessorAtividadeDetalhesPage({
                                   Guardar
                                 </button>
                               </div>
-                            ) : ent.feedback ? <span className="text-slate-500">{ent.feedback}</span> : <span className="text-slate-400">—</span>}
+                            ) : ent.feedback ? <span className="text-muted-foreground">{ent.feedback}</span> : <span className="text-muted-foreground">—</span>}
                           </td>
-                          <td className="px-4 py-3 text-right font-medium text-slate-400">
+                          <td className="px-4 py-3 text-right font-medium text-muted-foreground">
                             {ent.submitted_at ? new Date(ent.submitted_at).toLocaleString() : "Em andamento"}
                           </td>
                         </tr>

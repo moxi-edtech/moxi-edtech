@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { ArrowLeft, QrCode, RefreshCw, Save, Smartphone } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { fieldControlClass, fieldFocusClass } from "@/components/ui/fieldStyles";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -174,22 +175,22 @@ export default function ComunicacaoConfigPage({ params }: Props) {
         ? "bg-amber-50 text-amber-700 border-amber-200"
         : formData.status === "error" || formData.status === "disconnected"
           ? "bg-red-50 text-red-700 border-red-200"
-          : "bg-slate-100 text-slate-600 border-slate-200";
+          : "bg-muted text-muted-foreground border-border";
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-muted/50">
       <div className={`${PORTAL_PAGE_INSET} space-y-8`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link
               href={base}
-              className="group inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-colors"
+              className="group inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-muted-foreground transition-colors"
             >
               <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />
               Voltar ao painel
             </Link>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">Comunicação</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground">Comunicação</h1>
+            <p className="text-sm text-muted-foreground">
               Configure o canal WAHA da escola e acompanhe o QR Code de pareamento da sessão.
             </p>
           </div>
@@ -207,15 +208,15 @@ export default function ComunicacaoConfigPage({ params }: Props) {
         )}
 
         {!experimentalEnabled && !loading && (
-          <Card className="border-slate-200 bg-slate-100/80">
-            <CardContent className="py-4 text-sm text-slate-700">
+          <Card className="border-border bg-muted/80">
+            <CardContent className="py-4 text-sm text-foreground">
               O kill switch `WAHA_EXPERIMENTAL_ENABLED` está desligado no servidor. A configuração continua acessível, mas o QR e os envios automáticos podem permanecer indisponíveis.
             </CardContent>
           </Card>
         )}
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <Card className="border-slate-200">
+          <Card className="border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Smartphone className="h-5 w-5 text-emerald-600" />
@@ -236,20 +237,22 @@ export default function ComunicacaoConfigPage({ params }: Props) {
                 <>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Nome de exibição</label>
+                      <label htmlFor="waha-display-name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nome de exibição</label>
                       <input
+                        id="waha-display-name"
                         value={formData.displayName}
                         onChange={(e) => setFormData((prev) => ({ ...prev, displayName: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white"
+                        className={`${fieldControlClass} ${fieldFocusClass}`}
                         placeholder="WAHA Experimental"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Estado</label>
+                      <label htmlFor="waha-provider-status" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Estado</label>
                       <select
+                        id="waha-provider-status"
                         value={formData.status}
                         onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as ProviderStatus }))}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white"
+                        className={`${fieldControlClass} ${fieldFocusClass}`}
                       >
                         {STATUS_OPTIONS.map((status) => (
                           <option key={status} value={status}>
@@ -261,40 +264,42 @@ export default function ComunicacaoConfigPage({ params }: Props) {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Session name</label>
+                    <label htmlFor="waha-session-name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Identificador da sessão</label>
                     <input
+                      id="waha-session-name"
                       value={sessionName}
                       disabled
-                      className="w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 font-mono text-xs text-slate-600"
+                      className={`${fieldControlClass} font-mono text-xs`}
                     />
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       O identificador da sessão é mantido no servidor para evitar conflito entre escolas.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Telefone de fallback</label>
+                    <label htmlFor="waha-fallback-phone" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Telefone de fallback</label>
                     <input
+                      id="waha-fallback-phone"
                       value={formData.fallbackPhone}
                       onChange={(e) => setFormData((prev) => ({ ...prev, fallbackPhone: e.target.value }))}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-800 outline-none transition focus:border-emerald-300 focus:bg-white"
+                      className={`${fieldControlClass} ${fieldFocusClass}`}
                       placeholder="+244..."
                     />
                   </div>
 
-                  <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 md:grid-cols-2">
+                  <div className="grid gap-3 rounded-xl border border-border bg-muted/50 p-4 text-sm text-muted-foreground md:grid-cols-2">
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Limite diário</div>
-                      <div className="mt-1 font-semibold text-slate-900">{provider?.daily_limit ?? 50} mensagens</div>
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Limite diário</div>
+                      <div className="mt-1 font-semibold text-foreground">{provider?.daily_limit ?? 50} mensagens</div>
                     </div>
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Limite mensal</div>
-                      <div className="mt-1 font-semibold text-slate-900">{provider?.monthly_limit ?? 500} mensagens</div>
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Limite mensal</div>
+                      <div className="mt-1 font-semibold text-foreground">{provider?.monthly_limit ?? 500} mensagens</div>
                     </div>
                   </div>
 
                   <div className="flex justify-end">
-                    <Button onClick={saveConfig} disabled={saving} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                    <Button onClick={saveConfig} disabled={saving} className="min-h-11 gap-2 bg-klasse-gold text-klasse-green-900 hover:brightness-95 focus-visible:ring-4 focus-visible:ring-klasse-gold/20">
                       <Save className="h-4 w-4" />
                       {saving ? "Salvando..." : "Salvar configuração"}
                     </Button>
@@ -304,10 +309,10 @@ export default function ComunicacaoConfigPage({ params }: Props) {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200">
+          <Card className="border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <QrCode className="h-5 w-5 text-slate-700" />
+                <QrCode className="h-5 w-5 text-foreground" />
                 QR Code da Sessão
               </CardTitle>
               <CardDescription>
@@ -322,20 +327,20 @@ export default function ComunicacaoConfigPage({ params }: Props) {
                 </Button>
               </div>
 
-              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6">
+              <div className="min-w-0 rounded-xl border border-dashed border-border bg-muted/50 p-3 sm:p-6">
                 {loading ? (
                   <div className="flex min-h-[280px] items-center justify-center">
-                    <Skeleton className="h-56 w-56 rounded-2xl" />
+                    <Skeleton className="aspect-square h-auto w-full max-w-56 rounded-xl" />
                   </div>
                 ) : qrDataUrl ? (
                   <div className="flex flex-col items-center gap-4">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrDataUrl} alt="QR Code WAHA" className="h-64 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm" />
-                    <p className="text-center text-xs text-slate-500">
+                    <img src={qrDataUrl} alt="QR Code WAHA" className="aspect-square h-auto w-full max-w-64 rounded-xl border border-border bg-card p-3 shadow-sm" />
+                    <p className="text-center text-xs text-muted-foreground">
                       Abra o WhatsApp no telefone da escola e faça o pareamento pelo QR acima.
                     </p>
                     {qrRawStatus && (
-                      <p className="rounded-full bg-slate-100 px-3 py-1 font-mono text-[10px] text-slate-500">
+                      <p className="rounded-full bg-muted px-3 py-1 font-mono text-[10px] text-muted-foreground">
                         WAHA: {qrRawStatus}
                       </p>
                     )}
@@ -343,11 +348,11 @@ export default function ComunicacaoConfigPage({ params }: Props) {
                 ) : (
                   <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-center">
                     <QrCode className="h-10 w-10 text-slate-300" />
-                    <p className="max-w-sm text-sm text-slate-500">
+                    <p className="max-w-sm text-sm text-muted-foreground">
                       {qrMessage || "Nenhum QR pendente no momento. Se a sessão já estiver ligada, o WAHA pode não expor um QR activo."}
                     </p>
                     {qrRawStatus && (
-                      <p className="rounded-full bg-white px-3 py-1 font-mono text-[10px] text-slate-500">
+                      <p className="rounded-full bg-card px-3 py-1 font-mono text-[10px] text-muted-foreground">
                         WAHA: {qrRawStatus}
                       </p>
                     )}

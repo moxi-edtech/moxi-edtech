@@ -41,7 +41,7 @@ const ResumoCaixaSecretaria = dynamic(
   () => import("@/components/secretaria/ResumoCaixaSecretaria").then((mod) => mod.ResumoCaixaSecretaria),
   {
     ssr: false,
-    loading: () => <div className="h-20 rounded-xl border border-slate-100 bg-white animate-pulse" />,
+    loading: () => <div role="status" aria-label="A carregar resumo de caixa" className="h-20 rounded-xl border border-border bg-card motion-safe:animate-pulse" />,
   }
 );
 
@@ -49,7 +49,7 @@ const MinhaProdutividade = dynamic(
   () => import("@/components/secretaria/MinhaProdutividade").then((mod) => mod.MinhaProdutividade),
   {
     ssr: false,
-    loading: () => <div className="h-40 bg-slate-50 animate-pulse rounded-2xl" />,
+    loading: () => <div role="status" aria-label="A carregar produtividade" className="h-40 rounded-xl bg-muted motion-safe:animate-pulse" />,
   }
 );
 
@@ -84,7 +84,7 @@ const BalcaoWorkspace = dynamic(
 );
 
 function ModalLoading() {
-  return <div className="h-48 rounded-xl bg-slate-50 animate-pulse" />;
+  return <div role="status" aria-label="A carregar formulário" className="h-48 rounded-xl bg-muted motion-safe:animate-pulse" />;
 }
 
 type BalcaoModal =
@@ -434,7 +434,7 @@ export function Dashboard({
             </div>
 
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
               <SecaoLabel>Busca rápida para atendimento</SecaoLabel>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <div className="flex-1 min-w-[280px]">
@@ -505,7 +505,7 @@ export function Dashboard({
                     }}
                   />
                 ) : (
-                  <div className="h-40 bg-slate-50 animate-pulse rounded-2xl" />
+                  <div className="h-40 rounded-xl bg-muted motion-safe:animate-pulse" />
                 )}
 
                 <div>
