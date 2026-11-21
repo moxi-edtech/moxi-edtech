@@ -7,19 +7,20 @@ import { formatDate, formatDateTime } from "../../src/lib/formatters";
 const readComponent = (name: string) =>
   readFileSync(new URL(`../../src/components/secretaria/${name}.tsx`, import.meta.url), "utf8");
 
-test("class list keeps tenant scope and suppresses obsolete school responses", () => {
+test("class list preserves server-side cursor from #418 and masks stale tenant data", () => {
   const code = readComponent("ClassesListClient");
-  assert.match(code, /buildEscolaUrl\(escolaId, "\/classes"\)/);
+  assert.match(code, /buildEscolaUrl\(escolaId, "\/classes", params\)/);
   assert.match(code, /AbortController/);
   assert.match(code, /controller\.signal\.aborted/);
   assert.match(code, /loadedSchoolId !== escolaId/);
-  assert.match(code, /OperationalTableFilterBar/);
-  assert.match(code, /OperationalTablePagination/);
+  assert.match(code, /setLoadedSchoolId\(escolaId\)/);
+  assert.match(code, /json\.next_cursor/);
+  assert.match(code, /fetchClasses\(nextCursor\)/);
+  assert.match(code, /limit: "50"/);
   assert.match(code, /OperationalTableSkeleton/);
   assert.match(code, /OperationalTableEmptyState/);
   assert.match(code, /OperationalTableErrorState/);
   assert.match(code, /scope="col"/);
-  assert.match(code, /onQueryChange=\{\(value\) => \{ setSearch\(value\); setPage\(1\); \}\}/);
   assert.doesNotMatch(code, /text-moxinexa-navy|bg-teal-600|rounded-md/);
 });
 
