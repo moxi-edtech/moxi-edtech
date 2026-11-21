@@ -81,6 +81,7 @@ export default function ImportacoesListClient() {
     } catch (cause) {
       if (controller.signal.aborted) return;
       setError(cause instanceof Error ? cause.message : "Falha ao carregar importações.");
+      setLoadedSchoolId(escolaId);
     } finally {
       if (!controller.signal.aborted) {
         setLoading(false);
