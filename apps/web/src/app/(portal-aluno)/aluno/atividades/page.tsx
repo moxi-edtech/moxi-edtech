@@ -161,7 +161,7 @@ export default function AlunoAtividadesPage() {
                     href={`/aluno/atividades/${act.id}${query}`}
                     className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 self-start rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 sm:self-center  ${
                       isSubmetida
-                        ? "bg-muted text-foreground hover:bg-slate-200"
+                        ? "bg-muted text-foreground hover:bg-muted/80"
                         : isIniciada
                         ? "klasse-portal-cta shadow-sm"
                         : isExpirado
