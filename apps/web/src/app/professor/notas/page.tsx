@@ -828,8 +828,8 @@ function ProfessorNotasContent() {
   const notasBloqueadas = !gradeAvailability.canWrite
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-6xl mx-auto px-4 py-5 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="min-h-screen bg-background">
+      <div className={`${PORTAL_PAGE_INSET} space-y-4 sm:space-y-6`}>
         <div>
           <DashboardHeader
             title="Lançamento de Notas"

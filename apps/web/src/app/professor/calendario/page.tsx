@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { ProfessorCalendarSkeleton } from "@/components/professor/ProfessorLoadingSkeletons";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
@@ -215,8 +216,8 @@ export default function ProfessorCalendarioPage() {
   }, [items, showPastEvents, todayIso]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:p-6">
+    <div className="min-h-screen bg-background">
+      <div className={`${PORTAL_PAGE_INSET} flex flex-col gap-4 sm:gap-6`}>
         <DashboardHeader
           title="Calendário Académico"
           description="Eventos oficiais, marcos lectivos e janelas académicas sincronizadas com o portal da escola."

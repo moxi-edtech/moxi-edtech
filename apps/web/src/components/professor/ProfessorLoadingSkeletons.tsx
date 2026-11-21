@@ -191,3 +191,37 @@ export function ProfessorPlanosListSkeleton() {
     </div>
   );
 }
+
+/** Layout-equivalent placeholders shared by teacher workflows; no student data is fabricated. */
+export function ProfessorIntervencoesSkeleton() {
+  return (
+    <div role="status" aria-busy="true" aria-label="A carregar intervenções" className="space-y-3">
+      <span className="sr-only">A carregar intervenções</span>
+      {[0, 1, 2].map((item) => (
+        <div key={item} aria-hidden="true" className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm motion-safe:animate-pulse sm:p-5">
+          <div className="flex items-center justify-between gap-3"><ProfessorSkeletonBone className="h-6 w-28 rounded-full" /><ProfessorSkeletonBone className="h-3 w-20" /></div>
+          <div className="space-y-2"><ProfessorSkeletonBone className="h-4 w-48 max-w-full" /><ProfessorSkeletonBone className="h-3 w-36" /></div>
+          <div className="flex flex-wrap justify-between gap-3 border-t border-border pt-3"><ProfessorSkeletonBone className="h-3 w-24" /><ProfessorSkeletonBone className="h-11 w-full rounded-xl sm:w-36" /></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function ProfessorAtividadeDetalheSkeleton() {
+  return (
+    <div role="status" aria-busy="true" aria-label="A carregar actividade" className="space-y-4">
+      <span className="sr-only">A carregar actividade</span>
+      <section aria-hidden="true" className="space-y-5 rounded-xl border border-border bg-card p-4 shadow-sm motion-safe:animate-pulse sm:p-6">
+        <div className="flex flex-wrap justify-between gap-3"><ProfessorSkeletonBone className="h-6 w-28 rounded-full" /><ProfessorSkeletonBone className="h-11 w-40 rounded-xl" /></div>
+        <ProfessorSkeletonBone className="h-6 w-64 max-w-full" />
+        <ProfessorSkeletonBone className="h-3 w-full" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[0,1,2,3].map((item) => <ProfessorSkeletonBone key={item} className="h-20 w-full rounded-xl" />)}</div>
+      </section>
+      <section aria-hidden="true" className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm motion-safe:animate-pulse sm:p-6">
+        <ProfessorSkeletonBone className="h-5 w-48 max-w-full" />
+        {[0,1].map((item) => <ProfessorSkeletonBone key={item} className="h-14 w-full rounded-xl" />)}
+      </section>
+    </div>
+  );
+}
