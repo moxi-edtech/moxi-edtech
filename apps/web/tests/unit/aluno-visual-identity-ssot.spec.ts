@@ -94,7 +94,7 @@ test("identidade preserva QR e offline; actividades mantêm acesso ao rascunho",
   const home = source("components/aluno/tabs/TabHome.tsx");
   assert.match(digital, /<QRCode/);
   assert.match(digital, /data\.verification_url/);
-  assert.match(digital, /localStorage\.getItem\(cacheKey\)/);
+  assert.match(digital, /readIdentityCardCache\(localStorage, cacheKey\)/);
   assert.match(digital, /aria-pressed=\{activeTab === "card"\}/);
   assert.match(activities, /Retomar Rascunho/);
   assert.match(activities, /Iniciar Actividade/);
@@ -152,12 +152,12 @@ test("cartão offline isola contas e escolas e cancela fetch anterior ao trocar 
   assert.match(card, /useAlunoPortalScope\(\)/);
   assert.match(card, /scope\.userId/);
   assert.match(card, /scope\.escolaId/);
-  assert.match(card, /scope && studentId/);
+  assert.match(card, /identityCardCacheKey\(/);
   assert.doesNotMatch(card, /studentId \?\? "default"/);
-  assert.match(card, /localStorage\.removeItem/);
+  assert.match(card, /pruneIdentityCardCache\(localStorage\)/);
   assert.match(card, /new AbortController\(\)/);
   assert.match(card, /setData\(null\)/);
   assert.match(card, /return \(\) => controller\.abort\(\)/);
-  assert.match(card, /cacheKey \? localStorage\.getItem\(cacheKey\) : null/);
+  assert.match(card, /saveIdentityCardCache\(localStorage, cacheKey, json\.identidade\)/);
   assert.doesNotMatch(card, /const cacheKey = `\$\{STORAGE_KEY\}\$\{studentId \|\| "default"\}`/);
 });

@@ -44,3 +44,12 @@ Esta entrega modifica **apenas apresentação de React e classes Tailwind**, sem
 - Os registos locais do formato anterior são eliminados por não permitirem comprovar a escola e a conta. **Na primeira utilização após a atualização, o cartão necessita de acesso online para reconstituir o cache offline de forma isolada.** O QR e a apresentação continuam disponíveis offline depois desse primeiro carregamento.
 - A separação por chave evita reutilização acidental entre sessões, mas **não cifra** os dados guardados no navegador. Em dispositivos partilhados, a retenção de dados pessoais offline continua a exigir política específica; não tratar localStorage como armazenamento confidencial.
 - Regressões adicionadas: helper contextual com isolamento de parâmetros, contrato de mapeamento `atividadeId`, emissão e recuperação offline com `AbortController`, sem suprimir ações de guardar/submeter.
+
+## Política de retenção offline e limpeza no logout
+
+- A cache local do cartão passa a usar envelope **v3**, TTL máximo de **24 horas** e é invalidada antecipadamente quando expira a validade do documento. Registos v2 e legados são purgados na primeira utilização.
+- Apenas o conjunto mínimo de dados para apresentar o QR/identificação é guardado. O número do BI, fotografias e atributos adicionais da API não são persistidos offline.
+- A chave exige conta autenticada, escola e educando explícito. Sem parâmetro `aluno`, o cartão continua disponível online, mas não fica disponível offline.
+- O botão global **Sair** limpa as caches locais e de sessão antes de revogar a sessão, além da cache do Service Worker e IndexedDB já existentes. Um evento `SIGNED_OUT` ou troca de conta `SIGNED_IN` também limpa caches, incluindo outras abas.
+- LocalStorage não é criptografado. A funcionalidade offline é limitada à janela de retenção e exige uma sessão atual validada pelo layout do portal; não garante revogação imediata num dispositivo que permanece offline. Para maior segurança deve-se avaliar armazenamento cifrado específico da plataforma numa iteração futura.
+- Retenção da identidade no browser **não** modifica políticas legais de retenção do histórico fiscal nem documentos originais armazenados no servidor.

@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Bell, BookOpen, FileText, Home, Wallet, Clock, IdCard, Settings, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { AlunoHeader } from "@/components/aluno/layout/AlunoHeader";
+import { clearIdentityCardCache } from "@/lib/offline/identity-card-cache";
 import { AlunoPortalScopeContext } from "@/components/aluno/AlunoPortalScope";
 import { AlunoBottomNav } from "@/components/aluno/layout/AlunoBottomNav";
 import { NetworkStatus } from "@/components/aluno/layout/NetworkStatus";
@@ -55,6 +56,8 @@ export default function AlunoLayoutClient({
   useEffect(() => {
     const { data: { subscription } } = createClient().auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT" || (event === "SIGNED_IN" && session?.user.id !== userId)) {
+        // Também cobre logout ou troca de conta em outra aba do mesmo navegador.
+        clearIdentityCardCache();
         router.replace("/redirect");
       }
     });
