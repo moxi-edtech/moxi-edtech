@@ -237,7 +237,7 @@ export function CartaoEstudante() {
         <div className="w-full max-w-[340px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
           <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center shadow-sm sm:p-6">
             
-            <div className="rounded-xl border border-border bg-white p-5">
+            <div className="rounded-xl border border-border bg-card p-5">
               <QRCode
                 value={data.verification_url}
                 size={180}
