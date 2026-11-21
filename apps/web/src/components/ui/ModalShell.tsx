@@ -34,11 +34,16 @@ export function ModalShell({
         closeButton={false}
         overlayClassName="bg-black/40"
         onPointerDownOutside={(event) => event.preventDefault()}
-        className={[
-          "flex w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)] min-h-0 flex-col gap-0 overflow-hidden rounded-2xl border-border bg-card p-0 shadow-xl sm:rounded-2xl",
-          size === "wide" ? "max-w-7xl" : "max-w-3xl",
-        ].join(" ")}
+        // Keep the focus scope full-viewport: nested Balcão workspaces use
+        // position:fixed and must not be clipped by a transformed dialog card.
+        className="fixed inset-0 left-0 top-0 z-50 flex h-[100dvh] w-full max-h-none max-w-none translate-x-0 translate-y-0 items-center justify-center gap-0 border-0 bg-transparent p-4 shadow-none sm:p-6"
       >
+        <section
+          className={[
+            "flex w-full max-h-[calc(100dvh-2rem)] min-h-0 flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-card shadow-xl",
+            size === "wide" ? "max-w-7xl" : "max-w-3xl",
+          ].join(" ")}
+        >
         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-4 py-4 sm:px-6">
           <div className="min-w-0">
             <DialogTitle className="text-lg font-semibold text-foreground">{title}</DialogTitle>
@@ -56,6 +61,7 @@ export function ModalShell({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">{children}</div>
         {footer ? <div className="shrink-0 border-t border-border bg-muted px-4 py-4 sm:px-6">{footer}</div> : null}
+        </section>
       </DialogContent>
     </Dialog>
   );
