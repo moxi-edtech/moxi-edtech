@@ -1,3 +1,5 @@
+import React from "react";
+
 /**
  * Placeholders alinhados com a estrutura real do Portal do Professor.
  * Partilham os mesmos breakpoints, grids e raios dos componentes carregados.
