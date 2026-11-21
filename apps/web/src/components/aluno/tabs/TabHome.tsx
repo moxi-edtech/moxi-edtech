@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { buildStudentPortalHref } from "@/lib/navigation";
 import { usePortalSWR } from "@/components/aluno/usePortalSWR";
 import { RematriculaBanner } from "@/components/aluno/home/RematriculaBanner";
 import { motion } from "framer-motion";
@@ -39,8 +40,11 @@ type AcademicEvent = { id: string; nome: string; data_inicio: string; data_fim: 
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 
 export function TabHome() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
+  const searchValue = searchParams?.toString() ?? "";
+  const href = (target: string) => buildStudentPortalHref(pathname, searchValue, target);
 
   const [status, setStatus] = useState<StatusResponse>(null);
   const [alert, setAlert] = useState<FinanceResponse>(null);
@@ -140,7 +144,7 @@ export function TabHome() {
             {status?.classe} • {status?.turma}
           </p>
         </div>
-        <Link href={`/aluno/perfil${query}`} className="group relative rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" aria-label="Abrir perfil">
+        <Link href={href("/aluno/perfil")} className="group relative rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" aria-label="Abrir perfil">
             <div className="h-11 w-11 overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
                 {status?.foto_url ? (
                     <img src={status.foto_url} alt="Perfil" className="h-full w-full object-cover" />
@@ -212,7 +216,7 @@ export function TabHome() {
                         <p className="text-xs text-muted-foreground">Referente a {alert.mes}</p>
                     </div>
                 </div>
-                <Link href={`/aluno/financeiro${query}`} className="klasse-portal-cta flex min-h-11 min-w-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20">
+                <Link href={href("/aluno/financeiro")} className="klasse-portal-cta flex min-h-11 min-w-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20">
                     <ChevronRight size={20} />
                 </Link>
             </div>
@@ -223,7 +227,7 @@ export function TabHome() {
       <section className="space-y-4">
         <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-semibold  text-foreground">Agenda do Aluno</h3>
-            <Link href={`/aluno/academico${query}`} className="text-xs font-semibold uppercase text-primary underline underline-offset-4">Ver tudo</Link>
+            <Link href={href("/aluno/academico")} className="text-xs font-semibold uppercase text-primary underline underline-offset-4">Ver tudo</Link>
         </div>
         
         <div className="grid gap-3">
@@ -258,7 +262,7 @@ export function TabHome() {
                             Regularize o seu Boletim para visualizar os últimos lançamentos.
                         </p>
                         <Link 
-                            href={`/aluno/documentos${query}`}
+                            href={href("/aluno/documentos")}
                             className="klasse-portal-cta mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
                         >
                             Liberar Agora
@@ -293,13 +297,13 @@ export function TabHome() {
 
       {/* QUICK ACTIONS: Atalhos */}
       <section className="grid grid-cols-3 gap-2">
-        <Link href={`/aluno/identidade${query}`} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-card border border-border shadow-sm  transition">
+        <Link href={href("/aluno/identidade")} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-card border border-border shadow-sm  transition">
             <div className="h-10 w-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
                 <CreditCard size={20} />
             </div>
             <span className="text-xs font-semibold uppercase text-muted-foreground">ID Digital</span>
         </Link>
-        <Link href={`/aluno/horario${query}`} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-card border border-border shadow-sm  transition">
+        <Link href={href("/aluno/horario")} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-card border border-border shadow-sm  transition">
             <div className="h-10 w-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
                 <Calendar size={20} />
             </div>
