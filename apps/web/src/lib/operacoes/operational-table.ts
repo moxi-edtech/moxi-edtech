@@ -17,7 +17,7 @@ export function filterAndPaginateOperationalRows<T>({
 }) {
   const term = normalizeSearch(search.trim());
   const filtered = term
-    ? rows.filter((row) => normalizeSearch(getSearchText(row)).includes(term))
+    ? rows.filter((row) => normalizeSearch(getSearchText(row) ?? "").includes(term))
     : [...rows];
   const safeSize = Number.isFinite(pageSize) ? Math.max(1, Math.min(100, Math.trunc(pageSize))) : 10;
   const totalPages = Math.max(1, Math.ceil(filtered.length / safeSize));
