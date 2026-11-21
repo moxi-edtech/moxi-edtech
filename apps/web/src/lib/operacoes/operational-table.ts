@@ -26,3 +26,13 @@ export function filterAndPaginateOperationalRows<T>({
   const items = filtered.slice((currentPage - 1) * safeSize, currentPage * safeSize);
   return { items, filteredCount: filtered.length, currentPage, totalPages };
 }
+
+
+/** Prevent spreadsheet formula injection in exports containing school-entered text. */
+export function quoteOperationalCsvCell(value: unknown): string {
+  const raw = value == null ? "" : String(value);
+  const safe = typeof value === "string" && /^[\u0000-\u0020]*[=+\-@]/.test(raw)
+    ? "'" + raw
+    : raw;
+  return '"' + safe.replace(/"/g, '""') + '"';
+}
