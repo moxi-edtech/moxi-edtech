@@ -11,6 +11,7 @@ export const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
 
 const PAID = new Set(["pago", "em_dia", "quitado", "liquidado"]);
 const DUE = new Set(["pendente", "em_aberto", "aguardando_pagamento", "aguardando_validacao"]);
+const OVERDUE = new Set(["atrasado", "atrasada", "atraso", "em_atraso", "inadimplente", "vencido", "vencida"]);
 const NO_CHARGE = new Set(["isento", "cancelado", "anulado", "sem_cobranca"]);
 const ACTIVE = new Set(["ativo", "ativa", "confirmado", "confirmada", "matriculado", "matriculada"]);
 const INACTIVE = new Set(["arquivado", "arquivada", "inativo", "inativa", "desistente", "cancelado", "cancelada"]);
@@ -31,7 +32,7 @@ export function getStatusTone(status?: string | null, variant: StatusVariant = "
 
   if (variant === "financeiro") {
     if (PAID.has(key)) return "success";
-    if (key.includes("atras") || key === "inadimplente" || key === "vencido" || key === "vencida") return "danger";
+    if (OVERDUE.has(key)) return "danger";
     if (DUE.has(key)) return "pending";
     if (NO_CHARGE.has(key)) return "neutral";
     // Unknown financial states must never be advertised as paid or overdue.
