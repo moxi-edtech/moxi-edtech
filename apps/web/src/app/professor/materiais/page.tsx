@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
+import { ProfessorResourceEmptyState, ProfessorResourceErrorState, ProfessorResourceGridSkeleton } from "@/components/professor/ProfessorResourceStates";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import {
   BookOpen,
@@ -45,6 +47,7 @@ export default function ProfessorMateriaisPage() {
   const [materiais, setMateriais] = useState<MaterialPedagogico[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -71,7 +74,8 @@ export default function ProfessorMateriaisPage() {
       const mJson = await mRes.json();
       const agendaJson = await agendaRes.json();
 
-      if (mRes.ok && mJson.ok) setMateriais(mJson.items || []);
+      if (!mRes.ok || !mJson?.ok) throw new Error(mJson?.error || "Não foi possível carregar os materiais.");
+      setMateriais(Array.isArray(mJson.items) ? mJson.items : []);
 
       if (agendaRes.ok && agendaJson.items) {
         const pairsMap = new Map<string, Assignment>();
@@ -103,6 +107,12 @@ export default function ProfessorMateriaisPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const filteredMateriais = useMemo(() => {
+    const term = searchTerm.trim().toLocaleLowerCase("pt-AO");
+    if (!term) return materiais;
+    return materiais.filter((item) => `${item.titulo} ${item.descricao ?? ""}`.toLocaleLowerCase("pt-AO").includes(term));
+  }, [materiais, searchTerm]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,8 +172,8 @@ export default function ProfessorMateriaisPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-24">
-      <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-background pb-24 text-foreground">
+      <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
         {/* HEADER DA PÁGINA */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <DashboardHeader
@@ -176,6 +186,7 @@ export default function ProfessorMateriaisPage() {
             ]}
           />
           <button
+            type="button"
             onClick={() => setShowModal(true)}
             className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold shadow-sm transition cursor-pointer self-start md:self-auto"
           >
@@ -184,35 +195,49 @@ export default function ProfessorMateriaisPage() {
           </button>
         </header>
 
-        {/* CARDS DE MATERIAIS */}
+        <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+          <label htmlFor="pesquisa-materiais" className="sr-only">Pesquisar materiais</label>
+          <input
+            id="pesquisa-materiais"
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Pesquisar por título ou descrição"
+            className="min-h-11 w-full rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+          />
+          <p aria-live="polite" className="mt-2 px-1 text-xs text-muted-foreground">
+            {loading ? "A carregar materiais..." : `${filteredMateriais.length} ${filteredMateriais.length === 1 ? "material" : "materiais"}`}
+          </p>
+        </div>
+
+        {/* Cards operacionais: erro e lista vazia são estados distintos. */}
         {loadError ? (
-          <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700"><p className="font-black">Não foi possível carregar os materiais.</p><p className="mt-1">{loadError}</p><button type="button" onClick={() => void loadData()} className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white">Tentar novamente</button></div>
+          <ProfessorResourceErrorState
+            title="Não foi possível carregar os materiais."
+            description={loadError}
+            onRetry={() => void loadData()}
+          />
         ) : loading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-40 rounded-3xl bg-white border border-slate-200" />
-            ))}
-          </div>
-        ) : materiais.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-black text-slate-900">Nenhum material publicado</h3>
-            <p className="text-xs font-medium text-slate-500 max-w-sm mx-auto">
-              Carregue manuais, PDFs ou resumos para auxiliar a aprendizagem dos seus alunos.
-            </p>
-            <button type="button" onClick={() => setShowModal(true)} className="text-xs font-black text-emerald-700 hover:underline">Adicionar primeiro material</button>
-          </div>
+          <ProfessorResourceGridSkeleton label="A carregar materiais pedagógicos" />
+        ) : filteredMateriais.length === 0 ? (
+          <ProfessorResourceEmptyState
+            icon={BookOpen}
+            title={materiais.length === 0 ? "Ainda não existem materiais" : "Nenhum material encontrado"}
+            description={materiais.length === 0
+              ? "Crie um material em rascunho para partilhar recursos com os seus alunos."
+              : "Experimente outro termo ou limpe a pesquisa."}
+            actionLabel={materiais.length === 0 ? "Adicionar primeiro material" : "Limpar pesquisa"}
+            onAction={materiais.length === 0 ? () => setShowModal(true) : () => setSearchTerm("")}
+          />
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {materiais.map((m) => {
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredMateriais.map((m) => {
               const isPublicado = m.status === "publicado";
 
               return (
                 <div
                   key={m.id}
-                  className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-md hover:border-emerald-500/40 transition-all flex flex-col justify-between"
+                  className="rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md hover:border-emerald-500/40 transition-all flex flex-col justify-between"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
@@ -227,16 +252,16 @@ export default function ProfessorMateriaisPage() {
                     </div>
 
                     <div>
-                      <h3 className="font-black text-slate-900 text-base">{m.titulo}</h3>
+                      <h3 className="font-black text-foreground text-base">{m.titulo}</h3>
                       {m.descricao && (
-                        <p className="text-xs text-slate-500 line-clamp-2 mt-1 font-medium">
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1 font-medium">
                           {m.descricao}
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-3 mt-4 flex items-center justify-between gap-2">
+                  <div className="border-t border-border pt-3 mt-4 flex items-center justify-between gap-2">
                     {m.arquivo_url ? (
                       <a
                         href={m.arquivo_url}
@@ -248,7 +273,7 @@ export default function ProfessorMateriaisPage() {
                         <span>Aceder Ficheiro</span>
                       </a>
                     ) : (
-                      <span className="text-xs font-bold text-slate-400">Texto Incorporado</span>
+                      <span className="text-xs font-bold text-muted-foreground">Texto Incorporado</span>
                     )}
 
                     <button
@@ -257,7 +282,7 @@ export default function ProfessorMateriaisPage() {
                       disabled={updatingId === m.id}
                       className={`px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
                         isPublicado
-                          ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          ? "bg-muted text-muted-foreground hover:bg-accent"
                           : "bg-emerald-600 text-white hover:bg-emerald-500"
                       }`}
                     >
@@ -273,12 +298,12 @@ export default function ProfessorMateriaisPage() {
         {/* MODAL NOVO MATERIAL */}
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-            <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4 border border-slate-200">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-base font-black text-slate-900">Novo Material Pedagógico</h3>
+            <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl space-y-4 border border-border">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <h3 className="text-base font-black text-foreground">Novo Material Pedagógico</h3>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-slate-400 hover:text-slate-600 font-bold text-sm"
+                  className="text-muted-foreground hover:text-muted-foreground font-bold text-sm"
                 >
                   ✕
                 </button>
@@ -286,54 +311,54 @@ export default function ProfessorMateriaisPage() {
 
               <form onSubmit={onSubmit} className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-black uppercase text-slate-400">Título do Material</label>
+                  <label className="text-xs font-black uppercase text-muted-foreground">Título do Material</label>
                   <input
                     value={form.titulo}
                     onChange={(e) => setForm({ ...form, titulo: e.target.value })}
                     placeholder="Ex: Manual de Anatomia Humana — Cap. 3"
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-bold text-slate-900 outline-none focus:border-emerald-600"
+                    className="w-full rounded-xl border border-border p-2.5 text-xs font-bold text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-black uppercase text-slate-400">Descrição / Resumo</label>
+                  <label className="text-xs font-black uppercase text-muted-foreground">Descrição / Resumo</label>
                   <textarea
                     rows={2}
                     value={form.descricao}
                     onChange={(e) => setForm({ ...form, descricao: e.target.value })}
                     placeholder="Breve resumo sobre o conteúdo abordado..."
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-medium text-slate-900 outline-none focus:border-emerald-600"
+                    className="w-full rounded-xl border border-border p-2.5 text-xs font-medium text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-black uppercase text-slate-400">Link do Arquivo (PDF / Google Drive / OneDrive)</label>
+                  <label className="text-xs font-black uppercase text-muted-foreground">Link do Arquivo (PDF / Google Drive / OneDrive)</label>
                   <input
                     type="url"
                     value={form.arquivo_url}
                     onChange={(e) => setForm({ ...form, arquivo_url: e.target.value })}
                     placeholder="https://..."
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-mono text-slate-900 outline-none focus:border-emerald-600"
+                    className="w-full rounded-xl border border-border p-2.5 text-xs font-mono text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-black uppercase text-slate-400">Ou Conteúdo em Texto</label>
+                  <label className="text-xs font-black uppercase text-muted-foreground">Ou Conteúdo em Texto</label>
                   <textarea
                     rows={3}
                     value={form.conteudo}
                     onChange={(e) => setForm({ ...form, conteudo: e.target.value })}
                     placeholder="Digite o texto de apoio aqui..."
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-medium text-slate-900 outline-none focus:border-emerald-600"
+                    className="w-full rounded-xl border border-border p-2.5 text-xs font-medium text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   />
                 </div>
 
-                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <div className="flex justify-end gap-2 pt-3 border-t border-border">
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200"
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground bg-muted hover:bg-accent"
                   >
                     Cancelar
                   </button>
