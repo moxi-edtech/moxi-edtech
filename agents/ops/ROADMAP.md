@@ -181,6 +181,86 @@ Uma fase não começa se a anterior não satisfaz os critérios de saída. Sem e
 
 ---
 
+
+---
+
+## FASE 5 — DADOS INSTITUCIONAIS E INTELIGÊNCIA
+**Objectivo:** Transformar operações já governadas em indicadores institucionais reproduzíveis, auditáveis e seguros, sem criar uma segunda autoridade de domínio.
+
+**Critério de entrada:** Fases anteriores necessárias ao domínio medido estão operacionais; fontes críticas têm SSOT identificado; isolamento multi-tenant e autorização server-side permanecem gates obrigatórios.
+
+**Workstream DATA-INT:**
+- `DATA-INT-001` — Inventário de fontes e contrato canónico de dados institucionais.
+- `DATA-INT-002` — Camada agregada de indicadores por escola.
+- `DATA-INT-003` — Proveniência, freshness e qualidade dos indicadores.
+- `DATA-INT-004` — API institucional privada e tenant-aware.
+- `DATA-INT-005` — Baseline e métricas de impacto.
+- `DATA-INT-006` — Contratos futuros de interoperabilidade institucional.
+- `DATA-INT-007` — Validação E2E, regressões, isolamento e performance.
+- `DATA-INT-008` — Benchmark privado de aproveitamento académico.
+- `DATA-INT-009` — Radar académico, progressão, saúde operacional e risco explicável.
+
+**Ordem de dependência:**
+```text
+DATA-INT-001
+→ DATA-INT-002 + DATA-INT-003
+→ DATA-INT-004
+→ DATA-INT-005
+→ DATA-INT-008 + DATA-INT-009
+→ DATA-INT-006
+→ DATA-INT-007
+```
+
+`DATA-INT-006` pode evoluir documentalmente em paralelo, mas nenhuma integração externa entra em produção antes dos gates de autorização, minimização, auditoria e isolamento.
+
+**Princípios não negociáveis:**
+- SSOT de matrícula, RAA, notas, frequência e financeiro continua no domínio de origem.
+- Indicadores são derivados deterministicamente e versionados.
+- IA interpreta indicadores autorizados; não calcula nem altera factos académicos/financeiros.
+- `escola_id` e autorização server-side são obrigatórios nos boundaries institucionais.
+- Dados incompletos não viram zero silenciosamente.
+- Todo indicador crítico expõe `as_of`, fonte/versão, cobertura e estado de qualidade quando aplicável.
+- Nenhum benchmark permite identificação indevida de outra escola ou titular.
+- Partilha externa é desativada por padrão e segue `docs/POLITICA_PARTILHA_INSTITUCIONAL_DADOS.md`.
+
+**Critérios de saída:**
+- [ ] Fontes e SSOT institucionais inventariados e aprovados.
+- [ ] Indicadores críticos têm fórmula, denominador, versão e testes.
+- [ ] Cross-tenant tests negativos verdes.
+- [ ] API institucional não expõe MVs/tabelas internas diretamente ao cliente.
+- [ ] Freshness e degradação são observáveis.
+- [ ] Regressões RAA/rematrícula/financeiro verdes.
+- [ ] Queries críticas respeitam SLAs definidos e têm evidência de `EXPLAIN ANALYZE`.
+- [ ] Baseline de piloto não contém métricas retroativamente inventadas.
+- [ ] Qualquer partilha externa falha fechada sem autorização/base jurídica aplicável.
+
+**KPIs de referência:**
+- 100% dos indicadores críticos com `as_of` e contrato versionado.
+- Zero leitura cross-tenant em testes adversariais.
+- Zero indicador degradado apresentado como confiável.
+- Zero transmissão institucional externa sem registo auditável.
+
+---
+
+## PROGRAMA KLASSE IMPACT — INSTITUCIONAL + PROCUREMENT
+**Natureza:** programa de evidência e go-to-market; não substitui as fases técnicas do produto.
+
+O KLASSE Impact usa a Fase 5 como infraestrutura de mensuração e opera em duas frentes complementares:
+
+### Frente A — Institucional / Impacto
+Piloto, baseline, avaliação, capacitação, governança e evidência verificável. A proposta deve demonstrar eficiência administrativa, qualidade dos dados e capacidade de decisão, sem alegações de impacto não medidas.
+
+### Frente B — Comercial / Procurement
+Capability statement, prontidão documental/técnica, análise de oportunidades, parceiros/consórcios e respostas reutilizáveis de procurement.
+
+**Gate:** evidência comercial não pode ser mais forte que a evidência técnica disponível. Nenhuma proposta pode alegar integração oficial, conformidade, impacto ou parceria institucional não verificada.
+
+**Referências:**
+- `docs/KLASSE_IMPACT_BANCO_MUNDIAL_DUAS_FRENTES.md`
+- `docs/KLASSE_INTELLIGENCE_DIRECAO_PRODUTO.md`
+- `docs/BENCHMARK_APROVEITAMENTO_ACADEMICO.md`
+- `docs/POLITICA_PARTILHA_INSTITUCIONAL_DADOS.md`
+
 ## Referências
 
 - `agents/specs/FEATURES_PRIORITY.json` — critérios de done por item
