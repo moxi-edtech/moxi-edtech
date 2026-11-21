@@ -58,6 +58,9 @@ VALUES(gen_random_uuid(),'20000000-0000-4000-8000-000000000001',
 '80000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000001',
 '60000000-0000-4000-8000-000000000001','elegivel');
 
+GRANT INSERT, SELECT, UPDATE ON public.matriculas TO authenticated;
+GRANT SELECT ON public.turmas, public.classes, public.escolas TO authenticated;
+
 -- Candidate is installed only after historical source records are prepared.
 \ir ../../../migrations/20271117160000_guard_enrollment_prior_year_progression.sql
 SET ROLE authenticated;
