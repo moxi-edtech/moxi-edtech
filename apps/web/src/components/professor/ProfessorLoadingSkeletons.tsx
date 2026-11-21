@@ -165,7 +165,7 @@ function LessonPlanFieldSkeleton({ multiline = false }: { multiline?: boolean })
   );
 }
 
-export function ProfessorLessonPlansSkeleton() {
+export function ProfessorLessonPlansSkeleton({ fieldCount = 9 }: { fieldCount?: number }) {
   return (
     <div role="status" aria-label="A carregar planos de aula" className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
       <span className="sr-only">A carregar planos de aula</span>
@@ -187,7 +187,7 @@ export function ProfessorLessonPlansSkeleton() {
             <LessonPlanFieldSkeleton />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            {Array.from({ length: 9 }, (_, index) => (
+            {Array.from({ length: fieldCount }, (_, index) => (
               <LessonPlanFieldSkeleton key={index} multiline />
             ))}
           </div>
