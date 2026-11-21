@@ -17,7 +17,7 @@ export default function SettingsHubSkeleton() {
         </div>
 
         {/* Progress widget */}
-        <div className="flex items-center gap-4 bg-white border border-slate-200 rounded-xl px-6 py-4 shadow-sm w-full min-w-0 sm:w-auto sm:min-w-[280px]">
+        <div className="flex items-center gap-4 bg-card border border-border rounded-xl px-6 py-4 shadow-sm w-full min-w-0 sm:w-auto sm:min-w-[280px]">
           <div className="flex-1 space-y-2">
             <div className="flex justify-between">
               <Pulse className="h-3 w-28" />
@@ -42,7 +42,7 @@ export default function SettingsHubSkeleton() {
         <Pulse className="h-3 w-28 mb-4" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Highlight card (wizard) */}
-          <div className="p-4 rounded-xl border border-[#E3B23C]/30 bg-gradient-to-br from-[#E3B23C]/5 to-white flex flex-col gap-3">
+          <div className="p-4 rounded-xl border border-klasse-gold/30 bg-gradient-to-br from-klasse-gold/5 to-white flex flex-col gap-3">
             <div className="flex items-start justify-between">
               <Pulse className="w-9 h-9 rounded-xl" />
               <Pulse className="w-4 h-4 rounded" />
@@ -56,7 +56,7 @@ export default function SettingsHubSkeleton() {
 
           {/* Regular cards */}
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="p-4 rounded-xl border border-slate-200 bg-white flex flex-col gap-3">
+            <div key={i} className="p-4 rounded-xl border border-border bg-card flex flex-col gap-3">
               <div className="flex items-start justify-between">
                 <Pulse className="w-9 h-9 rounded-xl" />
                 <Pulse className="w-4 h-4 rounded" />
@@ -78,19 +78,19 @@ export default function SettingsHubSkeleton() {
           <Pulse className="h-3 w-16" />
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[560px]">
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[560px]">
 
           {/* Sidebar */}
-          <div className="md:w-48 lg:w-56 flex-shrink-0 border-b md:border-b-0 md:border-r border-slate-100 p-3 space-y-1">
+          <div className="md:w-48 lg:w-56 flex-shrink-0 border-b md:border-b-0 md:border-r border-border p-3 space-y-1">
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg ${i === 0 ? "bg-slate-100" : ""}`}>
+              <div key={i} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg ${i === 0 ? "bg-muted" : ""}`}>
                 <Pulse className="w-4 h-4 rounded flex-shrink-0" />
                 <Pulse className="h-3 w-20 hidden md:block" />
               </div>
             ))}
 
             {/* Sandbox link at bottom */}
-            <div className="hidden md:block pt-3 mt-3 border-t border-slate-100">
+            <div className="hidden md:block pt-3 mt-3 border-t border-border">
               <div className="flex items-center gap-2.5 px-3 py-2.5">
                 <Pulse className="w-4 h-4 rounded flex-shrink-0" />
                 <Pulse className="h-3 w-20" />
