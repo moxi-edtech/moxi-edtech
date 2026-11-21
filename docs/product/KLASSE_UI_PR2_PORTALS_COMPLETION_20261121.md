@@ -1,6 +1,6 @@
 # KLASSE · PR 2 — Fecho da padronização de identidade e mobile
 
-**Base:** `main` após integração da PR #409; **escopo:** apenas apresentação, formulários e loading; os contratos operacionais continuam intactos. A PR #398 (fundações) permanece independente até ser homologada e integrada com segurança.
+**Base:** `main` com PRs #409 e #398 integradas; **escopo:** apenas apresentação, formulários e loading; os contratos operacionais continuam intactos. A branch desta entrega foi sincronizada com as novas fundações da #398 antes da integração.
 
 ## Matriz de cobertura funcional de PR 2
 
@@ -21,14 +21,14 @@ A PR de margens anteriores havia padronizado as páginas operacionais de Alunos,
 - **Não é uma certificação de todos os píxeis de todas as rotas**: páginas históricas e módulos com visuais específicos continuam com estilos locais. O critério deste lote é uniformizar as superfícies prioritárias e os componentes partilhados, sem reescrever centenas de fluxos ou duplicar lógica.
 - **PR 3** cobre tabelas, filtros, paginação, empty states e datas/valores operacionais. Não antecipar operações bancárias, lançamento de notas, RAA nem RLS para esta fase.
 - QA autenticado em 320/375/768/1440 px, zoom 200%, teclado e Safari/VoiceOver deve ser concluído antes de afirmar acessibilidade AA visual integral. A automação não substitui esse QA.
-- A PR #398 afeta semântica de `Button` e `ModalShell` e precisa de integração testada separadamente. Nenhuma dependência de código não integrado foi adicionada aqui.
+- A PR #398 alterou `Button` e `ModalShell` e foi integrada na `main` durante a validação. O gate conjunto de `ui-foundations` e PR 2 foi executado após a sincronização, sem alterar endpoints ou contratos públicos.
 
 ### Gates de implementação
 
 - `pnpm -C apps/web typecheck`
 - `pnpm -C apps/web exec eslint` nos ficheiros alterados
 - `node --test --import tsx apps/web/tests/unit/ui-pr2-portals-completion.spec.tsx`
-- `node --test --import tsx apps/web/tests/unit/ui-identity-mobile.spec.tsx apps/web/tests/unit/portal-page-layout.spec.ts`
+- `node --test --import tsx apps/web/tests/unit/ui-foundations.spec.ts apps/web/tests/unit/ui-identity-mobile.spec.tsx apps/web/tests/unit/portal-page-layout.spec.ts`
 - `node scripts/check-klasse-ui-standards.mjs`
 - `THEME_GUARD_BASE_REF=<baseSHA> node scripts/check-theme-switcher-colors.mjs`
 - GitHub CI completo, sem checks pendentes, e revisão dos deltas da PR
