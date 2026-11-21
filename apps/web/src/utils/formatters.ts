@@ -66,8 +66,16 @@ export const formatAnoLetivoDisplay = (anoLetivo?: AnoLetivoDisplayInput | numbe
       ? anoLetivo
       : { ano: anoLetivo };
 
-  const startFromDate = input.data_inicio ? new Date(input.data_inicio).getFullYear() : null;
-  const endFromDate = input.data_fim ? new Date(input.data_fim).getFullYear() : null;
+  // ISO civil dates represent the school calendar, not instants in the viewer\'s timezone.
+  const yearFromDate = (value?: string | null): number | null => {
+    if (!value) return null;
+    const isoYear = /^(\\d{4})-\\d{2}-\\d{2}/.exec(value);
+    if (isoYear) return Number(isoYear[1]);
+    const parsed = new Date(value);
+    return Number.isFinite(parsed.getTime()) ? parsed.getUTCFullYear() : null;
+  };
+  const startFromDate = yearFromDate(input.data_inicio);
+  const endFromDate = yearFromDate(input.data_fim);
 
   if (Number.isFinite(startFromDate) && Number.isFinite(endFromDate) && startFromDate && endFromDate) {
     return `${startFromDate}/${endFromDate}`;
