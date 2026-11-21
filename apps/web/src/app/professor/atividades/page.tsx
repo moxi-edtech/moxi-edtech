@@ -310,7 +310,7 @@ export default function ProfessorAtividadesPage() {
       setEditingId(null);
       loadData();
     } catch (err: any) {
-      toastError("Erro ao Salvar", err.message || String(err));
+      toastError("Não foi possível guardar a actividade", err.message || String(err));
     } finally {
       setSaving(false);
     }
@@ -336,10 +336,10 @@ export default function ProfessorAtividadesPage() {
         throw new Error(json.error || "Erro ao alterar estado");
       }
 
-      success("Estado Atualizado", `Actividade alterada para ${newStatus}.`);
+      success(newStatus === "publicada" ? "Actividade publicada" : "Estado da actividade actualizado");
       loadData();
     } catch (err) {
-      toastError("Erro", err instanceof Error ? err.message : String(err));
+      toastError("Não foi possível alterar a actividade", err instanceof Error ? err.message : String(err));
     } finally {
       setUpdatingActivityId(null);
     }
