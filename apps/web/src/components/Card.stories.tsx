@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { Meta, StoryObj } from "@storybook/nextjs";
+import type { Meta, StoryObj } from "@storybook/react";
 import { Users, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
 
