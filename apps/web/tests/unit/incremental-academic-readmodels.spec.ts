@@ -14,10 +14,15 @@ test("boletim keeps existing MV and skips only unchanged full refreshes", () => 
   assert.match(boletim, /dirty_version = dirty_version \+ 1/);
   assert.match(boletim, /FOR EACH STATEMENT EXECUTE FUNCTION internal\.mark_boletim_dirty\(\)/);
   assert.match(boletim, /last_refreshed_at/);
+  assert.match(boletim, /GREATEST\(refreshed_version, v_dirty\)/);
+  assert.doesNotMatch(boletim, /pg_catalog\.greatest\(/);
+  const hotfix = migration("20271130114500_hotfix_boletim_refresh_greatest.sql");
+  assert.match(hotfix, /GREATEST\(refreshed_version, v_dirty\)/);
+  assert.doesNotMatch(hotfix, /pg_catalog\.greatest\(/);
   assert.match(boletim, /interval '24 hours'/);
   assert.match(boletim, /REFRESH MATERIALIZED VIEW CONCURRENTLY internal\.mv_boletim_por_matricula/);
   assert.match(boletim, /SELECT internal\.refresh_boletim_if_dirty\(\);/);
-  assert.match(boletim, /refreshed_version = pg_catalog\.greatest\(refreshed_version, v_dirty\)/);
+  assert.match(boletim, /refreshed_version = GREATEST\(refreshed_version, v_dirty\)/);
   assert.doesNotMatch(boletim, /DROP MATERIALIZED VIEW/);
   assert.doesNotMatch(boletim, /DROP VIEW public\.vw_boletim_por_matricula/);
 });

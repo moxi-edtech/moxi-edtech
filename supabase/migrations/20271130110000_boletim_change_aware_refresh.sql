@@ -118,7 +118,7 @@ BEGIN
   -- Snapshot was taken before REFRESH. If a concurrent academic transaction
   -- committed meanwhile, its version remains higher and the next cron retries.
   UPDATE internal.boletim_refresh_state
-  SET refreshed_version = pg_catalog.greatest(refreshed_version, v_dirty),
+  SET refreshed_version = GREATEST(refreshed_version, v_dirty),
       last_refreshed_at = pg_catalog.clock_timestamp()
   WHERE singleton;
 
