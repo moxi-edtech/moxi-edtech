@@ -151,7 +151,7 @@ export function TabFinanceiro() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div><h1 className="text-xl font-semibold text-primary">Financeiro</h1><p className="mt-1 text-sm text-muted-foreground">Mensalidades, pagamentos e recibos.</p></div>
+        <div><h1 className="text-2xl font-semibold tracking-tight text-primary">Financeiro</h1><p className="mt-1 text-sm text-muted-foreground">Mensalidades, pagamentos e recibos.</p></div>
         <button
           onClick={refresh}
           className="min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-sm hover:bg-muted"
@@ -161,27 +161,27 @@ export function TabFinanceiro() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Saldo atual</p>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+          <p className="text-xs font-medium text-muted-foreground">Saldo atual</p>
           <p className={`mt-2 text-lg font-bold ${resumo && resumo.saldo_consolidado > 0 ? 'text-red-600' : 'text-emerald-700'}`}>
             {resumo ? money.format(resumo.saldo_consolidado) : "—"}
           </p>
-          <p className="text-[10px] text-muted-foreground mt-1 uppercase">Após pagamentos e acertos</p>
+          <p className="mt-1 text-xs text-muted-foreground">Após pagamentos e acertos</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Total pago</p>
-          <p className="mt-2 text-lg font-semibold text-slate-700">{resumo ? money.format(resumo.total_pago) : "—"}</p>
+          <p className="mt-2 text-lg font-semibold text-foreground">{resumo ? money.format(resumo.total_pago) : "—"}</p>
         </div>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-xs uppercase tracking-[0.2em] text-amber-700">Por pagar</p>
           <p className="mt-2 text-lg font-semibold text-amber-800">{resumo ? money.format(resumo.total_pendente) : "—"}</p>
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <label htmlFor="fromAno" className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-400">De</label>
+            <label htmlFor="fromAno" className="mb-1 block text-xs font-semibold text-muted-foreground">De</label>
             <select
               id="fromAno"
               value={fromAno}
@@ -194,7 +194,7 @@ export function TabFinanceiro() {
             </select>
           </div>
           <div>
-            <label htmlFor="toAno" className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-400">Até</label>
+            <label htmlFor="toAno" className="mb-1 block text-xs font-semibold text-muted-foreground">Até</label>
             <select
               id="toAno"
               value={toAno}
@@ -234,10 +234,10 @@ export function TabFinanceiro() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Lado Esquerdo: Mensalidades e Pagamento */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-900">Mensalidades</h2>
-            <Info className="h-4 w-4 text-slate-300" />
+            <h2 className="text-sm font-semibold text-foreground">Mensalidades</h2>
+            <Info className="h-4 w-4 text-muted-foreground" />
           </div>
           {selectedMensalidades.length ? (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
@@ -246,14 +246,14 @@ export function TabFinanceiro() {
             </div>
           ) : null}
           {loading ? (
-            <div className="h-28 animate-pulse rounded-xl bg-slate-100" />
+            <div className="h-28 animate-pulse rounded-xl bg-muted" />
           ) : (
             <ul className="space-y-2">
               {sortedMensalidades.map((item) => (
-                <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 p-3">
+                <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{item.competencia}</p>
-                    <p className="text-xs text-slate-500">{money.format(item.valor)}</p>
+                    <p className="text-sm font-medium text-foreground">{item.competencia}</p>
+                    <p className="text-xs text-muted-foreground">{money.format(item.valor)}</p>
                   </div>
                   {item.status === "pago" ? (
                     <div className="flex items-center gap-2">
@@ -265,13 +265,13 @@ export function TabFinanceiro() {
                           type="button"
                           title="Reimprimir recibo"
                           onClick={() => handleReprintRecibo(item.recibo_id)}
-                          className="group inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:text-amber"
+                          className="group inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-muted-foreground shadow-sm transition-colors hover:text-amber"
                         >
-                          <Printer className="h-4 w-4 text-slate-400 transition-colors group-hover:text-amber" />
+                          <Printer className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-amber" />
                           Ver Recibo
                         </button>
                       ) : (
-                        <span className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 text-xs font-semibold text-slate-400 cursor-not-allowed">
+                        <span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 text-xs font-semibold text-muted-foreground cursor-not-allowed">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           Gerando Recibo...
                         </span>
@@ -292,24 +292,24 @@ export function TabFinanceiro() {
                   )}
                 </li>
               ))}
-              {!sortedMensalidades.length ? <li className="rounded-xl border border-slate-100 p-4 text-sm text-slate-500">Sem mensalidades no intervalo selecionado.</li> : null}
+              {!sortedMensalidades.length ? <li className="rounded-xl border border-border p-4 text-sm text-muted-foreground">Sem mensalidades no intervalo selecionado.</li> : null}
             </ul>
           )}
         </section>
 
         {/* Lado Direito: Histórico de Movimentos (Ledger) */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-900">Histórico de Movimentações</h2>
-            <p className="text-[10px] font-bold text-slate-400 uppercase bg-slate-50 px-2 py-1 rounded">Timeline SSOT</p>
+            <h2 className="text-sm font-semibold text-foreground">Histórico de Movimentações</h2>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase bg-muted/40 px-2 py-1 rounded">Timeline SSOT</p>
           </div>
           {loading ? (
-            <div className="h-28 animate-pulse rounded-xl bg-slate-100" />
+            <div className="h-28 animate-pulse rounded-xl bg-muted" />
           ) : (
-            <div className="space-y-4 relative before:absolute before:left-[17px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-100">
+            <div className="space-y-4 relative before:absolute before:left-[17px] before:top-2 before:bottom-2 before:w-[2px] before:bg-muted">
               {movimentos.map((mov) => (
                 <div key={mov.id} className="relative pl-10">
-                  <div className={`absolute left-0 top-1 p-1 rounded-full bg-white border-2 ${mov.tipo === 'debito' ? 'border-red-200' : 'border-emerald-200'}`}>
+                  <div className={`absolute left-0 top-1 p-1 rounded-full bg-card border-2 ${mov.tipo === 'debito' ? 'border-red-200' : 'border-emerald-200'}`}>
                     {mov.tipo === 'debito' ? (
                       <ArrowUpCircle className="h-4 w-4 text-red-500" />
                     ) : (
@@ -318,48 +318,48 @@ export function TabFinanceiro() {
                   </div>
                   <div className="flex flex-col">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">{mov.descricao}</span>
+                      <span className="text-xs font-bold text-foreground">{mov.descricao}</span>
                       <span className={`text-xs font-bold ${mov.tipo === 'debito' ? 'text-red-600' : 'text-emerald-700'}`}>
                         {mov.tipo === 'debito' ? '+' : '-'}{money.format(mov.valor)}
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-muted-foreground">
                       {new Date(mov.data_movimento).toLocaleDateString('pt-AO')} • {mov.origem.replace('_', ' ')}
                     </span>
                   </div>
                 </div>
               ))}
-              {!movimentos.length ? <p className="pl-10 text-sm text-slate-500">Nenhuma movimentação registrada no Livro Razão.</p> : null}
+              {!movimentos.length ? <p className="pl-10 text-sm text-muted-foreground">Nenhuma movimentação registrada no Livro Razão.</p> : null}
             </div>
           )}
         </section>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">Serviços e emolumentos</h2>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Registo financeiro</span>
+          <h2 className="text-sm font-semibold text-foreground">Serviços e emolumentos</h2>
+          <span className="text-xs font-semibold text-muted-foreground">Registo financeiro</span>
         </div>
         {servicos.length ? (
           <div className="grid gap-2 sm:grid-cols-2">
             {servicos.map((servico) => (
               <div key={servico.id} className="contents">
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3">
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
                 <div>
-                  <p className="text-sm font-medium text-slate-900">{servico.nome}</p>
-                  <p className="text-xs text-slate-500">{new Date(servico.data).toLocaleDateString("pt-AO")}</p>
-                  <p className="mt-1 text-[10px] text-slate-400">Protocolo: {servico.protocolo}</p>
+                  <p className="text-sm font-medium text-foreground">{servico.nome}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(servico.data).toLocaleDateString("pt-AO")}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Protocolo: {servico.protocolo}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-slate-900">{money.format(servico.valor)}</p>
+                  <p className="text-sm font-bold text-foreground">{money.format(servico.valor)}</p>
                   <span className={`text-[10px] font-semibold ${serviceStatusClass(servico.status)}`}>
                     {servico.estado_label}
                   </span>
                 </div>
                 </div>
-                <div className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-600 sm:col-span-2">
+                <div className="rounded-xl bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground sm:col-span-2">
                 <p>{servico.mensagem_estado}</p>
-                <p className="mt-1 font-medium text-slate-700">Próximo passo: {servico.proximo_passo}</p>
+                <p className="mt-1 font-medium text-foreground">Próximo passo: {servico.proximo_passo}</p>
                 {servico.status === "pendente" && servico.appypay_intent_id ? <div className="mt-2"><StudentAppyPayButton targetId={servico.appypay_intent_id} kind="service" studentId={studentId} descricao={servico.nome} onPaid={() => { void refresh(); }} /></div> : null}
                 {servico.acao ? (
                   <Link
@@ -374,7 +374,7 @@ export function TabFinanceiro() {
             ))}
           </div>
         ) : (
-          <p className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">Nenhum serviço registado no período.</p>
+          <p className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">Nenhum serviço registado no período.</p>
         )}
       </section>
 

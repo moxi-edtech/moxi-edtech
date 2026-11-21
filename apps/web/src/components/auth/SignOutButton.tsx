@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabaseClient'
 import { clsx } from 'clsx'
 import { useState } from 'react'
 import { clearOfflineData } from '@/lib/offline/store'
+import { clearIdentityCardCache } from '@/lib/offline/identity-card-cache'
 
 type Props = {
   label?: string
@@ -57,6 +58,9 @@ export default function SignOutButton({
           } catch { /* private browsing may deny storage access */ }
         }
       }
+
+      // Limpar identidade offline (todas as contas e escolas) antes do logout.
+      clearIdentityCardCache()
 
       // Clear Service Worker Data Cache
       if (typeof window !== 'undefined' && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {

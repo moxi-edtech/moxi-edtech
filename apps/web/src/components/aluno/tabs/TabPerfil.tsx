@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { User, Lock, Mail, Phone, MapPin, Save, Loader2 } from "lucide-react";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
-import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/feedback/FeedbackSystem";
@@ -132,36 +131,36 @@ export function TabPerfil() {
   return (
     <div className="space-y-6">
       <header>
-        <SectionTitle>Meu Perfil</SectionTitle>
-        <p className="text-xs text-slate-500">Gerencie seus dados de contato e segurança.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-primary">Perfil</h1>
+        <p className="text-xs text-muted-foreground">Gerencie seus dados de contato e segurança.</p>
       </header>
 
       <PushSettings escolaId={dados.escola_id} />
 
       {/* Atualização Cadastral */}
       <AlunoCard>
-        <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-          <User className="h-4 w-4 text-amber" />
+        <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
+          <User className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold text-foreground">Dados pessoais</h2>
         </div>
         
         <form onSubmit={handleSalvarDados} className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-700">Nome do Aluno</label>
-            <Input value={dados.nome} disabled className="bg-slate-50" />
-            <p className="mt-1 text-[10px] text-muted-foreground">O nome só pode ser alterado pela Direção da escola.</p>
+            <label className="mb-1 block text-xs font-semibold text-foreground">Nome do Aluno</label>
+            <Input value={dados.nome} disabled className="bg-muted/40" />
+            <p className="mt-1 text-xs text-muted-foreground">O nome só pode ser alterado pela Direção da escola.</p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-700">Login do Portal</label>
-              <Input value={dados.loginPortal || dados.emailAuth || "—"} disabled className="bg-slate-50 font-mono" />
-              <p className="mt-1 text-[10px] text-slate-400">
+              <label className="mb-1 block text-xs font-semibold text-foreground">Login do Portal</label>
+              <Input value={dados.loginPortal || dados.emailAuth || "—"} disabled className="bg-muted/40 font-mono" />
+              <p className="mt-1 text-xs text-muted-foreground">
                 O login de acesso é gerido pela secretaria e não muda quando atualiza o email de contato.
               </p>
             </div>
             <div>
-              <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-700">
+              <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-foreground">
                 <Mail className="h-3 w-3" /> Email de Contato
               </label>
               <Input 
@@ -170,12 +169,12 @@ export function TabPerfil() {
                 onChange={(e) => setDados({ ...dados, email: e.target.value })} 
                 placeholder="seu.email@exemplo.com"
               />
-              <p className="mt-1 text-[10px] text-slate-400">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Usado para comunicação da escola. Não altera o login do portal.
               </p>
             </div>
             <div>
-              <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-700">
+              <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-foreground">
                 <Phone className="h-3 w-3" /> Telefone / WhatsApp
               </label>
               <Input 
@@ -188,7 +187,7 @@ export function TabPerfil() {
           </div>
 
           <div>
-            <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-700">
+            <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-foreground">
               <MapPin className="h-3 w-3" /> Endereço
             </label>
             <Input 
@@ -209,14 +208,14 @@ export function TabPerfil() {
 
       {/* Redefinição de Senha */}
       <AlunoCard>
-        <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-          <Lock className="h-4 w-4 text-amber" />
+        <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
+          <Lock className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold text-foreground">Segurança da conta</h2>
         </div>
         
         <form onSubmit={handleSalvarSenha} className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-700">Senha Atual</label>
+            <label className="mb-1 block text-xs font-semibold text-foreground">Senha Atual</label>
             <Input
               type="password"
               value={senhaAtual}
@@ -228,7 +227,7 @@ export function TabPerfil() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-700">Nova Senha</label>
+              <label className="mb-1 block text-xs font-semibold text-foreground">Nova Senha</label>
               <Input 
                 type="password" 
                 value={senha} 
@@ -238,7 +237,7 @@ export function TabPerfil() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-700">Confirmar Nova Senha</label>
+              <label className="mb-1 block text-xs font-semibold text-foreground">Confirmar Nova Senha</label>
               <Input 
                 type="password" 
                 value={confirmarSenha} 
@@ -249,7 +248,7 @@ export function TabPerfil() {
             </div>
           </div>
 
-          <ul className="grid gap-1 text-[10px] text-slate-500 md:grid-cols-2">
+          <ul className="grid gap-1 text-xs text-muted-foreground md:grid-cols-2">
             {passwordRules(senha).map((rule) => (
               <li key={rule.message} className={rule.ok ? "text-emerald-600" : undefined}>
                 {rule.ok ? "✓" : "•"} {rule.message}
@@ -258,7 +257,7 @@ export function TabPerfil() {
           </ul>
 
           <div className="pt-2">
-            <Button type="submit" disabled={savingSenha || !senhaAtual || !senha} variant="outline" className="w-full md:w-auto text-slate-700">
+            <Button type="submit" disabled={savingSenha || !senhaAtual || !senha} variant="outline" className="w-full md:w-auto text-foreground">
               {savingSenha ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
               Alterar Senha
             </Button>

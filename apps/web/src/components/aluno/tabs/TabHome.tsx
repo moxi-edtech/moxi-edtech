@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { buildStudentPortalHref } from "@/lib/navigation";
 import { usePortalSWR } from "@/components/aluno/usePortalSWR";
 import { RematriculaBanner } from "@/components/aluno/home/RematriculaBanner";
 import { motion } from "framer-motion";
@@ -39,8 +40,11 @@ type AcademicEvent = { id: string; nome: string; data_inicio: string; data_fim: 
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 
 export function TabHome() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
+  const searchValue = searchParams?.toString() ?? "";
+  const href = (target: string) => buildStudentPortalHref(pathname, searchValue, target);
 
   const [status, setStatus] = useState<StatusResponse>(null);
   const [alert, setAlert] = useState<FinanceResponse>(null);
@@ -112,53 +116,50 @@ export function TabHome() {
   if (loading) {
     return (
         <div className="space-y-6 animate-pulse p-4">
-            <div className="h-20 bg-slate-100 rounded-3xl w-2/3" />
+            <div className="h-20 bg-muted rounded-xl w-2/3" />
             <div className="grid grid-cols-2 gap-4">
-                <div className="h-32 bg-slate-100 rounded-3xl" />
-                <div className="h-32 bg-slate-100 rounded-3xl" />
+                <div className="h-32 bg-muted rounded-xl" />
+                <div className="h-32 bg-muted rounded-xl" />
             </div>
-            <div className="h-64 bg-slate-100 rounded-3xl" />
+            <div className="h-64 bg-muted rounded-xl" />
         </div>
     );
   }
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6 pb-8"
+      className="space-y-5 pb-4"
     >
       <RematriculaBanner />
 
       {/* HEADER: Saudação e Perfil */}
       <header className="flex items-center justify-between px-1">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-primary">
             {greeting}, <span className="text-primary">{status?.nome.split(' ')[0]}!</span>
           </h1>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+          <p className="text-xs font-bold text-muted-foreground  mt-1">
             {status?.classe} • {status?.turma}
           </p>
         </div>
-        <Link href={`/aluno/perfil${query}`} className="relative group">
-            <div className="h-14 w-14 rounded-[1.25rem] border-2 border-white shadow-lg overflow-hidden bg-slate-200">
+        <Link href={href("/aluno/perfil")} className="group relative rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" aria-label="Abrir perfil">
+            <div className="h-11 w-11 overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
                 {status?.foto_url ? (
                     <img src={status.foto_url} alt="Perfil" className="h-full w-full object-cover" />
                 ) : (
-                    <div className="h-full w-full flex items-center justify-center text-slate-400">
+                    <div className="h-full w-full flex items-center justify-center text-muted-foreground">
                         <User size={24} />
                     </div>
                 )}
-            </div>
-            <div className="absolute -bottom-1 -right-1 h-5 w-5 bg-emerald rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white">
-                <Star size={10} fill="white" />
             </div>
         </Link>
       </header>
 
       {/* RINGS: Desempenho Acadêmico */}
       <div className="grid grid-cols-2 gap-4">
-         <AlunoCard className="flex flex-col items-center justify-center p-6 text-center border-0 bg-white shadow-xl shadow-slate-200/50">
+         <AlunoCard className="flex flex-col items-center justify-center gap-2 border-border bg-card p-4 text-center shadow-sm">
             <div className="h-20 w-20 mb-4">
                 <CircularProgressbar
                     value={mediaNotas ?? 0}
@@ -172,26 +173,26 @@ export function TabHome() {
                     })}
                 />
             </div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Média recente</p>
+            <p className="text-xs font-semibold  text-muted-foreground">Média recente</p>
             <p className="mt-2 text-xs text-muted-foreground">
               {mediaNotas === null ? "Sem notas publicadas" : "Avaliações disponíveis"}
             </p>
          </AlunoCard>
 
-         <AlunoCard className="flex flex-col items-center justify-center p-6 text-center border-0 bg-white shadow-xl shadow-slate-200/50">
+         <AlunoCard className="flex flex-col items-center justify-center gap-2 border-border bg-card p-4 text-center shadow-sm">
             <div className="h-20 w-20 mb-4">
                 <CircularProgressbar
                     value={status?.assiduidade ?? 0}
                     text={status?.assiduidade == null ? "—" : `${status.assiduidade}%`}
                     styles={buildStyles({
-                        pathColor: "#3B82F6",
+                        pathColor: "var(--primary)",
                         textColor: "#0F172A",
                         trailColor: "#F1F5F9",
                         textSize: "24px",
                     })}
                 />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Assiduidade</p>
+            <p className="text-xs font-semibold  text-muted-foreground">Assiduidade</p>
             <p className="mt-2 text-xs text-muted-foreground">
               {status?.assiduidade == null ? "Sem registos" : "Presenças registadas"}
             </p>
@@ -202,21 +203,20 @@ export function TabHome() {
       {alert && (
         <motion.div 
             whileTap={{ scale: 0.98 }}
-            className="group relative overflow-hidden rounded-[2rem] bg-klasse-green p-6 text-white shadow-sm"
+            className="group relative overflow-hidden rounded-xl border border-amber-200 bg-card p-4 text-foreground shadow-sm"
         >
-            <div className="absolute -right-4 -top-4 h-32 w-32 rounded-full bg-white/5 blur-2xl" />
             <div className="relative z-10 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/20 text-rose-400">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
                         <AlertTriangle size={24} />
                     </div>
                     <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Pendência Financeira</p>
-                        <p className="text-lg font-black">{money.format(alert.valor)}</p>
-                        <p className="text-xs text-white/60">Referente a {alert.mes}</p>
+                        <p className="text-xs font-semibold  text-muted-foreground">Pendência Financeira</p>
+                        <p className="text-lg font-semibold">{money.format(alert.valor)}</p>
+                        <p className="text-xs text-muted-foreground">Referente a {alert.mes}</p>
                     </div>
                 </div>
-                <Link href={`/aluno/financeiro${query}`} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20">
+                <Link href={href("/aluno/financeiro")} className="klasse-portal-cta flex min-h-11 min-w-11 items-center justify-center rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20">
                     <ChevronRight size={20} />
                 </Link>
             </div>
@@ -226,25 +226,25 @@ export function TabHome() {
       {/* TIMELINE: Próximas Avaliações / Eventos */}
       <section className="space-y-4">
         <div className="flex items-center justify-between px-1">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Agenda do Aluno</h3>
-            <Link href={`/aluno/academico${query}`} className="text-[10px] font-black uppercase text-emerald underline underline-offset-4">Ver tudo</Link>
+            <h3 className="text-sm font-semibold  text-foreground">Agenda do Aluno</h3>
+            <Link href={href("/aluno/academico")} className="text-xs font-semibold uppercase text-primary underline underline-offset-4">Ver tudo</Link>
         </div>
         
         <div className="grid gap-3">
             {events.slice(0, 2).map((ev) => (
-                <div key={ev.id} className="flex items-center gap-4 rounded-[1.5rem] bg-white p-4 border border-slate-100 shadow-sm">
-                    <div className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-2xl ${
+                <div key={ev.id} className="flex items-center gap-4 rounded-xl bg-card p-4 border border-border shadow-sm">
+                    <div className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl ${
                         ev.tipo === 'FERIADO' ? 'bg-rose-50 text-rose-600' : 
                         ev.tipo === 'PROVA_TRIMESTRAL' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
                     }`}>
-                        <p className="text-[10px] font-black uppercase">{format(parseISO(ev.data_inicio), 'MMM', { locale: require('date-fns/locale/pt-BR') })}</p>
-                        <p className="text-lg font-black leading-none">{format(parseISO(ev.data_inicio), 'dd')}</p>
+                        <p className="text-xs font-semibold uppercase">{format(parseISO(ev.data_inicio), 'MMM', { locale: require('date-fns/locale/pt-BR') })}</p>
+                        <p className="text-lg font-semibold leading-none">{format(parseISO(ev.data_inicio), 'dd')}</p>
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-slate-900 truncate">{ev.nome}</p>
+                        <p className="text-sm font-bold text-foreground truncate">{ev.nome}</p>
                         <div className="flex items-center gap-2 mt-0.5">
-                            <Clock size={10} className="text-slate-400" />
-                            <p className="text-[10px] font-medium text-slate-500 uppercase">Evento {ev.tipo.replace('_', ' ')}</p>
+                            <Clock size={10} className="text-muted-foreground" />
+                            <p className="text-xs font-medium text-muted-foreground uppercase">Evento {ev.tipo.replace('_', ' ')}</p>
                         </div>
                     </div>
                 </div>
@@ -252,40 +252,39 @@ export function TabHome() {
             
             {/* NOTAS RECENTES INTEGRADO */}
             {restrictedGrades ? (
-                <div className="relative overflow-hidden rounded-[2rem] bg-slate-900 p-6 text-white shadow-xl">
-                    <div className="absolute -right-4 -top-4 h-32 w-32 rounded-full bg-emerald/10 blur-2xl" />
+                <div className="rounded-xl border border-border bg-card p-4 text-foreground shadow-sm">
                     <div className="relative z-10 flex flex-col items-center text-center">
-                        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-amber-400">
+                        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
                             <LockIcon size={24} />
                         </div>
-                        <h4 className="text-sm font-black tracking-tight">Notas Bloqueadas</h4>
-                        <p className="mt-1 text-[11px] text-white/50 leading-relaxed max-w-[200px]">
+                        <h4 className="text-sm font-semibold tracking-tight">Notas Bloqueadas</h4>
+                        <p className="mt-1 text-xs text-muted-foreground leading-relaxed max-w-[200px]">
                             Regularize o seu Boletim para visualizar os últimos lançamentos.
                         </p>
                         <Link 
-                            href={`/aluno/documentos${query}`}
-                            className="mt-4 w-full rounded-xl bg-emerald py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition active:scale-95 hover:brightness-110 text-center"
+                            href={href("/aluno/documentos")}
+                            className="klasse-portal-cta mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
                         >
                             Liberar Agora
                         </Link>
                     </div>
                 </div>
             ) : grades.length > 0 && (
-                <div className="rounded-[1.5rem] bg-slate-50 p-5 border border-slate-100">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Últimos Lançamentos</p>
+                <div className="rounded-xl bg-muted/40 p-5 border border-border">
+                    <p className="text-xs font-semibold  text-muted-foreground mb-4">Últimos Lançamentos</p>
                     <div className="space-y-4">
                         {grades.slice(0, 2).map((item, idx) => (
                             <div key={idx} className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center text-slate-400 shadow-sm">
+                                    <div className="h-8 w-8 rounded-lg bg-card flex items-center justify-center text-muted-foreground shadow-sm">
                                         <Star size={14} />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-bold text-slate-900">{item.disciplina}</p>
-                                        <p className="text-[10px] text-slate-500">{item.tipo}</p>
+                                        <p className="text-xs font-bold text-foreground">{item.disciplina}</p>
+                                        <p className="text-xs text-muted-foreground">{item.tipo}</p>
                                     </div>
                                 </div>
-                                <div className={`text-sm font-black ${item.nota && item.nota >= 10 ? 'text-slate-900' : 'text-rose-500'}`}>
+                                <div className={`text-sm font-semibold ${item.nota && item.nota >= 10 ? 'text-foreground' : 'text-rose-500'}`}>
                                     {item.nota ?? '—'}
                                 </div>
                             </div>
@@ -297,27 +296,27 @@ export function TabHome() {
       </section>
 
       {/* QUICK ACTIONS: Atalhos */}
-      <section className="grid grid-cols-3 gap-3">
-        <Link href={`/aluno/identidade${query}`} className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition">
+      <section className="grid grid-cols-3 gap-2">
+        <Link href={href("/aluno/identidade")} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-card border border-border shadow-sm  transition">
             <div className="h-10 w-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
                 <CreditCard size={20} />
             </div>
-            <span className="text-[10px] font-black uppercase text-slate-600">ID Digital</span>
+            <span className="text-xs font-semibold uppercase text-muted-foreground">ID Digital</span>
         </Link>
-        <Link href={`/aluno/horario${query}`} className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition">
+        <Link href={href("/aluno/horario")} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-card border border-border shadow-sm  transition">
             <div className="h-10 w-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
                 <Calendar size={20} />
             </div>
-            <span className="text-[10px] font-black uppercase text-slate-600">Horário</span>
+            <span className="text-xs font-semibold uppercase text-muted-foreground">Horário</span>
         </Link>
         <button 
             onClick={pullToRefresh}
-            className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition"
+            className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-card border border-border shadow-sm  transition"
         >
-            <div className={`h-10 w-10 rounded-full bg-slate-50 text-slate-600 flex items-center justify-center ${refreshing ? 'animate-spin' : ''}`}>
+            <div className={`h-10 w-10 rounded-full bg-muted/40 text-muted-foreground flex items-center justify-center ${refreshing ? 'animate-spin' : ''}`}>
                 <Clock size={20} />
             </div>
-            <span className="text-[10px] font-black uppercase text-slate-600">Atualizar</span>
+            <span className="text-xs font-semibold uppercase text-muted-foreground">Atualizar</span>
         </button>
       </section>
     </motion.div>

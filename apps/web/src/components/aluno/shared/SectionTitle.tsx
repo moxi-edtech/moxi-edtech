@@ -18,7 +18,7 @@ export function SectionTitle({ children, action, onAction, badge, className = ""
       </div>
       {action && onAction && (
         <button onClick={onAction} type="button"
-          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-muted">
+          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl px-2 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hover:bg-muted">
           {action} <span aria-hidden="true">→</span>
         </button>
       )}

@@ -3,7 +3,7 @@ import { TabDocumentos } from "@/components/aluno/tabs/TabDocumentos";
 
 export default function DocumentosPage() {
   return (
-    <div className="space-y-4 bg-slate-50">
+    <div className="min-w-0 space-y-4">
       <AuditPageView portal="aluno" acao="PAGE_VIEW" entity="documentos" />
       <TabDocumentos />
     </div>

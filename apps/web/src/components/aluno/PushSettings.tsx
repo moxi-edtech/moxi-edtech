@@ -26,20 +26,20 @@ export function PushSettings({ escolaId }: { escolaId?: string | null }) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${isSubscribed ? "bg-emerald-50 text-emerald" : "bg-slate-50 text-slate-400"}`}>
+          <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${isSubscribed ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
             {isSubscribed ? <Bell size={20} /> : <BellOff size={20} />}
           </div>
           <div>
-            <p className="text-sm font-black text-slate-900">Notificações Push</p>
-            <p className="text-[11px] text-slate-500">Alertas de notas, pagamentos e avisos.</p>
+            <p className="text-sm font-semibold text-foreground">Notificações Push</p>
+            <p className="text-xs text-muted-foreground">Alertas de notas, pagamentos e avisos.</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {loading && <Loader2 size={16} className="animate-spin text-slate-400" />}
+          {loading && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
           <Switch
             checked={isSubscribed}
             onCheckedChange={handleToggle}
@@ -49,7 +49,7 @@ export function PushSettings({ escolaId }: { escolaId?: string | null }) {
       </div>
       
       {permission === "denied" && (
-        <p className="mt-3 text-[10px] text-rose-600 font-medium bg-rose-50 p-2 rounded-lg">
+        <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-xs font-medium text-destructive">
           As notificações estão bloqueadas no seu navegador. Ative-as nas configurações do site para receber alertas.
         </p>
       )}

@@ -86,7 +86,7 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
 }
 
 const Surface = ({ children }: { mode: FixtureMode; children: React.ReactNode }) => {
-  return <ToastProvider><main className="mx-auto min-h-screen max-w-6xl bg-slate-50 p-3 sm:p-6">{children}</main></ToastProvider>;
+  return <ToastProvider><main className="klasse-portal-theme mx-auto min-h-screen max-w-[1200px] bg-muted/25 p-4 text-foreground sm:p-6">{children}</main></ToastProvider>;
 };
 
 const meta: Meta = { title: "KLASSE/Portal Visual Fixtures", parameters: { nextjs: { appDirectory: true }, layout: "fullscreen" } };

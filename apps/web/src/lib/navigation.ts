@@ -103,3 +103,27 @@ export function getEscolaParamFromPath(pathname: string | null | undefined) {
   const match = pathname.match(/^\/escola\/([^/]+)/);
   return match?.[1] ?? null;
 }
+
+/**
+ * Preserva escola, educando e ano letivo ao navegar entre módulos do aluno.
+ * Não transporta parâmetros operacionais de outras páginas nem o studentId de APIs.
+ */
+export function buildStudentPortalHref(
+  pathname: string | null | undefined,
+  search: string | null | undefined,
+  target: string,
+): string {
+  const separator = target.indexOf("?");
+  const path = separator >= 0 ? target.slice(0, separator) : target;
+  const params = new URLSearchParams(separator >= 0 ? target.slice(separator + 1) : "");
+  const current = new URLSearchParams((search ?? "").replace(/^\?/, ""));
+
+  for (const key of ["aluno", "ano_letivo_id"] as const) {
+    const value = current.get(key);
+    if (value && !params.has(key)) params.set(key, value);
+  }
+
+  const href = buildPortalHref(getEscolaParamFromPath(pathname), path);
+  const query = params.toString();
+  return query ? `${href}?${query}` : href;
+}

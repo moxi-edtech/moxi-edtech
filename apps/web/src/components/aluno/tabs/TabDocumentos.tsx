@@ -260,7 +260,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
     <div className="min-w-0 space-y-4 pb-8">
       {/* Cabeçalho */}
       {!embedded && <header className="px-1 space-y-1">
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">Secretaria Digital</h2>
+        <h1 className="text-2xl font-semibold tracking-tight text-primary">Secretaria Digital</h1>
         <p className="text-sm leading-5 text-muted-foreground">
           Solicita documentos e acompanha os teus pedidos.
         </p>

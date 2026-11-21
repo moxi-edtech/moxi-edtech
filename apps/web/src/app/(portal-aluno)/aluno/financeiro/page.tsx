@@ -3,7 +3,7 @@ import { TabFinanceiro } from "@/components/aluno/tabs/TabFinanceiro";
 
 export default function Page() {
   return (
-    <div className="space-y-4 bg-slate-50">
+    <div className="min-w-0 space-y-4">
       <AuditPageView portal="aluno" acao="PAGE_VIEW" entity="financeiro_portal" />
       <TabFinanceiro />
     </div>

@@ -5,6 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Bell, BookOpen, FileText, Home, Wallet, Clock, IdCard, Settings, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { AlunoHeader } from "@/components/aluno/layout/AlunoHeader";
+import { clearIdentityCardCache } from "@/lib/offline/identity-card-cache";
+import { AlunoPortalScopeContext } from "@/components/aluno/AlunoPortalScope";
 import { AlunoBottomNav } from "@/components/aluno/layout/AlunoBottomNav";
 import { NetworkStatus } from "@/components/aluno/layout/NetworkStatus";
 import { PWAInstallPrompt } from "@/components/aluno/layout/PWAInstallPrompt";
@@ -54,6 +56,8 @@ export default function AlunoLayoutClient({
   useEffect(() => {
     const { data: { subscription } } = createClient().auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT" || (event === "SIGNED_IN" && session?.user.id !== userId)) {
+        // Também cobre logout ou troca de conta em outra aba do mesmo navegador.
+        clearIdentityCardCache();
         router.replace("/redirect");
       }
     });
@@ -172,10 +176,13 @@ export default function AlunoLayoutClient({
     router.replace(`${pathname}?${params.toString()}`);
   };
 
+  const portalScope = useMemo(() => ({ escolaId, userId }), [escolaId, userId]);
+
   if (redirectTarget) return null;
 
   return (
-    <div className="klasse-portal-theme min-h-screen bg-background text-foreground">
+    <div className="klasse-portal-theme min-h-screen bg-muted/25 text-foreground">
+      <a href="#conteudo-aluno" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-xl focus:bg-klasse-gold focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-foreground">Ir para o conteúdo</a>
       <AlunoHeader
         escolaNome={escolaNome}
         alunoSelecionadoNome={alunoSelecionadoNome}
@@ -187,8 +194,8 @@ export default function AlunoLayoutClient({
 
       <NetworkStatus />
 
-      <main className="mx-auto w-full max-w-5xl px-4 py-4 pb-[calc(96px+env(safe-area-inset-bottom))]">
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm md:p-6">{children}</div>
+      <main id="conteudo-aluno" className="mx-auto w-full max-w-[1200px] px-4 py-5 pb-[calc(96px+env(safe-area-inset-bottom))] md:px-6 md:py-6">
+        <AlunoPortalScopeContext.Provider value={portalScope}>{children}</AlunoPortalScopeContext.Provider>
 
         <AlunoBottomNav items={navItems} activePath={safePathname} withAlunoParam={withAlunoParam} />
       </main>

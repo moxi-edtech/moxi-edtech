@@ -33,7 +33,7 @@ export function TabNotificacoes() {
   return (
     <section className="space-y-4" aria-labelledby="aluno-avisos-title">
       <div className="space-y-1">
-        <h1 id="aluno-avisos-title" className="text-xl font-semibold text-primary">Avisos</h1>
+        <h1 id="aluno-avisos-title" className="text-2xl font-semibold tracking-tight text-primary">Avisos</h1>
         <p className="text-sm text-muted-foreground">Mensagens e novidades da tua escola.</p>
       </div>
       {loading ? (
