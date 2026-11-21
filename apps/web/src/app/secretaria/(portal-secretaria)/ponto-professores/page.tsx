@@ -113,4 +113,4 @@ export default function PontoProfessoresPage() {
   </div>;
 }
 
-function Metric({ label, value, tone = "slate" }: { label: string; value: string; tone?: "slate" | "emerald" | "amber" }) { const styles = { slate: "border-border bg-card", emerald: "border-emerald-100 bg-emerald-50", amber: "border-amber-100 bg-amber-50" }; return <div className={`rounded-2xl border p-4 shadow-sm ${styles[tone]}`}><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-black text-foreground">{value}</p></div>; }
+function Metric({ label, value, tone = "slate" }: { label: string; value: string; tone?: "slate" | "emerald" | "amber" }) { const styles = { slate: "border-border bg-card", emerald: "border-emerald-100 bg-emerald-50", amber: "border-amber-100 bg-amber-50" }; return <div className={`rounded-xl border p-4 shadow-sm ${styles[tone]}`}><p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-black text-foreground">{value}</p></div>; }
