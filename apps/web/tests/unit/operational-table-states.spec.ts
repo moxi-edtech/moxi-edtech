@@ -4,7 +4,7 @@ import { test } from "node:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { OperationalTablePagination, OperationalTableSkeleton } from "../../src/components/ui/OperationalTableStates";
-import { filterAndPaginateOperationalRows } from "../../src/lib/operacoes/operational-table";
+import { filterAndPaginateOperationalRows, quoteOperationalCsvCell } from "../../src/lib/operacoes/operational-table";
 
 const sample = Array.from({ length: 23 }, (_, i) => ({
   id: String(i + 1),
@@ -30,6 +30,14 @@ test("table search is accent-insensitive and pagination stays in range", () => {
   assert.equal(paginate("not found", 999).currentPage, 1);
   const withNull = filterAndPaginateOperationalRows({ rows: [{ professor_nome: null as unknown as string }], search: "José", getSearchText: row => row.professor_nome, page: 1, pageSize: 10 });
   assert.equal(withNull.filteredCount, 0);
+});
+
+test("CSV export quotes text and neutralizes formula injection", () => {
+  assert.equal(quoteOperationalCsvCell("=SUM(A1:A2)"), "\"'=SUM(A1:A2)\"");
+  assert.equal(quoteOperationalCsvCell("  +CMD"), "\"'  +CMD\"");
+  assert.equal(quoteOperationalCsvCell('José "Manuel"'), '"José ""Manuel"""');
+  assert.equal(quoteOperationalCsvCell(-5), '"-5"');
+  assert.equal(quoteOperationalCsvCell(null), '""');
 });
 
 test("shared table loading skeleton has no interactive or fabricated rows", () => {
