@@ -80,7 +80,7 @@ export default function PlanosAulaPage() {
 
   return <div className="min-h-screen bg-muted/30 pb-24"><div className={`${PORTAL_PAGE_INSET} space-y-6`}>
     <DashboardHeader title="Planos de aula" description="Prepare, envie e acompanhe os seus planos por turma e disciplina." breadcrumbs={[{ label: "Início", href: "/professor" }, { label: "Planos de aula" }]} />
-    {loading ? <ProfessorLessonPlansSkeleton /> : (
+    {loading ? <ProfessorLessonPlansSkeleton fieldCount={planFields.length} /> : (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
       <section className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex items-center gap-3"><FileText className="h-5 w-5 text-primary" /><div><h2 className="font-semibold text-foreground">Novo plano</h2><p className="text-xs text-muted-foreground">Preenche o plano para esta turma.</p></div></div>
