@@ -38,10 +38,10 @@ async function fetchJson<T>(path: string, signal: AbortSignal, scopedQuery = "")
 }
 const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 function LoadingDashboard() {
-  return <div role="status" aria-live="polite" className="mx-auto max-w-6xl animate-pulse space-y-8 px-4 py-6 sm:px-8" aria-label="A carregar a tua página"><span className="sr-only">A carregar a tua página</span><div aria-hidden="true">
-    <div className="space-y-4"><div className="h-4 w-40 rounded-lg bg-slate-200"/><div className="h-9 w-56 rounded-lg bg-slate-200"/><div className="h-4 w-44 rounded-lg bg-slate-200"/></div>
-    <div className="grid gap-6 lg:grid-cols-5"><div className="h-52 rounded-2xl bg-slate-100 lg:col-span-3"/><div className="h-52 rounded-2xl bg-slate-100 lg:col-span-2"/></div>
-    <div className="h-48 rounded-2xl bg-slate-100"/><div className="h-32 rounded-2xl bg-slate-100"/>
+  return <div role="status" aria-live="polite" className="w-full animate-pulse space-y-5 py-2" aria-label="A carregar a tua página"><span className="sr-only">A carregar a tua página</span><div aria-hidden="true">
+    <div className="space-y-4"><div className="h-4 w-40 rounded-lg bg-muted"/><div className="h-9 w-56 rounded-lg bg-muted"/><div className="h-4 w-44 rounded-lg bg-muted"/></div>
+    <div className="grid gap-6 lg:grid-cols-5"><div className="h-52 rounded-2xl bg-muted lg:col-span-3"/><div className="h-52 rounded-2xl bg-muted lg:col-span-2"/></div>
+    <div className="h-48 rounded-2xl bg-muted"/><div className="h-32 rounded-2xl bg-muted"/>
     </div>
   </div>;
 }
@@ -123,23 +123,22 @@ export default function DashboardLoader() {
     {label:"Pagamentos",hint:"Mensalidades e comprovativos",href:"/aluno/financeiro",icon:Wallet},
     {label:"Horário",hint:"Aulas da semana",href:"/aluno/horario",icon:CalendarDays},
   ];
-  return <main className="mx-auto w-full max-w-6xl space-y-6 rounded-2xl bg-background px-3 pb-20 pt-4 text-foreground sm:space-y-8 sm:px-6 sm:pt-8" data-testid="aluno-dashboard-editorial">
-    <header className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-        <p className="flex items-center gap-2 text-sm font-semibold text-primary"><BookOpen className="h-4 w-4"/> KLASSE <span className="font-normal text-muted-foreground">/ Portal do aluno</span></p>
-        <nav aria-label="Navegação rápida" className="hidden gap-5 text-sm lg:flex">
-          {[["Início","/aluno/dashboard"],["Disciplinas","/aluno/academico?aba=disciplinas"],["Notas","/aluno/academico"],["Documentos","/aluno/documentos"]].map(([label,path])=><Link key={label} href={go(path)} className={`min-h-11 content-center text-muted-foreground hover:text-primary ${focus}`}>{label}</Link>)}
-        </nav>
-      </div>
-      <div className="relative overflow-hidden rounded-2xl bg-klasse-green px-5 py-5 text-white shadow-sm sm:px-8 sm:py-7">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full border-[36px] border-klasse-green-100/10 sm:right-8" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 right-24 h-44 w-44 rounded-full bg-klasse-green-100/10 blur-2xl" />
-        <div className="relative max-w-2xl space-y-3">
-          <p className="text-sm capitalize tracking-wide text-klasse-green-100">{today}</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Olá, {firstName}</h1>
-          {(screen.dashboard.turma_nome || screen.dashboard.ano_letivo) && <p className="text-sm text-klasse-green-50">{[screen.dashboard.turma_nome, screen.dashboard.ano_letivo ? `Ano letivo ${screen.dashboard.ano_letivo}` : ""].filter(Boolean).join(" · ")}</p>}
-          <p className="pt-1 text-base text-klasse-green-50">O que precisas de saber hoje.</p>
+  return <div className="w-full min-w-0 space-y-5 text-foreground sm:space-y-6" data-testid="aluno-dashboard-editorial">
+    <header className="rounded-xl border border-border bg-card px-4 py-4 shadow-sm sm:px-5 sm:py-5">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1.5">
+          <p className="text-xs capitalize text-muted-foreground">{today}</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-primary">Olá, {firstName}</h1>
+          {(screen.dashboard.turma_nome || screen.dashboard.ano_letivo) && (
+            <p className="text-sm text-muted-foreground">
+              {[screen.dashboard.turma_nome, screen.dashboard.ano_letivo ? `Ano letivo ${screen.dashboard.ano_letivo}` : ""].filter(Boolean).join(" · ")}
+            </p>
+          )}
+          <p className="pt-1 text-sm text-muted-foreground">O que precisas de saber hoje.</p>
         </div>
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-klasse-green text-white" aria-hidden="true">
+          <BookOpen className="h-5 w-5" />
+        </span>
       </div>
     </header>
     <PortalSection id="aluno-summary" title="Em resumo">
@@ -163,10 +162,10 @@ export default function DashboardLoader() {
         <PortalSurface>
           {lesson ? <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-4">
-              <div className="rounded-lg bg-muted px-3 py-2 text-emerald-800"><p className="text-2xl font-semibold tabular-nums">{lesson.time}</p></div>
-              <div className="min-w-0"><p className="text-sm text-slate-500">{lesson.day}</p><p className="mt-1 text-lg font-semibold text-slate-900">{lesson.subject}</p></div>
+              <div className="rounded-lg bg-muted px-3 py-2 text-primary"><p className="text-2xl font-semibold tabular-nums">{lesson.time}</p></div>
+              <div className="min-w-0"><p className="text-sm text-muted-foreground">{lesson.day}</p><p className="mt-1 text-lg font-semibold text-foreground">{lesson.subject}</p></div>
             </div>
-            {lesson.details.length > 0 && <p className="text-sm text-slate-600">{lesson.details.join(" · ")}</p>}
+            {lesson.details.length > 0 && <p className="text-sm text-muted-foreground">{lesson.details.join(" · ")}</p>}
           </div> : <div className="flex items-start gap-3"><Clock3 className="mt-1 h-5 w-5 shrink-0 text-muted-foreground"/><div><p className="font-medium">Ainda não há uma próxima aula publicada.</p><p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">Podes consultar o horário da tua turma quando a escola o disponibilizar.</p></div></div>}
           <PortalAction className="mt-3 -ml-3" href={go("/aluno/horario")}>
             Ver o horário completo <ArrowRight aria-hidden="true" className="h-4 w-4" />
@@ -178,7 +177,7 @@ export default function DashboardLoader() {
           {attentions.slice(0,3).map(item => {
             const needsAction = item.kind === "rejected" || item.kind === "mensalidade" || item.kind === "rematricula";
             return <article key={item.kind + item.href} className="flex min-w-0 items-start gap-3 px-4 py-3.5">
-              <span aria-hidden="true" className={needsAction ? "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" : "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-700/50"}/>
+              <span aria-hidden="true" className={needsAction ? "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" : "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-muted-foreground/50"}/>
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-semibold leading-5 text-foreground">{item.title}</h3>
                 <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.description}</p>
@@ -204,5 +203,5 @@ export default function DashboardLoader() {
         {screen.dashboard.avisos_recentes.map(a=><li key={a.id} className="py-3"><p className="text-sm font-medium text-foreground">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{a.resumo}</p>}<p className="mt-1 text-xs text-muted-foreground">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></li>)}
       </ul>}
     </PortalSection>
-  </main>;
+  </div>;
 }
