@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { buildStudentPortalHref } from "@/lib/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import {
   Sparkles,
@@ -47,9 +48,10 @@ type StudentActivity = {
 
 export default function AlunoAtividadesPage() {
   const { error: toastError } = useToast();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const studentId = searchParams?.get("aluno") ?? null;
-  const query = studentId ? `?aluno=${studentId}` : "";
+  const searchValue = searchParams?.toString() ?? "";
+  const href = (target: string) => buildStudentPortalHref(pathname, searchValue, target);
 
   const [atividades, setAtividades] = useState<StudentActivity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,14 +160,14 @@ export default function AlunoAtividadesPage() {
                   </div>
 
                   <Link
-                    href={`/aluno/atividades/${act.id}${query}`}
+                    href={href(`/aluno/atividades/${act.id}`)}
                     className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 self-start rounded-xl px-4 py-2.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 sm:self-center  ${
                       isSubmetida
                         ? "bg-muted text-foreground hover:bg-muted/80"
                         : isIniciada
                         ? "klasse-portal-cta shadow-sm"
                         : isExpirado
-                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        ? "bg-muted text-muted-foreground hover:bg-muted/80"
                         : "klasse-portal-cta shadow-sm"
                     }`}
                   >
