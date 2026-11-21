@@ -84,3 +84,20 @@ test("ModalShell retains API and delegates focus, Escape, and scrolling to Radix
   assert.match(button, /focus-visible:ring-klasse-gold\/20/);
   assert.match(source("components/ui/Badge.tsx"), /items-center rounded-full border/);
 });
+
+test("ModalShell keeps its Radix focus scope viewport-sized for fixed Balcão workspaces", () => {
+  const modal = source("components/ui/ModalShell.tsx");
+  const dashboard = source("app/secretaria/(portal-secretaria)/Dashboard.tsx");
+  const search = source("components/secretaria/BuscaBalcaoRapido.tsx");
+  const workspace = source("components/secretaria/command-center/CommandCenterShell.tsx");
+
+  // The card may clip its own scrolling contents, but it must not be the
+  // transformed containing block of a nested fixed full-screen workspace.
+  assert.match(modal, /fixed inset-0 left-0 top-0 z-50 flex h-\\[100dvh\\]/);
+  assert.match(modal, /translate-x-0 translate-y-0/);
+  assert.match(modal, /<section[\\s\\S]*?overflow-hidden rounded-2xl/);
+  assert.match(workspace, /fixed inset-0 z-\\[70\\]/);
+  assert.match(search, /<BalcaoWorkspace/);
+  assert.match(dashboard, /initialAction="payment"/);
+  assert.match(dashboard, /initialAction="document"/);
+});
