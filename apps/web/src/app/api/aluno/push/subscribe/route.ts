@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { isTrustedWebPushEndpoint } from "@/lib/notificacoes/webPushEndpointPolicy";
 
 export async function POST(request: Request) {
   try {
@@ -26,21 +27,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Sem acesso à escola" }, { status: 403 });
     }
 
-    // Basic SSRF defense for untrusted browser push endpoints.
-    let endpointUrl: URL;
-    try {
-      endpointUrl = new URL(subscription.endpoint);
-    } catch {
-      return NextResponse.json({ error: "Endpoint de push inválido" }, { status: 400 });
-    }
-    const host = endpointUrl.hostname.toLowerCase();
-    if (subscription.endpoint.length > 2048 ||
-        endpointUrl.protocol !== "https:" || endpointUrl.port ||
-        endpointUrl.username || endpointUrl.password ||
-        host.includes(":") || !host.includes(".") ||
-        /^[0-9.]+$/.test(host) ||
-        host === "localhost" || host.endsWith(".localhost") ||
-        host.endsWith(".local") || host.endsWith(".internal")) {
+    // Only a browser push service may receive Web Push POSTs from the server.
+    if (!isTrustedWebPushEndpoint(subscription.endpoint)) {
       return NextResponse.json({ error: "Endpoint de push inválido" }, { status: 400 });
     }
 
