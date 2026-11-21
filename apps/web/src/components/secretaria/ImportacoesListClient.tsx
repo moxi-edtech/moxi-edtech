@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRight, Clock, FileText, RefreshCw, Upload } from "lucide-react";
+import { OperationalTableErrorState } from "@/components/ui/OperationalTableStates";
+import { formatDateTime } from "@/lib/formatters";
 import RowActions from "@/app/secretaria/(portal-secretaria)/importacoes/RowActions";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildContextualPortalHref } from "@/lib/navigation";
@@ -33,37 +35,55 @@ export default function ImportacoesListClient() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
 
   const fetchItems = useCallback(async (options?: { cursor?: string | null; append?: boolean }) => {
-    if (options?.append) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    const append = options?.append === true;
+    setError(null);
+    setLoadingMore(append);
+    setLoading(!append);
+    if (!append) {
+      setItems([]);
+      setNextCursor(null);
     }
     try {
-      const params = new URLSearchParams();
-      params.set("limit", "30");
+      const params = new URLSearchParams({ limit: "30" });
       if (options?.cursor) params.set("cursor", options.cursor);
-      const res = await fetch(`/api/migracao/historico?${params.toString()}`, { cache: "no-store" });
-      if (!res.ok) throw new Error("Falha ao carregar importações");
-      const json = (await res.json()) as ImportResponse;
-      setNextCursor(json.next_cursor ?? null);
-      if (options?.append) {
-        setItems((prev) => [...prev, ...(json.items ?? [])]);
-      } else {
-        setItems(json.items ?? []);
+      const res = await fetch(`/api/migracao/historico?${params.toString()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const json = (await res.json().catch(() => null)) as (ImportResponse & { error?: string }) | null;
+      if (!res.ok || !Array.isArray(json?.items)) {
+        throw new Error(json?.error || "Falha ao carregar importações.");
       }
-    } catch {
-      if (!options?.append) setItems([]);
+      if (append && options?.cursor && json.next_cursor === options.cursor) {
+        throw new Error("A paginação não avançou. Atualize a listagem.");
+      }
+      if (controller.signal.aborted) return;
+      setNextCursor(json.next_cursor ?? null);
+      setItems((prev) => append
+        ? Array.from(new Map([...prev, ...json.items].map((item) => [item.id, item])).values())
+        : json.items);
+    } catch (cause) {
+      if (controller.signal.aborted) return;
+      setError(cause instanceof Error ? cause.message : "Falha ao carregar importações.");
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchItems({ append: false });
-  }, [fetchItems]);
+    void fetchItems({ append: false });
+    return () => requestRef.current?.abort();
+  }, [fetchItems, escolaId]);
 
   return (
     <div className="space-y-6">
@@ -75,7 +95,7 @@ export default function ImportacoesListClient() {
         <div className="flex items-center gap-3">
           <Link
             href={buildContextualPortalHref(escolaParam, "/secretaria/migracao/alunos", pathname)}
-            className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-white hover:bg-teal-700"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
           >
             <Upload size={18} />
             Nova importação
@@ -83,7 +103,7 @@ export default function ImportacoesListClient() {
           <button
             type="button"
             onClick={() => fetchItems({ append: false })}
-            className="inline-flex items-center gap-2 rounded-lg bg-card px-4 py-2 text-foreground border border-border hover:bg-muted"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
           >
             <RefreshCw size={18} />
             Atualizar
@@ -91,7 +111,13 @@ export default function ImportacoesListClient() {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {error && <OperationalTableErrorState description={error} onRetry={() => void fetchItems({ append: false })} />}
+
+      <p aria-live="polite" className="text-xs text-muted-foreground">
+        {items.length} {items.length === 1 ? "importação carregada" : "importações carregadas"}{nextCursor ? " · Existem mais registos para carregar" : ""}. Esta contagem não representa necessariamente o total da escola.
+      </p>
+
+      <div className="min-w-0 overflow-x-auto rounded-xl border border-border bg-card">
         <table className="min-w-full divide-y divide-border">
           <thead className="bg-muted">
             <tr>
@@ -110,7 +136,7 @@ export default function ImportacoesListClient() {
                 </td>
               </tr>
             )}
-            {!loading && items.length === 0 && (
+            {!loading && !error && items.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
                   Nenhuma importação encontrada.
@@ -118,16 +144,13 @@ export default function ImportacoesListClient() {
               </tr>
             )}
             {!loading && items.map((it) => {
+              const restantes = (it.total_rows ?? 0) - (it.imported_rows ?? 0) - (it.error_rows ?? 0);
               const counts = [
                 `${it.imported_rows ?? 0} importados`,
                 `${it.error_rows ?? 0} erros`,
-                `${(it.total_rows ?? 0) - (it.imported_rows ?? 0) - (it.error_rows ?? 0)} restantes`,
-              ].join(' · ');
-              const processed = it.processed_at
-                ? new Date(it.processed_at).toLocaleString()
-                : it.created_at
-                ? new Date(it.created_at).toLocaleString()
-                : "—";
+                restantes < 0 ? "Contagens inconsistentes" : `${restantes} restantes`,
+              ].join(" · ");
+              const processed = formatDateTime(it.processed_at ?? it.created_at);
               return (
                 <tr key={it.id} className="hover:bg-muted/60">
                   <td className="px-4 py-3">
@@ -180,8 +203,8 @@ export default function ImportacoesListClient() {
           <button
             type="button"
             onClick={() => fetchItems({ cursor: nextCursor, append: true })}
-            disabled={loadingMore}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-60"
+            disabled={loadingMore || loading}
+            className="min-h-11 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-60"
           >
             {loadingMore ? 'Carregando...' : 'Carregar mais'}
           </button>

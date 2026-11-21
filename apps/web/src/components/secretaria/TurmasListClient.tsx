@@ -10,7 +10,7 @@ import {
   Search, X, UsersRound, CalendarCheck, Eye, Pencil, Plus,
   AlertTriangle, CheckCircle2, GraduationCap, UserCheck, UserX,
   BookOpen, BookX, ChevronDown, LayoutGrid, List, MapPin,
-  Printer, Lock, Send, ArrowUpDown, Calendar, Clock
+  Printer, Lock, ArrowUpDown, Calendar, Clock
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { recordAuditClient } from "@/lib/auditClient";
@@ -25,6 +25,8 @@ import { buildEscolaUrl } from "@/lib/escola/url";
 import { formatTurmaNomeHumano } from "@/utils/formatters";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
+import { OperationalTableErrorState } from "@/components/ui/OperationalTableStates";
+import { parseTurmaSearch } from "@/lib/ui/turma-search";
 import { ImprimirListaTurmaButton } from "@/components/secretaria/ImprimirListaTurmaButton";
 import { MAX_TURMAS_POR_LOTE } from "@/lib/documentos/rosterBatchPolicy";
 import type { NominalNameOrder } from "@/lib/documentos/nominalExportOptions";
@@ -853,10 +855,11 @@ export default function TurmasListClient({
     ? buildPortalHref(escolaParam, "/operacoes")
     : buildPortalHref(escolaParam, "/secretaria");
 
-  const [data,            setData]            = useState<TurmasResponse | null>(initialData);
   const [items,           setItems]           = useState<TurmaItem[]>(initialData?.items || []);
   const [nextCursor,      setNextCursor]      = useState<string | null>(initialData?.next_cursor ?? null);
   const [loadingMore,     setLoadingMore]     = useState(false);
+  const [listError,       setListError]       = useState<string | null>(null);
+  const listRequestRef = useRef<AbortController | null>(null);
   const [loading,         setLoading]         = useState(!initialData);
   const [busca,           setBusca]           = useState("");
   const [filters,         setFilters]         = useState<ActiveFilters>(DEFAULT_FILTERS);
@@ -937,9 +940,15 @@ export default function TurmasListClient({
   }, []);
 
   const toggleAll = useCallback((filteredIds: string[]) => {
-    setSelectedIds(prev => {
-      if (prev.size === filteredIds.length) return new Set();
-      return new Set(filteredIds);
+    setSelectedIds((prev) => {
+      if (filteredIds.length === 0) return prev;
+      const allVisibleSelected = filteredIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      filteredIds.forEach((id) => {
+        if (allVisibleSelected) next.delete(id);
+        else next.add(id);
+      });
+      return next;
     });
   }, []);
 
@@ -1094,10 +1103,6 @@ export default function TurmasListClient({
     fetchData();
   };
 
-  const handleBulkNotify = () => {
-    success("Notificações em fila", `Estamos a preparar o envio de alertas para os encarregados de ${selectedIds.size} turma(s).`);
-  };
-
   const fetchQuickView = useCallback(async (turmaId: string) => {
     if (!escolaId || expandedData[turmaId]) return;
     setExpandedLoading(turmaId);
@@ -1178,35 +1183,60 @@ export default function TurmasListClient({
   // ── Fetch turmas ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async (options?: { cursor?: string | null; append?: boolean }) => {
     if (!escolaId) { setLoading(false); return; }
+    listRequestRef.current?.abort();
+    const controller = new AbortController();
+    listRequestRef.current = controller;
+    const append = options?.append === true;
+    setListError(null);
+    if (append) setLoadingMore(true);
+    else {
+      setLoading(true);
+      setNextCursor(null);
+      setItems([]);
+      setSelectedIds(new Set());
+    }
     try {
-      options?.append ? setLoadingMore(true) : setLoading(true);
       const params = new URLSearchParams();
-      if (filters.turno   !== "todos") params.set("turno",  filters.turno);
-      if (filters.status  !== "todos" && filters.status !== "rascunho") {
-        params.set("status", filters.status);
+      if (filters.turno !== "todos") params.set("turno", filters.turno);
+      if (filters.status !== "todos" && filters.status !== "rascunho") {
+        // The server's status_validacao contains `ativo`, not the UI label `ativos`.
+        params.set("status", filters.status === "ativos" ? "ativo" : filters.status);
       }
-      if (filters.curso   !== "todos") params.set("curso_id",  filters.curso);
-      if (busca.trim())                params.set("busca",  busca.trim());
+      if (filters.curso !== "todos") params.set("curso_id", filters.curso);
+      if (busca.trim()) params.set("busca", busca.trim());
       params.set("limit", "100");
       if (academicYearId) params.set(ACADEMIC_YEAR_PARAM, academicYearId);
       if (options?.cursor) params.set("cursor", options.cursor);
 
-      const res  = await fetch(buildEscolaUrl(escolaId, "/turmas", params), {
+      const res = await fetch(buildEscolaUrl(escolaId, "/turmas", params), {
         headers: { "X-Proxy-Used": "canonical" },
+        signal: controller.signal,
+        cache: "no-store",
       });
-      const json = await res.json();
-      if (json.ok) {
-        setData(json);
-        setNextCursor(json.next_cursor ?? null);
-        setItems((prev) => options?.append ? [...prev, ...(json.items || [])] : (json.items || []));
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.ok !== true || !Array.isArray(json.items)) {
+        throw new Error(json?.error || "Falha ao carregar turmas.");
       }
-    } catch (err) {
-      console.error("Erro ao buscar turmas", err);
+      if (append && options?.cursor && options.cursor === json.next_cursor) {
+        throw new Error("A paginação de turmas não avançou. Atualize a listagem.");
+      }
+      if (controller.signal.aborted) return;
+      setNextCursor(json.next_cursor ?? null);
+      setItems((prev) => append
+        ? Array.from(new Map([...prev, ...json.items].map((turma) => [turma.id, turma])).values()) as TurmaItem[]
+        : json.items);
+    } catch (cause) {
+      if (controller.signal.aborted) return;
+      setListError(cause instanceof Error ? cause.message : "Falha ao carregar turmas.");
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [escolaId, filters, busca, academicYearId]);
+
+  useEffect(() => () => listRequestRef.current?.abort(), []);
 
   const initialRender = useRef(true);
 
@@ -1224,9 +1254,9 @@ export default function TurmasListClient({
   }, [fetchData, escolaId, escolaLoading, initialData]);
 
   const loadMore = useCallback(async () => {
-    if (!nextCursor || loadingMore) return;
+    if (!nextCursor || loading || loadingMore) return;
     await fetchData({ cursor: nextCursor, append: true });
-  }, [fetchData, nextCursor, loadingMore]);
+  }, [fetchData, nextCursor, loading, loadingMore]);
 
   const submitTransfer = useCallback(async () => {
     if (!transferSourceTurmaId || !transferTargetTurmaId || !transferConfirmed ||
@@ -1297,7 +1327,7 @@ export default function TurmasListClient({
 
   // ── Client-side filtering (for fields not sent to API) ────────────────────
   const filteredItems = useMemo(() => {
-    const query = busca.trim().toLowerCase();
+    const query = parseTurmaSearch(busca).value.toLowerCase();
     return items.filter((t) => {
       if (filters.curso !== "todos" && t.curso_id !== filters.curso) return false;
       if (query) {
@@ -1306,7 +1336,6 @@ export default function TurmasListClient({
           t.turma_codigo,
           t.curso_nome,
           t.classe_nome,
-          t.professor_nome,
           t.sala,
         ]
           .filter(Boolean)
@@ -1339,7 +1368,7 @@ export default function TurmasListClient({
 
       return true;
     });
-  }, [items, filters, financeiroStats, busca]);
+  }, [items, filters, financeiroStats, pedagogicoStats, busca]);
 
   const filteredIds = useMemo(() => filteredItems.map(t => t.id), [filteredItems]);
 
@@ -1454,7 +1483,11 @@ export default function TurmasListClient({
           </div>
         )}
 
-        {isInitialLoading ? (
+        {listError && items.length === 0 ? (
+          <div className="p-4">
+            <OperationalTableErrorState description={listError} onRetry={() => void fetchData()} />
+          </div>
+        ) : isInitialLoading ? (
           <div className="p-5 space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={`turma-skeleton-${i}`} className="rounded-xl border border-slate-100 bg-white p-4">
@@ -1499,7 +1532,7 @@ export default function TurmasListClient({
                     <th className="px-5 py-3 text-left w-[40px]">
                       <input
                         type="checkbox"
-                        checked={selectedIds.size > 0 && selectedIds.size === filteredIds.length}
+                        checked={filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id))}
                         onChange={() => toggleAll(filteredIds)}
                         className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
                       />
@@ -1776,12 +1809,23 @@ export default function TurmasListClient({
           </div>
         )}
 
+        {!isInitialLoading && !listError && (
+          <div className="border-t border-border bg-card px-4 py-3 text-xs text-muted-foreground" aria-live="polite">
+            <span>{filteredItems.length} turmas apresentadas · {items.length} turmas carregadas</span>
+            {nextCursor && (
+              <span className="ml-1">· Existem mais turmas. Filtros como vagas, professor, currículo e pendências só abrangem as turmas já carregadas.</span>
+            )}
+          </div>
+        )}
+        {listError && items.length > 0 && (
+          <div className="p-4"><OperationalTableErrorState description={listError} onRetry={() => void fetchData()} /></div>
+        )}
         {nextCursor && (
           <div className="flex justify-center py-4">
             <button
               onClick={loadMore}
-              disabled={loadingMore}
-              className="rounded-xl border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 transition-colors"
+              disabled={loadingMore || loading || Boolean(listError)}
+              className="min-h-11 rounded-xl border border-border bg-card px-5 py-2 text-sm font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-60 transition-colors"
             >
               {loadingMore ? "Carregando…" : "Carregar mais"}
             </button>
@@ -2014,13 +2058,6 @@ export default function TurmasListClient({
             >
               <Lock size={16} className="text-slate-400 group-hover:text-white transition-colors" />
               Fechamento em Bloco
-            </button>
-            <button
-              onClick={handleBulkNotify}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-slate-900 hover:bg-amber-400 rounded-xl transition-all text-sm font-bold shadow-lg shadow-amber-500/20"
-            >
-              <Send size={16} />
-              Notificar Encarregados
             </button>
             <button
               onClick={() => setSelectedIds(new Set())}

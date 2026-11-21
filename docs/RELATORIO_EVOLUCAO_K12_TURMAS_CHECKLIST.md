@@ -95,3 +95,6 @@ Conectar a gestão de turmas com admissões e RH.
 - `GET /api/escola/[id]/admin/turmas/stats-pedagogicos`: Para buscar assiduidade e médias.
 - `PATCH /api/escola/[id]/admin/turmas/[turmaId]`: Endpoint genérico para atualizações rápidas.
 - `POST /api/escola/[id]/admin/turmas/bulk-print`: Orquestração de PDFs em lote.
+
+
+> **Correção (PR 5 · 21/11/2026):** A opção “Notificar Encarregados” descrita acima estava apenas a apresentar um toast, sem envio para qualquer fila/API. Foi retirada da listagem até existir um fluxo real, autorizado e auditado de notificações. O checklist histórico não constitui evidência de que a comunicação tenha sido enviada.
