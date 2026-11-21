@@ -3,25 +3,26 @@
 -- The public view retains its four columns and school membership authorization.
 BEGIN;
 
-CREATE TABLE internal.top_cursos_media_live (
+CREATE TABLE IF NOT EXISTS internal.top_cursos_media_live (
   escola_id uuid NOT NULL,
   curso_id uuid NOT NULL,
   curso_nome text,
   media numeric,
   PRIMARY KEY(escola_id,curso_id)
 );
-CREATE TABLE internal.top_cursos_dirty (
+CREATE TABLE IF NOT EXISTS internal.top_cursos_dirty (
   escola_id uuid NOT NULL,
   curso_id uuid NOT NULL,
   requested_at timestamptz NOT NULL DEFAULT pg_catalog.clock_timestamp(),
   PRIMARY KEY(escola_id,curso_id)
 );
-CREATE INDEX idx_top_cursos_dirty_age
+CREATE INDEX IF NOT EXISTS idx_top_cursos_dirty_age
   ON internal.top_cursos_dirty(requested_at,escola_id,curso_id);
 
 REVOKE ALL ON TABLE internal.top_cursos_media_live,internal.top_cursos_dirty
   FROM PUBLIC,anon,authenticated,service_role;
 ALTER TABLE internal.top_cursos_media_live ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS top_cursos_read_own_school ON internal.top_cursos_media_live;
 CREATE POLICY top_cursos_read_own_school ON internal.top_cursos_media_live
 FOR SELECT TO authenticated
 USING (EXISTS (
@@ -35,7 +36,8 @@ GRANT SELECT ON TABLE internal.top_cursos_media_live TO authenticated,service_ro
 -- against source tables via the per-course dirty queue.
 INSERT INTO internal.top_cursos_media_live(escola_id,curso_id,curso_nome,media)
 SELECT escola_id,curso_id,curso_nome,media
-FROM internal.mv_top_cursos_media;
+FROM internal.mv_top_cursos_media
+ON CONFLICT (escola_id,curso_id) DO NOTHING;
 
 CREATE OR REPLACE VIEW public.vw_top_cursos_media
 WITH (security_invoker = true) AS
@@ -49,7 +51,7 @@ WHERE v.escola_id IN (
 
 -- Targeted AVG: only one school's one course is scanned/updated.
 -- UPDATE ... WHERE DISTINCT avoids generating WAL for unchanged values.
-CREATE FUNCTION internal.refresh_top_curso_media_one(p_escola_id uuid,p_curso_id uuid)
+CREATE OR REPLACE FUNCTION internal.refresh_top_curso_media_one(p_escola_id uuid,p_curso_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $fn$
 DECLARE
@@ -82,7 +84,7 @@ END;
 $fn$;
 
 -- One queue UPSERT per affected course / SQL statement, not per grade row.
-CREATE FUNCTION internal.queue_top_cursos_from_notas()
+CREATE OR REPLACE FUNCTION internal.queue_top_cursos_from_notas()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $fn$
 BEGIN
@@ -124,7 +126,7 @@ $fn$;
 
 -- Infrequent course/curriculum/evaluation changes conservatively invalidate
 -- all courses in the affected school; grades invalidate only their courses.
-CREATE FUNCTION internal.queue_top_cursos_from_school_change()
+CREATE OR REPLACE FUNCTION internal.queue_top_cursos_from_school_change()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $fn$
 BEGIN
@@ -274,7 +276,7 @@ EXECUTE FUNCTION internal.queue_top_cursos_from_school_change();
 -- Lock one queue item until its source calculation and DELETE commit together.
 -- An academic write racing with this worker will requeue after its lock waits;
 -- no committed grade change can be dropped between compute and dequeue.
-CREATE FUNCTION internal.process_top_cursos_dirty(p_limit integer DEFAULT 50)
+CREATE OR REPLACE FUNCTION internal.process_top_cursos_dirty(p_limit integer DEFAULT 50)
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $fn$
 DECLARE
@@ -305,7 +307,7 @@ $fn$;
 
 -- Daily safety reconciliation, targeted by course, catches administrative
 -- restores or missed trigger operations without a whole-view refresh.
-CREATE FUNCTION internal.enqueue_top_cursos_reconciliation()
+CREATE OR REPLACE FUNCTION internal.enqueue_top_cursos_reconciliation()
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $fn$
 DECLARE v_rows integer;
@@ -328,6 +330,24 @@ REVOKE ALL ON FUNCTION
   internal.enqueue_top_cursos_reconciliation()
 FROM PUBLIC,anon,authenticated,service_role;
 
+-- Existing service callers of the public manual refresh retain its semantics:
+-- force the legacy MV (for direct internal consumers) AND converge new cache.
+-- Scheduled path uses only the queue and never invokes this full refresh.
+CREATE OR REPLACE FUNCTION public.refresh_mv_top_cursos_media()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $fn$
+DECLARE
+  v_count integer;
+BEGIN
+  REFRESH MATERIALIZED VIEW CONCURRENTLY internal.mv_top_cursos_media;
+  PERFORM internal.enqueue_top_cursos_reconciliation();
+  LOOP
+    SELECT internal.process_top_cursos_dirty(100) INTO v_count;
+    EXIT WHEN v_count = 0;
+  END LOOP;
+END;
+$fn$;
+
 -- Bootstrap convergence regardless of the legacy MV's last refresh time.
 SELECT internal.enqueue_top_cursos_reconciliation();
 
@@ -336,26 +356,43 @@ DECLARE v_job record;
 BEGIN
   SELECT jobid,command,username INTO v_job
   FROM cron.job WHERE jobname='refresh_mv_top_cursos_media' AND active;
-  IF NOT FOUND OR
-    pg_catalog.btrim(v_job.command) IS DISTINCT FROM
-    'REFRESH MATERIALIZED VIEW CONCURRENTLY internal.mv_top_cursos_media'
-  THEN RAISE EXCEPTION 'Top-courses cron unexpected: cutover aborted'; END IF;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Top-courses cron missing: cutover aborted';
+  END IF;
   IF v_job.username <> CURRENT_USER THEN
-    RAISE EXCEPTION 'Top-courses cron owner mismatch'; END IF;
-
-  PERFORM cron.alter_job(v_job.jobid,
-    schedule := '*/10 * * * *',
-    command := 'SELECT internal.process_top_cursos_dirty(50);');
+    RAISE EXCEPTION 'Top-courses cron owner mismatch';
+  END IF;
+  IF pg_catalog.btrim(v_job.command) =
+    'REFRESH MATERIALIZED VIEW CONCURRENTLY internal.mv_top_cursos_media'
+  THEN
+    PERFORM cron.alter_job(v_job.jobid,
+      schedule := '*/10 * * * *',
+      command := 'SELECT internal.process_top_cursos_dirty(50);');
+  ELSIF pg_catalog.btrim(v_job.command) =
+    'SELECT internal.process_top_cursos_dirty(50);'
+  THEN
+    IF v_job.schedule IS DISTINCT FROM '*/10 * * * *' THEN
+      PERFORM cron.alter_job(v_job.jobid, schedule := '*/10 * * * *');
+    END IF;
+  ELSE
+    RAISE EXCEPTION 'Top-courses cron unexpected command: %',v_job.command;
+  END IF;
 
   IF EXISTS (SELECT 1 FROM cron.job
-    WHERE jobname='top-cursos-reconcile-daily') THEN
-    RAISE EXCEPTION 'Top-courses reconciliation cron already exists; inspect before cutover';
+     WHERE jobname='top-cursos-reconcile-daily'
+       AND (schedule<>'17 3 * * *'
+         OR pg_catalog.btrim(command)<>
+           'SELECT internal.enqueue_top_cursos_reconciliation();')) THEN
+    RAISE EXCEPTION 'Top-courses reconciliation cron unexpectedly modified';
   END IF;
-  PERFORM cron.schedule(
-    'top-cursos-reconcile-daily',
-    '17 3 * * *',
-    'SELECT internal.enqueue_top_cursos_reconciliation();'
-  );
+  IF NOT EXISTS (SELECT 1 FROM cron.job
+     WHERE jobname='top-cursos-reconcile-daily') THEN
+    PERFORM cron.schedule(
+      'top-cursos-reconcile-daily',
+      '17 3 * * *',
+      'SELECT internal.enqueue_top_cursos_reconciliation();'
+    );
+  END IF;
 END;
 $cron$;
 
