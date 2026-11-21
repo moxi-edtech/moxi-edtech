@@ -57,8 +57,15 @@ export function CartaoEstudante() {
     setError(null);
     setIsServedFromCache(false);
 
-    // O formato antigo não distinguia escolas nem contas no mesmo dispositivo.
-    try { localStorage.removeItem(`${STORAGE_KEY}${studentId || "default"}`); } catch { /* indisponível */ }
+    // Apaga caches antigas sem isolamento de conta/tenant: não são seguras para fallback.
+    try {
+      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+        const key = localStorage.key(index);
+        if (key?.startsWith(STORAGE_KEY) && !key.startsWith(`${STORAGE_KEY}v2:`)) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch { /* armazenamento indisponível */ }
 
     const url = studentId
       ? `/api/aluno/perfil/identidade?studentId=${encodeURIComponent(studentId)}`
