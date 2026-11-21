@@ -1,3 +1,5 @@
+import * as React from "react";
+
 /**
  * Placeholders alinhados com a estrutura real do Portal do Professor.
  * Partilham os mesmos breakpoints, grids e raios dos componentes carregados.
@@ -149,6 +151,43 @@ export function ProfessorCalendarSkeleton() {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** Mirrors the actual plan editor and list at mobile/desktop sizes. */
+export function ProfessorPlanosAulaSkeleton() {
+  return (
+    <div role="status" aria-busy="true" aria-label="A carregar planos de aula" className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr] lg:gap-6">
+      <span className="sr-only">A carregar planos de aula</span>
+      <section aria-hidden="true" className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+        <div className="space-y-4 motion-safe:animate-pulse">
+          <ProfessorSkeletonBone className="h-5 w-36" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((item) => <div key={item} className="space-y-2"><ProfessorSkeletonBone className="h-3 w-20" /><ProfessorSkeletonBone className="h-11 w-full rounded-xl" /></div>)}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((item) => <div key={item} className="space-y-2"><ProfessorSkeletonBone className="h-3 w-28" /><ProfessorSkeletonBone className="h-24 w-full rounded-xl" /></div>)}
+          </div>
+          <div className="flex flex-wrap gap-3"><ProfessorSkeletonBone className="h-11 w-40 rounded-xl" /><ProfessorSkeletonBone className="h-11 w-44 rounded-xl" /></div>
+        </div>
+      </section>
+      <section aria-hidden="true" className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+        <div className="space-y-3 motion-safe:animate-pulse">
+          <ProfessorSkeletonBone className="h-5 w-36" />
+          <ProfessorSkeletonBone className="h-3 w-52 max-w-full" />
+          {[0, 1, 2].map((item) => <div key={item} className="space-y-2 rounded-xl border border-border p-4"><ProfessorSkeletonBone className="h-4 w-4/5" /><ProfessorSkeletonBone className="h-3 w-1/2" /></div>)}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export function ProfessorPlanosListSkeleton() {
+  return (
+    <div role="status" aria-busy="true" aria-label="A atualizar planos de aula" className="space-y-3 motion-safe:animate-pulse">
+      <span className="sr-only">A atualizar planos de aula</span>
+      {[0, 1].map((item) => <div key={item} aria-hidden="true" className="space-y-2 rounded-xl border border-border p-4"><ProfessorSkeletonBone className="h-4 w-3/4" /><ProfessorSkeletonBone className="h-3 w-2/5" /></div>)}
     </div>
   );
 }

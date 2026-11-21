@@ -24,7 +24,7 @@ export function DashboardHeader({
     <div className="space-y-2">
       {/* Breadcrumbs */}
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav className="flex items-center gap-1 text-xs text-muted-foreground">
+        <nav className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground">
           {breadcrumbs.map((bc, idx) => (
             <span key={idx} className="flex items-center gap-1">
               {bc.href ? (
@@ -46,7 +46,7 @@ export function DashboardHeader({
       )}
 
       {/* Title + Actions */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="klasse-dashboard-header-title text-xl font-semibold text-foreground tracking-tight">
             {title}
@@ -59,7 +59,7 @@ export function DashboardHeader({
         </div>
 
         {actions && (
-          <div className="flex items-center gap-2">{actions}</div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div>
         )}
       </div>
     </div>
