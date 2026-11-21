@@ -22,6 +22,31 @@ BEGIN
     RAISE EXCEPTION 'IO regression: audit summary still refreshing hourly';
   END IF;
 
+  -- Existing installations with the supported read models must keep their
+  -- reduced cadence (fresh installs should not revive aggressive schedules).
+  SELECT string_agg(j.jobname, ', ' ORDER BY j.jobname) INTO v_mismatch
+  FROM (
+    VALUES
+      ('refresh_mv_escola_info', '3 * * * *'),
+      ('refresh_mv_escola_cursos_stats', '4 * * * *'),
+      ('refresh_mv_super_admin_escola_metrics', '5 * * * *'),
+      ('refresh_mv_top_turmas_hoje', '11 * * * *'),
+      ('fin-sidebar-5m', '1,31 * * * *'),
+      ('fin-dashboard-5m', '0,30 * * * *'),
+      ('refresh-boletim-hourly', '12 * * * *'),
+      ('refresh_mv_formacao_inadimplencia_resumo', '17 * * * *'),
+      ('refresh-mv-risco-pedagogico-aluno', '16 * * * *'),
+      ('refresh_mv_operacoes_dashboard_work', '2,32 * * * *'),
+      ('refresh-mv-financeiro-carteira-alunos', '8,38 * * * *'),
+      ('refresh_mv_radar_inadimplencia', '33 * * * *'),
+      ('refresh_financeiro_read_models_ano', '7,37 * * * *')
+  ) AS expected(jobname, target_schedule)
+  JOIN cron.job j ON j.jobname = expected.jobname AND j.active
+  WHERE j.schedule IS DISTINCT FROM expected.target_schedule;
+  IF v_mismatch IS NOT NULL THEN
+    RAISE EXCEPTION 'IO regression: reverted cron schedules: %', v_mismatch;
+  END IF;
+
   -- Transactional workers must never be disabled by cost optimizations.
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE active AND jobname='outbox-db-worker-1m') OR
      NOT EXISTS (SELECT 1 FROM cron.job WHERE active AND jobname='operational-receipts-1m') THEN
