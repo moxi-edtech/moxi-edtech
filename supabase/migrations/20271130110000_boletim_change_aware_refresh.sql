@@ -79,7 +79,7 @@ CREATE TRIGGER trg_klasse_boletim_dirty
 AFTER INSERT OR UPDATE OF formula,componentes,is_default,curso_id,nome,escola_id OR DELETE ON public.modelos_avaliacao
 FOR EACH STATEMENT EXECUTE FUNCTION internal.mark_boletim_dirty();
 
-CREATE OR REPLACE FUNCTION internal.refresh_boletim_if_dirty()
+CREATE OR REPLACE FUNCTION internal.refresh_boletim_if_dirty(p_force boolean DEFAULT false)
 RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $fn$
 DECLARE
@@ -89,7 +89,9 @@ DECLARE
 BEGIN
   -- Avoid overlapping automatic/maintenance refreshes without locking writes
   -- to academic source tables during the expensive MV operation.
-  IF NOT pg_catalog.pg_try_advisory_xact_lock(184103, 91) THEN
+  IF p_force THEN
+    PERFORM pg_catalog.pg_advisory_xact_lock(184103, 91);
+  ELSIF NOT pg_catalog.pg_try_advisory_xact_lock(184103, 91) THEN
     RETURN 'busy';
   END IF;
 
@@ -104,7 +106,7 @@ BEGIN
 
   -- 24h safety reconciliation catches rare operations bypassing normal triggers
   -- (e.g. restore/replication), without hourly writes while the school is idle.
-  IF v_dirty = v_refreshed
+  IF NOT p_force AND v_dirty = v_refreshed
      AND v_last_at IS NOT NULL
      AND v_last_at > pg_catalog.clock_timestamp() - interval '24 hours'
   THEN
@@ -123,7 +125,17 @@ BEGIN
   RETURN 'refreshed';
 END;
 $fn$;
-REVOKE ALL ON FUNCTION internal.refresh_boletim_if_dirty() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION internal.refresh_boletim_if_dirty(boolean) FROM PUBLIC, anon, authenticated, service_role;
+
+-- Preserve the public manual refresh contract and avoid a duplicate hourly
+-- refresh when a service has already explicitly refreshed the same MV.
+CREATE OR REPLACE FUNCTION public.refresh_mv_boletim_por_matricula()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $fn$
+BEGIN
+  PERFORM internal.refresh_boletim_if_dirty(true);
+END;
+$fn$;
 
 -- Preserve the existing cron job ID and deployment behavior.
 -- Abort on drift rather than silently reconfiguring an unexpected job.
@@ -134,16 +146,22 @@ BEGIN
   SELECT jobid,command,username INTO v_job
   FROM cron.job
   WHERE jobname = 'refresh-boletim-hourly' AND active;
-  IF NOT FOUND OR
-     pg_catalog.btrim(v_job.command) IS DISTINCT FROM
-       'REFRESH MATERIALIZED VIEW CONCURRENTLY internal.mv_boletim_por_matricula' THEN
-    RAISE EXCEPTION 'Boletim cron unexpected or missing: cutover aborted';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Boletim cron missing: cutover aborted';
   END IF;
   IF v_job.username <> CURRENT_USER THEN
     RAISE EXCEPTION 'Boletim cron owner differs from migration user; manual privilege review required';
   END IF;
-  PERFORM cron.alter_job(v_job.jobid,
-    command := 'SELECT internal.refresh_boletim_if_dirty();');
+  IF pg_catalog.btrim(v_job.command) =
+    'REFRESH MATERIALIZED VIEW CONCURRENTLY internal.mv_boletim_por_matricula'
+  THEN
+    PERFORM cron.alter_job(v_job.jobid,
+      command := 'SELECT internal.refresh_boletim_if_dirty();');
+  ELSIF pg_catalog.btrim(v_job.command) <>
+    'SELECT internal.refresh_boletim_if_dirty();'
+  THEN
+    RAISE EXCEPTION 'Boletim cron command unexpectedly changed: %',v_job.command;
+  END IF;
 END;
 $migrate$;
 
