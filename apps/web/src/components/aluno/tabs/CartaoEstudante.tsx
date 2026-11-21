@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { User, ShieldCheck, Calendar, GraduationCap, Wallet, WifiOff, Info } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useAlunoPortalScope } from "@/components/aluno/AlunoPortalScope";
 
 type IdentidadeData = {
   nome: string;
@@ -25,6 +26,10 @@ const STORAGE_KEY = "klasse_id_card_cache_";
 export function CartaoEstudante() {
   const searchParams = useSearchParams();
   const studentId = searchParams?.get("aluno");
+  const scope = useAlunoPortalScope();
+  // Separar cache por utilizador autenticado, escola e educando.
+  // Não disponibilizar fallback offline fora do layout autenticado.
+  const cacheKey = scope ? `${STORAGE_KEY}v2:${scope.userId}:${scope.escolaId}:${studentId ?? "default"}` : null;
   
   const [data, setData] = useState<IdentidadeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,48 +51,58 @@ export function CartaoEstudante() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
+    setData(null);
     setError(null);
     setIsServedFromCache(false);
-    
-    const cacheKey = `${STORAGE_KEY}${studentId || "default"}`;
-    const url = studentId 
-      ? `/api/aluno/perfil/identidade?studentId=${studentId}`
+
+    // O formato antigo não distinguia escolas nem contas no mesmo dispositivo.
+    try { localStorage.removeItem(`${STORAGE_KEY}${studentId || "default"}`); } catch { /* indisponível */ }
+
+    const url = studentId
+      ? `/api/aluno/perfil/identidade?studentId=${encodeURIComponent(studentId)}`
       : "/api/aluno/perfil/identidade";
 
-    fetch(url)
-      .then(async (r) => {
-        const json = await r.json();
-        if (r.ok && json.ok) {
+    void fetch(url, { signal: controller.signal })
+      .then(async (response) => {
+        const json = await response.json();
+        if (controller.signal.aborted) return;
+        if (response.ok && json.ok) {
           setData(json.identidade);
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify(json.identidade));
-          } catch (e) {
-            console.warn("Could not save ID card to localStorage", e);
+          if (cacheKey) {
+            try { localStorage.setItem(cacheKey, JSON.stringify(json.identidade)); } catch { /* offline indisponível */ }
           }
         } else {
-          setError({ 
-            type: json.error || "UNKNOWN", 
-            message: json.message || "Falha ao carregar identidade acadêmica." 
+          setError({
+            type: json.error || "UNKNOWN",
+            message: json.message || "Falha ao carregar identidade académica.",
           });
         }
       })
       .catch(() => {
+        if (controller.signal.aborted) return;
         try {
-          const cached = localStorage.getItem(cacheKey);
+          const cached = cacheKey ? localStorage.getItem(cacheKey) : null;
           if (cached) {
-            const parsed = JSON.parse(cached) as IdentidadeData;
-            setData(parsed);
+            const parsed: unknown = JSON.parse(cached);
+            if (!parsed || typeof parsed !== "object" || !("nome" in parsed) || !("verification_url" in parsed) ||
+                typeof parsed.nome !== "string" || typeof parsed.verification_url !== "string") {
+              throw new Error("Cartão offline inválido");
+            }
+            setData(parsed as IdentidadeData);
             setIsServedFromCache(true);
           } else {
-            setError({ type: "FETCH_ERROR", message: "Dispositivo offline. Nenhum cartão em cache." });
+            setError({ type: "FETCH_ERROR", message: "Dispositivo offline. Nenhum cartão disponível neste contexto." });
           }
-        } catch (e) {
-          setError({ type: "FETCH_ERROR", message: "Erro de conexão ao carregar dados." });
+        } catch {
+          setError({ type: "FETCH_ERROR", message: "Não foi possível recuperar o cartão offline." });
         }
       })
-      .finally(() => setLoading(false));
-  }, [studentId]);
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+
+    return () => controller.abort();
+  }, [studentId, cacheKey]);
 
   if (loading) {
     return (
