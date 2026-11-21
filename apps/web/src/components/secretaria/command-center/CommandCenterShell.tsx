@@ -144,6 +144,7 @@ export function CommandCenterShell({
       <div
         className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:p-5"
         role="dialog"
+        data-balcao-workspace-modal=""
         onKeyDown={(event) => {
           if (event.key !== "Escape" || event.defaultPrevented) return;
           // Let a nested Dialog (e.g. turma documents) handle its own Escape.
