@@ -28,7 +28,8 @@ export function ModalShell({
   footer,
   size = "default",
 }: ModalShellProps) {
-  // The focus scope spans the viewport so nested fixed Balcão workspaces are not clipped.
+  // The focus scope spans the viewport. The base DialogContent animations use transforms,
+  // which create a containing block even with zero translation, so disable them here.
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
       <DialogContent
@@ -41,8 +42,6 @@ export function ModalShell({
             event.preventDefault();
           }
         }}
-        // DialogContent defaults to transform-based animations: even a zero transform
-        // creates a containing block and can clip nested fixed workspaces on mobile.
         className="fixed inset-0 left-0 top-0 z-50 flex h-[100dvh] w-full max-h-none max-w-none !transform-none !animate-none items-center justify-center gap-0 border-0 bg-transparent p-4 shadow-none sm:p-6"
       >
         <section
