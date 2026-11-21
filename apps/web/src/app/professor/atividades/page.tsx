@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
+import { matchesProfessorResourceQuery } from "@/lib/professor/resource-search";
 import { formatDate } from "@/lib/formatters";
 import { ProfessorResourceEmptyState, ProfessorResourceErrorState, ProfessorResourceGridSkeleton } from "@/components/professor/ProfessorResourceStates";
 import { useToast } from "@/components/feedback/FeedbackSystem";
@@ -209,10 +210,9 @@ export default function ProfessorAtividadesPage() {
 
   // Filter activities
   const filteredAtividades = useMemo(() => {
-    const term = searchTerm.trim().toLocaleLowerCase("pt-AO");
     return atividades.filter((act) => {
       if (filterStatus !== "todos" && act.status !== filterStatus) return false;
-      return !term || `${act.titulo} ${act.instrucoes ?? ""} ${act.tipo}`.toLocaleLowerCase("pt-AO").includes(term);
+      return matchesProfessorResourceQuery(searchTerm, act.titulo, act.instrucoes, act.tipo);
     });
   }, [atividades, filterStatus, searchTerm]);
 
