@@ -33,9 +33,11 @@ export async function GET(req: Request) {
     .eq("escola_id", escolaId);
 
   if (cursor) {
-    query = query.or(
-      `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`
-    );
+    query = cursor.createdAt === null
+      ? query.is("created_at", null).lt("id", cursor.id)
+      : query.or(
+        `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id}),created_at.is.null`
+      );
   }
 
   // Fetch one sentinel row for an accurate has-more decision. Kf2 retains
@@ -44,7 +46,7 @@ export async function GET(req: Request) {
     limit: limit + 1,
     maxLimit: 51,
     order: [
-      { column: "created_at", ascending: false },
+      { column: "created_at", ascending: false, nullsFirst: false },
       { column: "id", ascending: false },
     ],
   });
@@ -57,6 +59,6 @@ export async function GET(req: Request) {
   const last = items[items.length - 1];
   return NextResponse.json({
     items,
-    next_cursor: fetched.length > limit && last ? `${last.created_at},${last.id}` : null,
+    next_cursor: fetched.length > limit && last ? `${last.created_at ?? "null"},${last.id}` : null,
   });
 }
