@@ -1,6 +1,7 @@
 import { inngest } from "../client";
 import { createClient } from "@supabase/supabase-js";
 import { sendPushNotification } from "@/lib/webpush";
+import { isTrustedWebPushEndpoint } from "@/lib/notificacoes/webPushEndpointPolicy";
 import type { Database } from "~types/supabase";
 import type { PushSubscription } from "web-push";
 
@@ -90,6 +91,13 @@ export const pushNotificationWorker = inngest.createFunction(
         let expiredCount = 0;
 
         for (const sub of subs) {
+          // Direct PostgREST writes could bypass the Next.js route. Never
+          // let a persisted endpoint make this server POST to arbitrary hosts.
+          if (!isTrustedWebPushEndpoint(sub.endpoint)) {
+            console.warn("[WebPush] Rejected untrusted subscription endpoint");
+            continue;
+          }
+
           const pushSubscription: PushSubscription = {
             endpoint: sub.endpoint,
             keys: {
@@ -109,7 +117,9 @@ export const pushNotificationWorker = inngest.createFunction(
             await admin
               .from("aluno_push_subscriptions")
               .delete()
-              .eq("endpoint", sub.endpoint);
+              .eq("endpoint", sub.endpoint)
+              .eq("user_id", notification.destinatario_id)
+              .eq("escola_id", notification.escola_id);
             expiredCount++;
           } else {
             sentCount++;
