@@ -4,9 +4,9 @@ import { CartaoEstudante } from "@/components/aluno/tabs/CartaoEstudante";
 
 export default function IdentidadePage() {
   return (
-    <div className="space-y-4 bg-slate-50 min-h-[60vh] flex flex-col justify-center">
+    <div className="flex min-h-[60vh] min-w-0 flex-col justify-center space-y-4">
       <AuditPageView portal="aluno" acao="PAGE_VIEW" entity="identidade_digital" />
-      <Suspense fallback={<div className="h-64 rounded-3xl bg-white animate-pulse" />}>
+      <Suspense fallback={<div role="status" aria-label="A carregar cartão do estudante" className="h-64 animate-pulse rounded-xl border border-border bg-card" />}>
         <CartaoEstudante />
       </Suspense>
     </div>
