@@ -1,25 +1,29 @@
-import React from "react";
+import {
+  getStatusLabel,
+  getStatusTone,
+  STATUS_TONE_CLASSES,
+  type StatusVariant,
+} from "@/lib/ui/status-presentation";
 
-type Variant = "matricula" | "financeiro";
-
-function classesFor(status: string, variant: Variant): string {
-  const s = status.toLowerCase();
-  if (variant === "financeiro") {
-    if (s === "pago" || s === "em_dia") return "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20";
-    if (s.includes("atras") || s === "inadimplente") return "bg-rose-50 text-rose-700 border-rose-200";
-    return "bg-[#E3B23C]/10 text-[#E3B23C] border-[#E3B23C]/30";
-  }
-
-  if (s === "ativo") return "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20";
-  if (s === "arquivado" || s === "inativo") return "bg-muted text-muted-foreground border-border";
-  return "bg-[#E3B23C]/10 text-[#E3B23C] border-[#E3B23C]/30";
-}
-
-export function StatusPill({ status, variant = "matricula", size = "sm" }: { status?: string | null; variant?: Variant; size?: "sm" | "xs" }) {
-  const label = status?.replace(/_/g, " ") ?? "—";
+export function StatusPill({
+  status,
+  variant = "matricula",
+  size = "sm",
+}: {
+  status?: string | null;
+  variant?: StatusVariant;
+  size?: "sm" | "xs";
+}) {
+  const label = getStatusLabel(status);
+  const tone = getStatusTone(status, variant);
   return (
     <span
-      className={`inline-flex items-center rounded-full border font-semibold uppercase tracking-wide ${size === "xs" ? "px-2 py-0.5 text-[10px]" : "px-3 py-1 text-xs"} ${classesFor(label, variant)}`}
+      className={[
+        "inline-flex max-w-full items-center rounded-full border font-semibold uppercase tracking-wide",
+        size === "xs" ? "px-2 py-0.5 text-[10px]" : "px-3 py-1 text-xs",
+        STATUS_TONE_CLASSES[tone],
+      ].join(" ")}
+      title={label}
     >
       {label}
     </span>

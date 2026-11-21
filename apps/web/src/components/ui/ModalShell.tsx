@@ -1,17 +1,24 @@
 "use client";
 
-import React from "react";
+import type { ReactNode } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type ModalShellProps = {
   open: boolean;
   title: string;
   description?: string;
   onClose: () => void;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
   size?: "default" | "wide";
 };
 
+/** API-compatible modal; Radix handles focus, Escape and scroll locking. */
 export function ModalShell({
   open,
   title,
@@ -21,27 +28,35 @@ export function ModalShell({
   footer,
   size = "default",
 }: ModalShellProps) {
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10 animate-in fade-in-50">
-      <div className={`w-full rounded-2xl bg-card shadow-xl animate-in zoom-in-95 ${size === "wide" ? "max-w-7xl" : "max-w-3xl"}`}>
-        <div className="flex items-start justify-between border-b border-border px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-            {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
+      <DialogContent
+        closeButton={false}
+        overlayClassName="bg-black/40"
+        onPointerDownOutside={(event) => event.preventDefault()}
+        className={[
+          "flex w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)] min-h-0 flex-col gap-0 overflow-hidden rounded-2xl border-border bg-card p-0 shadow-xl",
+          size === "wide" ? "max-w-7xl" : "max-w-3xl",
+        ].join(" ")}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-4 py-4 sm:px-6">
+          <div className="min-w-0">
+            <DialogTitle className="text-lg font-semibold text-foreground">{title}</DialogTitle>
+            <DialogDescription className={description ? "mt-1 text-xs text-muted-foreground" : "sr-only"}>
+              {description ?? title}
+            </DialogDescription>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted"
+            className="min-h-10 shrink-0 rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
           >
             Fechar
           </button>
         </div>
-        <div className={`${size === "wide" ? "max-h-[82vh]" : "max-h-[70vh]"} overflow-y-auto px-6 py-5`}>{children}</div>
-        {footer && <div className="border-t border-border bg-muted px-6 py-4">{footer}</div>}
-      </div>
-    </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">{children}</div>
+        {footer ? <div className="shrink-0 border-t border-border bg-muted px-4 py-4 sm:px-6">{footer}</div> : null}
+      </DialogContent>
+    </Dialog>
   );
 }
