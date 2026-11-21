@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Clock3, Download, RefreshCw } from "lucide-react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { OperationalTablePagination, OperationalTableSkeleton } from "@/components/ui/OperationalTableStates";
-import { filterAndPaginateOperationalRows } from "@/lib/operacoes/operational-table";
+import { filterAndPaginateOperationalRows, quoteOperationalCsvCell } from "@/lib/operacoes/operational-table";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type Item = { professor_id: string; professor_nome: string; aulas: number; finalizadas: number; pendentes: number; atrasos: number; saidas_antecipadas: number; horas_previstas: number; horas_realizadas: number; minutos_atraso: number; minutos_saida_antecipada: number; previstas: { horas: number }; realizadas: { horas: number } };
@@ -69,15 +69,15 @@ export default function PontoProfessoresPage() {
   const exportCsv = () => {
     const header = ["Professor", "Aulas", "Finalizadas", "Pendentes", "Horas previstas", "Horas realizadas", "Atrasos", "Saídas antecipadas"];
     const rows = items.map((item) => [item.professor_nome, item.aulas, item.finalizadas, item.pendentes, item.previstas.horas, item.realizadas.horas, item.atrasos, item.saidas_antecipadas]);
-    const csv = [header, ...rows].map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = [header, ...rows].map((row) => row.map(quoteOperationalCsvCell).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a"); anchor.href = url; anchor.download = `ponto-professores-${month}.csv`; anchor.click(); URL.revokeObjectURL(url);
   };
 
   const adjustAula = async (aula: Aula) => {
-    const start = window.prompt("Início real (ex.: 2026-08-14T08:00:00-01:00). Deixe vazio para remover:", aula.inicio_real ?? "");
+    const start = window.prompt("Início real (ex.: 2026-08-14T08:00:00+01:00). Deixe vazio para remover:", aula.inicio_real ?? "");
     if (start === null) return;
-    const end = window.prompt("Fim real (ex.: 2026-08-14T09:30:00-01:00). Deixe vazio para remover:", aula.fim_real ?? "");
+    const end = window.prompt("Fim real (ex.: 2026-08-14T09:30:00+01:00). Deixe vazio para remover:", aula.fim_real ?? "");
     if (end === null) return;
     const motivo = window.prompt("Motivo obrigatório da correção (mínimo 10 caracteres):", "Correção solicitada pela Secretaria");
     if (motivo === null) return;
