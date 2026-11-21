@@ -7,6 +7,7 @@ import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileCheck2, LockKeyhole, RefreshCw } from "lucide-react";
 import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
 import { CurtumeFechoHistoricoLote } from "@/components/secretaria/CurtumeFechoHistoricoLote";
+import { CurtumeNotasFinaisStatus } from "@/components/secretaria/CurtumeNotasFinaisStatus";
 import { CurtumeHistoricalExceptionDesk } from "@/components/secretaria/CurtumeHistoricalExceptionDesk";
 
 type Resultado = "aprovado" | "reprovado" | "concluido";
@@ -226,6 +227,10 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
           O histórico permanece aberto até à ratificação e ao fechamento oficial, sem criação de notas fictícias.
         </p>
       </div>
+
+      {isCurtume && ano === 2025 && tipo === "historicos" && (
+        <CurtumeNotasFinaisStatus escola={escolaId} />
+      )}
 
       {isCurtume && ano === 2025 && tipo === "historicos" && (
         <CurtumeFechoHistoricoLote
