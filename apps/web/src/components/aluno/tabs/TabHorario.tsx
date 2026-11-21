@@ -174,11 +174,11 @@ export function TabHorario() {
       </header>
 
       {/* Switcher Sóbrio de Modos */}
-      <div className="flex w-full rounded-2xl bg-slate-100 p-1">
+      <div className="flex w-full rounded-2xl bg-muted p-1">
         <button
           type="button"
           onClick={() => setActiveTab("horario")}
-          className={`flex-1 rounded-xl py-2 text-xs font-black transition-all ${
+          className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${
             activeTab === "horario"
               ? "bg-card text-primary shadow-sm ring-1 ring-klasse-gold/40"
               : "text-muted-foreground hover:text-foreground"
@@ -189,7 +189,7 @@ export function TabHorario() {
         <button
           type="button"
           onClick={() => setActiveTab("agenda")}
-          className={`flex-1 rounded-xl py-2 text-xs font-black transition-all ${
+          className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${
             activeTab === "agenda"
               ? "bg-card text-primary shadow-sm ring-1 ring-klasse-gold/40"
               : "text-muted-foreground hover:text-foreground"
@@ -253,38 +253,38 @@ export function TabHorario() {
               if (slot.is_intervalo) {
                 return (
                   <div key={slot.id} className="relative flex items-center gap-4 py-2">
-                    <div className="flex-shrink-0 w-12 text-[10px] font-bold text-slate-400 uppercase">
+                    <div className="flex-shrink-0 w-12 text-[10px] font-bold text-muted-foreground uppercase">
                       {slot.inicio}
                     </div>
-                    <div className="flex-grow border-t border-dashed border-slate-200" />
-                    <div className="bg-slate-50 px-3 py-0.5 rounded-full text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <div className="flex-grow border-t border-dashed border-border" />
+                    <div className="bg-muted/40 px-3 py-0.5 rounded-full text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                       Intervalo
                     </div>
-                    <div className="flex-grow border-t border-dashed border-slate-200" />
+                    <div className="flex-grow border-t border-dashed border-border" />
                   </div>
                 );
               }
 
               return (
-                <AlunoCard key={slot.id} className="relative overflow-hidden group border border-slate-100/80 bg-white p-4 rounded-2xl">
+                <AlunoCard key={slot.id} className="relative overflow-hidden group border border-border/80 bg-card p-4 rounded-2xl">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0 pt-0.5 text-center min-w-[48px]">
-                      <div className="text-xs font-black text-slate-900">{slot.inicio}</div>
-                      <div className="text-[10px] font-semibold text-slate-400">{slot.fim}</div>
+                      <div className="text-xs font-semibold text-foreground">{slot.inicio}</div>
+                      <div className="text-[10px] font-semibold text-muted-foreground">{slot.fim}</div>
                     </div>
 
                     <div className="flex-grow min-w-0 space-y-1">
-                      <h4 className="text-sm font-bold text-slate-900 truncate">
+                      <h4 className="text-sm font-bold text-foreground truncate">
                         {aula?.disciplina || "Sem aula agendada"}
                       </h4>
                       
                       {aula && (
                         <div className="flex flex-wrap gap-3 pt-0.5">
-                          <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                          <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                             <User className="h-3 w-3" />
                             <span className="truncate max-w-[140px]">{aula.professor}</span>
                           </div>
-                          <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                          <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                             <MapPin className="h-3 w-3" />
                             <span>{aula.sala}</span>
                           </div>
@@ -293,7 +293,7 @@ export function TabHorario() {
                     </div>
 
                     {aula && (
-                      <div className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-xl bg-slate-50 text-slate-400">
+                      <div className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-xl bg-muted/40 text-muted-foreground">
                         <Clock className="h-4 w-4" />
                       </div>
                     )}
@@ -303,7 +303,7 @@ export function TabHorario() {
             })}
 
             {slotsPorDia.length === 0 && (
-              <div className="py-12 text-center text-xs text-slate-400 font-medium">
+              <div className="py-12 text-center text-xs text-muted-foreground font-medium">
                 Nenhuma aula agendada para este dia.
               </div>
             )}
