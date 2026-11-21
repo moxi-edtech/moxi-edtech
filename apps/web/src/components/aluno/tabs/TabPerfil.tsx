@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { User, Lock, Mail, Phone, MapPin, Save, Loader2 } from "lucide-react";
 import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
-import { SectionTitle } from "@/components/aluno/shared/SectionTitle";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/feedback/FeedbackSystem";
@@ -132,7 +131,7 @@ export function TabPerfil() {
   return (
     <div className="space-y-6">
       <header>
-        <SectionTitle>Meu Perfil</SectionTitle>
+        <h1 className="text-2xl font-semibold tracking-tight text-primary">Perfil</h1>
         <p className="text-xs text-muted-foreground">Gerencie seus dados de contato e segurança.</p>
       </header>
 
@@ -141,7 +140,7 @@ export function TabPerfil() {
       {/* Atualização Cadastral */}
       <AlunoCard>
         <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
-          <User className="h-4 w-4 text-amber" />
+          <User className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold text-foreground">Dados pessoais</h2>
         </div>
         
@@ -210,7 +209,7 @@ export function TabPerfil() {
       {/* Redefinição de Senha */}
       <AlunoCard>
         <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
-          <Lock className="h-4 w-4 text-amber" />
+          <Lock className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold text-foreground">Segurança da conta</h2>
         </div>
         
