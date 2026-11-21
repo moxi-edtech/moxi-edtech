@@ -6,14 +6,13 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
+import { OperationalCursorPagination, OperationalTableEmptyState, OperationalTableErrorState } from "@/components/ui/OperationalTableStates";
 import {
   AlertCircle,
   Archive,
   ArrowUpDown,
   Banknote,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   CreditCard,
   DollarSign,
@@ -33,7 +32,6 @@ import {
   Slash,
   Smartphone,
   UserCheck,
-  Users,
   X,
 } from "lucide-react";
 
@@ -173,24 +171,23 @@ const TABS: TabDef[] = [
 
 function TabBar({
   active,
-  counts,
   onChange,
 }: {
   active: TabStatus;
-  counts: Partial<Record<TabStatus, number>>;
   onChange: (tab: TabStatus) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 border-b border-slate-200 -mb-px">
+    <div className="-mb-px flex min-w-0 items-center gap-1 overflow-x-auto border-b border-border">
       {TABS.map((tab) => {
         const isActive = active === tab.id;
-        const count = counts[tab.id];
         return (
           <button
             key={tab.id}
+            type="button"
+            aria-pressed={isActive}
             onClick={() => onChange(tab.id)}
             className={[
-              "flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-all",
+              "inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20",
               isActive
                 ? "border-[#1F6B3B] text-[#1F6B3B]"
                 : "border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-300",
@@ -198,15 +195,6 @@ function TabBar({
           >
             {tab.icon}
             {tab.label}
-            {count !== undefined && (
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                  isActive ? tab.color : "bg-slate-100 text-slate-400"
-                }`}
-              >
-                {count}
-              </span>
-            )}
           </button>
         );
       })}
@@ -299,7 +287,7 @@ function RowActions({
         : null;
 
   return (
-    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
       {!isLead && (
         <button
           type="button"
@@ -1113,6 +1101,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
   const [page, setPage] = useState(1);
   const pageCursors = useRef<Array<Cursor | null>>([null]);
+  const requestSequence = useRef(0);
   const PAGE_SIZE = 20;
 
   const [filters, setFilters] = useState<Filters>({ ano: "", turmaId: "" });
@@ -1122,7 +1111,6 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
   const [turmasError, setTurmasError] = useState<string | null>(null);
 
   const [items, setItems] = useState<Aluno[]>([]);
-  const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -1136,7 +1124,6 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
   const [drawerAluno, setDrawerAluno] = useState<Aluno | null>(null);
   const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
   const [bulkArchiveLoading, setBulkArchiveLoading] = useState(false);
-  const [tabCounts, setTabCounts] = useState<Partial<Record<TabStatus, number>>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showExport, setShowExport] = useState(false);
   const isInitialLoading = loading && items.length === 0;
@@ -1148,8 +1135,10 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
       currentPage: number,
       currentTab: TabStatus,
       currentQ: string,
-      currentFilters: Filters
+      currentFilters: Filters,
+      signal?: AbortSignal
     ) => {
+    const requestId = ++requestSequence.current;
     setLoading(true);
     setFetchError(null);
 
@@ -1180,44 +1169,49 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
         params.set("page", String(currentPage));
       }
 
-      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, { cache: "no-store" });
+      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, { cache: "no-store", signal });
       const json: ApiResponse = await res.json().catch(() => ({ ok: false, items: [] }));
 
       if (!json.ok) throw new Error(json.error || "Falha ao carregar.");
 
+      if (requestId !== requestSequence.current || signal?.aborted) return;
       setItems(json.items ?? []);
-      const totalCount = json.total ?? json.items?.length ?? 0;
-      setTotal(totalCount);
-      setTabCounts((prev) => ({ ...prev, [currentTab]: totalCount }));
       setOfflineMeta({ fromCache: false, updatedAt: null });
-
-      const more = Boolean(json.page?.hasMore);
-      const nextCursor = json.page?.nextCursor ?? null;
-      setHasMore(more);
-      pageCursors.current[currentPage] = nextCursor;
-    } catch (err: any) {
-      setFetchError(err.message || "Erro inesperado.");
+      setHasMore(Boolean(json.page?.hasMore));
+      pageCursors.current[currentPage] = json.page?.nextCursor ?? null;
+    } catch (cause) {
+      if (requestId !== requestSequence.current || signal?.aborted) return;
+      setFetchError(cause instanceof Error ? cause.message : "Erro inesperado.");
       setItems([]);
-      setTotal(0);
       setHasMore(false);
     } finally {
-      setLoading(false);
+      if (requestId === requestSequence.current && !signal?.aborted) setLoading(false);
     }
   }, [academicYearId, escolaId]);
 
+  // Reset the page and cursor *before* running a query with new filters.
+  // Requests from old tabs / pages are aborted and cannot overwrite newer results.
+  const filterKey = JSON.stringify([tab, debouncedQ, filters.ano, filters.turmaId, academicYearId, escolaId]);
+  const previousFilterKey = useRef(filterKey);
   useEffect(() => {
-    setPage(1);
-    pageCursors.current = [null];
-    setSelected(new Set());
-    load(1, tab, debouncedQ, filters);
-  }, [tab, debouncedQ, filters, load]);
-
-  useEffect(() => {
-    if (page !== 1) {
+    if (q !== debouncedQ) return;
+    if (previousFilterKey.current !== filterKey) {
+      previousFilterKey.current = filterKey;
+      pageCursors.current = [null];
       setSelected(new Set());
-      load(page, tab, debouncedQ, filters);
+      if (page !== 1) {
+        setPage(1);
+        return;
+      }
     }
-  }, [page, tab, debouncedQ, filters, load]);
+    setSelected(new Set());
+    const controller = new AbortController();
+    void load(page, tab, debouncedQ, filters, controller.signal);
+    return () => {
+      controller.abort();
+      requestSequence.current += 1;
+    };
+  }, [filterKey, page, load, tab, debouncedQ, filters, q]);
 
   const loadTurmas = useCallback(async () => {
     if (turmasLoading || turmas.length > 0) return;
@@ -1240,7 +1234,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     } finally {
       setTurmasLoading(false);
     }
-  }, [turmasLoading, turmas.length]);
+  }, [turmasLoading, turmas.length, escolaId]);
 
   useEffect(() => {
     if (showFilters) {
@@ -1255,9 +1249,9 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
   const handleArchiveSuccess = (message: string) => {
     success("Operação concluída", message);
-    setPage(1);
     pageCursors.current = [null];
-    load(1, tab, debouncedQ, filters);
+    if (page === 1) void load(1, tab, debouncedQ, filters);
+    else setPage(1);
   };
 
   const handlePagamentoSuccess = (message: string) => {
@@ -1373,9 +1367,9 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     setBulkArchiveOpen(false);
     setBulkArchiveLoading(false);
     setSelected(new Set());
-    setPage(1);
     pageCursors.current = [null];
-    load(1, tab, debouncedQ, filters);
+    if (page === 1) void load(1, tab, debouncedQ, filters);
+    else setPage(1);
   };
 
   const activeFilters = Number(Boolean(filters.ano)) + Number(Boolean(filters.turmaId));
@@ -1457,41 +1451,33 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
         <OfflineBanner fromCache={offlineMeta.fromCache} updatedAt={offlineMeta.updatedAt} />
 
         {fetchError && (
-          <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <span className="font-bold">Erro: </span>
-              {fetchError}
-            </div>
-            <button
-              onClick={() => load(1, tab, debouncedQ, filters)}
-              className="flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-1 text-xs font-bold text-rose-700 hover:bg-rose-100 transition-colors flex-shrink-0"
-            >
-              <RefreshCw size={11} /> Repetir
-            </button>
+          <div className="min-w-0">
+            <OperationalTableErrorState description={fetchError} onRetry={() => void load(page, tab, debouncedQ, filters)} />
           </div>
         )}
 
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-5 pt-4">
-            <TabBar active={tab} counts={tabCounts} onChange={handleTabChange} />
+            <TabBar active={tab} onChange={handleTabChange} />
           </div>
 
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex min-w-0 flex-wrap items-center gap-3 border-b border-border bg-muted/50 px-3 py-4 sm:px-5">
+            <div className="relative min-w-[190px] flex-1 sm:max-w-sm">
               <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="search"
+                aria-label="Pesquisar alunos"
                 value={q}
                 onChange={(event) => setQ(event.target.value)}
                 placeholder="Nome, número de login, processo…"
-                className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                className="min-h-11 w-full rounded-xl border border-border bg-background py-2.5 pl-10 pr-10 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               />
               {q && (
                 <button
                   type="button"
+                  aria-label="Limpar pesquisa"
                   onClick={() => setQ("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <X size={13} />
                 </button>
@@ -1500,8 +1486,11 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
             <div className="relative">
               <button
+                type="button"
+                aria-expanded={showFilters}
+                aria-controls="secretaria-alunos-filters"
                 onClick={() => setShowFilters((prev) => !prev)}
-                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
+                className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
                   activeFilters > 0
                     ? "border-[#1F6B3B] bg-[#1F6B3B]/5 text-[#1F6B3B]"
                     : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -1515,7 +1504,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                 )}
               </button>
               {showFilters && (
-                <div className="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white shadow-xl p-4 z-20">
+                <div id="secretaria-alunos-filters" className="absolute right-0 z-20 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Filtros</p>
                     <button
@@ -1570,9 +1559,8 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
             <div className="ml-auto flex items-center gap-2">
               {!loading && (
-                <span className="text-xs text-slate-400 font-semibold">
-                  {total}
-                  {hasMore ? "+" : ""} {total === 1 ? "registo" : "registos"}
+                <span aria-live="polite" className="text-xs font-semibold text-muted-foreground">
+                  {items.length} {items.length === 1 ? "registo" : "registos"} nesta página
                 </span>
               )}
               {isInitialLoading && (
@@ -1609,9 +1597,9 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
               <button
                 onClick={() => {
-                  setPage(1);
                   pageCursors.current = [null];
-                  load(1, tab, debouncedQ, filters);
+                  if (page === 1) void load(1, tab, debouncedQ, filters);
+                  else setPage(1);
                 }}
                 className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500 hover:bg-slate-50 transition-colors"
                 title="Actualizar"
@@ -1622,7 +1610,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table aria-label="Alunos da Secretaria" className="min-w-[840px] w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
                   <th className="px-5 py-3 text-left">
@@ -1650,23 +1638,13 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
               <tbody className="divide-y divide-slate-50">
                 {loading ? (
                   Array.from({ length: isInitialLoading ? 8 : 5 }).map((_, index) => <SkeletonRow key={index} />)
-                ) : items.length === 0 ? (
+                ) : fetchError ? null : items.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-16 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <Users size={28} className="text-slate-200" />
-                        <p className="text-sm font-semibold text-slate-400">
-                          Nenhum registo encontrado.
-                        </p>
-                        {q && (
-                          <button
-                            onClick={() => setQ("")}
-                            className="mt-1 text-xs text-[#1F6B3B] font-semibold hover:underline"
-                          >
-                            Limpar pesquisa
-                          </button>
-                        )}
-                      </div>
+                    <td colSpan={6}>
+                      <OperationalTableEmptyState
+                        title="Nenhum aluno encontrado"
+                        description={q || filters.ano || filters.turmaId ? "Ajuste a pesquisa ou os filtros." : "Não existem registos para este estado."}
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -1758,24 +1736,14 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
             </table>
           </div>
 
-          <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100 bg-slate-50/30">
-            <span className="text-xs text-slate-400 font-semibold">Página {page}</span>
-            <div className="flex items-center gap-2">
-              <button
-                disabled={page <= 1 || loading}
-                onClick={() => setPage((prev) => prev - 1)}
-                className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-white disabled:opacity-40 transition-colors"
-              >
-                <ChevronLeft size={13} /> Anterior
-              </button>
-              <button
-                disabled={!hasMore || loading}
-                onClick={() => setPage((prev) => prev + 1)}
-                className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-white disabled:opacity-40 transition-colors"
-              >
-                Seguinte <ChevronRight size={13} />
-              </button>
-            </div>
+          <div className="border-t border-border bg-muted/50 p-3 sm:p-4">
+            <OperationalCursorPagination
+              page={page}
+              visibleCount={items.length}
+              hasMore={hasMore}
+              disabled={loading || Boolean(fetchError)}
+              onPageChange={setPage}
+            />
           </div>
         </div>
       </div>

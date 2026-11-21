@@ -7,8 +7,6 @@ import { usePathname } from "next/navigation";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildContextualPortalHref } from "@/lib/navigation";
 import { 
-  Search, 
-  Filter, 
   Download, 
   UserPlus, 
   ArrowLeft,
@@ -22,6 +20,8 @@ import {
   IdCard
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { useDebounce } from "@/hooks/useDebounce";
+import { OperationalTablePagination, OperationalTableFilterBar, OperationalTableEmptyState, OperationalTableErrorState } from "@/components/ui/OperationalTableStates";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
 
 type Professor = {
@@ -40,6 +40,7 @@ export default function ProfessoresListClient() {
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const [q, setQ] = useState("");
+  const debouncedQ = useDebounce(q, 300);
   const [days, setDays] = useState("30");
   const [cargoFilter, setCargoFilter] = useState<string>("");
   const [page, setPage] = useState(1);
@@ -47,9 +48,11 @@ export default function ProfessoresListClient() {
   const [items, setItems] = useState<Professor[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const requestSequence = useRef(0);
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
   const hasRows = !loading && items.length > 0;
   const rowVirtualizer = useVirtualizer({
     count: items.length,
@@ -58,30 +61,43 @@ export default function ProfessoresListClient() {
     overscan: 6,
   });
 
-  const load = useCallback(async (p: number) => {
+  const load = useCallback(async (p: number, signal: AbortSignal) => {
+    const requestId = ++requestSequence.current;
     setLoading(true);
+    setFetchError(null);
     try {
-      const params = new URLSearchParams({ 
-        q, 
-        days, 
-        cargo: cargoFilter,
-        page: String(p), 
-        pageSize: String(pageSize) 
+      const params = new URLSearchParams({
+        q: debouncedQ, days, cargo: cargoFilter, page: String(p), pageSize: String(pageSize),
       });
-      
-      const res = await fetch(`/api/secretaria/professores?${params.toString()}`);
+      const res = await fetch(`/api/secretaria/professores?${params.toString()}`, { signal, cache: "no-store" });
       const json = await res.json();
-      
-      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar professores');
-      setItems(json.items || []);
-      setTotal(json.total || 0);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar professores");
+      if (requestId !== requestSequence.current || signal.aborted) return;
+      const safeTotal = Number.isFinite(json.total) ? Math.max(0, json.total) : 0;
+      setItems(json.items ?? []);
+      setTotal(safeTotal);
+      const lastPage = Math.max(1, Math.ceil(safeTotal / pageSize));
+      if (p > lastPage) setPage(lastPage);
+    } catch (cause) {
+      if (requestId !== requestSequence.current || signal.aborted) return;
+      setFetchError(cause instanceof Error ? cause.message : "Falha ao carregar professores");
+      setItems([]);
+      setTotal(0);
     } finally {
-      setLoading(false);
+      if (requestId === requestSequence.current && !signal.aborted) setLoading(false);
     }
-  }, [cargoFilter, days, pageSize, q]);
+  }, [cargoFilter, days, pageSize, debouncedQ]);
 
-  useEffect(() => { load(1); setPage(1); }, [cargoFilter, days, load, q]);
-  useEffect(() => { load(page); }, [load, page]);
+  useEffect(() => {
+    // Do not query with an old search term while the user is still typing.
+    if (q !== debouncedQ) return;
+    const controller = new AbortController();
+    void load(page, controller.signal);
+    return () => {
+      controller.abort();
+      requestSequence.current += 1;
+    };
+  }, [load, page, reloadKey, q, debouncedQ]);
 
   // Calcular métricas
   const professoresPorCargo = useMemo(() => {
@@ -149,7 +165,7 @@ export default function ProfessoresListClient() {
           </div>
           <div className="text-sm text-muted-foreground flex items-center gap-2">
             <Briefcase className="h-4 w-4" />
-            Cargos Diferentes
+            Cargos nesta página
           </div>
         </div>
         <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
@@ -158,7 +174,7 @@ export default function ProfessoresListClient() {
           </div>
           <div className="text-sm text-muted-foreground flex items-center gap-2">
             <Mail className="h-4 w-4" />
-            Com E-mail
+            Com E-mail (página)
           </div>
         </div>
         <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
@@ -167,7 +183,7 @@ export default function ProfessoresListClient() {
           </div>
           <div className="text-sm text-muted-foreground flex items-center gap-2">
             <Phone className="h-4 w-4" />
-            Com Telefone
+            Com Telefone (página)
           </div>
         </div>
       </div>
@@ -195,51 +211,34 @@ export default function ProfessoresListClient() {
         </div>
       </div>
 
-      {/* --- FILTROS E PESQUISA --- */}
-      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-4">
-        <div className="flex gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input 
-              type="text" 
-              placeholder="Buscar por nome, e-mail ou telefone..." 
-              value={q} 
-              onChange={(e) => setQ(e.target.value)} 
-              className="w-full pl-10 pr-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-moxinexa-teal"
-            />
-          </div>
-          <button 
-            onClick={() => load(1)} 
-            className="inline-flex items-center gap-2 px-4 py-3 bg-moxinexa-teal text-white rounded-lg hover:bg-teal-600 transition-all"
-          >
-            <Filter className="h-4 w-4" />
-            Filtrar
-          </button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-muted-foreground font-medium">Período:</span>
-          {['1','7','30','90'].map((d) => (
-            <button 
-              key={d} 
-              onClick={() => setDays(d)} 
-              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
-                days === d 
-                  ? 'bg-moxinexa-teal text-white border-moxinexa-teal shadow-lg shadow-teal-900/20' 
-                  : 'bg-card text-foreground border-border hover:bg-muted'
-              }`}
+      <OperationalTableFilterBar
+        query={q}
+        onQueryChange={(next) => { setQ(next); setPage(1); }}
+        label="Pesquisar professores"
+        placeholder="Pesquisar por nome, e-mail ou telefone…"
+        activeFilters={Number(Boolean(q.trim())) + Number(days !== "30") + Number(Boolean(cargoFilter))}
+        onClearFilters={() => { setQ(""); setDays("30"); setCargoFilter(""); setPage(1); }}
+      >
+        <div role="group" aria-label="Filtrar por período" className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Período:</span>
+          {['1', '7', '30', '90'].map((d) => (
+            <button
+              key={d}
+              type="button"
+              aria-pressed={days === d}
+              onClick={() => { setDays(d); setPage(1); }}
+              className={`min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${days === d ? "border-klasse-gold/50 bg-klasse-gold/10 text-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted"}`}
             >
               {d === '1' ? '1 dia' : `${d} dias`}
             </button>
           ))}
-          
-          <span className="mx-2 h-4 w-px bg-border" />
-          
-          <span className="text-sm text-muted-foreground font-medium">Cargo:</span>
-          <select 
-            value={cargoFilter} 
-            onChange={(e) => setCargoFilter(e.target.value)}
-            className="border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal"
+        </div>
+        <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted-foreground">
+          Cargo
+          <select
+            value={cargoFilter}
+            onChange={(event) => { setCargoFilter(event.target.value); setPage(1); }}
+            className="min-h-11 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
           >
             <option value="">Todos os cargos</option>
             <option value="professor">Professor</option>
@@ -247,29 +246,29 @@ export default function ProfessoresListClient() {
             <option value="coordenador">Coordenador</option>
             <option value="assistente">Assistente</option>
           </select>
-          
-          <span className="mx-2 h-4 w-px bg-border" />
-          
-          <a 
-            href={`professores/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`} 
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-all"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Download className="h-4 w-4" />
-            Exportar CSV
-          </a>
-          <a 
-            href={`professores/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`} 
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-all"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Download className="h-4 w-4" />
-            Exportar JSON
-          </a>
-        </div>
-      </div>
+        </label>
+        <button
+          type="button"
+          onClick={() => { setPage(1); setReloadKey((key) => key + 1); }}
+          className="min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+        >
+          Atualizar
+        </button>
+        <a
+          href={`professores/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`}
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-muted"
+          target="_blank" rel="noreferrer"
+        >
+          <Download className="h-4 w-4" aria-hidden="true" /> Exportar CSV
+        </a>
+        <a
+          href={`professores/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`}
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-muted"
+          target="_blank" rel="noreferrer"
+        >
+          <Download className="h-4 w-4" aria-hidden="true" /> Exportar JSON
+        </a>
+      </OperationalTableFilterBar>
 
       {/* --- TABELA DE PROFESSORES --- */}
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -311,20 +310,25 @@ export default function ProfessoresListClient() {
               {loading ? (
                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                    <div className="space-y-2">
+                    <div role="status" aria-busy="true" aria-label="A carregar professores" className="space-y-2">
                       <Skeleton className="h-4 w-40 mx-auto" />
                       <Skeleton className="h-3 w-56 mx-auto" />
                     </div>
                   </td>
                 </tr>
+              ) : fetchError ? (
+                <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+                  <td colSpan={5} className="p-4">
+                    <OperationalTableErrorState description={fetchError} onRetry={() => setReloadKey((key) => key + 1)} />
+                  </td>
+                </tr>
               ) : items.length === 0 ? (
                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                    <Users className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                    Nenhum professor encontrado.
-                    <div className="mt-2 text-sm">
-                      {q || cargoFilter ? 'Tente ajustar os filtros de busca.' : 'Comece cadastrando o primeiro professor.'}
-                    </div>
+                  <td colSpan={5}>
+                    <OperationalTableEmptyState
+                      title="Nenhum professor encontrado"
+                      description={q || cargoFilter ? "Ajuste a pesquisa ou os filtros." : "Comece por cadastrar o primeiro professor."}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -425,40 +429,14 @@ export default function ProfessoresListClient() {
         </div>
       </section>
 
-      {/* --- PAGINAÇÃO --- */}
-      <div className="flex items-center justify-between bg-card p-4 rounded-xl border border-border shadow-sm">
-        <div className="text-sm text-muted-foreground">
-          Mostrando <strong>{(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)}</strong> de <strong>{total}</strong> professores
-        </div>
-        <div className="flex gap-2">
-          <button 
-            disabled={page <= 1} 
-            onClick={() => setPage((p) => Math.max(1, p - 1))} 
-            className={`inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm ${
-              page <= 1 
-                ? 'pointer-events-none opacity-50 text-muted-foreground' 
-                : 'text-foreground hover:bg-muted'
-            }`}
-          >
-            ← Anterior
-          </button>
-          
-          <span className="px-3 py-2 text-sm text-muted-foreground">
-            Página <strong>{page}</strong> de <strong>{totalPages}</strong>
-          </span>
-          
-          <button 
-            disabled={page >= totalPages} 
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))} 
-            className={`inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm ${
-              page >= totalPages 
-                ? 'pointer-events-none opacity-50 text-muted-foreground' 
-                : 'text-foreground hover:bg-muted'
-            }`}
-          >
-            Próxima →
-          </button>
-        </div>
+      <div className="rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4">
+        <OperationalTablePagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          disabled={loading || Boolean(fetchError)}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );
