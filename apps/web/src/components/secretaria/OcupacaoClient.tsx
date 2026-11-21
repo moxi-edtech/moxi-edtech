@@ -115,6 +115,15 @@ export default function OcupacaoClient() {
     return () => { requestRef.current?.abort(); };
   }, [loadData]);
 
+  // A school switch must not retain filter values or expose options from another school.
+  useEffect(() => {
+    setClasseFilter("");
+    setTurnoFilter("");
+    setStatusFilter("");
+    setPage(1);
+  }, [escolaId]);
+
+  const classOptions = loadedSchoolId === escolaId ? (data?.classes_disponiveis ?? []) : [];
   const ready = !escolaLoading && !!escolaId && loadedSchoolId === escolaId && !loading;
   const displayError = escolaError || (!escolaLoading && !escolaId ? "Escola não identificada." : error);
   const safeData = ready && !displayError ? data : null;
@@ -139,9 +148,9 @@ export default function OcupacaoClient() {
               onChange={(event) => { setClasseFilter(event.target.value); setPage(1); }}
               className={filterClass}>
               <option value="">Todas as classes</option>
-              {classeFilter && !data?.classes_disponiveis.includes(classeFilter) &&
+              {classeFilter && !classOptions.includes(classeFilter) &&
                 <option value={classeFilter}>{classeFilter}</option>}
-              {(data?.classes_disponiveis ?? []).map(name => <option key={name} value={name}>{name}</option>)}
+              {classOptions.map(name => <option key={name} value={name}>{name}</option>)}
             </select>
           </label>
           <label className="space-y-1 text-xs font-semibold text-muted-foreground">
