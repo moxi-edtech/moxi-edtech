@@ -21,11 +21,15 @@ test("push subscriptions authorize the requested school before UPSERT", () => {
   assert.doesNotMatch(route, /escola_id: escola_id/);
 });
 
-test("push endpoints reject non-HTTPS and obvious internal network destinations", () => {
-  assert.match(route, /endpointUrl\.protocol !== "https:"/);
-  assert.match(route, /host\.includes\(":"\)/);
-  assert.match(route, /\^\[0-9\.\]\+\$/);
-  assert.match(route, /host\.endsWith\("\.internal"\)/);
+test("push endpoints are validated before persistence and again by the worker", () => {
+  assert.match(route, /isTrustedWebPushEndpoint\(subscription\.endpoint\)/);
+  const worker = readFileSync(
+    resolve(process.cwd(), "src/inngest/functions/push-notifications.ts"),
+    "utf8",
+  );
+  assert.match(worker, /isTrustedWebPushEndpoint\(sub\.endpoint\)/);
+  assert.match(worker, /\.eq\("user_id", notification\.destinatario_id\)/);
+  assert.match(worker, /\.eq\("escola_id", notification\.escola_id\)/);
 });
 
 test("PostgREST cannot bypass tenant membership via client-authored school IDs", () => {
