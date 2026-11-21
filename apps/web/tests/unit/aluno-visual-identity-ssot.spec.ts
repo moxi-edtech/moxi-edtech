@@ -152,7 +152,8 @@ test("cartão offline isola contas e escolas e cancela fetch anterior ao trocar 
   assert.match(card, /useAlunoPortalScope\(\)/);
   assert.match(card, /scope\.userId/);
   assert.match(card, /scope\.escolaId/);
-  assert.match(card, /studentId \?\? "default"/);
+  assert.match(card, /scope && studentId/);
+  assert.doesNotMatch(card, /studentId \?\? "default"/);
   assert.match(card, /localStorage\.removeItem/);
   assert.match(card, /new AbortController\(\)/);
   assert.match(card, /setData\(null\)/);
