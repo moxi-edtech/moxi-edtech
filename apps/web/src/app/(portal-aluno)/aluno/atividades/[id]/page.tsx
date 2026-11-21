@@ -336,7 +336,7 @@ export default function AlunoAtividadeRunnerPage({
                         onClick={() => handleAnswerChange(q.ordem, option)}
                         className={`flex-1 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                           isSelected
-                            ? "border-klasse-gold bg-klasse-gold text-slate-950"
+                            ? "border-klasse-gold bg-klasse-gold text-foreground"
                             : "border-border bg-muted/40 text-foreground hover:bg-muted"
                         }`}
                       >
