@@ -28,14 +28,13 @@ export function ModalShell({
   footer,
   size = "default",
 }: ModalShellProps) {
+  // The focus scope spans the viewport so nested fixed Balcão workspaces are not clipped.
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
       <DialogContent
         closeButton={false}
         overlayClassName="bg-black/40"
         onPointerDownOutside={(event) => event.preventDefault()}
-        // Keep the focus scope full-viewport: nested Balcão workspaces use
-        // position:fixed and must not be clipped by a transformed dialog card.
         className="fixed inset-0 left-0 top-0 z-50 flex h-[100dvh] w-full max-h-none max-w-none translate-x-0 translate-y-0 items-center justify-center gap-0 border-0 bg-transparent p-4 shadow-none sm:p-6"
       >
         <section
