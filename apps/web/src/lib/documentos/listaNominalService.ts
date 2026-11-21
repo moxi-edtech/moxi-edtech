@@ -185,7 +185,7 @@ export function toNominalXlsxRows(roster: NominalRoster): NominalXlsxRow[] {
 export async function loadNominalRoster({
   supabase, escolaId, turmaId, classeId, year,
   mode: requestedMode, includeAllStatus = false, order = "chamada",
-  pdfFields = false, extendedStudentFields = false,
+  pdfFields = false, extendedStudentFields = false, jsonFields = false,
 }: {
   supabase: Client;
   escolaId: string;
@@ -197,7 +197,10 @@ export async function loadNominalRoster({
   order?: NominalOrder;
   pdfFields?: boolean;
   extendedStudentFields?: boolean;
+  /** Minimal pupil projection for legacy JSON list without avatar fetch. */
+  jsonFields?: boolean;
 }): Promise<NominalRoster> {
+  if (jsonFields && pdfFields) throw new NominalRosterError("Projecção nominal inválida", 400);
   if (!turmaId && !classeId) throw new NominalRosterError("Informe turma ou classe", 400);
   if (turmaId && classeId) throw new NominalRosterError("Selecione apenas um escopo", 400);
   const isClasseScope = Boolean(classeId);
@@ -284,7 +287,12 @@ export async function loadNominalRoster({
       ? "bi_numero,data_nascimento,naturalidade,provincia,telefone,responsavel,telefone_responsavel,"
       : "") + "profiles!alunos_profile_id_fkey(avatar_url)"
     : "";
-  const selection = "id,turma_id,numero_chamada,status,ativo,alunos(id,nome,numero_processo" + optionalPdfFields + ")";
+  const optionalJsonFields = jsonFields
+    ? ",sexo" + (extendedStudentFields
+      ? ",bi_numero,naturalidade,provincia,telefone,responsavel,telefone_responsavel"
+      : "")
+    : "";
+  const selection = "id,turma_id,numero_chamada,status,ativo,alunos(id,nome,numero_processo" + (jsonFields ? optionalJsonFields : optionalPdfFields) + ")";
   const matriculas: NominalMatricula[] = [];
   const pageSize = 500;
   const maxRoster = 10000;
