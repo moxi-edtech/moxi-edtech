@@ -150,8 +150,8 @@ test("cartão offline isola contas e escolas e cancela fetch anterior ao trocar 
   const layout = source("app/(portal-aluno)/aluno/AlunoLayoutClient.tsx");
   assert.match(layout, /<AlunoPortalScopeContext\.Provider value=\{portalScope\}>/);
   assert.match(card, /useAlunoPortalScope\(\)/);
-  assert.match(card, /scope\.userId/);
-  assert.match(card, /scope\.escolaId/);
+  assert.match(card, /scope\?\.userId/);
+  assert.match(card, /scope\?\.escolaId/);
   assert.match(card, /identityCardCacheKey\(/);
   assert.doesNotMatch(card, /studentId \?\? "default"/);
   assert.match(card, /pruneIdentityCardCache\(localStorage\)/);
