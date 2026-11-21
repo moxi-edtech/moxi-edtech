@@ -17,6 +17,7 @@ import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import AcademicStep2Config from "@/components/escola/onboarding/AcademicStep2Config";
 import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
+import { EvaluationSettingsSkeleton } from "@/components/escola/settings/SettingsLoadingSkeletons";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildContextualPortalHref } from "@/lib/navigation";
 
@@ -291,7 +292,10 @@ export default function AvaliacaoUnificadaClient() {
       <div className="flex justify-end">
         {!isEditing ? (
           <button
+            type="button"
             onClick={() => setIsEditing(true)}
+            disabled={loading}
+            aria-busy={loading}
             // TOKEN: Botão Secundário (Bg-white) ou Primário dependendo da ênfase. 
             // Aqui usei Slate-950 para "Admin Action" neutra, mas Gold se fosse CTA principal.
             className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-slate-900 transition-all"
@@ -320,7 +324,7 @@ export default function AvaliacaoUnificadaClient() {
         )}
       </div>
       {loading ? (
-        <div className="py-24 flex justify-center"><Skeleton className="h-4 w-40" /></div>
+        <EvaluationSettingsSkeleton />
       ) : (
         <div className="space-y-6">
           
