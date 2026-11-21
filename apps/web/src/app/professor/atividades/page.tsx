@@ -3,6 +3,9 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
+import { formatDate } from "@/lib/formatters";
+import { ProfessorResourceEmptyState, ProfessorResourceErrorState, ProfessorResourceGridSkeleton } from "@/components/professor/ProfessorResourceStates";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -74,6 +77,8 @@ export default function ProfessorAtividadesPage() {
   const [lessonOccurrences, setLessonOccurrences] = useState<LessonOccurrence[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("todos");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Modal State for New Activity
   const [showModal, setShowModal] = useState(false);
@@ -126,6 +131,7 @@ export default function ProfessorAtividadesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const [actRes, agendaRes, plansRes, lessonsRes] = await Promise.all([
         fetch("/api/professor/atividades", { cache: "no-store" }),
         fetch("/api/professor/agenda", { cache: "no-store" }),
@@ -140,9 +146,8 @@ export default function ProfessorAtividadesPage() {
       const lessonsJson = await lessonsRes.json().catch(() => null);
       setLessonOccurrences(lessonsJson?.items ?? []);
 
-      if (actRes.ok && actJson.ok) {
-        setAtividades(actJson.items || []);
-      }
+      if (!actRes.ok || !actJson?.ok) throw new Error(actJson?.error || "Não foi possível carregar as actividades.");
+      setAtividades(Array.isArray(actJson.items) ? actJson.items : []);
 
       if (agendaRes.ok && agendaJson.items) {
         // Map unique turma/disciplina pairs
@@ -163,7 +168,7 @@ export default function ProfessorAtividadesPage() {
         setAssignments(Array.from(pairsMap.values()));
       }
     } catch (err) {
-      console.error(err);
+      setLoadError(err instanceof Error ? err.message : "Não foi possível carregar as actividades.");
     } finally {
       setLoading(false);
     }
@@ -204,11 +209,12 @@ export default function ProfessorAtividadesPage() {
 
   // Filter activities
   const filteredAtividades = useMemo(() => {
+    const term = searchTerm.trim().toLocaleLowerCase("pt-AO");
     return atividades.filter((act) => {
-      if (filterStatus === "todos") return true;
-      return act.status === filterStatus;
+      if (filterStatus !== "todos" && act.status !== filterStatus) return false;
+      return !term || `${act.titulo} ${act.instrucoes ?? ""} ${act.tipo}`.toLocaleLowerCase("pt-AO").includes(term);
     });
-  }, [atividades, filterStatus]);
+  }, [atividades, filterStatus, searchTerm]);
 
   // Handle Question Changes
   const updateQuestion = (index: number, field: keyof Question, value: any) => {
@@ -340,8 +346,8 @@ export default function ProfessorAtividadesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-24">
-      <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-background pb-24 text-foreground">
+      <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
         
         {/* HEADER DA PÁGINA */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -368,7 +374,7 @@ export default function ProfessorAtividadesPage() {
         </header>
 
         {/* FILTROS DE ESTADO */}
-        <div className="flex items-center justify-between flex-wrap gap-3 bg-white p-2 rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
           <div className="flex items-center gap-1.5 overflow-x-auto p-1">
             {[
               { id: "todos", label: "Todas as Actividades" },
@@ -382,7 +388,7 @@ export default function ProfessorAtividadesPage() {
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                   filterStatus === tab.id
                     ? "bg-klasse-gold text-klasse-gold-900 shadow-sm"
-                    : "text-slate-600 hover:bg-slate-100"
+                    : "text-muted-foreground hover:bg-muted"
                 }`}
               >
                 {tab.label}
@@ -390,50 +396,55 @@ export default function ProfessorAtividadesPage() {
             ))}
           </div>
 
-          <div className="text-xs font-bold text-slate-400 px-3">
-            Total: <span className="text-slate-900 font-black">{filteredAtividades.length}</span>
+          <div className="text-xs font-bold text-muted-foreground px-3">
+            {loading ? "A carregar..." : <>Total: <span className="font-semibold text-foreground">{filteredAtividades.length}</span></>}
           </div>
         </div>
 
-        {/* LISTA DE ACTIVIDADES */}
-        {loading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-44 rounded-3xl bg-white border border-slate-200" />
-            ))}
-          </div>
+        <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+          <label className="sr-only" htmlFor="pesquisa-atividades">Pesquisar actividades</label>
+          <input
+            id="pesquisa-atividades"
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Pesquisar título, instruções ou tipo"
+            className="min-h-11 w-full rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+          />
+        </div>
+
+        {/* Loading, error and empty states use one shared presentation model. */}
+        {loadError ? (
+          <ProfessorResourceErrorState title="Não foi possível carregar as actividades." description={loadError} onRetry={() => void loadData()} />
+        ) : loading ? (
+          <ProfessorResourceGridSkeleton label="A carregar actividades pedagógicas" />
         ) : filteredAtividades.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-black text-slate-900">Nenhuma actividade encontrada</h3>
-            <p className="text-xs font-medium text-slate-500 max-w-md mx-auto">
-              Crie a sua primeira actividade pedagógica (quiz, exercício ou tarefa) para envolver os alunos fora da sala de aula.
-            </p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Criar Rascunho</span>
-            </button>
-          </div>
+          <ProfessorResourceEmptyState
+            icon={Sparkles}
+            title={atividades.length === 0 ? "Ainda não existem actividades" : "Nenhuma actividade encontrada"}
+            description={atividades.length === 0
+              ? "Crie um quiz, exercício ou tarefa para começar."
+              : "Ajuste os filtros ou limpe a pesquisa para ver outras actividades."}
+            actionLabel={atividades.length === 0 ? "Criar rascunho" : "Limpar filtros"}
+            onAction={atividades.length === 0
+              ? () => { setNextActionError(null); setShowModal(true); }
+              : () => { setSearchTerm(""); setFilterStatus("todos"); }}
+          />
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredAtividades.map((act) => {
               const numQuestoes = act.atividade_questoes?.length ?? 0;
               const isRascunho = act.status === "rascunho";
               const isPublicada = act.status === "publicada";
 
-              let badgeStyle = "bg-slate-100 text-slate-700 border-slate-200";
+              let badgeStyle = "bg-muted text-foreground border-border";
               if (isPublicada) badgeStyle = "bg-emerald-50 text-emerald-700 border-emerald-200";
               if (isRascunho) badgeStyle = "bg-amber-50 text-amber-800 border-amber-200";
 
               return (
                 <div
                   key={act.id}
-                  className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-md hover:border-emerald-500/40 transition-all flex flex-col justify-between"
+                  className="group rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md hover:border-emerald-500/40 transition-all flex flex-col justify-between"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
@@ -446,35 +457,35 @@ export default function ProfessorAtividadesPage() {
                     </div>
 
                     <div>
-                      <h3 className="font-black text-slate-900 text-base group-hover:text-emerald-700 transition-colors">
+                      <h3 className="font-black text-foreground text-base group-hover:text-emerald-700 transition-colors">
                         {act.titulo}
                       </h3>
                       {act.instrucoes && (
-                        <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
                           {act.instrucoes}
                         </p>
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-500 pt-1">
-                      <span className="inline-flex items-center gap-1 text-slate-700">
-                        <Layers size={14} className="text-slate-400" />
+                    <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-muted-foreground pt-1">
+                      <span className="inline-flex items-center gap-1 text-foreground">
+                        <Layers size={14} className="text-muted-foreground" />
                         {numQuestoes} {numQuestoes === 1 ? "Questão" : "Questões"}
                       </span>
-                      <span className="inline-flex items-center gap-1 text-slate-700">
-                        <Award size={14} className="text-slate-400" />
+                      <span className="inline-flex items-center gap-1 text-foreground">
+                        <Award size={14} className="text-muted-foreground" />
                         Max {act.nota_maxima} pts
                       </span>
                       {act.prazo && (
-                        <span className="inline-flex items-center gap-1 text-slate-500">
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
                           <Clock size={14} className="text-amber-500" />
-                          {new Date(act.prazo).toLocaleDateString()}
+                          {formatDate(act.prazo)}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-3 mt-4 flex items-center justify-between gap-2">
+                  <div className="border-t border-border pt-3 mt-4 flex items-center justify-between gap-2">
                     <Link
                       href={professorHref(`/professor/atividades/${act.id}`)}
                       className="inline-flex items-center gap-1 text-xs font-black text-emerald-700 hover:text-emerald-800"
@@ -489,7 +500,7 @@ export default function ProfessorAtividadesPage() {
                       disabled={updatingActivityId === act.id}
                       className={`px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
                         isPublicada
-                          ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          ? "bg-muted text-muted-foreground hover:bg-accent"
                           : "bg-emerald-600 text-white hover:bg-emerald-500"
                       }`}
                     >
@@ -505,17 +516,17 @@ export default function ProfessorAtividadesPage() {
         {/* MODAL CONSTRUTOR DE ACTIVIDADES */}
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
-            <div className="w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl space-y-5 border border-slate-200 my-8">
+            <div className="w-full max-w-3xl rounded-xl bg-card p-6 shadow-xl space-y-5 border border-border my-8">
               
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center justify-between border-b border-border pb-4">
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Aprendizagem Contínua</span>
-                  <h2 className="text-xl font-black text-slate-900">Nova Actividade Pedagógica</h2>
+                  <h2 className="text-xl font-black text-foreground">Nova Actividade Pedagógica</h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="text-slate-400 hover:text-slate-600 font-black text-sm"
+                  className="text-muted-foreground hover:text-muted-foreground font-black text-sm"
                 >
                   ✕
                 </button>
@@ -544,22 +555,22 @@ export default function ProfessorAtividadesPage() {
                 {/* TÍTULO E TIPO */}
                 <div className="grid sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2 space-y-1">
-                    <label className="text-xs font-black uppercase text-slate-400">Título da Actividade</label>
+                    <label className="text-xs font-black uppercase text-muted-foreground">Título da Actividade</label>
                     <input
                       type="text"
                       value={form.titulo}
                       onChange={(e) => setForm({ ...form, titulo: e.target.value })}
                       placeholder="Ex: Ficha de Exercícios de Álgebra I"
-                      className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-bold text-slate-900 outline-none focus:border-emerald-600"
+                      className="w-full rounded-xl border border-border p-2.5 text-xs font-bold text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-black uppercase text-slate-400">Tipo</label>
+                    <label className="text-xs font-black uppercase text-muted-foreground">Tipo</label>
                     <select
                       value={form.tipo}
                       onChange={(e) => setForm({ ...form, tipo: e.target.value as any })}
-                      className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-bold text-slate-900 outline-none"
+                      className="w-full rounded-xl border border-border p-2.5 text-xs font-bold text-foreground outline-none"
                     >
                       <option value="quiz">Quiz Rápido</option>
                       <option value="exercicio">Exercício Prático</option>
@@ -573,14 +584,14 @@ export default function ProfessorAtividadesPage() {
                 {/* SELEÇÃO DE TURMA E DISCIPLINA */}
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-black uppercase text-slate-400">Turma e Disciplina</label>
+                    <label className="text-xs font-black uppercase text-muted-foreground">Turma e Disciplina</label>
                     <select
                       value={form.turma_id && form.disciplina_id ? `${form.turma_id}:${form.disciplina_id}` : ""}
                       onChange={(e) => {
                         const [tId, dId] = e.target.value.split(":");
                         setForm({ ...form, turma_id: tId || "", disciplina_id: dId || "", plano_aula_id: "", aula_id: "" });
                       }}
-                      className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-bold text-slate-900 outline-none"
+                      className="w-full rounded-xl border border-border p-2.5 text-xs font-bold text-foreground outline-none"
                     >
                       <option value="">Selecione a Turma e Disciplina</option>
                       {assignments.map((a) => (
@@ -592,16 +603,16 @@ export default function ProfessorAtividadesPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-black uppercase text-slate-400">Ocorrência da aula</label>
-                    <select value={form.aula_id} onChange={(e) => setForm({ ...form, aula_id: e.target.value })} className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-bold text-slate-900 outline-none">
+                    <label className="text-xs font-black uppercase text-muted-foreground">Ocorrência da aula</label>
+                    <select value={form.aula_id} onChange={(e) => setForm({ ...form, aula_id: e.target.value })} className="w-full rounded-xl border border-border p-2.5 text-xs font-bold text-foreground outline-none">
                       <option value="">Sem vínculo direto</option>
                       {lessonOccurrences.filter((lesson) => lesson.turma_id === form.turma_id && lesson.disciplina_id === form.disciplina_id).map((lesson) => <option key={lesson.id} value={lesson.id}>{lesson.data} · {lesson.inicio_previsto ?? "--:--"} · {lesson.turma_nome} · {lesson.disciplina_nome}</option>)}
                     </select>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-black uppercase text-slate-400">Plano de Aula</label>
-                    <select value={form.plano_aula_id} onChange={(e) => setForm({ ...form, plano_aula_id: e.target.value })} className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-bold text-slate-900 outline-none">
+                    <label className="text-xs font-black uppercase text-muted-foreground">Plano de Aula</label>
+                    <select value={form.plano_aula_id} onChange={(e) => setForm({ ...form, plano_aula_id: e.target.value })} className="w-full rounded-xl border border-border p-2.5 text-xs font-bold text-foreground outline-none">
                       <option value="">Sem vínculo ao plano</option>
                       {lessonPlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.data} — {plan.tema}</option>)}
                     </select>
@@ -609,23 +620,23 @@ export default function ProfessorAtividadesPage() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="text-xs font-black uppercase text-slate-400">Prazo de Entrega</label>
+                      <label className="text-xs font-black uppercase text-muted-foreground">Prazo de Entrega</label>
                       <input
                         type="date"
                         value={form.prazo}
                         onChange={(e) => setForm({ ...form, prazo: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-bold text-slate-900 outline-none"
+                        className="w-full rounded-xl border border-border p-2.5 text-xs font-bold text-foreground outline-none"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-black uppercase text-slate-400">Tentativas</label>
+                      <label className="text-xs font-black uppercase text-muted-foreground">Tentativas</label>
                       <input
                         type="number"
                         min={1}
                         max={10}
                         value={form.tentativas_permitidas}
                         onChange={(e) => setForm({ ...form, tentativas_permitidas: Number(e.target.value) })}
-                        className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-bold text-slate-900 outline-none"
+                        className="w-full rounded-xl border border-border p-2.5 text-xs font-bold text-foreground outline-none"
                       />
                     </div>
                   </div>
@@ -633,21 +644,21 @@ export default function ProfessorAtividadesPage() {
 
                 {/* INSTRUÇÕES */}
                 <div className="space-y-1">
-                  <label className="text-xs font-black uppercase text-slate-400">Instruções para o Aluno</label>
+                  <label className="text-xs font-black uppercase text-muted-foreground">Instruções para o Aluno</label>
                   <textarea
                     rows={2}
                     value={form.instrucoes}
                     onChange={(e) => setForm({ ...form, instrucoes: e.target.value })}
                     placeholder="Orientações e recomendações pedagógicas para a realização da actividade..."
-                    className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-medium text-slate-900 outline-none focus:border-emerald-600"
+                    className="w-full rounded-xl border border-border p-2.5 text-xs font-medium text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   />
                 </div>
 
                 {/* CONSTRUTOR DE QUESTÕES */}
-                <div className="space-y-3 pt-2 border-t border-slate-100">
+                <div className="space-y-3 pt-2 border-t border-border">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-foreground">
                         Questões da Actividade ({questoes.length})
                       </h4>
                     </div>
@@ -667,7 +678,7 @@ export default function ProfessorAtividadesPage() {
                       <button
                         type="button"
                         onClick={addQuestion}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold hover:bg-slate-200 cursor-pointer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-muted text-foreground text-xs font-bold hover:bg-accent cursor-pointer"
                       >
                         <Plus size={14} />
                         <span>Adicionar Questão</span>
@@ -677,7 +688,7 @@ export default function ProfessorAtividadesPage() {
 
                   <div className="space-y-3">
                     {questoes.map((q, qIdx) => (
-                      <div key={qIdx} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
+                      <div key={qIdx} className="rounded-2xl border border-border bg-muted/40/70 p-3.5 space-y-2.5">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-black text-emerald-800 font-mono">
                             Questão #{q.ordem}
@@ -686,7 +697,7 @@ export default function ProfessorAtividadesPage() {
                             <select
                               value={q.tipo}
                               onChange={(e) => updateQuestion(qIdx, "tipo", e.target.value)}
-                              className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-bold bg-white"
+                              className="rounded-xl border border-border px-2 py-1 text-[11px] font-bold bg-card"
                             >
                               <option value="escolha_unica">Escolha Única</option>
                               <option value="verdadeiro_falso">Verdadeiro / Falso</option>
@@ -696,7 +707,7 @@ export default function ProfessorAtividadesPage() {
                               <button
                                 type="button"
                                 onClick={() => removeQuestion(qIdx)}
-                                className="text-slate-400 hover:text-rose-600 p-1"
+                                className="text-muted-foreground hover:text-rose-600 p-1"
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -709,7 +720,7 @@ export default function ProfessorAtividadesPage() {
                           value={q.enunciado}
                           onChange={(e) => updateQuestion(qIdx, "enunciado", e.target.value)}
                           placeholder={`Enunciado da questão ${qIdx + 1}...`}
-                          className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-bold text-slate-900 outline-none"
+                          className="w-full rounded-xl border border-border bg-card p-2.5 text-xs font-bold text-foreground outline-none"
                         />
 
                         {q.tipo === "escolha_unica" && (
@@ -725,7 +736,7 @@ export default function ProfessorAtividadesPage() {
                                   updateQuestion(qIdx, "opcoes", newOpts);
                                 }}
                                 placeholder={`Opção ${optIdx + 1}`}
-                                className="rounded-lg border border-slate-200 bg-white p-2 text-xs font-medium text-slate-700"
+                                className="rounded-xl border border-border bg-card p-2 text-xs font-medium text-foreground"
                               />
                             ))}
                           </div>
@@ -737,11 +748,11 @@ export default function ProfessorAtividadesPage() {
               </div>
 
               {/* AÇÕES DE SALVAMENTO */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-muted-foreground bg-muted hover:bg-accent"
                 >
                   Cancelar
                 </button>
@@ -751,7 +762,7 @@ export default function ProfessorAtividadesPage() {
                     type="button"
                     disabled={saving}
                     onClick={() => handleSubmit(false)}
-                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-800 border border-slate-200 hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-foreground border border-border hover:bg-muted/40 cursor-pointer disabled:opacity-50"
                   >
                     Guardar como Rascunho
                   </button>
