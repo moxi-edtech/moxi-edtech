@@ -5,7 +5,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { Skeleton } from "@/components/feedback/FeedbackSystem";
+import { IdentitySettingsSkeleton } from "@/components/escola/settings/SettingsLoadingSkeletons";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { Badge } from "@/components/ui/Badge";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -255,9 +255,7 @@ export default function IdentidadePage({ params }: Props) {
         </div>
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <Skeleton className="h-4 w-40" />
-        </div>
+        <IdentitySettingsSkeleton />
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-6">

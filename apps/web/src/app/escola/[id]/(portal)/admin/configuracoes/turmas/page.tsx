@@ -19,7 +19,8 @@ import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
-import { Skeleton, useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
+import { CoursesSettingsSkeleton } from "@/components/escola/settings/SettingsLoadingSkeletons";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildContextualPortalHref } from "@/lib/navigation";
 
@@ -1169,9 +1170,7 @@ export default function TurmasConfiguracoesPage() {
         )}
 
         {loading ? (
-          <div className="py-10 flex justify-center">
-            <Skeleton className="h-4 w-40" />
-          </div>
+          <CoursesSettingsSkeleton />
         ) : cursos.length === 0 ? (
           <div className="text-center py-8 text-slate-500 border border-dashed rounded-xl">
             Nenhum curso cadastrado na escola.
