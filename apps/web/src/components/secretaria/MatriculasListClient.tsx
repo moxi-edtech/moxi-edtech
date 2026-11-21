@@ -13,13 +13,13 @@ import {
   ArrowUpDown,
   FileText,
   UserCheck,
-  MoreVertical,
   CheckCircle2,
   XCircle,
   Clock,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
+import { OperationalTablePagination } from "@/components/ui/OperationalTableStates";
 import { formatTurmaDisplayName } from "@/utils/formatters";
 
 import StatusForm from "./StatusForm";
@@ -192,7 +192,6 @@ export default function MatriculasListClient() {
   const [showTransferForm, setShowTransferForm] = useState(false);
   const [selectedMatricula, setSelectedMatricula] = useState<Item | null>(null);
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
   const hasRows = !loading && items.length > 0;
   const isInitialLoading = loading && items.length === 0;
@@ -887,12 +886,6 @@ export default function MatriculasListClient() {
                             <FileText className="h-4 w-4" />
                           </Link>
 
-                          <button
-                            title="Mais"
-                            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-4 focus:ring-amber/20"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -904,28 +897,15 @@ export default function MatriculasListClient() {
           </div>
         </div>
 
-        {/* Footer Paginação */}
-        <div className="flex items-center justify-between border-t border-border bg-muted px-6 py-4">
-          <p className="text-xs font-medium text-muted-foreground">
-            Página {page} de {totalPages} • Total: {total}
-          </p>
-
-          <div className="flex gap-2">
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-xl bg-card px-3 py-1.5 text-xs font-bold text-foreground ring-1 ring-border hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Anterior
-            </button>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-xl bg-card px-3 py-1.5 text-xs font-bold text-foreground ring-1 ring-border hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Próxima
-            </button>
-          </div>
+        {/* Server returns exact count across filters: this is a real total, not a cursor batch. */}
+        <div className="border-t border-border bg-card px-4 py-3 sm:px-6">
+          <OperationalTablePagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            disabled={loading || Boolean(listError)}
+            onPageChange={setPage}
+          />
         </div>
       </div>
 

@@ -18,7 +18,7 @@ Origem: `feat/theme-switcher`. Reconciliada a partir da `main` (`2f51880ce93e5ec
 - Configuração administrativa: `ConfigSystemShell`, `SettingsHub`, avisos de autenticação e wizard académico recebem superfícies semânticas; o AppShell mantém impressão branca e adapta o chrome académico.
 - Financeiro: geração e registo de pagamentos, validações, tabelas de mensalidades e listas com modais scrolláveis no viewport móvel.
 - Super Admin: rede de escolas, utilizadores, filtros, tabelas, diálogos de confirmação e cobrança convertidos para cores adaptativas.
-- Partilhados: Card, KpiCard, SecondaryAction, TaskList, DashboardHeader, Button, Drawer, ModalShell, StatusPill, Alert, Sheet, Input, Select e notificações.
+- Partilhados: Card, KpiCard, TaskList, DashboardHeader, Button, Drawer, ModalShell, StatusPill, Alert, Sheet, Input, Select e notificações.
 - Secretaria: AlunosList, ProfessoresList, ClassesList, ImportacoesList, MatriculasList, AlunoProfilePanel, PagamentoModal, BalcaoServicoModal, FilaAtendimentoModal, MinhaProdutividade e FechoCaixaCego.
 - Relatórios: TabFluxo, TabPropinas, TabCaptacao (apenas classes visuais; lógica e consultas intactas).
 - Portal do aluno: BottomNav.
