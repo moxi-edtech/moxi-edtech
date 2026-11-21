@@ -5,7 +5,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, Save, RefreshCw, Calendar, Lock, AlertTriangle, CheckCircle2, Wand2, Plus, Trash2, X } from "lucide-react";
-import { Skeleton } from "@/components/feedback/FeedbackSystem";
+import { CalendarSettingsSkeleton } from "@/components/escola/settings/SettingsLoadingSkeletons";
 import { format, parseISO } from "date-fns";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -431,7 +431,7 @@ export default function CalendarioConfigPage({ params }: Props) {
           </div>
 
           <div className="flex items-center gap-3">
-             {periodos.length === 0 && (
+             {!loading && periodos.length === 0 && (
                <button
                 type="button"
                 onClick={handleCloneStructure}
@@ -482,7 +482,8 @@ export default function CalendarioConfigPage({ params }: Props) {
 
           <div className="pb-2 sm:pb-0 sm:pr-2 flex items-center gap-2">
              <select 
-                className="rounded-lg border-slate-200 text-sm font-bold text-slate-700 focus:border-amber focus:ring-amber"
+                className="rounded-xl border-border bg-card text-sm font-bold text-foreground focus:border-amber focus:ring-amber disabled:opacity-60"
+                disabled={loading || saving}
                 value={selectedAnoId || ""}
                 onChange={(e) => handleAnoChange(e.target.value)}
               >
@@ -495,6 +496,7 @@ export default function CalendarioConfigPage({ params }: Props) {
 
               <button 
                 onClick={handleCreateManualYear}
+                disabled={loading || saving}
                 title="Criar novo ano do zero"
                 className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors"
               >
@@ -531,7 +533,7 @@ export default function CalendarioConfigPage({ params }: Props) {
         )}
 
         {loading ? (
-          <div className="flex justify-center py-20"><RefreshCw className="h-8 w-8 animate-spin text-slate-300" /></div>
+          <CalendarSettingsSkeleton tab={activeTab} />
         ) : (
           <div className="space-y-6">
             
