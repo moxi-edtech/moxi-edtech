@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { buildStudentPortalHref } from "../../src/lib/navigation";
 
 const source = (path: string) =>
   readFileSync(new URL("../../src/" + path, import.meta.url), "utf8");
@@ -99,4 +100,63 @@ test("identidade preserva QR e offline; actividades mantêm acesso ao rascunho",
   assert.match(activities, /Iniciar Actividade/);
   assert.match(home, /<CircularProgressbar/);
   assert.match(home, /mediaNotas === null/);
+});
+
+
+test("links do aluno preservam tenant, educando e ano, sem transportar query operacional", () => {
+  assert.equal(
+    buildStudentPortalHref(
+      "/escola/curtume/aluno/atividades",
+      "?aluno=aluno-42&ano_letivo_id=ano-2026&token=privado",
+      "/aluno/atividades/atividade-7",
+    ),
+    "/escola/curtume/aluno/atividades/atividade-7?aluno=aluno-42&ano_letivo_id=ano-2026",
+  );
+  assert.equal(
+    buildStudentPortalHref(
+      "/escola/curtume/aluno/academico",
+      "aluno=antigo&ano_letivo_id=ano-2026",
+      "/aluno/academico?aba=disciplinas&aluno=especifico",
+    ),
+    "/escola/curtume/aluno/academico?aba=disciplinas&aluno=especifico&ano_letivo_id=ano-2026",
+  );
+  assert.equal(
+    buildStudentPortalHref("/aluno/atividades", "", "/aluno/documentos"),
+    "/aluno/documentos",
+  );
+  assert.equal(
+    buildStudentPortalHref("/escola/escola-2/aluno", "aluno=A%26B", "/aluno/perfil"),
+    "/escola/escola-2/aluno/perfil?aluno=A%26B",
+  );
+});
+
+test("rotas de actividades funcionam em /escola/[id], sem perder o ID da actividade", () => {
+  const list = source("app/(portal-aluno)/aluno/atividades/page.tsx");
+  const runner = source("app/(portal-aluno)/aluno/atividades/[id]/page.tsx");
+  const routed = source("app/escola/[id]/aluno/atividades/[atividadeId]/page.tsx");
+  const home = source("components/aluno/tabs/TabHome.tsx");
+  assert.match(list, /buildStudentPortalHref\(pathname, searchValue, target\)/);
+  assert.match(runner, /buildStudentPortalHref\(pathname, searchValue, target\)/);
+  assert.match(home, /buildStudentPortalHref\(pathname, searchValue, target\)/);
+  assert.match(routed, /const \{ atividadeId \} = await params/);
+  assert.match(routed, /Promise\.resolve\(\{ id: atividadeId \}\)/);
+  assert.match(home, /\/api\/aluno\/home\/status\$\{query\}/);
+  assert.match(runner, /handleSaveSubmission\(false\)/);
+  assert.match(runner, /handleSaveSubmission\(true\)/);
+});
+
+test("cartão offline isola contas e escolas e cancela fetch anterior ao trocar de educando", () => {
+  const card = source("components/aluno/tabs/CartaoEstudante.tsx");
+  const layout = source("app/(portal-aluno)/aluno/AlunoLayoutClient.tsx");
+  assert.match(layout, /<AlunoPortalScopeContext\.Provider value=\{portalScope\}>/);
+  assert.match(card, /useAlunoPortalScope\(\)/);
+  assert.match(card, /scope\.userId/);
+  assert.match(card, /scope\.escolaId/);
+  assert.match(card, /studentId \?\? "default"/);
+  assert.match(card, /localStorage\.removeItem/);
+  assert.match(card, /new AbortController\(\)/);
+  assert.match(card, /setData\(null\)/);
+  assert.match(card, /return \(\) => controller\.abort\(\)/);
+  assert.match(card, /cacheKey \? localStorage\.getItem\(cacheKey\) : null/);
+  assert.doesNotMatch(card, /const cacheKey = `\$\{STORAGE_KEY\}\$\{studentId \|\| "default"\}`/);
 });
