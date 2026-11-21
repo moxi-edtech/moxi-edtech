@@ -399,13 +399,13 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
     <div className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-3 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
       {!embedded && <header className="space-y-3">
         <p className="text-sm font-medium text-[#2B6044]">KLASSE / Portal do aluno</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">As tuas notas</h1>
-        <p className="text-base leading-7 text-slate-600">Acompanha as avaliações que já foram lançadas.</p>
-        {academicYear !== null && <p className="text-sm text-slate-500">Ano letivo {academicYear}</p>}
-        <nav aria-label="Navegação académica" className="flex flex-wrap gap-x-5 gap-y-2 border-b border-slate-200 pt-2 text-sm">
+        <h1 className="text-2xl font-semibold tracking-tight text-primary sm:text-3xl">As tuas notas</h1>
+        <p className="text-base leading-7 text-muted-foreground">Acompanha as avaliações que já foram lançadas.</p>
+        {academicYear !== null && <p className="text-sm text-muted-foreground">Ano letivo {academicYear}</p>}
+        <nav aria-label="Navegação académica" className="flex flex-wrap gap-x-5 gap-y-2 border-b border-border pt-2 text-sm">
           <Link aria-current="page" href={buildPortalHref(escolaSlug, `/aluno/academico${navQuery}`)} className={`inline-flex min-h-11 items-center border-b-2 border-[#2B6044] font-semibold text-[#2B6044] ${focus}`}>Notas</Link>
-          <Link href={buildPortalHref(escolaSlug, `/aluno/disciplinas${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Disciplinas</Link>
-          <Link href={buildPortalHref(escolaSlug, `/aluno/documentos${navQuery}`)} className={`inline-flex min-h-11 items-center text-slate-700 ${focus}`}>Documentos</Link>
+          <Link href={buildPortalHref(escolaSlug, `/aluno/disciplinas${navQuery}`)} className={`inline-flex min-h-11 items-center text-foreground ${focus}`}>Disciplinas</Link>
+          <Link href={buildPortalHref(escolaSlug, `/aluno/documentos${navQuery}`)} className={`inline-flex min-h-11 items-center text-foreground ${focus}`}>Documentos</Link>
         </nav>
       </header>}
       {embedded && academicYear !== null && <p className="text-xs font-medium text-muted-foreground">Ano letivo {academicYear}</p>}
@@ -487,8 +487,8 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           intentId: paymentIntentId,
         } : null}
       />
-      {safeIsLiberado && refreshing && <p role="status" className="text-xs text-slate-500">A verificar novas avaliações…</p>}
-      {safeIsLiberado && !historicalRead && <section aria-label="Situação académica" className="border-t border-slate-200 pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
+      {safeIsLiberado && refreshing && <p role="status" className="text-xs text-muted-foreground">A verificar novas avaliações…</p>}
+      {safeIsLiberado && !historicalRead && <section aria-label="Situação académica" className="border-t border-border pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
       {safeIsLiberado && !historicalRead && reapreciacaoDisc && (
         <Dialog open onOpenChange={(open) => { if (!open) setReapreciacaoDisc(null); }}>
           <DialogContent closeButton={false} onCloseAutoFocus={restoreDialogFocus}
