@@ -11,6 +11,8 @@ type AdminRecipient = {
   role: string;
 };
 
+import { signalCommittedPushNotifications } from "./signalCommittedPushNotifications";
+
 type DispatchParams = {
   supabase?: SupabaseClient<Database> | null;
   escolaId: string;
@@ -141,6 +143,10 @@ export async function dispatchAdminNotificacao({
     console.error("[dispatchAdminNotificacao] insert error:", insertError.message);
     return { ok: false, reason: "insert_error" };
   }
+
+  // This runs only after the notification rows were committed; failures are
+  // non-blocking because the five-minute recovery worker scans the database.
+  await signalCommittedPushNotifications({ escolaId, eventoId: evento.id });
 
   return { ok: true, notified: inserts.length };
 }

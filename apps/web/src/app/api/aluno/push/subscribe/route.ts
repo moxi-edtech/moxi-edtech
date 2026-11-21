@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { isTrustedWebPushEndpoint } from "@/lib/notificacoes/webPushEndpointPolicy";
 
 export async function POST(request: Request) {
   try {
@@ -14,8 +16,20 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { subscription, escola_id } = body;
 
-    if (!subscription || !subscription.endpoint || !escola_id) {
+    if (!subscription || typeof subscription.endpoint !== "string" ||
+        typeof escola_id !== "string" || !escola_id.trim()) {
       return NextResponse.json({ error: "Dados incompletos" }, { status: 400 });
+    }
+
+    // Escola deve ser validada pelo servidor; não confiar no corpo do pedido.
+    const authorizedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escola_id);
+    if (!authorizedEscolaId) {
+      return NextResponse.json({ error: "Sem acesso à escola" }, { status: 403 });
+    }
+
+    // Only a browser push service may receive Web Push POSTs from the server.
+    if (!isTrustedWebPushEndpoint(subscription.endpoint)) {
+      return NextResponse.json({ error: "Endpoint de push inválido" }, { status: 400 });
     }
 
     // Extraction of keys for our schema
@@ -32,7 +46,7 @@ export async function POST(request: Request) {
       .from("aluno_push_subscriptions")
       .upsert({
         user_id: user.id,
-        escola_id: escola_id,
+        escola_id: authorizedEscolaId,
         endpoint: subscription.endpoint,
         p256dh: p256dh,
         auth: auth_key,
