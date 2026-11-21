@@ -5,23 +5,13 @@ import QRCode from "react-qr-code";
 import { User, ShieldCheck, Calendar, GraduationCap, Wallet, WifiOff, Info } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useAlunoPortalScope } from "@/components/aluno/AlunoPortalScope";
+import { identityCardCacheKey, pruneIdentityCardCache, readIdentityCardCache, saveIdentityCardCache, type OfflineCardIdentity } from "@/lib/offline/identity-card-cache";
 
-type IdentidadeData = {
-  nome: string;
-  processo: string;
-  bi: string;
+type IdentidadeData = OfflineCardIdentity & {
+  bi?: string;
   foto?: string;
-  escola: string;
   escola_logo?: string;
-  sigla?: string;
-  curso: string;
-  turma: string;
-  ano_letivo: number;
-  validade: string;
-  verification_url: string;
 };
-
-const STORAGE_KEY = "klasse_id_card_cache_";
 
 export function CartaoEstudante() {
   const searchParams = useSearchParams();
@@ -29,9 +19,11 @@ export function CartaoEstudante() {
   const scope = useAlunoPortalScope();
   // Separar cache por utilizador autenticado, escola e educando.
   // Não disponibilizar fallback offline fora do layout autenticado.
-  const cacheKey = scope && studentId
-    ? `${STORAGE_KEY}v2:${scope.userId}:${scope.escolaId}:${studentId}`
-    : null;
+  const cacheKey = identityCardCacheKey({
+    userId: scope?.userId ?? "",
+    escolaId: scope?.escolaId ?? "",
+    studentId: studentId ?? null,
+  });
   
   const [data, setData] = useState<IdentidadeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,15 +51,7 @@ export function CartaoEstudante() {
     setError(null);
     setIsServedFromCache(false);
 
-    // Apaga caches antigas sem isolamento de conta/tenant: não são seguras para fallback.
-    try {
-      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-        const key = localStorage.key(index);
-        if (key?.startsWith(STORAGE_KEY) && !key.startsWith(`${STORAGE_KEY}v2:`)) {
-          localStorage.removeItem(key);
-        }
-      }
-    } catch { /* armazenamento indisponível */ }
+    try { pruneIdentityCardCache(localStorage); } catch { /* armazenamento indisponível */ }
 
     const url = studentId
       ? `/api/aluno/perfil/identidade?studentId=${encodeURIComponent(studentId)}`
@@ -80,7 +64,7 @@ export function CartaoEstudante() {
         if (response.ok && json.ok) {
           setData(json.identidade);
           if (cacheKey) {
-            try { localStorage.setItem(cacheKey, JSON.stringify(json.identidade)); } catch { /* offline indisponível */ }
+            try { saveIdentityCardCache(localStorage, cacheKey, json.identidade); } catch { /* offline indisponível */ }
           }
         } else {
           setError({
@@ -92,17 +76,12 @@ export function CartaoEstudante() {
       .catch(() => {
         if (controller.signal.aborted) return;
         try {
-          const cached = cacheKey ? localStorage.getItem(cacheKey) : null;
+          const cached = readIdentityCardCache(localStorage, cacheKey);
           if (cached) {
-            const parsed: unknown = JSON.parse(cached);
-            if (!parsed || typeof parsed !== "object" || !("nome" in parsed) || !("verification_url" in parsed) ||
-                typeof parsed.nome !== "string" || typeof parsed.verification_url !== "string") {
-              throw new Error("Cartão offline inválido");
-            }
-            setData(parsed as IdentidadeData);
+            setData(cached);
             setIsServedFromCache(true);
           } else {
-            setError({ type: "FETCH_ERROR", message: "Dispositivo offline. Nenhum cartão disponível neste contexto." });
+            setError({ type: "FETCH_ERROR", message: "Cartão offline indisponível ou expirado. Liga-te à Internet para atualizar." });
           }
         } catch {
           setError({ type: "FETCH_ERROR", message: "Não foi possível recuperar o cartão offline." });
