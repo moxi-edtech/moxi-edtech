@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     if (error || data?.ok !== true || data.ano !== 2025 ||
         !counts.every((value) => typeof value === "number" &&
           Number.isSafeInteger(value) && value >= 0) ||
-        data.total !== counts.slice(1).reduce((sum, count) => sum + Number(count), 0)) {
+        data.total !== counts.slice(1).reduce((sum: number, count) => sum + Number(count), 0)) {
       return NextResponse.json({ ok: false, error: "Não foi possível validar o estado das notas finais." },
         { status: 503, headers: NO_STORE });
     }
