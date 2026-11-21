@@ -154,17 +154,17 @@ export default function AlunoAtividadeRunnerPage({
 
   if (loading) {
     return (
-      <div className="space-y-4 animate-pulse pb-24">
-        <div className="h-44 rounded-3xl bg-slate-100 border border-slate-200" />
+      <div role="status" aria-label="A carregar actividade" className="space-y-4 pb-4 motion-safe:animate-pulse">
+        <div className="h-44 rounded-xl bg-muted border border-border" />
       </div>
     );
   }
 
   if (!activity) {
     return (
-      <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center space-y-3">
+      <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center space-y-3">
         <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
-        <h3 className="text-base font-black text-slate-900">Actividade Indisponível</h3>
+        <h3 className="text-base font-semibold text-foreground">Actividade Indisponível</h3>
         <Link href={`/aluno/atividades${query}`} className="inline-block text-xs font-bold text-emerald-600">
           Voltar para Actividades
         </Link>
@@ -178,23 +178,23 @@ export default function AlunoAtividadeRunnerPage({
   const isExpirado = prazoDate ? prazoDate.getTime() < Date.now() : false;
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="min-w-0 space-y-5 pb-4">
       
       {/* BARRA SUPERIOR DE NAVEGAÇÃO */}
       <div className="flex items-center gap-3">
         <Link
           href={`/aluno/atividades${query}`}
-          className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all shadow-2xs"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" aria-label="Voltar às actividades"
         >
           <ArrowLeft size={18} />
         </Link>
-        <span className="text-xs font-black uppercase tracking-widest text-slate-400">Voltar às Actividades</span>
+        <span className="text-xs font-semibold  text-muted-foreground">Voltar às Actividades</span>
       </div>
 
       {/* MODAL DE ALERTA DE PRAZO / NEXT_ACTION */}
       {nextActionError && (
-        <div className="rounded-3xl border border-amber-300 bg-amber-50 p-5 space-y-3 shadow-sm">
-          <div className="flex items-center gap-2 text-amber-950 font-black text-sm">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-5 space-y-3 shadow-sm">
+          <div className="flex items-center gap-2 text-amber-950 font-semibold text-sm">
             <AlertCircle className="text-amber-600 shrink-0" size={20} />
             <span>{nextActionError.error}</span>
           </div>
@@ -214,24 +214,24 @@ export default function AlunoAtividadeRunnerPage({
       )}
 
       {/* HEADER DA ACTIVIDADE */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-3">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 font-mono">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold  bg-muted text-foreground font-mono">
             {activity.tipo}
           </span>
 
           {isSubmetida ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
               <CheckCircle2 size={14} />
               Entregue ({entrega?.nota !== null && entrega?.nota !== undefined ? `${entrega.nota} pts` : "Em Avaliação"})
             </span>
           ) : isExpirado ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black uppercase bg-rose-50 text-rose-700 border border-rose-200">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold uppercase bg-rose-50 text-rose-700 border border-rose-200">
               <AlertCircle size={14} />
               Prazo Expirado
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black uppercase bg-amber-50 text-amber-800 border border-amber-200">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold uppercase bg-amber-50 text-amber-800 border border-amber-200">
               <Clock size={14} />
               Rascunho em Andamento
             </span>
@@ -243,22 +243,22 @@ export default function AlunoAtividadeRunnerPage({
         </h1>
 
         {activity.instrucoes && (
-          <p className="text-xs font-medium text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+          <p className="text-xs font-medium text-muted-foreground bg-muted/40 p-3 rounded-xl border border-border">
             {activity.instrucoes}
           </p>
         )}
 
         {activity.plano_aula && (
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Plano de aula · {activity.plano_aula.data}</p>
-            <h2 className="mt-1 text-sm font-black text-emerald-950">{activity.plano_aula.tema}</h2>
-            {activity.plano_aula.subtema && <p className="mt-1 text-xs text-emerald-900">{activity.plano_aula.subtema}</p>}
-            {activity.plano_aula.objetivos && <p className="mt-3 text-xs leading-relaxed text-emerald-950"><strong>Objetivos:</strong> {activity.plano_aula.objetivos}</p>}
-            {activity.plano_aula.conteudos && <p className="mt-2 text-xs leading-relaxed text-emerald-950"><strong>Conteúdos:</strong> {activity.plano_aula.conteudos}</p>}
+          <div className="rounded-xl border border-border bg-muted/40 p-4">
+            <p className="text-xs font-semibold  text-emerald-700">Plano de aula · {activity.plano_aula.data}</p>
+            <h2 className="mt-1 text-sm font-semibold text-foreground">{activity.plano_aula.tema}</h2>
+            {activity.plano_aula.subtema && <p className="mt-1 text-xs text-muted-foreground">{activity.plano_aula.subtema}</p>}
+            {activity.plano_aula.objetivos && <p className="mt-3 text-xs leading-relaxed text-foreground"><strong>Objetivos:</strong> {activity.plano_aula.objetivos}</p>}
+            {activity.plano_aula.conteudos && <p className="mt-2 text-xs leading-relaxed text-foreground"><strong>Conteúdos:</strong> {activity.plano_aula.conteudos}</p>}
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-400 pt-1">
+        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-muted-foreground pt-1">
           <span>Tentativa {entrega?.tentativa ?? 1} de {activity.tentativas_permitidas}</span>
           <span>Valor Máximo: {activity.nota_maxima} pts</span>
           {prazoDate && (
@@ -271,7 +271,7 @@ export default function AlunoAtividadeRunnerPage({
 
       {/* RESOLUÇÃO DE QUESTÕES */}
       <div className="space-y-4">
-        <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 px-1">
+        <h2 className="text-sm font-semibold  text-foreground px-1">
           Questões ({activity.atividade_questoes?.length ?? 0})
         </h2>
 
@@ -281,15 +281,15 @@ export default function AlunoAtividadeRunnerPage({
           return (
             <div
               key={q.id || idx}
-              className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3"
+              className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-3"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-black text-emerald-800 font-mono">
+                <span className="text-xs font-semibold text-primary font-mono">
                   Questão #{q.ordem} ({q.pontos} {q.pontos === 1 ? "ponto" : "pontos"})
                 </span>
               </div>
 
-              <p className="text-sm font-bold text-slate-900 leading-relaxed">
+              <p className="text-sm font-bold text-foreground leading-relaxed">
                 {q.enunciado}
               </p>
 
@@ -301,10 +301,10 @@ export default function AlunoAtividadeRunnerPage({
                     return (
                       <label
                         key={optIdx}
-                        className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                           isSelected
-                            ? "border-emerald-600 bg-emerald-50/80 text-emerald-950 font-bold shadow-2xs"
-                            : "border-slate-200 bg-slate-50/50 text-slate-700 hover:bg-slate-100"
+                            ? "border-klasse-gold/70 bg-klasse-gold-50 text-foreground font-semibold"
+                            : "border-border bg-muted/40/50 text-foreground hover:bg-muted"
                         } ${isSubmetida || isExpirado ? "pointer-events-none opacity-90" : ""}`}
                       >
                         <input
@@ -314,7 +314,7 @@ export default function AlunoAtividadeRunnerPage({
                           disabled={isSubmetida || isExpirado}
                           checked={isSelected}
                           onChange={() => handleAnswerChange(q.ordem, opt)}
-                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                          className="h-4 w-4 accent-klasse-gold focus:ring-klasse-gold/20"
                         />
                         <span className="text-xs font-medium">{opt}</span>
                       </label>
@@ -334,10 +334,10 @@ export default function AlunoAtividadeRunnerPage({
                         type="button"
                         disabled={isSubmetida || isExpirado}
                         onClick={() => handleAnswerChange(q.ordem, option)}
-                        className={`flex-1 py-2.5 rounded-2xl border text-xs font-black transition-all cursor-pointer ${
+                        className={`flex-1 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                           isSelected
-                            ? "border-emerald-600 bg-emerald-600 text-white shadow-2xs"
-                            : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+                            ? "border-klasse-gold bg-klasse-gold text-slate-950"
+                            : "border-border bg-muted/40 text-foreground hover:bg-muted"
                         }`}
                       >
                         {option}
@@ -356,7 +356,7 @@ export default function AlunoAtividadeRunnerPage({
                     value={currentVal}
                     onChange={(e) => handleAnswerChange(q.ordem, e.target.value)}
                     placeholder="Digite a sua resposta explicativa..."
-                    className="w-full rounded-2xl border border-slate-200 p-3 text-xs font-medium text-slate-900 outline-none focus:border-emerald-600 disabled:bg-slate-100"
+                    className="w-full rounded-xl border border-border bg-card p-3 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20 disabled:bg-muted"
                   />
                 </div>
               )}
@@ -367,14 +367,14 @@ export default function AlunoAtividadeRunnerPage({
 
       {/* BARRA DE AÇÕES (GUARDAR RASCUNHO OU SUBMETER) */}
       {!isSubmetida && !isExpirado && (
-        <div className="sticky bottom-20 z-20 flex items-center justify-between gap-3 bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-slate-200 shadow-xl">
+        <div className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 flex items-stretch gap-2 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur-md">
           <button
             type="button"
             disabled={submitting}
             onClick={() => handleSaveSubmission(false)}
-            className="inline-flex items-center gap-1.5 px-4 py-3 rounded-2xl border border-slate-200 text-slate-800 text-xs font-black hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+            className="inline-flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-border px-2 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-50 sm:px-4"
           >
-            <Save size={16} className="text-slate-500" />
+            <Save size={16} className="text-muted-foreground" />
             <span>Guardar Rascunho</span>
           </button>
 
@@ -382,7 +382,7 @@ export default function AlunoAtividadeRunnerPage({
             type="button"
             disabled={submitting}
             onClick={() => handleSaveSubmission(true)}
-            className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold shadow-sm cursor-pointer disabled:opacity-50 active:scale-95 transition-all"
+            className="klasse-portal-cta inline-flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-50 sm:px-4 sm:text-sm"
           >
             <Send size={16} />
             <span>Finalizar e Submeter</span>
