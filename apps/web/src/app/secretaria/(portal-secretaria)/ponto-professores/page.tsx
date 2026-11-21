@@ -81,21 +81,29 @@ export default function PontoProfessoresPage() {
     if (end === null) return;
     const motivo = window.prompt("Motivo obrigatório da correção (mínimo 10 caracteres):", "Correção solicitada pela Secretaria");
     if (motivo === null) return;
-    const response = await fetch("/api/secretaria/ponto-professores/ajustes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aula_id: aula.id, inicio_real: start.trim() || null, fim_real: end.trim() || null, motivo }) });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok || !payload?.ok) { toastError("Não foi possível corrigir a marcação", payload?.error ?? "Verifique os dados e tente novamente."); return; }
-    success("Marcação corrigida", "A alteração ficou registada com o motivo informado.");
-    await load();
+    try {
+      const response = await fetch("/api/secretaria/ponto-professores/ajustes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aula_id: aula.id, inicio_real: start.trim() || null, fim_real: end.trim() || null, motivo }) });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok) { toastError("Não foi possível corrigir a marcação", payload?.error ?? "Verifique os dados e tente novamente."); return; }
+      success("Marcação corrigida", "A alteração ficou registada com o motivo informado.");
+      await load();
+    } catch {
+      toastError("Erro de ligação", "A marcação não foi confirmada. Verifique o estado antes de repetir.");
+    }
   };
 
   const changeClosure = async (action: "fechar" | "reabrir") => {
     const motivo = action === "reabrir" ? window.prompt("Motivo da reabertura (mínimo 10 caracteres):", "Correção autorizada pela direção") : undefined;
     if (action === "reabrir" && motivo === null) return;
-    const response = await fetch("/api/secretaria/ponto-professores/fechamento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ month, action, motivo }) });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok || !payload?.ok) { toastError("Não foi possível alterar o mês", payload?.error ?? "Tente novamente."); return; }
-    success(action === "fechar" ? "Mês fechado" : "Mês reaberto");
-    await load();
+    try {
+      const response = await fetch("/api/secretaria/ponto-professores/fechamento", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ month, action, motivo }) });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok) { toastError("Não foi possível alterar o mês", payload?.error ?? "Tente novamente."); return; }
+      success(action === "fechar" ? "Mês fechado" : "Mês reaberto");
+      await load();
+    } catch {
+      toastError("Erro de ligação", "Não foi possível confirmar a alteração. Verifique o estado do mês.");
+    }
   };
 
   return <div className={`${PORTAL_PAGE_INSET} space-y-6`}><DashboardHeader title="Ponto dos professores" description="Resumo mensal baseado no início e fim reais das aulas." breadcrumbs={[{ label: "Início", href: "/" }, { label: "Secretaria", href: "/secretaria" }, { label: "Ponto dos professores" }]} />
