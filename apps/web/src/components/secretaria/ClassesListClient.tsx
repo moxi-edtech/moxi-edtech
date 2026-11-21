@@ -66,6 +66,10 @@ export default function ClassesListClient() {
 
   useEffect(() => {
     if (!escolaId) {
+      controllerRef.current?.abort();
+      setClasses([]);
+      setNextCursor(null);
+      setLoadedSchoolId(null);
       if (!escolaLoading) setLoading(false);
       return;
     }
@@ -90,7 +94,7 @@ export default function ClassesListClient() {
         <OperationalTableEmptyState title="Nenhuma classe encontrada" description="Não existem classes registadas nesta escola." />
       )}
 
-      {!isPending && !error && !escolaError && classes.length > 0 && (
+      {!isPending && !error && !escolaError && escolaId && loadedSchoolId === escolaId && classes.length > 0 && (
         <div className="min-w-0 overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
           <table className="w-full min-w-[420px] divide-y divide-border text-sm">
             <thead className="bg-muted/50 text-muted-foreground">
