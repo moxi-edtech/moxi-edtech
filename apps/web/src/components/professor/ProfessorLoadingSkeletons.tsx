@@ -152,3 +152,73 @@ export function ProfessorCalendarSkeleton() {
     </div>
   );
 }
+
+/** Espelha o formulário e a lista de planos, sem exibir controlos incompletos. */
+function LessonPlanFieldSkeleton({ multiline = false }: { multiline?: boolean }) {
+  return (
+    <div className="space-y-1.5">
+      <ProfessorSkeletonBone className="h-3 w-20" />
+      <ProfessorSkeletonBone className={`w-full rounded-xl ${multiline ? "h-24" : "h-11"}`} />
+    </div>
+  );
+}
+
+export function ProfessorLessonPlansSkeleton() {
+  return (
+    <div role="status" aria-label="A carregar planos de aula" className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
+      <span className="sr-only">A carregar planos de aula</span>
+      <section aria-hidden="true" className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <div className="mb-5 flex items-center gap-3 motion-safe:animate-pulse">
+          <ProfessorSkeletonBone className="h-5 w-5" />
+          <div className="space-y-2">
+            <ProfessorSkeletonBone className="h-4 w-28" />
+            <ProfessorSkeletonBone className="h-3 w-48 max-w-full" />
+          </div>
+        </div>
+        <div className="space-y-4 motion-safe:animate-pulse">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <LessonPlanFieldSkeleton />
+            <LessonPlanFieldSkeleton />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <LessonPlanFieldSkeleton />
+            <LessonPlanFieldSkeleton />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {Array.from({ length: 9 }, (_, index) => (
+              <LessonPlanFieldSkeleton key={index} multiline />
+            ))}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <LessonPlanFieldSkeleton multiline />
+            <LessonPlanFieldSkeleton />
+          </div>
+          <div className="flex flex-wrap gap-3 pt-1">
+            <ProfessorSkeletonBone className="h-11 w-40 rounded-xl" />
+            <ProfessorSkeletonBone className="h-11 w-44 rounded-xl" />
+          </div>
+        </div>
+      </section>
+      <section aria-hidden="true" className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <div className="space-y-2 motion-safe:animate-pulse">
+          <ProfessorSkeletonBone className="h-5 w-36" />
+          <ProfessorSkeletonBone className="h-3 w-56 max-w-full" />
+        </div>
+        <div className="mt-4 space-y-3">
+          {[0, 1].map((index) => (
+            <div key={index} className="rounded-xl border border-border p-4 motion-safe:animate-pulse">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <ProfessorSkeletonBone className="h-4 w-3/4" />
+                  <ProfessorSkeletonBone className="h-3 w-24" />
+                </div>
+                <ProfessorSkeletonBone className="h-5 w-20 rounded-full" />
+              </div>
+              <ProfessorSkeletonBone className="mt-3 h-3 w-5/6" />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
