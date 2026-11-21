@@ -66,10 +66,10 @@ export const formatAnoLetivoDisplay = (anoLetivo?: AnoLetivoDisplayInput | numbe
       ? anoLetivo
       : { ano: anoLetivo };
 
-  // ISO civil dates represent the school calendar, not instants in the viewer\'s timezone.
+  // ISO civil dates represent the school calendar, not instants in the viewer's timezone.
   const yearFromDate = (value?: string | null): number | null => {
     if (!value) return null;
-    const isoYear = /^(\\d{4})-\\d{2}-\\d{2}/.exec(value);
+    const isoYear = /^(\d{4})-\d{2}-\d{2}/.exec(value);
     if (isoYear) return Number(isoYear[1]);
     const parsed = new Date(value);
     return Number.isFinite(parsed.getTime()) ? parsed.getUTCFullYear() : null;
