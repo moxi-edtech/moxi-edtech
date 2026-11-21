@@ -151,7 +151,7 @@ export function TabFinanceiro() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div><h1 className="text-xl font-semibold text-primary">Financeiro</h1><p className="mt-1 text-sm text-muted-foreground">Mensalidades, pagamentos e recibos.</p></div>
+        <div><h1 className="text-2xl font-semibold tracking-tight text-primary">Financeiro</h1><p className="mt-1 text-sm text-muted-foreground">Mensalidades, pagamentos e recibos.</p></div>
         <button
           onClick={refresh}
           className="min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-sm hover:bg-muted"
