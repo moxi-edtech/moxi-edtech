@@ -91,9 +91,9 @@ export function CartaoEstudante() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center gap-6 py-12 animate-pulse max-w-sm mx-auto">
-        <div className="w-full h-12 rounded-full bg-slate-200" />
-        <div className="w-full aspect-[1.5/1] rounded-[2.5rem] bg-slate-200" />
+      <div role="status" aria-label="A carregar cartão do estudante" className="mx-auto flex max-w-sm flex-col items-center gap-4 py-8 motion-safe:animate-pulse"><span className="sr-only">A carregar cartão do estudante</span>
+        <div className="h-11 w-full rounded-xl bg-muted" />
+        <div className="aspect-[1.5/1] w-full rounded-xl bg-muted" />
       </div>
     );
   }
@@ -101,13 +101,13 @@ export function CartaoEstudante() {
   if (error?.type === "PENDING_PAYMENT") {
     return (
       <div className="py-8 px-4 max-w-sm mx-auto text-center">
-        <div className="rounded-3xl bg-white border border-slate-100 p-6 shadow-sm space-y-4">
+        <div className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center mx-auto">
             <Wallet size={20} />
           </div>
           <div className="space-y-1">
-            <h3 className="text-sm font-bold text-slate-900">Emissão Pendente de Pagamento</h3>
-            <p className="text-xs font-medium text-slate-500 leading-relaxed">
+            <h2 className="text-sm font-semibold text-foreground">Emissão pendente de pagamento</h2>
+            <p className="text-sm leading-5 text-muted-foreground">
               {error.message}
             </p>
           </div>
@@ -116,7 +116,7 @@ export function CartaoEstudante() {
     );
   }
 
-  if (!data) return <div className="text-center py-16 text-slate-400 font-bold text-xs">{error?.message || "Falha ao carregar identidade."}</div>;
+  if (!data) return <div role="alert" className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">{error?.message || "Falha ao carregar identidade."}</div>;
 
   return (
     <div className="flex flex-col items-center space-y-6 py-6 px-2 max-w-md mx-auto">
@@ -130,14 +130,15 @@ export function CartaoEstudante() {
       )}
 
       {/* Segmented Control Switcher (Cartão vs QR Code) */}
-      <div className="flex w-full max-w-[320px] rounded-2xl bg-slate-100 p-1">
+      <div role="group" aria-label="Apresentação da identidade" className="flex w-full max-w-[320px] rounded-xl border border-border bg-muted/40 p-1">
         <button
           type="button"
           onClick={() => setActiveTab("card")}
-          className={`flex-1 rounded-xl py-2 text-xs font-black transition-all ${
+          aria-pressed={activeTab === "card"}
+          className={`min-h-11 flex-1 rounded-xl px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
             activeTab === "card"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-900"
+              ? "bg-card text-primary ring-1 ring-klasse-gold/30 shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           Cartão Estudantil
@@ -145,10 +146,11 @@ export function CartaoEstudante() {
         <button
           type="button"
           onClick={() => setActiveTab("qr")}
-          className={`flex-1 rounded-xl py-2 text-xs font-black transition-all ${
+          aria-pressed={activeTab === "qr"}
+          className={`min-h-11 flex-1 rounded-xl px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
             activeTab === "qr"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-900"
+              ? "bg-card text-primary ring-1 ring-klasse-gold/30 shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           QR de Validação
@@ -233,9 +235,9 @@ export function CartaoEstudante() {
       {/* TAB 2: QR Code de Validação (Espaçoso e Limpo) */}
       {activeTab === "qr" && (
         <div className="w-full max-w-[340px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
-          <div className="rounded-[2.5rem] bg-white p-8 border border-slate-100 shadow-sm flex flex-col items-center text-center space-y-6">
+          <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center shadow-sm sm:p-6">
             
-            <div className="rounded-3xl bg-slate-50 p-6 ring-1 ring-slate-100 shadow-inner">
+            <div className="rounded-xl border border-border bg-white p-5">
               <QRCode
                 value={data.verification_url}
                 size={180}
@@ -246,8 +248,8 @@ export function CartaoEstudante() {
             </div>
 
             <div className="space-y-1">
-              <h4 className="text-sm font-black text-slate-900">Validação em Tempo Real</h4>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              <h3 className="text-sm font-semibold text-foreground">Validação em tempo real</h3>
+              <p className="text-sm leading-5 text-muted-foreground">
                 Código para leitura nos leitos de acesso ou conferência de presença.
               </p>
             </div>
