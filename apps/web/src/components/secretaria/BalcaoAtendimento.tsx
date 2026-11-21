@@ -331,7 +331,7 @@ function useAlunoDossier(escolaId: string, academicYearId: string | null) {
             .eq("escola_id", escolaId)
             .eq("aluno_id", alunoId)
             .lt("ano_letivo", targetAcademicYear)
-            .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido"])
+            .in("status", ["ativo", "ativa", "active", "pendente", "aprovado", "aprovada", "transferido", "concluido", "concluida"])
             .order("ano_letivo", { ascending: false })
             .limit(1)
             .maybeSingle();
