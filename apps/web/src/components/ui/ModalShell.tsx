@@ -35,7 +35,7 @@ export function ModalShell({
         overlayClassName="bg-black/40"
         onPointerDownOutside={(event) => event.preventDefault()}
         className={[
-          "flex w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)] min-h-0 flex-col gap-0 overflow-hidden rounded-2xl border-border bg-card p-0 shadow-xl",
+          "flex w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)] min-h-0 flex-col gap-0 overflow-hidden rounded-2xl border-border bg-card p-0 shadow-xl sm:rounded-2xl",
           size === "wide" ? "max-w-7xl" : "max-w-3xl",
         ].join(" ")}
       >
