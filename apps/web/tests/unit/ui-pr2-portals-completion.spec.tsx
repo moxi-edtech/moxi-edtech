@@ -81,6 +81,7 @@ test("teacher grading and calendar preserve their operational logic with the can
   const grade = code("app/professor/notas/page.tsx");
   const calendar = code("app/professor/calendario/page.tsx");
   for (const src of [grade, calendar]) assert.match(src, /PORTAL_PAGE_INSET/);
+  assert.match(grade, /import \{ PORTAL_PAGE_INSET \} from "@\/lib\/layout\/portal-page"/);
   assert.match(grade, /resolveGradeEntryAvailability\(/);
   assert.match(grade, /const notasBloqueadas = !gradeAvailability.canWrite/);
   assert.match(calendar, /<ProfessorCalendarSkeleton/);

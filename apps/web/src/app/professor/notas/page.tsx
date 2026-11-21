@@ -10,6 +10,7 @@ import { useOfflineStatus } from "@/hooks/useOfflineStatus"
 import { useOfficialDocs, type MiniPautaPayload } from "@/hooks/useOfficialDocs"
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page"
 import { formatTurmaDisplayName } from "@/utils/formatters"
 import { useToast } from "@/components/feedback/FeedbackSystem"
 
