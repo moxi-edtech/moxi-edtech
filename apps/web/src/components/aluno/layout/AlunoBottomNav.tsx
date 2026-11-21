@@ -80,7 +80,7 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
   return (
     <>
       {isMoreOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-muted-foreground/60">
           <button type="button" tabIndex={-1} aria-label="Fechar menu" onClick={closeMenu} className="absolute inset-0 cursor-default" />
           <div
             id="aluno-mais-areas"
