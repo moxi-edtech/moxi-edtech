@@ -81,8 +81,9 @@ export const formatAnoLetivoDisplay = (anoLetivo?: AnoLetivoDisplayInput | numbe
     return `${startFromDate}/${endFromDate}`;
   }
 
+  if (input.ano == null || input.ano === "") return "—";
   const startYear = Number(input.ano);
-  if (!Number.isFinite(startYear)) return "—";
+  if (!Number.isInteger(startYear) || startYear < 1900 || startYear > 2100) return "—";
 
   return `${Math.trunc(startYear)}/${Math.trunc(startYear) + 1}`;
 };
