@@ -14,6 +14,7 @@ test("migration cursor preserves microsecond precision and rejects PostgREST fil
   const timestamp = "2026-11-21T18:01:02.123456+00:00";
   assert.deepEqual(parseImportHistoryCursor(`${timestamp},${id}`), { createdAt: timestamp, id });
   assert.equal(parseImportHistoryCursor(null), null);
+  assert.deepEqual(parseImportHistoryCursor(`null,${id}`), { createdAt: null, id });
   for (const cursor of [
     "not-a-cursor",
     "2026-11-21T18:01:02Z,not-a-uuid",
