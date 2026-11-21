@@ -54,3 +54,9 @@ jobs:
       - name: Verify no fixture rows survived transaction
         run: |
           test "$(psql -X -Atc 'select count(*) from public.matriculas')" = "0"
+      - name: Exercise trigger with real RAA historical ratification (separate PG17 DB)
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -c 'CREATE DATABASE raa_real'
+          PGDATABASE=raa_real psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/finalist_guard_fixture.sql
+          PGDATABASE=raa_real psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/enrollment_guard_real_raa_regression.sql
+          test "$(PGDATABASE=raa_real psql -X -Atc 'select count(*) from public.matriculas')" = "0"
