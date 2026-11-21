@@ -304,7 +304,7 @@ export default function AlunoAtividadeRunnerPage({
                         className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                           isSelected
                             ? "border-klasse-gold/70 bg-klasse-gold-50 text-foreground font-semibold"
-                            : "border-border bg-muted/40/50 text-foreground hover:bg-muted"
+                            : "border-border bg-muted/40 text-foreground hover:bg-muted"
                         } ${isSubmetida || isExpirado ? "pointer-events-none opacity-90" : ""}`}
                       >
                         <input
