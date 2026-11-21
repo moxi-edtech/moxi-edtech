@@ -354,7 +354,7 @@ SELECT internal.enqueue_top_cursos_reconciliation();
 DO $cron$
 DECLARE v_job record;
 BEGIN
-  SELECT jobid,command,username INTO v_job
+  SELECT jobid,command,username,schedule INTO v_job
   FROM cron.job WHERE jobname='refresh_mv_top_cursos_media' AND active;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Top-courses cron missing: cutover aborted';
