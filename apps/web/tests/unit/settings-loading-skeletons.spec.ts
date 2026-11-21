@@ -26,9 +26,9 @@ test("settings skeletons have accessible loading status, matching cards, and no 
     assert.match(html, /role="status"/, description);
     assert.match(html, /aria-busy="true"/, description);
     assert.ok(html.includes(description), description);
-    assert.equal(count(html, /<section\\b/g), expectedCards, description);
+    assert.equal(count(html, /<section\b/g), expectedCards, description);
     assert.match(html, /motion-safe:animate-pulse/, description);
-    assert.doesNotMatch(html, /<(?:input|button|textarea|select)\\b/, description);
+    assert.doesNotMatch(html, /<(?:input|button|textarea|select)\b/, description);
     assert.doesNotMatch(html, /Ana Paulo|Kz [0-9]+|Aluno matriculado/, description);
   }
 });
@@ -42,7 +42,7 @@ test("settings skeletons retain the same responsive layout recipes", () => {
   assert.ok(identity.includes("lg:grid-cols-[1.2fr_0.8fr]"));
   assert.ok(evaluation.includes("md:grid-cols-3"));
   assert.ok(courses.includes("md:flex-row"));
-  assert.equal(count(calendarEvents, /<section\\b/g), 1);
+  assert.equal(count(calendarEvents, /<section\b/g), 1);
 });
 
 test("four settings routes render skeletons instead of tiny spinners while loading", () => {
