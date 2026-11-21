@@ -1,5 +1,5 @@
 -- Hotfix already applied through Supabase after first controlled production run.
--- GREATEST is a SQL expression, not a callable pg_catalog.greatest(bigint,bigint).
+-- GREATEST is a SQL expression and cannot be schema-qualified.
 -- Keep this forward-only migration for upgrades and replay of the P1 migrations.
 BEGIN;
 
