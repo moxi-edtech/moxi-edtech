@@ -13,13 +13,15 @@ test("Planos de Aula skeleton mirrors both form and list without interactive con
   assert.equal((html.match(/<section/g) ?? []).length, 2);
   // Nine curricular text areas plus observations; other fields stay single-line.
   assert.equal((html.match(/h-24/g) ?? []).length, 10);
+  const shortForm = renderToStaticMarkup(React.createElement(ProfessorLessonPlansSkeleton, { fieldCount: 2 }));
+  assert.equal((shortForm.match(/h-24/g) ?? []).length, 3);
   assert.match(html, /motion-safe:animate-pulse/);
   assert.doesNotMatch(html, /<(?:button|input|textarea|select)\b/);
 });
 
 test("Planos de Aula does not render a live empty form while assignments are loading", () => {
   const page = readFileSync(new URL("../../src/app/professor/planos-aula/page.tsx", import.meta.url), "utf8");
-  assert.match(page, /loading \? <ProfessorLessonPlansSkeleton \/> : \(/);
+  assert.match(page, /loading \? <ProfessorLessonPlansSkeleton fieldCount=\{planFields\.length\} \/> : \(/);
   assert.match(page, /PORTAL_PAGE_INSET/);
   assert.doesNotMatch(page, /h-16 rounded-xl bg-slate-100/);
 });
