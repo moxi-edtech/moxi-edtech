@@ -176,7 +176,7 @@ export default function AlunoLayoutClient({
 
   return (
     <div className="klasse-portal-theme min-h-screen bg-muted/25 text-foreground">
-      <a href="#conteudo-aluno" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-xl focus:bg-klasse-gold focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-slate-950">Ir para o conteúdo</a>
+      <a href="#conteudo-aluno" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-xl focus:bg-klasse-gold focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-foreground">Ir para o conteúdo</a>
       <AlunoHeader
         escolaNome={escolaNome}
         alunoSelecionadoNome={alunoSelecionadoNome}
