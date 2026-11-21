@@ -29,9 +29,10 @@ type ImportResponse = {
 
 export default function ImportacoesListClient() {
   const pathname = usePathname();
-  const { escolaId, escolaSlug } = useEscolaId();
+  const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const [items, setItems] = useState<ImportItem[]>([]);
+  const [loadedSchoolId, setLoadedSchoolId] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -40,6 +41,13 @@ export default function ImportacoesListClient() {
 
   const fetchItems = useCallback(async (options?: { cursor?: string | null; append?: boolean }) => {
     requestRef.current?.abort();
+    if (!escolaId) {
+      setItems([]);
+      setNextCursor(null);
+      setLoadedSchoolId(null);
+      setLoading(false);
+      return;
+    }
     const controller = new AbortController();
     requestRef.current = controller;
     const append = options?.append === true;
@@ -51,7 +59,7 @@ export default function ImportacoesListClient() {
       setNextCursor(null);
     }
     try {
-      const params = new URLSearchParams({ limit: "30" });
+      const params = new URLSearchParams({ limit: "30", escola_id: escolaId });
       if (options?.cursor) params.set("cursor", options.cursor);
       const res = await fetch(`/api/migracao/historico?${params.toString()}`, {
         cache: "no-store",
@@ -66,24 +74,31 @@ export default function ImportacoesListClient() {
       }
       if (controller.signal.aborted) return;
       setNextCursor(json.next_cursor ?? null);
+      setLoadedSchoolId(escolaId);
       setItems((prev) => append
         ? Array.from(new Map([...prev, ...json.items].map((item) => [item.id, item])).values())
         : json.items);
     } catch (cause) {
       if (controller.signal.aborted) return;
       setError(cause instanceof Error ? cause.message : "Falha ao carregar importações.");
+      setLoadedSchoolId(escolaId);
     } finally {
       if (!controller.signal.aborted) {
         setLoading(false);
         setLoadingMore(false);
       }
     }
-  }, []);
+  }, [escolaId]);
 
   useEffect(() => {
     void fetchItems({ append: false });
     return () => requestRef.current?.abort();
   }, [fetchItems, escolaId]);
+
+  const schoolReady = !escolaLoading && Boolean(escolaId) && loadedSchoolId === escolaId;
+  const visibleItems = schoolReady ? items : [];
+  const visibleCursor = schoolReady ? nextCursor : null;
+  const isLoading = escolaLoading || Boolean(escolaId && !schoolReady) || loading;
 
   return (
     <div className="space-y-6">
@@ -111,10 +126,11 @@ export default function ImportacoesListClient() {
         </div>
       </div>
 
-      {error && <OperationalTableErrorState description={error} onRetry={() => void fetchItems({ append: false })} />}
+      {!escolaLoading && !escolaId && <OperationalTableErrorState description="Escola não identificada." onRetry={() => window.location.reload()} />}
+      {schoolReady && error && <OperationalTableErrorState description={error} onRetry={() => void fetchItems({ append: false })} />}
 
       <p aria-live="polite" className="text-xs text-muted-foreground">
-        {items.length} {items.length === 1 ? "importação carregada" : "importações carregadas"}{nextCursor ? " · Existem mais registos para carregar" : ""}. Esta contagem não representa necessariamente o total da escola.
+        {visibleItems.length} {visibleItems.length === 1 ? "importação carregada" : "importações carregadas"}{visibleCursor ? " · Existem mais registos para carregar" : ""}. Esta contagem não representa necessariamente o total da escola.
       </p>
 
       <div className="min-w-0 overflow-x-auto rounded-xl border border-border bg-card">
@@ -129,21 +145,21 @@ export default function ImportacoesListClient() {
             </tr>
           </thead>
           <tbody className="bg-card divide-y divide-border">
-            {loading && (
+            {isLoading && (
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
                   Carregando importações...
                 </td>
               </tr>
             )}
-            {!loading && !error && items.length === 0 && (
+            {!isLoading && schoolReady && !error && visibleItems.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
                   Nenhuma importação encontrada.
                 </td>
               </tr>
             )}
-            {!loading && items.map((it) => {
+            {!isLoading && schoolReady && visibleItems.map((it) => {
               const restantes = (it.total_rows ?? 0) - (it.imported_rows ?? 0) - (it.error_rows ?? 0);
               const counts = [
                 `${it.imported_rows ?? 0} importados`,
@@ -183,13 +199,13 @@ export default function ImportacoesListClient() {
                   </td>
                   <td className="px-4 py-3 text-right space-x-2">
                     <Link
-                      href={buildContextualPortalHref(escolaParam, `/secretaria/importacoes/${it.id}`, pathname)}
+                      href={`${buildContextualPortalHref(escolaParam, `/secretaria/importacoes/${it.id}`, pathname)}?escola_id=${encodeURIComponent(escolaId!)}`}
                       className="inline-flex items-center gap-2 rounded-lg bg-card px-3 py-2 text-sm text-teal-700 border border-teal-200 hover:bg-teal-50"
                     >
                       Visualizar
                       <ArrowRight size={16} />
                     </Link>
-                    <RowActions id={it.id} currentName={it.file_name} />
+                    <RowActions id={it.id} escolaId={it.escola_id} currentName={it.file_name} onChanged={() => void fetchItems({ append: false })} />
                   </td>
                 </tr>
               );
@@ -198,11 +214,11 @@ export default function ImportacoesListClient() {
         </table>
       </div>
 
-      {nextCursor && (
+      {visibleCursor && (
         <div className="flex justify-center">
           <button
             type="button"
-            onClick={() => fetchItems({ cursor: nextCursor, append: true })}
+            onClick={() => fetchItems({ cursor: visibleCursor, append: true })}
             disabled={loadingMore || loading}
             className="min-h-11 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-60"
           >

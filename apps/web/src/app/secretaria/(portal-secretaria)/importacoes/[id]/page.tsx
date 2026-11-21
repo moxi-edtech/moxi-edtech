@@ -24,7 +24,7 @@ type ErrorRow = {
   raw_value: string | null;
 };
 
-async function getImportacao(importId: string): Promise<ImportItem | null> {
+async function getImportacao(importId: string, escolaId?: string): Promise<ImportItem | null> {
   const cookieStore = await cookies();
   const cookie = cookieStore.getAll().map(({ name, value }) => `${name}=${value}`).join('; ');
 
@@ -32,7 +32,7 @@ async function getImportacao(importId: string): Promise<ImportItem | null> {
     ? `https://${process.env.VERCEL_URL}`
     : `http://localhost:${process.env.PORT || 3000}`;
 
-  const res = await fetch(`${baseUrl}/api/migracao/${importId}`, {
+  const res = await fetch(`${baseUrl}/api/migracao/${importId}${escolaId ? `?escola_id=${encodeURIComponent(escolaId)}` : ""}`, {
     cache: 'no-store',
     headers: { cookie },
   });
@@ -41,7 +41,7 @@ async function getImportacao(importId: string): Promise<ImportItem | null> {
   return json?.item ?? null;
 }
 
-async function getErros(importId: string): Promise<ErrorRow[]> {
+async function getErros(importId: string, escolaId?: string): Promise<ErrorRow[]> {
   const cookieStore = await cookies();
   const cookie = cookieStore.getAll().map(({ name, value }) => `${name}=${value}`).join('; ');
 
@@ -49,7 +49,7 @@ async function getErros(importId: string): Promise<ErrorRow[]> {
     ? `https://${process.env.VERCEL_URL}`
     : `http://localhost:${process.env.PORT || 3000}`;
 
-  const res = await fetch(`${baseUrl}/api/migracao/${importId}/erros`, {
+  const res = await fetch(`${baseUrl}/api/migracao/${importId}/erros${escolaId ? `?escola_id=${encodeURIComponent(escolaId)}` : ""}`, {
     cache: 'no-store',
     headers: { cookie },
   });
@@ -58,9 +58,16 @@ async function getErros(importId: string): Promise<ErrorRow[]> {
   return json?.errors ?? [];
 }
 
-export default async function ImportacaoDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ImportacaoDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ escola_id?: string }>;
+}) {
   const { id: importId } = await params;
-  const [item, erros] = await Promise.all([getImportacao(importId), getErros(importId)]);
+  const escolaId = (await searchParams)?.escola_id;
+  const [item, erros] = await Promise.all([getImportacao(importId, escolaId), getErros(importId, escolaId)]);
   if (!item) {
     // Se o histórico não contém, ainda assim mostramos erros com cabeçalho simples
     if (erros.length === 0) return notFound();
