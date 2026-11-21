@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { buildStudentPortalHref } from "@/lib/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import {
   ArrowLeft,
@@ -52,9 +53,10 @@ export default function AlunoAtividadeRunnerPage({
 }) {
   const { id } = use(params);
   const { success, error: toastError } = useToast();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const studentId = searchParams?.get("aluno") ?? null;
-  const query = studentId ? `?aluno=${studentId}` : "";
+  const searchValue = searchParams?.toString() ?? "";
+  const href = (target: string) => buildStudentPortalHref(pathname, searchValue, target);
 
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -165,7 +167,7 @@ export default function AlunoAtividadeRunnerPage({
       <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center space-y-3">
         <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
         <h3 className="text-base font-semibold text-foreground">Actividade Indisponível</h3>
-        <Link href={`/aluno/atividades${query}`} className="inline-block text-xs font-bold text-emerald-600">
+        <Link href={href("/aluno/atividades")} className="inline-block text-xs font-bold text-emerald-600">
           Voltar para Actividades
         </Link>
       </div>
@@ -183,7 +185,7 @@ export default function AlunoAtividadeRunnerPage({
       {/* BARRA SUPERIOR DE NAVEGAÇÃO */}
       <div className="flex items-center gap-3">
         <Link
-          href={`/aluno/atividades${query}`}
+          href={href("/aluno/atividades")}
           className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" aria-label="Voltar às actividades"
         >
           <ArrowLeft size={18} />
@@ -203,7 +205,7 @@ export default function AlunoAtividadeRunnerPage({
           </p>
           {nextActionError.next_action && (
             <Link
-              href={nextActionError.next_action.href}
+              href={nextActionError.next_action.href.startsWith("/aluno/") ? href(nextActionError.next_action.href) : nextActionError.next_action.href}
               className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm"
             >
               <span>{nextActionError.next_action.label}</span>
