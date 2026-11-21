@@ -40,5 +40,9 @@ test("Kwanza amounts, invalid values and month names use shared formatters", () 
 test("academic year uses start/end civil dates and never rewrites the start year", () => {
   assert.equal(formatAnoLetivoDisplay({ ano: 2026, data_inicio: "2026-09-01", data_fim: "2027-08-31" }), "2026/2027");
   assert.equal(formatAnoLetivoDisplay(2026), "2026/2027");
+  assert.equal(formatAnoLetivoDisplay(null), "—");
+  assert.equal(formatAnoLetivoDisplay({ ano: null }), "—");
+  assert.equal(formatAnoLetivoDisplay({ ano: "" }), "—");
+  assert.equal(formatAnoLetivoDisplay("invalid"), "—");
   assert.equal(formatAnoLetivoDisplay({ ano: 2026, data_inicio: "2026-09-01T00:00:00Z", data_fim: "2027-08-31T00:00:00Z" }), "2026/2027");
 });
