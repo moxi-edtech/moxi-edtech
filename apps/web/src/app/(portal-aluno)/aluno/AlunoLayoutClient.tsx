@@ -175,7 +175,7 @@ export default function AlunoLayoutClient({
   if (redirectTarget) return null;
 
   return (
-    <div className="klasse-portal-theme min-h-screen bg-background text-foreground">
+    <div className="klasse-portal-theme min-h-screen bg-muted/25 text-foreground">
       <AlunoHeader
         escolaNome={escolaNome}
         alunoSelecionadoNome={alunoSelecionadoNome}
@@ -187,8 +187,8 @@ export default function AlunoLayoutClient({
 
       <NetworkStatus />
 
-      <main className="mx-auto w-full max-w-5xl px-4 py-4 pb-[calc(96px+env(safe-area-inset-bottom))]">
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm md:p-6">{children}</div>
+      <main id="conteudo-aluno" className="mx-auto w-full max-w-[1200px] px-4 py-5 pb-[calc(96px+env(safe-area-inset-bottom))] md:px-6 md:py-6">
+        {children}
 
         <AlunoBottomNav items={navItems} activePath={safePathname} withAlunoParam={withAlunoParam} />
       </main>
