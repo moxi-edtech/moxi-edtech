@@ -187,7 +187,21 @@ export function ProfessorPlanosListSkeleton() {
   return (
     <div role="status" aria-busy="true" aria-label="A atualizar planos de aula" className="space-y-3 motion-safe:animate-pulse">
       <span className="sr-only">A atualizar planos de aula</span>
-      {[0, 1].map((item) => <div key={item} aria-hidden="true" className="space-y-2 rounded-xl border border-border p-4"><ProfessorSkeletonBone className="h-4 w-3/4" /><ProfessorSkeletonBone className="h-3 w-2/5" /></div>)}
+      {[0, 1, 2].map((item) => (
+        <div key={item} aria-hidden="true" className="space-y-3 rounded-xl border border-border bg-card p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-2">
+              <ProfessorSkeletonBone className="h-4 w-3/4" />
+              <ProfessorSkeletonBone className="h-3 w-2/5" />
+            </div>
+            <div className="flex items-center gap-2">
+              <ProfessorSkeletonBone className="h-6 w-16 rounded-full" />
+              <ProfessorSkeletonBone className="h-9 w-9 rounded-xl" />
+            </div>
+          </div>
+          <ProfessorSkeletonBone className="h-3 w-5/6" />
+        </div>
+      ))}
     </div>
   );
 }
