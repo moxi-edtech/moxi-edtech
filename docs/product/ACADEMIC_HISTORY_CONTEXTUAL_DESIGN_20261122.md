@@ -63,6 +63,31 @@ Não sincronizar automaticamente notas finais históricas para avaliações trim
 
 **Gate antes de merge/deploy:** aplicar somente a migration versionada pela esteira autorizada, verificar que (a) estudante/autenticado sem papel recebe `42501`; (b) operador da escola A não consulta aluno/escola B; (c) secretaria/admin autorizado recebe exatamente a estrutura JSON existente; (d) chamada sem autenticação não executa; (e) comportamento do consumidor `timeline-360` permanece íntegro. Se o serviço interno invocar a RPC sem JWT do utilizador, precisa de revisão explícita: não introduzir bypass genérico por `service_role`.
 
+### Matriz de módulos — continuação implementada na branch
+
+As consultas adicionais preservam as tabelas canónicas, sempre em `READ` e por escola/ano/turma autorizados. Os resultados são locais ao Arquivo Académico, sem seletor universal.
+
+| Módulo | Implementação na branch | Limite de produto |
+|---|---|---|
+| Classes | Catálogo existente e pesquisa paginada de turmas por ano | Sem alteração ao cadastro de classes |
+| Notas | Timeline 360 e resultados finais de `historico_disciplinas` | Não inventar notas MAC/NPP/NPT |
+| Pautas | `/arquivo/registos?tipo=pautas`, filtro de trimestre e `/arquivo/pauta/[id]` para PDF já publicado | Não gera pauta em ano fechado, exige PDF publicado e período do mesmo ano |
+| Documentos | Ano local na Central de Documentos e seleção canónica da emissão | Segunda via extraordinária de documentos não suportados fica bloqueada |
+| Matrículas | Percurso 360 e listas nominais históricas | Matrícula original não é substituída pela atual |
+| Horários | Versões publicadas/arquivadas da mesma turma + aulas/slots/disciplinas | Nunca cria draft via GET, histórico só da turma selecionada |
+| Frequência | Agregação de snapshots `frequencia_status_periodo` por trimestre, com paginação e recusa de totais parciais | Não há fallback que invente presenças; falta um mapa assinado onde não existir snapshot |
+| Currículo | Histórico de `curso_curriculos`/`curso_matriz` por ano, classe e curso | Não replica matrizes nem permite editar anos fechados |
+| Financeiro | Read model `vw_financeiro_propinas_mensal_escola` (security_invoker) por competência e ano, apresentando simultaneamente atrasos de **todos os anos** | Resumo de cobranças vencidas, não substitui conta corrente nem oculta débitos não vencidos |
+| Relatórios | Comparação por dois anos com contagens exatas de turmas, matrículas vinculadas e históricos; filtro de trimestre para pautas publicadas/frequência | Compara **volumes**, não médias escolares; só períodos MED canónicos verificados |
+
+**Limites de segurança e integridade:**
+- `registos`: ano/UUID/turma/tipo obrigatórios, `CLOSED`, `session_id`, papel de gestão de turmas; volumes limitados sem truncamento silencioso. Não devolve `pdf_path` nem cria versões.
+- `pauta/[id]`: reautoriza a escola, a turma e o período/ano, exige pauta `SUCCESS` com PDF e emite URL assinada de curta validade. Nunca chama geradores que escrevem em pautas fechadas.
+- `financeiro`: usa papel financeiro/administrativo explícito, `ano_letivo_id` canónico e read model protegido por RLS; o filtro de mês não altera o total de dívidas vencidas de anos anteriores.
+- `comparacao`: conta `matriculas.session_id` sem inferir matrículas legadas para outro ano; `trimestre` usa `readVerifiedAcademicTrimesters` dos **dois** anos antes de comparar.
+- Todos os novos endpoints são `private, no-store`, sem `service_role` e sem métodos de escrita. Esquema/índices existentes são reutilizados.
+- **Gates antes da publicação**: testes autenticados multi-tenant, viabilidade dos snapshots RLS, download de PDF já publicado, permissões financeiras, E2E claro/escuro e a migração P0 da timeline 360. CI estática é necessária, mas insuficiente para marcar produção homologada.
+
 ### Serviços e comportamento acrescentados
 
 - `GET /api/secretaria/operacoes-academicas/arquivo/turmas`: ano UUID obrigatório, verificação de utilizador e pertença à escola, `authorizeTurmasManage`, ano `CLOSED`, filtro `escola_id + session_id`, 25 itens por página, pesquisa de nome com `ILIKE` literal escapado. Resposta `private, no-store`. Não existe endpoint paralelo de escrita.
@@ -76,6 +101,8 @@ Não sincronizar automaticamente notas finais históricas para avaliações trim
 ### Testes adicionados ou atualizados
 
 - `apps/web/tests/unit/historical-discipline-query.spec.ts`: ano de origem, paginação estrita, rejeição de fallback implícito.
+- `apps/web/tests/unit/archive-domain-read-contracts.spec.mjs`: contratos de tenant, ano, trimestre, versão, limites de leitura, assinatura de PDF, competência financeira e comparação.
+
 - `apps/web/tests/unit/archive-turmas-query.spec.ts`: validação de UUID/página/pesquisa, bloqueio de filtro de polo e escape literal de caracteres `ILIKE`.
 - `apps/web/tests/unit/historical-roster-count.spec.ts`: 503 matrículas, paginação com cursor, status históricos e rejeição de matrículas de outra escola/ano.
 - `apps/web/tests/unit/academic-history-contextual.spec.mjs`: contratos de shell, arquivo, consulta histórica, SSR/fallback, documentação nominal, read-only, períodos e relatórios com escola explícita.
