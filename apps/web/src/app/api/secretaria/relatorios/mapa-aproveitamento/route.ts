@@ -31,6 +31,7 @@ export async function GET(req: Request) {
     const academicContext = await resolveAcademicYearContext(supabase, {
       userId: user.id,
       requestedAcademicYearId: url.searchParams.get("ano_letivo_id"),
+      requestedEscolaId: escolaId,
       operation: "READ",
     });
     const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, ["configurar_escola"]);
