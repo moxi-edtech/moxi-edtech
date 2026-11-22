@@ -179,7 +179,7 @@ export function DossierHistoricoTimelineSection({
           : "Sem dados anuais para este aluno."}
         {selectedYearNumber && (
           <Link href={role === "admin" && escolaId ? `/escola/${escolaId}/admin/alunos/${alunoId}?tab=historico` : `/secretaria/alunos/${alunoId}?tab=historico`}
-            className="mt-3 inline-flex rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-[#1F6B3B]">Ver todos os anos</Link>
+            className="mt-3 inline-flex rounded-xl border border-border px-3 py-2 text-xs font-semibold text-klasse-green">Ver todos os anos</Link>
         )}
       </div>
     );
@@ -220,7 +220,7 @@ export function DossierHistoricoTimelineSection({
               <article key={ano.ano_letivo} className="rounded-xl border border-slate-200 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-[#1F6B3B]">Ano letivo {formatAcademicYear(ano.ano_letivo)}</p>
+                    <p className="text-sm font-semibold text-klasse-green">Ano letivo {formatAcademicYear(ano.ano_letivo)}</p>
                     <p className="text-xs text-slate-500">
                       Matrícula {ano.matricula.numero_matricula ?? "—"} · {formatDate(ano.matricula.data_matricula)}
                     </p>
