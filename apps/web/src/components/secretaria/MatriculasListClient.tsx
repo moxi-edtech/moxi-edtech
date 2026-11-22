@@ -152,6 +152,7 @@ export default function MatriculasListClient() {
     : "#";
 
   // Filtros URL
+  const requestedAcademicYearId = searchParams?.get("ano_letivo_id");
   const turmaIdFromQuery = searchParams?.get("turma_id");
   const statusFromQuery = searchParams?.get("status");
   const statusInFromQuery = searchParams?.get("status_in");
@@ -239,7 +240,8 @@ export default function MatriculasListClient() {
         const activeSession = resolved.find((s) => s.status === "ativa" && s.ano_resolvido);
         const firstWithAno = resolved.find((s) => s.ano_resolvido);
 
-        setSelectedAno((prev) => prev ?? activeSession?.ano_resolvido ?? firstWithAno?.ano_resolvido ?? null);
+        const requested = resolved.find((item) => item.id === requestedAcademicYearId)?.ano_resolvido;
+        setSelectedAno((prev) => requested ?? prev ?? activeSession?.ano_resolvido ?? firstWithAno?.ano_resolvido ?? null);
       }
     } catch (error) {
       console.error("Failed to fetch sessions", error);
@@ -247,7 +249,7 @@ export default function MatriculasListClient() {
     } finally {
       setSessionsReady(true);
     }
-  }, []);
+  }, [requestedAcademicYearId]);
 
   const fetchCursos = useCallback(async () => {
     try {
@@ -526,6 +528,13 @@ export default function MatriculasListClient() {
                 const newAno = Number(e.target.value);
                 setSelectedAno(Number.isFinite(newAno) ? newAno : null);
                 setSelectedTurma("");
+                const selectedSession = sessions.find((item) => item.ano_resolvido === newAno);
+                if (selectedSession && pathname) {
+                  const query = new URLSearchParams(searchParams?.toString() ?? "");
+                  query.set("ano_letivo_id", selectedSession.id);
+                  query.delete("turma_id");
+                  router.replace(`${pathname}?${query.toString()}`, { scroll: false });
+                }
               }}
               className={cn(
                 "w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none sm:w-auto",
