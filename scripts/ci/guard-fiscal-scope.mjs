@@ -137,7 +137,7 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271201110000_raa_activation_guard_reconciled.sql",
   // SEC-ACADEMIC-360: one reviewed read-only RPC authorization hardening only.
   // No fiscal, academic-grade, enrollment, or historical data writes allowed.
-  "20271201000000_guard_timeline_360_school_role.sql",
+  "20271202000000_guard_timeline_360_school_role.sql",
   // PR #379: migração de rematrícula entre ciclos sem mudanças fiscais.
   "20271119121000_balcao_rematricula_transicoes_idempotentes.sql",
   // PR #378: calendário escolar operacional; RLS e auditoria append-only, sem notas ou fiscal.
@@ -271,7 +271,7 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
       }
     }
 
-    if (name === "20271201000000_guard_timeline_360_school_role.sql") {
+    if (name === "20271202000000_guard_timeline_360_school_role.sql") {
       // Only allow the existing dossier timeline RPC to gain internal
       // identity + role + student-school checks. The function's SELECT
       // body and its exact grants remain subject to this narrow gate.
