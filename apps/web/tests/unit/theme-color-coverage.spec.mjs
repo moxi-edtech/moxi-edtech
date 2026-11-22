@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import "./p0-operational-theme-coverage.spec.mjs";
 import "./internal-operational-theme-coverage.spec.mjs";
+import "./super-admin-internal-theme-coverage.spec.mjs";
 
 const repoFile = path => readFileSync(new URL("../../../../" + path, import.meta.url), "utf8");
 
