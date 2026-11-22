@@ -454,7 +454,8 @@ export default function QuickDocHub({
   const loadJobs = useCallback(async () => {
     setLoadingJobs(true);
     try {
-      const res = await fetch("/api/secretaria/documentos-oficiais/lote", { cache: "no-store" });
+      const scope = escolaId ? `?escola_id=${encodeURIComponent(escolaId)}` : "";
+      const res = await fetch(`/api/secretaria/documentos-oficiais/lote${scope}`, { cache: "no-store" });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.ok && Array.isArray(json.items)) {
         setJobs(json.items as JobItem[]);
@@ -464,7 +465,7 @@ export default function QuickDocHub({
     } finally {
       setLoadingJobs(false);
     }
-  }, []);
+  }, [escolaId]);
 
   const reprocessarFalhas = useCallback(async (jobId: string) => {
     if (retryingJobId) return;
@@ -773,7 +774,7 @@ export default function QuickDocHub({
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, ...(escolaId ? { escola_id: escolaId } : {}) }),
       });
       const result: { ok?: boolean; error?: string } = await response.json().catch(() => ({}));
       if (!response.ok || !result.ok) {
