@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { BookOpen, CalendarCheck, CircleAlert, Eye, Wallet } from "lucide-react";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { HistoricalDisciplineResultsPanel } from "@/components/aluno/HistoricalDisciplineResultsPanel";
 import { formatDate, formatKwanza } from "@/lib/formatters";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
 
@@ -57,12 +58,6 @@ type TimelineAno = {
 
 function formatAcademicYear(year: number): string {
   return `${year}/${year + 1}`;
-}
-
-function formatHistoricalGrade(value: number | null): string {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value.toLocaleString("pt-PT", { maximumFractionDigits: 2 })
-    : "—";
 }
 
 function detalheAnoHref(role: DossierRole, alunoId: string, ano: number, escolaId?: string | null) {
@@ -291,39 +286,12 @@ export function DossierHistoricoTimelineSection({
                 </div>
 
                 {selectedYearNumber === ano.ano_letivo && (
-                  <section aria-label="Disciplinas históricas em destaque" className="mt-4 rounded-xl border border-border bg-card p-3">
-                    <h3 className="text-sm font-semibold text-foreground">Resultados finais documentados</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      O resumo inclui até oito disciplinas disponíveis na fonte histórica.
-                      Não representa notas trimestrais nem substitui a pauta oficial.
-                    </p>
-                    {disciplinas.length === 0 ? (
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        Não existem resultados por disciplina disponíveis neste resumo.
-                      </p>
-                    ) : (
-                      <div className="mt-3 overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                          <thead>
-                            <tr className="border-b border-border text-xs text-muted-foreground">
-                              <th scope="col" className="pb-2 pr-3 font-medium">Disciplina</th>
-                              <th scope="col" className="pb-2 pr-3 font-medium">Média final</th>
-                              <th scope="col" className="pb-2 font-medium">Resultado</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border">
-                            {disciplinas.map((disciplina, i) => (
-                              <tr key={`${disciplina.disciplina_id ?? disciplina.disciplina_nome ?? "disciplina"}-${i}`}>
-                                <td className="py-2 pr-3 font-medium text-foreground">{disciplina.disciplina_nome ?? "Disciplina"}</td>
-                                <td className="py-2 pr-3 tabular-nums text-foreground">{formatHistoricalGrade(disciplina.media_final)}</td>
-                                <td className="py-2 text-muted-foreground">{disciplina.resultado ?? "—"}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </section>
+                  <HistoricalDisciplineResultsPanel
+                    key={ano.ano_letivo}
+                    alunoId={alunoId}
+                    year={ano.ano_letivo}
+                    escolaId={escolaId}
+                  />
                 )}
               </article>
             );
