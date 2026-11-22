@@ -60,7 +60,7 @@ export default function AvancadoConfiguracoesPage() {
       saveDisabled={saving}
     >
       <div className="space-y-4">
-        <div className="rounded-lg border border-slate-200 p-4 text-sm text-slate-600">
+        <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
           Logs imutáveis, permissões e políticas RLS são configuradas aqui.
         </div>
       </div>

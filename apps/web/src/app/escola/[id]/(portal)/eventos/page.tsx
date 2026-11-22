@@ -152,7 +152,7 @@ export default function EventosPage() {
   return (
     <div className="p-6 space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Eventos</h1>
+        <h1 className="text-xl font-semibold text-foreground">Eventos</h1>
         <button
           onClick={abrirCriar}
           className="px-3 py-2 text-sm rounded-md bg-[#0B2C45] text-white hover:bg-[#0D4C73]"
@@ -161,27 +161,27 @@ export default function EventosPage() {
         </button>
       </header>
 
-      <ul className="divide-y divide-gray-200 bg-white rounded-lg shadow-sm">
+      <ul className="divide-y divide-border bg-card rounded-lg shadow-sm">
         {eventos.length === 0 && (
-          <li className="p-6 text-center text-gray-500 text-sm">Nenhum evento.</li>
+          <li className="p-6 text-center text-muted-foreground text-sm">Nenhum evento.</li>
         )}
         {eventos.map((ev) => (
           <li key={ev.id} className="p-4 flex items-center justify-between">
             <div>
-              <div className="font-medium text-gray-900">{ev.titulo}</div>
-              <div className="text-xs text-gray-600">
+              <div className="font-medium text-foreground">{ev.titulo}</div>
+              <div className="text-xs text-muted-foreground">
                 {new Date(ev.inicio_at).toLocaleString()} — {ev.fim_at
                   ? new Date(ev.fim_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                   : "—"}
               </div>
-              <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+              <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                 {ev.publico_alvo}
               </span>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => abrirEditar(ev)}
-                className="px-2.5 py-1.5 text-xs rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="px-2.5 py-1.5 text-xs rounded-md border border-border text-foreground hover:bg-muted"
               >
                 Editar
               </button>
@@ -198,7 +198,7 @@ export default function EventosPage() {
 
       {modalAberto && (
         <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4">
-          <div className="w-full max-w-lg bg-white rounded-xl shadow-xl p-6 space-y-5 animate-fadeIn">
+          <div className="w-full max-w-lg bg-card rounded-xl shadow-xl p-6 space-y-5 animate-fadeIn">
             <div>
               <h2 className="text-lg font-semibold mb-3">Novo evento</h2>
               <div className="grid gap-3">
@@ -253,7 +253,7 @@ export default function EventosPage() {
               </Button>
               <Button onClick={salvarEvento} disabled={loading} tone="green" size="sm" className="flex items-center gap-2">
                 {loading && (
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-border border-t-transparent rounded-full animate-spin" />
                 )}
                 Salvar
               </Button>

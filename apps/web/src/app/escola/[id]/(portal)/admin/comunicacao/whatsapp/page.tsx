@@ -187,7 +187,7 @@ function statusClass(status: string) {
   if (["connected", "sent", "delivered", "read", "resolved"].includes(status)) return "bg-emerald-50 text-emerald-700 border-emerald-200";
   if (["pending_qr", "queued", "sending", "review_required", "open", "pending"].includes(status)) return "bg-amber-50 text-amber-700 border-amber-200";
   if (["failed", "error", "rejected", "blocked"].includes(status)) return "bg-red-50 text-red-700 border-red-200";
-  return "bg-slate-50 text-slate-700 border-slate-200";
+  return "bg-muted text-foreground border-border";
 }
 
 function formatDate(value: string | null | undefined) {
@@ -585,7 +585,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
         <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-medium text-emerald-700">Comunicação</p>
-            <h1 className="text-2xl font-semibold text-slate-950">WhatsApp KLASSE</h1>
+            <h1 className="text-2xl font-semibold text-foreground">WhatsApp KLASSE</h1>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -621,17 +621,17 @@ export default function WhatsAppKlassePage({ params }: Props) {
             ["Falhas hoje", data?.summary.failedToday ?? 0],
             ["Última sync", data ? formatDate(data.summary.lastSyncAt) : "-"],
           ].map(([label, value]) => (
-            <Card key={label} className="rounded-md shadow-sm border-slate-100">
+            <Card key={label} className="rounded-md shadow-sm border-border">
               <CardContent className="p-4">
-                <p className="text-xs font-medium uppercase text-slate-500">{label}</p>
-                <p className="mt-2 text-lg md:text-xl font-semibold text-slate-950">{String(value)}</p>
+                <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
+                <p className="mt-2 text-lg md:text-xl font-semibold text-foreground">{String(value)}</p>
               </CardContent>
             </Card>
           ))}
         </section>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-200 bg-white p-1 rounded-md shadow-sm">
+        <div className="flex border-b border-border bg-card p-1 rounded-md shadow-sm">
           {[
             ["inbox", "Caixa de Entrada"],
             ["fila", "Fila"],
@@ -646,7 +646,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
               className={`flex-1 text-center py-2 px-3 text-sm font-medium rounded-md transition-all ${
                 activeTab === tab
                   ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
               {label}
@@ -658,10 +658,10 @@ export default function WhatsAppKlassePage({ params }: Props) {
         {activeTab === "inbox" ? (
           <section className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-4 min-h-[600px] max-h-[750px]">
             {/* THREADS LIST SIDEBAR */}
-            <Card className="rounded-md shadow-sm overflow-hidden flex flex-col h-full bg-white border-slate-200">
-              <div className="p-4 border-b border-slate-100 space-y-3 bg-slate-50/50">
-                <div className="flex items-center gap-2 bg-white rounded-md border px-3 py-2 shadow-sm">
-                  <Search className="h-4 w-4 text-slate-400" />
+            <Card className="rounded-md shadow-sm overflow-hidden flex flex-col h-full bg-card border-border">
+              <div className="p-4 border-b border-border space-y-3 bg-muted/50">
+                <div className="flex items-center gap-2 bg-card rounded-md border px-3 py-2 shadow-sm">
+                  <Search className="h-4 w-4 text-muted-foreground" />
                   <input
                     className="w-full bg-transparent text-sm outline-none"
                     placeholder="Pesquisar conversas..."
@@ -683,8 +683,8 @@ export default function WhatsAppKlassePage({ params }: Props) {
                       }}
                       className={`flex-1 text-xs font-semibold py-1 px-2 rounded-md border text-center transition-all ${
                         inboxFilter === status
-                          ? "bg-slate-200 text-slate-900 border-slate-300"
-                          : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                          ? "bg-muted-foreground/15 text-foreground border-border"
+                          : "bg-card text-muted-foreground border-border hover:bg-muted"
                       }`}
                     >
                       {label}
@@ -693,13 +693,13 @@ export default function WhatsAppKlassePage({ params }: Props) {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+              <div className="flex-1 overflow-y-auto divide-y divide-border">
                 {inboxLoading ? (
-                  <div className="p-4 text-center text-sm text-slate-400 flex items-center justify-center gap-2">
+                  <div className="p-4 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
                     <RefreshCw className="h-4 w-4 animate-spin" /> Carregando conversas...
                   </div>
                 ) : filteredThreads.length === 0 ? (
-                  <p className="p-6 text-center text-sm text-slate-400">Nenhuma conversa nesta pasta.</p>
+                  <p className="p-6 text-center text-sm text-muted-foreground">Nenhuma conversa nesta pasta.</p>
                 ) : (
                   filteredThreads.map((thread) => {
                     const active = selectedThread?.id === thread.id;
@@ -707,28 +707,28 @@ export default function WhatsAppKlassePage({ params }: Props) {
                       <button
                         key={thread.id}
                         onClick={() => setSelectedThread(thread)}
-                        className={`w-full text-left p-4 hover:bg-slate-50 transition-colors flex items-start justify-between gap-3 ${
-                          active ? "bg-slate-100/75 border-l-4 border-slate-900" : ""
+                        className={`w-full text-left p-4 hover:bg-muted transition-colors flex items-start justify-between gap-3 ${
+                          active ? "bg-muted/75 border-l-4 border-slate-900" : ""
                         }`}
                       >
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm text-slate-950 truncate">
+                            <span className="font-semibold text-sm text-foreground truncate">
                               {thread.contact_name || thread.contact_phone_masked}
                             </span>
-                            <Badge variant="outline" className="text-[10px] py-0 px-1 border-slate-200 bg-slate-50 text-slate-600 font-medium">
+                            <Badge variant="outline" className="text-[10px] py-0 px-1 border-border bg-muted text-muted-foreground font-medium">
                               {roleLabel[thread.contact_role] || thread.contact_role}
                             </Badge>
                           </div>
-                          <p className="text-xs text-slate-500 truncate">
+                          <p className="text-xs text-muted-foreground truncate">
                             {thread.contact_phone_masked}
                           </p>
-                          <p className="text-xs text-slate-600 truncate mt-1">
+                          <p className="text-xs text-muted-foreground truncate mt-1">
                             {thread.last_message_preview || "Sem mensagens"}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                          <span className="text-[10px] text-slate-400 font-medium">
+                          <span className="text-[10px] text-muted-foreground font-medium">
                             {thread.last_message_at ? formatTime(thread.last_message_at) : ""}
                           </span>
                           {thread.unread_count > 0 ? (
@@ -745,24 +745,24 @@ export default function WhatsAppKlassePage({ params }: Props) {
             </Card>
 
             {/* CHAT VIEW & HISTORIC */}
-            <Card className="rounded-md shadow-sm overflow-hidden flex flex-col h-full bg-white border-slate-200">
+            <Card className="rounded-md shadow-sm overflow-hidden flex flex-col h-full bg-card border-border">
               {selectedThread ? (
                 <>
                   {/* Thread Header */}
-                  <div className="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+                  <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3 bg-muted/50">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <h2 className="font-semibold text-slate-950">
+                        <h2 className="font-semibold text-foreground">
                           {selectedThread.contact_name || selectedThread.contact_phone_masked}
                         </h2>
                         <Badge className={statusClass(selectedThread.status)}>
                           {statusLabel[selectedThread.status] || selectedThread.status}
                         </Badge>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span>{selectedThread.contact_phone_masked}</span>
                         <span>•</span>
-                        <span>Vínculo: <span className="font-medium text-slate-700">{roleLabel[selectedThread.linked_entity_type] || selectedThread.linked_entity_type}</span></span>
+                        <span>Vínculo: <span className="font-medium text-foreground">{roleLabel[selectedThread.linked_entity_type] || selectedThread.linked_entity_type}</span></span>
                       </div>
                     </div>
 
@@ -805,9 +805,9 @@ export default function WhatsAppKlassePage({ params }: Props) {
                   </div>
 
                   {/* Messages Bubble Container */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/25">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/25">
                     {messagesLoading && messages.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-slate-400">Carregando conversa...</div>
+                      <div className="p-4 text-center text-sm text-muted-foreground">Carregando conversa...</div>
                     ) : (
                       messages.map((message) => {
                         const inbound = message.direction === "inbound";
@@ -819,13 +819,13 @@ export default function WhatsAppKlassePage({ params }: Props) {
                             <div
                               className={`max-w-[70%] rounded-lg p-3 shadow-sm border ${
                                 inbound
-                                  ? "bg-white text-slate-800 border-slate-100 rounded-bl-none"
+                                  ? "bg-card text-foreground border-border rounded-bl-none"
                                   : "bg-emerald-600 text-white border-emerald-700 rounded-br-none"
                               }`}
                             >
                               <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.body}</p>
                               <div className={`mt-1 flex items-center justify-end gap-1.5 text-[10px] ${
-                                inbound ? "text-slate-400" : "text-emerald-100"
+                                inbound ? "text-muted-foreground" : "text-emerald-100"
                               }`}>
                                 <span>{formatTime(message.created_at)}</span>
                                 {!inbound && (
@@ -849,7 +849,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
                   </div>
 
                   {/* Reply Input Box */}
-                  <div className="p-4 border-t border-slate-100 space-y-3 bg-slate-50/50">
+                  <div className="p-4 border-t border-border space-y-3 bg-muted/50">
                     {sessionStatus !== "connected" ? (
                       <div className="text-xs text-amber-800 bg-amber-50 rounded border border-amber-200 p-2 flex items-center gap-1.5">
                         <AlertTriangle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
@@ -859,7 +859,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
 
                     <div className="flex gap-2">
                       <textarea
-                        className="w-full min-h-12 max-h-32 rounded-md border p-2 text-sm shadow-sm outline-none focus:border-slate-400 bg-white"
+                        className="w-full min-h-12 max-h-32 rounded-md border p-2 text-sm shadow-sm outline-none focus:border-border bg-card"
                         placeholder="Digite sua resposta manual..."
                         disabled={sessionStatus !== "connected" || sendingReply}
                         value={replyText}
@@ -882,10 +882,10 @@ export default function WhatsAppKlassePage({ params }: Props) {
                   </div>
                 </>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 space-y-2">
-                  <MessageSquare className="h-12 w-12 text-slate-300" />
+                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 space-y-2">
+                  <MessageSquare className="h-12 w-12 text-muted-foreground" />
                   <p className="font-medium text-sm">Nenhuma conversa selecionada</p>
-                  <p className="text-xs text-slate-500">Selecione um contato na barra lateral para iniciar o atendimento.</p>
+                  <p className="text-xs text-muted-foreground">Selecione um contato na barra lateral para iniciar o atendimento.</p>
                 </div>
               )}
             </Card>
@@ -894,7 +894,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
           /* OTHER TABS CONTENT */
           <section className="grid gap-4 lg:grid-cols-[420px_1fr]">
             {/* Left Box: Send New Message */}
-            <Card className="rounded-md shadow-sm border-slate-100">
+            <Card className="rounded-md shadow-sm border-border">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <MessageSquare className="h-4 w-4" /> Nova mensagem
@@ -914,7 +914,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
                       className={`rounded-md border px-3 py-2 text-sm transition-all font-medium ${
                         recipientType === type
                           ? "border-emerald-600 bg-emerald-50 text-emerald-800"
-                          : "bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
+                          : "bg-card text-foreground hover:bg-muted border-border"
                       }`}
                     >
                       {type === "aluno" ? "Aluno" : type === "professor" ? "Professor" : "Manual"}
@@ -925,13 +925,13 @@ export default function WhatsAppKlassePage({ params }: Props) {
                 {recipientType === "manual" ? (
                   <div className="grid gap-2">
                     <input
-                      className="rounded-md border px-3 py-2 text-sm outline-none focus:border-slate-400"
+                      className="rounded-md border px-3 py-2 text-sm outline-none focus:border-border"
                       placeholder="Nome do destinatário"
                       value={form.recipientName}
                       onChange={(e) => setForm({ ...form, recipientName: e.target.value })}
                     />
                     <input
-                      className="rounded-md border px-3 py-2 text-sm outline-none focus:border-slate-400"
+                      className="rounded-md border px-3 py-2 text-sm outline-none focus:border-border"
                       placeholder="+244..."
                       value={form.recipientPhone}
                       onChange={(e) => setForm({ ...form, recipientPhone: e.target.value })}
@@ -939,8 +939,8 @@ export default function WhatsAppKlassePage({ params }: Props) {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 rounded-md border bg-white px-3 py-2 shadow-sm">
-                      <Search className="h-4 w-4 text-slate-400" />
+                    <div className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 shadow-sm">
+                      <Search className="h-4 w-4 text-muted-foreground" />
                       <input
                         className="w-full bg-transparent text-sm outline-none"
                         placeholder="Pesquisar destinatário"
@@ -948,7 +948,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
                         onChange={(e) => setSearch(e.target.value)}
                       />
                     </div>
-                    <div className="max-h-44 overflow-auto rounded-md border bg-white divide-y divide-slate-100">
+                    <div className="max-h-44 overflow-auto rounded-md border bg-card divide-y divide-border">
                       {recipients.map((recipient) => {
                         const checked = selectedRecipients.some((item) => item.id === recipient.id);
                         return (
@@ -960,23 +960,23 @@ export default function WhatsAppKlassePage({ params }: Props) {
                                 checked ? current.filter((item) => item.id !== recipient.id) : [...current, recipient]
                               )
                             }
-                            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50 transition-colors"
+                            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
                           >
                             <span>
-                              <span className="block font-medium text-slate-900">{recipient.name}</span>
-                              <span className="text-xs text-slate-500">{recipient.studentName || recipient.phoneMasked}</span>
+                              <span className="block font-medium text-foreground">{recipient.name}</span>
+                              <span className="text-xs text-muted-foreground">{recipient.studentName || recipient.phoneMasked}</span>
                             </span>
                             {checked ? <Check className="h-4 w-4 text-emerald-600" /> : null}
                           </button>
                         );
                       })}
-                      {recipients.length === 0 ? <p className="px-3 py-4 text-sm text-slate-400 text-center">Sem destinatários com telefone válido.</p> : null}
+                      {recipients.length === 0 ? <p className="px-3 py-4 text-sm text-muted-foreground text-center">Sem destinatários com telefone válido.</p> : null}
                     </div>
                   </div>
                 )}
 
                 <select
-                  className="w-full rounded-md border px-3 py-2 text-sm bg-white outline-none"
+                  className="w-full rounded-md border px-3 py-2 text-sm bg-card outline-none"
                   value={form.messageType}
                   onChange={(e) => setForm({ ...form, messageType: e.target.value })}
                 >
@@ -984,7 +984,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
                 </select>
 
                 <select
-                  className="w-full rounded-md border px-3 py-2 text-sm bg-white outline-none"
+                  className="w-full rounded-md border px-3 py-2 text-sm bg-card outline-none"
                   value={form.templateKey}
                   onChange={(e) =>
                     setForm({
@@ -999,13 +999,13 @@ export default function WhatsAppKlassePage({ params }: Props) {
                 </select>
 
                 <input
-                  className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-slate-400"
+                  className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-border"
                   placeholder="Título interno"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                 />
                 <textarea
-                  className="min-h-32 w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-slate-400 bg-white"
+                  className="min-h-32 w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-border bg-card"
                   placeholder="Mensagem"
                   value={form.body}
                   onChange={(e) => setForm({ ...form, body: e.target.value })}
@@ -1015,30 +1015,30 @@ export default function WhatsAppKlassePage({ params }: Props) {
                   <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3">
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700">Origem KLASSE IA</p>
-                      <p className="mt-1 text-sm font-black text-slate-950">{insightOrigin.title}</p>
-                      <p className="mt-1 text-xs text-slate-600">{insightOrigin.module} · {insightOrigin.tool_id}</p>
+                      <p className="mt-1 text-sm font-black text-foreground">{insightOrigin.title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{insightOrigin.module} · {insightOrigin.tool_id}</p>
                     </div>
-                    <div className="rounded-md bg-white/80 p-2.5">
-                      <p className="text-[10px] font-bold uppercase text-slate-500">Sinal detectado</p>
-                      <p className="mt-1 whitespace-pre-wrap text-xs text-slate-700">{insightOrigin.explanation}</p>
+                    <div className="rounded-md bg-card/80 p-2.5">
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground">Sinal detectado</p>
+                      <p className="mt-1 whitespace-pre-wrap text-xs text-foreground">{insightOrigin.explanation}</p>
                     </div>
                     <label className="block">
-                      <span className="text-[10px] font-bold uppercase text-slate-500">Motivo da seleção</span>
+                      <span className="text-[10px] font-bold uppercase text-muted-foreground">Motivo da seleção</span>
                       <textarea
-                        className="mt-1 min-h-20 w-full rounded-md border border-emerald-200 bg-white px-3 py-2 text-xs outline-none focus:border-emerald-500"
+                        className="mt-1 min-h-20 w-full rounded-md border border-emerald-200 bg-card px-3 py-2 text-xs outline-none focus:border-emerald-500"
                         value={selectionReason}
                         onChange={(event) => setSelectionReason(event.target.value)}
                         maxLength={500}
                       />
                     </label>
                     <div>
-                      <p className="text-[10px] font-bold uppercase text-slate-500">Destinatários para revisão ({recipientType === "manual" ? (form.recipientName ? 1 : 0) : selectedRecipients.length})</p>
-                      <div className="mt-1 max-h-28 space-y-1 overflow-auto rounded-md bg-white/80 p-2">
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground">Destinatários para revisão ({recipientType === "manual" ? (form.recipientName ? 1 : 0) : selectedRecipients.length})</p>
+                      <div className="mt-1 max-h-28 space-y-1 overflow-auto rounded-md bg-card/80 p-2">
                         {recipientType === "manual" && form.recipientName ? (
-                          <p className="text-xs font-semibold text-slate-700">{form.recipientName} · {form.recipientPhone || "sem telefone"}</p>
+                          <p className="text-xs font-semibold text-foreground">{form.recipientName} · {form.recipientPhone || "sem telefone"}</p>
                         ) : null}
                         {recipientType !== "manual" ? selectedRecipients.map((recipient) => (
-                          <p key={recipient.id} className="text-xs font-semibold text-slate-700">{recipient.name} · {recipient.studentName || recipient.phoneMasked}</p>
+                          <p key={recipient.id} className="text-xs font-semibold text-foreground">{recipient.name} · {recipient.studentName || recipient.phoneMasked}</p>
                         )) : null}
                         {(recipientType === "manual" ? !form.recipientName : selectedRecipients.length === 0) ? <p className="text-xs text-amber-700">Selecione os destinatários antes de criar o rascunho.</p> : null}
                       </div>
@@ -1065,7 +1065,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
             </Card>
 
             {/* Right Box: Operation Details & Tabs */}
-            <Card className="rounded-md shadow-sm border-slate-100">
+            <Card className="rounded-md shadow-sm border-border">
               <CardHeader>
                 <CardTitle className="text-base font-semibold">Operação</CardTitle>
                 <CardDescription>
@@ -1073,41 +1073,41 @@ export default function WhatsAppKlassePage({ params }: Props) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {loading ? <p className="text-sm text-slate-400">Carregando...</p> : null}
+                {loading ? <p className="text-sm text-muted-foreground">Carregando...</p> : null}
 
                 {activeTab === "templates" ? (
                   <div className="grid gap-3 md:grid-cols-2">
                     {(data?.templates || []).map((template) => (
-                      <div key={template.key} className="rounded-md border bg-white p-3 shadow-sm border-slate-150 space-y-2">
+                      <div key={template.key} className="rounded-md border bg-card p-3 shadow-sm border-slate-150 space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="font-semibold text-sm text-slate-900">{template.title}</p>
+                          <p className="font-semibold text-sm text-foreground">{template.title}</p>
                           <Badge variant="outline" className={statusClass(template.requires_approval ? "review_required" : "sent")}>
                             {template.requires_approval ? "Aprovação" : "Direto"}
                           </Badge>
                         </div>
-                        <p className="text-xs text-slate-600 font-mono bg-slate-50 p-1.5 rounded">{template.key}</p>
-                        <p className="text-xs text-slate-600 line-clamp-4 leading-relaxed">{template.body}</p>
+                        <p className="text-xs text-muted-foreground font-mono bg-muted p-1.5 rounded">{template.key}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-4 leading-relaxed">{template.body}</p>
                       </div>
                     ))}
                   </div>
                 ) : activeTab === "logs" ? (
-                  <div className="overflow-hidden rounded-md border bg-white divide-y divide-slate-100">
+                  <div className="overflow-hidden rounded-md border bg-card divide-y divide-border">
                     {(data?.logs || []).map((log) => (
-                      <div key={log.id} className="grid gap-1 px-3 py-2 text-xs last:border-b-0 md:grid-cols-[1fr_180px_180px] hover:bg-slate-50 transition-colors">
-                        <span className="font-medium text-slate-900">{log.event_type}</span>
-                        <span className="text-slate-500 font-mono">{log.provider_event_id || "-"}</span>
-                        <span className="text-slate-400">{formatDate(log.created_at)}</span>
+                      <div key={log.id} className="grid gap-1 px-3 py-2 text-xs last:border-b-0 md:grid-cols-[1fr_180px_180px] hover:bg-muted transition-colors">
+                        <span className="font-medium text-foreground">{log.event_type}</span>
+                        <span className="text-muted-foreground font-mono">{log.provider_event_id || "-"}</span>
+                        <span className="text-muted-foreground">{formatDate(log.created_at)}</span>
                       </div>
                     ))}
-                    {data?.logs.length === 0 ? <p className="p-6 text-center text-sm text-slate-400">Nenhum log registrado.</p> : null}
+                    {data?.logs.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">Nenhum log registrado.</p> : null}
                   </div>
                 ) : (
-                  <div className="overflow-hidden rounded-md border bg-white divide-y divide-slate-100">
+                  <div className="overflow-hidden rounded-md border bg-card divide-y divide-border">
                     {filteredOutbox.map((item) => (
-                      <div key={item.id} className="grid gap-2 p-3 last:border-b-0 xl:grid-cols-[1fr_120px_140px_160px] hover:bg-slate-50 transition-colors items-center">
+                      <div key={item.id} className="grid gap-2 p-3 last:border-b-0 xl:grid-cols-[1fr_120px_140px_160px] hover:bg-muted transition-colors items-center">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-semibold text-slate-950 truncate text-sm">{item.recipient_name}</p>
+                            <p className="font-semibold text-foreground truncate text-sm">{item.recipient_name}</p>
                             <Badge variant="outline" className={statusClass(item.status)}>
                               {statusLabel[item.status] || item.status}
                             </Badge>
@@ -1117,13 +1117,13 @@ export default function WhatsAppKlassePage({ params }: Props) {
                               </Badge>
                             ) : null}
                           </div>
-                          <p className="mt-1 text-xs text-slate-600 truncate">
+                          <p className="mt-1 text-xs text-muted-foreground truncate">
                             {item.title || item.message_type} · {item.recipient_phone_masked || "-"}
                           </p>
                           {item.last_error ? <p className="mt-1 text-[10px] text-red-600 font-medium">{item.last_error}</p> : null}
                         </div>
-                        <p className="text-xs text-slate-500 font-medium">{item.retry_count || 0} tentativas</p>
-                        <p className="text-xs text-slate-400">{formatDate(item.created_at)}</p>
+                        <p className="text-xs text-muted-foreground font-medium">{item.retry_count || 0} tentativas</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(item.created_at)}</p>
                         <div className="flex flex-wrap justify-end gap-1.5">
                           {item.status === "review_required" ? (
                             <Button size="sm" onClick={() => patchOutbox(item.id, "approve")}>
@@ -1146,7 +1146,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
                         </div>
                       </div>
                     ))}
-                    {filteredOutbox.length === 0 ? <p className="p-6 text-sm text-slate-400 text-center">Sem itens nesta visão.</p> : null}
+                    {filteredOutbox.length === 0 ? <p className="p-6 text-sm text-muted-foreground text-center">Sem itens nesta visão.</p> : null}
                   </div>
                 )}
               </CardContent>

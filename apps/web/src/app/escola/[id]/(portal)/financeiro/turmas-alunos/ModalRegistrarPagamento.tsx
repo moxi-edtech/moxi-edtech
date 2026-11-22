@@ -67,17 +67,17 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-card rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Cabeçalho */}
-        <div className="border-b border-slate-200 px-6 py-4">
+        <div className="border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-slate-800">Registrar Pagamento</h2>
-              <p className="text-slate-600">{aluno.nome} • {aluno.turma}</p>
+              <h2 className="text-xl font-bold text-foreground">Registrar Pagamento</h2>
+              <p className="text-muted-foreground">{aluno.nome} • {aluno.turma}</p>
             </div>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-500"
+              className="text-muted-foreground hover:text-foreground"
             >
               <X className="h-6 w-6" />
             </button>
@@ -90,18 +90,18 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                 <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
                   etapa >= step 
                     ? 'bg-amber-400 text-white'
-                    : 'bg-slate-200 text-slate-400'
+                    : 'bg-muted-foreground/15 text-muted-foreground'
                 }`}>
                   {step}
                 </div>
                 {step < 4 && (
                   <div className={`h-1 w-16 mx-2 ${
-                    etapa > step ? 'bg-amber-400' : 'bg-slate-200'
+                    etapa > step ? 'bg-amber-400' : 'bg-muted-foreground/15'
                   }`} />
                 )}
               </div>
             ))}
-            <div className="text-sm text-slate-500">
+            <div className="text-sm text-muted-foreground">
               {['Selecionar', 'Mensalidades', 'Pagamento', 'Recibo'][etapa - 1]}
             </div>
           </div>
@@ -111,13 +111,13 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
         <div className="p-6">
           {etapa === 1 && (
             <div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Selecione as Mensalidades</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-4">Selecione as Mensalidades</h3>
               <div className="space-y-3">
                 {mensalidadesPendentes.map((mensalidade, mi) => (
                   <label
                     // top-level element returned by map must have a unique key
                     key={mensalidade.id ?? `mensalidade-${mi}`}
-                    className="flex items-center p-3 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer"
+                    className="flex items-center p-3 border border-border rounded-xl hover:bg-muted cursor-pointer"
                   >
                     <input
                       type="checkbox"
@@ -131,13 +131,13 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                           );
                         }
                       }}
-                      className="h-4 w-4 text-amber-400 rounded border-slate-300 focus:ring-amber-400"
+                      className="h-4 w-4 text-amber-400 rounded border-border focus:ring-amber-400"
                     />
                     <div className="ml-3 flex-1">
                       <div className="font-medium">
                         {mensalidade.mesReferencia}/{mensalidade.anoReferencia}
                       </div>
-                      <div className="text-sm text-slate-500">
+                      <div className="text-sm text-muted-foreground">
                         {formatVencimento(mensalidade)} • {mensalidade.valor.toLocaleString()} Kz
                       </div>
                     </div>
@@ -158,17 +158,17 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
 
           {etapa === 2 && (
             <div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Método de Pagamento</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-4">Método de Pagamento</h3>
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <button
                   onClick={() => setMetodoPagamento('dinheiro')}
                   className={`p-4 border rounded-xl flex flex-col items-center ${
                     metodoPagamento === 'dinheiro' 
                       ? 'border-amber-400 bg-amber-400/10'
-                      : 'border-slate-200 hover:border-slate-300'
+                      : 'border-border hover:border-border'
                   }`}
                 >
-                  <Landmark className="h-8 w-8 text-slate-600 mb-2" />
+                  <Landmark className="h-8 w-8 text-muted-foreground mb-2" />
                   <span>Dinheiro</span>
                 </button>
                 <button
@@ -176,10 +176,10 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                   className={`p-4 border rounded-xl flex flex-col items-center ${
                     metodoPagamento === 'transferencia' 
                       ? 'border-amber-400 bg-amber-400/10'
-                      : 'border-slate-200 hover:border-slate-300'
+                      : 'border-border hover:border-border'
                   }`}
                 >
-                  <CreditCard className="h-8 w-8 text-slate-600 mb-2" />
+                  <CreditCard className="h-8 w-8 text-muted-foreground mb-2" />
                   <span>Transferência</span>
                 </button>
                 <button
@@ -187,10 +187,10 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                   className={`p-4 border rounded-xl flex flex-col items-center ${
                     metodoPagamento === 'multicaixa' 
                       ? 'border-amber-400 bg-amber-400/10'
-                      : 'border-slate-200 hover:border-slate-300'
+                      : 'border-border hover:border-border'
                   }`}
                 >
-                  <DollarSign className="h-8 w-8 text-slate-600 mb-2" />
+                  <DollarSign className="h-8 w-8 text-muted-foreground mb-2" />
                   <span>Multicaixa</span>
                 </button>
                 <button
@@ -198,47 +198,47 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                   className={`p-4 border rounded-xl flex flex-col items-center ${
                     metodoPagamento === 'mbway' 
                       ? 'border-amber-400 bg-amber-400/10'
-                      : 'border-slate-200 hover:border-slate-300'
+                      : 'border-border hover:border-border'
                   }`}
                 >
-                  <Smartphone className="h-8 w-8 text-slate-600 mb-2" />
+                  <Smartphone className="h-8 w-8 text-muted-foreground mb-2" />
                   <span>MBWay</span>
                 </button>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Valor Recebido (Kz)
                   </label>
                   <input
                     type="number"
                     value={valorRecebido}
                     onChange={(e) => setValorRecebido(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-4 focus:ring-amber/20 focus:border-amber"
+                    className="w-full px-4 py-2 border border-border rounded-xl focus:ring-4 focus:ring-amber/20 focus:border-amber"
                     placeholder="Ex: 45000"
                   />
                 </div>
 
                 {metodoPagamento === 'transferencia' && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                    <label className="block text-sm font-medium text-foreground mb-1">
                       Referência
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-4 focus:ring-amber/20 focus:border-amber"
+                      className="w-full px-4 py-2 border border-border rounded-xl focus:ring-4 focus:ring-amber/20 focus:border-amber"
                       placeholder="999123456789"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Comprovante (opcional)
                   </label>
                   <div className="mt-1 flex items-center">
-                    <label className="cursor-pointer bg-white py-2 px-3 border border-slate-300 rounded-xl shadow-sm text-sm leading-4 font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400">
+                    <label className="cursor-pointer bg-card py-2 px-3 border border-border rounded-xl shadow-sm text-sm leading-4 font-medium text-foreground hover:bg-muted focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400">
                       <span>Escolher arquivo</span>
                       <input
                         type="file"
@@ -247,7 +247,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                       />
                     </label>
                     {comprovante && (
-                      <span className="ml-3 text-sm text-slate-500">
+                      <span className="ml-3 text-sm text-muted-foreground">
                         {comprovante.name}
                       </span>
                     )}
@@ -259,35 +259,35 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
 
           {etapa === 3 && (
             <div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Confirmar Pagamento</h3>
-              <div className="bg-slate-50 rounded-xl p-4 mb-6">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Confirmar Pagamento</h3>
+              <div className="bg-muted rounded-xl p-4 mb-6">
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Aluno:</span>
+                    <span className="text-muted-foreground">Aluno:</span>
                     <span className="font-medium">{aluno.nome}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Turma:</span>
+                    <span className="text-muted-foreground">Turma:</span>
                     <span className="font-medium">{aluno.turma}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Mensalidades:</span>
+                    <span className="text-muted-foreground">Mensalidades:</span>
                     <span className="font-medium">
                       {mensalidadesSelecionadas.length} mensalidade(s)
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Método:</span>
+                    <span className="text-muted-foreground">Método:</span>
                     <span className="font-medium capitalize">{metodoPagamento}</span>
                   </div>
-                  <div className="flex justify-between text-lg font-bold pt-3 border-t border-slate-200">
+                  <div className="flex justify-between text-lg font-bold pt-3 border-t border-border">
                     <span>Total:</span>
                     <span className="text-emerald-700">{totalSelecionado.toLocaleString()} Kz</span>
                   </div>
                 </div>
               </div>
               
-              <div className="text-center text-sm text-slate-500">
+              <div className="text-center text-sm text-muted-foreground">
                 Ao confirmar, o sistema irá atualizar o status das mensalidades e gerar um recibo automaticamente.
               </div>
             </div>
@@ -295,11 +295,11 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
         </div>
 
         {/* Rodapé */}
-        <div className="border-t border-slate-200 px-6 py-4">
+        <div className="border-t border-border px-6 py-4">
           <div className="flex justify-between">
             <button
               onClick={() => etapa > 1 ? setEtapa(etapa - 1) : onClose()}
-              className="px-4 py-2 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50"
+              className="px-4 py-2 border border-border rounded-xl text-foreground hover:bg-muted"
             >
               {etapa === 1 ? 'Cancelar' : 'Voltar'}
             </button>
@@ -310,7 +310,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
               className={`px-4 py-2 rounded-xl ${
                 etapa === 1 && mensalidadesSelecionadas.length === 0 ||
                 etapa === 2 && (!metodoPagamento || !valorRecebido)
-                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                  ? 'bg-muted-foreground/25 text-muted-foreground cursor-not-allowed'
                   : 'bg-amber-400 hover:brightness-95 text-white'
               }`}
             >

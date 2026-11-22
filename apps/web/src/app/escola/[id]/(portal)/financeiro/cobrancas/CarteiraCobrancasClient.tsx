@@ -102,14 +102,14 @@ const riskLabel: Record<RiskStatus, string> = {
 };
 
 const statusClass: Record<FinancialStatus, string> = {
-  sem_lancamentos: "bg-slate-100 text-slate-600",
+  sem_lancamentos: "bg-muted text-muted-foreground",
   regular: "bg-emerald-50 text-emerald-700",
   pendente: "bg-amber-50 text-amber-700",
   atrasado: "bg-rose-50 text-rose-700",
 };
 
 const riskClass: Record<RiskStatus, string> = {
-  sem_risco: "text-slate-500",
+  sem_risco: "text-muted-foreground",
   recente: "text-blue-700",
   atencao: "text-amber-700",
   critico: "text-rose-700",
@@ -325,11 +325,11 @@ export default function CarteiraCobrancasClient() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Financeiro
           </p>
-          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">Cobranças</h1>
-          <p className="max-w-3xl text-sm text-slate-600">
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl">Cobranças</h1>
+          <p className="max-w-3xl text-sm text-muted-foreground">
             Carteira única de alunos, mensalidades, propinas e valores em atraso.
           </p>
         </div>
@@ -337,7 +337,7 @@ export default function CarteiraCobrancasClient() {
           <button
             type="button"
             onClick={() => navigateWithinFinance("turmas-alunos")}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-slate-400"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground hover:border-border"
           >
             <UsersRound className="h-4 w-4" />
             Ações por turma
@@ -354,30 +354,30 @@ export default function CarteiraCobrancasClient() {
       </header>
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <Users className="h-4 w-4" /> Carteira encontrada
           </div>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{total}</p>
-          <p className="text-xs text-slate-500">alunos no filtro atual</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{total}</p>
+          <p className="text-xs text-muted-foreground">alunos no filtro atual</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <AlertTriangle className="h-4 w-4" /> Em atraso nesta página
           </div>
           <p className="mt-2 text-2xl font-bold text-rose-700">{currency.format(pageDebt)}</p>
-          <p className="text-xs text-slate-500">25 alunos por página</p>
+          <p className="text-xs text-muted-foreground">25 alunos por página</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <WalletCards className="h-4 w-4" /> Fonte financeira
           </div>
           <p className="mt-2 text-sm font-bold text-emerald-700">Carteira consolidada</p>
-          <p className="text-xs text-slate-500">uma fonte para aluno e turma</p>
+          <p className="text-xs text-muted-foreground">uma fonte para aluno e turma</p>
         </div>
       </section>
 
-      <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap gap-2" aria-label="Estado financeiro">
           {(
             [
@@ -396,7 +396,7 @@ export default function CarteiraCobrancasClient() {
               className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                 status === value
                   ? "bg-slate-900 text-white"
-                  : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                  : "bg-muted text-muted-foreground hover:bg-muted"
               }`}
             >
               {label}
@@ -406,13 +406,13 @@ export default function CarteiraCobrancasClient() {
 
         <div className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_220px_180px]">
           <label className="relative block">
-            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <span className="sr-only">Pesquisar aluno</span>
             <input
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
               placeholder="Pesquisar aluno…"
-              className="h-10 w-full rounded-lg border border-slate-200 pl-9 pr-3 text-sm outline-none focus:border-slate-400"
+              className="h-10 w-full rounded-lg border border-border pl-9 pr-3 text-sm outline-none focus:border-border"
             />
           </label>
           <label className="block">
@@ -423,7 +423,7 @@ export default function CarteiraCobrancasClient() {
                 setTurmaId(event.target.value);
                 setPage(1);
               }}
-              className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700 outline-none focus:border-slate-400"
+              className="h-10 w-full rounded-lg border border-border px-3 text-sm text-foreground outline-none focus:border-border"
             >
               <option value="todos">Todas as turmas</option>
               {turmas.map((turma) => (
@@ -439,7 +439,7 @@ export default function CarteiraCobrancasClient() {
                 setRisk(event.target.value as "todos" | RiskStatus);
                 setPage(1);
               }}
-              className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700 outline-none focus:border-slate-400"
+              className="h-10 w-full rounded-lg border border-border px-3 text-sm text-foreground outline-none focus:border-border"
             >
               <option value="todos">Todos os riscos</option>
               <option value="critico">Crítico</option>
@@ -451,34 +451,34 @@ export default function CarteiraCobrancasClient() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-slate-500" />
-            <h2 className="text-sm font-semibold text-slate-900">Carteira por aluno</h2>
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Carteira por aluno</h2>
           </div>
-          <span className="text-xs text-slate-500">Página {page} de {totalPages}</span>
+          <span className="text-xs text-muted-foreground">Página {page} de {totalPages}</span>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-sm text-slate-500">A carregar carteira financeira…</div>
+          <div className="p-8 text-center text-sm text-muted-foreground">A carregar carteira financeira…</div>
         ) : error ? (
           <div className="p-8 text-center">
             <p className="text-sm text-rose-700">{error}</p>
             <button
               type="button"
               onClick={() => void loadPortfolio()}
-              className="mt-3 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold"
+              className="mt-3 rounded-lg border border-border px-3 py-2 text-sm font-semibold"
             >
               Tentar novamente
             </button>
           </div>
         ) : items.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">
+          <div className="p-8 text-center text-sm text-muted-foreground">
             Nenhum aluno corresponde aos filtros selecionados.
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-border">
             {items.map((item) => {
               const expanded = expandedAlunoId === item.aluno_id;
               return (
@@ -490,17 +490,17 @@ export default function CarteiraCobrancasClient() {
                         onClick={() => setExpandedAlunoId(expanded ? null : item.aluno_id)}
                         className="text-left"
                       >
-                        <span className="block text-sm font-semibold text-slate-900 hover:underline">
+                        <span className="block text-sm font-semibold text-foreground hover:underline">
                           {item.nome_aluno}
                         </span>
-                        <span className="block text-xs text-slate-500">
+                        <span className="block text-xs text-muted-foreground">
                           {item.numero_matricula || "Sem número"} · {item.responsavel || "Sem encarregado"}
                         </span>
                       </button>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-700">{item.nome_turma || "Sem turma"}</p>
-                      <p className="text-xs text-slate-500">{item.nome_classe || item.nome_curso || "Sem classificação"}</p>
+                      <p className="text-sm font-medium text-foreground">{item.nome_turma || "Sem turma"}</p>
+                      <p className="text-xs text-muted-foreground">{item.nome_classe || item.nome_curso || "Sem classificação"}</p>
                     </div>
                     <div>
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[item.status_financeiro]}`}>
@@ -511,8 +511,8 @@ export default function CarteiraCobrancasClient() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">{currency.format(item.valor_em_atraso)}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-sm font-bold text-foreground">{currency.format(item.valor_em_atraso)}</p>
+                      <p className="text-xs text-muted-foreground">
                         {item.dias_maximo_atraso > 0 ? `${item.dias_maximo_atraso} dias` : "Sem atraso"}
                       </p>
                     </div>
@@ -532,7 +532,7 @@ export default function CarteiraCobrancasClient() {
                         type="button"
                         disabled={loadingPaymentAlunoId === item.aluno_id}
                         onClick={() => void handleRegistarPagamento(item)}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-slate-400"
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:border-border"
                       >
                         <CircleDollarSign className="h-4 w-4" />
                         {loadingPaymentAlunoId === item.aluno_id ? "A carregar…" : "Registar"}
@@ -541,13 +541,13 @@ export default function CarteiraCobrancasClient() {
                   </div>
 
                   {expanded ? (
-                    <div className="mt-4 grid gap-3 rounded-lg bg-slate-50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                      <div><span className="block text-xs text-slate-500">Previsto</span><strong>{currency.format(item.valor_previsto_total)}</strong></div>
-                      <div><span className="block text-xs text-slate-500">Pago</span><strong>{currency.format(item.valor_pago_total)}</strong></div>
-                      <div><span className="block text-xs text-slate-500">Em aberto</span><strong>{currency.format(item.valor_em_aberto)}</strong></div>
-                      <div><span className="block text-xs text-slate-500">Mensalidades atrasadas</span><strong>{item.qtd_mensalidades_atrasadas}</strong></div>
-                      <div className="sm:col-span-2"><span className="block text-xs text-slate-500">Telefone</span><strong>{item.telefone || "Não informado"}</strong></div>
-                      <div className="sm:col-span-2"><span className="block text-xs text-slate-500">Ano letivo</span><strong>{item.ano_letivo || "Não informado"}</strong></div>
+                    <div className="mt-4 grid gap-3 rounded-lg bg-muted p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                      <div><span className="block text-xs text-muted-foreground">Previsto</span><strong>{currency.format(item.valor_previsto_total)}</strong></div>
+                      <div><span className="block text-xs text-muted-foreground">Pago</span><strong>{currency.format(item.valor_pago_total)}</strong></div>
+                      <div><span className="block text-xs text-muted-foreground">Em aberto</span><strong>{currency.format(item.valor_em_aberto)}</strong></div>
+                      <div><span className="block text-xs text-muted-foreground">Mensalidades atrasadas</span><strong>{item.qtd_mensalidades_atrasadas}</strong></div>
+                      <div className="sm:col-span-2"><span className="block text-xs text-muted-foreground">Telefone</span><strong>{item.telefone || "Não informado"}</strong></div>
+                      <div className="sm:col-span-2"><span className="block text-xs text-muted-foreground">Ano letivo</span><strong>{item.ano_letivo || "Não informado"}</strong></div>
                     </div>
                   ) : null}
                 </article>
@@ -556,21 +556,21 @@ export default function CarteiraCobrancasClient() {
           </div>
         )}
 
-        <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
+        <div className="flex items-center justify-between border-t border-border px-4 py-3">
           <button
             type="button"
             disabled={page <= 1 || loading}
             onClick={() => setPage((current) => Math.max(1, current - 1))}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ChevronLeft className="h-4 w-4" /> Anterior
           </button>
-          <span className="text-xs text-slate-500">{total} alunos</span>
+          <span className="text-xs text-muted-foreground">{total} alunos</span>
           <button
             type="button"
             disabled={page >= totalPages || loading}
             onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
           >
             Seguinte <ChevronRight className="h-4 w-4" />
           </button>

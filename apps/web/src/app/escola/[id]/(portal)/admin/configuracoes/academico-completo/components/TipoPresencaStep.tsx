@@ -162,22 +162,22 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
 
   // Helper para renderizar a fórmula visualmente
   const FormulaVisual = () => (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-4 font-mono text-sm text-slate-700">
+    <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted p-4 font-mono text-sm text-foreground">
       {avaliacaoConfig.componentes.map((c, idx) => (
         <div key={c.code} className="flex items-center gap-2">
-          <span className="flex items-center gap-1 rounded bg-white px-2 py-1 shadow-sm ring-1 ring-slate-200">
-            <Variable className="h-3 w-3 text-slate-400" />
-            <span className="font-bold text-slate-800">{c.code}</span>
+          <span className="flex items-center gap-1 rounded bg-card px-2 py-1 shadow-sm ring-1 ring-ring">
+            <Variable className="h-3 w-3 text-muted-foreground" />
+            <span className="font-bold text-foreground">{c.code}</span>
           </span>
-          <span className="text-slate-400">×</span>
+          <span className="text-muted-foreground">×</span>
           <span className="font-bold text-amber">{c.peso / 100}</span>
           {idx < avaliacaoConfig.componentes.length - 1 && (
-            <span className="font-bold text-slate-400">+</span>
+            <span className="font-bold text-muted-foreground">+</span>
           )}
         </div>
       ))}
       {avaliacaoConfig.componentes.length === 0 && (
-        <span className="text-slate-400 italic">Nenhuma fórmula definida.</span>
+        <span className="text-muted-foreground italic">Nenhuma fórmula definida.</span>
       )}
     </div>
   );
@@ -212,7 +212,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
             <button
               onClick={() => setIsEditing(false)}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
             >
               Cancelar
             </button>
@@ -228,7 +228,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
         )}
       </div>
       {loading ? (
-        <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-slate-300" /></div>
+        <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>
       ) : (
         <div className="space-y-6">
           
@@ -237,15 +237,15 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
             <div className="animate-in fade-in duration-300 space-y-6">
               
               {/* Card Fórmula Ativa */}
-              <div className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-amber/50">
+              <div className="group rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:border-amber/50">
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="rounded-lg bg-emerald-100 p-2 text-emerald-700">
                       <Calculator className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">Modelo de Avaliação</p>
-                      <p className="text-xs text-slate-500">{selectedModelo?.nome ?? (modeloAvaliacao || 'Sem modelo')}</p>
+                      <p className="text-sm font-bold text-foreground">Modelo de Avaliação</p>
+                      <p className="text-xs text-muted-foreground">{selectedModelo?.nome ?? (modeloAvaliacao || 'Sem modelo')}</p>
                     </div>
                   </div>
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
@@ -257,26 +257,26 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
 
               {/* Card Regras de Frequência */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-slate-100 p-2 text-slate-700">
+                    <div className="rounded-lg bg-muted p-2 text-foreground">
                       <GraduationCap className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Mínimo para Aprovação</p>
-                      <p className="text-xl font-bold text-slate-900">{frequenciaMinPercent}% de Presença</p>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Mínimo para Aprovação</p>
+                      <p className="text-xl font-bold text-foreground">{frequenciaMinPercent}% de Presença</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-slate-100 p-2 text-slate-700">
+                    <div className="rounded-lg bg-muted p-2 text-foreground">
                       <CalendarClock className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Modelo de Chamada</p>
-                      <p className="text-xl font-bold text-slate-900">
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Modelo de Chamada</p>
+                      <p className="text-xl font-bold text-foreground">
                         {frequenciaModelo === 'POR_AULA' ? 'Por Tempo de Aula' : 'Dia Letivo Único'}
                       </p>
                     </div>
@@ -288,7 +288,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
 
           {/* --- MODO EDIÇÃO (FORMULÁRIO) --- */}
           {isEditing && (
-            <div className="animate-in slide-in-from-bottom-4 duration-300 rounded-xl border border-amber/30 bg-slate-50/50 p-6 ring-1 ring-amber/10">
+            <div className="animate-in slide-in-from-bottom-4 duration-300 rounded-xl border border-amber/30 bg-muted/50 p-6 ring-1 ring-amber/10">
               <AcademicStep2Config
                 frequenciaModelo={frequenciaModelo}
                 onFrequenciaModeloChange={setFrequenciaModelo}

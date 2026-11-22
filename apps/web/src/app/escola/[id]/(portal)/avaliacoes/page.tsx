@@ -163,7 +163,7 @@ const SvgIcons = {
 
 // Shared UI Components
 const Card: React.FC<React.PropsWithChildren<{ title: string; subtitle?: string; className?: string }>> = ({ title, subtitle, children, className }) => (
-  <section className={`bg-white rounded-2xl shadow-[0_8px_30px_rgba(16,24,40,.08)] p-5 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(16,24,40,.12)] ${className || ''}`}>
+  <section className={`bg-card rounded-2xl shadow-[0_8px_30px_rgba(16,24,40,.08)] p-5 transition-all duration-300 hover:shadow-[0_12px_40px_rgba(16,24,40,.12)] ${className || ''}`}>
     <h2 className="text-base font-semibold mb-1 text-moxinexa-dark">{title}</h2>
     {subtitle && <p className="text-sm text-moxinexa-gray mb-3">{subtitle}</p>}
     {children}
@@ -175,7 +175,7 @@ const ProgressBar: React.FC<{ currentStep: number; totalSteps: number }> = ({ cu
   const progress = (currentStep / totalSteps) * 100;
   
   return (
-    <div className="w-full bg-slate-100 rounded-full h-2 mb-6 overflow-hidden">
+    <div className="w-full bg-muted rounded-full h-2 mb-6 overflow-hidden">
       <div 
         className="bg-moxinexa-teal h-full rounded-full transition-all duration-500 ease-out"
         style={{ width: `${progress}%` }}
@@ -197,13 +197,13 @@ const StepNavigation: React.FC<{
   const isLastStep = currentStep === totalSteps;
   
   return (
-    <div className="flex justify-between mt-8 pt-6 border-t border-slate-100">
+    <div className="flex justify-between mt-8 pt-6 border-t border-border">
       <button
         onClick={onBack}
         disabled={currentStep === 1}
         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-200 ${
           currentStep === 1 
-            ? 'border-slate-200 text-slate-400 cursor-not-allowed' 
+            ? 'border-border text-muted-foreground cursor-not-allowed'
             : 'border-moxinexa-navy/20 text-moxinexa-navy hover:bg-moxinexa-navy/5 hover:border-moxinexa-navy/30'
         }`}
       >
@@ -217,7 +217,7 @@ const StepNavigation: React.FC<{
           disabled={!isValid || isSubmitting}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all duration-200 ${
             !isValid || isSubmitting
-              ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+              ? 'bg-muted-foreground/25 text-muted-foreground cursor-not-allowed'
               : 'bg-moxinexa-teal text-white hover:bg-moxinexa-teal/90 shadow-md hover:shadow-lg'
           }`}
         >
@@ -239,7 +239,7 @@ const StepNavigation: React.FC<{
           disabled={!isValid}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all duration-200 ${
             !isValid
-              ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+              ? 'bg-muted-foreground/25 text-muted-foreground cursor-not-allowed'
               : 'bg-moxinexa-navy text-white hover:bg-moxinexa-navy/90 shadow-md hover:shadow-lg'
           }`}
         >
@@ -446,7 +446,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
       {...props} 
       className={`w-full rounded-xl border px-3 py-2.5 outline-none transition-all duration-200 ${
         valid 
-          ? 'border-slate-200 focus:border-moxinexa-teal focus:ring-4 focus:ring-moxinexa-teal/10' 
+          ? 'border-border focus:border-moxinexa-teal focus:ring-4 focus:ring-moxinexa-teal/10'
           : 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-500/10'
       } ${props.className || ''}`} 
     />
@@ -457,7 +457,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
       {...props} 
       className={`w-full rounded-xl border px-3 py-2.5 outline-none transition-all duration-200 ${
         valid 
-          ? 'border-slate-200 focus:border-moxinexa-teal focus:ring-4 focus:ring-moxinexa-teal/10' 
+          ? 'border-border focus:border-moxinexa-teal focus:ring-4 focus:ring-moxinexa-teal/10'
           : 'border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-500/10'
       } ${props.className || ''}`} 
     />
@@ -513,9 +513,9 @@ export default function MoxiConfiguracaoAvaliacoes() {
           </Select>
         </div>
       </div>
-      <div className="h-px bg-slate-100 my-4" />
+      <div className="h-px bg-muted my-4" />
       <div className="flex items-center gap-3 text-sm text-moxinexa-gray">
-        <span className={`${badge} bg-slate-100 text-moxinexa-dark border`}>Configurado</span> 
+        <span className={`${badge} bg-muted text-moxinexa-dark border`}>Configurado</span>
         Escala 0–{formData.escala.max} • Aprovação {formData.escala.aprov} • {formData.escala.dec} casa(s) decimal(is)
       </div>
     </Card>
@@ -526,17 +526,17 @@ export default function MoxiConfiguracaoAvaliacoes() {
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <span className="rounded-full text-xs px-3 py-1 bg-moxinexa-teal/10 text-moxinexa-teal border border-moxinexa-teal/20">Ex.: 18–20 → A+ (4.0)</span>
         <button 
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-moxinexa-navy/20 text-moxinexa-navy bg-white hover:bg-moxinexa-navy/5 transition-all duration-200"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-moxinexa-navy/20 text-moxinexa-navy bg-card hover:bg-moxinexa-navy/5 transition-all duration-200"
           onClick={adicionarRegra}
         >
           <SvgIcons.plus />
           Nova regra
         </button>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-slate-100">
+      <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full">
           <thead>
-            <tr className="text-xs uppercase tracking-wide text-moxinexa-gray bg-slate-50">
+            <tr className="text-xs uppercase tracking-wide text-moxinexa-gray bg-muted">
               <th className="text-left p-3">Início</th>
               <th className="text-left p-3">Fim</th>
               <th className="text-left p-3">Conceito</th>
@@ -553,7 +553,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
               </tr>
             )}
             {formData.regras.map((r, i) => (
-              <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+              <tr key={i} className="border-b border-border hover:bg-muted transition-colors">
                 <td className="p-3">
                   <Input 
                     type="number" 
@@ -649,7 +649,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
           />
         </div>
       </div>
-      <div className="h-px bg-slate-100 my-4" />
+      <div className="h-px bg-muted my-4" />
       <div className={`text-sm font-medium ${pesosValidos ? 'text-green-600' : 'text-red-600'}`}>
         Soma atual: {fmtPct(somaPesos)} — {pesosValidos ? '✓ Válido' : '✗ Deve ser 100%'}
       </div>
@@ -712,7 +712,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
             </Select>
           </div>
         </div>
-        <div className="h-px bg-slate-100 my-4" />
+        <div className="h-px bg-muted my-4" />
         <div className="flex items-center gap-3">
           <button 
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-moxinexa-teal text-white hover:bg-moxinexa-teal/90 transition-colors"
@@ -721,7 +721,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
             <SvgIcons.check />
             Aplicar sistema
           </button>
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 transition-colors">
+          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted hover:bg-muted-foreground/15 text-foreground transition-colors">
             <SvgIcons.clone />
             Duplicar para outra série
           </button>
@@ -730,11 +730,11 @@ export default function MoxiConfiguracaoAvaliacoes() {
         
         {formData.aplicacoes.length > 0 && (
           <>
-            <div className="h-px bg-slate-100 my-4" />
-            <div className="overflow-x-auto rounded-xl border border-slate-100">
+            <div className="h-px bg-muted my-4" />
+            <div className="overflow-x-auto rounded-xl border border-border">
               <table className="w-full">
                 <thead>
-                  <tr className="text-xs uppercase tracking-wide text-moxinexa-gray bg-slate-50">
+                  <tr className="text-xs uppercase tracking-wide text-moxinexa-gray bg-muted">
                     <th className="text-left p-3">Nível</th>
                     <th className="text-left p-3">Turma</th>
                     <th className="text-left p-3">Disciplina</th>
@@ -746,7 +746,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
                 </thead>
                 <tbody>
                   {formData.aplicacoes.map((x, i) => (
-                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <tr key={i} className="border-b border-border hover:bg-muted transition-colors">
                       <td className="p-3">{x.nivel}</td>
                       <td className="p-3">{x.turma}</td>
                       <td className="p-3">{x.disc}</td>
@@ -775,7 +775,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
   const Step5Resumo = () => (
     <Card title="5) Resumo e Confirmação" subtitle="Revise as configurações antes de salvar o sistema de avaliação.">
       <div className="space-y-6">
-        <div className="bg-slate-50 rounded-xl p-4">
+        <div className="bg-muted rounded-xl p-4">
           <h3 className="font-semibold text-moxinexa-dark mb-2 flex items-center gap-2">
             <SvgIcons.info />
             Configuração da Escala
@@ -788,7 +788,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
           </div>
         </div>
 
-        <div className="bg-slate-50 rounded-xl p-4">
+        <div className="bg-muted rounded-xl p-4">
           <h3 className="font-semibold text-moxinexa-dark mb-2 flex items-center gap-2">
             <SvgIcons.info />
             Regras de Conversão
@@ -806,7 +806,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
           )}
         </div>
 
-        <div className="bg-slate-50 rounded-xl p-4">
+        <div className="bg-muted rounded-xl p-4">
           <h3 className="font-semibold text-moxinexa-dark mb-2 flex items-center gap-2">
             <SvgIcons.info />
             Pesos das Avaliações
@@ -822,7 +822,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
           </div>
         </div>
 
-        <div className="bg-slate-50 rounded-xl p-4">
+        <div className="bg-muted rounded-xl p-4">
           <h3 className="font-semibold text-moxinexa-dark mb-2 flex items-center gap-2">
             <SvgIcons.info />
             Aplicações Configuradas
@@ -879,11 +879,11 @@ export default function MoxiConfiguracaoAvaliacoes() {
                     ? 'bg-moxinexa-teal text-white' 
                     : step < currentStep 
                     ? 'bg-green-100 text-green-600' 
-                    : 'bg-slate-100 text-slate-500'
+                    : 'bg-muted text-muted-foreground'
                 }`}>
                   {step < currentStep ? <SvgIcons.check /> : step}
                 </div>
-                <div className="text-xs mt-1 text-slate-600">
+                <div className="text-xs mt-1 text-muted-foreground">
                   {['Escala', 'Regras', 'Pesos', 'Aplicação', 'Resumo'][step-1]}
                 </div>
               </div>
@@ -913,12 +913,12 @@ export default function MoxiConfiguracaoAvaliacoes() {
           {toasts.map(t => (
             <div 
               key={t.id} 
-              className={`min-w-[260px] max-w-sm rounded-xl px-4 py-3 shadow-lg border text-sm bg-white animate-in slide-in-from-right-full duration-300 ${
+              className={`min-w-[260px] max-w-sm rounded-xl px-4 py-3 shadow-lg border text-sm bg-card animate-in slide-in-from-right-full duration-300 ${
                 t.tone === "success" 
                   ? "border-green-200" 
                   : t.tone === "error" 
                   ? "border-red-200" 
-                  : "border-slate-200"
+                  : "border-border"
               }`}
             >
               <div className="flex items-start gap-3">
@@ -933,10 +933,10 @@ export default function MoxiConfiguracaoAvaliacoes() {
                 </div>
                 <div className="flex-1">
                   <div className="font-medium">{t.title}</div>
-                  {t.desc && <div className="text-slate-600 mt-0.5">{t.desc}</div>}
+                  {t.desc && <div className="text-muted-foreground mt-0.5">{t.desc}</div>}
                 </div>
                 <button 
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => remove(t.id)}
                 >
                   <SvgIcons.close />

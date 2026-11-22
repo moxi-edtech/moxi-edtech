@@ -10,12 +10,12 @@ export default function AdminFuncionariosPage() {
 
   return (
     <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
-      <div className="flex border-b border-slate-200">
+      <div className="flex border-b border-border">
         <button
           type="button"
           onClick={() => setTab("listar")}
           className={`px-6 py-3 font-medium relative ${
-            tab === "listar" ? "text-amber" : "text-slate-500 hover:text-slate-900"
+            tab === "listar" ? "text-amber" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           Funcionários
@@ -27,7 +27,7 @@ export default function AdminFuncionariosPage() {
           type="button"
           onClick={() => setTab("cadastrar")}
           className={`px-6 py-3 font-medium relative ${
-            tab === "cadastrar" ? "text-amber" : "text-slate-500 hover:text-slate-900"
+            tab === "cadastrar" ? "text-amber" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           Cadastrar

@@ -35,13 +35,13 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-moxinexa-navy">Tabelas de Preço</h1>
-          <p className="text-sm text-slate-600">Configure valores e gere cobranças a partir desta escola.</p>
+          <p className="text-sm text-muted-foreground">Configure valores e gere cobranças a partir desta escola.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {escolaId ? <GerarMensalidadesModal escolaId={escolaId} /> : null}
           <Link
             href={`/escola/${escolaParam}/financeiro`}
-            className="text-sm px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
+            className="text-sm px-3 py-1.5 rounded border border-border hover:bg-muted"
           >
             Ver painel financeiro
           </Link>
@@ -49,22 +49,22 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       </div>
 
       {Array.isArray(pendencias) && pendencias.length > 0 && (
-        <div className="mb-6 bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-3">
+        <div className="mb-6 bg-card border border-border rounded-xl p-4 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-gray-800">Pagamentos rápidos</h2>
-              <p className="text-sm text-gray-500">Mensalidades pendentes recentes para registro manual.</p>
+              <h2 className="font-semibold text-foreground">Pagamentos rápidos</h2>
+              <p className="text-sm text-muted-foreground">Mensalidades pendentes recentes para registro manual.</p>
             </div>
-            <span className="text-xs text-gray-500">Máx. 5 registros</span>
+            <span className="text-xs text-muted-foreground">Máx. 5 registros</span>
           </div>
           <div className="space-y-2">
             {Array.isArray(pendencias) && pendencias.map((p) => {
               const alunoNome = (p.alunos as any)?.nome_completo || (p.alunos as any)?.nome || "Aluno";
               return (
-                <div key={p.id} className="flex items-center justify-between gap-3 border border-gray-100 rounded-lg px-3 py-2">
+                <div key={p.id} className="flex items-center justify-between gap-3 border border-border rounded-lg px-3 py-2">
                   <div>
-                    <div className="text-sm font-medium text-gray-800">{alunoNome}</div>
-                    <div className="text-xs text-gray-500">Vence: {p.data_vencimento ? new Date(p.data_vencimento).toLocaleDateString('pt-PT') : '—'} · {(p.valor_previsto ?? 0).toLocaleString('pt-AO')} Kz</div>
+                    <div className="text-sm font-medium text-foreground">{alunoNome}</div>
+                    <div className="text-xs text-muted-foreground">Vence: {p.data_vencimento ? new Date(p.data_vencimento).toLocaleDateString('pt-PT') : '—'} · {(p.valor_previsto ?? 0).toLocaleString('pt-AO')} Kz</div>
                   </div>
                   {escolaId ? (
                     <RegistrarPagamentoButton 
@@ -83,11 +83,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 shadow-sm rounded-2xl p-4 md:p-6">
+      <div className="bg-card border border-border shadow-sm rounded-2xl p-4 md:p-6">
         {escolaId ? (
           <PrecosClient escolaId={escolaId} />
         ) : (
-          <div className="text-sm text-slate-500">Escola não identificada para carregar o preçário.</div>
+          <div className="text-sm text-muted-foreground">Escola não identificada para carregar o preçário.</div>
         )}
       </div>
       </div>

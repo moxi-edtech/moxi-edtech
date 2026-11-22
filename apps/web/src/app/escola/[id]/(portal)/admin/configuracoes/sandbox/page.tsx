@@ -146,14 +146,14 @@ export default function SandboxConfiguracoesPage() {
       <div className="space-y-6">
         
         {/* HERO CARD: ACTION */}
-        <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-900 p-8 text-white shadow-lg">
+        <div className="relative overflow-hidden rounded-xl border border-border/20 bg-slate-900 p-8 text-white shadow-lg">
           <div className="relative z-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-lg font-bold">
                 <FlaskConical className="h-5 w-5 text-amber" />
                 Ambiente de Teste Isolado
               </h2>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Verifique conflitos de horário, fórmulas de notas e fluxos usando dados fictícios baseados no seu histórico.
               </p>
             </div>
@@ -176,16 +176,16 @@ export default function SandboxConfiguracoesPage() {
         {/* LOADING STATE */}
         {simulating && (
           <div className="py-12 text-center">
-            <div className="mx-auto mb-4 h-2 w-64 overflow-hidden rounded-full bg-slate-100">
+            <div className="mx-auto mb-4 h-2 w-64 overflow-hidden rounded-full bg-muted">
               <div 
                 className="h-full bg-amber transition-all duration-300 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-sm font-medium text-slate-600 animate-pulse">
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">
               Processando regras acadêmicas... {progress}%
             </p>
-            <p className="text-xs text-slate-400 mt-1">Isso não afeta o banco de dados real.</p>
+            <p className="text-xs text-muted-foreground mt-1">Isso não afeta o banco de dados real.</p>
           </div>
         )}
 
@@ -195,45 +195,45 @@ export default function SandboxConfiguracoesPage() {
             
             {/* GRID DE MÉTRICAS */}
             <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-2">
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-2">
                   <Users className="h-4 w-4" /> Impacto Estimado
                 </div>
-                <p className="text-2xl font-bold text-slate-900">{result.stats.students_affected}</p>
-                <p className="text-xs text-slate-400">Alunos afetados pelas novas regras</p>
+                <p className="text-2xl font-bold text-foreground">{result.stats.students_affected}</p>
+                <p className="text-xs text-muted-foreground">Alunos afetados pelas novas regras</p>
               </div>
               
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-2">
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-2">
                   <TrendingUp className="h-4 w-4" /> Aprovação Projetada
                 </div>
                 <p className="text-2xl font-bold text-emerald-600">{result.stats.projected_pass_rate}%</p>
-                <p className="text-xs text-slate-400">Baseado no histórico escolar</p>
+                <p className="text-xs text-muted-foreground">Baseado no histórico escolar</p>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-2">
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-2">
                   <Clock className="h-4 w-4" /> Tempo de Processamento
                 </div>
-                <p className="text-2xl font-bold text-slate-900">0.4s</p>
-                <p className="text-xs text-slate-400">Latência do cálculo de notas</p>
+                <p className="text-2xl font-bold text-foreground">0.4s</p>
+                <p className="text-xs text-muted-foreground">Latência do cálculo de notas</p>
               </div>
             </div>
 
             {/* LISTA DE CONFLITOS */}
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-              <div className="border-b border-slate-100 bg-slate-50 px-6 py-4">
-                <h3 className="text-sm font-bold text-slate-900">Relatório de Validação</h3>
+            <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+              <div className="border-b border-border bg-muted px-6 py-4">
+                <h3 className="text-sm font-bold text-foreground">Relatório de Validação</h3>
               </div>
               
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-border">
                 {result.conflicts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center p-8 text-center">
                     <div className="rounded-full bg-emerald-100 p-3 text-emerald-600 mb-3">
                       <CheckCircle2 className="h-6 w-6" />
                     </div>
-                    <p className="font-semibold text-slate-900">Tudo parece correto!</p>
-                    <p className="text-sm text-slate-500">Nenhum conflito crítico detectado.</p>
+                    <p className="font-semibold text-foreground">Tudo parece correto!</p>
+                    <p className="text-sm text-muted-foreground">Nenhum conflito crítico detectado.</p>
                   </div>
                 ) : (
                   result.conflicts.map((conflict, idx) => (
@@ -244,10 +244,10 @@ export default function SandboxConfiguracoesPage() {
                         <AlertOctagon className="h-5 w-5 shrink-0 text-amber-500" />
                       )}
                       <div>
-                        <p className={`text-sm font-medium ${conflict.severity === 'critical' ? 'text-red-700' : 'text-slate-700'}`}>
+                        <p className={`text-sm font-medium ${conflict.severity === 'critical' ? 'text-red-700' : 'text-foreground'}`}>
                           {conflict.message}
                         </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           {conflict.severity === 'critical' ? 'Correção obrigatória antes de publicar.' : 'Recomendamos verificar, mas não impede publicação.'}
                         </p>
                       </div>
@@ -266,7 +266,7 @@ export default function SandboxConfiguracoesPage() {
             <div className="mt-6 flex justify-center">
               <button 
                 onClick={runSimulation}
-                className="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1"
+                className="text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1"
               >
                 <FlaskConical className="h-3 w-3" />
                 Rodar nova simulação

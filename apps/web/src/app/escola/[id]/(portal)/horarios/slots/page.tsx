@@ -44,7 +44,7 @@ function formatSlotSaveError(json: any) {
 export default function HorariosSlotsPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">
+      <div className="min-h-screen bg-muted flex items-center justify-center text-muted-foreground">
         <Spinner className="text-amber" size={24} />
         <span className="ml-3 text-sm">A carregar horários...</span>
       </div>
@@ -226,12 +226,12 @@ function HorariosSlotsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950 font-sans">
+    <div className="min-h-screen bg-muted text-foreground font-sans">
       <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold">Estrutura de Horários</h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               Configure os tempos e intervalos que serão usados no quadro.
             </p>
           </div>
@@ -239,7 +239,7 @@ function HorariosSlotsContent() {
             <select
               value={selectedTurmaId ?? ""}
               onChange={(event) => setSelectedTurmaId(event.target.value || null)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+              className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
             >
               <option value="">Selecione uma turma</option>
               {loadingTurmas ? (
@@ -254,7 +254,7 @@ function HorariosSlotsContent() {
               )}
             </select>
           </div>
-          <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1">
+          <div className="flex items-center gap-2 rounded-full bg-muted p-1">
             <Link
               href={`${horarioBasePath}/slots`}
               className="rounded-full bg-slate-950 px-4 py-1.5 text-xs font-semibold text-white"
@@ -263,7 +263,7 @@ function HorariosSlotsContent() {
             </Link>
             <Link
               href={quadroHref}
-              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950"
+              className="rounded-full px-4 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
             >
               Quadro
             </Link>
@@ -301,9 +301,9 @@ function HorariosSlotsContent() {
           </div>
         )}
 
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="rounded-xl border border-border bg-card shadow-sm">
           {loading ? (
-            <div className="flex items-center justify-center py-16 text-slate-500">
+            <div className="flex items-center justify-center py-16 text-muted-foreground">
               <Spinner className="text-amber" size={24} />
               <span className="ml-3 text-sm">Carregando horários...</span>
             </div>
@@ -312,7 +312,7 @@ function HorariosSlotsContent() {
           )}
         </div>
 
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-muted-foreground">
           {saving
             ? "Salvando configuração..."
             : hasMounted && !online

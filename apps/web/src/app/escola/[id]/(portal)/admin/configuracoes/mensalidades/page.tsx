@@ -344,9 +344,9 @@ export default function MensalidadesEmolumentosPage() {
   };
 
   const renderServicoRows = (items: ServicoItem[], emptyLabel: string) => (
-    <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       {items.length === 0 ? (
-        <div className="bg-slate-50 px-4 py-8 text-center text-xs font-medium text-slate-500">
+        <div className="bg-muted px-4 py-8 text-center text-xs font-medium text-muted-foreground">
           {emptyLabel}
         </div>
       ) : (
@@ -360,22 +360,22 @@ export default function MensalidadesEmolumentosPage() {
             <div
               key={item.id}
               className={`grid gap-3 px-4 py-3.5 transition-colors md:grid-cols-[1fr_160px_180px] md:items-center ${
-                dirty ? "bg-amber-50/40" : "bg-white hover:bg-slate-50/60"
+                dirty ? "bg-amber-50/40" : "bg-card hover:bg-muted/60"
               }`}
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-900">{item.nome}</p>
+                  <p className="text-sm font-semibold text-foreground">{item.nome}</p>
                   <span className={`rounded px-2 py-0.5 text-[10px] font-semibold border ${
                     status === "Configurado"
-                      ? "border-slate-200 bg-slate-100 text-slate-700"
+                      ? "border-border bg-muted text-foreground"
                       : status === "Pendente"
                         ? "border-amber-200 bg-amber-50 text-amber-800"
-                        : "border-slate-200 bg-white text-slate-400"
+                        : "border-border bg-card text-muted-foreground"
                   }`}>
                     {status}
                   </span>
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 border border-slate-200">
+                  <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground border border-border">
                     {currentNum > 0 ? formatarKwanza(currentNum) : "Sem preço"}
                   </span>
                   {dirty && (
@@ -384,9 +384,9 @@ export default function MensalidadesEmolumentosPage() {
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-xs text-slate-500 font-mono text-[11px]">{item.codigo}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground font-mono text-[11px]">{item.codigo}</p>
                 {item.descricao && (
-                  <p className="mt-1 text-xs text-slate-600 line-clamp-1">{item.descricao}</p>
+                  <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{item.descricao}</p>
                 )}
                 <button
                   type="button"
@@ -395,7 +395,7 @@ export default function MensalidadesEmolumentosPage() {
                     setCatalogType(inferCatalogType(item.codigo));
                     setCatalogOpen(true);
                   }}
-                  className="mt-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline"
+                  className="mt-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
                 >
                   Editar detalhes
                 </button>
@@ -404,7 +404,7 @@ export default function MensalidadesEmolumentosPage() {
                     type="button"
                     onClick={() => void handleToggleServico(item)}
                     disabled={togglingItemId === item.id}
-                    className="ml-3 mt-1 text-xs font-medium text-slate-500 hover:text-slate-900 hover:underline disabled:opacity-50"
+                    className="ml-3 mt-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50"
                   >
                     {togglingItemId === item.id ? "A atualizar..." : item.ativo ? "Desativar serviço" : "Ativar serviço"}
                   </button>
@@ -412,14 +412,14 @@ export default function MensalidadesEmolumentosPage() {
               </div>
 
               <label className="block">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Preço Base (Kz)
                 </span>
                 <div
-                  className={`mt-1 flex items-center rounded-lg border bg-white px-3 py-1.5 transition-all ${
+                  className={`mt-1 flex items-center rounded-lg border bg-card px-3 py-1.5 transition-all ${
                     dirty
                       ? "border-amber-400 ring-2 ring-amber-400/20"
-                      : "border-slate-200 focus-within:border-slate-400"
+                      : "border-border focus-within:border-border"
                   }`}
                 >
                   <input
@@ -429,9 +429,9 @@ export default function MensalidadesEmolumentosPage() {
                     onChange={(event) =>
                       setPriceDrafts((prev) => ({ ...prev, [item.id]: event.target.value }))
                     }
-                    className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none"
+                    className="w-full bg-transparent text-sm font-semibold text-foreground outline-none"
                   />
-                  <span className="ml-1 text-xs font-medium text-slate-400">Kz</span>
+                  <span className="ml-1 text-xs font-medium text-muted-foreground">Kz</span>
                 </div>
               </label>
 
@@ -451,7 +451,7 @@ export default function MensalidadesEmolumentosPage() {
                     void handleSavePrice(item, 0);
                   }}
                   disabled={currentNum === 0 || priceSavingId === item.id}
-                  className="h-9 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-300 transition-colors"
+                  className="h-9 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground transition-colors"
                 >
                   Grátis
                 </button>
@@ -477,18 +477,18 @@ export default function MensalidadesEmolumentosPage() {
     >
       <div className="space-y-6 font-sans">
         {/* Segmented Navigation Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
-          <nav className="flex space-x-1 rounded-xl bg-slate-100 p-1">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-3">
+          <nav className="flex space-x-1 rounded-xl bg-muted p-1">
             <button
               type="button"
               onClick={() => setActiveTab("propinas")}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
                 activeTab === "propinas"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Banknote className="h-4 w-4 text-slate-500" />
+              <Banknote className="h-4 w-4 text-muted-foreground" />
               Propinas & Matrículas
             </button>
             <button
@@ -496,14 +496,14 @@ export default function MensalidadesEmolumentosPage() {
               onClick={() => setActiveTab("catalogo")}
               className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
                 activeTab === "catalogo"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Layers className="h-4 w-4 text-slate-500" />
+              <Layers className="h-4 w-4 text-muted-foreground" />
               Catálogo de Emolumentos & Documentos
               {catalogItems.length > 0 && (
-                <span className="ml-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                <span className="ml-1 rounded-full bg-muted-foreground/15 px-2 py-0.5 text-[10px] font-semibold text-foreground">
                   {catalogItems.length}
                 </span>
               )}
@@ -516,7 +516,7 @@ export default function MensalidadesEmolumentosPage() {
                 type="button"
                 onClick={handleInstallDefaults}
                 disabled={installingDefaults}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50 transition-colors shadow-sm"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${installingDefaults ? "animate-spin" : ""}`} />
                 {installingDefaults ? "A preparar..." : "Carregar Catálogo Padrão"}
@@ -548,38 +548,38 @@ export default function MensalidadesEmolumentosPage() {
         {activeTab === "catalogo" && (
           <div className="space-y-6">
             {/* Filter and Search Bar */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Pesquisar por nome, código ou palavra-chave..."
-                    className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-4 py-2 text-xs font-medium text-slate-900 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all"
+                    className="w-full rounded-lg border border-border bg-card pl-9 pr-4 py-2 text-xs font-medium text-foreground outline-none focus:border-border focus:ring-1 focus:ring-ring transition-all"
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-2.5 py-1.5 text-xs text-slate-600">
-                    <Filter className="h-3.5 w-3.5 text-slate-400" />
-                    <span className="font-semibold text-slate-500">Categoria:</span>
+                  <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/70 px-2.5 py-1.5 text-xs text-muted-foreground">
+                    <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-semibold text-muted-foreground">Categoria:</span>
                     <select
                       value={categoryFilter}
                       onChange={(e) => setCategoryFilter(e.target.value as any)}
-                      className="bg-transparent font-medium text-slate-900 outline-none cursor-pointer"
+                      className="bg-transparent font-medium text-foreground outline-none cursor-pointer"
                     >
                       <option value="todas">Todas</option>
                       <option value="documento">Documentos</option>
                       <option value="servico">Emolumentos</option>
                     </select>
                   </div>
-                  <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-2.5 py-1.5 text-xs text-slate-600">
-                    <span className="font-semibold text-slate-500">Preço:</span>
+                  <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/70 px-2.5 py-1.5 text-xs text-muted-foreground">
+                    <span className="font-semibold text-muted-foreground">Preço:</span>
                     <select
                       value={pricingFilter}
                       onChange={(e) => setPricingFilter(e.target.value as any)}
-                      className="bg-transparent font-medium text-slate-900 outline-none cursor-pointer"
+                      className="bg-transparent font-medium text-foreground outline-none cursor-pointer"
                     >
                       <option value="todos">Todos</option>
                       <option value="com_preco">Com Preço</option>
@@ -591,12 +591,12 @@ export default function MensalidadesEmolumentosPage() {
               </div>
 
               {/* Status metrics bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-3">
-                  <span>Total: <strong className="text-slate-900">{catalogItems.length}</strong></span>
-                  <span>Configurados: <strong className="text-slate-900">{configuredCount}</strong></span>
+                  <span>Total: <strong className="text-foreground">{catalogItems.length}</strong></span>
+                  <span>Configurados: <strong className="text-foreground">{configuredCount}</strong></span>
                   <span>Pendentes: <strong className="text-amber-800">{pendingCount}</strong></span>
-                  <span>Desativados: <strong className="text-slate-500">{inactiveCount}</strong></span>
+                  <span>Desativados: <strong className="text-muted-foreground">{inactiveCount}</strong></span>
                   {missingDefaultCount > 0 && (
                     <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-medium border border-amber-200/60">
                       {missingDefaultCount} item(s) padrão não configurados
@@ -607,7 +607,7 @@ export default function MensalidadesEmolumentosPage() {
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="text-slate-500 hover:text-slate-900 underline font-medium"
+                    className="text-muted-foreground hover:text-foreground underline font-medium"
                   >
                     Limpar pesquisa
                   </button>
@@ -626,12 +626,12 @@ export default function MensalidadesEmolumentosPage() {
               <section className="space-y-2">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-slate-500" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       Documentos
                     </h3>
                   </div>
-                  <span className="text-xs font-semibold text-slate-400">{documentos.length} item(s)</span>
+                  <span className="text-xs font-semibold text-muted-foreground">{documentos.length} item(s)</span>
                 </div>
                 {catalogLoading
                   ? renderServicoRows([], "A carregar documentos...")
@@ -641,12 +641,12 @@ export default function MensalidadesEmolumentosPage() {
               <section className="space-y-2">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-slate-500" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                    <Layers className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       Emolumentos & Serviços
                     </h3>
                   </div>
-                  <span className="text-xs font-semibold text-slate-400">{emolumentos.length} item(s)</span>
+                  <span className="text-xs font-semibold text-muted-foreground">{emolumentos.length} item(s)</span>
                 </div>
                 {catalogLoading
                   ? renderServicoRows([], "A carregar emolumentos...")
@@ -665,7 +665,7 @@ export default function MensalidadesEmolumentosPage() {
                     <p className="text-xs font-semibold text-white">
                       {dirtyItemIds.length} preço(s) alterado(s)
                     </p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-muted-foreground">
                       Guarde as alterações para aplicar no balcão da secretaria.
                     </p>
                   </div>
@@ -683,7 +683,7 @@ export default function MensalidadesEmolumentosPage() {
                     type="button"
                     onClick={handleSaveAllDirtyPrices}
                     disabled={batchSaving}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-slate-900 hover:bg-slate-100 transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-card px-4 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
                   >
                     {batchSaving ? (
                       <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -708,7 +708,7 @@ export default function MensalidadesEmolumentosPage() {
       >
         <div className="space-y-5 font-sans">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-semibold text-slate-600">Tipo de Item:</span>
+            <span className="text-xs font-semibold text-muted-foreground">Tipo de Item:</span>
             {([
               { id: "servico", label: "Emolumento / Serviço" },
               { id: "documento", label: "Documento Oficial" },
@@ -726,7 +726,7 @@ export default function MensalidadesEmolumentosPage() {
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                   catalogType === item.id
                     ? "bg-slate-900 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    : "bg-muted text-muted-foreground hover:bg-muted-foreground/15"
                 }`}
               >
                 {item.label}
@@ -742,7 +742,7 @@ export default function MensalidadesEmolumentosPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-xs font-semibold text-slate-600">Código do Sistema</label>
+              <label className="text-xs font-semibold text-muted-foreground">Código do Sistema</label>
               <input
                 value={catalogForm.codigo}
                 onChange={(event) => {
@@ -752,17 +752,17 @@ export default function MensalidadesEmolumentosPage() {
                   setCatalogForm({ ...catalogForm, codigo });
                 }}
                 placeholder={catalogType === "documento" ? "DOC_DECLARACAO" : "SERV_TAXA"}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-mono outline-none focus:border-slate-400"
+                className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm font-mono outline-none focus:border-border"
               />
               {catalogType === "documento" && (
-                <p className="mt-1 text-[10px] text-slate-400">
+                <p className="mt-1 text-[10px] text-muted-foreground">
                   Documentos oficiais usam o prefixo <strong>DOC_</strong> por convenção.
                 </p>
               )}
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-600">Nome de Exibição</label>
+              <label className="text-xs font-semibold text-muted-foreground">Nome de Exibição</label>
               <input
                 value={catalogForm.nome}
                 onChange={(event) => {
@@ -775,19 +775,19 @@ export default function MensalidadesEmolumentosPage() {
                   setCatalogForm({ ...catalogForm, nome, codigo });
                 }}
                 placeholder="Declaração de Frequência"
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium outline-none focus:border-slate-400"
+                className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium outline-none focus:border-border"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-600">Preço Base (Kz)</label>
+              <label className="text-xs font-semibold text-muted-foreground">Preço Base (Kz)</label>
               <input
                 type="number"
                 value={catalogForm.valor_base}
                 onChange={(event) => setCatalogForm({ ...catalogForm, valor_base: Number(event.target.value) })}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-slate-400"
+                className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold outline-none focus:border-border"
               />
-              <label className="mt-2 flex items-center gap-2 text-xs font-medium text-slate-600 cursor-pointer">
+              <label className="mt-2 flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer">
                 <input
                   type="checkbox"
                   checked={Number(catalogForm.valor_base ?? 0) === 0}
@@ -796,18 +796,18 @@ export default function MensalidadesEmolumentosPage() {
                       setCatalogForm({ ...catalogForm, valor_base: 0 });
                     }
                   }}
-                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                  className="h-4 w-4 rounded border-border text-foreground focus:ring-slate-900"
                 />
                 Serviço Isento / Gratuito (0 Kz)
               </label>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-600">Status</label>
+              <label className="text-xs font-semibold text-muted-foreground">Status</label>
               <select
                 value={catalogForm.ativo ? "ativo" : "inativo"}
                 onChange={(event) => setCatalogForm({ ...catalogForm, ativo: event.target.value === "ativo" })}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400 cursor-pointer"
+                className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-border cursor-pointer"
               >
                 <option value="ativo">Ativo (visível no balcão)</option>
                 <option value="inativo">Inativo (oculto)</option>
@@ -815,26 +815,26 @@ export default function MensalidadesEmolumentosPage() {
             </div>
 
             <div className="md:col-span-2">
-              <label className="text-xs font-semibold text-slate-600">Descrição / Observações</label>
+              <label className="text-xs font-semibold text-muted-foreground">Descrição / Observações</label>
               <textarea
                 value={catalogForm.descricao ?? ""}
                 onChange={(event) => setCatalogForm({ ...catalogForm, descricao: event.target.value })}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+                className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-border"
                 rows={2}
                 placeholder="Descrição resumida do serviço ou finalidade do documento..."
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-            <span className="text-xs text-slate-400">
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            <span className="text-xs text-muted-foreground">
               {catalogLoading ? "A carregar..." : `${catalogItems.length} item(s) cadastrados no total`}
             </span>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setCatalogOpen(false)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                className="rounded-lg border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
               >
                 Cancelar
               </button>

@@ -22,18 +22,18 @@ export default function EstruturaPage({ params }: Props) {
         <div>
           <Link
             href={buildContextualPortalHref(escolaId, "/admin/configuracoes", pathname)}
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" /> Voltar as definicoes
           </Link>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-black text-slate-900">Oferta Formativa</h1>
-              <p className="text-sm font-medium text-slate-500 mt-1">
+              <h1 className="text-3xl font-black text-foreground">Oferta Formativa</h1>
+              <p className="text-sm font-medium text-muted-foreground mt-1">
                 Gerencie os cursos e niveis de ensino disponiveis na escola.
               </p>
             </div>
-            <div className="hidden md:block p-3 bg-white border border-slate-200 rounded-xl shadow-sm text-slate-400">
+            <div className="hidden md:block p-3 bg-card border border-border rounded-xl shadow-sm text-muted-foreground">
               <Settings className="w-6 h-6" />
             </div>
           </div>

@@ -45,7 +45,7 @@ export default async function Page({
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Extratos de Alunos</h1>
-          <p className="text-sm text-gray-600">Busque um aluno e gere o extrato (JSON ou PDF)</p>
+          <p className="text-sm text-muted-foreground">Busque um aluno e gere o extrato (JSON ou PDF)</p>
         </div>
         <form action="" className="flex gap-2 text-sm">
           <input type="text" name="q" defaultValue={q} placeholder="Buscar por nome" className="border rounded px-2 py-1" />
@@ -53,10 +53,10 @@ export default async function Page({
         </form>
       </div>
 
-      <div className="bg-white rounded-xl shadow border p-4 overflow-x-auto">
+      <div className="bg-card rounded-xl shadow border p-4 overflow-x-auto">
         <table className="min-w-full text-sm align-middle">
           <thead>
-            <tr className="text-left text-gray-500 border-b">
+            <tr className="text-left text-muted-foreground border-b">
               <th className="py-2 pr-4">Nome</th>
               <th className="py-2 pr-4">BI</th>
               <th className="py-2 pr-4">Responsável</th>
@@ -77,7 +77,7 @@ export default async function Page({
               </tr>
             ))}
             {alunos.length === 0 && (
-              <tr><td className="py-6 text-center text-gray-500" colSpan={5}>Nenhum aluno encontrado.</td></tr>
+              <tr><td className="py-6 text-center text-muted-foreground" colSpan={5}>Nenhum aluno encontrado.</td></tr>
             )}
           </tbody>
         </table>

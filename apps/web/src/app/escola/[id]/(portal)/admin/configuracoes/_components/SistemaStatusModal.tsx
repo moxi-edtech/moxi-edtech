@@ -227,18 +227,18 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
       ) : (
         <div className="space-y-8">
             {/* HERO CARD: STATUS GERAL */}
-            <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm">
                 <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between relative z-10">
                     <div>
                     <div className="flex items-center gap-2 mb-2">
                         <div className="rounded-lg bg-slate-900 p-2 text-white">
                         <LayoutDashboard className="h-5 w-5" />
                         </div>
-                        <h2 className="text-xl font-bold text-slate-900">
+                        <h2 className="text-xl font-bold text-foreground">
                         {setupState?.completion_percent === 100 ? "Escola Pronta para Decolar! 🚀" : "Vamos configurar sua escola"}
                         </h2>
                     </div>
-                    <p className="text-sm text-slate-500 max-w-lg">
+                    <p className="text-sm text-muted-foreground max-w-lg">
                         Siga as etapas abaixo para garantir que o ano letivo comece sem erros. 
                         Cada módulo completado libera novas funcionalidades.
                     </p>
@@ -247,15 +247,15 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
                     {/* Progress Circle/Bar */}
                     <div className="flex items-center gap-5 min-w-[200px]">
                     <div className="text-right flex-1">
-                        <span className="block text-3xl font-bold text-slate-900">
+                        <span className="block text-3xl font-bold text-foreground">
                         {setupState?.completion_percent ?? 0}%
                         </span>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Concluído</span>
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Concluído</span>
                     </div>
                     {/* Visual Bar Vertical */}
-                    <div className="h-16 w-3 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-16 w-3 rounded-full bg-muted overflow-hidden">
                         <div 
-                        className="w-full rounded-full bg-[#E3B23C] shadow-[0_0_10px_rgba(227,178,60,0.5)] transition-all duration-1000 ease-out"
+                        className="w-full rounded-full bg-klasse-gold shadow-[0_0_10px_rgba(227,178,60,0.5)] transition-all duration-1000 ease-out"
                         style={{ height: `${setupState?.completion_percent ?? 0}%`, marginTop: `${100 - (setupState?.completion_percent ?? 0)}%` }} 
                         />
                     </div>
@@ -263,20 +263,20 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
                 </div>
                 
                 {/* Background decoration */}
-                <div className="absolute top-0 right-0 h-full w-32 bg-gradient-to-l from-slate-50 to-transparent pointer-events-none" />
+                <div className="absolute top-0 right-0 h-full w-32 bg-gradient-to-l from-muted to-transparent pointer-events-none" />
             </div>
 
             {/* ALERTA DE NEXT ACTION (Próximo Passo) */}
             {setupState?.next_action && (
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm ring-1 ring-slate-200/50">
+            <div className="flex items-center justify-between rounded-xl border border-border bg-muted p-4 shadow-sm ring-1 ring-ring/50">
                 <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-600">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted-foreground/15 text-muted-foreground">
                     <ArrowRight className="h-5 w-5" />
                 </div>
                 <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sugestão do Sistema</p>
-                    <p className="text-sm font-semibold text-slate-900">
-                    Próximo passo: <span className="text-[#1F6B3B]">{setupState.next_action.label}</span>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sugestão do Sistema</p>
+                    <p className="text-sm font-semibold text-foreground">
+                    Próximo passo: <span className="text-klasse-green dark:text-klasse-green-300">{setupState.next_action.label}</span>
                     </p>
                 </div>
                 </div>
@@ -345,36 +345,36 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
                     href={mod.href}
                     className={`group relative flex flex-col justify-between overflow-hidden rounded-xl border p-6 transition-all hover:shadow-md hover:-translate-y-0.5 ${
                     isDone 
-                        ? "border-[#1F6B3B]/20 bg-[#1F6B3B]/5" // Estilo "Done" (Verde Brand)
-                        : "border-slate-200 bg-white hover:border-[#E3B23C]/50" // Estilo "Pending" (Hover Gold)
+                        ? "border-klasse-green/20 bg-klasse-green/5" // Estilo "Done" (Verde Brand)
+                        : "border-border bg-card hover:border-klasse-gold/50" // Estilo "Pending" (Hover Gold)
                     }`}
                 >
                     <div>
                     <div className="flex items-start justify-between mb-4">
                         <div className={`rounded-lg p-3 transition-colors ${
                         isDone 
-                            ? "bg-[#1F6B3B]/10 text-[#1F6B3B]" 
-                            : "bg-slate-100 text-slate-500 group-hover:bg-[#E3B23C]/10 group-hover:text-[#E3B23C]"
+                            ? "bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300"
+                            : "bg-muted text-muted-foreground group-hover:bg-klasse-gold/10 group-hover:text-klasse-gold-700 dark:hover:text-klasse-gold-300"
                         }`}>
                         <mod.icon className="h-6 w-6" strokeWidth={1.5} />
                         </div>
                         {isDone ? (
-                        <CheckCircle2 className="h-5 w-5 text-[#1F6B3B]" />
+                        <CheckCircle2 className="h-5 w-5 text-klasse-green dark:text-klasse-green-300" />
                         ) : (
-                        <Circle className="h-5 w-5 text-slate-200 group-hover:text-slate-300" />
+                        <Circle className="h-5 w-5 text-slate-200 group-hover:text-muted-foreground" />
                         )}
                     </div>
                     
-                    <h3 className={`font-bold transition-colors ${isDone ? "text-[#1F6B3B]" : "text-slate-900 group-hover:text-[#E3B23C]"}`}>
+                    <h3 className={`font-bold transition-colors ${isDone ? "text-klasse-green dark:text-klasse-green-300" : "text-foreground group-hover:text-klasse-gold-700 dark:hover:text-klasse-gold-300"}`}>
                         {mod.label}
                     </h3>
-                    <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                    <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
                         {mod.desc}
                     </p>
                     </div>
 
                     <div className={`mt-6 flex items-center gap-1 text-xs font-bold uppercase tracking-wider transition-colors ${
-                    isDone ? "text-[#1F6B3B]" : "text-slate-400 group-hover:text-[#E3B23C]"
+                    isDone ? "text-klasse-green dark:text-klasse-green-300" : "text-muted-foreground group-hover:text-klasse-gold-700 dark:hover:text-klasse-gold-300"
                     }`}>
                     {isDone ? "Revisar" : "Configurar"} 
                     <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />

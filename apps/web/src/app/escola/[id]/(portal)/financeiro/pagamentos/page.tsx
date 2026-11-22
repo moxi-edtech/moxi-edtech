@@ -40,10 +40,10 @@ export default async function Page(props: {
         {escolaId ? <FilaValidacaoPagamentos escolaId={escolaId} /> : null}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
-        <div className="flex flex-col gap-5 border-b border-slate-100 pb-5 lg:flex-row lg:items-end lg:justify-between">
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm md:p-6">
+        <div className="flex flex-col gap-5 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Mostrar pagamentos dos últimos
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
@@ -54,7 +54,7 @@ export default async function Page(props: {
                   className={`rounded-lg border px-3 py-2 font-semibold transition ${
                     days === d
                       ? "border-emerald-600 bg-emerald-600 text-white"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:text-emerald-700"
+                      : "border-border bg-card text-foreground hover:border-emerald-200 hover:text-emerald-700"
                   }`}
                 >
                   {d === "1" ? "1 dia" : `${d} dias`}
@@ -69,7 +69,7 @@ export default async function Page(props: {
               name="q"
               placeholder="Pesquisar por método ou referência…"
               defaultValue={q}
-              className="h-10 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-slate-400"
+              className="h-10 min-w-0 flex-1 rounded-lg border border-border px-3 text-sm outline-none focus:border-border"
             />
             <input type="hidden" name="days" value={days} />
             <button className="h-10 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700">
@@ -79,12 +79,12 @@ export default async function Page(props: {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-slate-900">Histórico de recebimentos</h2>
+          <h2 className="text-sm font-semibold text-foreground">Histórico de recebimentos</h2>
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-500">Exportar:</span>
+            <span className="text-muted-foreground">Exportar:</span>
             <Link
               href={`/escola/${escolaParam}/financeiro/pagamentos/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-lg border border-border px-3 py-1.5 font-semibold text-muted-foreground hover:bg-muted"
               target="_blank"
               rel="noreferrer"
             >
@@ -92,7 +92,7 @@ export default async function Page(props: {
             </Link>
             <Link
               href={`/escola/${escolaParam}/financeiro/pagamentos/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-lg border border-border px-3 py-1.5 font-semibold text-muted-foreground hover:bg-muted"
               target="_blank"
               rel="noreferrer"
             >

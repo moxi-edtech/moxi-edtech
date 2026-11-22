@@ -27,7 +27,7 @@ export default async function RelatorioPropinasSecretariaPage() {
         ]}
       />
       
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-6">
         <PropinasReportClient />
       </div>
     </div>

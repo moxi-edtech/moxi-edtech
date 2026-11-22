@@ -67,7 +67,7 @@ export default function AvaliacaoUnificadaClient() {
 
   if (!escolaId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <Skeleton className="h-4 w-40" />
       </div>
     );
@@ -180,44 +180,44 @@ export default function AvaliacaoUnificadaClient() {
 
   // Helper Visual KLASSE
   const FormulaVisual = () => (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-5 font-mono text-sm text-slate-600 border border-slate-100">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted p-5 font-mono text-sm text-muted-foreground border border-border">
       {avaliacaoConfig.componentes.map((c, idx) => (
         <div key={c.code} className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 shadow-sm ring-1 ring-slate-200">
-            <Variable className="h-3.5 w-3.5 text-slate-400" />
-            <span className="font-bold text-slate-900">{c.code}</span>
+          <span className="flex items-center gap-1.5 rounded-lg bg-card px-2.5 py-1.5 shadow-sm ring-1 ring-ring">
+            <Variable className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="font-bold text-foreground">{c.code}</span>
           </span>
-          <span className="text-slate-400 font-medium">×</span>
+          <span className="text-muted-foreground font-medium">×</span>
           {/* TOKEN: Gold apenas para destaque de valor */}
-          <span className="font-bold text-[#E3B23C]">{c.peso / 100}</span>
+          <span className="font-bold text-klasse-gold-700 dark:text-klasse-gold-300">{c.peso / 100}</span>
           {idx < avaliacaoConfig.componentes.length - 1 && (
-            <span className="font-bold text-slate-400 ml-1">+</span>
+            <span className="font-bold text-muted-foreground ml-1">+</span>
           )}
         </div>
       ))}
       {avaliacaoConfig.componentes.length === 0 && (
-        <span className="text-slate-400 italic text-xs">Nenhuma fórmula definida.</span>
+        <span className="text-muted-foreground italic text-xs">Nenhuma fórmula definida.</span>
       )}
     </div>
   );
 
   const PreviewPauta = () => (
-    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-sm font-semibold text-slate-900">Preview de pauta</h4>
-          <p className="text-xs text-slate-500">Simulação baseada no modelo atual.</p>
+          <h4 className="text-sm font-semibold text-foreground">Preview de pauta</h4>
+          <p className="text-xs text-muted-foreground">Simulação baseada no modelo atual.</p>
         </div>
-        <span className="text-[10px] font-bold text-slate-400 uppercase">Exemplo</span>
+        <span className="text-[10px] font-bold text-muted-foreground uppercase">Exemplo</span>
       </div>
 
       {previewComponentes.length === 0 ? (
-        <div className="mt-4 text-xs text-slate-500">Nenhum componente ativo para simular.</div>
+        <div className="mt-4 text-xs text-muted-foreground">Nenhum componente ativo para simular.</div>
       ) : (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-left text-slate-500">
+              <tr className="text-left text-muted-foreground">
                 <th className="py-2 pr-3">Aluno</th>
                 {previewComponentes.map((comp) => (
                   <th key={comp.code} className="py-2 pr-3">
@@ -227,16 +227,16 @@ export default function AvaliacaoUnificadaClient() {
                 <th className="py-2">Média</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {previewRows.map((row) => (
-                <tr key={row.id} className="text-slate-700">
+                <tr key={row.id} className="text-foreground">
                   <td className="py-2 pr-3 font-medium">{row.nome}</td>
                   {row.notas.map((nota, index) => (
                     <td key={`${row.id}-${index}`} className="py-2 pr-3">
                       {nota}
                     </td>
                   ))}
-                  <td className="py-2 font-semibold text-slate-900">{row.media}</td>
+                  <td className="py-2 font-semibold text-foreground">{row.media}</td>
                 </tr>
               ))}
             </tbody>
@@ -307,7 +307,7 @@ export default function AvaliacaoUnificadaClient() {
             <button
               onClick={() => setIsEditing(false)}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-all disabled:opacity-50"
             >
               Cancelar
             </button>
@@ -315,7 +315,7 @@ export default function AvaliacaoUnificadaClient() {
               onClick={handleSave}
               disabled={saving}
               // TOKEN: Gold (#E3B23C) para Ação de Salvar (CTA)
-              className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:brightness-95 transition-all disabled:opacity-70 disabled:grayscale"
+              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-6 py-2.5 text-sm font-bold text-klasse-gold-900 shadow-sm hover:brightness-95 transition-all disabled:opacity-70 disabled:grayscale"
             >
               {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Salvar Alterações
@@ -333,22 +333,22 @@ export default function AvaliacaoUnificadaClient() {
             <div className="animate-in fade-in duration-500 space-y-6">
               
               {/* Card Principal: Fórmula */}
-              <div className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-[#E3B23C]/50">
+              <div className="group rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:border-klasse-gold/50">
                 <div className="mb-6 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {/* TOKEN: Icon Brand Green (#1F6B3B) */}
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F6B3B]/10 text-[#1F6B3B]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300">
                       <Calculator className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">Modelo de Avaliação</p>
-                      <p className="text-xs text-slate-500 font-medium">
+                      <p className="text-sm font-bold text-foreground">Modelo de Avaliação</p>
+                      <p className="text-xs text-muted-foreground font-medium">
                         {selectedModelo?.nome ?? (modeloAvaliacao || 'Sem modelo')}
                       </p>
                     </div>
                   </div>
                   {/* TOKEN: Badge Status */}
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#1F6B3B] px-3 py-1 text-[10px] font-bold text-white uppercase tracking-wide shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-klasse-green px-3 py-1 text-[10px] font-bold text-white uppercase tracking-wide shadow-sm">
                     <Check className="h-3 w-3" strokeWidth={3} /> Ativo
                   </span>
                 </div>
@@ -360,31 +360,31 @@ export default function AvaliacaoUnificadaClient() {
               {/* Grid Secundário */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Card Frequência */}
-                <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
                       <GraduationCap className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aprovação por Frequência</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Aprovação por Frequência</p>
                       <div className="mt-0.5 flex items-baseline gap-1">
-                        <span className="text-2xl font-bold text-slate-900">{frequenciaMinPercent}%</span>
-                        <span className="text-xs text-slate-500">mínimo exigido</span>
+                        <span className="text-2xl font-bold text-foreground">{frequenciaMinPercent}%</span>
+                        <span className="text-xs text-muted-foreground">mínimo exigido</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Card Escopo */}
-                <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
                       <Calculator className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Escopo da Regra</p>
-                      <p className="mt-0.5 text-sm font-bold text-slate-900">Padrão da escola</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Escopo da Regra</p>
+                      <p className="mt-0.5 text-sm font-bold text-foreground">Padrão da escola</p>
+                      <p className="text-xs text-muted-foreground">
                         Aplica-se a todos os cursos/níveis. Exceções são definidas em Disciplinas.
                       </p>
                     </div>
@@ -392,14 +392,14 @@ export default function AvaliacaoUnificadaClient() {
                 </div>
 
                 {/* Card Modelo Chamada */}
-                <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
                       <CalendarClock className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Registro de Presença</p>
-                      <p className="mt-0.5 text-lg font-bold text-slate-900">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Registro de Presença</p>
+                      <p className="mt-0.5 text-lg font-bold text-foreground">
                         {frequenciaModelo === 'POR_AULA' ? 'Por Tempo de Aula' : 'Dia Letivo Único'}
                       </p>
                     </div>
@@ -407,23 +407,23 @@ export default function AvaliacaoUnificadaClient() {
                 </div>
 
                 {/* Card Progressão */}
-                <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:col-span-3">
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm md:col-span-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E3B23C]/15 text-[#A87500]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-klasse-gold/15 text-[#A87500]">
                         <GraduationCap className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Progressão RAA</p>
-                        <p className="mt-1 text-sm font-bold text-slate-900">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Progressão RAA</p>
+                        <p className="mt-1 text-sm font-bold text-foreground">
                           {policyConfigured ? "Política configurada" : "Configuração pendente"}
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           {permitirInscricaoCondicional ? "Permite inscrição condicional quando há recurso." : "Inscrição condicional bloqueada até decisão explícita."}
                         </p>
                       </div>
                     </div>
-                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase ${policyConfigured ? "bg-[#1F6B3B] text-white" : "bg-amber-100 text-amber-800"}`}>
+                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase ${policyConfigured ? "bg-klasse-green text-white" : "bg-amber-100 text-amber-800"}`}>
                       {policyConfigured ? "Ativo" : "Pendente"}
                     </span>
                   </div>
@@ -436,7 +436,7 @@ export default function AvaliacaoUnificadaClient() {
           {isEditing && (
             <div className="animate-in slide-in-from-bottom-2 duration-300">
               {/* TOKEN: Edição Ativa ganha Ring Gold Suave */}
-              <div className="rounded-xl border border-[#E3B23C]/30 bg-slate-50/50 p-6 ring-4 ring-[#E3B23C]/5">
+              <div className="rounded-xl border border-klasse-gold/30 bg-muted/50 p-6 ring-4 ring-klasse-gold/5">
                 <AcademicStep2Config
                   frequenciaModelo={frequenciaModelo}
                   onFrequenciaModeloChange={setFrequenciaModelo}
@@ -448,15 +448,15 @@ export default function AvaliacaoUnificadaClient() {
                   avaliacaoConfig={avaliacaoConfig}
                 />
 
-                <div className="mt-4 text-xs text-slate-600">
+                <div className="mt-4 text-xs text-muted-foreground">
                   Regra aplicada por padrão a todos os cursos/níveis. Para exceções, configure o modo de avaliação em Disciplinas.
                 </div>
 
-                <div className="mt-8 rounded-xl border border-slate-200 bg-white p-5">
+                <div className="mt-8 rounded-xl border border-border bg-card p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">Progressão e inscrição condicional</h3>
-                      <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-500">
+                      <h3 className="text-sm font-bold text-foreground">Progressão e inscrição condicional</h3>
+                      <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
                         Estas regras alimentam a decisão global da RAA e a virada de ano. O sistema nunca promove um aluno sem dados completos ou sem política configurada.
                       </p>
                     </div>
@@ -465,33 +465,33 @@ export default function AvaliacaoUnificadaClient() {
                     </span>
                   </div>
                   <div className="mt-5 grid gap-3 md:grid-cols-2">
-                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4 hover:bg-slate-50">
+                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-4 hover:bg-muted">
                       <input
                         type="checkbox"
-                        className="mt-0.5 h-4 w-4 accent-[#1F6B3B]"
+                        className="mt-0.5 h-4 w-4 accent-klasse-green"
                         checked={permitirProgressaoComRecurso}
                         onChange={(event) => setPermitirProgressaoComRecurso(event.target.checked)}
                       />
                       <span>
-                        <span className="block text-sm font-semibold text-slate-800">Permitir progressão com recurso</span>
-                        <span className="mt-1 block text-xs text-slate-500">Mantém o aluno elegível para a etapa seguinte enquanto aguarda o recurso.</span>
+                        <span className="block text-sm font-semibold text-foreground">Permitir progressão com recurso</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">Mantém o aluno elegível para a etapa seguinte enquanto aguarda o recurso.</span>
                       </span>
                     </label>
-                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4 hover:bg-slate-50">
+                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-4 hover:bg-muted">
                       <input
                         type="checkbox"
-                        className="mt-0.5 h-4 w-4 accent-[#1F6B3B]"
+                        className="mt-0.5 h-4 w-4 accent-klasse-green"
                         checked={permitirInscricaoCondicional}
                         onChange={(event) => setPermitirInscricaoCondicional(event.target.checked)}
                       />
                       <span>
-                        <span className="block text-sm font-semibold text-slate-800">Permitir inscrição condicional</span>
-                        <span className="mt-1 block text-xs text-slate-500">Regista a matrícula na etapa seguinte e mantém as disciplinas pendentes visíveis.</span>
+                        <span className="block text-sm font-semibold text-foreground">Permitir inscrição condicional</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">Regista a matrícula na etapa seguinte e mantém as disciplinas pendentes visíveis.</span>
                       </span>
                     </label>
                   </div>
-                  <div className="mt-4 flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                  <div className="mt-4 flex items-start gap-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                     <p>A alteração só entra em vigor depois de clicar em <strong>Salvar Alterações</strong>. O sistema preserva o estado anterior se o salvamento falhar.</p>
                   </div>
                 </div>

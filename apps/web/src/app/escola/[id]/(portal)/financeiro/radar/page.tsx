@@ -183,7 +183,7 @@ export default function SistemaCobrancas() {
   };
 
   return (
-    <div className="font-sora text-slate-900">
+    <div className="font-sora text-foreground">
       {/* Sem `<main>` próprio: o AppShell já abre um e soma `p-4 md:p-6`. Dois
           `<main>` aninhados são HTML inválido e duplicam a goteira. A largura e
           a goteira seguem o `AlunosListClient`. */}
@@ -215,7 +215,7 @@ export default function SistemaCobrancas() {
 
         <nav
           aria-label="Vistas de cobranças"
-          className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm"
+          className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2 shadow-sm"
         >
           <span
             aria-current="page"
@@ -230,7 +230,7 @@ export default function SistemaCobrancas() {
                 new URL("../turmas-alunos", window.location.href).toString()
               );
             }}
-            className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            className="rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             Alunos e turmas
           </button>
@@ -241,10 +241,10 @@ export default function SistemaCobrancas() {
           
           {/* COLUNA ESQUERDA - Radar (Ocupa 2/3 em telas grandes) */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="mb-4">
-                <h2 className="font-semibold text-lg text-slate-900">Radar de Inadimplência</h2>
-                <p className="text-sm text-slate-500">
+                <h2 className="font-semibold text-lg text-foreground">Radar de Inadimplência</h2>
+                <p className="text-sm text-muted-foreground">
                   Selecione alunos em atraso para criar campanhas de cobrança.
                 </p>
               </div>
@@ -259,11 +259,11 @@ export default function SistemaCobrancas() {
           <div className="space-y-6">
             
             {/* Box de Seleção Atual */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="font-semibold text-sm text-slate-900 mb-2 uppercase tracking-wide">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <h3 className="font-semibold text-sm text-foreground mb-2 uppercase tracking-wide">
                 Público Alvo
               </h3>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 {selecionadosRadar.length > 0 ? (
                   <span className="font-medium text-emerald">
                     {selecionadosRadar.length} aluno(s) selecionado(s)
@@ -275,25 +275,25 @@ export default function SistemaCobrancas() {
             </div>
 
             {/* Lista de Campanhas */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="font-semibold text-sm text-slate-900 mb-4 uppercase tracking-wide">
+            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <h3 className="font-semibold text-sm text-foreground mb-4 uppercase tracking-wide">
                 Últimas Campanhas
               </h3>
               {loadingCampanhas ? (
-                <p className="text-sm text-slate-400">A carregar...</p>
+                <p className="text-sm text-muted-foreground">A carregar...</p>
               ) : campanhas.length === 0 ? (
-                <p className="text-sm text-slate-400">Nenhuma campanha encontrada.</p>
+                <p className="text-sm text-muted-foreground">Nenhuma campanha encontrada.</p>
               ) : (
                 <ul className="space-y-3">
                   {campanhas.slice(0, 5).map((c) => (
-                    <li key={c.id} className="flex flex-col p-3 rounded-xl border border-slate-200 bg-slate-50">
+                    <li key={c.id} className="flex flex-col p-3 rounded-xl border border-border bg-muted">
                       <div className="flex justify-between items-start mb-1">
                         <span className="font-semibold text-sm truncate">{c.nome}</span>
-                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-muted-foreground/15 text-muted-foreground">
                           {c.status}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center text-xs text-slate-500">
+                      <div className="flex justify-between items-center text-xs text-muted-foreground">
                         <span>{getCanalNome(c.canal)}</span>
                         <span>{c.created_at ? new Date(c.created_at).toLocaleDateString() : "-"}</span>
                       </div>
@@ -308,12 +308,12 @@ export default function SistemaCobrancas() {
         {/* MODAL NOVA CAMPANHA */}
         {mostrarCriarCampanha && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-200 shadow-xl">
-              <div className="flex justify-between items-center p-5 border-b border-slate-200 bg-slate-50/50">
-                <h2 className="text-lg font-bold text-slate-900">Nova Campanha</h2>
+            <div className="bg-card rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-border shadow-xl">
+              <div className="flex justify-between items-center p-5 border-b border-border bg-muted/50">
+                <h2 className="text-lg font-bold text-foreground">Nova Campanha</h2>
                 <button 
                   onClick={() => setMostrarCriarCampanha(false)}
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -321,12 +321,12 @@ export default function SistemaCobrancas() {
 
               <form onSubmit={handleCreateSubmit} className="p-5 space-y-5">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Título da Campanha</label>
+                  <label className="block text-sm font-semibold text-foreground mb-1.5">Título da Campanha</label>
                   <input
                     type="text"
                     value={novaCampanha.nome}
                     onChange={(e) => setNovaCampanha({ ...novaCampanha, nome: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
                     placeholder="Ex: Cobrança Mensalidade Março"
                     required
                   />
@@ -334,11 +334,11 @@ export default function SistemaCobrancas() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Canal</label>
+                    <label className="block text-sm font-semibold text-foreground mb-1.5">Canal</label>
                     <select
                       value={novaCampanha.canal}
                       onChange={(e) => setNovaCampanha({ ...novaCampanha, canal: e.target.value as Campanha['canal'] })}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
+                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
                       required
                     >
                       <option value="whatsapp">WhatsApp</option>
@@ -349,11 +349,11 @@ export default function SistemaCobrancas() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Template</label>
+                    <label className="block text-sm font-semibold text-foreground mb-1.5">Template</label>
                     <select
                       value={novaCampanha.template_id ?? ""}
                       onChange={(e) => setNovaCampanha({ ...novaCampanha, template_id: e.target.value })}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
+                      className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm outline-none transition-all focus:border-amber focus:ring-4 focus:ring-amber/20"
                     >
                       <option value="">Selecione...</option>
                       {templates.map((t) => (

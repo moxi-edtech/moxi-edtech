@@ -77,10 +77,10 @@ export default async function RecebimentosPage({
               label: "Histórico",
               icon: <History className="h-4 w-4" />,
               content: (
-                <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+                <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm md:p-6">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         Mostrar pagamentos dos últimos
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -91,7 +91,7 @@ export default async function RecebimentosPage({
                             className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
                               days === period
                                 ? "border-emerald-600 bg-emerald-600 text-white"
-                                : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                : "border-border text-muted-foreground hover:bg-muted"
                             }`}
                           >
                             {period === "1" ? "1 dia" : `${period} dias`}
@@ -107,7 +107,7 @@ export default async function RecebimentosPage({
                         name="q"
                         defaultValue={q}
                         placeholder="Pesquisar por método ou referência…"
-                        className="h-10 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-slate-400"
+                        className="h-10 min-w-0 flex-1 rounded-lg border border-border px-3 text-sm outline-none focus:border-border"
                       />
                       <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white">
                         Pesquisar <ArrowRight className="h-4 w-4" />
@@ -115,18 +115,18 @@ export default async function RecebimentosPage({
                     </form>
                   </div>
                   <div className="flex justify-end gap-2 text-xs">
-                    <span className="self-center text-slate-500">Exportar:</span>
+                    <span className="self-center text-muted-foreground">Exportar:</span>
                     <Link
                       href={`/escola/${escolaParam}/financeiro/pagamentos/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
                       target="_blank"
-                      className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-600"
+                      className="rounded-lg border border-border px-3 py-1.5 font-semibold text-muted-foreground"
                     >
                       Excel/CSV
                     </Link>
                     <Link
                       href={`/escola/${escolaParam}/financeiro/pagamentos/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
                       target="_blank"
-                      className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold text-slate-600"
+                      className="rounded-lg border border-border px-3 py-1.5 font-semibold text-muted-foreground"
                     >
                       JSON
                     </Link>
