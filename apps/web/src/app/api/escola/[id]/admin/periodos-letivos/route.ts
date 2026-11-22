@@ -38,6 +38,7 @@ export async function GET(
     const academicContext = await resolveAcademicYearContext(supabase, {
       userId: user.id,
       requestedAcademicYearId: new URL(req.url).searchParams.get("ano_letivo_id"),
+      requestedEscolaId: userEscolaId,
       operation: "READ",
     });
 
