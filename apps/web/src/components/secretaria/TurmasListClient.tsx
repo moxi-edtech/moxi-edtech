@@ -1992,8 +1992,8 @@ export default function TurmasListClient({
 
       {/* ── Bulk Actions Bar (Fase 3) ────────────────────────────────────────── */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-klasse-dark text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-8 duration-300 z-40 border border-white/15 backdrop-blur-md">
-          <div className="flex items-center gap-3 border-r border-white/20 pr-8">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-klasse-dark text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-8 duration-300 z-40 border border-border backdrop-blur-md">
+          <div className="flex items-center gap-3 border-r border-border pr-8">
             <div className="w-6 h-6 rounded-full bg-amber-500 text-foreground flex items-center justify-center text-xs font-bold">
               {selectedIds.size}
             </div>

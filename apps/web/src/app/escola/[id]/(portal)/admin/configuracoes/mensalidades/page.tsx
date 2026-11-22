@@ -656,7 +656,7 @@ export default function MensalidadesEmolumentosPage() {
 
             {/* Floating Unsaved Changes Bar */}
             {dirtyItemIds.length > 0 && (
-              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center justify-between gap-6 rounded-xl border border-white/15 bg-klasse-dark px-5 py-3.5 text-white shadow-2xl animate-in fade-in slide-in-from-bottom-4">
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center justify-between gap-6 rounded-xl border border-border bg-klasse-dark px-5 py-3.5 text-white shadow-2xl animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
                     <Save className="h-4 w-4" />
@@ -675,7 +675,7 @@ export default function MensalidadesEmolumentosPage() {
                     type="button"
                     onClick={() => setPriceDrafts(buildPriceDrafts(catalogItems))}
                     disabled={batchSaving}
-                    className="rounded-lg border border-white/20 px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors"
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-muted-foreground/20 transition-colors"
                   >
                     Descartar
                   </button>

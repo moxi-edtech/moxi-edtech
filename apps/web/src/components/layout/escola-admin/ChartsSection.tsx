@@ -40,7 +40,7 @@ function ChartTooltip({
   if (!active || !payload?.length) return null;
 
   return (
-    <div className="rounded-lg border border-white/20 bg-klasse-dark/95 px-3 py-2 text-xs shadow-lg">
+    <div className="rounded-lg border border-border bg-klasse-dark/95 px-3 py-2 text-xs shadow-lg">
       {label ? <p className="mb-1 font-semibold text-white/90">{label}</p> : null}
       {payload.map((item) => (
         <p key={`${item.name}-${item.value}`} className="font-medium text-white/80">

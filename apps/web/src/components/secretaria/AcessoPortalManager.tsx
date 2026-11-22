@@ -541,12 +541,12 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
       {/* Floating Action Bar (FAB) */}
       {selecionados.length > 0 && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="bg-klasse-dark rounded-xl shadow-2xl p-4 flex items-center justify-between border border-white/15 backdrop-blur-md">
+          <div className="bg-klasse-dark rounded-xl shadow-2xl p-4 flex items-center justify-between border border-border backdrop-blur-md">
             <div className="flex items-center gap-4 pl-2">
               <div className="bg-klasse-gold text-klasse-gold-900 rounded-xl px-3 py-1.5 text-sm font-bold shadow-lg shadow-klasse-gold/20">
                 {selecionados.length} selecionados
               </div>
-              <div className="h-8 w-px bg-white/20" />
+              <div className="h-8 w-px bg-muted-foreground/30" />
             </div>
 
             <div className="flex items-center gap-2">

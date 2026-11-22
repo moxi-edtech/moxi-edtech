@@ -108,7 +108,7 @@ export function ExecuteStep({ onComplete, fromSession, toSession, retroactivePen
                   <span className="text-lg font-black text-foreground uppercase tracking-tight">Congelado</span>
               </div>
           </div>
-          <div className="p-6 rounded-xl bg-klasse-dark border border-white/15 flex flex-col items-center justify-center gap-2">
+          <div className="p-6 rounded-xl bg-klasse-dark border border-border flex flex-col items-center justify-center gap-2">
               <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">Novo Estado</span>
               <div className="flex items-center gap-3">
                   <Rocket className="h-5 w-5 text-emerald-400 animate-bounce" />

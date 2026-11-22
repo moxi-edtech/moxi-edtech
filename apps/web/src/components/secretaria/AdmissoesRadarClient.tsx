@@ -365,7 +365,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
             <div key={col.key} className="rounded-xl bg-klasse-dark p-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-white">{col.title}</h2>
-                <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-amber ring-1 ring-amber/25">
+                <span className="rounded-full bg-muted-foreground/20 px-2 py-1 text-xs text-amber ring-1 ring-amber/25">
                   {count}
                 </span>
               </div>
@@ -394,7 +394,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                           router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${item.id}`))
                         }
                       }}
-                      className="w-full rounded-xl bg-white/10 p-3 text-left ring-1 ring-white/5 hover:ring-amber/25"
+                      className="w-full rounded-xl bg-muted-foreground/20 p-3 text-left ring-1 ring-klasse-gold/10 hover:ring-amber/25"
                     >
                       <div className="text-sm font-semibold text-white">{nome}</div>
                       <div className="mt-0.5 text-xs text-muted-foreground">
@@ -426,7 +426,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                                 void reject(item)
                               }}
                                 disabled={busy}
-                                className="rounded-lg border border-white/20 px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:border-red-400 hover:text-red-300 disabled:opacity-60"
+                                className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:border-red-400 hover:text-red-300 disabled:opacity-60"
                               >
                                 Rejeitar
                               </button>
@@ -452,7 +452,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                                 void archive(item)
                               }}
                               disabled={busy}
-                              className="rounded-lg border border-white/20 px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:border-white/40 hover:text-white disabled:opacity-60"
+                              className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:border-klasse-gold/40 hover:text-white disabled:opacity-60"
                             >
                               <span className="inline-flex items-center gap-1">
                                 <Archive className="h-3 w-3" />

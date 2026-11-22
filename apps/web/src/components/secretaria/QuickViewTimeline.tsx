@@ -61,7 +61,7 @@ export function QuickViewTimeline({
               : `Visualizando ${selectedMonthLabel}. Os blocos abaixo já foram recortados para esta competência.`}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/80">
+            <span className="rounded-full bg-muted-foreground/20 px-3 py-1 text-[11px] font-semibold text-white/80">
               {months.length} meses
             </span>
             <span className="rounded-full bg-lime-300/15 px-3 py-1 text-[11px] font-semibold text-lime-100">
@@ -75,14 +75,14 @@ export function QuickViewTimeline({
           className={`hidden rounded-full px-4 py-2 text-sm font-semibold transition sm:self-start lg:inline-flex lg:self-auto ${
             selectedMonth === "all"
               ? "bg-card text-foreground"
-              : "bg-white/10 text-white hover:bg-white/20"
+              : "bg-muted-foreground/20 text-white hover:bg-muted-foreground/30"
           }`}
         >
           Tudo
         </button>
       </div>
 
-      <div className="sticky top-2 z-10 -mx-1 mb-4 flex items-center justify-between rounded-2xl border border-white/10 bg-klasse-dark/65 px-3 py-2 backdrop-blur sm:hidden">
+      <div className="sticky top-2 z-10 -mx-1 mb-4 flex items-center justify-between rounded-2xl border border-border bg-klasse-dark/65 px-3 py-2 backdrop-blur sm:hidden">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filtro ativo</p>
           <p className="text-sm font-semibold text-white">{selectedMonthLabel}</p>
@@ -99,7 +99,7 @@ export function QuickViewTimeline({
             className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
               selectedMonth === "all"
                 ? "bg-card text-foreground"
-                : "bg-white/10 text-white hover:bg-white/20"
+                : "bg-muted-foreground/20 text-white hover:bg-muted-foreground/30"
             }`}
           >
             Tudo

@@ -438,7 +438,7 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30
       flex items-center gap-3 rounded-xl bg-klasse-dark px-5 py-3.5
-      shadow-2xl shadow-black/30 animate-in slide-in-from-bottom-3 duration-200 border border-white/20">
+      shadow-2xl shadow-black/30 animate-in slide-in-from-bottom-3 duration-200 border border-border">
 
       <div className="flex items-center gap-2.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-klasse-gold text-xs font-black text-klasse-gold-900">
@@ -450,12 +450,12 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
         <span className="text-white/75 text-xs">de {total}</span>
       </div>
 
-      <div className="h-4 w-px bg-white/20 mx-1" />
+      <div className="h-4 w-px bg-muted-foreground/30 mx-1" />
 
       <div className="flex items-center gap-2">
         <button
           onClick={onExportSelection}
-          className="flex items-center gap-1.5 rounded-xl border border-white/20
+          className="flex items-center gap-1.5 rounded-xl border border-border
             px-3 py-1.5 text-xs font-semibold text-white/80 hover:border-klasse-gold/60
             hover:text-white transition-colors"
         >
@@ -463,7 +463,7 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
         </button>
         <button
           onClick={onMessage}
-          className="flex items-center gap-1.5 rounded-xl border border-white/20
+          className="flex items-center gap-1.5 rounded-xl border border-border
             px-3 py-1.5 text-xs font-semibold text-white/80 hover:border-klasse-gold/60
             hover:text-white transition-colors"
         >
@@ -471,7 +471,7 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
         </button>
         <button
           onClick={onArchive}
-          className="flex items-center gap-1.5 rounded-xl border border-white/20
+          className="flex items-center gap-1.5 rounded-xl border border-border
             px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-amber-500
             hover:text-amber-400 transition-colors"
         >
@@ -479,7 +479,7 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
         </button>
       </div>
 
-      <div className="h-4 w-px bg-white/20 mx-1" />
+      <div className="h-4 w-px bg-muted-foreground/30 mx-1" />
 
       <button
         onClick={onClear}

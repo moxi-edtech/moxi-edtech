@@ -1126,7 +1126,7 @@ export default function CurriculumBuilder({
                           {config.classes.map((cls) => (
                             <th
                               key={cls}
-                              className="px-4 py-3 text-center border-l border-white/20"
+                              className="px-4 py-3 text-center border-l border-border"
                               colSpan={
                                 Object.values(config.turnos).filter(Boolean)
                                   .length || 1
