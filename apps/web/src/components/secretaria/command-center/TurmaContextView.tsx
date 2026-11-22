@@ -200,7 +200,7 @@ export function TurmaContextView({
             aria-controls={"turma-tabpanel-" + id} aria-selected={activeTab === id}
             tabIndex={0} onClick={() => setActiveTab(id)}
             className={"min-w-0 flex-1 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 " +
-              (activeTab === id ? "bg-card text-emerald-900 shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+              (activeTab === id ? "bg-card text-foreground shadow-sm" : "text-foreground hover:bg-card/70")}>
             {label}
           </button>
         ))}
