@@ -75,7 +75,7 @@ export async function GET(req: Request) {
       let periodo: { numero: number; pautas_publicadas: number; registos_frequencia: number } | null = null;
       if (trimester != null) {
         const verified = await readVerifiedAcademicTrimesters(supabase, {
-          authorizedEscolaId, anoLetivoId: year.id, yearBase: year.ano,
+          escolaId: authorizedEscolaId, anoLetivoId: year.id, yearBase: year.ano,
         });
         const term = requireVerifiedTrimester(verified, { numero: trimester });
         const [pautas, frequencia] = await Promise.all([
