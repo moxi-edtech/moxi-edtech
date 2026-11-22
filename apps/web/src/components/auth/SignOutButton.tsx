@@ -30,7 +30,7 @@ export default function SignOutButton({
 
   const base = 'inline-flex items-center justify-center rounded-md transition'
   const variants = {
-    ghost: 'bg-transparent text-slate-600 hover:text-slate-900',
+    ghost: 'bg-transparent text-muted-foreground hover:text-foreground',
     solid: 'bg-slate-800 text-white hover:bg-slate-900',
   }
   const sizes = {
