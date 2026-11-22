@@ -307,14 +307,23 @@ export async function GET(request: Request) {
     const issues = (failures ?? []) as Array<{
       matricula_id: string; codigo: string | null;
     }>;
-    const pendencias = await enrichBlockingIssues(ctx.db, issues.slice(0, 80).map((entry) => ({
-      matricula_id: entry.matricula_id,
-      codigo: entry.codigo ?? "SEM_DIAGNOSTICO",
-      // SQL messages stay inside the protected diagnostic store.
-    })));
+    // A pending SQL diagnostic is not an academic exception. Before the
+    // canonical batch runs, 24 open histories can have zero persisted error
+    // codes. Never label those pupils blocked or demand manual intervention.
+    const unresolved = issues.filter((item) => !item.codigo || item.codigo === "SEM_DIAGNOSTICO");
+    const actualFailures = issues.filter((item) =>
+      typeof item.codigo === "string" && item.codigo.length > 0 &&
+      item.codigo !== "SEM_DIAGNOSTICO");
+    const pendencias = await enrichBlockingIssues(ctx.db,
+      actualFailures.slice(0, 80).map((entry) => ({
+        matricula_id: entry.matricula_id,
+        codigo: entry.codigo!,
+        // SQL messages stay inside the protected diagnostic store.
+      })));
     return NextResponse.json({
       ok: true, ano_letivo: "2025/2026", abertos: count ?? 0, pendencias,
-      sem_diagnostico: issues.filter((item) => !item.codigo).length,
+      sem_diagnostico: unresolved.length,
+      excecoes_identificadas: actualFailures.length,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[curtume-historic-batch] preview failed", error);
@@ -411,6 +420,12 @@ async function enrichBlockingIssues(db: any, input: HistoricIssue[]): Promise<Hi
 }
 
 export async function POST(request: Request) {
+  // Auth cookies alone do not protect mutation routes from cross-origin POSTs.
+  const origin = request.headers.get("origin");
+  if (origin && origin !== new URL(request.url).origin)
+    return NextResponse.json({ ok: false, error: "Origem inválida." }, { status: 403 });
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json"))
+    return NextResponse.json({ ok: false, error: "Formato inválido." }, { status: 415 });
   try {
     const ctx = await context();
     if (!ctx.allowed) return ctx.response!;

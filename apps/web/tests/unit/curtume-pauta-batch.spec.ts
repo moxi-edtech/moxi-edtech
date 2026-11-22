@@ -54,10 +54,11 @@ test("API takes tenant and actor only from authenticated session; paging is boun
 });
 
 test("Director has one confirmation and may see only the real exceptions", () => {
-  assert.match(component, /window\.confirm\(/);
+  assert.doesNotMatch(component, /window\.confirm\(/);
+  assert.match(component, /runningRef\.current = true/);
   assert.match(component, /MAX_PAGES = 40/);
   assert.match(component, /crypto\.randomUUID\(\)/);
-  assert.match(component, /Concluir históricos elegíveis/);
+  assert.match(component, /Resolver elegíveis automaticamente/);
   assert.match(component, /pendencias\.map/);
   assert.match(component, /getHistoricBatchIssueAdvice\(issue\.codigo\)/);
   assert.match(component, /issue\.aluno_nome/);
