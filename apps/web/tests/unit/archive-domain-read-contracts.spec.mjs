@@ -88,7 +88,8 @@ test("archive UI exposes contextual trimester and version choices without global
   assert.match(turma, /<ArchiveTurmaRecordsPanel/);
   assert.match(details, /periodFilter/);
   assert.match(details, /aria-pressed=\{type === id\}/);
-  assert.match(details, /selected\.[\s\S]*/); // no side effects: selectors remain local to the archive
+  assert.match(details, /setVersionId\(event.target.value\)/);
+  assert.match(details, /setPeriodFilter\(e.target.value\)/);
   assert.match(analytics, /total_em_atraso_todos_anos/);
   assert.match(analytics, /comparar_ano_letivo_id/);
 });
