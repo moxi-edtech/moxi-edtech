@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Archive, BookOpen, ClipboardCheck, FileText, GraduationCap, History, Users } from "lucide-react";
 import HistoricalTurmasPanel from "@/components/academico/HistoricalTurmasPanel";
+import ArchiveAnalyticsPanel from "@/components/academico/ArchiveAnalyticsPanel";
 
 type AcademicSession = {
   id: string;
@@ -31,6 +32,7 @@ export default function AcademicArchiveHub() {
   const base = schoolParam ? `/escola/${encodeURIComponent(decodeURIComponent(schoolParam))}/${section}` : `/${section}`;
 
   const [years, setYears] = useState<AcademicSession[]>([]);
+  const [allYears, setAllYears] = useState<AcademicSession[]>([]);
   const [selectedYearId, setSelectedYearId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,24 +48,28 @@ export default function AcademicArchiveHub() {
       .then(async (response) => {
         const json = await response.json().catch(() => ({})) as SessionsResponse;
         if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível consultar os anos letivos.");
-        return (json.data ?? []).filter(isArchivedSession).sort((a, b) => b.ano_letivo - a.ano_letivo);
+        return (json.data ?? []).filter((year) => year.data_inicio == null || year.data_inicio <= new Date().toISOString().slice(0, 10))
+          .sort((a, b) => b.ano_letivo - a.ano_letivo);
       })
       .then((items) => {
         if (controller.signal.aborted) return;
-        setYears(items);
-        if (requestedId && !items.some((year) => year.id === requestedId)) {
+        setAllYears(items);
+        const archivedItems = items.filter(isArchivedSession);
+        setYears(archivedItems);
+        if (requestedId && !archivedItems.some((year) => year.id === requestedId)) {
           setSelectedYearId("");
           setError("O ano letivo solicitado não pertence ao arquivo desta escola. Selecione um ano válido.");
           return;
         }
         setSelectedYearId((previous) =>
-          items.some((year) => year.id === requestedId) ? (requestedId ?? "") :
-          items.some((year) => year.id === previous) ? previous : (items[0]?.id ?? "")
+          archivedItems.some((year) => year.id === requestedId) ? (requestedId ?? "") :
+          archivedItems.some((year) => year.id === previous) ? previous : (archivedItems[0]?.id ?? "")
         );
       })
       .catch((cause) => {
         if (!controller.signal.aborted) {
           setYears([]);
+          setAllYears([]);
           setError(cause instanceof Error ? cause.message : "Falha ao consultar o arquivo.");
         }
       })
@@ -136,6 +142,14 @@ export default function AcademicArchiveHub() {
           yearLabel={selectedYear.nome || `${selectedYear.ano_letivo}/${selectedYear.ano_letivo + 1}`}
           escolaParam={schoolParam ? decodeURIComponent(schoolParam) : null}
           portalBase={base}
+        />
+      )}
+      {!loading && !error && selectedYear && (
+        <ArchiveAnalyticsPanel
+          key={selectedYear.id}
+          academicYearId={selectedYear.id}
+          years={allYears}
+          escolaParam={schoolParam ? decodeURIComponent(schoolParam) : null}
         />
       )}
     </div>
