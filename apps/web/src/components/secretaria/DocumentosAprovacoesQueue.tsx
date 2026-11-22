@@ -172,7 +172,7 @@ export default function DocumentosAprovacoesQueue() {
                       <X className="h-4 w-4" aria-hidden="true" /> Rejeitar
                     </button>
                     <button type="button" disabled={loading || submitting} onClick={() => openDecision(item, "approve")}
-                      className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl bg-klasse-gold px-3 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50">
+                      className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl bg-klasse-gold px-3 text-sm font-semibold text-klasse-gold-900 hover:brightness-95 disabled:opacity-50">
                       <Check className="h-4 w-4" aria-hidden="true" /> Aprovar
                     </button>
                   </div>
@@ -216,7 +216,7 @@ export default function DocumentosAprovacoesQueue() {
               className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-muted">Cancelar</button>
             <button type="button" disabled={submitting || (decision === "reject" && !reason.trim())}
               onClick={() => void submitDecision()}
-              className={`min-h-11 rounded-xl px-4 text-sm font-semibold text-white disabled:opacity-50 ${decision === "reject" ? "bg-destructive hover:opacity-90" : "bg-klasse-gold hover:brightness-95"}`}>
+              className={`min-h-11 rounded-xl px-4 text-sm font-semibold text-klasse-gold-900 disabled:opacity-50 ${decision === "reject" ? "bg-destructive hover:opacity-90" : "bg-klasse-gold hover:brightness-95"}`}>
               {submitting ? "A guardar…" : decision === "approve" ? "Confirmar aprovação" : "Confirmar rejeição"}
             </button>
           </div>

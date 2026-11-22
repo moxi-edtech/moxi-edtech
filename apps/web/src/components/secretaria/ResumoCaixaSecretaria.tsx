@@ -30,11 +30,11 @@ export function ResumoCaixaSecretaria({
   if (loading) return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       {[1, 2, 3].map(i => (
-        <div key={i} className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm h-20 animate-pulse flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-slate-50 shrink-0" />
+        <div key={i} className="bg-card border border-border rounded-xl p-4 shadow-sm h-20 animate-pulse flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-muted shrink-0" />
           <div className="space-y-2 flex-1">
-             <div className="h-2 bg-slate-50 rounded w-20" />
-             <div className="h-4 bg-slate-50 rounded w-24" />
+             <div className="h-2 bg-muted rounded w-20" />
+             <div className="h-4 bg-muted rounded w-24" />
           </div>
         </div>
       ))}
@@ -69,13 +69,13 @@ export function ResumoCaixaSecretaria({
 
 function Card({ title, value, icon, bgColor }: { title: string; value: string | number; icon: React.ReactNode; bgColor: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center gap-4">
+    <div className="bg-card border border-border rounded-xl p-4 shadow-sm flex items-center gap-4">
       <div className={`w-10 h-10 rounded-lg ${bgColor} flex items-center justify-center shrink-0`}>
         {icon}
       </div>
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{title}</p>
-        <p className="text-lg font-black text-slate-900">{value}</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{title}</p>
+        <p className="text-lg font-black text-foreground">{value}</p>
       </div>
     </div>
   );

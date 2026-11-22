@@ -28,9 +28,9 @@ export function BoardPressurePanel({
   totalAtraso,
 }: BoardPressurePanelProps) {
   return (
-    <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Turmas sob pressao</p>
-      <h3 className="mt-2 text-lg font-semibold text-slate-900">Top classes em atraso</h3>
+    <div className="rounded-[28px] border border-border bg-card p-5 shadow-sm">
+      <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Turmas sob pressao</p>
+      <h3 className="mt-2 text-lg font-semibold text-foreground">Top classes em atraso</h3>
       <div className="mt-5 space-y-4">
         {executiveHighlights.length > 0 ? (
           executiveHighlights.map((item) => {
@@ -39,10 +39,10 @@ export function BoardPressurePanel({
             return (
               <div key={`${item.mesRef}-${item.classeId}`}>
                 <div className="mb-1 flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-slate-700">{item.classeLabel}</span>
+                  <span className="text-sm font-medium text-foreground">{item.classeLabel}</span>
                   <span className="text-sm font-bold text-rose-700">{formatCurrency(item.totalEmAtraso)}</span>
                 </div>
-                <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-3 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-rose-400 to-amber-300"
                     style={{ width: `${Math.min(share, 100)}%` }}
@@ -52,7 +52,7 @@ export function BoardPressurePanel({
             );
           })
         ) : (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+          <div className="rounded-2xl border border-dashed border-border bg-muted p-4 text-sm text-muted-foreground">
             Nao ha classes com inadimplencia para destacar neste recorte.
           </div>
         )}
@@ -72,7 +72,7 @@ export function BoardPressurePanel({
               {diamondTurmas.map((turma) => (
                 <span
                   key={turma.turmaId}
-                  className="rounded-lg border border-emerald-200 bg-white px-2 py-1 text-[10px] font-bold text-emerald-800 shadow-sm"
+                  className="rounded-lg border border-emerald-200 bg-card px-2 py-1 text-[10px] font-bold text-emerald-800 shadow-sm"
                 >
                   {turma.turmaNome}
                 </span>

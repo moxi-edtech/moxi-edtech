@@ -86,7 +86,7 @@ export function CommandCenterStudentDossier({
 
   if (loading && (!data || data.aluno.id !== alunoId || data.schoolScope !== escolaId)) {
     return (
-      <div role="status" className="flex min-h-40 items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+      <div role="status" className="flex min-h-40 items-center justify-center gap-3 rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         A carregar ficha do aluno...
       </div>
@@ -100,7 +100,7 @@ export function CommandCenterStudentDossier({
         <button
           type="button"
           onClick={() => setRetry((current) => current + 1)}
-          className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-bold"
+          className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-card px-3 py-2 text-xs font-bold"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Tentar novamente

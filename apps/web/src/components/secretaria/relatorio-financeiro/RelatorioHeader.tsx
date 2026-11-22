@@ -30,10 +30,10 @@ export function RelatorioHeader({
   onExportPdf,
 }: RelatorioHeaderProps) {
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:rounded-none print:border-none print:p-0 print:shadow-none sm:flex-row sm:items-end sm:justify-between">
+    <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm print:rounded-none print:border-none print:p-0 print:shadow-none sm:flex-row sm:items-end sm:justify-between">
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-slate-900 print:text-3xl">
+          <h1 className="text-2xl font-bold text-foreground print:text-3xl">
             {boardMode ? "Painel Executivo Financeiro" : "Relatório de Mensalidades"}
           </h1>
           {!boardMode && (
@@ -51,18 +51,18 @@ export function RelatorioHeader({
             </div>
           )}
         </div>
-        <p className="text-sm text-slate-500 print:text-slate-600">
+        <p className="text-sm text-muted-foreground print:text-slate-600">
           {boardMode
             ? "Leitura limpa para diretoria, TV ou tablet, com foco em KPIs e sinais do período."
             : "Resumo imprimível das propinas por período e por turma."}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2 print:hidden">
-        <label className="text-sm text-slate-600">Sessão</label>
+        <label className="text-sm text-muted-foreground">Sessão</label>
         <select
           value={selectedSession}
           onChange={(e) => setSelectedSession(e.target.value)}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-border bg-card px-3 py-2 text-sm"
         >
           {sessions.map((s) => (
             <option key={s.id} value={s.id}>
@@ -76,7 +76,7 @@ export function RelatorioHeader({
           className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
             boardMode
               ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-              : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              : "border border-border bg-card text-foreground hover:bg-muted"
           }`}
         >
           {boardMode ? "Sair do modo diretoria" : "Modo diretoria"}
@@ -84,7 +84,7 @@ export function RelatorioHeader({
         <button
           type="button"
           onClick={onPrint}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
         >
           <Printer className="h-4 w-4" />
           Imprimir
@@ -100,7 +100,7 @@ export function RelatorioHeader({
         <button
           type="button"
           onClick={onExportExcel}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
         >
           <FileSpreadsheet className="h-4 w-4" />
           Exportar Excel
@@ -108,7 +108,7 @@ export function RelatorioHeader({
         <button
           type="button"
           onClick={onExportPdf}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
         >
           <FileText className="h-4 w-4" />
           Exportar PDF

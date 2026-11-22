@@ -607,7 +607,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
                 : "Sem correspondência automática ainda. Usa a varinha, escolhe manualmente ou salva que criamos o curso/classe se precisar."}
             </p>
             {parserSugestao && (
-              <p className="text-[11px] text-slate-700 mt-2 flex items-center gap-1">
+              <p className="text-[11px] text-foreground mt-2 flex items-center gap-1">
                 <Wand2 className="w-3 h-3" /> Sugestão do código: {parserSugestao}. Confirma?
               </p>
             )}
@@ -618,7 +618,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
       {/* Identificação */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="nome" className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="nome" className="block text-xs font-bold text-foreground mb-1">
             Nome da Turma *
           </label>
           <input
@@ -627,12 +627,12 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             required
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none transition-shadow"
+            className="w-full px-3 py-2 border border-border rounded-xl text-sm focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none transition-shadow"
           />
         </div>
 
         <div>
-          <label htmlFor="turmaCodigo" className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="turmaCodigo" className="block text-xs font-bold text-foreground mb-1">
             Código (Sistema) *
           </label>
           <div className="flex gap-2">
@@ -642,13 +642,13 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
               required
               value={turmaCodigo}
               onChange={(e) => setTurmaCodigo(normalizeCodigo(e.target.value))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-slate-50 font-mono uppercase text-slate-700 focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
+              className="w-full px-3 py-2 border border-border rounded-xl text-sm bg-muted font-mono uppercase text-foreground focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
             />
             <button
               type="button"
               onClick={() => executeAutoFill(true)}
               title="Forçar identificação automática"
-              className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+              className="p-2 bg-card border border-border rounded-xl hover:bg-muted transition-colors"
             >
               <Wand2 className="w-5 h-5 text-amber" />
             </button>
@@ -659,7 +659,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
       {/* Logística */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label htmlFor="turno" className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="turno" className="block text-xs font-bold text-foreground mb-1">
             Turno *
           </label>
           <select
@@ -668,7 +668,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             required
             value={turno}
             onChange={(e) => setTurno(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
+            className="w-full px-3 py-2 border border-border rounded-xl text-sm bg-card focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
           >
             <option value="">Selecione...</option>
             <option value="Manhã">Manhã</option>
@@ -677,7 +677,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
           </select>
         </div>
         <div>
-          <label htmlFor="capacidade" className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="capacidade" className="block text-xs font-bold text-foreground mb-1">
             Capacidade
           </label>
           <input
@@ -686,11 +686,11 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             type="number"
             value={capacidade}
             onChange={(e) => setCapacidade(Number(e.target.value || 0))}
-            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
+            className="w-full px-3 py-2 border border-border rounded-xl text-sm focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
           />
         </div>
         <div>
-          <label htmlFor="sala" className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="sala" className="block text-xs font-bold text-foreground mb-1">
             Sala
           </label>
           <input
@@ -698,17 +698,17 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             name="sala"
             value={sala}
             onChange={(e) => setSala(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
+            className="w-full px-3 py-2 border border-border rounded-xl text-sm focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
           />
         </div>
       </div>
 
-      <hr className="border-slate-100" />
+      <hr className="border-border" />
 
       {/* Académico */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="classeId" className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="classeId" className="block text-xs font-bold text-foreground mb-1">
             Classe (Ano)
           </label>
           <select
@@ -716,7 +716,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             name="classeId"
             value={classeId}
             onChange={(e) => setClasseId(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
+            className="w-full px-3 py-2 border border-border rounded-xl text-sm bg-card focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
           >
             <option value="">Selecione...</option>
             {classes.map((c) => (
@@ -733,7 +733,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
         </div>
 
         <div>
-          <label htmlFor="sessionId" className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="sessionId" className="block text-xs font-bold text-foreground mb-1">
             Ano Letivo (Sessão) *
           </label>
           <select
@@ -742,7 +742,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             required
             value={sessionId}
             onChange={(e) => setSessionId(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
+            className="w-full px-3 py-2 border border-border rounded-xl text-sm bg-card focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none"
           >
             <option value="">Selecione...</option>
             {sessions.map((s) => (
@@ -754,7 +754,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
         </div>
 
         <div className="md:col-span-2">
-          <label htmlFor="cursoId" className="block text-xs font-bold text-slate-700 mb-1">
+          <label htmlFor="cursoId" className="block text-xs font-bold text-foreground mb-1">
             Curso Associado *
           </label>
           <select
@@ -764,8 +764,8 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             value={cursoId}
             onChange={(e) => setCursoId(e.target.value)}
             className={[
-              "w-full px-3 py-2 border rounded-xl text-sm transition-colors bg-white focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none",
-              autoFilled && cursoId ? "border-amber/60 bg-amber-50 text-slate-900 font-medium" : "border-slate-300",
+              "w-full px-3 py-2 border rounded-xl text-sm transition-colors bg-card focus:ring-4 focus:ring-amber/20 focus:border-amber outline-none",
+              autoFilled && cursoId ? "border-amber/60 bg-amber-50 text-foreground font-medium" : "border-border",
             ].join(" ")}
           >
             <option value="">Selecione o curso...</option>
@@ -827,7 +827,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
           </label>
 
           {isClasseExame && (
-            <div className="space-y-1 rounded-lg border border-amber-200 bg-white/60 p-3">
+            <div className="space-y-1 rounded-lg border border-amber-200 bg-card/60 p-3">
               <label htmlFor="examBillingEnd" className="text-sm font-semibold text-amber-900 block">
                 Fim da cobrança de exames
               </label>
@@ -837,7 +837,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
                 value={examBillingEnd}
                 min={selectedSession?.data_fim?.slice(0, 10)}
                 onChange={(event) => setExamBillingEnd(event.target.value)}
-                className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full rounded-lg border border-amber-200 bg-card px-3 py-2 text-sm text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 required
               />
               <p className="text-[11px] text-amber-700">
@@ -850,7 +850,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             <div className="space-y-1">
             <label className="text-sm font-semibold text-amber-900 block">Mês de início da mensalidade</label>
             <select
-              className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full rounded-lg border border-amber-200 bg-card px-3 py-2 text-sm text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
               value={startMonth}
               onChange={(e) => setStartMonth(Number(e.target.value) || new Date().getMonth() + 1)}
             >
@@ -861,7 +861,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             </div>
           )}
 
-          <div className="rounded-lg border border-white/80 bg-white/70 p-3 text-xs text-amber-900 space-y-1">
+          <div className="rounded-lg border border-border/80 bg-card/70 p-3 text-xs text-amber-900 space-y-1">
             <p className="font-semibold">Resumo que será aplicado</p>
             {billingPreview ? (
               <>
@@ -894,11 +894,11 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
           )}
         </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+      <div className="flex justify-end gap-3 pt-4 border-t border-border">
         <button
           type="button"
           onClick={onSuccess}
-          className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-sm font-bold transition-colors"
+          className="px-4 py-2 text-muted-foreground hover:bg-muted rounded-xl text-sm font-bold transition-colors"
         >
           Cancelar
         </button>

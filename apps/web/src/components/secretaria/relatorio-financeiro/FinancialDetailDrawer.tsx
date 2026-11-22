@@ -114,13 +114,13 @@ export function FinancialDetailDrawer({
     <Drawer open={isOpen} onOpenChange={(val) => !val && onClose()}>
       <DrawerContent className="max-h-[90vh]">
         <div className="mx-auto w-full max-w-4xl overflow-hidden flex flex-col h-full">
-          <DrawerHeader className="border-b bg-slate-50/50">
+          <DrawerHeader className="border-b bg-muted/50">
             <div className="flex items-center justify-between">
               <div>
-                <DrawerTitle className="text-xl font-bold text-slate-900">
+                <DrawerTitle className="text-xl font-bold text-foreground">
                   {getTitle()}
                 </DrawerTitle>
-                <DrawerDescription className="text-sm text-slate-500">
+                <DrawerDescription className="text-sm text-muted-foreground">
                   {source === "matriculas" 
                     ? `Alunos registrados no ano letivo ${ano}.`
                     : `Alunos com propinas ${status === "pago" ? "liquidadas" : "em atraso"} ${
@@ -130,7 +130,7 @@ export function FinancialDetailDrawer({
               </div>
               <button
                 onClick={onClose}
-                className="rounded-full p-2 hover:bg-slate-200 text-slate-400 transition-colors"
+                className="rounded-full p-2 hover:bg-muted-foreground/15 text-muted-foreground transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -139,7 +139,7 @@ export function FinancialDetailDrawer({
 
           <div className="flex-1 overflow-y-auto p-6">
             {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin mb-3 text-indigo-600" />
                 <p className="text-sm font-medium">Cruzando dados operacionais...</p>
               </div>
@@ -148,11 +148,11 @@ export function FinancialDetailDrawer({
                 {error}
               </div>
             ) : students.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-400 text-center">
-                <div className="rounded-full bg-slate-100 p-4 mb-4">
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground text-center">
+                <div className="rounded-full bg-muted p-4 mb-4">
                   <User className="h-10 w-10" />
                 </div>
-                <p className="text-base font-semibold text-slate-600">Nenhum aluno encontrado</p>
+                <p className="text-base font-semibold text-muted-foreground">Nenhum aluno encontrado</p>
                 <p className="text-sm max-w-xs mt-1">
                   Não existem registros para este período.
                 </p>
@@ -162,29 +162,29 @@ export function FinancialDetailDrawer({
                 {students.map((student) => (
                   <div
                     key={student.id}
-                    className="flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
+                    className="flex flex-col rounded-xl border border-border bg-card p-4 shadow-sm hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-start gap-4 mb-4">
-                      <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-slate-100 border border-slate-200">
+                      <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-full bg-muted border border-border">
                         {student.foto ? (
                           <img src={student.foto} alt={student.nome} className="h-full w-full object-cover" />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-slate-400">
+                          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                             <User className="h-6 w-6" />
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="truncate text-sm font-bold text-slate-900">{student.nome}</h4>
+                        <h4 className="truncate text-sm font-bold text-foreground">{student.nome}</h4>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Proc: {student.processo}</span>
-                          <span className="h-1 w-1 rounded-full bg-slate-300"></span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Proc: {student.processo}</span>
+                          <span className="h-1 w-1 rounded-full bg-muted-foreground/25"></span>
                           <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">{student.turma}</span>
                         </div>
                       </div>
                       <Link
                         href={`/escola/${escolaId}/alunos/${student.alunoId}`}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 transition-colors"
+                        className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-indigo-600 transition-colors"
                         title="Ver perfil completo"
                       >
                         <ExternalLink className="h-4 w-4" />
@@ -192,8 +192,8 @@ export function FinancialDetailDrawer({
                     </div>
 
                     <div className="space-y-2 mb-4">
-                      <div className="flex items-center gap-2 text-xs text-slate-600">
-                        <User className="h-3.5 w-3.5 text-slate-400" />
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <User className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="font-medium truncate">{student.encarregado || "Não informado"}</span>
                       </div>
                       <div className="flex items-center gap-4">
@@ -218,19 +218,19 @@ export function FinancialDetailDrawer({
                       </div>
                     </div>
 
-                    <div className="mt-auto flex items-center justify-between rounded-lg bg-slate-50 p-2.5">
+                    <div className="mt-auto flex items-center justify-between rounded-lg bg-muted p-2.5">
                       <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                           {source === "matriculas" ? "Status Matrícula" : paymentAmountLabel}
                         </p>
-                        <p className="text-sm font-black text-slate-900 uppercase">
+                        <p className="text-sm font-black text-foreground uppercase">
                           {source === "matriculas"
                             ? student.status
                             : kwanza.format(status === "pago" ? student.pago : student.valor)}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                           {source === "matriculas" ? "Registrado em" : "Vencimento"}
                         </p>
                         <p className={`text-xs font-bold ${source === "matriculas" ? "text-indigo-600" : "text-rose-600"}`}>
@@ -244,10 +244,10 @@ export function FinancialDetailDrawer({
             )}
           </div>
 
-          <DrawerFooter className="border-t bg-slate-50/50 p-4">
+          <DrawerFooter className="border-t bg-muted/50 p-4">
             <div className="flex w-full items-center justify-between text-sm">
-              <div className="text-slate-500 font-medium">
-                Total de <span className="font-bold text-slate-900">{students.length}</span> alunos listados
+              <div className="text-muted-foreground font-medium">
+                Total de <span className="font-bold text-foreground">{students.length}</span> alunos listados
               </div>
               <button
                 onClick={onClose}

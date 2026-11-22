@@ -163,7 +163,7 @@ export function FaltasJustificacoesQueue() {
                 <p className="whitespace-pre-wrap break-words text-sm">{item.motivo}</p>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" disabled={loading || submitting} onClick={() => openDecision(item, "approved")}
-                    className="min-h-11 rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-50">
+                    className="min-h-11 rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-klasse-gold-900 hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-50">
                     Aprovar justificação
                   </button>
                   <button type="button" disabled={loading || submitting} onClick={() => openDecision(item, "rejected")}
@@ -205,7 +205,7 @@ export function FaltasJustificacoesQueue() {
               className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-muted">Cancelar</button>
             <button type="button" disabled={submitting || (decision === "rejected" && reason.trim().length < 8)}
               onClick={() => void submitDecision()}
-              className="min-h-11 rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50">
+              className="min-h-11 rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-klasse-gold-900 hover:brightness-95 disabled:opacity-50">
               {submitting ? "A guardar…" : "Confirmar decisão"}
             </button>
           </div>

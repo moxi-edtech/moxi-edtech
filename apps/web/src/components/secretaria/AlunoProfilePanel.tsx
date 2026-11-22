@@ -365,7 +365,7 @@ export function AlunoProfilePanel({ alunoId, onSuccess, onDone }: Props) {
           type="button"
           onClick={() => void handleSave()}
           disabled={saving || !hasChanges}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-klasse-gold-900 shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {saving ? "A guardar…" : "Guardar alterações"}

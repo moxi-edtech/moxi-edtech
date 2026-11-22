@@ -302,14 +302,14 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="h-8 w-64 rounded-xl bg-slate-100" />
+        <div className="h-8 w-64 rounded-xl bg-muted" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="rounded-xl bg-slate-100 p-4">
-              <div className="h-5 w-40 rounded bg-white/70" />
+            <div key={idx} className="rounded-xl bg-muted p-4">
+              <div className="h-5 w-40 rounded bg-card/70" />
               <div className="mt-3 space-y-2">
-                <div className="h-14 rounded-xl bg-white/70" />
-                <div className="h-14 rounded-xl bg-white/70" />
+                <div className="h-14 rounded-xl bg-card/70" />
+                <div className="h-14 rounded-xl bg-card/70" />
               </div>
             </div>
           ))}
@@ -338,8 +338,8 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">Radar de Admissões</h1>
-          <p className="text-sm text-slate-500">Acompanhe o funil por status e priorize a secretaria.</p>
+          <h1 className="text-lg font-semibold text-foreground">Radar de Admissões</h1>
+          <p className="text-sm text-muted-foreground">Acompanhe o funil por status e priorize a secretaria.</p>
         </div>
 
         <button
@@ -397,10 +397,10 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                       className="w-full rounded-xl bg-slate-900 p-3 text-left ring-1 ring-white/5 hover:ring-amber/25"
                     >
                       <div className="text-sm font-semibold text-white">{nome}</div>
-                      <div className="mt-0.5 text-xs text-slate-400">
+                      <div className="mt-0.5 text-xs text-muted-foreground">
                         {curso} • {classe}
                       </div>
-                      <div className="mt-1 text-[11px] text-slate-500">{dt}</div>
+                      <div className="mt-1 text-[11px] text-muted-foreground">{dt}</div>
                       {rawStatus === 'aguardando_pagamento' && (
                         <div className="mt-1 text-[11px] text-amber-300">Aguardando pagamento</div>
                       )}
@@ -467,7 +467,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                 })}
 
                 {items.length === 0 && (
-                  <div className="rounded-xl bg-slate-900 p-3 text-xs text-slate-400 ring-1 ring-white/5">
+                  <div className="rounded-xl bg-slate-900 p-3 text-xs text-white/75 ring-1 ring-border/20">
                     {col.emptyText}
                   </div>
                 )}
@@ -480,7 +480,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                     void loadMoreOpen()
                   }}
                   disabled={loadingMoreOpen}
-                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-amber/40 hover:text-white disabled:opacity-60"
+                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-amber/40 hover:text-white disabled:opacity-60"
                 >
                   {loadingMoreOpen ? 'Carregando...' : 'Carregar mais'}
                 </button>
@@ -493,7 +493,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                     void loadMoreMat()
                   }}
                   disabled={loadingMoreMat}
-                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-amber/40 hover:text-white disabled:opacity-60"
+                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-amber/40 hover:text-white disabled:opacity-60"
                 >
                   {loadingMoreMat ? 'Carregando...' : 'Carregar mais'}
                 </button>

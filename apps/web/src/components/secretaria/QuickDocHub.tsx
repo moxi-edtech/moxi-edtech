@@ -811,17 +811,17 @@ export default function QuickDocHub({
     .slice(0, 6);
 
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-slate-50/50 p-5 space-y-6">
+    <div className="rounded-2xl border border-border/60 bg-muted/50 p-5 space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Mapas, Pautas e Listas</p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Mapas, Pautas e Listas</p>
+          <p className="mt-1 text-sm text-muted-foreground">
             Emita documentos por turma ou baixe a lista nominal de uma classe inteira no mesmo painel.
           </p>
         </div>
         {(loadingTurmas || loadingPeriodos || loadingAnos || submitting) && (
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
-            <Loader2 size={14} className="animate-spin text-slate-400" />
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+            <Loader2 size={14} className="animate-spin text-muted-foreground" />
             {submitting ? "A processar emissão" : "A preparar contexto"}
           </div>
         )}
@@ -832,7 +832,7 @@ export default function QuickDocHub({
           <select
             value={anoLetivo ?? ""}
             onChange={(event) => { setAnoLetivo(event.target.value ? Number(event.target.value) : null); setModeOverride(null); }}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">{loadingAnos ? "A carregar..." : "Selecione"}</option>
             {anosLetivos.map((ano) => (
@@ -857,8 +857,8 @@ export default function QuickDocHub({
                 }}
                 className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
                   scope === item
-                    ? "border-amber bg-amber/10 text-slate-900"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    ? "border-amber bg-amber/10 text-foreground"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted"
                 }`}
               >
                 {item === "turma" ? "Turma" : "Classe"}
@@ -871,7 +871,7 @@ export default function QuickDocHub({
           <select
             value={classeFiltro}
             onChange={(event) => setClasseFiltro(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">Todas</option>
             {classes.map((classe) => (
@@ -886,7 +886,7 @@ export default function QuickDocHub({
           <select
             value={cursoFiltro}
             onChange={(event) => setCursoFiltro(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">Todos</option>
             {cursos.map((curso) => (
@@ -901,7 +901,7 @@ export default function QuickDocHub({
           <select
             value={turnoFiltro}
             onChange={(event) => setTurnoFiltro(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">Todos</option>
             {turnos.map((turno) => (
@@ -925,7 +925,7 @@ export default function QuickDocHub({
               }
             >
               <div className="relative">
-              <div className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400">
+              <div className="absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground">
                 <Search size={16} />
               </div>
               <input
@@ -947,14 +947,14 @@ export default function QuickDocHub({
                   }, 120);
                 }}
                 placeholder={loadingTurmas ? "Carregando turmas..." : "Pesquise por turma, classe ou curso"}
-                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-10 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+                className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-10 text-sm font-medium text-foreground outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 <ChevronsUpDown size={16} />
               </div>
 
               {turmaPickerOpen ? (
-                <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-xl">
                   {turmasFiltradas.length > 0 ? (
                     <div className="space-y-1">
                       {turmasFiltradas.map((turma) => {
@@ -970,12 +970,12 @@ export default function QuickDocHub({
                               setTurmaPickerOpen(false);
                             }}
                             className={`flex w-full items-start justify-between gap-3 rounded-xl px-3 py-2 text-left transition ${
-                              active ? "bg-amber/10 text-slate-900" : "text-slate-700 hover:bg-slate-50"
+                              active ? "bg-amber/10 text-foreground" : "text-foreground hover:bg-muted"
                             }`}
                           >
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold">{turmaLabel(turma)}</p>
-                              <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                                 {turma.classe_nome || "Sem classe"} • {turma.curso_nome || "Sem curso"} • {turma.turno || "Sem turno"}
                               </p>
                             </div>
@@ -985,7 +985,7 @@ export default function QuickDocHub({
                       })}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-6 text-center text-sm text-slate-500">
+                    <div className="rounded-xl border border-dashed border-border bg-muted px-3 py-6 text-center text-sm text-muted-foreground">
                       Nenhuma turma encontrada para a pesquisa atual.
                     </div>
                   )}
@@ -998,7 +998,7 @@ export default function QuickDocHub({
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Lista nominal por classe</p>
-                  <p className="mt-1 text-sm font-bold text-slate-900">
+                  <p className="mt-1 text-sm font-bold text-foreground">
                     {selectedClasse ? selectedClasse.nome : "Selecione uma classe nos filtros acima"}
                   </p>
                   <p className="mt-1 text-xs text-emerald-800">
@@ -1024,7 +1024,7 @@ export default function QuickDocHub({
               <select
                 value={month}
                 onChange={(event) => setMonth(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
               >
                 {MONTH_OPTIONS.map((item) => (
                   <option key={item.v} value={item.v}>
@@ -1038,7 +1038,7 @@ export default function QuickDocHub({
               <select
                 value={periodoId}
                 onChange={(event) => setPeriodoId(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
               >
                 <option value="">{loadingPeriodos ? "A carregar..." : "Selecione"}</option>
                 {periodos.map((periodo) => (
@@ -1084,9 +1084,9 @@ export default function QuickDocHub({
                 type="checkbox"
                 checked={includeAllStatus}
                 onChange={e => setIncludeAllStatus(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-amber focus:ring-amber"
+                className="w-4 h-4 rounded border-border text-amber focus:ring-amber"
               />
-              <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">
+              <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
                 Incluir todos os estados (pendentes/transferidos)
               </span>
             </label>
@@ -1097,9 +1097,9 @@ export default function QuickDocHub({
                   type="checkbox"
                   checked={isAlbum}
                   onChange={e => setIsAlbum(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-amber focus:ring-amber"
+                  className="w-4 h-4 rounded border-border text-amber focus:ring-amber"
                 />
-                <span className="text-xs font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">
+                <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
                   Versão Álbum Visual (Grid com Fotos)
                 </span>
               </label>
@@ -1130,8 +1130,8 @@ export default function QuickDocHub({
                     onClick={() => setFormat(item)}
                     className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
                       format === item
-                        ? "border-amber bg-amber/10 text-slate-900"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        ? "border-amber bg-amber/10 text-foreground"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted"
                     }`}
                   >
                     {formatLabels[item]}
@@ -1141,13 +1141,13 @@ export default function QuickDocHub({
           </Field>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Resumo operacional</p>
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Resumo operacional</p>
           {scope === "classe" && selectedClasse ? (
             <div className="mt-3 space-y-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">{selectedClasse.nome}</h3>
-                <p className="mt-1 text-xs text-slate-500">
+                <h3 className="text-sm font-bold text-foreground">{selectedClasse.nome}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Lista nominal por classe • {selectedClasseTurmas.length} turma{selectedClasseTurmas.length !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -1167,8 +1167,8 @@ export default function QuickDocHub({
           ) : selectedTurma ? (
             <div className="mt-3 space-y-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">{turmaLabel(selectedTurma)}</h3>
-                {statusResumo ? <p className="mt-1 text-xs text-slate-500">{statusResumo}</p> : null}
+                <h3 className="text-sm font-bold text-foreground">{turmaLabel(selectedTurma)}</h3>
+                {statusResumo ? <p className="mt-1 text-xs text-muted-foreground">{statusResumo}</p> : null}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <SummaryBox label="Ocupação" value={`${Number(selectedTurma.ocupacao_atual ?? 0)}`} />
@@ -1189,7 +1189,7 @@ export default function QuickDocHub({
               </div>
             </div>
           ) : (
-            <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+            <div className="mt-3 rounded-xl border border-dashed border-border bg-muted px-4 py-6 text-sm text-muted-foreground">
               {scope === "classe" ? "Selecione uma classe para habilitar a lista nominal." : "Selecione uma turma para ver o contexto da emissão e habilitar os documentos."}
             </div>
           )}
@@ -1198,8 +1198,8 @@ export default function QuickDocHub({
 
       {!nominalOnly && <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Documentos</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Documentos</p>
+          <p className="text-xs text-muted-foreground">
             {scope === "classe"
               ? "Lista nominal por classe selecionada"
               : `${selectedDocs.length} selecionado${selectedDocs.length !== 1 ? "s" : ""} • clique simples seleciona um, Ctrl/Cmd acumula`}
@@ -1229,23 +1229,23 @@ export default function QuickDocHub({
                 className={`rounded-xl border px-3 py-3 text-left transition ${
                   selected
                     ? "border-amber bg-amber/10"
-                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                    : "border-border bg-card hover:border-border hover:bg-muted"
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 shrink-0 text-slate-600">{doc.icon}</div>
+                  <div className="mt-0.5 shrink-0 text-muted-foreground">{doc.icon}</div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-slate-900">{doc.label}</p>
+                      <p className="text-sm font-semibold text-foreground">{doc.label}</p>
                       <span
                         className={`inline-flex h-5 w-5 items-center justify-center rounded-full border ${
-                          selected ? "border-amber bg-white text-emerald" : "border-slate-200 text-transparent"
+                          selected ? "border-amber bg-card text-emerald" : "border-border text-transparent"
                         }`}
                       >
                         <Check size={12} />
                       </span>
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-500">{doc.hint}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{doc.hint}</p>
                     {disabledReason ? (
                       <p className="mt-2 text-[11px] font-medium text-amber-700">{disabledReason}</p>
                     ) : (
@@ -1263,10 +1263,10 @@ export default function QuickDocHub({
         </div>
       </div>}
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-bold text-slate-900">Executar emissão</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="text-sm font-bold text-foreground">Executar emissão</p>
+          <p className="mt-1 text-xs text-muted-foreground">
             {format === "pdf_consolidado"
               ? "Documentos compatíveis serão enviados para a fila e aparecerão no histórico abaixo."
               : format === "excel"
@@ -1279,7 +1279,7 @@ export default function QuickDocHub({
           type="button"
           onClick={() => void handleEmit()}
           disabled={!canSubmit}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-klasse-green px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-muted-foreground/25"
         >
           {submitting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
           {format === "pdf_consolidado" ? "Enviar para a fila" : "Emitir agora"}
@@ -1287,13 +1287,13 @@ export default function QuickDocHub({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Fila de emissão</p>
-              <p className="mt-1 text-xs text-slate-500">Progresso dos documentos consolidados enviados.</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Fila de emissão</p>
+              <p className="mt-1 text-xs text-muted-foreground">Progresso dos documentos consolidados enviados.</p>
             </div>
-            {loadingJobs ? <Loader2 size={14} className="animate-spin text-slate-400" /> : null}
+            {loadingJobs ? <Loader2 size={14} className="animate-spin text-muted-foreground" /> : null}
           </div>
 
           <div className="space-y-3">
@@ -1303,20 +1303,20 @@ export default function QuickDocHub({
               recentJobs.map((job) => {
                 const progress = job.total_turmas > 0 ? Math.round((job.processed / job.total_turmas) * 100) : 0;
                 return (
-                  <div key={job.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <div key={job.id} className="rounded-xl border border-border bg-muted px-3 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">{jobLabel(job.documento_tipo)}</p>
-                        <p className="mt-1 text-[11px] text-slate-500">
+                        <p className="text-sm font-semibold text-foreground">{jobLabel(job.documento_tipo)}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
                           {new Date(job.created_at).toLocaleString("pt-PT")}
                         </p>
                       </div>
                       <StatusPill status={job.status === "SUCCESS" && job.failed_count > 0 ? "PARTIAL" : job.status} />
                     </div>
-                    <div className="mt-3 h-2 rounded-full bg-slate-200">
+                    <div className="mt-3 h-2 rounded-full bg-muted-foreground/15">
                       <div className="h-2 rounded-full bg-emerald transition-all" style={{ width: `${progress}%` }} />
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
                       <span>{job.processed}/{job.total_turmas} processado(s)</span>
                       {job.download_url ? (
                         <a href={job.download_url} className="font-semibold text-emerald hover:underline">
@@ -1359,10 +1359,10 @@ export default function QuickDocHub({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Histórico de downloads</p>
-            <p className="mt-1 text-xs text-slate-500">Registo local das emissões diretas feitas neste hub.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Histórico de downloads</p>
+            <p className="mt-1 text-xs text-muted-foreground">Registo local das emissões diretas feitas neste hub.</p>
           </div>
 
           <div className="space-y-3">
@@ -1370,10 +1370,10 @@ export default function QuickDocHub({
               <EmptyState text="Nenhum download direto registado ainda." />
             ) : (
               directHistory.map((item) => (
-                <div key={item.id} className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                <div key={item.id} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-muted px-3 py-3">
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">{item.label}</p>
-                    <p className="mt-1 text-[11px] text-slate-500">
+                    <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
                       {formatLabels[item.format]} • {new Date(item.createdAt).toLocaleString("pt-PT")}
                     </p>
                   </div>
@@ -1402,8 +1402,8 @@ function Field({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
-        {hint ? <span className="text-[11px] text-slate-400">{hint}</span> : null}
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+        {hint ? <span className="text-[11px] text-muted-foreground">{hint}</span> : null}
       </div>
       {children}
     </div>
@@ -1412,9 +1412,9 @@ function Field({
 
 function SummaryBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
-      <p className="mt-1 text-sm font-bold text-slate-900">{value}</p>
+    <div className="rounded-xl border border-border bg-muted px-3 py-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-bold text-foreground">{value}</p>
     </div>
   );
 }
@@ -1433,8 +1433,8 @@ function StatusPill({ status }: { status: string }) {
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-6 text-center text-sm text-slate-500">
-      <div className="mb-2 inline-flex rounded-full bg-white p-2 text-slate-400">
+    <div className="rounded-xl border border-dashed border-border bg-muted px-3 py-6 text-center text-sm text-muted-foreground">
+      <div className="mb-2 inline-flex rounded-full bg-card p-2 text-muted-foreground">
         <Clock3 size={14} />
       </div>
       <p>{text}</p>

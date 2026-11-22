@@ -14,12 +14,12 @@ export function FinanceInsightsPanel({
   if (insights.length === 0) return null;
 
   return (
-    <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm print:hidden">
+    <div className="rounded-[28px] border border-border bg-card p-5 shadow-sm print:hidden">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Tesoureiro Inteligente</p>
-          <h2 className="mt-2 text-lg font-semibold text-slate-900">Insights automáticos do período</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Tesoureiro Inteligente</p>
+          <h2 className="mt-2 text-lg font-semibold text-foreground">Insights automáticos do período</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             O sistema destaca o que merece ação imediata, sem obrigar a leitura linha a linha.
           </p>
         </div>

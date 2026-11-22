@@ -34,9 +34,9 @@ export function EducationalEmptyState({
   return (
     <tr>
       <td colSpan={colSpan} className="py-6">
-        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center">
-          <p className="text-sm font-semibold text-slate-700">{title}</p>
-          <p className="mt-1 text-sm text-slate-500">{message}</p>
+        <div className="rounded-xl border border-dashed border-border bg-muted px-4 py-5 text-center">
+          <p className="text-sm font-semibold text-foreground">{title}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{message}</p>
           <Link
             href={ctaHref}
             className="mt-3 inline-flex rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
