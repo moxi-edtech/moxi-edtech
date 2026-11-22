@@ -36,6 +36,7 @@ type TurmaItem = {
 };
 
 type PeriodoItem = { id: string; numero: number; tipo: string };
+type YearOption = { id: string; nome: string; ano_letivo: number; status: string; data_inicio?: string | null };
 
 type JobItem = {
   id: string;
@@ -80,8 +81,12 @@ function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void 
 
 export default function DocumentosOficiaisBatchClient() {
   const searchParams = useSearchParams();
-  const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
+  const requestedAcademicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? null;
   const { escolaId, escolaSlug } = useEscolaId();
+  const [yearOptions, setYearOptions] = useState<YearOption[]>([]);
+  const [academicYearId, setAcademicYearId] = useState("");
+  const [yearsError, setYearsError] = useState<string | null>(null);
+  const [yearsLoading, setYearsLoading] = useState(true);
   const escolaParam = escolaSlug || escolaId;
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
@@ -102,6 +107,8 @@ export default function DocumentosOficiaisBatchClient() {
   const latestJobStatusRef = useRef<string | null>(null);
   const optimisticJobRef = useRef<"RUNNING" | null>(null);
   const pollTokenRef = useRef<number>(0);
+  const turmasFetchVersion = useRef(0);
+  const periodsFetchVersion = useRef(0);
   const [manualRefresh, setManualRefresh] = useState(false);
   const [pendenciasModalOpen, setPendenciasModalOpen] = useState(false);
   const [notasModalOpen, setNotasModalOpen] = useState(false);
@@ -147,36 +154,71 @@ export default function DocumentosOficiaisBatchClient() {
     setSelected(new Set(selectableTurmas.map((t) => t.id)));
   };
 
+  useEffect(() => {
+    if (!escolaId) return;
+    const controller = new AbortController();
+    setYearsLoading(true);
+    setYearsError(null);
+    void fetch(`/api/secretaria/school-sessions?escolaId=${encodeURIComponent(escolaId)}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok || !json.ok) throw new Error(json.error || "Não foi possível consultar os anos letivos.");
+        return (Array.isArray(json.data) ? json.data : []) as YearOption[];
+      })
+      .then((items) => {
+        if (controller.signal.aborted) return;
+        const available = items.filter((item) => Boolean(item.id) && (!item.data_inicio || item.data_inicio <= new Date().toISOString().slice(0, 10)));
+        setYearOptions(available);
+        const current = available.find((item) => item.status === "ativa");
+        setAcademicYearId((previous) => available.some((item) => item.id === requestedAcademicYearId)
+          ? (requestedAcademicYearId ?? "") : available.some((item) => item.id === previous)
+          ? previous : (current?.id ?? available[0]?.id ?? ""));
+      })
+      .catch((cause) => { if (!controller.signal.aborted) setYearsError(cause instanceof Error ? cause.message : "Falha ao consultar os anos letivos."); })
+      .finally(() => { if (!controller.signal.aborted) setYearsLoading(false); });
+    return () => controller.abort();
+  }, [escolaId, requestedAcademicYearId]);
+
   const loadTurmas = useCallback(async () => {
+    const version = ++turmasFetchVersion.current;
+    if (!academicYearId) { setTurmas([]); setLoading(false); return; }
     setLoading(true);
     setTurmasError(null);
     try {
-      const res = await fetch("/api/secretaria/documentos-oficiais/turmas", { cache: "no-store" });
+      const res = await fetch(`/api/secretaria/documentos-oficiais/turmas?ano_letivo_id=${encodeURIComponent(academicYearId)}`, { cache: "no-store" });
       if (res.status === 429) throw new Error("Muitos pedidos. Aguarde uns segundos.");
       if (res.status === 503) throw new Error("Servidor ocupado. A tentar novamente…");
       const json = await res.json().catch(() => null);
-      if (res.ok && json?.ok) {
+      if (version !== turmasFetchVersion.current) return;
+      if (res.ok && json?.ok && json.context?.anoLetivoId === academicYearId) {
         setTurmas(json.items || []);
       } else {
-        throw new Error(json?.error || "Falha ao carregar turmas");
+        throw new Error(json?.error || "Não foi possível confirmar o ano das turmas.");
       }
     } catch (e: any) {
-      setTurmasError(e?.message || "Falha ao carregar turmas");
+      if (version === turmasFetchVersion.current) setTurmasError(e?.message || "Falha ao carregar turmas");
     } finally {
-      setLoading(false);
+      if (version === turmasFetchVersion.current) setLoading(false);
     }
-  }, []);
+  }, [academicYearId]);
 
   const loadPeriodos = useCallback(async () => {
-    if (!escolaParam) return;
-    const res = await fetch(`/api/escola/${escolaParam}/admin/periodos-letivos`, { cache: "no-store" });
-    const json = await res.json().catch(() => null);
-    if (res.ok && json?.ok && Array.isArray(json.periodos)) {
-      const list = json.periodos.filter((p: any) => p.tipo === "TRIMESTRE");
-      setPeriodos(list);
-      if (!periodoId && list.length > 0) setPeriodoId(list[0].id);
+    const version = ++periodsFetchVersion.current;
+    if (!escolaParam || !academicYearId) { setPeriodos([]); setPeriodoId(""); return; }
+    const params = new URLSearchParams({ ano_letivo_id: academicYearId });
+    try {
+      const res = await fetch(`/api/escola/${encodeURIComponent(escolaParam)}/admin/periodos-letivos?${params}`, { cache: "no-store" });
+      const json = await res.json().catch(() => null);
+      if (version !== periodsFetchVersion.current) return;
+      if (res.ok && json?.ok && json.context?.anoLetivoId === academicYearId && Array.isArray(json.periodos)) {
+        const list = json.periodos.filter((p: PeriodoItem) => p.tipo === "TRIMESTRE");
+        setPeriodos(list);
+        setPeriodoId((current) => list.some((p: PeriodoItem) => p.id === current) ? current : (list[0]?.id ?? ""));
+      } else { setPeriodos([]); setPeriodoId(""); }
+    } catch {
+      if (version === periodsFetchVersion.current) { setPeriodos([]); setPeriodoId(""); }
     }
-  }, [escolaParam, periodoId]);
+  }, [escolaParam, academicYearId]);
 
   const loadJobs = useCallback(async () => {
     setJobsError(null);
@@ -292,6 +334,10 @@ export default function DocumentosOficiaisBatchClient() {
 
   const handleGenerate = async () => {
     if (selected.size === 0) return;
+    if (!academicYearId || yearsLoading || loading) {
+      setToast({ message: "Confirme o ano letivo e aguarde o carregamento das turmas.", type: "error" });
+      return;
+    }
     if (tipo === "trimestral" && !periodoId) {
       setToast({ message: "Selecione o trimestre.", type: "error" });
       return;
@@ -445,7 +491,22 @@ export default function DocumentosOficiaisBatchClient() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+            Ano letivo do documento
+            <select value={academicYearId} disabled={yearsLoading || yearOptions.length === 0 || submitting}
+              onChange={(event) => {
+                setAcademicYearId(event.target.value);
+                setSelected(new Set());
+                setTurmas([]);
+                setPeriodos([]);
+                setPeriodoId("");
+              }}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20">
+              {yearOptions.length === 0 && <option value="">Indisponível</option>}
+              {yearOptions.map((year) => <option key={year.id} value={year.id}>{year.nome}{year.status === "ativa" ? " · atual" : " · histórico"}</option>)}
+            </select>
+          </label>
           <select
             value={tipo}
             onChange={(e) => setTipo(e.target.value as "trimestral" | "anual" | "boletim_trimestral" | "certificado")}
@@ -465,9 +526,9 @@ export default function DocumentosOficiaisBatchClient() {
         </div>
       </div>
 
-      {(turmasError || jobsError) && (
+      {(yearsError || turmasError || jobsError) && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {turmasError || jobsError}
+          {yearsError || turmasError || jobsError}
         </div>
       )}
 
@@ -870,7 +931,7 @@ export default function DocumentosOficiaisBatchClient() {
 
           <button
             onClick={handleGenerate}
-            disabled={submitting}
+            disabled={submitting || !academicYearId || loading}
             className="flex items-center gap-2 bg-[#E3B23C] text-slate-950 px-6 py-2.5 rounded-full text-sm font-bold hover:brightness-105 transition-all disabled:opacity-70"
           >
             {submitting ? (
