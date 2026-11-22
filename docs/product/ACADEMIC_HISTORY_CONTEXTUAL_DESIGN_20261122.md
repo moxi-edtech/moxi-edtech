@@ -42,7 +42,7 @@ Não sincronizar automaticamente notas finais históricas para avaliações trim
 - Emissão de **novos** lotes oficiais de pautas/certificados para anos fechados permanece proibida pelo contrato atual. Segunda via deve reutilizar documento oficial versionado e sua proveniência; não contornar `ACADEMIC_YEAR_CLOSED`.
 - O Balcão mantém o seletor **local** enquanto seus fluxos de rematrícula e regularização de origens/destinos não estiverem totalmente desacoplados. Não removê-lo sem E2E.
 - Dados de `anos_letivos` projetados/planeados não devem aparecer como arquivo histórico.
-- Nenhuma migration ou nova RPC é necessária para esta primeira etapa; não criar duplicidade de notas, matrículas, turmas ou documentos.
+- A experiência de Arquivo não precisa de migração nova. **Exceção de segurança identificada na continuação:** a RPC preexistente `get_aluno_timeline_360` usa `SECURITY DEFINER` sem autorização SQL; a migração versionada `20271201000000_guard_timeline_360_school_role.sql` é necessária antes de produção. Não criar duplicidade de notas, matrículas, turmas ou documentos.
 
 ## Continuação da implementação — 22/11/2026
 
@@ -52,8 +52,16 @@ Não sincronizar automaticamente notas finais históricas para avaliações trim
 - Novo `GET /api/secretaria/alunos/[id]/historico-disciplinas?ano=2025&page=1&escola_id=...`: leitura do pai `historico_anos` filtrada por escola + aluno + ano de início, seguida de `historico_disciplinas` por ID autorizado do pai. Paginado em 25 com `count: exact`, ordem estável e `private, no-store`; rejeita ano/página inválidos, utilizadores sem papel operacional e alunos de outras escolas.
 - `HistoricalDisciplineResultsPanel` substitui o detalhe limitado às 8 disciplinas do resumo. Apresenta nota final e resultado documental, pesquisa por ano escolhido, paginação, erros e estado vazio sem fallback para ano atual ou notas operacionais. A timeline conserva as 8 disciplinas de destaque no cartão-resumo (não é uma pauta).
 - A timeline mantém uma chave da consulta carregada (`alunoId + escolaId`) e bloqueia a apresentação de resultados de uma navegação anterior; o painel é remontado quando a identidade do aluno, a escola ou o ano muda. Evita o flash de dados entre contextos ao usar duas abas ou alternar portais.
-- **Não cria notas, não sincroniza notas históricas para trimestres, não emite pauta ou certificado e não exige migration**. Históricos transitados permanecem numa área distinta. Falta validar leitura RLS autenticada real e emissão legal da pauta versionada antes de afirmar cobertura completa.
+- **Não cria notas, não sincroniza notas históricas para trimestres nem emite pauta ou certificado**. O novo GET de disciplinas não exige alteração de esquema, mas a RPC 360 legada exige a migração de segurança SEC-ACADEMIC-360 descrita abaixo. Históricos transitados permanecem numa área distinta. Falta validar leitura RLS autenticada real e emissão legal da pauta versionada antes de afirmar cobertura completa.
 - Testes: `historical-discipline-query.spec.ts` valida ano/página; `academic-history-contextual.spec.mjs` verifica escopo multi-escola da timeline e consulta documental somente leitura. CI da branch deve ser reconfirmado no último SHA.
+
+### SEC-ACADEMIC-360 — correção P0 de autorização da RPC
+
+**Verificação diretamente no projeto Supabase KLASSE em 22/11/2026 (somente leitura):** a função `get_aluno_timeline_360(uuid,uuid)` estava em `SECURITY DEFINER`, tinha `EXECUTE` disponível a `authenticated` (não a `anon`), e o seu corpo não verificava `auth.uid()` nem `user_has_role_in_school`. Uma chamada direta à RPC podia contornar a validação existente na API Next.js. Esse risco não fica resolvido apenas com o filtro de escola no frontend/backend HTTP.
+
+**Migração proposta na branch, não aplicada em produção:** `supabase/migrations/20271201000000_guard_timeline_360_school_role.sql`. Preserva o corpo e a forma JSON da RPC, convertendo a função SQL para PL/pgSQL para **negar antes de ler** quando faltar identidade autenticada, papel operacional autorizado na escola pedida ou vínculo do aluno com essa escola. A condição falha com SQLSTATE `42501`. Executar `REVOKE` de `PUBLIC, anon`, manter `GRANT` apenas para `authenticated, service_role`. A autorização deve ser validada no banco com utilizadores reais de escolas distintas; CI estática não prova RLS nem políticas em produção.
+
+**Gate antes de merge/deploy:** aplicar somente a migration versionada pela esteira autorizada, verificar que (a) estudante/autenticado sem papel recebe `42501`; (b) operador da escola A não consulta aluno/escola B; (c) secretaria/admin autorizado recebe exatamente a estrutura JSON existente; (d) chamada sem autenticação não executa; (e) comportamento do consumidor `timeline-360` permanece íntegro. Se o serviço interno invocar a RPC sem JWT do utilizador, precisa de revisão explícita: não introduzir bypass genérico por `service_role`.
 
 ### Serviços e comportamento acrescentados
 
@@ -73,7 +81,7 @@ Não sincronizar automaticamente notas finais históricas para avaliações trim
 - `apps/web/tests/unit/academic-history-contextual.spec.mjs`: contratos de shell, arquivo, consulta histórica, SSR/fallback, documentação nominal, read-only, períodos e relatórios com escola explícita.
 - `apps/web/tests/unit/admin-theme-coverage.spec.mjs`: adaptado ao `AppShell` sem a antiga faixa de seletor. Os novos componentes usam tokens semânticos do tema.
 
-**Estado de validação:** os testes acima foram adicionados ao repositório e fazem parte dos workflows GitHub aplicáveis. Não assinalar como aprovados enquanto o último SHA da branch não tiver checks concluídos. Testes autenticados com RLS real, permissões de múltiplas escolas, duas abas, histórico legal e concorrência permanecem obrigatórios antes de merge.
+**Estado de validação:** os testes acima foram adicionados ao repositório e fazem parte dos workflows GitHub aplicáveis. O teste de contrato `SEC-ACADEMIC-360` valida a migração de guarda da RPC. Não assinalar como aprovados enquanto o último SHA da branch não tiver checks concluídos. Testes autenticados com RLS real, permissões de múltiplas escolas, duas abas, histórico legal e concorrência permanecem obrigatórios antes de merge.
 
 ### Contrato de registos históricos
 
@@ -93,6 +101,7 @@ Não sincronizar automaticamente notas finais históricas para avaliações trim
 - [ ] Duas abas com anos distintos não se interferem. Sidebar regressa ao padrão do módulo destino.
 - [ ] Nenhuma query de notas/documentos faz fallback implícito para matrícula mais recente.
 - [ ] E2E com escola Curtume, Secretaria, Operações e casos reais autorizados antes de merge.
+- [ ] SEC-ACADEMIC-360: bloqueio SQL direto por utilizador/tenant/aluno validado num ambiente com políticas reais (a migration não está aplicada).
 
 ## Próximos PRs recomendados
 1. **Pauta oficial e proveniência**: ligar os resultados documentados ao snapshot de pauta efetivamente fechado, por turma/matrícula/ano e versão, sem sintetizar notas trimestrais nem fazer emissão automática.
