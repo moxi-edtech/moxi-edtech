@@ -10,7 +10,10 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-const Query = z.object({ ano_letivo_id: z.string().uuid() });
+const Query = z.object({
+  ano_letivo_id: z.string().uuid(),
+  mes: z.coerce.number().int().min(1).max(12).optional(),
+});
 function answer(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
 }
@@ -23,7 +26,7 @@ function answer(body: Record<string, unknown>, status = 200) {
 export async function GET(req: Request) {
   try {
     const search = new URL(req.url).searchParams;
-    const parsed = Query.safeParse({ ano_letivo_id: search.get("ano_letivo_id") });
+    const parsed = Query.safeParse({ ano_letivo_id: search.get("ano_letivo_id"), mes: search.get("mes") || undefined });
     if (!parsed.success) return answer({ ok: false, error: "Ano letivo obrigatório." }, 400);
     const supabase = await supabaseServerTyped<any>();
     const { data: auth, error: authError } = await supabase.auth.getUser();
@@ -53,9 +56,17 @@ export async function GET(req: Request) {
     }
 
     const summed = new Map<number, { ano: number; previsto: number; pago: number; em_atraso: number; competencias: number }>();
+    const selectedMonth = parsed.data.mes ?? null;
+    const monthTotals = { previsto: 0, pago: 0, em_atraso: 0, competencias: 0 };
     for (const row of data ?? []) {
       const ano = Number(row.ano_letivo);
       if (!Number.isInteger(ano)) continue;
+      if (ano === year.ano && selectedMonth != null && Number(row.mes) === selectedMonth) {
+        monthTotals.previsto += Number(row.total_previsto ?? 0);
+        monthTotals.pago += Number(row.total_pago ?? 0);
+        monthTotals.em_atraso += Number(row.total_em_atraso ?? 0);
+        monthTotals.competencias++;
+      }
       const item = summed.get(ano) ?? { ano, previsto: 0, pago: 0, em_atraso: 0, competencias: 0 };
       item.previsto += Number(row.total_previsto ?? 0);
       item.pago += Number(row.total_pago ?? 0);
@@ -72,7 +83,9 @@ export async function GET(req: Request) {
       ok: true,
       ano_letivo_id: year.id, ano: year.ano,
       fonte: "vw_financeiro_propinas_mensal_escola",
-      selecionado, total_em_atraso_todos_anos: totalEmAtrasoTodosAnos,
+      selecionado, mes: selectedMonth,
+      competencia_selecionada: selectedMonth == null ? null : { mes: selectedMonth, ano: year.ano, ...monthTotals },
+      total_em_atraso_todos_anos: totalEmAtrasoTodosAnos,
       por_ano: porAno,
       aviso: "As dívidas de outros anos continuam na conta corrente. Este painel não altera cobranças.",
     });
