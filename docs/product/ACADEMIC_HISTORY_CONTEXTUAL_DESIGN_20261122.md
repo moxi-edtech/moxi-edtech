@@ -61,6 +61,8 @@ Não sincronizar automaticamente notas finais históricas para avaliações trim
 
 **Migração proposta na branch, não aplicada em produção:** `supabase/migrations/20271202000000_guard_timeline_360_school_role.sql`. Preserva o corpo e a forma JSON da RPC, convertendo a função SQL para PL/pgSQL para **negar antes de ler** quando faltar identidade autenticada, papel operacional autorizado na escola pedida ou vínculo do aluno com essa escola. A condição falha com SQLSTATE `42501`. Executar `REVOKE` de `PUBLIC, anon`, manter `GRANT` apenas para `authenticated, service_role`. A autorização deve ser validada no banco com utilizadores reais de escolas distintas; CI estática não prova RLS nem políticas em produção.
 
+**Integridade do ledger remoto:** o Supabase tem pelo menos a versão `20271201100000` aplicada. O conector MCP `apply_migration` atribui timestamp próprio e não oferece parâmetro `version`; não o utilizar para esta migration versionada, pois divergiria de `20271202000000`. Aplicar exclusivamente por executor de migration que preserve o timestamp do ficheiro, sem `db push` global, e depois confirmar o registo remoto.
+
 **Gate antes de merge/deploy:** aplicar somente a migration versionada pela esteira autorizada, verificar que (a) estudante/autenticado sem papel recebe `42501`; (b) operador da escola A não consulta aluno/escola B; (c) secretaria/admin autorizado recebe exatamente a estrutura JSON existente; (d) chamada sem autenticação não executa; (e) comportamento do consumidor `timeline-360` permanece íntegro. Se o serviço interno invocar a RPC sem JWT do utilizador, precisa de revisão explícita: não introduzir bypass genérico por `service_role`.
 
 ### Matriz de módulos — continuação implementada na branch
@@ -81,11 +83,11 @@ As consultas adicionais preservam as tabelas canónicas, sempre em `READ` e por 
 | Relatórios | Comparação por dois anos com contagens exatas de turmas, matrículas vinculadas e históricos; filtro de trimestre para pautas publicadas/frequência | Compara **volumes**, não médias escolares; só períodos MED canónicos verificados |
 
 **Limites de segurança e integridade:**
-- `registos`: ano/UUID/turma/tipo obrigatórios, `CLOSED`, `session_id`, papel de gestão de turmas; volumes limitados sem truncamento silencioso. Não devolve `pdf_path` nem cria versões.
+- `registos`: ano/UUID/turma/tipo obrigatórios, `CLOSED`, `session_id`, papel de leitura explicitamente autorizado na escola selecionada; volumes limitados sem truncamento silencioso. Não devolve `pdf_path` nem cria versões.
 - `pauta/[id]`: reautoriza a escola, a turma e o período/ano, exige pauta `SUCCESS` com PDF e emite URL assinada de curta validade. Nunca chama geradores que escrevem em pautas fechadas.
 - `financeiro`: usa papel financeiro/administrativo explícito, `ano_letivo_id` canónico e read model protegido por RLS; o filtro de mês não altera o total de dívidas vencidas de anos anteriores.
 - `comparacao`: conta `matriculas.session_id` sem inferir matrículas legadas para outro ano; `trimestre` usa `readVerifiedAcademicTrimesters` dos **dois** anos antes de comparar.
-- Todos os novos endpoints são `private, no-store`, sem `service_role` e sem métodos de escrita. Esquema/índices existentes são reutilizados.
+- Todos os novos endpoints são `private, no-store`, sem `service_role` e sem métodos de escrita. As leituras usam `authorizeAcademicArchiveRead`/`requireRoleInSchool` e não dependem da escola padrão em `profiles.escola_id`; o Financeiro usa gate específico. Esquema/índices existentes são reutilizados.
 - **Gates antes da publicação**: testes autenticados multi-tenant, viabilidade dos snapshots RLS, download de PDF já publicado, permissões financeiras, E2E claro/escuro e a migração P0 da timeline 360. CI estática é necessária, mas insuficiente para marcar produção homologada.
 
 ### Serviços e comportamento acrescentados
