@@ -10,7 +10,7 @@ test("all four historical records use the same authorized turma and academic ses
   assert.match(api, /z\.enum\(\["pautas", "horarios", "frequencia", "curriculo"\]\)/);
   assert.match(api, /z\.string\(\)\.uuid\(\)/);
   assert.match(api, /resolveEscolaIdForUser/);
-  assert.match(api, /authorizeTurmasManage/);
+  assert.match(api, /authorizeAcademicArchiveRead/);
   assert.match(api, /requestedAcademicYearId: ano_letivo_id/);
   assert.match(api, /year\.status !== "CLOSED"/);
   assert.match(api, /\.eq\("session_id", year\.id\)/);
@@ -24,7 +24,7 @@ test("all four historical records use the same authorized turma and academic ses
 test("official historic pauta reads existing PDF with a fresh school-year authorization", () => {
   const api = src("app/api/secretaria/operacoes-academicas/arquivo/pauta/[id]/route.ts");
   for (const check of [
-    /authorizeTurmasManage/, /resolveEscolaIdForUser/, /requestedAcademicYearId/,
+    /authorizeAcademicArchiveRead/, /resolveEscolaIdForUser/, /requestedAcademicYearId/,
     /\.eq\("session_id", year\.id\)/, /\.eq\("ano_letivo_id", year\.id\)/,
     /pautaRes\.data\.status !== "SUCCESS"/, /createSignedUrl/, /if \(!period\)/,
   ]) assert.match(api, check);
@@ -73,7 +73,7 @@ test("finance summary is a separate role-protected read and keeps older debts vi
 test("year comparison counts exact scoped records without cross-year or tenant fallback", () => {
   const api = src("app/api/secretaria/operacoes-academicas/arquivo/comparacao/route.ts");
   assert.match(api, /resolveEscolaIdForUser/);
-  assert.match(api, /authorizeTurmasManage/);
+  assert.match(api, /authorizeAcademicArchiveRead/);
   assert.match(api, /parsed\.data\.ano_letivo_id === parsed\.data\.comparar_ano_letivo_id/);
   assert.match(api, /\.eq\("escola_id", escolaId\)\.eq\("session_id", year\.id\)/);
   assert.match(api, /count: "exact", head: true/);
@@ -100,4 +100,12 @@ test("archive UI exposes contextual trimester and version choices without global
   assert.match(analytics, /comparar_ano_letivo_id/);
   assert.match(analytics, /id="archive-report-period"/);
   assert.match(analytics, /id="archive-finance-month"/);
+});
+
+test("archive read roles resolve the actor's membership in the requested school", () => {
+  const access = src("lib/academico/archive-read-authorization.ts");
+  assert.match(access, /requireRoleInSchool/);
+  assert.match(access, /K12_ADMIN_SECRETARIA_ROLE_GROUP/);
+  assert.match(access, /"diretor", "secretaria_financeiro", "admin_secretario"/);
+  assert.match(access, /supabase, escolaId/);
 });
