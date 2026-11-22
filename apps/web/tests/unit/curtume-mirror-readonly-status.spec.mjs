@@ -29,7 +29,7 @@ test("existing operations page shows preview only in Curtume's 2025/26 historica
   const page = read("app/secretaria/(portal-secretaria)/operacoes-academicas/reconciliacao-historica/page.tsx");
   const component = read("components/secretaria/CurtumeNotasFinaisStatus.tsx");
   assert.match(page, /isCurtume && ano === 2025 && tipo === "historicos"/);
-  assert.match(page, /<CurtumeNotasFinaisStatus escola=\{escolaId\}/);
+  assert.match(page, /<CurtumeNotasFinaisStatus (?:key=\{reload\} )?escola=\{escolaId\}/);
   assert.match(component, /\/notas-finais-2025\/status\?escola=/);
   assert.match(component, /preview\.elegiveis === 0/);
   assert.doesNotMatch(component, /sincronizar_finais_2025|Sincronizar notas finais/);

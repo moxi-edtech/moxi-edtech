@@ -8,6 +8,7 @@ import { AlertTriangle, CheckCircle2, FileCheck2, LockKeyhole, RefreshCw } from 
 import { buildBalcaoActionHref } from "@/lib/balcao/action-registry";
 import { CurtumeFechoHistoricoLote } from "@/components/secretaria/CurtumeFechoHistoricoLote";
 import { CurtumeNotasFinaisStatus } from "@/components/secretaria/CurtumeNotasFinaisStatus";
+import { CurtumeDocumentalReview } from "@/components/secretaria/CurtumeDocumentalReview";
 import { CurtumeHistoricalExceptionDesk } from "@/components/secretaria/CurtumeHistoricalExceptionDesk";
 
 type Resultado = "aprovado" | "reprovado" | "concluido";
@@ -229,14 +230,20 @@ export default function ReconciliacaoAcademicaHistoricaPage() {
       </div>
 
       {isCurtume && ano === 2025 && tipo === "historicos" && (
-        <CurtumeNotasFinaisStatus escola={escolaId} />
+        <CurtumeNotasFinaisStatus key={reload} escola={escolaId} />
       )}
 
       {isCurtume && ano === 2025 && tipo === "historicos" && (
+        <CurtumeDocumentalReview escola={escolaId} onComplete={() => setReload((value) => value + 1)} />
+      )}
+
+      {isCurtume && ano === 2025 && tipo === "historicos" && (
+        <section id="curtume-historicos-por-fechar">
         <CurtumeFechoHistoricoLote
           balcaoHref={`/escola/${encodeURIComponent(escolaId)}/secretaria/balcao`}
           onComplete={() => setReload((value) => value + 1)}
         />
+        </section>
       )}
 
       <div className="rounded-xl border border-border bg-card p-4">

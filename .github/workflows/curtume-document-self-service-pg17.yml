@@ -1,0 +1,65 @@
+name: Curtume documental self-service — PostgreSQL 17
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20271201090000_curtume_2025_documental_self_service.sql'
+      - 'supabase/ops/tests/curtume_document_self_service/**'
+      - 'apps/web/src/**/notas-finais-2025/**'
+      - 'apps/web/src/components/secretaria/CurtumeDocumentalReview.tsx'
+      - '.github/workflows/curtume-document-self-service-pg17.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  document-review-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: fixture-only
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: fixture-only
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert PostgreSQL 17 disposable
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -Atc "SELECT current_setting('server_version_num')" | grep -E '^17[0-9]{4}$'
+      - name: Load synthetic school, historic notes, and baseline functions
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/curtume_document_self_service/fixture_base.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/curtume_document_self_service/fixture_extra.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/curtume_document_self_service/mirror_initial.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/curtume_document_self_service/functions_live_baseline.sql
+      - name: Validate SHA-pinned migration and legacy definer contract
+        run: |
+          # Test-only hashes correspond to synthetic historic IDs. The source
+          # migration remains pinned to the live code hashes unchanged.
+          python3 supabase/ops/tests/curtume_document_self_service/prepare_fixture_migration.py \
+            supabase/migrations/20271201090000_curtume_2025_documental_self_service.sql \
+            /tmp/curtume-documental-fixture-migration.sql
+          psql -X -v ON_ERROR_STOP=1 -f /tmp/curtume-documental-fixture-migration.sql
+      - name: Verify document preview, signatures, idempotency, tenant isolation, and note mirror
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/curtume_document_self_service/regression.sql
+      - name: Ensure synthetic transaction leaves notes and approval empty
+        run: |
+          test "$(psql -X -Atc 'SELECT count(*) FROM public.notas')" = "0"
+          test "$(psql -X -Atc 'SELECT count(*) FROM internal.curtume_2025_documento_revisoes')" = "0"
