@@ -58,14 +58,16 @@ export async function GET(req: Request) {
     }
 
     const trimester = parsed.data.trimestre ?? null;
+    // Capture the narrowed tenant ID: a nested async function must never use a nullable scope.
+    const authorizedEscolaId: string = escolaId;
     async function metrics(year: typeof left) {
       const [turmas, matriculas, historicos] = await Promise.all([
         supabase.from("turmas").select("id", { count: "exact", head: true })
-          .eq("escola_id", escolaId).eq("session_id", year.id),
+          .eq("escola_id", authorizedEscolaId).eq("session_id", year.id),
         supabase.from("matriculas").select("id", { count: "exact", head: true })
-          .eq("escola_id", escolaId).eq("session_id", year.id),
+          .eq("escola_id", authorizedEscolaId).eq("session_id", year.id),
         supabase.from("historico_anos").select("id", { count: "exact", head: true })
-          .eq("escola_id", escolaId).eq("ano_letivo", year.ano),
+          .eq("escola_id", authorizedEscolaId).eq("ano_letivo", year.ano),
       ]);
       if (turmas.error || matriculas.error || historicos.error) {
         throw turmas.error ?? matriculas.error ?? historicos.error;
@@ -73,14 +75,14 @@ export async function GET(req: Request) {
       let periodo: { numero: number; pautas_publicadas: number; registos_frequencia: number } | null = null;
       if (trimester != null) {
         const verified = await readVerifiedAcademicTrimesters(supabase, {
-          escolaId, anoLetivoId: year.id, yearBase: year.ano,
+          authorizedEscolaId, anoLetivoId: year.id, yearBase: year.ano,
         });
         const term = requireVerifiedTrimester(verified, { numero: trimester });
         const [pautas, frequencia] = await Promise.all([
           supabase.from("pautas_oficiais").select("id", { count: "exact", head: true })
-            .eq("escola_id", escolaId).eq("periodo_letivo_id", term.id).eq("status", "SUCCESS"),
+            .eq("escola_id", authorizedEscolaId).eq("periodo_letivo_id", term.id).eq("status", "SUCCESS"),
           supabase.from("frequencia_status_periodo").select("id", { count: "exact", head: true })
-            .eq("escola_id", escolaId).eq("periodo_letivo_id", term.id),
+            .eq("escola_id", authorizedEscolaId).eq("periodo_letivo_id", term.id),
         ]);
         if (pautas.error || frequencia.error) throw pautas.error ?? frequencia.error;
         periodo = { numero: trimester, pautas_publicadas: pautas.count ?? 0, registos_frequencia: frequencia.count ?? 0 };
@@ -97,7 +99,7 @@ export async function GET(req: Request) {
     const [atual, comparado] = await Promise.all([metrics(left), metrics(right)]);
     return response({
       ok: true,
-      atual, comparado, trimestre,
+      atual, comparado, trimestre: trimester,
       diferenca: {
         turmas: atual.turmas - comparado.turmas,
         matriculas_vinculadas: atual.matriculas_vinculadas - comparado.matriculas_vinculadas,
