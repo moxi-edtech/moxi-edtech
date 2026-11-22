@@ -131,8 +131,8 @@ export async function GET(req: Request) {
           .select("id, nome").in("id", disciplinaIds) : Promise.resolve({ data: [], error: null }),
       ]);
       if (slotsRes.error || subjectsRes.error) throw slotsRes.error ?? subjectsRes.error;
-      const slots = new Map((slotsRes.data ?? []).map((v: any) => [v.id, v]));
-      const subjects = new Map((subjectsRes.data ?? []).map((v: any) => [v.id, v.nome]));
+      const slots = new Map<string, any>((slotsRes.data ?? []).map((v: any): [string, any] => [String(v.id), v]));
+      const subjects = new Map<string, string>((subjectsRes.data ?? []).map((v: any): [string, string] => [String(v.id), String(v.nome)]));
       const itens = (aulas ?? []).map((v: any) => ({
         id: v.id,
         disciplina: subjects.get(v.disciplina_id) ?? "Disciplina",
@@ -199,7 +199,7 @@ export async function GET(req: Request) {
       ? await supabase.from("disciplinas_catalogo").select("id, nome").in("id", subjectIds)
       : { data: [], error: null };
     if (namesError) throw namesError;
-    const subjectNames = new Map((names ?? []).map((x: any) => [x.id, x.nome]));
+    const subjectNames = new Map<string, string>((names ?? []).map((x: any): [string, string] => [String(x.id), String(x.nome)]));
     return response({
       ok: true, context, versoes: (versions ?? []).map((version: any) => ({
         ...version,
