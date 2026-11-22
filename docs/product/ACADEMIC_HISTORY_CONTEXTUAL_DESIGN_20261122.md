@@ -10,11 +10,11 @@ O seletor `AcademicYearSelector` na topbar alterava o `ano_letivo_id` para módu
 
 ## Superfícies desta entrega
 1. **AppShell** — retirar seletor universal e faixa vazia; manter alerta contextual quando a página está explicitamente em modo histórico. Sidebar deixa de propagar parâmetros de ano de uma operação para outras.
-2. **Arquivo Académico** — entrada em Operações Académicas de Operações e Secretaria; anos anteriores vêm do endpoint autenticado `/api/secretaria/school-sessions`; seleção não altera o contexto das outras páginas; cartões para alunos, turmas, documentos e reconciliação.
+2. **Arquivo Académico** — entrada em Operações Académicas de Operações e Secretaria; anos anteriores vêm de `/api/secretaria/school-sessions`; seleção não altera o contexto de outros módulos. Além dos atalhos, oferece pesquisa paginada de turmas antigas e emissão direta de listas nominais históricas em PDF/Excel através dos endpoints canónicos, com autorização e auditoria existentes.
 3. **Central de Documentos (QuickDocHub)** — seleção do ano local baseada em `anos_letivos.id`, inclusive deep link validado contra a lista autorizada; filas de lotes enviam sempre esse ID; mudança de ano limpa turma, filtros dependentes e período. Os trimestres vêm de `/api/secretaria/relatorios/mapa-aproveitamento?ano_letivo_id=...`.
-4. **Documentos Oficiais em lote** — seletor de ano próprio; seleção de turmas vem do novo GET filtrado por `turmas.session_id` em escola/ano; períodos consultados com ano explícito e confirmados contra a resposta; impede mistura de seleção local e URL. O POST canónico mantém os guards de escrita em ano encerrado.
+4. **Documentos Oficiais em lote** — seletor de ano próprio; turmas do GET filtradas por `turmas.session_id`, escola e ano; períodos do mesmo ano; POST recebe escola explícita autorizada. Em ano fechado apresenta apenas ações de consulta e lista nominal histórica, sem botões de lançamento de notas nem emissão de novos lotes oficiais. As contagens de alunos usam a política nominal histórica, com paginação por cursor e sem truncamento silencioso.
 5. **Listas de matrículas** — link direto de arquivo com `ano_letivo_id` valida a opção recebida; seletor da página partilha o ano escolhido na URL sem mudar a sidebar.
-6. **Dossier do aluno** — o componente de percurso 360º já existente apresenta os anos com intervalo completo (`2025/2026`) e abre um detalhe focalizado no ano pedido, sem duplicar a timeline nem trocar o ano do portal. Ano inexistente apresenta recuperação para todos os anos.
+6. **Dossier do aluno** — o percurso 360º existente apresenta anos completos (`2025/2026`) e detalhe de ano selecionado. Esse detalhe inclui médias finais documentadas disponíveis (até 8 disciplinas prioritárias, limite da RPC atual), sem as apresentar como avaliações trimestrais nem como pauta completa. Ano inexistente oferece retorno a todos os anos.
 
 ## Conceito de domínio
 - `escola_id`: autorização multi-tenant do utilizador.
@@ -38,11 +38,39 @@ Não sincronizar automaticamente notas finais históricas para avaliações trim
 | Reconciliação Histórica | caso ou matrícula de origem | entra pelo arquivo/dossier | operações especiais auditadas, nunca um `WRITE` genérico |
 
 ## Limites explícitos desta branch
-- O Arquivo Académico abre consumidores existentes, sem substituí-los. A visão cronológica completa do dossier ainda exige evolução dedicada do componente de percurso do aluno.
+- O Arquivo Académico acrescenta consulta paginada real de turmas e listas históricas, reutilizando entidades e endpoints existentes. O dossier exibe a timeline canónica e até 8 disciplinas prioritárias; para a pauta integral é necessária a fonte específica da turma/ano.
 - Emissão de **novos** lotes oficiais de pautas/certificados para anos fechados permanece proibida pelo contrato atual. Segunda via deve reutilizar documento oficial versionado e sua proveniência; não contornar `ACADEMIC_YEAR_CLOSED`.
 - O Balcão mantém o seletor **local** enquanto seus fluxos de rematrícula e regularização de origens/destinos não estiverem totalmente desacoplados. Não removê-lo sem E2E.
 - Dados de `anos_letivos` projetados/planeados não devem aparecer como arquivo histórico.
 - Nenhuma migration ou nova RPC é necessária para esta primeira etapa; não criar duplicidade de notas, matrículas, turmas ou documentos.
+
+## Continuação da implementação — 22/11/2026
+
+### Serviços e comportamento acrescentados
+
+- `GET /api/secretaria/operacoes-academicas/arquivo/turmas`: ano UUID obrigatório, verificação de utilizador e pertença à escola, `authorizeTurmasManage`, ano `CLOSED`, filtro `escola_id + session_id`, 25 itens por página, pesquisa de nome com `ILIKE` literal escapado. Resposta `private, no-store`. Não existe endpoint paralelo de escrita.
+- `HistoricalTurmasPanel`: consulta autónoma com pesquisa, paginação, estados de carregamento/erro e isolamento quando o ano muda. Ligação para detalhe da turma; PDF/Excel nominal usam os endpoints existentes com `mode=ano_letivo` para aplicar a política de lista histórica.
+- `loadHistoricalRosterCounts`: contagem por cursor de matrículas da sessão histórica, incluindo os estados históricos admitidos pela política de lista nominal; exclui canceladas/pendentes e falha se não conseguir concluir a leitura. O ano atual mantém a regra operacional de matrículas ativas.
+- `Admin/turmas/page.tsx`: tanto SSR pela view como o fallback por tabela confirmam a sessão académica autorizada, incluindo a visita sem `ano_letivo_id`. O fallback não pode listar todos os anos.
+- `resolveAcademicYearContext`: recebe opcionalmente `requestedEscolaId` e chama o resolver de pertença antes de procurar o ano. `periodos-letivos` e os pedidos de lotes/documentos usam a escola explícita do portal.
+- `QuickDocHub` e `DocumentosOficiaisBatchClient`: link de ano desconhecido ou de outra escola não pode resultar silenciosamente em emissão no ano atual. Ano duplicado bloqueia o pedido e exige ajuste de configuração.
+- Os lotes recentes da Central de Documentos continuam **gerais da escola**, sem filtro por ano: a UI informa isso explicitamente. Não atribuir um ZIP antigo ao ano escolhido sem conferência das turmas e proveniência.
+
+### Testes adicionados ou atualizados
+
+- `apps/web/tests/unit/archive-turmas-query.spec.ts`: validação de UUID/página/pesquisa, bloqueio de filtro de polo e escape literal de caracteres `ILIKE`.
+- `apps/web/tests/unit/historical-roster-count.spec.ts`: 503 matrículas, paginação com cursor, status históricos e rejeição de matrículas de outra escola/ano.
+- `apps/web/tests/unit/academic-history-contextual.spec.mjs`: contratos de shell, arquivo, consulta histórica, SSR/fallback, documentação nominal, read-only e escola explícita.
+- `apps/web/tests/unit/admin-theme-coverage.spec.mjs`: adaptado ao `AppShell` sem a antiga faixa de seletor. Os novos componentes usam tokens semânticos do tema.
+
+**Estado de validação:** os testes acima foram adicionados ao repositório e fazem parte dos workflows GitHub aplicáveis. Não assinalar como aprovados enquanto o último SHA da branch não tiver checks concluídos. Testes autenticados com RLS real, permissões de múltiplas escolas, duas abas, histórico legal e concorrência permanecem obrigatórios antes de merge.
+
+### Contrato de registos históricos
+
+- Uma lista nominal histórica usa a **turma de origem**, não a matrícula atual; categorias incluídas: ativa, concluída, transferida, trancada e desistente. Cancelada e pendente ficam excluídas conforme `listaNominalPolicy`.
+- Notas finais em `historico_disciplinas` permanecem registos documentais; não inventar MAC/NPP/NPT, nem criar avaliações para preencher o resumo do dossier.
+- O arquivo pode navegar para a Reconciliação Histórica existente, mas não cria exceção genérica para editar ano fechado.
+- As rotas de download e emissão continuam sujeitas aos gates originais de plano, autorização e auditoria.
 
 ## Segurança e critérios de aceitação
 - [ ] Sessão não autenticada, escola de outro tenant, e papel sem acesso não consultam nem mutam dados.
@@ -57,7 +85,7 @@ Não sincronizar automaticamente notas finais históricas para avaliações trim
 - [ ] E2E com escola Curtume, Secretaria, Operações e casos reais autorizados antes de merge.
 
 ## Próximos PRs recomendados
-1. **Dossier cronológico**: matrícula por ano, resultados, notas e documentos por fonte canónica; consulta histórica sem mudar ano do portal.
+1. **Dossier cronológico completo**: estender o resumo de até 8 disciplinas a consulta paginada da pauta oficial por matrícula/ano, sem recalcular ou sintetizar notas trimestrais.
 2. **Emissão/segunda via histórica**: selecionar snapshot oficial, auditar motivo de reemissão, preservar versão/referência/validade; adaptar endpoint específico em vez de contornar guard de escrita.
 3. **Balcão e professores**: suprimir seletores residuais quando entidade contextual estiver demonstravelmente completa; preparar próximo ano via Virada e não por seleção global.
 4. **Relatórios e financeiro**: filtros locais de competência e comparação, mantendo valores de anos anteriores na conta corrente.
