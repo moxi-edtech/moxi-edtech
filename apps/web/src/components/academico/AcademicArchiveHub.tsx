@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Archive, BookOpen, ClipboardCheck, FileText, GraduationCap, History, Users } from "lucide-react";
+import HistoricalTurmasPanel from "@/components/academico/HistoricalTurmasPanel";
 
 type AcademicSession = {
   id: string;
@@ -72,7 +73,7 @@ export default function AcademicArchiveHub() {
     const academicBase = isOperations ? `${base}/academico` : `${base}/operacoes-academicas`;
     return [
       { title: "Alunos e percurso", description: "Consultar matrículas e o dossier de alunos de anos anteriores.", href: `${base}/alunos${yearQuery}`, icon: Users },
-      { title: "Turmas e classes", description: "Consultar a organização das turmas no ano selecionado.", href: `${base}/turmas${yearQuery}`, icon: GraduationCap },
+      { title: "Turmas e classes", description: "Ver e pesquisar as turmas deste ano diretamente no arquivo.", href: "#turmas-historicas", icon: GraduationCap },
       { title: "Pautas e documentos", description: "Consultar ou emitir documentos com o ano de origem explícito.", href: `${base}/documentos-oficiais${yearQuery}`, icon: FileText },
       { title: "Regularização histórica", description: "Resolver pendências com evidência e permissões próprias, sem reabrir o ano.", href: `${academicBase}/reconciliacao-historica`, icon: ClipboardCheck },
     ];
@@ -113,7 +114,7 @@ export default function AcademicArchiveHub() {
       {!loading && !error && selectedYear && (
         <section aria-label="Registos do ano selecionado" className="grid gap-4 md:grid-cols-2">
           {destinations.map(({ title, description, href, icon: Icon }) => (
-            <Link key={title} href={href} className="group flex gap-3 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:border-klasse-gold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#E3B23C]/20">
+            <Link key={title} href={href} className="group flex gap-3 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:border-klasse-gold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted"><Icon className="h-5 w-5 text-klasse-green" /></span>
               <span className="min-w-0">
                 <span className="block text-sm font-semibold text-foreground group-hover:text-klasse-green">{title}</span>
@@ -122,6 +123,15 @@ export default function AcademicArchiveHub() {
             </Link>
           ))}
         </section>
+      )}
+      {!loading && !error && selectedYear && (
+        <HistoricalTurmasPanel
+          key={selectedYear.id}
+          academicYearId={selectedYear.id}
+          yearLabel={selectedYear.nome || `${selectedYear.ano_letivo}/${selectedYear.ano_letivo + 1}`}
+          escolaParam={schoolParam ? decodeURIComponent(schoolParam) : null}
+          portalBase={base}
+        />
       )}
     </div>
   );
