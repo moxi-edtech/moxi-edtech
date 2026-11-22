@@ -251,7 +251,7 @@ const TOAST_CONFIG: Record<
     border: "border-rose-500/30",
     icon: <AlertCircle size={18} />,
     textColor: "text-foreground",
-    iconColor: "text-rose-700 dark:text-rose-300 dark:text-rose-300",
+    iconColor: "text-rose-700 dark:text-rose-300",
     barColor: "bg-rose-600",
   },
   warning: {
@@ -476,7 +476,7 @@ function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (a
       border: "border-amber/25",
       bg: "bg-amber/10",
       icon: <AlertTriangle size={16} className="text-amber dark:text-amber-300 flex-shrink-0 mt-0.5" />,
-      badge: "bg-amber/20 text-amber dark:text-amber-300 dark:text-amber-300",
+      badge: "bg-amber/20 text-amber dark:text-amber-300",
       count: "text-amber dark:text-amber-300",
     },
     info: {
