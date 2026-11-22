@@ -170,12 +170,27 @@ export default function DocumentosOficiaisBatchClient() {
         if (controller.signal.aborted) return;
         const available = items.filter((item) => Boolean(item.id) && (!item.data_inicio || item.data_inicio <= new Date().toISOString().slice(0, 10)));
         setYearOptions(available);
+        if (requestedAcademicYearId && !available.some((item) => item.id === requestedAcademicYearId)) {
+          setAcademicYearId("");
+          setYearsError("Ano letivo indisponível para esta escola. Selecione um ano válido.");
+          setTurmas([]);
+          setSelected(new Set());
+          return;
+        }
         const current = available.find((item) => item.status === "ativa");
         setAcademicYearId((previous) => available.some((item) => item.id === requestedAcademicYearId)
           ? (requestedAcademicYearId ?? "") : available.some((item) => item.id === previous)
           ? previous : (current?.id ?? available[0]?.id ?? ""));
       })
-      .catch((cause) => { if (!controller.signal.aborted) setYearsError(cause instanceof Error ? cause.message : "Falha ao consultar os anos letivos."); })
+      .catch((cause) => {
+        if (!controller.signal.aborted) {
+          setYearsError(cause instanceof Error ? cause.message : "Falha ao consultar os anos letivos.");
+          setAcademicYearId("");
+          setYearOptions([]);
+          setTurmas([]);
+          setSelected(new Set());
+        }
+      })
       .finally(() => { if (!controller.signal.aborted) setYearsLoading(false); });
     return () => controller.abort();
   }, [escolaId, requestedAcademicYearId]);
@@ -502,6 +517,7 @@ export default function DocumentosOficiaisBatchClient() {
             <select value={academicYearId} disabled={yearsLoading || yearOptions.length === 0 || submitting}
               onChange={(event) => {
                 setAcademicYearId(event.target.value);
+                setYearsError(null);
                 setSelected(new Set());
                 setTurmas([]);
                 setPeriodos([]);
