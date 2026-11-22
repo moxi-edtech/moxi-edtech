@@ -18,7 +18,8 @@ export async function GET(req: Request) {
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
+    const requestedEscolaId = new URL(req.url).searchParams.get("escola_id")
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId)
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 })
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
