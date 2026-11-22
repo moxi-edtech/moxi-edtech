@@ -479,12 +479,12 @@ test("RAA successor activation is the sole additional reviewed migration", () =>
 });
 
 test("timeline 360 security migration is the only newly reviewed RPC authorization patch", () => {
-  const file = "20271201000000_guard_timeline_360_school_role.sql";
+  const file = "20271202000000_guard_timeline_360_school_role.sql";
   const path = "supabase/migrations/" + file;
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(file));
   assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
   assert.match(checkFiscalAndSchemaScope([
-    "supabase/migrations/20271201000001_unreviewed_timeline_bypass.sql"
+    "supabase/migrations/20271202000001_unreviewed_timeline_bypass.sql"
   ])[0] ?? "", /Unapproved database migration/);
 
   for (const sql of [
