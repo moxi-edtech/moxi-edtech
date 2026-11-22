@@ -108,6 +108,8 @@ test("Dossier anual usa escola explícita e confirma o aluno antes da RPC SECURI
   assert.ok(route.indexOf('.from("alunos")') < route.indexOf('supabase.rpc("get_aluno_timeline_360"'));
   assert.match(timeline, /escola_id=\$\{encodeURIComponent\(escolaId\)\}/);
   assert.match(timeline, /\[alunoId, escolaId\]/);
+  assert.match(timeline, /loadedScopeKey !== scopeKey/);
+  assert.match(timeline, /key=\{`\$\{scopeKey\}:\$\{ano\.ano_letivo\}`\}/);
 });
 
 test("Resultados completos por ano usam o histórico oficial da mesma escola e apenas leitura", () => {
