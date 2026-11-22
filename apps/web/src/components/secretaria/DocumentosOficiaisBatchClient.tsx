@@ -87,6 +87,7 @@ export default function DocumentosOficiaisBatchClient() {
   const [academicYearId, setAcademicYearId] = useState("");
   const [yearsError, setYearsError] = useState<string | null>(null);
   const [yearsLoading, setYearsLoading] = useState(true);
+  const isHistoricalYear = yearOptions.some((year) => year.id === academicYearId && year.status !== "ativa");
   const escolaParam = escolaSlug || escolaId;
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
@@ -334,6 +335,10 @@ export default function DocumentosOficiaisBatchClient() {
 
   const handleGenerate = async () => {
     if (selected.size === 0) return;
+    if (isHistoricalYear) {
+      setToast({ message: "Este ano está encerrado. Consulte os documentos já emitidos; a emissão oficial em lote exige ano ativo.", type: "error" });
+      return;
+    }
     if (!academicYearId || yearsLoading || loading) {
       setToast({ message: "Confirme o ano letivo e aguarde o carregamento das turmas.", type: "error" });
       return;
@@ -525,6 +530,8 @@ export default function DocumentosOficiaisBatchClient() {
           </button>
         </div>
       </div>
+
+      {isHistoricalYear && <p role="status" className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">Ano histórico: consulte e descarregue os documentos existentes. Não é possível gerar novos lotes oficiais de pautas ou certificados por este formulário.</p>}
 
       {(yearsError || turmasError || jobsError) && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -931,7 +938,7 @@ export default function DocumentosOficiaisBatchClient() {
 
           <button
             onClick={handleGenerate}
-            disabled={submitting || !academicYearId || loading}
+            disabled={submitting || !academicYearId || loading || isHistoricalYear}
             className="flex items-center gap-2 bg-[#E3B23C] text-slate-950 px-6 py-2.5 rounded-full text-sm font-bold hover:brightness-105 transition-all disabled:opacity-70"
           >
             {submitting ? (
