@@ -24,13 +24,13 @@ export function StepFooter({
   })();
 
   return (
-    <footer className="sticky bottom-0 left-0 w-full bg-white/90 backdrop-blur border-t border-slate-200 py-3">
+    <footer className="sticky bottom-0 left-0 w-full bg-card/90 backdrop-blur border-t border-border py-3">
       <div className="max-w-6xl mx-auto flex items-center justify-between px-2 sm:px-0">
         <button
           type="button"
           onClick={onBack}
           disabled={step === 1 || loading}
-          className="text-slate-400 hover:text-slate-900 font-medium text-sm flex items-center gap-2 px-4 py-2 disabled:opacity-0 disabled:cursor-default transition"
+          className="text-muted-foreground hover:text-foreground font-medium text-sm flex items-center gap-2 px-4 py-2 disabled:opacity-0 disabled:cursor-default transition"
         >
           <span className="text-xs">←</span> Voltar
         </button>
