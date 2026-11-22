@@ -19,6 +19,7 @@ export const revalidate = 0
 export const fetchCache = "force-no-store"
 
 const Body = z.object({
+  escola_id: z.string().uuid().optional(),
   turma_ids: z.array(z.string().uuid()).min(1).refine(uniqueTurmaIds, "Turmas duplicadas não são permitidas"),
   tipo: z.enum(["trimestral", "anual", "boletim_trimestral", "certificado", "lista_nominal", "attendance"]),
   periodo_letivo_id: z.string().uuid().optional(),
@@ -42,14 +43,14 @@ function resolveDocumentoTipo(tipo: z.infer<typeof Body>["tipo"]) {
   return "certificado"
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<Database>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id)
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, new URL(req.url).searchParams.get("escola_id"))
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 })
 
     const authz = await authorizeTurmasManage(supabase, escolaId, user.id)
@@ -118,7 +119,7 @@ export async function POST(req: Request) {
       await requireFeature("doc_qr_code")
     }
 
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id)
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, parsed.data.escola_id ?? null)
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 })
 
     const authz = await authorizeTurmasManage(supabase, escolaId, user.id)
@@ -142,6 +143,7 @@ export async function POST(req: Request) {
       academicContext = await resolveAcademicYearContext(supabase as any, {
         userId: user.id,
         requestedAcademicYearId: parsed.data.ano_letivo_id,
+        requestedEscolaId: escolaId,
         operation: parsed.data.tipo === "lista_nominal" ? "READ" : "WRITE",
       });
     } catch (err: any) {
