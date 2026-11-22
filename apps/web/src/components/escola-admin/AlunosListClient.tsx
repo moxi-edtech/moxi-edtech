@@ -97,8 +97,8 @@ function SituacaoFinanceiraChip({ situacao, meses, valor }: {
   useEffect(() => { setMounted(true); }, []);
 
   if (situacao === "em_dia") return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-[#1F6B3B]/10
-      px-2.5 py-1 text-[11px] font-bold text-[#1F6B3B]">
+    <span className="inline-flex items-center gap-1 rounded-full bg-klasse-green/10
+      px-2.5 py-1 text-[11px] font-bold text-klasse-green dark:text-klasse-green-300">
       <CheckCircle2 size={10} /> Em dia
     </span>
   );
@@ -126,9 +126,9 @@ function SituacaoFinanceiraChip({ situacao, meses, valor }: {
 
 function MatriculaBadge({ status }: { status: StatusMatricula }) {
   const cfg = {
-    matriculado:    { bg: "bg-[#1F6B3B]/8 text-[#1F6B3B]",  label: "Matriculado" },
+    matriculado:    { bg: "bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300",  label: "Matriculado" },
     sem_matricula:  { bg: "bg-muted text-muted-foreground",      label: "Sem matrícula" },
-    pendente:       { bg: "bg-[#E3B23C]/10 text-[#9a7010]",  label: "Pendente" },
+    pendente:       { bg: "bg-klasse-gold/10 text-klasse-gold-900 dark:text-klasse-gold-300",  label: "Pendente" },
   }[status] ?? { bg: "bg-muted text-muted-foreground", label: "Sem matrícula" };
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${cfg.bg}`}>
@@ -170,8 +170,8 @@ function ConfirmModal({ cfg, onConfirm, onCancel }: {
       <div className="relative bg-card rounded-xl shadow-2xl border border-border
         w-full max-w-md p-6 animate-in zoom-in-95 duration-150">
         <div className="flex items-start gap-4">
-          <div className={`flex-shrink-0 p-2.5 rounded-xl ${cfg.danger ? "bg-rose-100" : "bg-[#E3B23C]/10"}`}>
-            <AlertTriangle size={20} className={cfg.danger ? "text-rose-600" : "text-[#E3B23C]"} />
+          <div className={`flex-shrink-0 p-2.5 rounded-xl ${cfg.danger ? "bg-rose-100" : "bg-klasse-gold/10"}`}>
+            <AlertTriangle size={20} className={cfg.danger ? "text-rose-600" : "text-klasse-gold-900 dark:text-klasse-gold-300"} />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-base font-bold text-foreground">{cfg.title}</h3>
@@ -190,7 +190,7 @@ function ConfirmModal({ cfg, onConfirm, onCancel }: {
           <button onClick={onConfirm} disabled={cfg.loading}
             className={`flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white
               transition-colors disabled:opacity-50
-              ${cfg.danger ? "bg-rose-600 hover:bg-rose-700" : "bg-[#1F6B3B] hover:bg-[#185830]"}`}>
+              ${cfg.danger ? "bg-rose-600 hover:bg-rose-700" : "bg-klasse-green hover:brightness-95"}`}>
             {cfg.loading && <Loader2 size={13} className="animate-spin" />}
             {cfg.confirm}
           </button>
@@ -286,8 +286,8 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-[#1F6B3B]/10">
-              <Receipt size={16} className="text-[#1F6B3B]" />
+            <div className="p-2 rounded-xl bg-klasse-green/10">
+              <Receipt size={16} className="text-klasse-green dark:text-klasse-green-300" />
             </div>
             <div>
               <p className="text-sm font-black text-foreground">Registar Pagamento</p>
@@ -347,7 +347,7 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
                 onChange={e => setValor(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-border
                   text-base font-bold focus:outline-none focus:ring-2
-                  focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                  focus:ring-klasse-gold/20 focus:border-klasse-gold"
                 placeholder="0"
               />
             </div>
@@ -367,7 +367,7 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
                   className={`flex items-center gap-2 rounded-xl border px-3 py-2.5
                     text-sm font-semibold transition-all
                     ${metodo === m.id
-                      ? "border-[#1F6B3B] bg-[#1F6B3B]/5 text-[#1F6B3B]"
+                      ? "border-klasse-green bg-klasse-green/5 text-klasse-green dark:text-klasse-green-300"
                       : "border-border text-muted-foreground hover:border-ring"}`}
                 >
                   {m.icon} {m.label}
@@ -386,7 +386,7 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
               value={ref}
               onChange={e => setRef(e.target.value)}
               className="w-full rounded-xl border border-border px-3 py-2.5 text-sm
-                focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-gold"
               placeholder="Ex: TRF-2026-00123"
             />
           </div>
@@ -398,8 +398,8 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
             onClick={submit as any}
             disabled={loading || !valor || Number(valor) <= 0}
             className="w-full flex items-center justify-center gap-2 rounded-xl
-              bg-[#1F6B3B] py-3 text-sm font-bold text-white
-              hover:bg-[#185830] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              bg-klasse-green py-3 text-sm font-bold text-white
+              hover:brightness-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading
               ? <><Loader2 size={14} className="animate-spin" /> A registar…</>
@@ -547,7 +547,7 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
                   value={opt.value}
                   checked={local.situacao_financeira === opt.value}
                   onChange={() => setLocal(f => ({ ...f, situacao_financeira: opt.value as any }))}
-                  className="accent-[#1F6B3B]"
+                  className="accent-klasse-green"
                 />
                 <span className="text-sm text-foreground">{opt.label}</span>
               </label>
@@ -564,7 +564,7 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
             value={local.turma_id}
             onChange={e => setLocal(f => ({ ...f, turma_id: e.target.value }))}
             className="w-full rounded-xl border border-border px-3 py-2 text-sm
-              focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30"
+              focus:outline-none focus:ring-2 focus:ring-klasse-gold/20"
           >
             <option value="">Todas as turmas</option>
             {turmas.map(t => (
@@ -594,7 +594,7 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
                   value={opt.value}
                   checked={local.status_matricula === opt.value}
                   onChange={() => setLocal(f => ({ ...f, status_matricula: opt.value as any }))}
-                  className="accent-[#1F6B3B]"
+                  className="accent-klasse-green"
                 />
                 <span className="text-sm text-foreground">{opt.label}</span>
               </label>
@@ -613,8 +613,8 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
         </button>
         <button
           onClick={apply}
-          className="flex-1 rounded-xl bg-[#1F6B3B] py-2 text-sm
-            font-bold text-white hover:bg-[#185830] transition-colors"
+          className="flex-1 rounded-xl bg-klasse-green py-2 text-sm
+            font-bold text-white hover:brightness-95 transition-colors"
         >
           Aplicar
         </button>
@@ -1108,7 +1108,7 @@ export default function AlunosListClient({
               {tab === "ativos" ? "Alunos activos na escola" : "Alunos arquivados"}
               {filtrosActivos > 0 && (
                 <span className="ml-2 inline-flex items-center gap-1 rounded-full
-                  bg-[#E3B23C]/10 px-2 py-0.5 text-[10px] font-bold text-[#9a7010]">
+                  bg-klasse-gold/10 px-2 py-0.5 text-[10px] font-bold text-klasse-gold-900 dark:text-klasse-gold-300">
                   {filtrosActivos} filtro{filtrosActivos !== 1 ? "s" : ""} activo{filtrosActivos !== 1 ? "s" : ""}
                 </span>
               )}
@@ -1128,8 +1128,8 @@ export default function AlunosListClient({
             {tab === "ativos" && (
               <button
                 onClick={() => setShowForm(f => !f)}
-                className="flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-2.5
-                  text-sm font-bold text-white hover:bg-[#185830] transition-colors shadow-sm"
+                className="flex items-center gap-2 rounded-xl bg-klasse-green px-4 py-2.5
+                  text-sm font-bold text-white hover:brightness-95 transition-colors shadow-sm"
               >
                 <UserPlus size={14} /> Adicionar aluno
               </button>
@@ -1140,10 +1140,10 @@ export default function AlunosListClient({
         {/* ── Formulário colapsável ──────────────────────────────────────── */}
         {showForm && tab === "ativos" && (
           <form onSubmit={submitInvite}
-            className="rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-5
+            className="rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-5
               animate-in slide-in-from-top-2 duration-150">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-bold text-[#1F6B3B]">Novo aluno</p>
+              <p className="text-sm font-bold text-klasse-green dark:text-klasse-green-300">Novo aluno</p>
               <button type="button" onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-muted-foreground">
                 <X size={16} />
               </button>
@@ -1154,7 +1154,7 @@ export default function AlunosListClient({
                 <input
                   autoFocus
                   className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm
-                    focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                    focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-gold"
                   placeholder="Ex: João Baptista"
                   value={invite.nome}
                   onChange={e => setInvite(v => ({ ...v, nome: e.target.value }))}
@@ -1165,15 +1165,15 @@ export default function AlunosListClient({
                 <input
                   type="email"
                   className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm
-                    focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                    focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-gold"
                   placeholder="Ex: joao@escola.ao"
                   value={invite.email}
                   onChange={e => setInvite(v => ({ ...v, email: e.target.value }))}
                 />
               </div>
               <button type="submit" disabled={creating}
-                className="flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-5 py-2.5
-                  text-sm font-bold text-white hover:bg-[#185830] transition-colors
+                className="flex items-center gap-2 rounded-xl bg-klasse-green px-5 py-2.5
+                  text-sm font-bold text-white hover:brightness-95 transition-colors
                   disabled:opacity-50 flex-shrink-0">
                 {creating
                   ? <><Loader2 size={13} className="animate-spin" /> A criar…</>
@@ -1194,8 +1194,8 @@ export default function AlunosListClient({
                 type="search"
                 placeholder="Pesquisar por nome, número de login ou ID…"
                 className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-border bg-card
-                  text-sm focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30
-                  focus:border-[#1F6B3B] shadow-sm"
+                  text-sm focus:outline-none focus:ring-2 focus:ring-klasse-gold/20
+                  focus:border-klasse-gold shadow-sm"
                 value={q}
                 onChange={e => setQ(e.target.value)}
               />
@@ -1217,7 +1217,7 @@ export default function AlunosListClient({
           <select
             value={orderBy}
             onChange={e => { setOrderBy(e.target.value as "" | "nome_asc"); setNextCursor(null); }}
-            className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30"
+            className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-klasse-gold/20"
           >
             <option value="">Mais recentes</option>
             <option value="nome_asc">Nome A-Z</option>
@@ -1230,14 +1230,14 @@ export default function AlunosListClient({
               className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm
                 font-semibold shadow-sm transition-all
                 ${filtrosActivos > 0
-                  ? "border-[#1F6B3B] bg-[#1F6B3B]/5 text-[#1F6B3B]"
+                  ? "border-klasse-green bg-klasse-green/5 text-klasse-green dark:text-klasse-green-300"
                   : "border-border bg-card text-muted-foreground hover:bg-muted"}`}
             >
               <SlidersHorizontal size={14} />
               Filtros
               {filtrosActivos > 0 && (
                 <span className="flex h-4 w-4 items-center justify-center rounded-full
-                  bg-[#1F6B3B] text-[9px] font-black text-white">
+                  bg-klasse-green text-[9px] font-black text-white">
                   {filtrosActivos}
                 </span>
               )}
@@ -1330,10 +1330,10 @@ export default function AlunosListClient({
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
 
           {/* Cabeçalho */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-slate-50/50">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-muted/50">
             <div className="flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full
-                ${tab === "ativos" ? "bg-[#1F6B3B]" : "bg-[#E3B23C]"}`} />
+                ${tab === "ativos" ? "bg-klasse-green" : "bg-klasse-gold"}`} />
               <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 {tab === "ativos" ? "Alunos activos" : "Alunos arquivados"}
               </span>
@@ -1358,11 +1358,11 @@ export default function AlunosListClient({
                   {/* Checkbox seleccionar tudo */}
                   <th className="px-4 py-3 w-10">
                     <button onClick={toggleAll}
-                      className="text-muted-foreground hover:text-[#1F6B3B] transition-colors">
+                      className="text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors">
                       {allSelected
-                        ? <CheckSquare size={16} className="text-[#1F6B3B]" />
+                        ? <CheckSquare size={16} className="text-klasse-green dark:text-klasse-green-300" />
                         : someSelected
-                        ? <Minus size={16} className="text-[#E3B23C]" />
+                        ? <Minus size={16} className="text-klasse-gold-900 dark:text-klasse-gold-300" />
                         : <Square size={16} />
                       }
                     </button>
@@ -1391,7 +1391,7 @@ export default function AlunosListClient({
                         {(q || filtrosActivos > 0) && (
                           <button
                             onClick={() => { setQ(""); setFiltros(FILTROS_VAZIOS); fetchAlunos(); }}
-                            className="mt-1 text-xs text-[#1F6B3B] font-semibold hover:underline"
+                            className="mt-1 text-xs text-klasse-green dark:text-klasse-green-300 font-semibold hover:underline"
                           >
                             Limpar pesquisa e filtros
                           </button>
@@ -1405,14 +1405,14 @@ export default function AlunosListClient({
                     return (
                       <tr key={aluno.id}
                         className={`group transition-colors
-                          ${isSelected ? "bg-[#1F6B3B]/5" : "hover:bg-slate-50/80"}`}>
+                          ${isSelected ? "bg-klasse-green/5" : "hover:bg-muted/80"}`}>
 
                         {/* Checkbox */}
                         <td className="px-4 py-3.5">
                           <button onClick={() => toggleOne(aluno.id)}
-                            className="text-muted-foreground hover:text-[#1F6B3B] transition-colors">
+                            className="text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors">
                             {isSelected
-                              ? <CheckSquare size={16} className="text-[#1F6B3B]" />
+                              ? <CheckSquare size={16} className="text-klasse-green dark:text-klasse-green-300" />
                               : <Square size={16} />
                             }
                           </button>
@@ -1431,8 +1431,8 @@ export default function AlunosListClient({
                         {/* Nome */}
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2.5">
-                            <div className="h-8 w-8 rounded-lg bg-[#1F6B3B]/10 flex items-center
-                              justify-center flex-shrink-0 text-xs font-black text-[#1F6B3B]">
+                            <div className="h-8 w-8 rounded-lg bg-klasse-green/10 flex items-center
+                              justify-center flex-shrink-0 text-xs font-black text-klasse-green dark:text-klasse-green-300">
                               {aluno.nome?.charAt(0).toUpperCase() ?? "?"}
                             </div>
                             <div>
@@ -1478,7 +1478,7 @@ export default function AlunosListClient({
                                 <Link href={buildPortalHref(escolaParam, isOperacoesContext ? `/operacoes/alunos/${aluno.id}` : isSecretariaContext ? `/secretaria/alunos/${aluno.id}` : `/admin/alunos/${aluno.id}`)}
                                   className="flex items-center gap-1 rounded-lg border border-border
                                     px-2 py-1.5 text-xs font-semibold text-muted-foreground
-                                    hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors"
+                                    hover:border-klasse-green hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors"
                                   title="Ver perfil">
                                   <ChevronRight size={12} />
                                 </Link>
@@ -1487,7 +1487,7 @@ export default function AlunosListClient({
                                     onClick={() => setDrawerAluno(aluno)}
                                     className="flex items-center gap-1 rounded-lg border border-border
                                       px-2 py-1.5 text-xs font-semibold text-muted-foreground
-                                      hover:border-[#E3B23C] hover:text-[#9a7010] transition-colors"
+                                      hover:border-klasse-gold hover:text-klasse-gold-900 dark:hover:text-klasse-gold-300 transition-colors"
                                     title="Registar pagamento"
                                   >
                                     <DollarSign size={12} />
@@ -1513,7 +1513,7 @@ export default function AlunosListClient({
                                 <button onClick={() => restoreOne(aluno)}
                                   className="flex items-center gap-1 rounded-lg border border-border
                                     px-2 py-1.5 text-xs font-semibold text-muted-foreground
-                                    hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors">
+                                    hover:border-klasse-green hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors">
                                   <RotateCcw size={12} />
                                 </button>
                                 <button onClick={() => hardDelete(aluno)}
