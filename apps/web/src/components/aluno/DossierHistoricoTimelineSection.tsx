@@ -177,6 +177,10 @@ export function DossierHistoricoTimelineSection({
         {selectedYearNumber
           ? `Nenhum registo encontrado para ${formatAcademicYear(selectedYearNumber)}.`
           : "Sem dados anuais para este aluno."}
+        {selectedYearNumber && (
+          <Link href={role === "admin" && escolaId ? `/escola/${escolaId}/admin/alunos/${alunoId}?tab=historico` : `/secretaria/alunos/${alunoId}?tab=historico`}
+            className="mt-3 inline-flex rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-[#1F6B3B]">Ver todos os anos</Link>
+        )}
       </div>
     );
   }
