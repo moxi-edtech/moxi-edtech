@@ -120,19 +120,19 @@ function CourseMatrixTable({
   });
 
   // Styles helpers
-  const inputClass = "w-14 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg outline-none transition-all focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 placeholder:text-slate-200";
-  const headerClass = "px-6 py-3 font-semibold text-center w-36 uppercase text-[10px] tracking-wider border-l border-slate-100";
+  const inputClass = "w-14 h-9 text-center font-bold text-foreground bg-card border border-border rounded-lg outline-none transition-all focus:border-klasse-gold focus:ring-2 focus:ring-klasse-gold/20 placeholder:text-slate-200";
+  const headerClass = "px-6 py-3 font-semibold text-center w-36 uppercase text-[10px] tracking-wider border-l border-border";
 
   return (
-    <div className="overflow-hidden rounded-b-xl border-t border-slate-100 bg-white">
+    <div className="overflow-hidden rounded-b-xl border-t border-border bg-card">
       <div ref={scrollRef} className="max-h-[450px] overflow-y-auto custom-scrollbar">
         <table className="w-full table-fixed text-sm text-left">
           <thead
-            className="bg-slate-50 sticky top-0 z-20 shadow-sm"
+            className="bg-muted sticky top-0 z-20 shadow-sm"
             style={{ display: "table", width: "100%", tableLayout: "fixed" }}
           >
             <tr>
-              <th className="px-6 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wider">Classe / Curso</th>
+              <th className="px-6 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Classe / Curso</th>
               {turnos["Manhã"] && <th className={`${headerClass} bg-orange-50/40 text-orange-700`}>Manhã</th>}
               {turnos["Tarde"] && <th className={`${headerClass} bg-amber-50/40 text-amber-700`}>Tarde</th>}
               {turnos["Noite"] && <th className={`${headerClass} bg-indigo-50/40 text-indigo-700`}>Noite</th>}
@@ -140,7 +140,7 @@ function CourseMatrixTable({
           </thead>
           
           <tbody
-            className="divide-y divide-slate-100"
+            className="divide-y divide-border"
             style={
               hasRows
                 ? {
@@ -154,11 +154,11 @@ function CourseMatrixTable({
             {!hasRows ? (
               <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                 <td colSpan={4} className="px-6 py-12 text-center flex flex-col items-center justify-center gap-3">
-                  <div className="p-3 bg-slate-50 rounded-full text-slate-300">
+                  <div className="p-3 bg-muted rounded-full text-muted-foreground">
                     <ArrowUpCircle className="w-6 h-6" />
                   </div>
-                  <span className="text-sm font-medium text-slate-500">Nenhuma classe configurada</span>
-                  <span className="text-xs text-slate-400">Adicione um curso acima para começar.</span>
+                  <span className="text-sm font-medium text-muted-foreground">Nenhuma classe configurada</span>
+                  <span className="text-xs text-muted-foreground">Adicione um curso acima para começar.</span>
                 </td>
               </tr>
             ) : (
@@ -167,7 +167,7 @@ function CourseMatrixTable({
                 return (
                   <tr
                     key={row.id}
-                    className="hover:bg-slate-50/80 transition-colors group"
+                    className="hover:bg-muted/80 transition-colors group"
                     style={{
                       position: "absolute",
                       top: 0,
@@ -181,13 +181,13 @@ function CourseMatrixTable({
                   >
                     <td className="px-6 py-3 align-middle">
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-700 text-sm">{row.nome}</span>
-                        <span className="text-[10px] text-slate-400">{row.cursoNome}</span>
+                        <span className="font-bold text-foreground text-sm">{row.nome}</span>
+                        <span className="text-[10px] text-muted-foreground">{row.cursoNome}</span>
                       </div>
                     </td>
 
                     {turnos["Manhã"] && (
-                      <td className="px-6 py-2 text-center align-middle border-l border-slate-50 bg-orange-50/5">
+                      <td className="px-6 py-2 text-center align-middle border-l border-border bg-orange-50/5">
                         <input
                           type="number" min={0} placeholder="0"
                           className={inputClass}
@@ -198,7 +198,7 @@ function CourseMatrixTable({
                     )}
 
                     {turnos["Tarde"] && (
-                      <td className="px-6 py-2 text-center align-middle border-l border-slate-50 bg-amber-50/5">
+                      <td className="px-6 py-2 text-center align-middle border-l border-border bg-amber-50/5">
                         <input
                           type="number" min={0} placeholder="0"
                           className={inputClass}
@@ -209,7 +209,7 @@ function CourseMatrixTable({
                     )}
 
                     {turnos["Noite"] && (
-                      <td className="px-6 py-2 text-center align-middle border-l border-slate-50 bg-indigo-50/5">
+                      <td className="px-6 py-2 text-center align-middle border-l border-border bg-indigo-50/5">
                         <input
                           type="number" min={0} placeholder="0"
                           className={inputClass}
@@ -298,9 +298,9 @@ export default function AcademicStep2({
   // Visual
   const getCourseVisual = (tipo: CourseType) => {
     switch (tipo) {
-      case "tecnico": return { Icon: Briefcase, bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-100" };
+      case "tecnico": return { Icon: Briefcase, bg: "bg-muted", text: "text-muted-foreground", border: "border-border" };
       case "tecnico_saude": return { Icon: GraduationCap, bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" };
-      default: return { Icon: BookOpen, bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" };
+      default: return { Icon: BookOpen, bg: "bg-muted", text: "text-muted-foreground", border: "border-border" };
     }
   };
 
@@ -490,14 +490,14 @@ export default function AcademicStep2({
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
       {/* 1. SELEÇÃO DE CURSOS */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1F6B3B]/10 text-[#1F6B3B]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300">
             <Layers className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-800">Oferta Formativa</h3>
-            <p className="text-xs text-slate-500">Selecione os cursos para compor a grade.</p>
+            <h3 className="text-sm font-bold text-foreground">Oferta Formativa</h3>
+            <p className="text-xs text-muted-foreground">Selecione os cursos para compor a grade.</p>
           </div>
         </div>
 
@@ -515,7 +515,7 @@ export default function AcademicStep2({
               className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-[11px] font-bold transition-all ${
                 presetCategory === cat.id
                   ? "border-slate-800 bg-slate-800 text-white shadow-md"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300"
+                  : "border-border bg-card text-muted-foreground hover:bg-muted hover:border-border"
               }`}
             >
               <cat.icon className="h-3.5 w-3.5" />
@@ -528,7 +528,7 @@ export default function AcademicStep2({
         <div className="flex gap-3">
           <div className="relative flex-1">
             <select
-              className="block w-full cursor-pointer rounded-xl border border-slate-300 bg-white py-3 pl-4 pr-10 text-sm font-medium text-slate-700 outline-none transition-all hover:border-[#E3B23C] focus:border-[#E3B23C] focus:ring-1 focus:ring-[#E3B23C]"
+              className="block w-full cursor-pointer rounded-xl border border-border bg-card py-3 pl-4 pr-10 text-sm font-medium text-foreground outline-none transition-all hover:border-klasse-gold focus:border-klasse-gold focus:ring-1 focus:ring-klasse-gold"
               value={selectedPresetKey}
               onChange={(e) => setSelectedPresetKey(e.target.value as CurriculumKey | "")}
             >
@@ -539,7 +539,7 @@ export default function AcademicStep2({
                 </option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
 
           <button
@@ -547,7 +547,7 @@ export default function AcademicStep2({
             onClick={handleAddCourse}
             disabled={!selectedPresetKey}
             // TOKEN: Botão Dourado CTA
-            className="flex items-center gap-2 rounded-xl bg-[#E3B23C] px-6 py-3 text-sm font-bold text-white shadow-sm transition-all hover:brightness-95 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale active:scale-95"
+            className="flex items-center gap-2 rounded-xl bg-klasse-gold px-6 py-3 text-sm font-bold text-klasse-gold-900 shadow-sm transition-all hover:brightness-95 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale active:scale-95"
           >
             <Plus className="h-4 w-4" /> Adicionar
           </button>
@@ -555,8 +555,8 @@ export default function AcademicStep2({
 
         {/* Chips dos cursos adicionados */}
         {addedCourses.length > 0 && (
-          <div className="mt-6 border-t border-slate-100 pt-4">
-            <p className="mb-3 text-[10px] font-bold uppercase tracking-wide text-slate-400">Cursos Selecionados</p>
+          <div className="mt-6 border-t border-border pt-4">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Cursos Selecionados</p>
             <div className="flex flex-wrap gap-2">
               {addedCourses.map((course) => {
                 const { Icon, bg, text, border } = getCourseVisual(course.tipo);
@@ -576,25 +576,25 @@ export default function AcademicStep2({
       </div>
 
       {/* 2. MATRIZ DE TURMAS */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         
         {/* Header da Matriz */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-border bg-muted px-6 py-4">
           <div className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-slate-500" />
-            <span className="text-sm font-bold text-slate-700">Matriz de Turmas</span>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-bold text-foreground">Matriz de Turmas</span>
           </div>
           {/* TOKEN: Badge Verde Brand */}
-          <span className="rounded-full border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 px-3 py-1 text-xs font-bold text-[#1F6B3B]">
+          <span className="rounded-full border border-klasse-green/20 bg-klasse-green/5 px-3 py-1 text-xs font-bold text-klasse-green dark:text-klasse-green-300">
             {totalTurmas} turmas a criar
           </span>
         </div>
 
         {/* Configurações de Nomenclatura */}
-        <div className="flex flex-col gap-4 border-b border-slate-100 bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 border-b border-border bg-card px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Padrão de Nomes</label>
-            <div className="flex rounded-lg border border-slate-200 p-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Padrão de Nomes</label>
+            <div className="flex rounded-lg border border-border p-1">
               {[
                 { id: 'descritivo_completo', label: 'Completo' },
                 { id: 'descritivo_simples', label: 'Simples' },
@@ -604,7 +604,7 @@ export default function AcademicStep2({
                   key={opt.id}
                   onClick={() => onPadraoNomenclaturaChange(opt.id as any)}
                   className={`rounded px-3 py-1 text-[10px] font-bold transition-all ${
-                    padraoNomenclatura === opt.id ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-900"
+                    padraoNomenclatura === opt.id ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {opt.label}
@@ -612,16 +612,16 @@ export default function AcademicStep2({
               ))}
             </div>
           </div>
-          <div className="text-xs text-slate-500">
-            Preview: <strong className="text-slate-800">{sampleNomeTurma}</strong>
+          <div className="text-xs text-muted-foreground">
+            Preview: <strong className="text-foreground">{sampleNomeTurma}</strong>
           </div>
         </div>
 
         {/* Bulk Actions (Magic Wand) */}
         {matrix.length > 0 && (
-          <div className="flex items-center gap-4 overflow-x-auto border-b border-slate-100 bg-white px-6 py-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-              <Wand2 className="h-3.5 w-3.5 text-[#E3B23C]" />
+          <div className="flex items-center gap-4 overflow-x-auto border-b border-border bg-card px-6 py-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+              <Wand2 className="h-3.5 w-3.5 text-klasse-gold-700 dark:text-klasse-gold-300" />
               <span>Preencher:</span>
             </div>
             
@@ -630,7 +630,7 @@ export default function AcademicStep2({
                 <div className="flex items-center gap-1 rounded-md border border-orange-100 bg-orange-50 px-2 py-1">
                   <Sun size={10} className="text-orange-500 mr-1" />
                   {[1, 2, 3].map((n) => (
-                    <button key={n} onClick={() => handleBulkApply("manha", n)} className="flex h-5 w-5 items-center justify-center rounded bg-white text-[10px] font-bold text-orange-700 shadow-sm border border-orange-200 hover:bg-orange-100">{n}</button>
+                    <button key={n} onClick={() => handleBulkApply("manha", n)} className="flex h-5 w-5 items-center justify-center rounded bg-card text-[10px] font-bold text-orange-700 shadow-sm border border-orange-200 hover:bg-orange-100">{n}</button>
                   ))}
                 </div>
               )}
@@ -638,7 +638,7 @@ export default function AcademicStep2({
                 <div className="flex items-center gap-1 rounded-md border border-amber-100 bg-amber-50 px-2 py-1">
                   <Sunset size={10} className="text-amber-500 mr-1" />
                   {[1, 2, 3].map((n) => (
-                    <button key={n} onClick={() => handleBulkApply("tarde", n)} className="flex h-5 w-5 items-center justify-center rounded bg-white text-[10px] font-bold text-amber-700 shadow-sm border border-amber-200 hover:bg-amber-100">{n}</button>
+                    <button key={n} onClick={() => handleBulkApply("tarde", n)} className="flex h-5 w-5 items-center justify-center rounded bg-card text-[10px] font-bold text-amber-700 shadow-sm border border-amber-200 hover:bg-amber-100">{n}</button>
                   ))}
                 </div>
               )}
@@ -646,7 +646,7 @@ export default function AcademicStep2({
                 <div className="flex items-center gap-1 rounded-md border border-indigo-100 bg-indigo-50 px-2 py-1">
                   <Moon size={10} className="text-indigo-500 mr-1" />
                   {[1, 2, 3].map((n) => (
-                    <button key={n} onClick={() => handleBulkApply("noite", n)} className="flex h-5 w-5 items-center justify-center rounded bg-white text-[10px] font-bold text-indigo-700 shadow-sm border border-indigo-200 hover:bg-indigo-100">{n}</button>
+                    <button key={n} onClick={() => handleBulkApply("noite", n)} className="flex h-5 w-5 items-center justify-center rounded bg-card text-[10px] font-bold text-indigo-700 shadow-sm border border-indigo-200 hover:bg-indigo-100">{n}</button>
                   ))}
                 </div>
               )}
@@ -663,10 +663,10 @@ export default function AcademicStep2({
 
         {addedCourses.length > 0 && (
           <div className="mt-8 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-muted px-5 py-4">
               <div>
-                <h4 className="text-sm font-bold text-slate-800">Ajuste de carga horária (visão macro)</h4>
-                <p className="text-xs text-slate-500">
+                <h4 className="text-sm font-bold text-foreground">Ajuste de carga horária (visão macro)</h4>
+                <p className="text-xs text-muted-foreground">
                   Ajuste os tempos por disciplina antes de gerar turmas e horários.
                 </p>
               </div>
@@ -674,7 +674,7 @@ export default function AcademicStep2({
                 <select
                   value={selectedCurriculumCourse}
                   onChange={(event) => setSelectedCurriculumCourse(event.target.value as CurriculumKey)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                  className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
                 >
                   {availableCurriculumCourses.map((course) => (
                     <option key={course} value={course}>
@@ -685,7 +685,7 @@ export default function AcademicStep2({
                 <select
                   value={selectedCurriculumClass}
                   onChange={(event) => setSelectedCurriculumClass(event.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                  className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
                 >
                   {availableCurriculumClasses.map((cls) => (
                     <option key={cls} value={cls}>
@@ -737,9 +737,9 @@ export default function AcademicStep2({
         )}
 
         {/* Botão Final (Apply) */}
-        <div className="flex justify-end bg-slate-50 px-6 py-4 border-t border-slate-100">
+        <div className="flex justify-end bg-muted px-6 py-4 border-t border-border">
           {totalTurmas === 0 && matrix.length > 0 && (
-            <div className="mr-auto text-xs text-slate-500">
+            <div className="mr-auto text-xs text-muted-foreground">
               Você pode concluir agora e ajustar cargas/períodos depois no currículo.
             </div>
           )}
@@ -748,7 +748,7 @@ export default function AcademicStep2({
             onClick={onApplyCurriculumPreset}
             disabled={applyingPreset || matrix.length === 0}
             // TOKEN: Botão Dourado Action (#E3B23C)
-            className="flex items-center gap-2 rounded-xl bg-[#E3B23C] px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-900/5 transition-all hover:brightness-95 hover:shadow-lg hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale"
+            className="flex items-center gap-2 rounded-xl bg-klasse-gold px-6 py-2.5 text-sm font-bold text-klasse-gold-900 shadow-md shadow-orange-900/5 transition-all hover:brightness-95 hover:shadow-lg hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale"
           >
             {applyingPreset ? (
               <>Applying...</>

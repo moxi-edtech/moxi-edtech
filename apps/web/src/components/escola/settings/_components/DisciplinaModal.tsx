@@ -414,8 +414,8 @@ export function DisciplinaModal({
 
   return (
     <div className={embedded ? "w-full" : "fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10"}>
-      <div className={embedded ? "w-full bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col" : "w-full max-w-3xl bg-slate-50 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]"}>
-        <div className="bg-[#1F6B3B] px-6 py-4 text-white flex justify-between items-start shrink-0">
+      <div className={embedded ? "w-full bg-muted rounded-2xl border border-border overflow-hidden flex flex-col" : "w-full max-w-3xl bg-muted rounded-2xl shadow-2xl border border-border overflow-hidden flex flex-col max-h-[80vh]"}>
+        <div className="bg-klasse-green px-6 py-4 text-white flex justify-between items-start shrink-0">
           <div className="space-y-1">
             <div className="text-[#D7E7DC] text-xs font-bold uppercase tracking-wider">
               {mode === "create" ? "Nova disciplina" : "Configurando Disciplina"}
@@ -478,12 +478,12 @@ export function DisciplinaModal({
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {disciplineSelector && (
-            <section className="bg-[#1F6B3B]/5 p-5 rounded-xl border border-[#1F6B3B]/20 shadow-sm">
-              <h3 className="text-xs font-bold uppercase text-[#1F6B3B] mb-3">{disciplineSelector.label}</h3>
+            <section className="bg-klasse-green/5 p-5 rounded-xl border border-klasse-green/20 shadow-sm">
+              <h3 className="text-xs font-bold uppercase text-klasse-green dark:text-klasse-green-300 mb-3">{disciplineSelector.label}</h3>
               <select
                 value={disciplineSelector.value ?? ""}
                 onChange={(event) => disciplineSelector.onChange(event.target.value)}
-                className="w-full rounded-xl border border-[#1F6B3B]/20 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#1F6B3B]/30 outline-none transition-all"
+                className="w-full rounded-xl border border-klasse-green/20 px-3 py-2 text-sm bg-card focus:ring-2 focus:ring-klasse-green/30 outline-none transition-all"
               >
                 {disciplineSelector.options.map((opt) => (
                   <option key={opt.id} value={opt.id}>
@@ -494,7 +494,7 @@ export function DisciplinaModal({
             </section>
           )}
           {pendingDisciplines.length > 0 && (
-            <section className="bg-white p-5 rounded-xl border border-amber-200 shadow-sm">
+            <section className="bg-card p-5 rounded-xl border border-amber-200 shadow-sm">
               <h3 className="text-xs font-bold uppercase text-amber-700 mb-3">Resolver pendências</h3>
               <select
                 value={pendingDisciplines.some((d) => d.id === initial?.id) ? initial?.id ?? "" : ""}
@@ -510,10 +510,10 @@ export function DisciplinaModal({
               </select>
             </section>
           )}
-          <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+          <section className="bg-card p-5 rounded-xl border border-border shadow-sm flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-bold text-slate-900">Auto-preencher disciplina</p>
-              <p className="text-xs text-slate-500">Aplica padrões de carga, períodos e avaliação.</p>
+              <p className="text-sm font-bold text-foreground">Auto-preencher disciplina</p>
+              <p className="text-xs text-muted-foreground">Aplica padrões de carga, períodos e avaliação.</p>
               {autoFillFeedback && (
                 <p className="mt-2 text-xs font-medium text-emerald">{autoFillFeedback}</p>
               )}
@@ -532,14 +532,14 @@ export function DisciplinaModal({
             </section>
           )}
           {appearsInScheduler && (
-            <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-600">
-              Esta disciplina irá gerar <span className="font-semibold text-slate-900">{totalSlots}</span> tempo(s) semanais no quadro.
+            <section className="bg-muted p-4 rounded-xl border border-border text-xs text-muted-foreground">
+              Esta disciplina irá gerar <span className="font-semibold text-foreground">{totalSlots}</span> tempo(s) semanais no quadro.
             </section>
           )}
           {classOptions.length > 0 && (
-            <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2 mb-4">
-                <LayoutGrid className="w-4 h-4 text-[#1F6B3B]" /> Aplicar em quais classes?
+            <section className="bg-card p-5 rounded-xl border border-border shadow-sm">
+              <h3 className="text-sm font-bold text-foreground uppercase flex items-center gap-2 mb-4">
+                <LayoutGrid className="w-4 h-4 text-klasse-green dark:text-klasse-green-300" /> Aplicar em quais classes?
               </h3>
 
               <div className="flex gap-3">
@@ -549,7 +549,7 @@ export function DisciplinaModal({
                   className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${
                     applyScope === "all"
                       ? "bg-slate-900 text-white border-slate-900"
-                      : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                      : "bg-card text-muted-foreground border-border hover:border-border"
                   }`}
                 >
                   Todas as classes
@@ -560,7 +560,7 @@ export function DisciplinaModal({
                   className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${
                     applyScope === "selected"
                       ? "bg-slate-900 text-white border-slate-900"
-                      : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                      : "bg-card text-muted-foreground border-border hover:border-border"
                   }`}
                 >
                   Classes específicas
@@ -578,8 +578,8 @@ export function DisciplinaModal({
                         onClick={() => toggleClasse(classe.id)}
                         className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm transition-all ${
                           active
-                            ? "border-[#1F6B3B] bg-[#1F6B3B]/10 text-[#1F6B3B]"
-                            : "border-slate-200 text-slate-600 hover:border-slate-300"
+                            ? "border-klasse-green bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300"
+                            : "border-border text-muted-foreground hover:border-border"
                         }`}
                       >
                         <span className="font-semibold">{classe.nome}</span>
@@ -595,9 +595,9 @@ export function DisciplinaModal({
               )}
             </section>
           )}
-          <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2 mb-4">
-              <CalendarDays className="w-4 h-4 text-[#1F6B3B]" /> Quando acontece?
+          <section className="bg-card p-5 rounded-xl border border-border shadow-sm">
+            <h3 className="text-sm font-bold text-foreground uppercase flex items-center gap-2 mb-4">
+              <CalendarDays className="w-4 h-4 text-klasse-green dark:text-klasse-green-300" /> Quando acontece?
             </h3>
 
             <div className="flex gap-4 mb-4">
@@ -613,7 +613,7 @@ export function DisciplinaModal({
                 className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${
                   form.periodo_mode === "ano"
                     ? "bg-slate-900 text-white border-slate-900"
-                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                    : "bg-card text-muted-foreground border-border hover:border-border"
                 }`}
               >
                 Ano Completo
@@ -624,7 +624,7 @@ export function DisciplinaModal({
                 className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${
                   form.periodo_mode === "custom"
                     ? "bg-slate-900 text-white border-slate-900"
-                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                    : "bg-card text-muted-foreground border-border hover:border-border"
                 }`}
               >
                 Períodos Específicos
@@ -640,8 +640,8 @@ export function DisciplinaModal({
                     onClick={() => togglePeriodo(periodo)}
                     className={`flex-1 py-2 rounded-lg border text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                       form.periodos_ativos.includes(periodo)
-                        ? "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/30 ring-1 ring-[#1F6B3B]/20"
-                        : "bg-slate-50 text-slate-400 border-slate-200"
+                        ? "bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300 border-klasse-green/30 ring-1 ring-klasse-green/20"
+                        : "bg-muted text-muted-foreground border-border"
                     }`}
                   >
                     {form.periodos_ativos.includes(periodo) && <Check className="w-3 h-3" />}
@@ -656,9 +656,9 @@ export function DisciplinaModal({
           </section>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2 mb-4">
-                <Clock className="w-4 h-4 text-[#1F6B3B]" /> Carga Semanal
+            <section className="bg-card p-5 rounded-xl border border-border shadow-sm">
+              <h3 className="text-sm font-bold text-foreground uppercase flex items-center gap-2 mb-4">
+                <Clock className="w-4 h-4 text-klasse-green dark:text-klasse-green-300" /> Carga Semanal
               </h3>
               <div className="flex items-center gap-4">
                 <button
@@ -669,15 +669,15 @@ export function DisciplinaModal({
                       carga_horaria_semanal: Math.max(1, prev.carga_horaria_semanal - 1),
                     }))
                   }
-                  className="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center font-bold text-lg"
+                  className="w-10 h-10 rounded-lg bg-muted text-muted-foreground hover:bg-muted-foreground/15 flex items-center justify-center font-bold text-lg"
                 >
                   -
                 </button>
                 <div className="flex-1 text-center">
-                  <span className="text-3xl font-bold text-slate-900">
+                  <span className="text-3xl font-bold text-foreground">
                     {form.carga_horaria_semanal}
                   </span>
-                  <span className="text-xs text-slate-500 block uppercase font-bold">Aulas</span>
+                  <span className="text-xs text-muted-foreground block uppercase font-bold">Aulas</span>
                 </div>
                 <button
                   type="button"
@@ -687,7 +687,7 @@ export function DisciplinaModal({
                       carga_horaria_semanal: Math.min(10, prev.carga_horaria_semanal + 1),
                     }))
                   }
-                  className="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center font-bold text-lg"
+                  className="w-10 h-10 rounded-lg bg-muted text-muted-foreground hover:bg-muted-foreground/15 flex items-center justify-center font-bold text-lg"
                 >
                   +
                 </button>
@@ -705,63 +705,63 @@ export function DisciplinaModal({
               )}
             </section>
 
-            <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-[#1F6B3B]" /> Horário e Avaliação
+            <section className="bg-card p-5 rounded-xl border border-border shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-foreground uppercase flex items-center gap-2">
+                <LayoutGrid className="w-4 h-4 text-klasse-green dark:text-klasse-green-300" /> Horário e Avaliação
               </h3>
               
               <div className="space-y-2">
-                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <span className="text-sm font-medium text-slate-700">Entra na grade?</span>
+                <div className="flex items-center justify-between bg-muted p-3 rounded-lg border border-border">
+                  <span className="text-sm font-medium text-foreground">Entra na grade?</span>
                   <button
                     type="button"
                     onClick={() =>
                       setForm((prev) => ({ ...prev, entra_no_horario: !prev.entra_no_horario }))
                     }
                     className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                      form.entra_no_horario ? "bg-[#1F6B3B]" : "bg-slate-300"
+                      form.entra_no_horario ? "bg-klasse-green" : "bg-muted-foreground/25"
                     }`}
                   >
                     <div
-                      className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                      className={`w-4 h-4 bg-card rounded-full shadow-sm transition-transform ${
                         form.entra_no_horario ? "translate-x-6" : "translate-x-0"
                       }`}
                     />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <span className="text-sm font-medium text-slate-700">É avaliável?</span>
+                <div className="flex items-center justify-between bg-muted p-3 rounded-lg border border-border">
+                  <span className="text-sm font-medium text-foreground">É avaliável?</span>
                   <button
                     type="button"
                     onClick={() =>
                       setForm((prev) => ({ ...prev, is_avaliavel: !prev.is_avaliavel }))
                     }
                     className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                      form.is_avaliavel ? "bg-[#1F6B3B]" : "bg-slate-300"
+                      form.is_avaliavel ? "bg-klasse-green" : "bg-muted-foreground/25"
                     }`}
                   >
                     <div
-                      className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                      className={`w-4 h-4 bg-card rounded-full shadow-sm transition-transform ${
                         form.is_avaliavel ? "translate-x-6" : "translate-x-0"
                       }`}
                     />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <span className="text-sm font-medium text-slate-700">Conta para média MED?</span>
+                <div className="flex items-center justify-between bg-muted p-3 rounded-lg border border-border">
+                  <span className="text-sm font-medium text-foreground">Conta para média MED?</span>
                   <button
                     type="button"
                     onClick={() =>
                       setForm((prev) => ({ ...prev, conta_para_media_med: !prev.conta_para_media_med }))
                     }
                     className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                      form.conta_para_media_med ? "bg-[#1F6B3B]" : "bg-slate-300"
+                      form.conta_para_media_med ? "bg-klasse-green" : "bg-muted-foreground/25"
                     }`}
                   >
                     <div
-                      className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                      className={`w-4 h-4 bg-card rounded-full shadow-sm transition-transform ${
                         form.conta_para_media_med ? "translate-x-6" : "translate-x-0"
                       }`}
                     />
@@ -771,9 +771,9 @@ export function DisciplinaModal({
             </section>
           </div>
 
-          <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2 mb-4">
-              <Shield className="w-4 h-4 text-[#1F6B3B]" /> Classificação
+          <section className="bg-card p-5 rounded-xl border border-border shadow-sm">
+            <h3 className="text-sm font-bold text-foreground uppercase flex items-center gap-2 mb-4">
+              <Shield className="w-4 h-4 text-klasse-green dark:text-klasse-green-300" /> Classificação
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {[
@@ -792,35 +792,35 @@ export function DisciplinaModal({
                   }
                   className={`p-3 rounded-xl border text-left transition-all hover:shadow-md ${
                     form.classificacao === opt.id
-                      ? "bg-[#E3B23C]/10 border-[#E3B23C] ring-1 ring-[#E3B23C]/40"
-                      : "bg-white border-slate-200 hover:border-[#1F6B3B]/40"
+                      ? "bg-klasse-gold/10 border-klasse-gold ring-1 ring-klasse-gold/40"
+                      : "bg-card border-border hover:border-klasse-green/40"
                   }`}
                 >
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 ${
                       form.classificacao === opt.id
-                        ? "bg-[#E3B23C]/20 text-[#9E6F12]"
-                        : "bg-slate-100 text-slate-400"
+                        ? "bg-klasse-gold/20 text-klasse-gold-700 dark:text-klasse-gold-300"
+                        : "bg-muted text-muted-foreground"
                     }`}
                   >
                     <opt.icon className="w-4 h-4" />
                   </div>
                   <div
                     className={`font-bold text-sm ${
-                      form.classificacao === opt.id ? "text-[#7A5510]" : "text-slate-700"
+                      form.classificacao === opt.id ? "text-[#7A5510]" : "text-foreground"
                     }`}
                   >
                     {opt.label}
                   </div>
-                  <div className="text-[10px] text-slate-500">{opt.desc}</div>
+                  <div className="text-[10px] text-muted-foreground">{opt.desc}</div>
                 </button>
               ))}
             </div>
           </section>
 
-          <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2 mb-4">
-              <Scale className="w-4 h-4 text-[#1F6B3B]" /> Sistema de Avaliação
+          <section className="bg-card p-5 rounded-xl border border-border shadow-sm">
+            <h3 className="text-sm font-bold text-foreground uppercase flex items-center gap-2 mb-4">
+              <Scale className="w-4 h-4 text-klasse-green dark:text-klasse-green-300" /> Sistema de Avaliação
             </h3>
             <div className="space-y-3">
               {[
@@ -844,14 +844,14 @@ export function DisciplinaModal({
                   key={opt.id}
                   className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                     form.avaliacao.mode === opt.id
-                      ? "bg-slate-50 border-slate-900"
-                      : "bg-white border-slate-200 hover:bg-slate-50"
+                      ? "bg-muted border-slate-900"
+                      : "bg-card border-border hover:bg-muted"
                   }`}
                 >
                   <input
                     type="radio"
                     name="avaliacao"
-                    className="mt-1 text-[#1F6B3B] focus:ring-[#1F6B3B]"
+                    className="mt-1 text-klasse-green dark:text-klasse-green-300 focus:ring-klasse-green"
                     checked={form.avaliacao.mode === opt.id}
                     onChange={() =>
                       setForm((prev) => ({
@@ -865,8 +865,8 @@ export function DisciplinaModal({
                     }
                   />
                   <div>
-                    <div className="text-sm font-bold text-slate-900">{opt.label}</div>
-                    <div className="text-xs text-slate-500">{opt.desc}</div>
+                    <div className="text-sm font-bold text-foreground">{opt.label}</div>
+                    <div className="text-xs text-muted-foreground">{opt.desc}</div>
                   </div>
                 </label>
               ))}
@@ -885,7 +885,7 @@ export function DisciplinaModal({
                       },
                     }))
                   }
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border px-3 py-2 text-sm"
                 >
                   <option value="">Selecione uma disciplina</option>
                   {existingDisciplines.map((disc) => (
@@ -910,7 +910,7 @@ export function DisciplinaModal({
                       modelo_excecao_id: event.target.value || null,
                     }))
                   }
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  className="w-full rounded-xl border border-border px-3 py-2 text-sm"
                 >
                   <option value="">Selecione um modelo</option>
                   {avaliacaoModelos.map((modelo) => (
@@ -927,11 +927,11 @@ export function DisciplinaModal({
           </section>
         </div>
 
-        <div className="border-t border-slate-200 p-6 bg-white shrink-0 space-y-4">
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-start gap-3 text-xs text-slate-600">
-            <AlertCircle className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+        <div className="border-t border-border p-6 bg-card shrink-0 space-y-4">
+          <div className="bg-muted border border-border rounded-lg p-3 flex items-start gap-3 text-xs text-muted-foreground">
+            <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
             <div>
-              <span className="font-bold text-slate-700 block mb-1">Resumo do Impacto:</span>
+              <span className="font-bold text-foreground block mb-1">Resumo do Impacto:</span>
               <ul className="space-y-0.5 list-disc pl-4">
                 <li>
                   Afetará <span className="font-bold">{form.periodos_ativos.length} período(s)</span>.
@@ -958,7 +958,7 @@ export function DisciplinaModal({
                 ))}
               </ul>
               {canQuickSave && (
-                <p className="mt-2 font-medium text-slate-700">
+                <p className="mt-2 font-medium text-foreground">
                   Para ajuste operacional, use <span className="font-bold">Salvar carga</span>.
                 </p>
               )}
@@ -980,7 +980,7 @@ export function DisciplinaModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+              className="px-6 py-3 rounded-xl font-bold text-muted-foreground hover:bg-muted transition-colors"
             >
               Cancelar
             </button>

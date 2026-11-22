@@ -135,10 +135,10 @@ export function CurriculumPresetSelector({
           <BookOpen className="w-5 h-5" />
         </div>
         <div className="space-y-1">
-          <h2 className="text-sm font-bold text-slate-800">
+          <h2 className="text-sm font-bold text-foreground">
             Qual o Curso/Nível?
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Selecione para carregar o plano curricular oficial de Angola.
             <span className="block mt-1 text-emerald-600">
               <Check className="inline w-3 h-3 mr-1" />
@@ -170,7 +170,7 @@ export function CurriculumPresetSelector({
                 "px-3 py-2 rounded-lg text-[11px] font-bold border transition-all flex flex-col items-start",
                 isActive
                   ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300",
+                  : "bg-card text-muted-foreground border-border hover:border-border",
                 disabled ? "opacity-60 cursor-not-allowed" : "",
               ].join(" ")}
             >
@@ -178,7 +178,7 @@ export function CurriculumPresetSelector({
               <span
                 className={[
                   "text-[10px] font-normal mt-0.5",
-                  isActive ? "text-slate-300" : "text-slate-400",
+                  isActive ? "text-muted-foreground" : "text-muted-foreground",
                 ].join(" ")}
               >
                 {tabCount} opção{tabCount !== 1 ? "es" : ""}
@@ -199,10 +199,10 @@ export function CurriculumPresetSelector({
           }}
           className="block w-full pl-4 pr-10 py-3 text-sm border border-emerald-500 rounded-xl
                      focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-                     outline-none bg-white font-medium text-slate-700 cursor-pointer
+                     outline-none bg-card font-medium text-foreground cursor-pointer
                      transition-shadow hover:shadow-md"
         >
-          <option value="" className="text-slate-400">
+          <option value="" className="text-muted-foreground">
             {options.length === 0
               ? "Nenhuma opção nesta categoria..."
               : "Selecione um curso para começar..."}
@@ -231,7 +231,7 @@ export function CurriculumPresetSelector({
             );
           })}
         </select>
-        <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+        <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
           <ChevronDown className="w-4 h-4" />
         </span>
       </div>
@@ -257,7 +257,7 @@ export function CurriculumPresetSelector({
                     {selectedType.toUpperCase()}
                   </span>
                   {(selectedCatalog?.badge ?? selectedMeta.badge) && (
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded-full">
+                    <span className="px-2 py-0.5 bg-muted text-foreground text-[10px] font-bold rounded-full">
                       {selectedCatalog?.badge ?? selectedMeta.badge}
                     </span>
                   )}
@@ -269,12 +269,12 @@ export function CurriculumPresetSelector({
                   </p>
                 )}
 
-                <div className="flex items-center gap-3 pt-2 text-xs text-slate-600">
+                <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <BookOpen className="w-3 h-3" />
                     {subjectsPreview.length} disciplinas
                   </span>
-                  <span className="text-slate-300">•</span>
+                  <span className="text-muted-foreground">•</span>
                   <span className="text-emerald-600 font-medium">
                     Personalizável depois
                   </span>
@@ -286,7 +286,7 @@ export function CurriculumPresetSelector({
           {/* Preview rápido das disciplinas */}
           {subjectsPreview.length > 0 && (
             <details className="mt-2 group">
-              <summary className="text-xs text-slate-500 cursor-pointer list-none flex items-center gap-1">
+              <summary className="text-xs text-muted-foreground cursor-pointer list-none flex items-center gap-1">
                 <ChevronDown className="w-3 h-3 group-open:rotate-180 transition-transform" />
                 Ver disciplinas incluídas (
                 {Math.min(
@@ -295,18 +295,18 @@ export function CurriculumPresetSelector({
                 )}
                 )
               </summary>
-              <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+              <div className="mt-2 p-3 bg-muted rounded-lg border border-border">
                 <ul className="grid grid-cols-2 md:grid-cols-3 gap-1">
                   {subjectsPreview.slice(0, 9).map((subject, idx) => (
                     <li
                       key={idx}
-                      className="text-xs text-slate-600 px-2 py-1 bg-white rounded border border-slate-100"
+                      className="text-xs text-muted-foreground px-2 py-1 bg-card rounded border border-border"
                     >
                       {subject.name}
                     </li>
                   ))}
                   {subjectsPreview.length > 9 && (
-                    <li className="text-xs text-slate-400 px-2 py-1 italic">
+                    <li className="text-xs text-muted-foreground px-2 py-1 italic">
                       +{subjectsPreview.length - 9} mais...
                     </li>
                   )}
@@ -318,8 +318,8 @@ export function CurriculumPresetSelector({
       )}
 
       {/* Informação de ajuda */}
-      <div className="pt-4 border-t border-slate-100">
-        <div className="flex items-start gap-2 text-xs text-slate-500">
+      <div className="pt-4 border-t border-border">
+        <div className="flex items-start gap-2 text-xs text-muted-foreground">
           <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
           <p>
             Não encontra o que precisa? Você poderá criar cursos personalizados

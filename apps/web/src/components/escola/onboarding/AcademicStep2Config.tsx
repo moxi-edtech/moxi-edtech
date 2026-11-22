@@ -19,10 +19,10 @@ export default function AcademicStep2Config({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">
         <div>
-          <h3 className="text-sm font-bold text-slate-800">Frequência (SSOT)</h3>
-          <p className="text-xs text-slate-500">Fonte única: tabela `frequencias`.</p>
+          <h3 className="text-sm font-bold text-foreground">Frequência (SSOT)</h3>
+          <p className="text-xs text-muted-foreground">Fonte única: tabela `frequencias`.</p>
         </div>
         <div className="flex gap-2">
           {(["POR_AULA", "POR_PERIODO"] as const).map((opt) => (
@@ -33,7 +33,7 @@ export default function AcademicStep2Config({
               className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
                 frequenciaModelo === opt
                   ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                  : "bg-card text-muted-foreground border-border hover:border-border"
               }`}
             >
               {opt === "POR_AULA" ? "Por aula" : "Por período"}
@@ -41,7 +41,7 @@ export default function AcademicStep2Config({
           ))}
         </div>
         <div className="grid gap-2">
-          <label className="text-xs font-semibold text-slate-700" htmlFor="frequencia-min-percent">
+          <label className="text-xs font-semibold text-foreground" htmlFor="frequencia-min-percent">
             % mínimo de presença
           </label>
           <input
@@ -51,15 +51,15 @@ export default function AcademicStep2Config({
             max={100}
             value={frequenciaMinPercent}
             onChange={(event) => onFrequenciaMinPercentChange(Number(event.target.value))}
-            className="w-32 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
+            className="w-32 rounded-lg border border-border px-3 py-2 text-sm text-foreground"
           />
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">
         <div>
-          <h3 className="text-sm font-bold text-slate-800">Modelo de avaliação</h3>
-          <p className="text-xs text-slate-500">Define o formato de notas trimestrais.</p>
+          <h3 className="text-sm font-bold text-foreground">Modelo de avaliação</h3>
+          <p className="text-xs text-muted-foreground">Define o formato de notas trimestrais.</p>
         </div>
         {recommendedModel ? (
           <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
@@ -69,9 +69,9 @@ export default function AcademicStep2Config({
         ) : null}
         <div className="flex flex-wrap gap-2">
           {isLoadingModelos ? (
-            <p className="text-xs text-slate-500">A carregar modelos de avaliação...</p>
+            <p className="text-xs text-muted-foreground">A carregar modelos de avaliação...</p>
           ) : modelosAvaliacao.length === 0 ? (
-            <p className="text-xs text-slate-500">Nenhum modelo encontrado. Vamos usar uma configuração simplificada para não travar o setup.</p>
+            <p className="text-xs text-muted-foreground">Nenhum modelo encontrado. Vamos usar uma configuração simplificada para não travar o setup.</p>
           ) : (
             modelosAvaliacao.map((opt) => (
               <button
@@ -81,7 +81,7 @@ export default function AcademicStep2Config({
                 className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
                   modeloAvaliacao === opt.id
                     ? "bg-teal-600 text-white border-teal-600"
-                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                    : "bg-card text-muted-foreground border-border hover:border-border"
                 }`}
               >
                 <span>{opt.nome}</span>
@@ -96,16 +96,16 @@ export default function AcademicStep2Config({
             ))
           )}
         </div>
-        <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-700">
-          <p className="text-xs font-semibold text-slate-600 mb-2">Preview de componentes</p>
+        <div className="rounded-xl border border-dashed border-border p-4 text-sm text-foreground">
+          <p className="text-xs font-semibold text-muted-foreground mb-2">Preview de componentes</p>
           {componentes.length === 0 ? (
-            <p className="text-xs text-slate-500">Sem componentes configurados.</p>
+            <p className="text-xs text-muted-foreground">Sem componentes configurados.</p>
           ) : (
             <ul className="space-y-1">
               {componentes.map((item) => (
                 <li key={item.code} className="flex items-center justify-between">
                   <span className="font-semibold">{item.code}</span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-muted-foreground">
                     {item.peso}% {item.ativo ? "ativo" : "inativo"}
                   </span>
                 </li>

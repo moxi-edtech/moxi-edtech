@@ -144,8 +144,8 @@ function cx(...parts: Array<string | false | null | undefined>) {
 
 function SpinnerLabel({ label = "Carregando..." }: { label?: string }) {
   return (
-    <div className="flex items-center gap-2 text-slate-500 text-sm">
-      <span className="inline-block h-4 w-4 rounded-full border-2 border-slate-200 border-t-slate-600 animate-spin" />
+    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+      <span className="inline-block h-4 w-4 rounded-full border-2 border-border border-t-slate-600 animate-spin" />
       <span>{label}</span>
     </div>
   );
@@ -1356,7 +1356,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   // -------- Manager view --------
   if (resolvePendenciasRequested && (loadingCourses || loadingDetails || !selectedCourseId || !details)) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 animate-pulse">
+      <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground animate-pulse">
         Preparando pendências do currículo...
       </div>
     );
@@ -1444,7 +1444,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         onValueChange={(v) => setActiveTab(v as ActiveTab)}
         className="w-full"
       >
-        <TabsList className="bg-slate-100 p-1">
+        <TabsList className="bg-muted p-1">
           <TabsTrigger value="my_courses" className="rounded-full px-6">
             Cursos ativos
           </TabsTrigger>
@@ -1456,14 +1456,14 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         <TabsContent value="my_courses" className="mt-6">
           {loadingCourses ? (
             <div className="py-20 flex flex-col items-center justify-center gap-4">
-              <UISpinner size={24} className="text-slate-400" />
-              <p className="text-sm text-slate-500 animate-pulse">Carregando seus cursos...</p>
+              <UISpinner size={24} className="text-muted-foreground" />
+              <p className="text-sm text-muted-foreground animate-pulse">Carregando seus cursos...</p>
             </div>
           ) : courses.length === 0 ? (
-            <Card className="border-dashed border-2 bg-slate-50/50">
+            <Card className="border-dashed border-2 bg-muted/50">
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="rounded-full bg-slate-100 p-4 mb-4">
-                  <Settings className="w-8 h-8 text-slate-400" />
+                <div className="rounded-full bg-muted p-4 mb-4">
+                  <Settings className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <CardTitle className="text-lg">Nenhum curso ativo</CardTitle>
                 <CardDescription className="max-w-xs mt-2">
@@ -1499,8 +1499,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         <TabsContent value="catalog" className="mt-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">Catálogo de Cursos</h3>
-              <p className="text-sm text-slate-500">Selecione um currículo pré-definido para começar rapidamente.</p>
+              <h3 className="text-lg font-semibold text-foreground">Catálogo de Cursos</h3>
+              <p className="text-sm text-muted-foreground">Selecione um currículo pré-definido para começar rapidamente.</p>
             </div>
             <Button
               onClick={openCustomConfig}
@@ -1541,27 +1541,27 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                       <div
                         className={cx(
                           "h-12 w-12 rounded-2xl flex items-center justify-center text-lg font-bold border shadow-sm",
-                          isInstalled ? "bg-slate-100 border-slate-200 text-slate-400" : `${colors.bgLight} ${colors.text} ${colors.border}`
+                          isInstalled ? "bg-muted border-border text-muted-foreground" : `${colors.bgLight} ${colors.text} ${colors.border}`
                         )}
                       >
                         {preset.label?.[0] ?? "C"}
                       </div>
                       <div>
                         <CardTitle className="text-base">{preset.label}</CardTitle>
-                        <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mt-0.5">
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-0.5">
                           {getTypeLabel(tipo)}
                         </p>
                       </div>
                     </div>
                     {isInstalled && (
-                      <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-slate-200">
+                      <Badge variant="secondary" className="bg-muted text-muted-foreground border-border">
                         <Check className="w-3 h-3 mr-1" />
                         Instalado
                       </Badge>
                     )}
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-slate-600 line-clamp-2 min-h-[2.5rem]">
+                    <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
                       {preset.description || "Currículo oficial estruturado com disciplinas e classes padrão."}
                     </p>
                   </CardContent>
@@ -1686,10 +1686,10 @@ function CourseCard({
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
+            <BookOpen className="w-4 h-4 text-muted-foreground shrink-0" />
             <CardTitle className="text-base truncate">{curso.nome}</CardTitle>
           </div>
-          <p className="text-xs text-slate-500 font-mono mt-1 truncate">{curso.codigo}</p>
+          <p className="text-xs text-muted-foreground font-mono mt-1 truncate">{curso.codigo}</p>
         </div>
 
         <div className="flex items-center gap-1">
@@ -1697,7 +1697,7 @@ function CourseCard({
             variant="ghost"
             size="icon"
             onClick={onCleanup}
-            className="h-8 w-8 text-slate-400 hover:text-slate-900"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             title="Arquivar turmas excedentes"
           >
             <Eraser className="w-4 h-4" />
@@ -1706,7 +1706,7 @@ function CourseCard({
             variant="ghost"
             size="icon"
             onClick={onRemove}
-            className="h-8 w-8 text-slate-400 hover:text-red-600"
+            className="h-8 w-8 text-muted-foreground hover:text-red-600"
             title="Remover curso"
           >
             <Trash2 className="w-4 h-4" />
@@ -1716,13 +1716,13 @@ function CourseCard({
 
       <CardContent className="flex-grow">
         <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1">Classes</p>
-            <p className="text-xl font-bold text-slate-900">{curso.total_classes}</p>
+          <div className="rounded-lg bg-muted p-3 border border-border">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Classes</p>
+            <p className="text-xl font-bold text-foreground">{curso.total_classes}</p>
           </div>
-          <div className="rounded-lg bg-slate-50 p-3 border border-slate-100">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1">Turmas</p>
-            <p className="text-xl font-bold text-slate-900">{curso.total_turmas}</p>
+          <div className="rounded-lg bg-muted p-3 border border-border">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Turmas</p>
+            <p className="text-xl font-bold text-foreground">{curso.total_turmas}</p>
           </div>
         </div>
 
@@ -1732,15 +1732,15 @@ function CourseCard({
               "rounded-xl border p-4 mb-4",
               canPrepareTurmas
                 ? "border-amber-200 bg-amber-50/50"
-                : "border-slate-200 bg-slate-50/50"
+                : "border-border bg-muted/50"
             )}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-900">
+                <p className="text-xs font-bold text-foreground">
                   {canPrepareTurmas ? "Falta preparar turmas" : "Currículo pendente"}
                 </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                   {canPrepareTurmas
                     ? "Estrutura publicada. Crie as turmas iniciais para liberar matrículas."
                     : "O currículo deste curso ainda não foi finalizado."}
@@ -1806,15 +1806,15 @@ function TurmaCleanupModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+      <div className="w-full max-w-3xl rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-start justify-between gap-4 border-b border-border bg-muted/50 px-6 py-4">
           <div>
             <h3 className="text-base font-bold text-foreground">Arquivar turmas excedentes</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Curso: <span className="font-bold text-slate-700">{courseName || "—"}</span>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Curso: <span className="font-bold text-foreground">{courseName || "—"}</span>
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} disabled={running} className="rounded-full h-8 w-8 text-slate-400">
+          <Button variant="ghost" size="icon" onClick={onClose} disabled={running} className="rounded-full h-8 w-8 text-muted-foreground">
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -1829,14 +1829,14 @@ function TurmaCleanupModal({
 
           {loading ? (
             <div className="py-12 flex justify-center">
-              <UISpinner size={24} className="text-slate-300" />
+              <UISpinner size={24} className="text-muted-foreground" />
             </div>
           ) : items.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center bg-slate-50/50">
-              <p className="text-sm text-slate-400">Nenhuma turma encontrada para este curso.</p>
+            <div className="rounded-2xl border border-dashed border-border p-8 text-center bg-muted/50">
+              <p className="text-sm text-muted-foreground">Nenhuma turma encontrada para este curso.</p>
             </div>
           ) : (
-            <div className="max-h-80 overflow-auto rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-inner">
+            <div className="max-h-80 overflow-auto rounded-2xl border border-border divide-y divide-border shadow-inner">
               {items.map((turma) => {
                 const blocked = turma.total_alunos > 0;
                 const isSelected = selectedSet.has(turma.id);
@@ -1845,14 +1845,14 @@ function TurmaCleanupModal({
                     key={turma.id}
                     className={cx(
                       "flex items-center justify-between gap-4 px-5 py-4 transition-colors cursor-pointer",
-                      blocked ? "bg-rose-50/30 opacity-60 grayscale-[0.5] cursor-not-allowed" : "bg-white hover:bg-slate-50",
-                      isSelected && !blocked ? "bg-slate-50" : ""
+                      blocked ? "bg-rose-50/30 opacity-60 grayscale-[0.5] cursor-not-allowed" : "bg-card hover:bg-muted",
+                      isSelected && !blocked ? "bg-muted" : ""
                     )}
                   >
                     <div className="flex items-center gap-4 min-w-0">
                       <div className={cx(
                         "w-5 h-5 rounded border flex items-center justify-center transition-colors",
-                        isSelected ? "bg-slate-900 border-slate-900" : "bg-white border-slate-300",
+                        isSelected ? "bg-foreground border-foreground" : "bg-card border-border",
                         blocked ? "opacity-50" : ""
                       )}>
                         {isSelected && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
@@ -1865,14 +1865,14 @@ function TurmaCleanupModal({
                         />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-900 truncate">{turma.nome}</p>
-                        <p className="text-[11px] text-slate-500 truncate font-medium uppercase tracking-wider">
+                        <p className="text-sm font-bold text-foreground truncate">{turma.nome}</p>
+                        <p className="text-[11px] text-muted-foreground truncate font-medium uppercase tracking-wider">
                           {turma.classe} · {turma.turno}
                         </p>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <Badge variant={blocked ? "destructive" : "outline"} className={cx("font-bold text-[10px]", !blocked && "text-slate-500 border-slate-200")}>
+                      <Badge variant={blocked ? "destructive" : "outline"} className={cx("font-bold text-[10px]", !blocked && "text-muted-foreground border-border")}>
                         <Users className="w-3 h-3 mr-1" />
                         {turma.total_alunos} {turma.total_alunos === 1 ? "aluno" : "alunos"}
                       </Badge>
@@ -1885,8 +1885,8 @@ function TurmaCleanupModal({
           )}
         </div>
 
-        <div className="border-t border-slate-100 bg-slate-50/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
+        <div className="border-t border-border bg-muted/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-slate-900" />
               {selectedCount} selecionadas

@@ -157,7 +157,7 @@ export default function ConfigurationStep({
 
   if (loading || loadingRole) {
     return (
-      <div className="flex flex-col items-center gap-2 text-slate-500 py-20">
+      <div className="flex flex-col items-center gap-2 text-muted-foreground py-20">
         <Loader2 className="h-6 w-6 animate-spin text-teal-600" />
         <p>Carregando dados para configuração...</p>
       </div>
@@ -184,7 +184,7 @@ export default function ConfigurationStep({
 
   return (
     <div className="space-y-6">
-      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-start gap-3 text-sm text-slate-800">
+      <div className="p-4 bg-muted border border-border rounded-lg flex items-start gap-3 text-sm text-foreground">
         <Info className="h-5 w-5 flex-shrink-0" />
         <div>
           <h3 className="font-bold">Ajuste os itens criados durante a importação.</h3>
@@ -196,11 +196,11 @@ export default function ConfigurationStep({
 
       {cursosToConfigure.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-800">Cursos Novos/Pendentes</h2>
+          <h2 className="text-lg font-semibold text-foreground">Cursos Novos/Pendentes</h2>
           {cursosToConfigure.map((curso) => (
-            <div key={curso.id} className="border border-slate-200 rounded-lg p-4 space-y-2">
+            <div key={curso.id} className="border border-border rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="font-bold text-slate-700">{curso.nome} ({curso.codigo})</h4>
+                <h4 className="font-bold text-foreground">{curso.nome} ({curso.codigo})</h4>
                 {curso.status_aprovacao === 'pendente' && (
                   <span className="px-2 py-0.5 text-xs font-semibold text-orange-700 bg-orange-50 rounded-full border border-orange-200">
                     Pendente
@@ -214,12 +214,12 @@ export default function ConfigurationStep({
               </div>
               
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Nome do Curso</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Nome do Curso</label>
                 <input
                   type="text"
                   value={curso.nome}
                   onChange={(e) => handleCursoChange(curso.id, 'nome', e.target.value)}
-                  className="w-full rounded-md border-slate-300 shadow-sm text-sm"
+                  className="w-full rounded-md border-border shadow-sm text-sm"
                 />
               </div>
 
@@ -244,7 +244,7 @@ export default function ConfigurationStep({
       {turmasToConfigure.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-slate-800">Turmas em Rascunho</h2>
+            <h2 className="text-lg font-semibold text-foreground">Turmas em Rascunho</h2>
             {hasTurmasToActivate && (
               <button
                 onClick={handleActivateAllTurmas}
@@ -255,7 +255,7 @@ export default function ConfigurationStep({
                   bg-slate-600 text-white
                   hover:bg-slate-700
                   disabled:opacity-50 disabled:cursor-not-allowed
-                  focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2
+                  focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
                   transition-colors
                 `}
               >
@@ -265,9 +265,9 @@ export default function ConfigurationStep({
             )}
           </div>
           {turmasToConfigure.map((turma) => (
-            <div key={turma.id} className="border border-slate-200 rounded-lg p-4 space-y-2">
+            <div key={turma.id} className="border border-border rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="font-bold text-slate-700">{turma.nome} ({turma.turma_codigo})</h4>
+                <h4 className="font-bold text-foreground">{turma.nome} ({turma.turma_codigo})</h4>
                 {turma.status_validacao === 'rascunho' && (
                   <span className="px-2 py-0.5 text-xs font-semibold text-orange-700 bg-orange-50 rounded-full border border-orange-200">
                     Rascunho
@@ -281,21 +281,21 @@ export default function ConfigurationStep({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Nome da Turma</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Nome da Turma</label>
                 <input
                   type="text"
                   value={turma.nome}
                   onChange={(e) => handleTurmaChange(turma.id, 'nome', e.target.value)}
-                  className="w-full rounded-md border-slate-300 shadow-sm text-sm"
+                  className="w-full rounded-md border-border shadow-sm text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Curso</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Curso</label>
                 <select
                   value={turma.curso_id || ''}
                   onChange={(e) => handleTurmaChange(turma.id, 'curso_id', e.target.value || null)}
-                  className="w-full rounded-md border-slate-300 shadow-sm text-sm"
+                  className="w-full rounded-md border-border shadow-sm text-sm"
                 >
                   <option value="">Nenhum</option>
                   {availableCourses.map((c) => (
@@ -312,11 +312,11 @@ export default function ConfigurationStep({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Classe</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Classe</label>
                 <select
                   value={turma.classe_id || ''}
                   onChange={(e) => handleTurmaChange(turma.id, 'classe_id', e.target.value || null)}
-                  className="w-full rounded-md border-slate-300 shadow-sm text-sm"
+                  className="w-full rounded-md border-border shadow-sm text-sm"
                 >
                   <option value="">Nenhuma</option>
                   {availableClasses.map((cl) => (
@@ -328,12 +328,12 @@ export default function ConfigurationStep({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Turno</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Turno</label>
                 <input
                   type="text"
                   value={turma.turno || ''}
                   onChange={(e) => handleTurmaChange(turma.id, 'turno', e.target.value)}
-                  className="w-full rounded-md border-slate-300 shadow-sm text-sm"
+                  className="w-full rounded-md border-border shadow-sm text-sm"
                 />
               </div>
               
@@ -351,15 +351,15 @@ export default function ConfigurationStep({
       )}
 
       {(cursosToConfigure.length === 0 && turmasToConfigure.length === 0) && (
-        <div className="text-center py-10 text-slate-500">
+        <div className="text-center py-10 text-muted-foreground">
             Nenhuma estrutura para configurar nesta importação.
         </div>
       )}
 
-      <div className="flex justify-between gap-3 pt-4 border-t border-slate-100">
+      <div className="flex justify-between gap-3 pt-4 border-t border-border">
         <button
           onClick={onBack}
-          className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 flex items-center gap-2"
+          className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" /> Voltar
         </button>
@@ -372,7 +372,7 @@ export default function ConfigurationStep({
             bg-slate-600 text-white
             hover:bg-slate-700
             disabled:opacity-50 disabled:cursor-not-allowed
-            focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2
+            focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
             transition-colors
           `}
         >
