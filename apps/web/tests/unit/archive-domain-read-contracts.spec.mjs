@@ -65,6 +65,8 @@ test("finance summary is a separate role-protected read and keeps older debts vi
   assert.match(api, /vw_financeiro_propinas_mensal_escola/);
   assert.match(api, /limit\(501\)/);
   assert.match(api, /total_em_atraso_todos_anos: totalEmAtrasoTodosAnos/);
+  assert.match(api, /mes: z\.coerce\.number\(\)\.int\(\)\.min\(1\)\.max\(12\)\.optional\(\)/);
+  assert.match(api, /competencia_selecionada: selectedMonth == null/);
   assert.doesNotMatch(api, /\.(?:insert|update|upsert|delete)\(/);
 });
 
@@ -76,6 +78,10 @@ test("year comparison counts exact scoped records without cross-year or tenant f
   assert.match(api, /\.eq\("escola_id", escolaId\)\.eq\("session_id", year\.id\)/);
   assert.match(api, /count: "exact", head: true/);
   assert.match(api, /Matrículas sem session_id não são inferidas/);
+  assert.match(api, /readVerifiedAcademicTrimesters/);
+  assert.match(api, /requireVerifiedTrimester/);
+  assert.match(api, /trimestre: z\.coerce\.number\(\)\.int\(\)\.min\(1\)\.max\(3\)\.optional\(\)/);
+  assert.match(api, /\.eq\("periodo_letivo_id", term\.id\)/);
   assert.doesNotMatch(api, /\.(?:insert|update|upsert|delete)\(/);
 });
 
@@ -92,4 +98,6 @@ test("archive UI exposes contextual trimester and version choices without global
   assert.match(details, /setPeriodFilter\(e.target.value\)/);
   assert.match(analytics, /total_em_atraso_todos_anos/);
   assert.match(analytics, /comparar_ano_letivo_id/);
+  assert.match(analytics, /id="archive-report-period"/);
+  assert.match(analytics, /id="archive-finance-month"/);
 });
