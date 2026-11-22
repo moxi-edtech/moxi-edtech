@@ -98,3 +98,34 @@ test("Contexto académico e emissão documental respeitam escola explícita do p
   assert.match(quick, /escola_id: escolaId/);
   assert.match(official, /escola_id: escolaId/);
 });
+
+test("Dossier anual usa escola explícita e confirma o aluno antes da RPC SECURITY DEFINER", () => {
+  const route = src("app/api/secretaria/alunos/[id]/timeline-360/route.ts");
+  const timeline = src("components/aluno/DossierHistoricoTimelineSection.tsx");
+  assert.match(route, /new URL\(req\.url\)\.searchParams\.get\("escola_id"\)/);
+  assert.match(route, /resolveEscolaIdForUser\(supabase as any, user\.id, requestedEscolaId\)/);
+  assert.match(route, /\.eq\("escola_id", escolaId\)/);
+  assert.ok(route.indexOf('.from("alunos")') < route.indexOf('supabase.rpc("get_aluno_timeline_360"'));
+  assert.match(timeline, /escola_id=\$\{encodeURIComponent\(escolaId\)\}/);
+  assert.match(timeline, /\[alunoId, escolaId\]/);
+});
+
+test("Resultados completos por ano usam o histórico oficial da mesma escola e apenas leitura", () => {
+  const route = src("app/api/secretaria/alunos/[id]/historico-disciplinas/route.ts");
+  const panel = src("components/aluno/HistoricalDisciplineResultsPanel.tsx");
+  const timeline = src("components/aluno/DossierHistoricoTimelineSection.tsx");
+  assert.match(route, /parseHistoricalDisciplineQuery/);
+  assert.match(route, /resolveEscolaIdForUser\(supabase as any, auth\.user\.id, query\.get\("escola_id"\)\)/);
+  assert.match(route, /requireRoleInSchool/);
+  assert.match(route, /\.from\("historico_anos"\)/);
+  assert.match(route, /\.eq\("escola_id", escolaId\)/);
+  assert.match(route, /\.eq\("aluno_id", params\.data\.id\)/);
+  assert.match(route, /\.eq\("ano_letivo", parsed\.year\)/);
+  assert.match(route, /\.from\("historico_disciplinas"\)/);
+  assert.match(route, /\.eq\("historico_ano_id", historico\.id\)/);
+  assert.match(route, /\{ count: "exact" \}/);
+  assert.doesNotMatch(route, /\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+  assert.match(panel, /new URLSearchParams\(\{ ano: String\(year\), page: String\(page\) \}\)/);
+  assert.match(panel, /params\.set\("escola_id", escolaId\)/);
+  assert.match(timeline, /<HistoricalDisciplineResultsPanel/);
+});
