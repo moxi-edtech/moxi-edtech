@@ -40,8 +40,7 @@ export function CurtumeDocumentalReview({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
-  const [reference, setReference] = useState("");
-  const [reason, setReason] = useState("");
+  const [showLines, setShowLines] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -92,19 +91,21 @@ export function CurtumeDocumentalReview({
   function openDocument(arquivo: string) {
     if (busy) return;
     setSelected((current) => current === arquivo ? null : arquivo);
-    setReference(""); setReason(""); setConfirmed(false); setError(""); setNotice("");
+    setShowLines(false); setConfirmed(false); setError(""); setNotice("");
   }
 
   async function confirmDocument(doc: Document) {
-    if (running.current || busy || !confirmed ||
-        reference.trim().length < 8 || reason.trim().length < 12) return;
+    if (running.current || busy || !confirmed) return;
     running.current = true;
     setBusy(true); setError(""); setNotice(""); setProgress(0);
     try {
       await request(ENDPOINT, {
         acao: "conferir_pauta", escola,
         arquivo: doc.arquivo, digest: doc.digest,
-        referencia: reference.trim(), motivo: reason.trim(),
+        // No free-text evidence fields: the actor explicitly attests to the original
+        // document; the canonical source filename + immutable hash are audited.
+        referencia: `Pauta original: ${doc.arquivo}`.slice(0, 180),
+        motivo: "Confirmo após conferir a pauta original que o ano correto é 2025/2026.",
         confirmacao: "CONFIRMO_PAUTA_2025_2026",
       });
       let total = 0;
@@ -129,7 +130,7 @@ export function CurtumeDocumentalReview({
         throw new Error("O limite de processamento foi atingido. Atualize para continuar.");
       }
       setNotice(`Pauta conferida e ${total} notas finais sincronizadas com registo de auditoria.`);
-      setSelected(null); setConfirmed(false); setReference(""); setReason("");
+      setSelected(null); setConfirmed(false); setShowLines(false);
       onComplete?.();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "A operação não foi concluída.");
@@ -160,9 +161,8 @@ export function CurtumeDocumentalReview({
         <div className="space-y-1">
           <h2 className="font-sora font-semibold text-emerald">Conferência das pautas · 2025/2026</h2>
           <p className="max-w-2xl text-xs text-muted-foreground">
-            Corrija a divergência do ano com uma confirmação por documento.
-            Verifique a pauta original, os alunos e as classificações.
-            Nenhum resultado é inventado ou alterado.
+            O sistema identificou pautas com ano divergente. Confira o ano no documento
+            original e confirme uma vez por pauta. O KLASSE trata das notas automaticamente.
           </p>
         </div>
         <button type="button" onClick={() => void refresh()} disabled={loading || busy}
@@ -190,7 +190,7 @@ export function CurtumeDocumentalReview({
                 <span className="min-w-0 space-y-1">
                   <span className="block break-words font-semibold text-foreground">{doc.arquivo}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {doc.alunos} alunos · {doc.linhas} notas finais · {doc.conferidas} linhas já conferidas
+                    {doc.alunos} alunos · {doc.linhas} classificações protegidas · {doc.conferidas} validadas
                   </span>
                 </span>
               </span>
@@ -200,11 +200,17 @@ export function CurtumeDocumentalReview({
             {expanded && (
               <div className="space-y-4 border-t border-border px-4 py-4">
                 <p className="text-xs text-muted-foreground">
-                  Compare estas linhas com a pauta oficial. O título menciona 2023/2024,
-                  mas o histórico importado está associado a 2025/2026.
-                  A escola deve confirmar qual é o ano verdadeiro, não apenas aceitar a sugestão.
+                  O ficheiro menciona 2023/2024, mas foi associado a 2025/2026.
+                  Confirme o ano na pauta original antes de autorizar a regularização.
+                  Se a pauta pertencer a outro ano, não a confirme.
                 </p>
-                <div className="max-h-80 overflow-auto rounded-xl border border-border">
+                <button type="button" disabled={busy} onClick={() => setShowLines((value) => !value)}
+                  aria-expanded={showLines}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50">
+                  {showLines ? "Ocultar classificações" : `Consultar ${doc.linhas} classificações`}
+                  {showLines ? <ChevronUp className="h-4 w-4" aria-hidden="true" /> : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
+                </button>
+                {showLines && <div className="max-h-80 overflow-auto rounded-xl border border-border">
                   <table className="w-full min-w-[620px] text-left text-xs">
                     <thead className="sticky top-0 bg-card text-muted-foreground">
                       <tr>
@@ -229,37 +235,22 @@ export function CurtumeDocumentalReview({
                       ))}
                     </tbody>
                   </table>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="space-y-1 text-xs font-semibold">
-                    Referência do documento original
-                    <input type="text" maxLength={180} value={reference}
-                      disabled={busy} onChange={(event) => setReference(event.target.value)}
-                      placeholder="Ex.: Pauta assinada pela Direção, folha 3"
-                      className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal"/>
-                  </label>
-                  <label className="space-y-1 text-xs font-semibold">
-                    Motivo da conferência
-                    <textarea maxLength={500} rows={2} value={reason}
-                      disabled={busy} onChange={(event) => setReason(event.target.value)}
-                      placeholder="Confirme por que esta pauta corresponde a 2025/2026"
-                      className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal"/>
-                  </label>
-                </div>
+                </div>}
                 <label className="flex items-start gap-2 text-xs text-foreground">
                   <input type="checkbox" checked={confirmed} disabled={busy}
                     onChange={(event) => setConfirmed(event.target.checked)}
                     className="mt-0.5 accent-amber"/>
-                  <span>Conferi o documento físico e as linhas acima. Confirmo que a pauta corresponde
-                    a 2025/2026, com esta referência, assumindo a responsabilidade institucional.
+                  <span>Conferi a pauta original. Confirmo que pertence ao ano letivo
+                    <strong> 2025/2026</strong> e autorizo a regularização das suas
+                    {" "}{doc.linhas} classificações, com registo da minha decisão.
                   </span>
                 </label>
                 <button type="button" onClick={() => void confirmDocument(doc)}
-                  disabled={busy || !confirmed || reference.trim().length < 8 || reason.trim().length < 12}
+                  disabled={busy || !confirmed}
                   className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-amber px-4 py-2 font-semibold text-white hover:brightness-95 disabled:opacity-50">
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                     : <FileCheck2 className="h-4 w-4" aria-hidden="true" />}
-                  {busy ? `A sincronizar · ${progress} notas` : "Conferir pauta e sincronizar notas"}
+                  {busy ? `A sincronizar · ${progress} notas` : "Confirmar ano e regularizar"}
                 </button>
               </div>
             )}

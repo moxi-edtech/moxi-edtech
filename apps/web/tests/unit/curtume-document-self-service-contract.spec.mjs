@@ -26,8 +26,11 @@ test("school must explicitly sign a document and original HIST_FINAL is reused",
   assert.match(page, /isCurtume && ano === 2025 && tipo === "historicos"/);
   assert.match(page, /<CurtumeDocumentalReview escola=\{escolaId\}/);
   assert.match(widget, /CONFIRMO_PAUTA_2025_2026/);
-  assert.match(widget, /reference\.trim\(\)\.length < 8/);
-  assert.match(widget, /reason\.trim\(\)\.length < 12/);
+  assert.match(widget, /referencia: `Pauta original: \$\{doc\.arquivo\}`/);
+  assert.match(widget, /Confirmo após conferir a pauta original/);
+  assert.match(widget, /disabled=\{busy \|\| !confirmed\}/);
+  assert.match(widget, /showLines && <div/);
+  assert.doesNotMatch(widget, /<textarea|Referência do documento original/);
   assert.match(widget, /acao: "sincronizar_notas"/);
   assert.match(widget, /MAX_CHUNKS/);
   assert.doesNotMatch(widget, /fetch\(.+service_role|SUPABASE_SERVICE_ROLE_KEY/);
