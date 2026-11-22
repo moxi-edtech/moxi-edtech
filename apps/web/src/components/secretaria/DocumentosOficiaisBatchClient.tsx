@@ -497,7 +497,7 @@ export default function DocumentosOficiaisBatchClient() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+          <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
             Ano letivo do documento
             <select value={academicYearId} disabled={yearsLoading || yearOptions.length === 0 || submitting}
               onChange={(event) => {
@@ -507,7 +507,7 @@ export default function DocumentosOficiaisBatchClient() {
                 setPeriodos([]);
                 setPeriodoId("");
               }}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20">
+              className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
               {yearOptions.length === 0 && <option value="">Indisponível</option>}
               {yearOptions.map((year) => <option key={year.id} value={year.id}>{year.nome}{year.status === "ativa" ? " · atual" : " · histórico"}</option>)}
             </select>
@@ -531,7 +531,7 @@ export default function DocumentosOficiaisBatchClient() {
         </div>
       </div>
 
-      {isHistoricalYear && <p role="status" className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">Ano histórico: consulte e descarregue os documentos existentes. Não é possível gerar novos lotes oficiais de pautas ou certificados por este formulário.</p>}
+      {isHistoricalYear && <p role="status" className="rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground">Ano histórico: consulte e descarregue os documentos existentes. Não é possível gerar novos lotes oficiais de pautas ou certificados por este formulário.</p>}
 
       {(yearsError || turmasError || jobsError) && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
