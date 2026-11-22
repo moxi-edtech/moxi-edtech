@@ -7,8 +7,9 @@ import { formatKwanza } from "@/lib/formatters";
 type Session = { id: string; nome: string; ano_letivo: number };
 type FinanceRow = { ano: number; previsto: number; pago: number; em_atraso: number; competencias: number };
 type FinanceData = {
-  ok?: boolean; error?: string; ano_letivo_id?: string;
+  ok?: boolean; error?: string; ano_letivo_id?: string; mes?: number | null;
   selecionado?: FinanceRow; por_ano?: FinanceRow[];
+  competencia_selecionada?: { mes: number; ano: number; previsto: number; pago: number; em_atraso: number; competencias: number } | null;
   total_em_atraso_todos_anos?: number; aviso?: string;
 };
 type Metrics = { ano: number; ano_letivo_id: string; turmas: number; matriculas_vinculadas: number; historicos_documentados: number };
@@ -31,6 +32,7 @@ export default function ArchiveAnalyticsPanel({
 }) {
   const [compareId, setCompareId] = useState("");
   const [showFinance, setShowFinance] = useState(false);
+  const [month, setMonth] = useState("");
   const [finance, setFinance] = useState<FinanceData | null>(null);
   const [financeLoading, setFinanceLoading] = useState(false);
   const [financeError, setFinanceError] = useState("");
@@ -50,6 +52,7 @@ export default function ArchiveAnalyticsPanel({
     setFinanceLoading(true);
     const params = new URLSearchParams({ ano_letivo_id: academicYearId });
     if (escolaParam) params.set("escola_id", escolaParam);
+    if (month) params.set("mes", month);
     void fetch("/api/secretaria/operacoes-academicas/arquivo/financeiro?" + params.toString(), {
       signal: controller.signal, cache: "no-store",
     }).then(async (res) => {
@@ -62,7 +65,7 @@ export default function ArchiveAnalyticsPanel({
       .catch((e) => { if (!controller.signal.aborted) setFinanceError(e instanceof Error ? e.message : "Consulta indisponível."); })
       .finally(() => { if (!controller.signal.aborted) setFinanceLoading(false); });
     return () => controller.abort();
-  }, [academicYearId, escolaParam, showFinance, financeRetry]);
+  }, [academicYearId, escolaParam, showFinance, month, financeRetry]);
 
   useEffect(() => {
     if (!chosen) return;
@@ -87,7 +90,8 @@ export default function ArchiveAnalyticsPanel({
     return () => controller.abort();
   }, [academicYearId, chosen, escolaParam, compareRetry]);
 
-  const financeIsCurrent = finance?.ano_letivo_id === academicYearId;
+  const financeIsCurrent = finance?.ano_letivo_id === academicYearId &&
+    (finance?.mes ?? null) === (month ? Number(month) : null);
   const comparisonIsCurrent = compare?.atual?.ano_letivo_id === academicYearId && compare?.comparado?.ano_letivo_id === chosen;
   const rows = [
     { key: "turmas", label: "Turmas" },
@@ -152,6 +156,12 @@ export default function ArchiveAnalyticsPanel({
           </button>
         ) : (
           <>
+            <label htmlFor="archive-finance-month" className="mt-3 block text-xs font-medium text-foreground">Competência mensal</label>
+            <select id="archive-finance-month" value={month} onChange={(e) => setMonth(e.target.value)}
+              className="mt-1 w-full max-w-xs rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground">
+              <option value="">Todas as competências do ano</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={String(m)}>{String(m).padStart(2, "0")}</option>)}
+            </select>
             {financeLoading && <p role="status" className="mt-3 text-sm text-muted-foreground">A consultar competências…</p>}
             {!financeLoading && financeError && <div role="alert" className="mt-3 flex flex-wrap items-center gap-2 text-sm text-destructive">
               {financeError}
@@ -168,6 +178,12 @@ export default function ArchiveAnalyticsPanel({
                     <p className="text-xs text-muted-foreground">Em atraso em todos os anos</p>
                     <p className="mt-1 text-base font-semibold text-foreground">{formatKwanza(finance.total_em_atraso_todos_anos ?? 0)}</p>
                   </div>
+                  {finance.competencia_selecionada && (
+                    <div className="rounded-xl bg-muted p-3 sm:col-span-2">
+                      <p className="text-xs text-muted-foreground">Em atraso na competência {String(finance.competencia_selecionada.mes).padStart(2, "0")}/{finance.competencia_selecionada.ano}</p>
+                      <p className="mt-1 text-base font-semibold text-foreground">{formatKwanza(finance.competencia_selecionada.em_atraso)}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-3 max-h-60 overflow-y-auto">
                   {finance.por_ano?.map((r) => (
