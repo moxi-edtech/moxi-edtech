@@ -32,6 +32,7 @@ export default function ArchiveAnalyticsPanel({
   escolaParam: string | null;
 }) {
   const [compareId, setCompareId] = useState("");
+  const [showCompare, setShowCompare] = useState(false);
   const [quarter, setQuarter] = useState("");
   const [showFinance, setShowFinance] = useState(false);
   const [month, setMonth] = useState("");
@@ -70,7 +71,7 @@ export default function ArchiveAnalyticsPanel({
   }, [academicYearId, escolaParam, showFinance, month, financeRetry]);
 
   useEffect(() => {
-    if (!chosen) return;
+    if (!showCompare || !chosen) return;
     const controller = new AbortController();
     setCompare(null);
     setCompareError("");
@@ -91,7 +92,7 @@ export default function ArchiveAnalyticsPanel({
       .catch((e) => { if (!controller.signal.aborted) setCompareError(e instanceof Error ? e.message : "Comparação indisponível."); })
       .finally(() => { if (!controller.signal.aborted) setCompareLoading(false); });
     return () => controller.abort();
-  }, [academicYearId, chosen, escolaParam, quarter, compareRetry]);
+  }, [academicYearId, chosen, escolaParam, quarter, compareRetry, showCompare]);
 
   const financeIsCurrent = finance?.ano_letivo_id === academicYearId &&
     (finance?.mes ?? null) === (month ? Number(month) : null);
@@ -110,7 +111,7 @@ export default function ArchiveAnalyticsPanel({
           <BarChart3 className="h-4 w-4" /> Comparar anos letivos
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">Indicadores por escola e ano, sem trocar o contexto dos módulos operacionais.</p>
-        {others.length > 0 ? (
+        {others.length > 0 ? (showCompare ? (
           <>
             <label htmlFor="archive-compare-year" className="mt-3 block text-xs font-medium text-foreground">Comparar com</label>
             <select id="archive-compare-year" value={chosen} onChange={(e) => setCompareId(e.target.value)}
@@ -163,7 +164,10 @@ export default function ArchiveAnalyticsPanel({
               </>
             )}
           </>
-        ) : <p className="mt-3 text-sm text-muted-foreground">Não existe outro ano disponível para comparação.</p>}
+        ) : <button type="button" onClick={() => setShowCompare(true)}
+          className="mt-3 inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:border-klasse-gold">
+          Comparar anos
+        </button>) : <p className="mt-3 text-sm text-muted-foreground">Não existe outro ano disponível para comparação.</p>}
       </div>
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <h2 className="flex items-center gap-2 font-sora text-base font-semibold text-klasse-green">
