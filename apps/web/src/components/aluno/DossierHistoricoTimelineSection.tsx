@@ -118,7 +118,8 @@ export function DossierHistoricoTimelineSection({
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/secretaria/alunos/${alunoId}/timeline-360`, { cache: "no-store" });
+        const escolaQuery = escolaId ? `?escola_id=${encodeURIComponent(escolaId)}` : "";
+        const res = await fetch(`/api/secretaria/alunos/${encodeURIComponent(alunoId)}/timeline-360${escolaQuery}`, { cache: "no-store" });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) {
           throw new Error(json?.error ?? "Falha ao carregar timeline 360.");
@@ -138,7 +139,7 @@ export function DossierHistoricoTimelineSection({
     return () => {
       alive = false;
     };
-  }, [alunoId]);
+  }, [alunoId, escolaId]);
 
   const cards = useMemo(() => {
     const ordered = [...timeline].sort((a, b) => b.ano_letivo - a.ano_letivo);
