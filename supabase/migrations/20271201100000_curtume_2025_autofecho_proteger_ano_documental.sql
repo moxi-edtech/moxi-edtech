@@ -39,10 +39,10 @@ $anchor$;
         WHERE hd.historico_ano_id=v_row.historico_id
           AND coalesce(hd.notas_detalhe->>'arquivo','') ~*
               '(2023[-_/ ]?24|2023[-_/ ]?2024)'
-          AND NOT (
+          AND (
             hd.notas_detalhe->>'correcao_tipo'='ano_documental'
             AND hd.notas_detalhe->>'ano_referencia_confirmado'='2025/2026'
-          )
+          ) IS NOT TRUE
       ) THEN
         RAISE EXCEPTION 'PAUTA_ANO_DIVERGENTE_EXIGE_CONFERENCIA'
           USING ERRCODE='23514';

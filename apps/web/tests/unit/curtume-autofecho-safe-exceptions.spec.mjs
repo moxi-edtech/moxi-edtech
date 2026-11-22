@@ -41,6 +41,7 @@ test("only original year contradictions require documentary decision, not fictit
   assert.match(sql, /PAUTA_ANO_DIVERGENTE_EXIGE_CONFERENCIA/);
   assert.match(sql, /historico_ano_id=v_row\.historico_id/);
   assert.match(sql, /ano_referencia_confirmado'='2025\/2026'/);
+  assert.match(sql, /\) IS NOT TRUE/);
   assert.match(sql, /EXECUTE pg_catalog\.replace\(v_definition,v_old,v_new\)/);
   assert.match(advice, /PAUTA_ANO_DIVERGENTE_EXIGE_CONFERENCIA/);
   assert.match(advice, /Confirme a pauta original/);
