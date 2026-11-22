@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BookOpen, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, Search } from "lucide-react";
 
 type TurmaHistorica = {
   id: string;
@@ -144,12 +144,28 @@ export default function HistoricalTurmasPanel({
                   </p>
                 </div>
               </div>
-              <Link
-                href={`${portalBase}/turmas/${encodeURIComponent(turma.id)}?ano_letivo_id=${encodeURIComponent(academicYearId)}`}
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold"
-              >
-                Ver turma <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={`/api/secretaria/turmas/${encodeURIComponent(turma.id)}/alunos/pdf?mode=ano_letivo`}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold"
+                >
+                  <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  Lista PDF
+                </a>
+                <a
+                  href={`/api/secretaria/turmas/${encodeURIComponent(turma.id)}/alunos/xlsx?mode=ano_letivo`}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  Lista Excel
+                </a>
+                <Link
+                  href={`${portalBase}/turmas/${encodeURIComponent(turma.id)}?ano_letivo_id=${encodeURIComponent(academicYearId)}`}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold"
+                >
+                  Ver turma <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                </Link>
+              </div>
             </div>
           ))}
         </div>
