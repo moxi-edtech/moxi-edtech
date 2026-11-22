@@ -5,6 +5,7 @@ import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
 import { applyKf2ListInvariants } from "@/lib/kf2"
 import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status"
 import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context"
+import { loadHistoricalRosterCounts } from "@/lib/documentos/historicalRosterCount"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -55,6 +56,12 @@ export async function GET(req: Request) {
     const alunosMap = new Map<string, number>()
 
     if (turmaIds.length > 0) {
+      if (year.status === "CLOSED") {
+        const counts = await loadHistoricalRosterCounts(supabase, {
+          escolaId, yearBase: year.ano, turmaIds,
+        })
+        for (const [turmaId, count] of counts) alunosMap.set(turmaId, count)
+      } else {
       const pendenciasQuery = applyKf2ListInvariants(
         supabase
           .from("vw_professor_pendencias")
@@ -102,6 +109,7 @@ export async function GET(req: Request) {
       for (const row of (alunosRes.data || []) as Array<{ turma_id: string }>) {
         alunosMap.set(row.turma_id, (alunosMap.get(row.turma_id) ?? 0) + 1)
       }
+      }
     }
 
     const items = (turmas || []).map((t: any) => ({
@@ -118,7 +126,7 @@ export async function GET(req: Request) {
       alunos: alunosMap.get(t.id) ?? 0,
     }))
 
-    return NextResponse.json({ ok: true, items, context: { anoLetivoId: year.id } })
+    return NextResponse.json({ ok: true, items, context: { anoLetivoId: year.id, mode: year.status } })
   } catch (e) {
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status })
