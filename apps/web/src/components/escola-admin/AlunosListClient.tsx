@@ -456,7 +456,7 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
         <button
           onClick={onExportSelection}
           className="flex items-center gap-1.5 rounded-xl border border-slate-700
-            px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-slate-500
+            px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-klasse-gold/60
             hover:text-white transition-colors"
         >
           <Download size={12} /> Exportar
@@ -464,7 +464,7 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
         <button
           onClick={onMessage}
           className="flex items-center gap-1.5 rounded-xl border border-slate-700
-            px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-slate-500
+            px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-klasse-gold/60
             hover:text-white transition-colors"
         >
           <MessageSquare size={12} /> Comunicado
