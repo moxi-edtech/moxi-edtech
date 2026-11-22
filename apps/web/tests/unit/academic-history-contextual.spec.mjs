@@ -109,6 +109,8 @@ test("Dossier anual usa escola explícita e confirma o aluno antes da RPC SECURI
   assert.match(timeline, /escola_id=\$\{encodeURIComponent\(escolaId\)\}/);
   assert.match(timeline, /\[alunoId, escolaId\]/);
   assert.match(timeline, /loadedScopeKey !== scopeKey/);
+  assert.match(route, /error\.code === "42501"/);
+  assert.match(route, /"Cache-Control": "private, no-store"/);
   assert.match(timeline, /key=\{`\$\{scopeKey\}:\$\{ano\.ano_letivo\}`\}/);
 });
 
