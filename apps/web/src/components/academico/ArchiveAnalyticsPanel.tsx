@@ -12,9 +12,10 @@ type FinanceData = {
   competencia_selecionada?: { mes: number; ano: number; previsto: number; pago: number; em_atraso: number; competencias: number } | null;
   total_em_atraso_todos_anos?: number; aviso?: string;
 };
-type Metrics = { ano: number; ano_letivo_id: string; turmas: number; matriculas_vinculadas: number; historicos_documentados: number };
+type Metrics = { ano: number; ano_letivo_id: string; turmas: number; matriculas_vinculadas: number; historicos_documentados: number;
+  periodo: { numero: number; pautas_publicadas: number; registos_frequencia: number } | null };
 type CompareData = {
-  ok?: boolean; error?: string; atual?: Metrics; comparado?: Metrics;
+  ok?: boolean; error?: string; atual?: Metrics; comparado?: Metrics; trimestre?: number | null;
   diferenca?: { turmas: number; matriculas_vinculadas: number; historicos_documentados: number };
   metodo?: string;
 };
@@ -31,6 +32,7 @@ export default function ArchiveAnalyticsPanel({
   escolaParam: string | null;
 }) {
   const [compareId, setCompareId] = useState("");
+  const [quarter, setQuarter] = useState("");
   const [showFinance, setShowFinance] = useState(false);
   const [month, setMonth] = useState("");
   const [finance, setFinance] = useState<FinanceData | null>(null);
@@ -75,6 +77,7 @@ export default function ArchiveAnalyticsPanel({
     setCompareLoading(true);
     const params = new URLSearchParams({ ano_letivo_id: academicYearId, comparar_ano_letivo_id: chosen });
     if (escolaParam) params.set("escola_id", escolaParam);
+    if (quarter) params.set("trimestre", quarter);
     void fetch("/api/secretaria/operacoes-academicas/arquivo/comparacao?" + params.toString(), {
       signal: controller.signal, cache: "no-store",
     }).then(async (res) => {
@@ -88,11 +91,12 @@ export default function ArchiveAnalyticsPanel({
       .catch((e) => { if (!controller.signal.aborted) setCompareError(e instanceof Error ? e.message : "Comparação indisponível."); })
       .finally(() => { if (!controller.signal.aborted) setCompareLoading(false); });
     return () => controller.abort();
-  }, [academicYearId, chosen, escolaParam, compareRetry]);
+  }, [academicYearId, chosen, escolaParam, quarter, compareRetry]);
 
   const financeIsCurrent = finance?.ano_letivo_id === academicYearId &&
     (finance?.mes ?? null) === (month ? Number(month) : null);
-  const comparisonIsCurrent = compare?.atual?.ano_letivo_id === academicYearId && compare?.comparado?.ano_letivo_id === chosen;
+  const comparisonIsCurrent = compare?.atual?.ano_letivo_id === academicYearId && compare?.comparado?.ano_letivo_id === chosen &&
+    (compare?.trimestre ?? null) === (quarter ? Number(quarter) : null);
   const rows = [
     { key: "turmas", label: "Turmas" },
     { key: "matriculas_vinculadas", label: "Registos de matrícula vinculados" },
@@ -112,6 +116,12 @@ export default function ArchiveAnalyticsPanel({
             <select id="archive-compare-year" value={chosen} onChange={(e) => setCompareId(e.target.value)}
               className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground">
               {others.map((y) => <option key={y.id} value={y.id}>{y.nome || String(y.ano_letivo) + "/" + String(y.ano_letivo + 1)}</option>)}
+            </select>
+            <label htmlFor="archive-report-period" className="mt-3 block text-xs font-medium text-foreground">Período do relatório</label>
+            <select id="archive-report-period" value={quarter} onChange={(e) => setQuarter(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground">
+              <option value="">Ano inteiro</option>
+              {[1, 2, 3].map((n) => <option key={n} value={String(n)}>{n}º trimestre nos dois anos</option>)}
             </select>
             {compareLoading && <p role="status" className="mt-3 text-sm text-muted-foreground">A comparar anos…</p>}
             {!compareLoading && compareError && <div role="alert" className="mt-3 flex items-center gap-2 text-sm text-destructive">
@@ -136,6 +146,19 @@ export default function ArchiveAnalyticsPanel({
                     </tr>
                   ))}</tbody>
                 </table>
+                {quarter && compare.atual.periodo && compare.comparado.periodo && (
+                  <div className="mt-3 rounded-xl border border-border p-3 text-xs text-foreground">
+                    <p className="mb-2 font-semibold">Indicadores do {quarter}º trimestre</p>
+                    <div className="flex flex-wrap justify-between gap-2">
+                      <span>Pautas publicadas</span>
+                      <span className="tabular-nums">{compare.atual.periodo.pautas_publicadas} / {compare.comparado.periodo.pautas_publicadas}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap justify-between gap-2">
+                      <span>Registos de frequência</span>
+                      <span className="tabular-nums">{compare.atual.periodo.registos_frequencia} / {compare.comparado.periodo.registos_frequencia}</span>
+                    </div>
+                  </div>
+                )}
                 <p className="mt-2 text-xs text-muted-foreground">{compare.metodo}</p>
               </>
             )}
