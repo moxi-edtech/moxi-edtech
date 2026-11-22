@@ -14,6 +14,7 @@ O seletor `AcademicYearSelector` na topbar alterava o `ano_letivo_id` para módu
 3. **Central de Documentos (QuickDocHub)** — seleção do ano local baseada em `anos_letivos.id`, inclusive deep link validado contra a lista autorizada; filas de lotes enviam sempre esse ID; mudança de ano limpa turma, filtros dependentes e período. Os trimestres vêm de `/api/secretaria/relatorios/mapa-aproveitamento?ano_letivo_id=...`.
 4. **Documentos Oficiais em lote** — seletor de ano próprio; seleção de turmas vem do novo GET filtrado por `turmas.session_id` em escola/ano; períodos consultados com ano explícito e confirmados contra a resposta; impede mistura de seleção local e URL. O POST canónico mantém os guards de escrita em ano encerrado.
 5. **Listas de matrículas** — link direto de arquivo com `ano_letivo_id` valida a opção recebida; seletor da página partilha o ano escolhido na URL sem mudar a sidebar.
+6. **Dossier do aluno** — o componente de percurso 360º já existente apresenta os anos com intervalo completo (`2025/2026`) e abre um detalhe focalizado no ano pedido, sem duplicar a timeline nem trocar o ano do portal. Ano inexistente apresenta recuperação para todos os anos.
 
 ## Conceito de domínio
 - `escola_id`: autorização multi-tenant do utilizador.
