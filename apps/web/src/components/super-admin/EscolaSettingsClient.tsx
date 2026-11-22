@@ -48,7 +48,7 @@ export default function EscolaSettingsClient({ escolaId, initialAlunoPortalEnabl
             const data = await res.json(); if (!res.ok) throw new Error(data?.error || 'Falha ao salvar')
             setMsg('Configurações salvas com sucesso.')
           } catch (e: any) { setMsg(e?.message || 'Erro ao salvar') } finally { setSaving(false) }
-        }} tone="blue">{saving ? 'Salvando...' : 'Salvar alterações'}</Button>
+        }} tone="gold">{saving ? 'Salvando...' : 'Salvar alterações'}</Button>
         {msg && <span className="ml-3 text-sm text-muted-foreground">{msg}</span>}
       </div>
     </section>
