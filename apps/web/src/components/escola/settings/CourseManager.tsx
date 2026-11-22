@@ -52,8 +52,8 @@ function cx(...parts: Array<string | false | null | undefined>) {
 function getCurriculoBadge(status?: CurriculoStatus["status"]) {
   if (status === "published") return "bg-green-100 text-green-700 border-green-200";
   if (status === "draft") return "bg-amber-100 text-amber-700 border-amber-200";
-  if (status === "archived") return "bg-slate-100 text-slate-500 border-slate-200";
-  return "bg-slate-100 text-slate-500 border-slate-200";
+  if (status === "archived") return "bg-muted text-muted-foreground border-border";
+  return "bg-muted text-muted-foreground border-border";
 }
 
 export default function CourseManager({
@@ -104,28 +104,28 @@ export default function CourseManager({
   const hasNoTurmas = Boolean(details?.classes.length) && (details?.turmas.length ?? 0) === 0;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
       {/* Header */}
-      <div className="border-b border-slate-200 p-6 bg-slate-50/50">
+      <div className="border-b border-border p-6 bg-muted/50">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <nav className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-1">
-              <button onClick={onBack} className="hover:text-slate-900 transition-colors">Cursos ativos</button>
+            <nav className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-1">
+              <button onClick={onBack} className="hover:text-foreground transition-colors">Cursos ativos</button>
               <ChevronRight className="w-3 h-3" />
-              <span className="text-slate-900">{selectedCourse?.nome}</span>
+              <span className="text-foreground">{selectedCourse?.nome}</span>
             </nav>
             <div className="flex items-center gap-3">
               <div className="bg-slate-900 p-2 rounded-xl">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
                   {selectedCourse?.nome ?? "Curso"}
                   <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px] uppercase tracking-wider font-bold">
                     Ativo
                   </Badge>
                 </h2>
-                <p className="text-xs text-slate-500 font-mono">
+                <p className="text-xs text-muted-foreground font-mono">
                   ID: {selectedCourse?.codigo ?? selectedCourse?.id?.slice(0, 8) ?? "Sem código"}
                 </p>
               </div>
@@ -149,7 +149,7 @@ export default function CourseManager({
             onValueChange={(v) => onTabChange(v as ManagerTab)}
             className="w-full"
           >
-            <TabsList className="bg-slate-100 p-1 w-full md:w-auto">
+            <TabsList className="bg-muted p-1 w-full md:w-auto">
               <TabsTrigger value="turmas" className="rounded-full px-8 text-xs font-bold">
                 Turmas
               </TabsTrigger>
@@ -165,16 +165,16 @@ export default function CourseManager({
       </div>
 
       {/* Body */}
-      <div className="p-6 bg-white min-h-[400px]">
+      <div className="p-6 bg-card min-h-[400px]">
         {loadingDetails ? (
           <div className="py-24 flex flex-col items-center justify-center gap-4">
-            <Spinner size={32} className="text-slate-400" />
-            <p className="text-sm text-slate-500 animate-pulse">Carregando detalhes do curso...</p>
+            <Spinner size={32} className="text-muted-foreground" />
+            <p className="text-sm text-muted-foreground animate-pulse">Carregando detalhes do curso...</p>
           </div>
         ) : !details ? (
           <div className="py-24 flex flex-col items-center justify-center text-center">
-            <AlertCircle className="w-12 h-12 text-slate-300 mb-4" />
-            <p className="text-slate-500 font-medium">Não foi possível carregar os detalhes.</p>
+            <AlertCircle className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground font-medium">Não foi possível carregar os detalhes.</p>
             <Button variant="link" onClick={onBack}>Voltar aos cursos</Button>
           </div>
         ) : (
@@ -195,7 +195,7 @@ export default function CourseManager({
                           <Check className="h-3 w-3 mr-1" /> Customizado
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-slate-400">
+                        <Badge variant="outline" className="text-muted-foreground">
                           Herdado da escola
                         </Badge>
                       )}
@@ -205,33 +205,33 @@ export default function CourseManager({
                   <CardContent className="space-y-6">
                     {loadingAvaliacao ? (
                       <div className="py-12 flex justify-center">
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <Spinner size={16} className="text-slate-400" />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Spinner size={16} className="text-muted-foreground" />
                           <span>Carregando configurações...</span>
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <label className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <label className="flex items-center gap-3 p-4 rounded-xl border border-border cursor-pointer hover:bg-muted transition-colors">
                           <input
                             type="checkbox"
                             checked={overrideCurso}
                             onChange={(event) => setOverrideCurso(event.target.checked)}
-                            className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                            className="w-4 h-4 rounded border-border text-foreground focus:ring-klasse-gold/20"
                           />
                           <div>
-                            <p className="text-sm font-bold text-slate-900">Substituir regra padrão</p>
-                            <p className="text-xs text-slate-500">Ative para selecionar um modelo específico para este curso.</p>
+                            <p className="text-sm font-bold text-foreground">Substituir regra padrão</p>
+                            <p className="text-xs text-muted-foreground">Ative para selecionar um modelo específico para este curso.</p>
                           </div>
                         </label>
 
                         <div className={cx("space-y-2", !overrideCurso && "opacity-50 pointer-events-none")}>
-                          <label className="text-xs font-bold text-slate-600 ml-1">Modelo de avaliação</label>
+                          <label className="text-xs font-bold text-muted-foreground ml-1">Modelo de avaliação</label>
                           <select
                             value={modeloSelecionado}
                             onChange={(event) => setModeloSelecionado(event.target.value)}
                             disabled={!overrideCurso}
-                            className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none appearance-none bg-white shadow-sm"
+                            className="w-full rounded-xl border border-border px-4 py-3 text-sm focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold outline-none appearance-none bg-card shadow-sm"
                           >
                             <option value="">Selecione um modelo</option>
                             {(courseAvaliacao?.modelos ?? []).map((modelo) => (
@@ -254,7 +254,7 @@ export default function CourseManager({
                     )}
                   </CardContent>
 
-                  <CardFooter className="border-t border-slate-100 bg-slate-50/50 py-4">
+                  <CardFooter className="border-t border-border bg-muted/50 py-4">
                     <Button
                       onClick={() =>
                         onUpdateAvaliacao({
@@ -311,11 +311,11 @@ export default function CourseManager({
                   const turmas = details.turmas.filter((t) => t.classe === classe.nome);
                   return (
                     <div key={classe.id} className="space-y-4">
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <div className="flex items-center justify-between border-b border-border pb-2">
                         <div className="flex items-center gap-2">
-                          <LayoutGrid className="w-4 h-4 text-slate-400" />
-                          <h3 className="text-base font-bold text-slate-800">{classe.nome}</h3>
-                          <Badge variant="outline" className="text-[10px] uppercase font-bold text-slate-400 border-slate-200">
+                          <LayoutGrid className="w-4 h-4 text-muted-foreground" />
+                          <h3 className="text-base font-bold text-foreground">{classe.nome}</h3>
+                          <Badge variant="outline" className="text-[10px] uppercase font-bold text-muted-foreground border-border">
                             {turmas.length} {turmas.length === 1 ? "turma" : "turmas"}
                           </Badge>
                         </div>
@@ -332,30 +332,30 @@ export default function CourseManager({
                       </div>
 
                       {turmas.length === 0 ? (
-                        <div className="p-12 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
+                        <div className="p-12 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-center">
                           <Users className="w-8 h-8 text-slate-200 mb-2" />
-                          <p className="text-sm text-slate-400">Nenhuma turma criada para a {classe.nome}.</p>
+                          <p className="text-sm text-muted-foreground">Nenhuma turma criada para a {classe.nome}.</p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {turmas.map((turma) => (
-                            <Card key={turma.id} className="hover:border-slate-300 transition-colors shadow-none border-slate-200">
+                            <Card key={turma.id} className="hover:border-border transition-colors shadow-none border-border">
                               <CardHeader className="p-4 pb-2">
                                 <div className="flex items-start justify-between">
                                   <CardTitle className="text-sm font-bold">{turma.nome}</CardTitle>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
                                     <Pencil className="w-3.5 h-3.5" />
                                   </Button>
                                 </div>
                               </CardHeader>
                               <CardContent className="p-4 pt-0">
                                 <div className="flex items-center gap-4 mt-2">
-                                  <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                                    <LayoutGrid className="w-3.5 h-3.5 text-slate-300" />
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                                    <LayoutGrid className="w-3.5 h-3.5 text-muted-foreground" />
                                     {turma.turno}
                                   </div>
-                                  <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                                    <Users className="w-3.5 h-3.5 text-slate-300" />
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                                    <Users className="w-3.5 h-3.5 text-muted-foreground" />
                                     {turma.total_alunos} alunos
                                   </div>
                                 </div>
@@ -380,7 +380,7 @@ export default function CourseManager({
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
                         <CardTitle className="text-lg font-bold">Estrutura Curricular</CardTitle>
-                        <CardDescription className="text-slate-400">
+                        <CardDescription className="text-muted-foreground">
                           Ano Letivo {curriculoAnoLetivo?.ano} · {details.disciplinas.length} Disciplinas
                         </CardDescription>
                       </div>
@@ -399,15 +399,15 @@ export default function CourseManager({
                   <CardContent className="relative z-10">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                        <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Versão Atual</p>
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Versão Atual</p>
                         <p className="text-sm font-mono font-bold text-white">{latestVersion || "—"}</p>
                       </div>
                       <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                        <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Ciclo</p>
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Ciclo</p>
                         <p className="text-sm font-bold text-white">{curriculoAnoLetivo?.ano ?? "—"}</p>
                       </div>
                       <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                        <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Ref Interna</p>
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Ref Interna</p>
                         <p className="text-sm font-mono text-[10px] text-white opacity-60 truncate">{selectedCourse?.id}</p>
                       </div>
                     </div>
@@ -415,7 +415,7 @@ export default function CourseManager({
                 </Card>
 
                 <div className="flex items-center justify-between gap-4 pt-2">
-                  <h4 className="text-base font-bold text-slate-900">Disciplinas por classe</h4>
+                  <h4 className="text-base font-bold text-foreground">Disciplinas por classe</h4>
                   <div className="flex items-center gap-2">
                     {pendenciasCount > 0 && (
                       <Button
@@ -438,10 +438,10 @@ export default function CourseManager({
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-100 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                      <tr className="bg-muted border-b border-border text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                         <th className="px-6 py-4 w-12">#</th>
                         <th className="px-6 py-4">Disciplina</th>
                         <th className="px-6 py-4 hidden md:table-cell">Código</th>
@@ -450,27 +450,27 @@ export default function CourseManager({
                         <th className="px-6 py-4 text-right">Ações</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-border">
                       {details.disciplinas.map((disc, idx) => (
-                        <tr key={disc.id} className="group hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4 text-xs font-mono text-slate-300">
+                        <tr key={disc.id} className="group hover:bg-muted/50 transition-colors">
+                          <td className="px-6 py-4 text-xs font-mono text-muted-foreground">
                             {(idx + 1).toString().padStart(2, "0")}
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex flex-col">
-                              <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                              <span className="text-sm font-bold text-foreground flex items-center gap-2">
                                 {disc.nome}
                                 {disc.is_core && (
                                   <Badge className="bg-slate-900 text-white text-[9px] h-4 py-0 px-1.5 border-none font-bold uppercase">Core</Badge>
                                 )}
                               </span>
-                              <span className="text-[11px] text-slate-400 mt-0.5 sm:hidden">{disc.codigo}</span>
+                              <span className="text-[11px] text-muted-foreground mt-0.5 sm:hidden">{disc.codigo}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 hidden md:table-cell text-xs font-mono text-slate-500">
+                          <td className="px-6 py-4 hidden md:table-cell text-xs font-mono text-muted-foreground">
                             {disc.codigo}
                           </td>
-                          <td className="px-6 py-4 hidden sm:table-cell text-center text-xs font-bold text-slate-700">
+                          <td className="px-6 py-4 hidden sm:table-cell text-center text-xs font-bold text-foreground">
                             {disc.carga_horaria_semanal}
                           </td>
                           <td className="px-6 py-4 text-center">
@@ -493,7 +493,7 @@ export default function CourseManager({
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => onEditDisciplina(disc)}
-                                className="h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200 rounded-lg transition-all"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-card border border-transparent hover:border-border rounded-lg transition-all"
                               >
                                 <Pencil className="w-4 h-4" />
                               </Button>
@@ -501,7 +501,7 @@ export default function CourseManager({
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => onDeleteDisciplina(disc.id)}
-                                className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all"
+                                className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -514,7 +514,7 @@ export default function CourseManager({
                   {details.disciplinas.length === 0 && (
                     <div className="px-6 py-12 flex flex-col items-center justify-center text-center">
                       <BookOpen className="w-10 h-10 text-slate-200 mb-2" />
-                      <p className="text-sm text-slate-400">Nenhuma disciplina cadastrada.</p>
+                      <p className="text-sm text-muted-foreground">Nenhuma disciplina cadastrada.</p>
                       <Button variant="link" size="sm" onClick={onCreateDisciplina} className="mt-1">Começar agora</Button>
                     </div>
                   )}

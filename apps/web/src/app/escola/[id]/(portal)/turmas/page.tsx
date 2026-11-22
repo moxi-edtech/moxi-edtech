@@ -5,13 +5,6 @@ import { useParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabaseClient"
 import { ArrowLeft, School, CheckCircle2, AlertCircle } from "lucide-react"
 
-// Design tokens KLASSE
-const C = {
-  green: "#1F6B3B",
-  gold: "#E3B23C",
-  rose: "#e11d48",
-} as const;
-
 // Interface Turma
 interface Turma {
   id: string;
@@ -133,21 +126,21 @@ export default function TurmasPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 bg-slate-100 border border-slate-200 text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-200 text-sm font-medium transition-colors"
+            className="flex items-center gap-2 bg-muted border border-border text-foreground px-3 py-2 rounded-lg hover:bg-muted-foreground/15 text-sm font-medium transition-colors"
           >
             <ArrowLeft className="w-4 h-4" /> Voltar
           </button>
-          <h1 className="text-2xl font-bold text-slate-900">Turmas</h1>
+          <h1 className="text-2xl font-bold text-foreground">Turmas</h1>
         </div>
       </div>
 
       {/* Lista (somente leitura) */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-6">
         {loading && (
           <div className="flex justify-center items-center py-8">
             <div className="text-center">
-              <div className="w-8 h-8 border-3 border-slate-200 border-t-[#E3B23C] rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-sm text-slate-500">Carregando turmas...</p>
+              <div className="w-8 h-8 border-3 border-border border-t-klasse-gold rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-sm text-muted-foreground">Carregando turmas...</p>
             </div>
           </div>
         )}
@@ -160,9 +153,9 @@ export default function TurmasPage() {
         
         {!loading && !error && turmas.length === 0 && (
           <div className="text-center py-12">
-            <School className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-sm font-semibold text-slate-700 mb-1">Nenhuma turma cadastrada</h3>
-            <p className="text-xs text-slate-400">Não há turmas disponíveis para exibição.</p>
+            <School className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-foreground mb-1">Nenhuma turma cadastrada</h3>
+            <p className="text-xs text-muted-foreground">Não há turmas disponíveis para exibição.</p>
           </div>
         )}
 
@@ -172,18 +165,18 @@ export default function TurmasPage() {
               const max = turma.capacidade_maxima || 30
               const atual = turma.ocupacao_atual || 0
               const pct = Math.min(Math.round((atual / max) * 100), 100)
-              const barColor = pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-[#1F6B3B]"
-              const pctColor = pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-[#1F6B3B]"
+              const barColor = pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-klasse-green"
+              const pctColor = pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-klasse-green dark:text-klasse-green-300"
               const livre = Math.max(max - atual, 0)
               
               return (
-                <div key={turma.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-colors">
+                <div key={turma.id} className="bg-card border border-border rounded-xl p-5 hover:border-border transition-colors">
                   {/* Cabeçalho da turma */}
-                  <div className="border-b border-slate-100 pb-3 mb-3">
-                    <h3 className="text-base font-semibold text-slate-900 mb-0.5">
+                  <div className="border-b border-border pb-3 mb-3">
+                    <h3 className="text-base font-semibold text-foreground mb-0.5">
                       {turma.nome}
                     </h3>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       {turma.ano_letivo || 'Ano letivo não informado'}
                     </p>
                   </div>
@@ -191,32 +184,32 @@ export default function TurmasPage() {
                   {/* Informações */}
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">Local / Turno:</span>
+                      <span className="text-muted-foreground">Local / Turno:</span>
                       <div className="text-right">
-                        <span className="font-medium text-slate-700 mr-2">{turma.sala || 'Sem local'}</span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
+                        <span className="font-medium text-foreground mr-2">{turma.sala || 'Sem local'}</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground">
                           {getTurnoLabel(turma.turno)}
                         </span>
                       </div>
                     </div>
 
                     {/* Ocupação */}
-                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                    <div className="space-y-1.5 pt-2 border-t border-border">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-slate-700">
-                          {atual}<span className="text-slate-400 font-normal">/{max} alunos</span>
+                        <span className="font-medium text-foreground">
+                          {atual}<span className="text-muted-foreground font-normal">/{max} alunos</span>
                         </span>
                         <span className={`text-[11px] font-bold ${pctColor}`}>
                           {pct}%
                         </span>
                       </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                         <div 
                           className={`h-full rounded-full transition-all ${barColor}`}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <div className="flex items-center justify-between text-[10px] text-slate-400">
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                         <span>
                           {livre > 0 ? `${livre} vaga${livre !== 1 ? "s" : ""} livre${livre !== 1 ? "s" : ""}` : "Lotada"}
                         </span>

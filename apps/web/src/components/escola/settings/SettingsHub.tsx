@@ -29,7 +29,7 @@ import {
 const Progress = ({ value, className }: { value: number; className?: string }) => (
   <div className={`w-full rounded-full overflow-hidden ${className}`}>
     <div
-      className="h-full bg-[#E3B23C] transition-all duration-700 ease-out"
+      className="h-full bg-klasse-gold transition-all duration-700 ease-out"
       style={{ width: `${value}%` }}
     />
   </div>
@@ -70,7 +70,7 @@ function StatusBadge({ ok, loading }: { ok?: boolean; loading: boolean }) {
     <span
       className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${
         ok
-          ? "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20"
+          ? "bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300 border-klasse-green/20"
           : "bg-amber-50 text-amber-700 border-amber-200"
       }`}
     >
@@ -221,7 +221,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       {/* ── 1. PAGE HEADER ───────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#1F6B3B] mb-1">
+          <p className="text-xs font-bold uppercase tracking-widest text-klasse-green dark:text-klasse-green-300 mb-1">
             Ano Letivo {anoLetivoAtual}
           </p>
           <h1 className="text-3xl font-bold text-foreground tracking-tight">
@@ -255,7 +255,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
           </div>
           <button
             onClick={onOpenWizard}
-            className="flex-shrink-0 p-2 rounded-xl bg-[#E3B23C] text-white hover:bg-[#c99a2e] transition-colors shadow-sm"
+            className="flex-shrink-0 p-2 rounded-xl bg-klasse-gold text-klasse-gold-900 hover:bg-klasse-gold-500 transition-colors shadow-sm"
             title="Abrir assistente de setup"
           >
             <Wand2 className="w-4 h-4" />
@@ -305,7 +305,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
                   group h-full p-4 rounded-xl border cursor-pointer transition-all
                   hover:-translate-y-0.5 hover:shadow-md flex flex-col gap-3
                   ${card.highlight
-                    ? "bg-gradient-to-br from-[#E3B23C]/8 to-white border-[#E3B23C]/40 hover:border-[#E3B23C]"
+                    ? "bg-gradient-to-br from-klasse-gold/10 to-card border-klasse-gold/40 hover:border-klasse-gold"
                     : "bg-card border-border hover:border-border"
                   }
                 `}
@@ -314,7 +314,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
                   <div
                     className={`p-2 rounded-xl transition-colors ${
                       card.highlight
-                        ? "bg-[#E3B23C] text-white"
+                        ? "bg-klasse-gold text-klasse-gold-900"
                         : "bg-muted text-muted-foreground group-hover:bg-muted group-hover:text-foreground/80"
                     }`}
                   >
