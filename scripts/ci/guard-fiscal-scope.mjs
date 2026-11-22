@@ -135,6 +135,9 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271201100000_curtume_2025_autofecho_proteger_ano_documental.sql",
   // Reconciled #344: enforce canonical RAA before activating successor enrollment.
   "20271201110000_raa_activation_guard_reconciled.sql",
+  // SEC-ACADEMIC-360: one reviewed read-only RPC authorization hardening only.
+  // No fiscal, academic-grade, enrollment, or historical data writes allowed.
+  "20271201000000_guard_timeline_360_school_role.sql",
   // PR #379: migração de rematrícula entre ciclos sem mudanças fiscais.
   "20271119121000_balcao_rematricula_transicoes_idempotentes.sql",
   // PR #378: calendário escolar operacional; RLS e auditoria append-only, sem notas ou fiscal.
@@ -265,6 +268,35 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
       }
       if (/(?:TRUNCATE|DISABLE\s+TRIGGER|(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+public\.(?:notas|matriculas|historico_anos|historico_disciplinas|pagamentos|mensalidades)\b)/i.test(executableSql)) {
         violations.push("Auto-close guard cannot rewrite school, grade or financial data: " + path);
+      }
+    }
+
+    if (name === "20271201000000_guard_timeline_360_school_role.sql") {
+      // Only allow the existing dossier timeline RPC to gain internal
+      // identity + role + student-school checks. The function's SELECT
+      // body and its exact grants remain subject to this narrow gate.
+      for (const token of [
+        "CREATE OR REPLACE FUNCTION public.get_aluno_timeline_360(",
+        "RETURNS jsonb",
+        "LANGUAGE plpgsql",
+        "SECURITY DEFINER",
+        "auth.uid() IS NULL",
+        "public.user_has_role_in_school(",
+        "a.id = p_aluno_id",
+        "a.escola_id = p_escola_id",
+        "USING ERRCODE = '42501'",
+        "REVOKE EXECUTE ON FUNCTION public.get_aluno_timeline_360(uuid, uuid) FROM PUBLIC, anon",
+        "GRANT EXECUTE ON FUNCTION public.get_aluno_timeline_360(uuid, uuid) TO authenticated, service_role",
+      ]) {
+        if (!content.includes(token)) violations.push("Reviewed timeline RPC migration missing guard: " + token);
+      }
+      if (content.indexOf("user_has_role_in_school(") > content.indexOf("RETURN (")
+        || content.indexOf("a.escola_id = p_escola_id") > content.indexOf("RETURN (")) {
+        violations.push("Timeline RPC authorization must execute before selecting student data: " + path);
+      }
+      if (/(?:\b(?:INSERT\s+INTO|UPDATE\s+(?:public\.)?[a-z_]+\s+SET|DELETE\s+FROM|TRUNCATE|ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+(?:TABLE|FUNCTION|POLICY|TRIGGER)|DISABLE\s+TRIGGER|GRANT\s+(?:ALL|SELECT|INSERT|UPDATE|DELETE)|REVOKE\s+(?:ALL|SELECT|INSERT|UPDATE|DELETE))\b)/i.test(executableSql)
+        || /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?!public\.get_aluno_timeline_360\s*\()/i.test(executableSql)) {
+        violations.push("Timeline RPC migration cannot modify other functions, schema, enrollment, grades or finance: " + path);
       }
     }
 
