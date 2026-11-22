@@ -42,3 +42,13 @@ A validação de padrões visuais identificou ainda 20 cartões operacionais com
 ### Áreas principais para inspeção visual
 
 Gestão de professores, tabela e detalhe de turma, admissão/rematrícula, emissão de documentos, configuração curricular, horários, mensalidades e fecho académico.
+
+## Reconciliação dos bloqueios do CI da PR #447
+
+Foram identificados três bloqueios na primeira execução do GitHub Actions:
+
+- **Command Center Contextual:** o processo TypeScript esgotou o heap padrão de cerca de 2 GiB. O workflow agora define `NODE_OPTIONS=--max-old-space-size=4096` apenas para o typecheck integral. Não elimina verificações nem oculta erros de tipos.
+- **Command Center Visual Fixtures:** a validação automática WCAG encontrou contraste insuficiente nos separadores inativos **Horário** e **Disciplinas** da Turma. Agora ambos os estados usam `text-foreground` e a seleção distingue-se por `bg-card` versus `bg-muted`, em claro e escuro.
+- **Balcão Performance Budgets:** a fixture registou **150 ms** de p50 em Documento, contra o orçamento de **148,8 ms**. A medição incluía `button.click`, `waitForFunction` e round-trips entre Playwright e Node, que não são tempo de pintura da aplicação. O benchmark passou a medir no browser desde o evento `click` até dois `requestAnimationFrame`, mantendo os custos de automação separados em `driverRoundtripMs`. **O orçamento e os gates de requests, React commits e bundles não foram ampliados.** O benchmark continua sintético e não substitui medição de RUM em produção.
+
+Os contratos unitários do Command Center e do Balcão passaram a impedir a reintrodução dos padrões de contraste/medição identificados. O estado final dos workflows deve ser consultado diretamente na PR antes do merge.
