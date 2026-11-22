@@ -169,7 +169,7 @@ export function CurriculumPresetSelector({
               className={[
                 "px-3 py-2 rounded-lg text-[11px] font-bold border transition-all flex flex-col items-start",
                 isActive
-                  ? "bg-klasse-gold text-white border-klasse-gold shadow-sm"
+                  ? "bg-klasse-gold text-klasse-gold-900 border-klasse-gold shadow-sm"
                   : "bg-card text-muted-foreground border-border hover:border-border",
                 disabled ? "opacity-60 cursor-not-allowed" : "",
               ].join(" ")}

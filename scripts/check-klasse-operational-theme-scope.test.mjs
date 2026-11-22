@@ -15,6 +15,21 @@ test("guards authenticated operational pages and shared components, not fiscal o
   assert.equal(inScope("apps/web/src/components/financeiro/FiscalOperationsClient.tsx"), false);
   assert.equal(inScope("apps/web/src/app/secretaria/documentos/_print/PrintLetterhead.tsx"), false);
 });
+test("gold action rejects white text with inadequate contrast", () => {
+  assert.deepEqual(
+    violationsForContent(p, '<button className="bg-klasse-gold text-white"/>').map((x) => x.token),
+    ["bg-klasse-gold"]
+  );
+  assert.deepEqual(
+    violationsForContent(p, '<button className="text-white bg-klasse-gold"/>').map((x) => x.token),
+    ["text-white"]
+  );
+  assert.deepEqual(
+    violationsForContent(p, '<button className="bg-klasse-gold text-klasse-gold-900"/>'),
+    []
+  );
+});
+
 test("new fixed neutral background and text are blocked", () => {
   const found = violationsForContent(p, '<div className="bg-white border-slate-200 text-slate-900">a</div>');
   assert.deepEqual(found.map((x) => x.token), ["bg-white", "border-slate-200", "text-slate-900"]);

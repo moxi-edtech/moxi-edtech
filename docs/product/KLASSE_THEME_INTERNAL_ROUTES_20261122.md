@@ -15,7 +15,7 @@ Garantir que as páginas internas das escolas e da Secretaria, incluindo os comp
 **Guard de cobertura:** scripts/check-klasse-operational-theme-scope.mjs.
 **Testes:** scripts/check-klasse-operational-theme-scope.test.mjs.
 
-O script consulta os ficheiros controlados por Git e cobre 580 ficheiros TSX nas rotas Escola/Secretaria e nos diretórios operacionais partilhados. Não utiliza amostras nem se limita aos ficheiros alterados na PR. Bloqueia classes fixas de fundos, texto, bordas, divisórias, foco e cores inline em classes Tailwind. A validação local terminou com **zero classes não autorizadas** e **7 testes do guard aprovados**.
+O script consulta os ficheiros controlados por Git e cobre 580 ficheiros TSX nas rotas Escola/Secretaria e nos diretórios operacionais partilhados. Não utiliza amostras nem se limita aos ficheiros alterados na PR. Bloqueia classes fixas de fundos, texto, bordas, divisórias, foco e cores inline em classes Tailwind, e rejeita texto branco sobre o fundo dourado institucional (contraste insuficiente). A validação local terminou com **zero classes não autorizadas** e **8 testes do guard aprovados**.
 
 O script passou a ser executado no workflow Theme Switcher Guard para impedir regressão futura.
 
@@ -44,7 +44,7 @@ O número zero refere-se às **classes fixas proibidas pela auditoria de código
 
 ## Gates para integração
 
-1. Guard e testes locais: 28 testes combinados aprovados na primeira execução (incluindo verificações de #446/#447/#448/#449).
+1. Guard e testes locais: 29 testes combinados aprovados na primeira execução (incluindo verificações de #446/#447/#448/#449).
 2. TypeScript completo e CI da branch: exigir aprovação antes do merge.
 3. Revisão visual autenticada em mobile/desktop e nas três preferências, incluindo dados sintéticos para estados financeiros.
 4. Sem migração Supabase, sem alteração de contratos da API/RPC, sem alteração de permissões ou funcionalidades.

@@ -52,6 +52,7 @@ const whatsappPaths = new Set([
 // Exclude semantic red/amber/green status palettes, which represent real state.
 // We reject hardcoded neutral/brand classes on operational chrome instead.
 const frozenNeutral = /(?<![\w/-])(?:[a-z-]+:)*(?:bg-(?:white(?:\/\d+)?|(?:slate|gray|zinc)-(?:50|100|200|300|400|500|600|700|800|900|950)(?:\/\d+)?)|(?:text|border|divide|ring|placeholder:text)-(?:slate|gray|zinc)-(?:50|100|200|300|400|500|600|700|800|900|950)(?:\/\d+)?)(?=[\s"'\x60}]|$)/g;
+const unreadableGold = /(?<![\w-])bg-klasse-gold(?![\w/-])(?=[^"\x27\x60]*\btext-white\b)|(?<![\w-])text-white(?![\w/-])(?=[^"\x27\x60]*\bbg-klasse-gold\b)/g;
 const inlineColors = /(?<![\w/-])(?:[a-z-]+:)*(?:bg|text|border|fill|stroke|ring|from|to)-\[#([0-9a-fA-F]{3,8})\](?=[\s"'\x60}]|$)/g;
 
 export function inScope(relativePath) {
@@ -83,7 +84,7 @@ export function violationsForContent(relativePath, source) {
   const problems = [];
   const lines = source.split("\n");
   const seen = new Set();
-  for (const re of [frozenNeutral, inlineColors]) {
+  for (const re of [frozenNeutral, inlineColors, unreadableGold]) {
     re.lastIndex = 0;
     for (const match of source.matchAll(re)) {
       const token = match[0];
