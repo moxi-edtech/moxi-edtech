@@ -297,6 +297,8 @@ export default function QuickDocHub({
   const historyStorageKey = escolaId ? `quick-doc-hub:history:${escolaId}` : null;
   const [anosLetivos, setAnosLetivos] = useState<AnoLetivoItem[]>([]);
   const [anoLetivo, setAnoLetivo] = useState<number | null>(null);
+  // A fonte do pedido é o ano selecionado neste documento, nunca o estado global da URL.
+  const selectedYearId = anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.id ?? null;
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
   const [loadingTurmas, setLoadingTurmas] = useState(false);
@@ -344,7 +346,8 @@ export default function QuickDocHub({
 
         setAnosLetivos(fetched);
         const activeAno = fetched.find((item) => item.status === "ativa")?.ano_letivo ?? fetched[0]?.ano_letivo ?? null;
-        setAnoLetivo((current) => current ?? activeAno);
+        const requested = fetched.find((item) => item.id === academicYearIdFromUrl)?.ano_letivo;
+        setAnoLetivo((current) => requested ?? current ?? activeAno);
       } catch (error) {
         console.error("Erro ao carregar anos letivos:", error);
       } finally {
@@ -356,15 +359,21 @@ export default function QuickDocHub({
     return () => {
       active = false;
     };
-  }, [escolaId]);
+  }, [escolaId, academicYearIdFromUrl]);
 
   useEffect(() => {
-    if (!escolaId) return;
+    if (!escolaId || !selectedYearId) {
+      setPeriodos([]);
+      setPeriodoId("");
+      return;
+    }
     let active = true;
+    setPeriodos([]);
+    setPeriodoId("");
     const loadPeriodos = async () => {
       setLoadingPeriodos(true);
       try {
-        const params = new URLSearchParams({ escola_id: escolaId });
+        const params = new URLSearchParams({ escola_id: escolaId, ano_letivo_id: selectedYearId });
         const res = await fetch(`/api/secretaria/relatorios/mapa-aproveitamento?${params.toString()}`, {
           cache: "no-store",
         });
@@ -373,7 +382,7 @@ export default function QuickDocHub({
         if (res.ok && json.ok) {
           const fetched = Array.isArray(json.filtros?.periodos) ? (json.filtros.periodos as PeriodoItem[]) : [];
           setPeriodos(fetched);
-          setPeriodoId((current) => current || fetched[0]?.id || "");
+          setPeriodoId((current) => fetched.some((item) => item.id === current) ? current : (fetched[0]?.id || ""));
         }
       } catch (error) {
         console.error("Erro ao carregar períodos:", error);
@@ -386,7 +395,7 @@ export default function QuickDocHub({
     return () => {
       active = false;
     };
-  }, [escolaId]);
+  }, [escolaId, selectedYearId]);
 
   useEffect(() => {
     if (!escolaId || !anoLetivo) return;
@@ -751,8 +760,8 @@ export default function QuickDocHub({
       }
     };
 
-    const anoSelecionado = academicYearIdFromUrl ??
-      anosLetivos.find(item => item.ano_letivo === anoLetivo)?.id;
+    const anoSelecionado = selectedYearId;
+    if (!anoSelecionado) throw new Error("Selecione o ano letivo deste documento.");
 
     for (const doc of selectedDocDefs) {
       if (!queueDocKeys.has(doc.key)) continue;
@@ -779,7 +788,7 @@ export default function QuickDocHub({
         ...(tipo === "trimestral" ? { periodo_letivo_id: periodoId } : {}),
       });
     }
-  }, [academicYearIdFromUrl, anoLetivo, anosLetivos, escolaId, includeAllStatus, isAlbum, modoLista, nominalOrder, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
+  }, [anoLetivo, escolaId, includeAllStatus, isAlbum, modoLista, nominalOrder, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, selectedYearId, turmasFiltradas]);
 
   const canSubmit =
     selectedDocs.length > 0 &&
@@ -831,7 +840,15 @@ export default function QuickDocHub({
         <Field label="Ano letivo">
           <select
             value={anoLetivo ?? ""}
-            onChange={(event) => { setAnoLetivo(event.target.value ? Number(event.target.value) : null); setModeOverride(null); }}
+            onChange={(event) => {
+              setAnoLetivo(event.target.value ? Number(event.target.value) : null);
+              setTurmaId("");
+              setTurmas([]);
+              setPeriodoId("");
+              setPeriodos([]);
+              setClasseFiltro("");
+              setModeOverride(null);
+            }}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">{loadingAnos ? "A carregar..." : "Selecione"}</option>
