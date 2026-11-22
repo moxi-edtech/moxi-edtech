@@ -80,3 +80,18 @@ test("Documentos históricos apenas consultam ou descarregam, sem lançar notas"
   assert.match(batch, /Ver turma/);
   assert.match(batch, /disabled=\{hasPendencias \|\| isHistoricalYear\}/);
 });
+
+test("Contexto académico e emissão documental respeitam escola explícita do portal", () => {
+  const context = src("lib/academic-year/context.ts");
+  const periods = src("app/api/escola/[id]/admin/periodos-letivos/route.ts");
+  const batches = src("app/api/secretaria/documentos-oficiais/lote/route.ts");
+  const quick = src("components/secretaria/QuickDocHub.tsx");
+  const official = src("components/secretaria/DocumentosOficiaisBatchClient.tsx");
+  assert.match(context, /requestedEscolaId\?: string \| null/);
+  assert.match(context, /input\.requestedEscolaId \?\? null/);
+  assert.match(periods, /requestedEscolaId: userEscolaId/);
+  assert.match(batches, /requestedEscolaId: escolaId/);
+  assert.match(batches, /parsed\.data\.escola_id \?\? null/);
+  assert.match(quick, /escola_id: escolaId/);
+  assert.match(official, /escola_id: escolaId/);
+});
