@@ -258,7 +258,7 @@ export function MatriculasEmMassa({
                 </label>
                 <div className="flex items-center gap-2">
                   <select
-                    className="w-full sm:w-56 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+                    className="w-full sm:w-56 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-gold"
                     disabled={!hasTurmas || disabled}
                     onChange={(e) => {
                       const turmaId = e.target.value;
