@@ -626,7 +626,7 @@ export default function DocumentosOficiaisBatchClient() {
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        {!isHistoricalYear && <label className="flex items-center gap-2 text-xs text-slate-600">
+        {!isHistoricalYear && <label className="flex items-center gap-2 text-xs text-muted-foreground">
           <input
             type="checkbox"
             checked={hidePendencias}
