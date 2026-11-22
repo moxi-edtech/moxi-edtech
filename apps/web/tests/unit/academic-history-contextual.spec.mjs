@@ -131,3 +131,23 @@ test("Resultados completos por ano usam o histórico oficial da mesma escola e a
   assert.match(panel, /params\.set\("escola_id", escolaId\)/);
   assert.match(timeline, /<HistoricalDisciplineResultsPanel/);
 });
+
+test("SEC-ACADEMIC-360 exige autorização dentro da RPC SECURITY DEFINER", () => {
+  const migration = readFileSync(
+    resolve(process.cwd(), "../../supabase/migrations/20271201000000_guard_timeline_360_school_role.sql"),
+    "utf8"
+  );
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.get_aluno_timeline_360/);
+  assert.match(migration, /LANGUAGE plpgsql\s+SECURITY DEFINER/);
+  assert.match(migration, /auth\.uid\(\) IS NULL/);
+  assert.match(migration, /public\.user_has_role_in_school/);
+  assert.match(migration, /a\.id = p_aluno_id/);
+  assert.match(migration, /a\.escola_id = p_escola_id/);
+  assert.match(migration, /RAISE EXCEPTION[\s\S]*?ERRCODE = '42501'/);
+  assert.ok(migration.indexOf("user_has_role_in_school") < migration.indexOf("RETURN ("));
+  assert.ok(migration.indexOf("a.escola_id = p_escola_id") < migration.indexOf("RETURN ("));
+  assert.match(migration, /REVOKE EXECUTE ON FUNCTION public\.get_aluno_timeline_360\(uuid, uuid\) FROM PUBLIC, anon/);
+  assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.get_aluno_timeline_360\(uuid, uuid\) TO authenticated, service_role/);
+  assert.match(migration, /WITH matriculas_ranked AS/);
+  assert.match(migration, /FROM anos_enriquecidos ae/);
+});
