@@ -19,7 +19,7 @@ export default function ThemeSwitcherVisualFixture() {
                 <h1 className="text-xl font-bold text-foreground">KLASSE · Aparência operacional</h1>
                 <p className="text-sm text-muted-foreground">Dados sintéticos para homologação de tema.</p>
               </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
                 <ThemeToggle />
                 <ThemePreferences />
               </div>
@@ -56,7 +56,7 @@ export default function ThemeSwitcherVisualFixture() {
               </button>
             </div>
             <div className="min-w-0 max-w-full overflow-x-auto rounded-xl border border-border" data-testid="operations-table-scroll">
-              <table className="w-full min-w-[540px] border-collapse text-sm text-foreground" data-testid="operations-table">
+              <table className="w-full min-w-[540px] border-collapse bg-card text-sm text-foreground" data-testid="operations-table">
                 <thead className="bg-muted text-foreground">
                   <tr>
                     <th scope="col" className="p-3 text-left font-semibold">Aluno</th>
