@@ -497,7 +497,7 @@ function FechamentoAcademicoContent() {
         <div className="mb-6 flex justify-end">
           <button
             onClick={iniciarFecho}
-            className="flex items-center gap-2 px-8 py-3 bg-klasse-green text-white rounded-xl text-sm font-bold hover:brightness-110 transition-all shadow-lg shadow-[#1F6B3B]/20"
+            className="flex items-center gap-2 px-8 py-3 bg-klasse-green text-white rounded-xl text-sm font-bold hover:brightness-110 transition-all shadow-lg shadow-klasse-green/20"
           >
             <Play className="w-4 h-4" fill="currentColor" />
             Iniciar fecho

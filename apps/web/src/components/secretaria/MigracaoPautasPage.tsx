@@ -354,7 +354,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
       <table className="min-w-full border-separate border-spacing-0 bg-card text-sm">
         <thead>
           <tr>
-            <th className="sticky left-0 top-0 z-30 border-b border-r border-border/20 bg-slate-950 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
+            <th className="sticky left-0 top-0 z-30 border-b border-r border-border/20 bg-klasse-dark px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
               Aluno
             </th>
             {activePreview.disciplinas.map((disciplina) => (
@@ -414,7 +414,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
       <table className="min-w-full border-separate border-spacing-0 bg-card text-sm">
         <thead>
           <tr>
-            <th className="sticky left-0 top-0 z-30 border-b border-r border-border/20 bg-slate-950 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
+            <th className="sticky left-0 top-0 z-30 border-b border-r border-border/20 bg-klasse-dark px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
               Disciplina
             </th>
             {activePreview.linhas.map((linha) => (

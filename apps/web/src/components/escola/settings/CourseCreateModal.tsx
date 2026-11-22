@@ -128,7 +128,7 @@ export default function CourseCreateModal({
             <input
               value={draft.label}
               onChange={(e) => onChangeLabel(e.target.value)}
-              className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all"
+              className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold outline-none transition-all"
               placeholder="Ex: Técnico de Gestão Empresarial"
             />
           </div>
@@ -253,7 +253,7 @@ export default function CourseCreateModal({
               <input
                 value={disciplinaDraft.nome}
                 onChange={(e) => setDisciplinaDraft({ ...disciplinaDraft, nome: e.target.value })}
-                className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold outline-none transition-all"
                 placeholder="Ex: Língua Portuguesa"
               />
             </div>
@@ -271,7 +271,7 @@ export default function CourseCreateModal({
                       carga_horaria: Number(e.target.value || 0),
                     })
                   }
-                  className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none"
+                  className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold outline-none"
                 />
               </div>
               <div className="space-y-2">
@@ -279,7 +279,7 @@ export default function CourseCreateModal({
                 <input
                   value={disciplinaDraft.area}
                   onChange={(e) => setDisciplinaDraft({ ...disciplinaDraft, area: e.target.value })}
-                  className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none"
+                  className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold outline-none"
                   placeholder="Ex: Linguagens"
                 />
               </div>
@@ -293,7 +293,7 @@ export default function CourseCreateModal({
                   onChange={(e) =>
                     setDisciplinaDraft({ ...disciplinaDraft, is_core: e.target.checked })
                   }
-                  className="w-4 h-4 rounded border-border text-foreground focus:ring-slate-900"
+                  className="w-4 h-4 rounded border-border text-foreground focus:ring-klasse-gold/20"
                 />
                 <span className="text-xs font-bold text-foreground group-hover:text-foreground">Disciplina obrigatória (Core)</span>
               </label>
@@ -304,7 +304,7 @@ export default function CourseCreateModal({
                   onChange={(e) =>
                     setDisciplinaDraft({ ...disciplinaDraft, is_avaliavel: e.target.checked })
                   }
-                  className="w-4 h-4 rounded border-border text-foreground focus:ring-slate-900"
+                  className="w-4 h-4 rounded border-border text-foreground focus:ring-klasse-gold/20"
                 />
                 <span className="text-xs font-bold text-foreground group-hover:text-foreground">Gera notas e faltas (Avaliável)</span>
               </label>

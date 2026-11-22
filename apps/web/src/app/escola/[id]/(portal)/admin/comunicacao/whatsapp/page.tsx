@@ -708,7 +708,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
                         key={thread.id}
                         onClick={() => setSelectedThread(thread)}
                         className={`w-full text-left p-4 hover:bg-muted transition-colors flex items-start justify-between gap-3 ${
-                          active ? "bg-muted/75 border-l-4 border-slate-900" : ""
+                          active ? "bg-muted/75 border-l-4 border-foreground" : ""
                         }`}
                       >
                         <div className="min-w-0 flex-1 space-y-1">

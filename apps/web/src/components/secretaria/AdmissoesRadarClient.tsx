@@ -467,7 +467,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                 })}
 
                 {items.length === 0 && (
-                  <div className="rounded-xl bg-slate-900 p-3 text-xs text-white/75 ring-1 ring-border/20">
+                  <div className="rounded-xl bg-klasse-dark p-3 text-xs text-white/75 ring-1 ring-border/20">
                     {col.emptyText}
                   </div>
                 )}
@@ -480,7 +480,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                     void loadMoreOpen()
                   }}
                   disabled={loadingMoreOpen}
-                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-amber/40 hover:text-white disabled:opacity-60"
+                  className="mt-3 w-full rounded-xl border border-klasse-gold/15 px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-amber/40 hover:text-white disabled:opacity-60"
                 >
                   {loadingMoreOpen ? 'Carregando...' : 'Carregar mais'}
                 </button>
@@ -493,7 +493,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                     void loadMoreMat()
                   }}
                   disabled={loadingMoreMat}
-                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-amber/40 hover:text-white disabled:opacity-60"
+                  className="mt-3 w-full rounded-xl border border-klasse-gold/15 px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-amber/40 hover:text-white disabled:opacity-60"
                 >
                   {loadingMoreMat ? 'Carregando...' : 'Carregar mais'}
                 </button>

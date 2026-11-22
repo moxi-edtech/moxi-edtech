@@ -548,7 +548,7 @@ export function DisciplinaModal({
                   onClick={() => updateScope("all")}
                   className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${
                     applyScope === "all"
-                      ? "bg-slate-900 text-white border-slate-900"
+                      ? "bg-klasse-dark text-white border-klasse-dark"
                       : "bg-card text-muted-foreground border-border hover:border-border"
                   }`}
                 >
@@ -559,7 +559,7 @@ export function DisciplinaModal({
                   onClick={() => updateScope("selected")}
                   className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${
                     applyScope === "selected"
-                      ? "bg-slate-900 text-white border-slate-900"
+                      ? "bg-klasse-dark text-white border-klasse-dark"
                       : "bg-card text-muted-foreground border-border hover:border-border"
                   }`}
                 >
@@ -612,7 +612,7 @@ export function DisciplinaModal({
                 }
                 className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${
                   form.periodo_mode === "ano"
-                    ? "bg-slate-900 text-white border-slate-900"
+                    ? "bg-klasse-dark text-white border-klasse-dark"
                     : "bg-card text-muted-foreground border-border hover:border-border"
                 }`}
               >
@@ -623,7 +623,7 @@ export function DisciplinaModal({
                 onClick={() => setForm((prev) => ({ ...prev, periodo_mode: "custom" }))}
                 className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${
                   form.periodo_mode === "custom"
-                    ? "bg-slate-900 text-white border-slate-900"
+                    ? "bg-klasse-dark text-white border-klasse-dark"
                     : "bg-card text-muted-foreground border-border hover:border-border"
                 }`}
               >
@@ -844,7 +844,7 @@ export function DisciplinaModal({
                   key={opt.id}
                   className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                     form.avaliacao.mode === opt.id
-                      ? "bg-muted border-slate-900"
+                      ? "bg-muted border-foreground"
                       : "bg-card border-border hover:bg-muted"
                   }`}
                 >

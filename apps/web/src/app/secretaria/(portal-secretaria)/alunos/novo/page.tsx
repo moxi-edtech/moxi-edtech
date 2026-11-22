@@ -494,7 +494,7 @@ export default function AlunosPage() {
         )}
 
         <div className="flex justify-center mb-8">
-          <div className="bg-card rounded-2xl shadow-sm p-2 border border-border">
+          <div className="bg-card rounded-xl shadow-sm p-2 border border-border">
             <div className="flex space-x-1">
               <button
                 className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
@@ -522,7 +522,7 @@ export default function AlunosPage() {
 
         {activeTab === "add" && (
           <div className="space-y-8">
-            <div className="bg-card rounded-2xl shadow-xl p-6 border border-border">
+            <div className="bg-card rounded-xl shadow-xl p-6 border border-border">
               <div className="mb-8">
                 <div className="flex items-center justify-between max-w-3xl mx-auto">
                   {[1, 2, 3, 4].map((step) => (
@@ -591,7 +591,7 @@ export default function AlunosPage() {
                   </div>
                 )}
 
-                <div className="bg-muted border-l-4 border-slate-500 p-4 rounded-lg">
+                <div className="bg-muted border-l-4 border-muted-foreground p-4 rounded-lg">
                   <p className="text-sm text-foreground flex items-center gap-2">
                     <InformationCircleIcon className="w-5 h-5" />
                     <span>
@@ -1037,7 +1037,7 @@ export default function AlunosPage() {
               </form>
             </div>
 
-            <div className="bg-muted border border-border rounded-2xl p-6">
+            <div className="bg-muted border border-border rounded-xl p-6">
               <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                 <InformationCircleIcon className="w-5 h-5" />
                 Dicas Rápidas
@@ -1052,7 +1052,7 @@ export default function AlunosPage() {
         )}
 
         {activeTab === "list" && (
-          <div className="bg-card rounded-2xl shadow-xl p-6 border border-border">
+          <div className="bg-card rounded-xl shadow-xl p-6 border border-border">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-semibold text-moxinexa-dark">Lista de Estudantes</h2>

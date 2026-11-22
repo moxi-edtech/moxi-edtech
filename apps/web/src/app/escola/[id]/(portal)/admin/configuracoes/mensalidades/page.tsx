@@ -796,7 +796,7 @@ export default function MensalidadesEmolumentosPage() {
                       setCatalogForm({ ...catalogForm, valor_base: 0 });
                     }
                   }}
-                  className="h-4 w-4 rounded border-border text-foreground focus:ring-slate-900"
+                  className="h-4 w-4 rounded border-border text-foreground focus:ring-klasse-gold/20"
                 />
                 Serviço Isento / Gratuito (0 Kz)
               </label>

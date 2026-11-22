@@ -345,7 +345,7 @@ export default function PrecosClient({
                     </div>
 
                     <div className={`flex items-center justify-between text-xs pt-2.5 border-t border-dashed ${
-                      isSelected ? "border-slate-800 text-muted-foreground" : "border-border text-muted-foreground"
+                      isSelected ? "border-border text-muted-foreground" : "border-border text-muted-foreground"
                     }`}>
                       <div>
                         <span className="text-[10px] opacity-70 block uppercase tracking-wider font-medium">Mensalidade</span>
@@ -357,7 +357,7 @@ export default function PrecosClient({
                       </div>
                     </div>
                     <div className={`mt-2 flex items-center justify-between border-t border-dashed pt-2 text-xs ${
-                      isSelected ? "border-slate-800 text-muted-foreground" : "border-border text-muted-foreground"
+                      isSelected ? "border-border text-muted-foreground" : "border-border text-muted-foreground"
                     }`}>
                       <span className="text-[10px] uppercase tracking-wider opacity-70">Rematrícula</span>
                       <span className="font-mono font-bold">

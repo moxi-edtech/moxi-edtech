@@ -99,3 +99,39 @@ test("a synthetic PR merge ignores newly added colors that only exist in main", 
     rmSync(cwd, { recursive: true, force: true });
   }
 });
+
+test("large UI diffs still receive full fixed-color validation", () => {
+  const { cwd, target, base } = repo(
+    "apps/web/src/components/Large.tsx",
+    'export const baseline = "bg-card";\n',
+  );
+  try {
+    // Larger than the child_process default buffer: old guard threw ENOBUFS.
+    const safe = Array.from(
+      { length: 18000 },
+      (_, i) => `export const safe${i} = "bg-card border-border text-foreground";`,
+    ).join("\n") + "\n";
+    assert.ok(Buffer.byteLength(safe) > 1024 * 1024);
+    writeFileSync(target, safe);
+    git(cwd, ["add", "."]);
+    git(cwd, ["commit", "-m", "large safe change"]);
+    const pass = spawnSync(process.execPath, [script], {
+      cwd, encoding: "utf8",
+      env: { ...process.env, THEME_GUARD_BASE_REF: base },
+    });
+    assert.equal(pass.status, 0, pass.stderr);
+
+    // The final line must still be inspected: large diffs must not truncate.
+    writeFileSync(target, safe + 'export const bad = "bg-white";\n');
+    git(cwd, ["add", "."]);
+    git(cwd, ["commit", "-m", "add final violation"]);
+    const fail = spawnSync(process.execPath, [script], {
+      cwd, encoding: "utf8",
+      env: { ...process.env, THEME_GUARD_BASE_REF: base },
+    });
+    assert.equal(fail.status, 1, fail.stderr);
+    assert.match(fail.stderr, /THEME-NEUTRAL-001/);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});

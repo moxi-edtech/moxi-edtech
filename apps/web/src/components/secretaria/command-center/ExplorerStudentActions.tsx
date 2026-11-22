@@ -86,7 +86,7 @@ export function ExplorerStudentActions({
       </button>
       <dialog ref={dialogRef} aria-label={`Operações de ${alunoNome}`}
         onCancel={(event) => { event.preventDefault(); setExpanded(false); }}
-        className="w-[min(94vw,450px)] max-h-[min(85dvh,660px)] rounded-xl border border-border bg-card p-5 text-foreground shadow-xl backdrop:bg-slate-900/40">
+        className="w-[min(94vw,450px)] max-h-[min(85dvh,660px)] rounded-xl border border-border bg-card p-5 text-foreground shadow-xl backdrop:bg-klasse-dark/40">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 className="break-words text-base font-semibold">Ações · {alunoNome}</h3>

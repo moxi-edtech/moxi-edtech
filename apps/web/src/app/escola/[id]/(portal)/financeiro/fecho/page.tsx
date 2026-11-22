@@ -342,7 +342,7 @@ export default function FechoCaixaPage() {
       <section className="grid gap-6 md:grid-cols-3">
         
         {/* Card Numerário */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-all group">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-all group">
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Em Espécie</p>
@@ -357,7 +357,7 @@ export default function FechoCaixaPage() {
         </div>
 
         {/* Card TPA/Digital */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-all group">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-all group">
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Digital / Bancário</p>
@@ -374,7 +374,7 @@ export default function FechoCaixaPage() {
         </div>
 
         {/* Card Total */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-all group">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-all group">
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Consolidado</p>
@@ -390,7 +390,7 @@ export default function FechoCaixaPage() {
       </section>
 
       {/* TABELA DE LANÇAMENTOS */}
-      <section className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+      <section className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
         <div className="flex items-center justify-between border-b border-border px-6 py-4 bg-muted/50">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
@@ -448,7 +448,7 @@ export default function FechoCaixaPage() {
       </section>
 
       {/* OBSERVAÇÕES */}
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 block">
           Notas de Auditoria / Observações
         </label>

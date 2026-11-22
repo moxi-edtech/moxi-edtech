@@ -280,7 +280,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
               </TabsTrigger>
             </TabsList>
 
-            <div className="bg-card rounded-2xl shadow-sm border border-border p-6 md:p-8">
+            <div className="bg-card rounded-xl shadow-sm border border-border p-6 md:p-8">
               {/* Tab 1: Identificação */}
               <TabsContent value="identificacao" className="space-y-6 m-0">
                 <div className="grid md:grid-cols-2 gap-6">

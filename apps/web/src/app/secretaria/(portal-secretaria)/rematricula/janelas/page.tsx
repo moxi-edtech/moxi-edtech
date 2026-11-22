@@ -237,7 +237,7 @@ export default function RematriculaJanelasPage() {
         ]}
       />
 
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Estado atual</p>
@@ -260,7 +260,7 @@ export default function RematriculaJanelasPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-        <form onSubmit={submit} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <form onSubmit={submit} className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
             <CalendarClock className="h-5 w-5 text-amber-600" />
             <h2 className="text-sm font-bold text-foreground">
@@ -337,7 +337,7 @@ export default function RematriculaJanelasPage() {
           </div>
         </form>
 
-        <section className="rounded-2xl border border-border bg-card shadow-sm">
+        <section className="rounded-xl border border-border bg-card shadow-sm">
           <div className="border-b border-border px-5 py-4">
             <h2 className="text-sm font-bold text-foreground">Janelas cadastradas</h2>
             <p className="mt-1 text-xs text-muted-foreground">

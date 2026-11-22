@@ -207,7 +207,7 @@ function NotesModal({ turmaId, academicYearId, alunoId, alunoNome, onClose, onSa
   const focusedRows = pauta.filter((row) => row.id === alunoId);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true">
-      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-card shadow-2xl">
+      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Resolver notas incompletas</p>
@@ -243,7 +243,7 @@ type BalcaoTriagemModalProps = {
 function BalcaoTriagemModal({ escolaId, aluno, onClose }: BalcaoTriagemModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-label={`Atendimento de ${aluno.nome}`}>
-      <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-card shadow-2xl">
+      <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-border bg-muted px-6 py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Triagem · atendimento contextual</p>

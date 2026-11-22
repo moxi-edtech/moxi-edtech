@@ -83,7 +83,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
       )}
 
-      <div className="bg-card border border-border shadow-sm rounded-2xl p-4 md:p-6">
+      <div className="bg-card border border-border shadow-sm rounded-xl p-4 md:p-6">
         {escolaId ? (
           <PrecosClient escolaId={escolaId} />
         ) : (

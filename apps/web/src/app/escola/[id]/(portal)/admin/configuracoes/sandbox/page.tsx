@@ -146,7 +146,7 @@ export default function SandboxConfiguracoesPage() {
       <div className="space-y-6">
         
         {/* HERO CARD: ACTION */}
-        <div className="relative overflow-hidden rounded-xl border border-border/20 bg-slate-900 p-8 text-white shadow-lg">
+        <div className="relative overflow-hidden rounded-xl border border-border/20 bg-klasse-dark p-8 text-white shadow-lg">
           <div className="relative z-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-lg font-bold">

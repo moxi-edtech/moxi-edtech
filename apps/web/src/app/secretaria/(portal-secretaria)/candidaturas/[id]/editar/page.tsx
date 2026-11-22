@@ -166,7 +166,7 @@ export default function EditarCandidaturaPage() {
           />
         </div>
 
-        <div className="bg-card rounded-2xl shadow-xl p-6 border border-border">
+        <div className="bg-card rounded-xl shadow-xl p-6 border border-border">
           {loading ? (
             <div>Carregando…</div>
           ) : error ? (

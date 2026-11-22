@@ -40,7 +40,7 @@ export default async function Page(props: {
         {escolaId ? <FilaValidacaoPagamentos escolaId={escolaId} /> : null}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm md:p-6">
+      <section className="rounded-xl border border-border bg-card p-4 shadow-sm md:p-6">
         <div className="flex flex-col gap-5 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

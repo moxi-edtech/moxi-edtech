@@ -17,6 +17,8 @@ Os números são **ocorrências de classes neutras por expressão regular**, nã
 
 Convertemos `bg-white`, `bg-slate-50/100/200`, `text-slate-400..950`, `border-slate-100..400`, `ring-slate` e equivalentes para `bg-card`, `bg-muted`, `bg-muted-foreground/15`, `text-foreground`, `text-muted-foreground`, `border-border`, `ring-ring` e outros tokens semânticos. Variações de `hover` e `focus` continuam acessíveis em ambos os modos.
 
+O fundo editorial intencionalmente escuro passa a utilizar o token partilhado `klasse-dark` (valor oficial `#020617`) em vez de classes `bg-slate-900/950` alteradas. O guard de cores passa a suportar diffs grandes (até 64 MiB) sem truncamento; testes confirmam que uma violação no fim de um diff acima de 1 MiB continua a ser rejeitada.
+
 Classes com os hexadecimais institucionais KLASSE foram convertidas para as classes do pacote de design tokens, com tratamento explícito de contraste em textos verdes/dourados. Botões primários dourados usam `text-klasse-gold-900`; elementos ativos com fundo invertido usam `bg-foreground text-background`.
 
 ## Restrições
@@ -28,6 +30,8 @@ Classes com os hexadecimais institucionais KLASSE foram convertidas para as clas
 - Preservar os contratos dos componentes, os handlers, os dados e a navegação.
 
 Algumas classes de estados (`amber`, `rose`, `emerald`) e alguns fundos escuros intencionais continuam sendo candidatos a uma futura inspeção visual de contraste. Eles não fazem parte da contagem neutralizada; mudar todas essas cores de forma mecânica causaria regressões semânticas.
+
+A validação de padrões visuais identificou ainda 20 cartões operacionais com `rounded-2xl` nas linhas alteradas. Esses casos foram alinhados a `rounded-xl` para respeitar o gate `KLASSE UI Standards`.
 
 ## Controlo de regressão
 

@@ -454,7 +454,7 @@ export default function IdentidadePage({ params }: Props) {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-bold text-muted-foreground uppercase">Portal Aluno</span>
-                      <Badge className={`${formData.aluno_portal_enabled ? 'bg-slate-500' : 'bg-muted-foreground/15'} text-white border-0 text-[9px] font-black`}>
+                      <Badge className={`${formData.aluno_portal_enabled ? 'bg-muted-foreground' : 'bg-muted-foreground/15'} text-white border-0 text-[9px] font-black`}>
                         {formData.aluno_portal_enabled ? 'ACTIVADO' : 'DESACTIVADO'}
                       </Badge>
                     </div>
