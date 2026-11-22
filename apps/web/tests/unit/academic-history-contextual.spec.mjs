@@ -52,3 +52,31 @@ test("Dossier mostra o intervalo completo e abre apenas o ano solicitado", () =>
   assert.match(timeline, /ordered\.filter\(\(item\) => item\.ano_letivo === selectedYearNumber\)/);
   assert.match(timeline, /Ver todos os anos/);
 });
+
+test("Arquivo real exige escola/sessão, histórico fechado e bloqueia filtros de polo", () => {
+  const route = src("app/api/secretaria/operacoes-academicas/arquivo/turmas/route.ts");
+  const panel = src("components/academico/HistoricalTurmasPanel.tsx");
+  assert.match(route, /authorizeTurmasManage/);
+  assert.match(route, /resolveAcademicYearScope/);
+  assert.match(route, /session\.status !== "CLOSED"/);
+  assert.match(route, /\.eq\("escola_id", escolaId\)/);
+  assert.match(route, /\.eq\("session_id", session\.id\)/);
+  assert.match(panel, /mode=ano_letivo/);
+  assert.match(panel, /ano_letivo_id=/);
+});
+
+test("Turmas SSR nunca apresentam turmas de outros anos se a view falhar", () => {
+  const page = src("app/escola/[id]/(portal)/admin/turmas/page.tsx");
+  assert.match(page, /resolveAcademicYearScope/);
+  assert.match(page, /requestedAcademicYearId: anoLetivoIdParam/);
+  const matches = page.match(/\.eq\('session_id', academicYearId\)/g) ?? [];
+  assert.equal(matches.length, 2, "a view e o fallback ficam sempre no mesmo ano");
+});
+
+test("Documentos históricos apenas consultam ou descarregam, sem lançar notas", () => {
+  const batch = src("components/secretaria/DocumentosOficiaisBatchClient.tsx");
+  assert.match(batch, /isHistoricalYear \? \(/);
+  assert.match(batch, /Lista histórica PDF/);
+  assert.match(batch, /Ver turma/);
+  assert.match(batch, /disabled=\{hasPendencias \|\| isHistoricalYear\}/);
+});
