@@ -112,11 +112,11 @@ export default async function Page() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 p-4">
+          <div className="rounded-xl border border-border p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-800">Fechamento Académico</h2>
+              <h2 className="text-sm font-semibold text-foreground">Fechamento Académico</h2>
               <div className="flex items-center gap-3">
-                <span className="text-[10px] text-slate-400">últimos 8</span>
+                <span className="text-[10px] text-muted-foreground">últimos 8</span>
                 <a
                   href={buildPortalHref(eid, "/secretaria/fechamento-academico")}
                   className="text-[10px] font-semibold text-emerald hover:underline"
@@ -128,24 +128,24 @@ export default async function Page() {
             <div className="mt-3 space-y-2">
               {fechamentoJobs?.length ? (
                 fechamentoJobs.map((job) => (
-                  <div key={job.run_id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-xs">
+                  <div key={job.run_id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-xs">
                     <div>
-                      <p className="font-semibold text-slate-700">{job.fechamento_tipo || 'fechamento'}</p>
-                      <p className="text-slate-400">{job.run_id.slice(0, 8)}</p>
+                      <p className="font-semibold text-foreground">{job.fechamento_tipo || 'fechamento'}</p>
+                      <p className="text-muted-foreground">{job.run_id.slice(0, 8)}</p>
                     </div>
                     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       ['FAILED'].includes(String(job.estado || '').toUpperCase())
                         ? 'bg-amber/20 text-amber'
                         : ['DONE'].includes(String(job.estado || '').toUpperCase())
                           ? 'bg-emerald/10 text-emerald'
-                          : 'bg-slate-100 text-slate-600'
+                          : 'bg-muted text-muted-foreground'
                     }`}>
                       {job.estado}
                     </span>
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-slate-400">Nenhum job recente.</p>
+                <p className="text-xs text-muted-foreground">Nenhum job recente.</p>
               )}
             </div>
             {fechamentoStuck.length > 0 && (
@@ -155,11 +155,11 @@ export default async function Page() {
             )}
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-4">
+          <div className="rounded-xl border border-border p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-800">Documentos Oficiais (Lote)</h2>
+              <h2 className="text-sm font-semibold text-foreground">Documentos Oficiais (Lote)</h2>
               <div className="flex items-center gap-3">
-                <span className="text-[10px] text-slate-400">últimos 8</span>
+                <span className="text-[10px] text-muted-foreground">últimos 8</span>
                 <a
                   href={buildPortalHref(eid, "/secretaria/documentos-oficiais")}
                   className="text-[10px] font-semibold text-emerald hover:underline"
@@ -171,24 +171,24 @@ export default async function Page() {
             <div className="mt-3 space-y-2">
               {pautasJobs?.length ? (
                 pautasJobs.map((job) => (
-                  <div key={job.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-xs">
+                  <div key={job.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-xs">
                     <div>
-                      <p className="font-semibold text-slate-700">{job.documento_tipo || job.tipo || 'lote'}</p>
-                      <p className="text-slate-400">{job.id.slice(0, 8)}</p>
+                      <p className="font-semibold text-foreground">{job.documento_tipo || job.tipo || 'lote'}</p>
+                      <p className="text-muted-foreground">{job.id.slice(0, 8)}</p>
                     </div>
                     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       ['FAILED'].includes(String(job.status || '').toUpperCase())
                         ? 'bg-amber/20 text-amber'
                         : ['SUCCESS'].includes(String(job.status || '').toUpperCase())
                           ? 'bg-emerald/10 text-emerald'
-                          : 'bg-slate-100 text-slate-600'
+                          : 'bg-muted text-muted-foreground'
                     }`}>
                       {job.status}
                     </span>
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-slate-400">Nenhum job recente.</p>
+                <p className="text-xs text-muted-foreground">Nenhum job recente.</p>
               )}
             </div>
             {pautasStuck.length > 0 && (

@@ -79,7 +79,7 @@ export default function SanidadeFechamentoPage() {
           <div key={p.id} className="rounded border p-3 text-sm">
             <p className="font-semibold">[{p.severidade}] {p.regra}</p>
             <p>{p.mensagem}</p>
-            <p className="text-xs text-slate-500">Turma: {p.turma_id ?? "-"} · Matrícula: {p.matricula_id ?? "-"}</p>
+            <p className="text-xs text-muted-foreground">Turma: {p.turma_id ?? "-"} · Matrícula: {p.matricula_id ?? "-"}</p>
           </div>
         ))}
       </div>

@@ -48,7 +48,7 @@ const BADGE: Record<Status, string> = {
   em_recurso: "bg-sky-50 text-sky-800",
   resolvida_aprovada: "bg-emerald-50 text-emerald-800",
   resolvida_reprovada: "bg-rose-50 text-rose-800",
-  cancelada: "bg-slate-100 text-slate-600",
+  cancelada: "bg-muted text-muted-foreground",
 };
 
 function StatusIcon({ status }: { status: Status }) {
@@ -112,9 +112,9 @@ export default function DependenciasAcademicasPage() {
       />
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-xs font-semibold text-slate-500">Total</p>
-          <p className="mt-1 text-2xl font-black text-slate-950">{items.length}</p>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-xs font-semibold text-muted-foreground">Total</p>
+          <p className="mt-1 text-2xl font-black text-foreground">{items.length}</p>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-xs font-semibold text-amber-700">Em aberto</p>
@@ -126,11 +126,11 @@ export default function DependenciasAcademicasPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold text-slate-900">Fila de acompanhamento</h2>
-            <p className="mt-1 text-xs text-slate-500">
+            <h2 className="font-semibold text-foreground">Fila de acompanhamento</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
               Para resolver uma dependência, publique o recurso/exame extraordinário correspondente. O estado será sincronizado automaticamente.
             </p>
           </div>
@@ -138,7 +138,7 @@ export default function DependenciasAcademicasPage() {
             <select
               value={filter}
               onChange={(event) => setFilter(event.target.value as typeof filter)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              className="rounded-lg border border-border px-3 py-2 text-sm"
             >
               <option value="abertas">Em aberto</option>
               <option value="pendente">Pendentes</option>
@@ -150,7 +150,7 @@ export default function DependenciasAcademicasPage() {
             <button
               type="button"
               onClick={() => void load()}
-              className="rounded-lg border border-slate-200 p-2 text-slate-600"
+              className="rounded-lg border border-border p-2 text-muted-foreground"
               aria-label="Atualizar dependências"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -164,19 +164,19 @@ export default function DependenciasAcademicasPage() {
 
         <div className="mt-4 space-y-3">
           {!loading && visible.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+            <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
               Nenhuma dependência neste estado.
             </p>
           ) : null}
 
           {visible.map((item) => (
-            <article key={item.id} className="rounded-xl border border-slate-200 p-4">
+            <article key={item.id} className="rounded-xl border border-border p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
                   <StatusIcon status={item.status} />
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-950">{item.aluno.nome}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="font-semibold text-foreground">{item.aluno.nome}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {item.aluno.numero_processo ? `Processo ${item.aluno.numero_processo} · ` : ""}
                       {item.disciplina.nome}
                     </p>
@@ -187,17 +187,17 @@ export default function DependenciasAcademicasPage() {
                 </span>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
-                {item.origem.ano_letivo ? <span className="rounded-lg bg-slate-50 px-2 py-1">Origem {item.origem.ano_letivo}</span> : null}
-                {item.destino?.ano_letivo ? <span className="rounded-lg bg-slate-50 px-2 py-1">Destino {item.destino.ano_letivo}</span> : null}
-                {item.resultado.fonte ? <span className="rounded-lg bg-slate-50 px-2 py-1">{item.resultado.fonte.replace(/_/g, " ")}</span> : null}
-                {typeof item.resultado.nota === "number" ? <span className="rounded-lg bg-slate-50 px-2 py-1">Nota {item.resultado.nota.toFixed(1)}</span> : null}
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                {item.origem.ano_letivo ? <span className="rounded-lg bg-muted px-2 py-1">Origem {item.origem.ano_letivo}</span> : null}
+                {item.destino?.ano_letivo ? <span className="rounded-lg bg-muted px-2 py-1">Destino {item.destino.ano_letivo}</span> : null}
+                {item.resultado.fonte ? <span className="rounded-lg bg-muted px-2 py-1">{item.resultado.fonte.replace(/_/g, " ")}</span> : null}
+                {typeof item.resultado.nota === "number" ? <span className="rounded-lg bg-muted px-2 py-1">Nota {item.resultado.nota.toFixed(1)}</span> : null}
               </div>
 
-              <p className="mt-3 text-sm font-semibold text-slate-800">{item.presentation.title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.presentation.description}</p>
+              <p className="mt-3 text-sm font-semibold text-foreground">{item.presentation.title}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.presentation.description}</p>
               {item.presentation.nextAction ? (
-                <p className="mt-2 text-xs font-semibold text-slate-700">Próximo passo: {item.presentation.nextAction}</p>
+                <p className="mt-2 text-xs font-semibold text-foreground">Próximo passo: {item.presentation.nextAction}</p>
               ) : null}
 
               {!item.presentation.terminal ? (

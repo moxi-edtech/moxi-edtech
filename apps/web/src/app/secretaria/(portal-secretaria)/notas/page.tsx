@@ -45,11 +45,11 @@ export default function SecretariaNotasPage() {
   return (
     <Suspense fallback={
       <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
-        <div className="animate-pulse bg-slate-200 h-10 w-48 rounded mb-6" />
+        <div className="animate-pulse bg-muted-foreground/15 h-10 w-48 rounded mb-6" />
         <div className="grid md:grid-cols-3 gap-3">
-          <div className="h-10 bg-slate-100 rounded" />
-          <div className="h-10 bg-slate-100 rounded" />
-          <div className="h-10 bg-slate-100 rounded" />
+          <div className="h-10 bg-muted rounded" />
+          <div className="h-10 bg-muted rounded" />
+          <div className="h-10 bg-muted rounded" />
         </div>
       </div>
     }>
@@ -441,9 +441,9 @@ function SecretariaNotasContent() {
       </div>
 
       {loading ? (
-        <div className="rounded border bg-white p-4 text-sm text-slate-500">Carregando pauta...</div>
+        <div className="rounded border bg-card p-4 text-sm text-muted-foreground">Carregando pauta...</div>
       ) : pauta.length === 0 ? (
-        <div className="rounded border bg-white p-4 text-sm text-slate-500">
+        <div className="rounded border bg-card p-4 text-sm text-muted-foreground">
           Selecione a turma e disciplina para carregar os alunos.
         </div>
       ) : (

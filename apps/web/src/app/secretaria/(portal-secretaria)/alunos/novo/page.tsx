@@ -441,13 +441,13 @@ export default function AlunosPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-muted py-8">
       <div className={PORTAL_PAGE_INSET}>
         <div className="mb-4">
           <button
             type="button"
             onClick={() => router.back()}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeftIcon className="w-4 h-4" /> Voltar
           </button>
@@ -494,13 +494,13 @@ export default function AlunosPage() {
         )}
 
         <div className="flex justify-center mb-8">
-          <div className="bg-white rounded-2xl shadow-sm p-2 border border-gray-200">
+          <div className="bg-card rounded-2xl shadow-sm p-2 border border-border">
             <div className="flex space-x-1">
               <button
                 className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   activeTab === "add"
                     ? "bg-moxinexa-teal text-white shadow-md"
-                    : "text-gray-600 hover:text-moxinexa-teal"
+                    : "text-muted-foreground hover:text-moxinexa-teal"
                 }`}
                 onClick={() => setActiveTab("add")}
               >
@@ -510,7 +510,7 @@ export default function AlunosPage() {
                 className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   activeTab === "list"
                     ? "bg-moxinexa-teal text-white shadow-md"
-                    : "text-gray-600 hover:text-moxinexa-teal"
+                    : "text-muted-foreground hover:text-moxinexa-teal"
                 }`}
                 onClick={() => setActiveTab("list")}
               >
@@ -522,7 +522,7 @@ export default function AlunosPage() {
 
         {activeTab === "add" && (
           <div className="space-y-8">
-            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+            <div className="bg-card rounded-2xl shadow-xl p-6 border border-border">
               <div className="mb-8">
                 <div className="flex items-center justify-between max-w-3xl mx-auto">
                   {[1, 2, 3, 4].map((step) => (
@@ -533,14 +533,14 @@ export default function AlunosPage() {
                             ? "bg-moxinexa-teal text-white border-moxinexa-teal"
                             : step < currentStep
                             ? "bg-green-500 text-white border-green-500"
-                            : "bg-white text-gray-400 border-gray-300"
+                            : "bg-card text-muted-foreground border-border"
                         }`}
                       >
                         {step < currentStep ? <CheckCircleIcon className="w-5 h-5" /> : step}
                       </div>
                       <span
                         className={`text-xs mt-2 font-medium text-center ${
-                          step === currentStep ? "text-moxinexa-teal" : "text-gray-500"
+                          step === currentStep ? "text-moxinexa-teal" : "text-muted-foreground"
                         }`}
                       >
                         {step === 1 && "Pessoal"}
@@ -552,7 +552,7 @@ export default function AlunosPage() {
                   ))}
                 </div>
                 <div className="relative max-w-3xl mx-auto -mt-5">
-                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 -z-10">
+                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-muted-foreground/15 -z-10">
                     <div
                       className="h-full bg-moxinexa-teal transition-all duration-300"
                       style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
@@ -591,8 +591,8 @@ export default function AlunosPage() {
                   </div>
                 )}
 
-                <div className="bg-slate-50 border-l-4 border-slate-500 p-4 rounded-lg">
-                  <p className="text-sm text-slate-700 flex items-center gap-2">
+                <div className="bg-muted border-l-4 border-slate-500 p-4 rounded-lg">
+                  <p className="text-sm text-foreground flex items-center gap-2">
                     <InformationCircleIcon className="w-5 h-5" />
                     <span>
                       <strong>Fluxo:</strong> Cadastro rápido cria a candidatura com número de processo. A matrícula e o login só nascem após a confirmação financeira.
@@ -613,7 +613,7 @@ export default function AlunosPage() {
                         <input
                           type="text"
                           placeholder="Manuel"
-                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
                           value={formData.firstName}
                           onChange={(e) => handleInputChange("firstName", e.target.value)}
                           required
@@ -625,7 +625,7 @@ export default function AlunosPage() {
                         <input
                           type="text"
                           placeholder="José"
-                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
                           value={formData.lastName}
                           onChange={(e) => handleInputChange("lastName", e.target.value)}
                           required
@@ -638,7 +638,7 @@ export default function AlunosPage() {
                         <label className="block text-sm font-medium text-moxinexa-dark">Data de Nascimento *</label>
                         <input
                           type="date"
-                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
                           value={formData.birthDate}
                           onChange={(e) => handleInputChange("birthDate", e.target.value)}
                           required
@@ -681,7 +681,7 @@ export default function AlunosPage() {
                       <input
                         type="text"
                         placeholder="004568923LA049"
-                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                        className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
                         value={formData.idNumber}
                         onChange={(e) => handleInputChange("idNumber", e.target.value)}
                         required
@@ -703,7 +703,7 @@ export default function AlunosPage() {
                         <input
                           type="email"
                           placeholder="manuel.jose@escola.co.ao"
-                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
                           value={formData.email}
                           onChange={(e) => handleInputChange("email", e.target.value)}
                           required
@@ -715,7 +715,7 @@ export default function AlunosPage() {
                         <input
                           type="tel"
                           placeholder="+244 923 456 789"
-                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
                           value={formData.phone}
                           onChange={(e) => handleInputChange("phone", e.target.value)}
                           required
@@ -728,7 +728,7 @@ export default function AlunosPage() {
                       <input
                         type="text"
                         placeholder="Rua da Independência, nº 45 - Cazenga, Luanda"
-                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                        className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
                         value={formData.address}
                         onChange={(e) => handleInputChange("address", e.target.value)}
                         required
@@ -750,7 +750,7 @@ export default function AlunosPage() {
                         <input
                           type="text"
                           placeholder="António Manuel"
-                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
                           value={formData.guardianName}
                           onChange={(e) => handleInputChange("guardianName", e.target.value)}
                           required
@@ -762,7 +762,7 @@ export default function AlunosPage() {
                         <input
                           type="tel"
                           placeholder="+244 912 123 456"
-                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
                           value={formData.guardianPhone}
                           onChange={(e) => handleInputChange("guardianPhone", e.target.value)}
                           required
@@ -775,7 +775,7 @@ export default function AlunosPage() {
                       <input
                         type="email"
                         placeholder="encarregado@exemplo.co.ao"
-                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                        className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
                         value={formData.guardianEmail}
                         onChange={(e) => handleInputChange("guardianEmail", e.target.value)}
                       />
@@ -787,8 +787,8 @@ export default function AlunosPage() {
                   <div className="space-y-6 animate-fadeIn">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="text-xl font-semibold text-gray-900 mb-2">Interesse Académico</h2>
-                        <p className="text-gray-500 text-sm">
+                        <h2 className="text-xl font-semibold text-foreground mb-2">Interesse Académico</h2>
+                        <p className="text-muted-foreground text-sm">
                           Escolha Curso → Classe → Turno para sugerir uma turma preferencial do ano letivo.
                         </p>
                       </div>
@@ -846,18 +846,18 @@ export default function AlunosPage() {
                             </option>
                           ))}
                         </select>
-                        <p className="text-xs text-gray-500">Filtre pelas turmas que encaixam no turno desejado.</p>
+                        <p className="text-xs text-muted-foreground">Filtre pelas turmas que encaixam no turno desejado.</p>
                       </div>
 
                       <div className="space-y-2">
                         <label className="block text-sm font-medium">Ano Letivo</label>
                         <input
                           type="number"
-                          className="w-full border p-3 rounded-lg bg-gray-100"
+                          className="w-full border p-3 rounded-lg bg-muted"
                           value={formData.anoLetivo}
                           disabled
                         />
-                        <p className="text-xs text-gray-500">Usamos o ano ativo para sugerir as turmas.</p>
+                        <p className="text-xs text-muted-foreground">Usamos o ano ativo para sugerir as turmas.</p>
                       </div>
                     </div>
 
@@ -870,17 +870,17 @@ export default function AlunosPage() {
 
                     <div className="space-y-3">
                       <div className="flex items-center justify-between flex-wrap gap-2">
-                        <label className="block text-sm font-medium text-gray-700">Turma preferencial (opcional)</label>
-                        <span className="text-xs text-gray-500">Listamos turmas ativas do ano letivo selecionado.</span>
+                        <label className="block text-sm font-medium text-foreground">Turma preferencial (opcional)</label>
+                        <span className="text-xs text-muted-foreground">Listamos turmas ativas do ano letivo selecionado.</span>
                       </div>
 
                       {loadingTurmas ? (
-                        <div className="flex items-center gap-3 text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg p-4">
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground border border-dashed border-border rounded-lg p-4">
                           <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
                           A carregar turmas compatíveis...
                         </div>
                       ) : turmasDisponiveis.length === 0 ? (
-                        <div className="text-sm text-gray-500 italic border border-dashed border-gray-300 rounded-lg p-4">
+                        <div className="text-sm text-muted-foreground italic border border-dashed border-border rounded-lg p-4">
                           {formData.classeId
                             ? "Nenhuma turma ativa encontrada para esta combinação. O aluno ficará em lista de espera."
                             : "Selecione Curso, Classe e Turno (se quiser) para ver as turmas."}
@@ -894,7 +894,7 @@ export default function AlunosPage() {
                                 flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all
                                 ${formData.turmaPreferencialId === turma.id
                                   ? "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500"
-                                  : "border-gray-200 hover:border-emerald-200 hover:bg-gray-50"}
+                                  : "border-border hover:border-emerald-200 hover:bg-muted"}
                               `}
                             >
                               <div className="flex items-center gap-3">
@@ -907,13 +907,13 @@ export default function AlunosPage() {
                                   className="text-emerald-600 focus:ring-emerald-500"
                                 />
                                 <div>
-                                  <p className="font-bold text-gray-900">
+                                  <p className="font-bold text-foreground">
                                     {formatTurmaDisplayName(turma)}
                                     {turmaCodigo(turma) ? ` (${turmaCodigo(turma)})` : ""}
                                   </p>
-                                  <p className="text-xs text-gray-500 flex gap-2">
+                                  <p className="text-xs text-muted-foreground flex gap-2">
                                     <span>Turno: {formatTurnoDisplay(turma.turno) || "N/D"}</span>
-                                    <span className="text-gray-300">•</span>
+                                    <span className="text-muted-foreground">•</span>
                                     <span>Ano: {turma.ano_letivo ?? turma.ano ?? formData.anoLetivo}</span>
                                   </p>
                                 </div>
@@ -933,7 +933,7 @@ export default function AlunosPage() {
                             </label>
                           ))}
 
-                          <label className="flex items-center gap-3 p-3 text-sm text-gray-500 cursor-pointer">
+                          <label className="flex items-center gap-3 p-3 text-sm text-muted-foreground cursor-pointer">
                             <input
                               type="radio"
                               name="turma_pref"
@@ -946,17 +946,17 @@ export default function AlunosPage() {
                       )}
                     </div>
 
-                    <div className="border border-dashed border-gray-200 rounded-lg p-4 bg-gray-50">
-                      <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <div className="border border-dashed border-border rounded-lg p-4 bg-muted">
+                      <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                         <BanknotesIcon className="w-5 h-5" /> Pagamento da Matrícula
                       </h4>
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">Método</label>
+                          <label className="block text-sm font-medium text-foreground">Método</label>
                           <select
                             value={formData.paymentMethod}
                             onChange={(e) => handleInputChange("paymentMethod", e.target.value)}
-                            className="w-full rounded-lg border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
+                            className="w-full rounded-lg border-border focus:border-emerald-500 focus:ring-emerald-500"
                           >
                             <option value="">Selecione (financeiro)</option>
                             <option value="cartao_multicaixa">Cartão Multicaixa</option>
@@ -967,32 +967,32 @@ export default function AlunosPage() {
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">Referência / Observação</label>
+                          <label className="block text-sm font-medium text-foreground">Referência / Observação</label>
                           <input
                             type="text"
                             value={formData.paymentReference}
                             onChange={(e) => handleInputChange("paymentReference", e.target.value)}
                             placeholder="Ex: comprovativo #123, operação, terminal"
-                            className="w-full rounded-lg border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
+                            className="w-full rounded-lg border-border focus:border-emerald-500 focus:ring-emerald-500"
                           />
                         </div>
                       </div>
                       <div className="space-y-2 mt-3">
-                        <label className="block text-sm font-medium text-gray-700">URL do comprovativo (opcional)</label>
+                        <label className="block text-sm font-medium text-foreground">URL do comprovativo (opcional)</label>
                         <input
                           type="url"
                           value={formData.paymentReceiptUrl}
                           onChange={(e) => handleInputChange("paymentReceiptUrl", e.target.value)}
                           placeholder="Link para comprovativo / upload"
-                          className="w-full rounded-lg border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
+                          className="w-full rounded-lg border-border focus:border-emerald-500 focus:ring-emerald-500"
                         />
-                        <p className="text-xs text-gray-500">Essas informações ficam registradas na candidatura para o Financeiro compensar.</p>
+                        <p className="text-xs text-muted-foreground">Essas informações ficam registradas na candidatura para o Financeiro compensar.</p>
                       </div>
                     </div>
                   </div>
                 )}
 
-                <div className="flex justify-between pt-6 border-t border-gray-200">
+                <div className="flex justify-between pt-6 border-t border-border">
                   <Button
                     type="button"
                     onClick={prevStep}
@@ -1022,7 +1022,7 @@ export default function AlunosPage() {
                     >
                       {isSubmitting ? (
                         <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-border border-t-transparent rounded-full animate-spin" />
                           Finalizando Candidatura...
                         </>
                       ) : (
@@ -1037,12 +1037,12 @@ export default function AlunosPage() {
               </form>
             </div>
 
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-              <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+            <div className="bg-muted border border-border rounded-2xl p-6">
+              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                 <InformationCircleIcon className="w-5 h-5" />
                 Dicas Rápidas
               </h3>
-              <ul className="text-slate-800 text-sm space-y-2">
+              <ul className="text-foreground text-sm space-y-2">
                 <li>• Cadastro gera número de processo automático.</li>
                 <li>• Matrícula oficial e login só após confirmação financeira.</li>
                 <li>• Preencha curso pretendido para direcionar a candidatura.</li>
@@ -1052,7 +1052,7 @@ export default function AlunosPage() {
         )}
 
         {activeTab === "list" && (
-          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+          <div className="bg-card rounded-2xl shadow-xl p-6 border border-border">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-semibold text-moxinexa-dark">Lista de Estudantes</h2>
@@ -1072,7 +1072,7 @@ export default function AlunosPage() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
                     listStatus === "pendente"
                       ? "bg-amber-50 text-amber-700 border-amber-200"
-                      : "bg-white text-gray-500 border-gray-200"
+                      : "bg-card text-muted-foreground border-border"
                   }`}
                 >
                   Leads
@@ -1083,7 +1083,7 @@ export default function AlunosPage() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
                     listStatus === "ativo"
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-white text-gray-500 border-gray-200"
+                      : "bg-card text-muted-foreground border-border"
                   }`}
                 >
                   Matriculados
@@ -1093,7 +1093,7 @@ export default function AlunosPage() {
                 <input
                   type="text"
                   placeholder="Buscar por nome ou processo"
-                  className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                  className="w-full border border-border rounded-lg p-2 text-sm focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                   value={listQuery}
                   onChange={(e) => setListQuery(e.target.value)}
                 />
@@ -1103,7 +1103,7 @@ export default function AlunosPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 text-moxinexa-dark">
+                  <tr className="bg-muted text-moxinexa-dark">
                     <th className="px-4 py-3 text-left font-semibold rounded-l-lg">Nº Processo/BI</th>
                     <th className="px-4 py-3 text-left font-semibold">Nome</th>
                     <th className="px-4 py-3 text-left font-semibold">Email</th>
@@ -1112,17 +1112,17 @@ export default function AlunosPage() {
                     <th className="px-4 py-3 text-left font-semibold rounded-r-lg">Ação</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-border">
                   {listLoading && (
                     <tr>
-                      <td className="px-4 py-4 text-gray-500" colSpan={6}>
+                      <td className="px-4 py-4 text-muted-foreground" colSpan={6}>
                         Carregando lista...
                       </td>
                     </tr>
                   )}
                   {!listLoading && listItems.length === 0 && (
                     <tr>
-                      <td className="px-4 py-4 text-gray-500" colSpan={6}>
+                      <td className="px-4 py-4 text-muted-foreground" colSpan={6}>
                         Nenhum estudante encontrado.
                       </td>
                     </tr>
@@ -1139,8 +1139,8 @@ export default function AlunosPage() {
                       ? `/secretaria/candidaturas/${item.candidatura_id || item.id}/editar`
                       : null;
                     return (
-                      <tr key={item.id} className="hover:bg-gray-50 transition-colors duration-150">
-                        <td className="px-4 py-3 text-xs text-gray-700 font-mono">{documento}</td>
+                      <tr key={item.id} className="hover:bg-muted transition-colors duration-150">
+                        <td className="px-4 py-3 text-xs text-foreground font-mono">{documento}</td>
                         <td className="px-4 py-3 font-medium">{item.nome}</td>
                         <td className="px-4 py-3">{item.email || "—"}</td>
                         <td className="px-4 py-3">{contato}</td>
@@ -1170,7 +1170,7 @@ export default function AlunosPage() {
                               Resolver
                             </button>
                           ) : (
-                            <span className="text-xs text-gray-400">—</span>
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </td>
                       </tr>
@@ -1182,7 +1182,7 @@ export default function AlunosPage() {
           </div>
         )}
 
-        <div className="mt-10 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
+        <div className="mt-10 border-t border-border pt-4 text-center text-xs text-muted-foreground">
           KLASSE • Gestão escolar em escala • © 2025
         </div>
       </div>
