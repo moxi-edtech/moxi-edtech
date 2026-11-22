@@ -15,18 +15,6 @@ import { buildContextualPortalHref } from "@/lib/navigation";
 import { ReceiptBlockReclassificacaoModal } from "@/components/secretaria/virada-ano/ReclassificacaoFinalistasClient";
 import { reserveReceiptWindow, showIssuedReceipt, showReceiptPending } from "@/lib/financeiro/recover-receipt-after-payment";
 
-// ─── Tokens ──────────────────────────────────────────────────────────────────
-// Fonte de verdade: nunca usar cores avulsas fora deste mapa.
-const T = {
-  green:      "#1F6B3B",
-  green_ring: "ring-[#1F6B3B]/20",
-  gold:       "#E3B23C",
-  gold_ring:  "ring-[#E3B23C]/20",
-  rose:       "text-rose-600",
-  rose_bg:    "bg-rose-50",
-  rose_border:"border-rose-200",
-} as const;
-
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
@@ -177,14 +165,14 @@ function getFirstMissingPriorMensalidade(items: MensalidadeOption[], targetId: s
 function statusConfig(status?: string | null) {
   const s = (status ?? "").toLowerCase();
   if (s === "pago")
-    return { label: "Pago",      cls: "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20" };
+    return { label: "Pago",      cls: "bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300 border-klasse-green/20" };
   if (s === "pago_parcial")
-    return { label: "Parcial",   cls: "bg-[#E3B23C]/10 text-[#9a7010] border-[#E3B23C]/20" };
+    return { label: "Parcial",   cls: "bg-klasse-gold/10 text-klasse-gold-700 dark:text-klasse-gold-300 border-klasse-gold/20" };
   if (s === "pendente")
-    return { label: "Pendente",  cls: "bg-[#E3B23C]/10 text-[#9a7010] border-[#E3B23C]/20" };
+    return { label: "Pendente",  cls: "bg-klasse-gold/10 text-klasse-gold-700 dark:text-klasse-gold-300 border-klasse-gold/20" };
   if (s === "em_atraso" || s === "atraso")
     return { label: "Em atraso", cls: "bg-rose-50 text-rose-700 border-rose-200" };
-  return { label: status ?? "—", cls: "bg-slate-100 text-slate-600 border-slate-200" };
+  return { label: status ?? "—", cls: "bg-muted text-muted-foreground border-border" };
 }
 
 function summarizeReferencias(referencias: string[]) {
@@ -207,16 +195,16 @@ function MensalidadesSelector({
   disabled?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+    <div className="rounded-2xl border border-border bg-muted p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Mensalidades
         </p>
-        <span className="text-[11px] font-semibold text-slate-400">
+        <span className="text-[11px] font-semibold text-muted-foreground">
           {selectedIds.length} selecionada(s)
         </span>
       </div>
-      <p className="text-[11px] text-slate-500">
+      <p className="text-[11px] text-muted-foreground">
         O pagamento segue a ordem da competência mais antiga para a mais recente.
       </p>
 
@@ -234,8 +222,8 @@ function MensalidadesSelector({
               key={item.id}
               className={[
                 "flex items-start gap-3 rounded-2xl border px-3 py-3 transition-all",
-                checked ? "border-[#E3B23C] bg-white ring-2 ring-[#E3B23C]/10" : "border-slate-200 bg-white",
-                disabled || blocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-slate-300",
+                checked ? "border-klasse-gold bg-card ring-2 ring-klasse-gold/10" : "border-border bg-card",
+                disabled || blocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-border",
               ].join(" ")}
             >
               <input
@@ -243,24 +231,24 @@ function MensalidadesSelector({
                 checked={checked}
                 onChange={() => onToggle(item.id)}
                 disabled={disabled || blocked}
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-[#E3B23C] focus:ring-[#E3B23C]"
+                className="mt-1 h-4 w-4 rounded border-border text-klasse-gold-700 dark:text-klasse-gold-300 focus:ring-klasse-gold"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold text-slate-900">{mesAnoLabel(item.mes, item.ano)}</p>
+                    <p className="text-sm font-bold text-foreground">{mesAnoLabel(item.mes, item.ano)}</p>
                     {vencimentoLabel ? (
-                      <p className="text-[11px] text-slate-500">Venc. {vencimentoLabel}</p>
+                      <p className="text-[11px] text-muted-foreground">Venc. {vencimentoLabel}</p>
                     ) : null}
                   </div>
-                  <p className="text-sm font-black text-slate-900">{moneyAOA.format(item.valor)}</p>
+                  <p className="text-sm font-black text-foreground">{moneyAOA.format(item.valor)}</p>
                 </div>
                 <div className="mt-2">
                   <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${cls}`}>
                     {label}
                   </span>
                   {blocked ? (
-                    <span className="ml-2 inline-flex items-center rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                    <span className="ml-2 inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
                       Regularize a anterior
                     </span>
                   ) : null}
@@ -299,21 +287,21 @@ function MetodoGrid({
               "flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               active
-                ? "border-[#E3B23C] ring-4 ring-[#E3B23C]/10 bg-white"
-                : "border-slate-200 bg-white hover:bg-slate-50",
+                ? "border-klasse-gold ring-4 ring-klasse-gold/10 bg-card"
+                : "border-border bg-card hover:bg-muted",
             ].join(" ")}
           >
             <div className={[
               "h-9 w-9 rounded-xl border flex items-center justify-center flex-shrink-0",
               active
-                ? "border-[#E3B23C]/30 bg-[#E3B23C]/10"
-                : "border-slate-200 bg-slate-100",
+                ? "border-klasse-gold/30 bg-klasse-gold/10"
+                : "border-border bg-muted",
             ].join(" ")}>
-              <Icon className={`h-4 w-4 ${active ? "text-[#E3B23C]" : "text-slate-500"}`} />
+              <Icon className={`h-4 w-4 ${active ? "text-klasse-gold-700 dark:text-klasse-gold-300" : "text-muted-foreground"}`} />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900">{label}</p>
-              <p className="text-[11px] text-slate-400">{helper}</p>
+              <p className="text-sm font-bold text-foreground">{label}</p>
+              <p className="text-[11px] text-muted-foreground">{helper}</p>
             </div>
           </button>
         );
@@ -336,18 +324,18 @@ function DetalhesMetodo({
   if (metodo === "cash") return null;
 
   const inputCls = [
-    "w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold",
-    "text-slate-900 outline-none transition-all",
-    "focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20",
+    "w-full rounded-xl border border-border px-3 py-2.5 text-sm font-semibold",
+    "text-foreground outline-none transition-all",
+    "focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20",
     disabled ? "opacity-50 cursor-not-allowed" : "",
   ].join(" ");
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+    <div className="rounded-2xl border border-border bg-muted p-4 space-y-3">
       {/* Referência — obrigatória para TPA, opcional para outros */}
       {(metodo === "tpa" || metodo === "mcx" || metodo === "kiwk") && (
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+          <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
             Referência {metodo === "tpa" ? <span className="text-rose-500">*</span> : "(opcional)"}
           </label>
           <input
@@ -363,7 +351,7 @@ function DetalhesMetodo({
       {/* Gateway ref — MCX e KIWK */}
       {(metodo === "mcx" || metodo === "kiwk") && (
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+          <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
             Ref. gateway (opcional)
           </label>
           <input
@@ -379,7 +367,7 @@ function DetalhesMetodo({
       {/* Comprovativo — transferência */}
       {metodo === "transfer" && (
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+          <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
             URL do comprovativo <span className="text-rose-500">*</span>
           </label>
           <input
@@ -408,7 +396,7 @@ function ValorInput({
 }) {
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-bold text-slate-900">
+      <label className="block text-sm font-bold text-foreground">
         Valor recebido
       </label>
       <div className="relative">
@@ -421,13 +409,13 @@ function ValorInput({
           disabled={disabled}
           aria-label="Valor recebido em AOA"
           className={[
-            "w-full rounded-2xl border border-slate-200 bg-white",
-            "px-4 py-3 pr-16 text-xl font-black text-slate-900 outline-none transition-all",
-            "focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20",
+            "w-full rounded-2xl border border-border bg-card",
+            "px-4 py-3 pr-16 text-xl font-black text-foreground outline-none transition-all",
+            "focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20",
             disabled ? "opacity-50 cursor-not-allowed" : "",
           ].join(" ")}
         />
-        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">
           AOA
         </span>
       </div>
@@ -440,8 +428,8 @@ function ValorInput({
               type="button"
               onClick={() => onChange(String(v))}
               disabled={disabled}
-              className="rounded-full border border-slate-200 bg-white px-3 py-1.5
-                text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300
+              className="rounded-full border border-border bg-card px-3 py-1.5
+                text-xs font-semibold text-muted-foreground hover:bg-muted hover:border-border
                 transition-colors disabled:opacity-50"
             >
               {moneyAOA.format(v)}
@@ -457,21 +445,21 @@ function TrocoCard({ troco, valido }: { troco: number; valido: boolean }) {
   return (
     <div className={[
       "flex items-center justify-between rounded-2xl border p-4",
-      valido ? "border-slate-200 bg-white" : "border-rose-200 bg-rose-50",
+      valido ? "border-border bg-card" : "border-rose-200 bg-rose-50",
     ].join(" ")}>
       <div className="flex items-center gap-3">
-        <div className="h-9 w-9 rounded-xl bg-slate-100 border border-slate-200
+        <div className="h-9 w-9 rounded-xl bg-muted border border-border
           flex items-center justify-center">
-          <Calculator className="h-4 w-4 text-slate-500" />
+          <Calculator className="h-4 w-4 text-muted-foreground" />
         </div>
         <div>
-          <p className="text-sm font-bold text-slate-900">Troco</p>
-          <p className="text-[11px] text-slate-400">A devolver no balcão</p>
+          <p className="text-sm font-bold text-foreground">Troco</p>
+          <p className="text-[11px] text-muted-foreground">A devolver no balcão</p>
         </div>
       </div>
       <div className="text-right">
-        <p className="text-[10px] text-slate-400 mb-0.5">Valor</p>
-        <p className={`text-xl font-black ${valido ? "text-slate-900" : "text-rose-600"}`}>
+        <p className="text-[10px] text-muted-foreground mb-0.5">Valor</p>
+        <p className={`text-xl font-black ${valido ? "text-foreground" : "text-rose-600"}`}>
           {moneyAOA.format(troco)}
         </p>
       </div>
@@ -494,8 +482,8 @@ function ResumoCard({
   const saldoRestante = valorDevido - valorPago;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+    <div className="rounded-2xl border border-border bg-muted p-4 space-y-3">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
         Resumo
       </p>
       <div className="space-y-2 text-sm">
@@ -504,19 +492,19 @@ function ResumoCard({
           { label: "Valor recebido",        value: moneyAOA.format(valorPago) },
         ].map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between">
-            <span className="text-slate-500">{label}</span>
-            <span className="font-semibold text-slate-900">{value}</span>
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-semibold text-foreground">{value}</span>
           </div>
         ))}
         {isPartial ? (
-          <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
+          <div className="border-t border-border pt-2 flex items-center justify-between">
             <span className="font-bold text-amber-600">Saldo restante</span>
             <span className="font-black text-amber-600">{moneyAOA.format(saldoRestante)}</span>
           </div>
         ) : (
-          <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
-            <span className="font-bold text-slate-900">Troco</span>
-            <span className="font-black text-slate-900">{moneyAOA.format(troco)}</span>
+          <div className="border-t border-border pt-2 flex items-center justify-between">
+            <span className="font-bold text-foreground">Troco</span>
+            <span className="font-black text-foreground">{moneyAOA.format(troco)}</span>
           </div>
         )}
       </div>
@@ -608,7 +596,7 @@ function EstadoConcluido({
           </div>
           <div className="space-y-2">
             {loadingPagamentos ? (
-              <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500">
+              <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-card px-3 py-2 text-xs font-semibold text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 Carregando pagamentos pagos...
               </div>
@@ -618,11 +606,11 @@ function EstadoConcluido({
               return (
                 <div
                   key={pagamento.pagamento_id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-white px-3 py-2"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-card px-3 py-2"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-bold text-slate-900">{pagamento.referencia}</p>
-                    <p className="text-[11px] font-semibold text-slate-500">
+                    <p className="truncate text-xs font-bold text-foreground">{pagamento.referencia}</p>
+                    <p className="text-[11px] font-semibold text-muted-foreground">
                       {moneyAOA.format(pagamento.valor)}
                     </p>
                   </div>
@@ -1129,30 +1117,30 @@ export function ModalPagamentoRapido({
     <>
       {/* Overlay + modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl
-          ring-1 ring-slate-200 overflow-hidden">
+        <div className="w-full max-w-md rounded-2xl bg-card shadow-2xl
+          ring-1 ring-ring overflow-hidden">
 
           {/* ── Header ──────────────────────────────────────────────────── */}
-          <div className="relative border-b border-slate-100 px-6 py-4">
+          <div className="relative border-b border-border px-6 py-4">
             {/* Faixa dourada topo */}
             <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5
-              bg-gradient-to-r from-transparent via-[#E3B23C]/60 to-transparent" />
+              bg-gradient-to-r from-transparent via-klasse-gold/60 to-transparent" />
 
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3 min-w-0">
                 {/* Ícone */}
-                <div className="h-11 w-11 rounded-2xl bg-slate-100 border border-slate-200
+                <div className="h-11 w-11 rounded-2xl bg-muted border border-border
                   flex items-center justify-center flex-shrink-0">
                   {concluido
-                    ? <CheckCircle className="h-6 w-6 text-[#1F6B3B]" />
-                    : <CreditCard  className="h-6 w-6 text-slate-600" />
+                    ? <CheckCircle className="h-6 w-6 text-klasse-green dark:text-klasse-green-300" />
+                    : <CreditCard  className="h-6 w-6 text-muted-foreground" />
                   }
                 </div>
 
                 {/* Título + aluno */}
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-base font-black text-slate-900">
+                    <h2 className="text-base font-black text-foreground">
                       {concluido ? "Pagamento concluído" : "Pagamento rápido"}
                     </h2>
                     {mensalidadePrincipal && (
@@ -1162,15 +1150,15 @@ export function ModalPagamentoRapido({
                       </span>
                     )}
                   </div>
-                  <p className="mt-0.5 text-sm text-slate-500 truncate">{aluno.nome}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground truncate">{aluno.nome}</p>
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     {aluno.turma && (
-                      <span className="inline-flex rounded-full border border-slate-200
-                        px-2 py-0.5 text-[10px] text-slate-500">{aluno.turma}</span>
+                      <span className="inline-flex rounded-full border border-border
+                        px-2 py-0.5 text-[10px] text-muted-foreground">{aluno.turma}</span>
                     )}
                     {aluno.bi && (
-                      <span className="inline-flex rounded-full border border-slate-200
-                        px-2 py-0.5 text-[10px] text-slate-500">BI: {aluno.bi}</span>
+                      <span className="inline-flex rounded-full border border-border
+                        px-2 py-0.5 text-[10px] text-muted-foreground">BI: {aluno.bi}</span>
                     )}
                   </div>
                 </div>
@@ -1181,10 +1169,10 @@ export function ModalPagamentoRapido({
                   type="button"
                   onClick={safeClose}
                   aria-label="Fechar"
-                  className="flex-shrink-0 rounded-xl p-2 transition hover:bg-slate-100
-                    focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20"
+                  className="flex-shrink-0 rounded-xl p-2 transition hover:bg-muted
+                    focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
                 >
-                  <X className="h-5 w-5 text-slate-500" />
+                  <X className="h-5 w-5 text-muted-foreground" />
                 </button>
               )}
             </div>
@@ -1206,12 +1194,12 @@ export function ModalPagamentoRapido({
                 onReverter={handleReverterPagamento}
                 onClose={safeClose}
               />
-              <div aria-live="polite" className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+              <div aria-live="polite" className="rounded-xl border border-border bg-muted p-4 text-sm">
                 {receiptHandoff?.url ? (
                   <>
                     <p className="font-semibold text-emerald-800">Recibo emitido — disponível para impressão</p>
                     <a href={receiptHandoff.url} target="_blank" rel="noopener noreferrer"
-                      className="mt-3 inline-flex min-h-10 items-center rounded-lg border border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-800">
+                      className="mt-3 inline-flex min-h-10 items-center rounded-lg border border-emerald-600 bg-card px-4 py-2 text-sm font-semibold text-emerald-800">
                       Imprimir recibo
                     </a>
                   </>
@@ -1233,7 +1221,7 @@ export function ModalPagamentoRapido({
                     </a>
                   </>
                 ) : (
-                  <p className="text-xs text-slate-600">Pode consultar os recibos já emitidos no perfil financeiro do aluno.</p>
+                  <p className="text-xs text-muted-foreground">Pode consultar os recibos já emitidos no perfil financeiro do aluno.</p>
                 )}
               </div>
               </div>
@@ -1250,22 +1238,22 @@ export function ModalPagamentoRapido({
                       disabled={processando}
                     />
                   ) : (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="rounded-2xl border border-border bg-muted p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                             Mensalidade
                           </p>
-                          <p className="mt-1 text-base font-bold text-slate-900">{mesAno}</p>
+                          <p className="mt-1 text-base font-bold text-foreground">{mesAno}</p>
                           {vencimentoLabel && (
-                            <p className="mt-0.5 text-xs text-slate-500">
-                              Venc. <span className="font-semibold text-slate-700">{vencimentoLabel}</span>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              Venc. <span className="font-semibold text-foreground">{vencimentoLabel}</span>
                             </p>
                           )}
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="text-[10px] text-slate-400">Valor</p>
-                          <p className="text-xl font-black text-slate-900">
+                          <p className="text-[10px] text-muted-foreground">Valor</p>
+                          <p className="text-xl font-black text-foreground">
                             {moneyAOA.format(mensalidadePrincipal?.valor ?? 0)}
                           </p>
                         </div>
@@ -1273,8 +1261,8 @@ export function ModalPagamentoRapido({
                     </div>
                   )
                 ) : (
-                  <div className="rounded-2xl border border-[#E3B23C]/20 bg-[#E3B23C]/5
-                    p-4 text-sm text-slate-600">
+                  <div className="rounded-2xl border border-klasse-gold/20 bg-klasse-gold/5
+                    p-4 text-sm text-muted-foreground">
                     Nenhuma mensalidade seleccionada.
                   </div>
                 )}
@@ -1282,8 +1270,8 @@ export function ModalPagamentoRapido({
                 {/* Método de pagamento */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-bold text-slate-900">Método</p>
-                    <span className="text-[11px] text-slate-400">Padrão: Cash</span>
+                    <p className="text-sm font-bold text-foreground">Método</p>
+                    <span className="text-[11px] text-muted-foreground">Padrão: Cash</span>
                   </div>
                   <MetodoGrid value={metodo} onChange={setMetodo} disabled={processando} />
                   <DetalhesMetodo
@@ -1296,17 +1284,17 @@ export function ModalPagamentoRapido({
 
                 {/* Valor recebido */}
                 {isBatchMode ? (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="rounded-2xl border border-border bg-muted p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                           Total automático
                         </p>
-                        <p className="mt-1 text-base font-bold text-slate-900">
+                        <p className="mt-1 text-base font-bold text-foreground">
                           {mensalidadesSelecionadas.length} mensalidade(s)
                         </p>
                       </div>
-                      <p className="text-2xl font-black text-slate-900">{moneyAOA.format(valorDevido)}</p>
+                      <p className="text-2xl font-black text-foreground">{moneyAOA.format(valorDevido)}</p>
                     </div>
                   </div>
                 ) : (
@@ -1326,7 +1314,7 @@ export function ModalPagamentoRapido({
                     </p>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
                           Motivo <span className="text-rose-500">*</span>
                         </label>
                         <textarea
@@ -1334,11 +1322,11 @@ export function ModalPagamentoRapido({
                           onChange={e => setDetalhes(prev => ({ ...prev, partial_reason: e.target.value }))}
                           disabled={processando}
                           placeholder="Ex: Aluno esqueceu parte do valor..."
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 min-h-[60px]"
+                          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 min-h-[60px]"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
                           Próximo pagamento (Promessa) <span className="text-rose-500">*</span>
                         </label>
                         <input
@@ -1346,7 +1334,7 @@ export function ModalPagamentoRapido({
                           value={detalhes.promise_date}
                           onChange={e => setDetalhes(prev => ({ ...prev, promise_date: e.target.value }))}
                           disabled={processando}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
+                          className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10"
                         />
                       </div>
                     </div>
@@ -1370,7 +1358,7 @@ export function ModalPagamentoRapido({
           </div>
 
           {/* ── Footer ──────────────────────────────────────────────────── */}
-          <div className="border-t border-slate-100 bg-white px-6 py-4">
+          <div className="border-t border-border bg-card px-6 py-4">
             {concluido ? null : (
               <div className="flex gap-3">
                 <Button
@@ -1385,7 +1373,7 @@ export function ModalPagamentoRapido({
                   ref={confirmBtnRef}
                   onClick={submit}
                   disabled={!canConfirm || processando}
-                  className="flex-1 rounded-xl bg-[#E3B23C] text-white
+                  className="flex-1 rounded-xl bg-klasse-gold text-klasse-gold-900
                     hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {processando ? (

@@ -675,11 +675,11 @@ export default function CurriculumBuilder({
   const tipoColors = TYPE_COLORS[currentTipo];
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 font-sans text-slate-900">
+    <div className="min-h-screen bg-muted p-6 font-sans text-foreground">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* SIDEBAR */}
         <div className="lg:col-span-3 space-y-6">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 sticky top-6">
+          <div className="bg-card rounded-2xl p-6 shadow-sm border border-border sticky top-6">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-white shadow-lg">
                 <Layers size={20} />
@@ -693,7 +693,7 @@ export default function CurriculumBuilder({
 
             {/* Steps Indicator */}
             <div className="space-y-0 relative">
-              <div className="absolute left-[15px] top-4 bottom-4 w-0.5 bg-slate-100 -z-10" />
+              <div className="absolute left-[15px] top-4 bottom-4 w-0.5 bg-muted -z-10" />
               {["Tipo", "Classes", "Turnos", "Matriz"].map((label, idx) => {
                 const s = idx + 1;
                 const active = step === s;
@@ -704,10 +704,10 @@ export default function CurriculumBuilder({
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all
                       ${
                         active
-                          ? "bg-slate-900 text-white ring-4 ring-slate-100"
+                          ? "bg-primary text-primary-foreground ring-4 ring-ring"
                           : done
                           ? "bg-teal-500 text-white"
-                          : "bg-slate-100 text-slate-400"
+                          : "bg-muted text-muted-foreground"
                       }
                     `}
                     >
@@ -715,7 +715,7 @@ export default function CurriculumBuilder({
                     </div>
                     <span
                       className={`text-sm font-medium ${
-                        active ? "text-slate-900" : "text-slate-500"
+                        active ? "text-foreground" : "text-muted-foreground"
                       }`}
                     >
                       {label}
@@ -727,17 +727,17 @@ export default function CurriculumBuilder({
 
             {/* Resumo Dinâmico */}
             {config.presetKey && (
-              <div className="mt-8 pt-6 border-t border-slate-100 text-xs space-y-3 animate-in fade-in">
-                <p className="font-bold text-slate-400 uppercase tracking-wider">
+              <div className="mt-8 pt-6 border-t border-border text-xs space-y-3 animate-in fade-in">
+                <p className="font-bold text-muted-foreground uppercase tracking-wider">
                   Resumo
                 </p>
 
                 <div className="flex items-center gap-2 mb-2">
                   <div
                     className={`w-6 h-6 rounded-lg ${
-                      tipoColors?.bgLight || "bg-slate-50"
+                      tipoColors?.bgLight || "bg-muted"
                     } border ${
-                      tipoColors?.border || "border-slate-200"
+                      tipoColors?.border || "border-border"
                     } flex items-center justify-center`}
                   >
                     {(() => {
@@ -748,16 +748,16 @@ export default function CurriculumBuilder({
                       return (
                         <Icon
                           size={12}
-                          className={tipoColors?.text || "text-slate-600"}
+                          className={tipoColors?.text || "text-muted-foreground"}
                         />
                       );
                     })()}
                   </div>
                   <div>
-                    <div className="font-bold text-slate-800 truncate">
+                    <div className="font-bold text-foreground truncate">
                       {config.label || "Sem nome"}
                     </div>
-                    <div className="text-[11px] text-slate-500">
+                    <div className="text-[11px] text-muted-foreground">
                       {getTypeLabel(currentTipo)}
                       {config.isCustom && (
                         <span className="ml-1 inline-block px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
@@ -768,7 +768,7 @@ export default function CurriculumBuilder({
                   </div>
                 </div>
 
-                <div className="flex justify-between pt-2 border-t border-slate-50">
+                <div className="flex justify-between pt-2 border-t border-border">
                   <span>Classes:</span>{" "}
                   <strong>{config.classes.length}</strong>
                 </div>
@@ -792,16 +792,16 @@ export default function CurriculumBuilder({
 
         {/* MAIN CONTENT */}
         <div className="lg:col-span-9">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 min-h-[600px] flex flex-col">
+          <div className="bg-card rounded-2xl shadow-xl border border-border min-h-[600px] flex flex-col">
             {/* Header */}
-            <div className="p-8 border-b border-slate-100">
-              <h1 className="text-2xl font-bold text-slate-800">
+            <div className="p-8 border-b border-border">
+              <h1 className="text-2xl font-bold text-foreground">
                 {step === 1 && "Selecione o Modelo Base"}
                 {step === 2 && "Configurar Classes"}
                 {step === 3 && "Configurar Turnos"}
                 {step === 4 && "Matriz Curricular"}
               </h1>
-              <p className="text-slate-500 text-sm mt-1">
+              <p className="text-muted-foreground text-sm mt-1">
                 {step === 1 &&
                   "Escolha um nível ou curso técnico para começar. Cursos personalizados herdam ícone e cor do tipo associado."}
                 {step === 2 && "Selecione as classes (anos) que este curso terá."}
@@ -821,10 +821,10 @@ export default function CurriculumBuilder({
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-800">
+                        <h3 className="text-sm font-semibold text-foreground">
                           De qual tipo será o curso?
                         </h3>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           Escolha se é um curso PUNIV ou Técnico para alinhar com os modelos do currículo oficial.
                         </p>
                       </div>
@@ -851,7 +851,7 @@ export default function CurriculumBuilder({
                             className={`p-4 rounded-xl border-2 text-left flex gap-3 items-start transition-all ${
                               active
                                 ? "border-teal-500 bg-teal-50 shadow-sm"
-                                : "border-slate-200 hover:border-teal-200"
+                                : "border-border hover:border-teal-200"
                             }`}
                           >
                             <div
@@ -860,10 +860,10 @@ export default function CurriculumBuilder({
                               <Icon className={`w-5 h-5 ${colors.text}`} />
                             </div>
                             <div>
-                              <div className="font-bold text-sm text-slate-800">
+                              <div className="font-bold text-sm text-foreground">
                                 {opt.label}
                               </div>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-muted-foreground">
                                 {opt.description}
                               </p>
                             </div>
@@ -876,17 +876,17 @@ export default function CurriculumBuilder({
                         className={`p-4 rounded-xl border-2 text-left flex gap-3 items-start transition-all ${
                           trackFilter === "all"
                             ? "border-slate-900 bg-slate-900 text-white"
-                            : "border-slate-200 hover:border-slate-300"
+                            : "border-border hover:border-border"
                         }`}
                       >
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 text-slate-600 border border-slate-200">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center bg-muted text-muted-foreground border border-border">
                           <Layers className="w-5 h-5" />
                         </div>
                         <div>
                           <div className="font-bold text-sm">
                             Outro / ver todos os modelos
                           </div>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted-foreground">
                             Inclui Primário, 1º Ciclo e demais presets.
                           </p>
                         </div>
@@ -911,7 +911,7 @@ export default function CurriculumBuilder({
                           className={`px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${
                             isActive
                               ? "bg-slate-900 text-white"
-                              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                              : "bg-muted text-muted-foreground hover:bg-muted-foreground/15"
                           }`}
                         >
                           <cat.icon size={14} /> {cat.label}
@@ -926,13 +926,13 @@ export default function CurriculumBuilder({
                   {/* Botão para criar curso custom */}
                   <button
                     onClick={() => setShowModal(true)}
-                    className="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-teal-400 transition-all flex flex-col items-center justify-center gap-2 group"
+                    className="w-full p-4 rounded-xl border-2 border-dashed border-border hover:border-teal-400 transition-all flex flex-col items-center justify-center gap-2 group"
                   >
-                    <PlusCircle className="w-8 h-8 text-slate-400 group-hover:text-teal-500 transition-colors" />
-                    <span className="text-sm font-bold text-slate-600 group-hover:text-teal-700">
+                    <PlusCircle className="w-8 h-8 text-muted-foreground group-hover:text-teal-500 transition-colors" />
+                    <span className="text-sm font-bold text-muted-foreground group-hover:text-teal-700">
                       Criar Curso Personalizado
                     </span>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-muted-foreground">
                       Ideal para cursos como Ciências Aeronáuticas, Agropecuária,
                       etc.
                     </span>
@@ -952,7 +952,7 @@ export default function CurriculumBuilder({
                             ${
                               isSelected
                                 ? "border-teal-500 bg-teal-50"
-                                : "border-slate-100 hover:border-teal-200"
+                                : "border-border hover:border-teal-200"
                             }
                           `}
                         >
@@ -965,7 +965,7 @@ export default function CurriculumBuilder({
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <h3 className="font-bold text-slate-800 truncate">
+                              <h3 className="font-bold text-foreground truncate">
                                 {p.label || p.nome}
                               </h3>
                               {p.isCustom && (
@@ -979,12 +979,12 @@ export default function CurriculumBuilder({
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-slate-500 truncate">
+                            <p className="text-xs text-muted-foreground truncate">
                               {p.classes?.length || 0} classes •{" "}
                               {p.subjects?.length || p.subjectsCount || 0}{" "}
                               disciplinas
                             </p>
-                            <p className="text-xs text-slate-400 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               {p.description}
                             </p>
                           </div>
@@ -1006,10 +1006,10 @@ export default function CurriculumBuilder({
               {step === 2 && (
                 <div className="animate-in fade-in">
                   <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-slate-800 mb-1">
+                    <h3 className="text-lg font-semibold text-foreground mb-1">
                       Selecione as classes para {config.label || "o curso"}
                     </h3>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-muted-foreground">
                       Estas classes serão usadas para criar disciplinas e,
                       depois, turmas.
                     </p>
@@ -1023,7 +1023,7 @@ export default function CurriculumBuilder({
                           ${
                             config.classes.includes(cls)
                               ? "bg-slate-800 text-white border-slate-800 shadow-lg"
-                              : "bg-white text-slate-400 border-slate-200 hover:border-slate-300"
+                              : "bg-card text-muted-foreground border-border hover:border-border"
                           }
                         `}
                       >
@@ -1032,7 +1032,7 @@ export default function CurriculumBuilder({
                     ))}
                   </div>
                   {config.classes.length > 0 && (
-                    <div className="p-4 bg-slate-50 text-slate-700 text-sm rounded-xl border border-slate-100">
+                    <div className="p-4 bg-muted text-foreground text-sm rounded-xl border border-border">
                       <span className="font-bold">✓ Selecionadas: </span>
                       {config.classes.join(", ")}
                     </div>
@@ -1072,7 +1072,7 @@ export default function CurriculumBuilder({
                           ${
                             active
                               ? "border-teal-500 bg-teal-50 text-teal-800"
-                              : "border-slate-100 hover:border-slate-300 text-slate-400"
+                              : "border-border hover:border-border text-muted-foreground"
                           }
                         `}
                       >
@@ -1103,19 +1103,19 @@ export default function CurriculumBuilder({
                       value={newSubject}
                       onChange={(e) => setNewSubject(e.target.value)}
                       placeholder="Adicionar disciplina extra..."
-                      className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-500"
+                      className="flex-1 px-4 py-2 border border-border rounded-lg text-sm outline-none focus:border-teal-500"
                       onKeyDown={(e) => e.key === "Enter" && handleAddSubject()}
                     />
                     <button
                       onClick={handleAddSubject}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold"
+                      className="bg-muted hover:bg-muted-foreground/15 text-foreground px-4 py-2 rounded-lg text-xs font-bold"
                     >
                       + Adicionar
                     </button>
                   </div>
 
                   {/* Tabela */}
-                  <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-sm">
+                  <div className="overflow-x-auto border border-border rounded-xl shadow-sm">
                     <div ref={subjectsScrollRef} className="max-h-[400px] overflow-y-auto">
                     <table className="w-full table-fixed text-sm text-left">
                       <thead className="bg-slate-900 text-white text-xs uppercase sticky top-0 z-20" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
@@ -1136,7 +1136,7 @@ export default function CurriculumBuilder({
                             </th>
                           ))}
                         </tr>
-                        <tr className="bg-slate-800 text-slate-300 text-[10px]">
+                        <tr className="bg-muted text-foreground text-[10px]">
                           <th className="px-4 py-2 sticky left-0 bg-slate-800" />
                           {config.classes.map((cls) =>
                             Object.entries(config.turnos).map(
@@ -1154,7 +1154,7 @@ export default function CurriculumBuilder({
                         </tr>
                       </thead>
                       <tbody
-                        className="divide-y divide-slate-100"
+                        className="divide-y divide-border"
                         style={
                           hasSubjects
                             ? {
@@ -1169,7 +1169,7 @@ export default function CurriculumBuilder({
                           <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                             <td
                               colSpan={10}
-                              className="p-8 text-center text-slate-400"
+                              className="p-8 text-center text-muted-foreground"
                             >
                               Nenhuma disciplina configurada. Adicione acima ou
                               continue apenas com o preset padrão.
@@ -1181,7 +1181,7 @@ export default function CurriculumBuilder({
                             return (
                               <tr
                                 key={sub}
-                                className="hover:bg-slate-50"
+                                className="hover:bg-muted"
                                 style={{
                                   position: "absolute",
                                   top: 0,
@@ -1192,7 +1192,7 @@ export default function CurriculumBuilder({
                                   tableLayout: "fixed",
                                 }}
                               >
-                                <td className="px-4 py-3 font-medium text-slate-700 sticky left-0 bg-white border-r border-slate-100">
+                                <td className="px-4 py-3 font-medium text-foreground sticky left-0 bg-card border-r border-border">
                                   {sub}
                                 </td>
                                 {config.classes.map((cls) =>
@@ -1205,7 +1205,7 @@ export default function CurriculumBuilder({
                                       return (
                                         <td
                                           key={k}
-                                          className="px-2 py-2 text-center border-l border-slate-100"
+                                          className="px-2 py-2 text-center border-l border-border"
                                         >
                                           <div
                                             onClick={() =>
@@ -1218,7 +1218,7 @@ export default function CurriculumBuilder({
                                             className={`w-5 h-5 mx-auto rounded border cursor-pointer flex items-center justify-center transition-colors ${
                                               checked
                                                 ? "bg-teal-500 border-teal-500 text-white"
-                                                : "bg-white border-slate-300 hover:border-teal-400"
+                                                : "bg-card border-border hover:border-teal-400"
                                             }`}
                                           >
                                             {checked && (
@@ -1246,11 +1246,11 @@ export default function CurriculumBuilder({
             </div>
 
             {/* Footer */}
-            <div className="p-6 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-between">
+            <div className="p-6 border-t border-border bg-muted rounded-b-2xl flex justify-between">
               <button
                 onClick={onCancel ?? handleBack}
                 disabled={step === 1 && !onCancel}
-                className="text-slate-500 font-bold text-sm px-4 py-2 hover:bg-white rounded-lg transition disabled:opacity-30"
+                className="text-muted-foreground font-bold text-sm px-4 py-2 hover:bg-card rounded-lg transition disabled:opacity-30"
               >
                 <ChevronLeft size={16} className="inline mr-1" />{" "}
                 {step === 1 && onCancel ? "Cancelar" : "Voltar"}
@@ -1373,28 +1373,28 @@ function CustomCourseModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-card w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 p-6 space-y-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center">
           <div>
-            <h3 className="font-bold text-lg text-slate-800">
+            <h3 className="font-bold text-lg text-foreground">
               Criar Curso Personalizado
             </h3>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               O curso herdará ícone e cor do tipo associado (preset oficial).
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-slate-100 rounded-full"
+            className="p-1 hover:bg-muted rounded-full"
           >
-            <X className="w-5 h-5 text-slate-400" />
+            <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
         <div className="space-y-4">
           {/* Nome do curso */}
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+            <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
               Nome do Curso Personalizado *
             </label>
             <input
@@ -1402,7 +1402,7 @@ function CustomCourseModal({
               onChange={(e) =>
                 setData((prev) => ({ ...prev, label: e.target.value }))
               }
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+              className="w-full px-4 py-2 border border-border rounded-lg text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
               placeholder="Ex: Ciências Aeronáuticas, Agropecuária, Mecatrónica..."
               required
             />
@@ -1410,10 +1410,10 @@ function CustomCourseModal({
 
           {/* Tipo oficial associado */}
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+            <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
               Associar a Tipo Oficial (Preset) *
             </label>
-            <p className="text-xs text-slate-500 mb-2">
+            <p className="text-xs text-muted-foreground mb-2">
               Isso define o tipo (puniv, tecnico, etc.), o ícone e a cor
               em todo o sistema.
             </p>
@@ -1443,7 +1443,7 @@ function CustomCourseModal({
                   };
                 });
               }}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+              className="w-full px-4 py-2 border border-border rounded-lg text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
               required
             >
               <option value="">Selecione um tipo...</option>
@@ -1459,7 +1459,7 @@ function CustomCourseModal({
             </select>
 
             {data.associatedPreset && (
-              <div className="mt-2 p-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center gap-3">
+              <div className="mt-2 p-3 rounded-lg bg-muted border border-border flex items-center gap-3">
                 <div
                   className={`w-10 h-10 rounded ${selectedColors.bgLight} border ${selectedColors.border} flex items-center justify-center`}
                 >
@@ -1469,10 +1469,10 @@ function CustomCourseModal({
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-700">
+                  <p className="text-sm font-medium text-foreground">
                     Tipo: {getTypeLabel(selectedTipo!)}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     O curso aparecerá com este ícone e cor nas listagens,
                     matrículas e turmas.
                   </p>
@@ -1483,7 +1483,7 @@ function CustomCourseModal({
 
           {/* Classes */}
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+            <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
               Classes *
             </label>
             <div className="flex flex-wrap gap-2">
@@ -1505,7 +1505,7 @@ function CustomCourseModal({
                     className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
                       active
                         ? "bg-slate-800 text-white border-slate-800"
-                        : "bg-white border-slate-300 hover:border-slate-400"
+                        : "bg-card border-border hover:border-border"
                     }`}
                   >
                     {cls}
@@ -1517,14 +1517,14 @@ function CustomCourseModal({
 
           {/* Disciplinas */}
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+            <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">
               Disciplinas *
             </label>
             <div className="flex gap-2 mb-2">
               <input
                 value={newSub}
                 onChange={(e) => setNewSub(e.target.value)}
-                className="flex-1 px-3 py-1.5 border border-slate-300 rounded text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                className="flex-1 px-3 py-1.5 border border-border rounded text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
                 placeholder="Nome da disciplina"
                 onKeyDown={(e) => e.key === "Enter" && handleAddSub()}
               />
@@ -1539,7 +1539,7 @@ function CustomCourseModal({
               {data.subjects.map((s) => (
                 <span
                   key={s}
-                  className="bg-slate-100 px-3 py-1.5 rounded-lg text-sm text-slate-600 flex items-center gap-1"
+                  className="bg-muted px-3 py-1.5 rounded-lg text-sm text-muted-foreground flex items-center gap-1"
                 >
                   {s}
                   <button
@@ -1552,7 +1552,7 @@ function CustomCourseModal({
                         ),
                       }))
                     }
-                    className="w-4 h-4 rounded-full hover:bg-slate-200 flex items-center justify-center"
+                    className="w-4 h-4 rounded-full hover:bg-muted-foreground/15 flex items-center justify-center"
                   >
                     ×
                   </button>
@@ -1562,10 +1562,10 @@ function CustomCourseModal({
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+        <div className="flex justify-end gap-3 pt-4 border-t border-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700"
+            className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
           >
             Cancelar
           </button>

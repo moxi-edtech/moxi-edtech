@@ -64,14 +64,14 @@ export function RematriculaBalcaoCard({
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="xl:col-span-12 rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
+      <div className="xl:col-span-12 rounded-2xl border border-border bg-card shadow-sm p-5 space-y-3">
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded-full bg-slate-200 animate-pulse" />
-          <div className="h-4 w-32 bg-slate-200 rounded animate-pulse" />
+          <div className="h-5 w-5 rounded-full bg-muted-foreground/15 animate-pulse" />
+          <div className="h-4 w-32 bg-muted-foreground/15 rounded animate-pulse" />
         </div>
-        <div className="h-3 w-48 bg-slate-100 rounded animate-pulse" />
+        <div className="h-3 w-48 bg-muted rounded animate-pulse" />
         <div className="pt-2">
-          <div className="h-10 w-full bg-slate-100 rounded-xl animate-pulse" />
+          <div className="h-10 w-full bg-muted rounded-xl animate-pulse" />
         </div>
       </div>
     );
@@ -86,20 +86,20 @@ export function RematriculaBalcaoCard({
     // ── READY ─────────────────────────────────────────────────────────────
     case "READY":
       return (
-        <div className="xl:col-span-12 rounded-2xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 shadow-sm p-5 space-y-3">
+        <div className="xl:col-span-12 rounded-2xl border border-klasse-green/20 bg-klasse-green/5 shadow-sm p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-[#1F6B3B]" />
-            <h3 className="text-sm font-bold uppercase tracking-wide text-[#1F6B3B]">
+            <CheckCircle className="h-5 w-5 text-klasse-green dark:text-klasse-green-300" />
+            <h3 className="text-sm font-bold uppercase tracking-wide text-klasse-green dark:text-klasse-green-300">
               Rematrícula {anoLabel}
             </h3>
-            <span className="ml-auto inline-flex items-center rounded-full bg-white border border-[#1F6B3B]/10 px-2 py-0.5 text-xs font-semibold text-[#1F6B3B]">
+            <span className="ml-auto inline-flex items-center rounded-full bg-card border border-klasse-green/10 px-2 py-0.5 text-xs font-semibold text-klasse-green dark:text-klasse-green-300">
               {anoLabel}
             </span>
           </div>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted-foreground">
             Confirme a permanência do aluno em {anoLabel}.
             {turmaAtual && (
-              <span className="block mt-1 text-slate-500">
+              <span className="block mt-1 text-muted-foreground">
                 Turma actual: <strong>{turmaAtual}</strong>
               </span>
             )}
@@ -108,7 +108,7 @@ export function RematriculaBalcaoCard({
             <button
               onClick={onConfirmar}
               className="w-full flex items-center justify-center gap-2 rounded-xl
-                bg-[#1F6B3B] px-4 py-2.5 text-sm font-bold text-white
+                bg-klasse-green px-4 py-2.5 text-sm font-bold text-white
                 transition-all hover:brightness-110 active:scale-[0.98]"
             >
               <RefreshCw className="h-4 w-4" />
@@ -132,7 +132,7 @@ export function RematriculaBalcaoCard({
             Regularize as dívidas do aluno antes de continuar.
           </p>
           {debt && (
-            <div className="rounded-xl border border-rose-200 bg-white/60 p-3 flex items-baseline justify-between">
+            <div className="rounded-xl border border-rose-200 bg-card/60 p-3 flex items-baseline justify-between">
               <span className="text-sm text-rose-700">Dívida acumulada</span>
               <span className="text-lg font-black text-rose-800">
                 {kwanza.format(debt.total)}
@@ -181,17 +181,17 @@ export function RematriculaBalcaoCard({
     // ── ALREADY_COMPLETED ─────────────────────────────────────────────────
     case "ALREADY_COMPLETED":
       return (
-        <div className="xl:col-span-12 rounded-2xl border border-[#1F6B3B]/30 bg-[#1F6B3B]/10 shadow-sm p-5 space-y-3">
+        <div className="xl:col-span-12 rounded-2xl border border-klasse-green/30 bg-klasse-green/10 shadow-sm p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-[#1F6B3B]" />
-            <h3 className="text-sm font-bold uppercase tracking-wide text-[#1F6B3B]">
+            <CheckCircle className="h-5 w-5 text-klasse-green dark:text-klasse-green-300" />
+            <h3 className="text-sm font-bold uppercase tracking-wide text-klasse-green dark:text-klasse-green-300">
               Rematrícula concluída
             </h3>
-            <span className="ml-auto inline-flex items-center rounded-full bg-white border border-[#1F6B3B]/10 px-2 py-0.5 text-xs font-semibold text-[#1F6B3B]">
+            <span className="ml-auto inline-flex items-center rounded-full bg-card border border-klasse-green/10 px-2 py-0.5 text-xs font-semibold text-klasse-green dark:text-klasse-green-300">
               {anoLabel}
             </span>
           </div>
-          <div className="text-sm text-slate-700 space-y-1">
+          <div className="text-sm text-foreground space-y-1">
             {pedido?.created_at && (
               <p>
                 Data:{" "}
@@ -218,8 +218,8 @@ export function RematriculaBalcaoCard({
                 <button
                   onClick={() => window.open(comprovante.printUrl, "_blank", "noopener,noreferrer")}
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl
-                    bg-white border border-[#1F6B3B]/20 px-4 py-2 text-sm font-bold
-                    text-[#1F6B3B] hover:bg-[#1F6B3B]/5 transition-colors"
+                    bg-card border border-klasse-green/20 px-4 py-2 text-sm font-bold
+                    text-klasse-green dark:text-klasse-green-300 hover:bg-klasse-green/5 transition-colors"
                 >
                   <Printer className="h-4 w-4" />
                   Abrir comprovante
@@ -227,8 +227,8 @@ export function RematriculaBalcaoCard({
                 <button
                   onClick={() => window.open(comprovante.printUrl, "_blank", "noopener,noreferrer")}
                   className="flex-1 flex items-center justify-center gap-2 rounded-xl
-                    bg-white border border-slate-200 px-4 py-2 text-sm font-bold
-                    text-slate-700 hover:bg-slate-50 transition-colors"
+                    bg-card border border-border px-4 py-2 text-sm font-bold
+                    text-foreground hover:bg-muted transition-colors"
                 >
                   <ExternalLink className="h-4 w-4" />
                   Ver comprovante
@@ -281,8 +281,8 @@ export function RematriculaBalcaoCard({
           </p>
           <div className="pt-1">
             <button onClick={onAbrirPendencia} className="w-full flex items-center justify-center gap-2 rounded-xl
-              bg-white/50 border border-amber-300 px-4 py-2.5 text-sm font-bold
-              text-amber-700 hover:bg-white/80 transition-colors">
+              bg-card/50 border border-amber-300 px-4 py-2.5 text-sm font-bold
+              text-amber-700 hover:bg-card/80 transition-colors">
               Abrir pendência
             </button>
           </div>
@@ -292,14 +292,14 @@ export function RematriculaBalcaoCard({
     // ── WINDOW_CLOSED ─────────────────────────────────────────────────────
     case "WINDOW_CLOSED":
       return (
-        <div className="xl:col-span-12 rounded-2xl border border-slate-300 bg-slate-50 shadow-sm p-5 space-y-3">
+        <div className="xl:col-span-12 rounded-2xl border border-border bg-muted shadow-sm p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-slate-600" />
-            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-700">
+            <AlertCircle className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">
               Período de rematrícula fechado
             </h3>
           </div>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted-foreground">
             Abra uma janela de rematrícula para este ano letivo antes de iniciar novas operações.
           </p>
         </div>

@@ -32,24 +32,6 @@ import { MAX_TURMAS_POR_LOTE } from "@/lib/documentos/rosterBatchPolicy";
 import type { NominalNameOrder } from "@/lib/documentos/nominalExportOptions";
 import type { TurmaItem } from "~/types/turmas";
 
-// ─── Design tokens (single source of truth) ───────────────────────────────────
-// GREEN  = healthy / ok / confirm
-// GOLD   = primary action / warning (used ONLY for these two purposes)
-// ROSE   = critical / danger
-// SLATE  = neutral UI chrome
-
-const C = {
-  green:      "#1F6B3B",
-  greenBg:    "#1F6B3B18",
-  greenBorder:"#1F6B3B30",
-  gold:       "#E3B23C",       // primary action only
-  goldBg:     "#E3B23C18",
-  rose:       "#e11d48",
-  roseBg:     "rgba(225,29,72,0.08)",
-  amber:      "#b45309",
-  amberBg:    "#fef3c7",
-} as const;
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TurmasResponse {
@@ -139,9 +121,9 @@ function computeHealth(
 }
 
 const HEALTH_CONFIG: Record<HealthSignal, { label: string; dot: string; ring: string; text: string }> = {
-  ok:       { label: "Saudável",  dot: `bg-[${C.green}]`,  ring: `ring-[${C.green}]/20`,  text: `text-[${C.green}]`  },
+  ok:       { label: "Saudável", dot: "bg-klasse-green", ring: "ring-klasse-green/20", text: "text-klasse-green dark:text-klasse-green-300" },
   warning:  { label: "Atenção",   dot: "bg-amber-500",      ring: "ring-amber-200",         text: "text-amber-600"     },
-  critical: { label: "Crítico",   dot: `bg-[${C.rose}]`,   ring: `ring-[${C.rose}]/20`,   text: `text-[${C.rose}]`  },
+  critical: { label: "Crítico", dot: "bg-rose-600", ring: "ring-rose-600/20", text: "text-rose-700 dark:text-rose-300" },
 };
 
 // ─── Lightweight helpers ──────────────────────────────────────────────────────
@@ -169,22 +151,22 @@ function FilterBar({
     onChange({ [key]: e.target.value });
 
   return (
-    <div className="flex flex-wrap items-center gap-2 p-4 border-b border-slate-100 bg-slate-50/50">
+    <div className="flex flex-wrap items-center gap-2 p-4 border-b border-border bg-muted/50">
       {/* Search */}
       <div className="relative flex-1 min-w-[200px] max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <input
           type="text"
           placeholder="Buscar turma…"
           value={search}
           onChange={(e) => onSearch(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3B23C]/30 focus:border-[#E3B23C] placeholder:text-slate-400"
+          className="w-full pl-9 pr-3 py-2 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-klasse-gold/30 focus:border-klasse-gold placeholder:text-muted-foreground"
         />
       </div>
 
       {/* Turno */}
       <select value={filters.turno} onChange={select("turno")}
-        className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
+        className="px-3 py-2 bg-card border border-border rounded-xl text-sm text-foreground outline-none focus:border-klasse-gold cursor-pointer">
         <option value="todos">Todos os turnos</option>
         {Object.entries(TURNO_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
       </select>
@@ -192,7 +174,7 @@ function FilterBar({
       {/* Nível / Curso */}
       {cursos.length > 0 && (
         <select value={filters.curso} onChange={select("curso")}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
+          className="px-3 py-2 bg-card border border-border rounded-xl text-sm text-foreground outline-none focus:border-klasse-gold cursor-pointer">
           <option value="todos">Todos os cursos</option>
           {cursos.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
         </select>
@@ -200,7 +182,7 @@ function FilterBar({
 
       {/* Vagas */}
       <select value={filters.vagas} onChange={select("vagas")}
-        className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
+        className="px-3 py-2 bg-card border border-border rounded-xl text-sm text-foreground outline-none focus:border-klasse-gold cursor-pointer">
         <option value="todos">Vagas: todas</option>
         <option value="com">Com vagas</option>
         <option value="sem">Sem vagas</option>
@@ -208,7 +190,7 @@ function FilterBar({
 
       {/* Professor */}
       <select value={filters.professor} onChange={select("professor")}
-        className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
+        className="px-3 py-2 bg-card border border-border rounded-xl text-sm text-foreground outline-none focus:border-klasse-gold cursor-pointer">
         <option value="todos">Professor: todos</option>
         <option value="com">Com professor</option>
         <option value="sem">Sem professor</option>
@@ -217,7 +199,7 @@ function FilterBar({
       {/* Currículo (admin) */}
       {adminMode && (
         <select value={filters.curriculo} onChange={select("curriculo")}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
+          className="px-3 py-2 bg-card border border-border rounded-xl text-sm text-foreground outline-none focus:border-klasse-gold cursor-pointer">
           <option value="todos">Currículo: todos</option>
           <option value="ok">Currículo OK</option>
           <option value="pendente">Currículo pendente</option>
@@ -227,7 +209,7 @@ function FilterBar({
       {/* Financeiro (admin) */}
       {adminMode && (
         <select value={filters.financeiro} onChange={select("financeiro")}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
+          className="px-3 py-2 bg-card border border-border rounded-xl text-sm text-foreground outline-none focus:border-klasse-gold cursor-pointer">
           <option value="todos">Financeiro: todos</option>
           <option value="inadimplentes">Com atraso</option>
         </select>
@@ -235,7 +217,7 @@ function FilterBar({
 
       {/* Candidatos em Espera */}
       <select value={filters.espera} onChange={select("espera")}
-        className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
+        className="px-3 py-2 bg-card border border-border rounded-xl text-sm text-foreground outline-none focus:border-klasse-gold cursor-pointer">
         <option value="todos">Candidatos: todos</option>
         <option value="com">Com espera</option>
       </select>
@@ -243,7 +225,7 @@ function FilterBar({
       {/* Status (admin) */}
       {adminMode && (
         <select value={filters.status} onChange={select("status")}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
+          className="px-3 py-2 bg-card border border-border rounded-xl text-sm text-foreground outline-none focus:border-klasse-gold cursor-pointer">
           <option value="todos">Status: todos</option>
           <option value="rascunho">Pendentes</option>
           <option value="ativos">Ativos</option>
@@ -261,11 +243,11 @@ function FilterBar({
       )}
 
       {/* View Mode Toggle */}
-      <div className="flex items-center gap-1 border border-slate-200 rounded-xl p-1 bg-white ml-auto">
+      <div className="flex items-center gap-1 border border-border rounded-xl p-1 bg-card ml-auto">
         <button
           type="button"
           onClick={() => onViewModeChange("cards")}
-          className={`p-1.5 rounded-lg transition-colors ${viewMode === "cards" ? "bg-[#1F6B3B] text-white" : "text-slate-400 hover:text-slate-700"}`}
+          className={`p-1.5 rounded-lg transition-colors ${viewMode === "cards" ? "bg-klasse-green text-white" : "text-muted-foreground hover:text-foreground"}`}
           title="Exibição em Cartões"
         >
           <LayoutGrid size={15} />
@@ -273,7 +255,7 @@ function FilterBar({
         <button
           type="button"
           onClick={() => onViewModeChange("table")}
-          className={`p-1.5 rounded-lg transition-colors ${viewMode === "table" ? "bg-[#1F6B3B] text-white" : "text-slate-400 hover:text-slate-700"}`}
+          className={`p-1.5 rounded-lg transition-colors ${viewMode === "table" ? "bg-klasse-green text-white" : "text-muted-foreground hover:text-foreground"}`}
           title="Exibição em Tabela"
         >
           <List size={15} />
@@ -334,12 +316,12 @@ function HealthDetail({
             title="Sem professor atribuído — Clique para atribuir no modal"
             className="cursor-pointer hover:scale-110 transition-transform p-0.5"
           >
-            <UserX size={13} className="text-[#E3B23C]" />
+            <UserX size={13} className="text-klasse-gold-700 dark:text-klasse-gold-300" />
           </button>
         )}
         {!curriculoOk && (
           <span title="Currículo pendente">
-            <BookX size={12} className="text-[#E3B23C]" />
+            <BookX size={12} className="text-klasse-gold-700 dark:text-klasse-gold-300" />
           </span>
         )}
         {inadimplencia >= 20 && (
@@ -390,9 +372,9 @@ function SecretaryCardView({
 
   if (items.length === 0) {
     return (
-      <div className="py-20 flex flex-col items-center gap-3 text-slate-400">
+      <div className="py-20 flex flex-col items-center gap-3 text-muted-foreground">
         <Search size={24} />
-        <p className="text-sm font-medium text-slate-600">Nenhuma turma encontrada</p>
+        <p className="text-sm font-medium text-muted-foreground">Nenhuma turma encontrada</p>
         <p className="text-xs">Ajuste os filtros acima.</p>
       </div>
     );
@@ -403,11 +385,11 @@ function SecretaryCardView({
       {Object.entries(byTurno).map(([turno, turmas]) => (
         <div key={turno}>
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
               {TURNO_LABELS[turno] ?? turno}
             </span>
-            <span className="text-xs text-slate-300">·</span>
-            <span className="text-xs text-slate-400">{turmas.length} turma(s)</span>
+            <span className="text-xs text-muted-foreground">·</span>
+            <span className="text-xs text-muted-foreground">{turmas.length} turma(s)</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -423,8 +405,8 @@ function SecretaryCardView({
 
               return (
                 <div key={turma.id} className={`
-                  group relative rounded-xl border bg-white p-4 transition-all hover:shadow-md
-                  ${isSelected ? "ring-2 ring-amber-400 border-amber-200" : isDraft ? "border-amber-200 bg-amber-50/30" : "border-slate-200 hover:border-slate-300"}
+                  group relative rounded-xl border bg-card p-4 transition-all hover:shadow-md
+                  ${isSelected ? "ring-2 ring-amber-400 border-amber-200" : isDraft ? "border-amber-200 bg-amber-50/30" : "border-border hover:border-border"}
                 `}>
                   {/* Checkbox overlay */}
                   <div className={`absolute top-3 left-3 z-10 transition-opacity ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
@@ -432,7 +414,7 @@ function SecretaryCardView({
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => onToggleSelect(turma.id)}
-                      className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                      className="w-4 h-4 rounded border-border text-amber-500 focus:ring-amber-500 cursor-pointer"
                     />
                   </div>
 
@@ -440,12 +422,12 @@ function SecretaryCardView({
                   <div className="flex items-start justify-between gap-2 mb-3 ml-6">
                     <div className="min-w-0">
                       <p
-                        className="max-w-[calc(100%-2rem)] truncate text-sm font-bold text-slate-900"
+                        className="max-w-[calc(100%-2rem)] truncate text-sm font-bold text-foreground"
                         title={displayNome}
                       >
                         {displayNome}
                       </p>
-                      <p className="text-xs text-slate-400 truncate mt-0.5">
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
                         {turma.curso_nome || "Ensino Geral"} · {turma.classe_nome || "—"}
                       </p>
                     </div>
@@ -470,14 +452,14 @@ function SecretaryCardView({
                   {/* Occupancy bar */}
                   <div className="mb-3">
                     <div className="flex justify-between text-[10px] font-bold mb-1">
-                      <span className="text-slate-500">{atual}/{max} alunos</span>
-                      <span className={pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-[#1F6B3B]"}>
+                      <span className="text-muted-foreground">{atual}/{max} alunos</span>
+                      <span className={pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-klasse-green dark:text-klasse-green-300"}>
                         {pct}%
                       </span>
                     </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-[#1F6B3B]"}`}
+                        className={`h-full rounded-full transition-all ${pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-klasse-green"}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -489,20 +471,20 @@ function SecretaryCardView({
                       <button
                         type="button"
                         onClick={() => onAssignProfessors?.(turma)}
-                        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors text-left"
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors text-left"
                         title="Clique para atribuir professores"
                       >
                         {turma.professor_nome
-                          ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="truncate max-w-[100px]">{turma.professor_nome}</span></>
+                          ? <><UserCheck size={12} className="text-klasse-green dark:text-klasse-green-300" /><span className="truncate max-w-[100px]">{turma.professor_nome}</span></>
                           : <><UserX size={12} className="text-amber-500" /><span className="text-amber-600 font-semibold underline decoration-dotted">Atribuir prof.</span></>
                         }
                         {ped?.is_desescoberta && <AlertTriangle size={12} className="text-rose-500 animate-pulse" />}
                       </button>
                     ) : (
-                      <span className="flex items-center gap-1.5 text-xs text-slate-500" title="Professor atribuído">
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground" title="Professor atribuído">
                         {turma.professor_nome
-                          ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="truncate max-w-[100px]">{turma.professor_nome}</span></>
-                          : <><UserX size={12} className="text-slate-400" /><span>Sem professor</span></>
+                          ? <><UserCheck size={12} className="text-klasse-green dark:text-klasse-green-300" /><span className="truncate max-w-[100px]">{turma.professor_nome}</span></>
+                          : <><UserX size={12} className="text-muted-foreground" /><span>Sem professor</span></>
                         }
                       </span>
                     )}
@@ -523,21 +505,21 @@ function SecretaryCardView({
                         {canManagePedagogy && <>
                         <button
                           onClick={() => onOpenHorario?.(turma)}
-                          className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
+                          className="p-1.5 text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 hover:bg-muted rounded-lg transition-colors"
                           title="Montar/Ver Grade de Horários"
                         >
                           <Calendar size={14} />
                         </button>
                         <button
                           onClick={() => onAssignProfessors?.(turma)}
-                          className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
+                          className="p-1.5 text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 hover:bg-muted rounded-lg transition-colors"
                           title="Atribuir Professores"
                         >
                           <GraduationCap size={14} />
                         </button>
                         <button
                           onClick={() => onManageCurriculum?.(turma)}
-                          className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
+                          className="p-1.5 text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 hover:bg-muted rounded-lg transition-colors"
                           title="Gerir currículo da turma"
                         >
                           <BookOpen size={14} />
@@ -545,12 +527,12 @@ function SecretaryCardView({
                         </>}
                         {!isDraft && (
                           <Link href={`${detailHrefBase}/${turma.id}`}
-                            className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-green-50 rounded-lg transition-colors">
+                            className="p-1.5 text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 hover:bg-green-50 rounded-lg transition-colors">
                             <Eye size={14} />
                           </Link>
                         )}
                         <button onClick={() => onEdit(turma)}
-                          className="p-1.5 text-slate-400 hover:text-[#E3B23C] hover:bg-amber-50 rounded-lg transition-colors">
+                          className="p-1.5 text-muted-foreground hover:text-klasse-gold-700 dark:hover:text-klasse-gold-300 hover:bg-amber-50 rounded-lg transition-colors">
                           <Pencil size={14} />
                         </button>
                       </div>
@@ -609,8 +591,8 @@ function TurmaRow({
 
   return (
     <tr
-      className={`border-b border-slate-100 transition-colors group ${
-        isSelected ? "bg-amber-50/50" : isDraft ? "bg-amber-50/30" : isExpanded ? "bg-slate-50" : "hover:bg-slate-50"
+      className={`border-b border-border transition-colors group ${
+        isSelected ? "bg-amber-50/50" : isDraft ? "bg-amber-50/30" : isExpanded ? "bg-muted" : "hover:bg-muted"
       }`}
       style={style}
     >
@@ -620,7 +602,7 @@ function TurmaRow({
           type="checkbox"
           checked={isSelected}
           onChange={() => onToggleSelect(turma.id)}
-          className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
+          className="w-4 h-4 rounded border-border text-amber-500 focus:ring-amber-500 cursor-pointer"
         />
       </td>
 
@@ -628,22 +610,22 @@ function TurmaRow({
       <td className="w-[30%] max-w-[320px] px-6 py-4.5">
         <div className="flex items-center gap-3.5">
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold border flex-shrink-0 shadow-xs
-            ${isDraft ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
+            ${isDraft ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-muted text-muted-foreground border-border"}`}>
             {iniciais}
           </div>
           <div className="min-w-0 max-w-[260px] flex-1">
             {isDraft ? (
-              <span className="font-bold text-sm text-slate-800 block truncate">{safeNome}</span>
+              <span className="font-bold text-sm text-foreground block truncate">{safeNome}</span>
             ) : (
               <Link href={`${detailHrefBase}/${turma.id}`}
-                className="font-bold text-sm text-slate-900 hover:text-[#1F6B3B] hover:underline decoration-[#1F6B3B]/30 underline-offset-4 transition-colors block truncate"
+                className="font-bold text-sm text-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 hover:underline decoration-klasse-green/30 underline-offset-4 transition-colors block truncate"
                 title={safeNome}
               >
                 {safeNome}
               </Link>
             )}
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] font-mono text-slate-500 bg-slate-100/90 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-mono text-muted-foreground bg-muted/90 px-1.5 py-0.5 rounded">
                 {turma.ano_letivo || "—"}
               </span>
               {isDraft && <span className="text-[10px] font-bold text-amber-600">RASCUNHO</span>}
@@ -655,11 +637,11 @@ function TurmaRow({
       {/* Curso + Turno */}
       <td className="px-5 py-4">
         <div className="space-y-1">
-          <p className="text-sm font-medium text-slate-700 truncate">{turma.curso_nome || "Ensino Geral"}</p>
+          <p className="text-sm font-medium text-foreground truncate">{turma.curso_nome || "Ensino Geral"}</p>
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-400">{turma.classe_nome || "—"}</span>
+            <span className="text-xs text-muted-foreground">{turma.classe_nome || "—"}</span>
             <span className="text-slate-200">·</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-500 border border-slate-200">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-muted-foreground border border-border">
               {TURNO_LABELS[turma.turno || ""] || turma.turno || "—"}
             </span>
           </div>
@@ -671,7 +653,7 @@ function TurmaRow({
         {isEditingSala ? (
           <input
             autoFocus
-            className="w-full px-2 py-1 text-sm border border-[#E3B23C] rounded-lg outline-none focus:ring-2 focus:ring-[#E3B23C]/20"
+            className="w-full px-2 py-1 text-sm border border-klasse-gold rounded-lg outline-none focus:ring-2 focus:ring-klasse-gold/20"
             defaultValue={turma.sala || ""}
             onBlur={(e) => onSaveEdit(turma.id, "sala", e.target.value)}
             onKeyDown={(e) => {
@@ -684,10 +666,10 @@ function TurmaRow({
             className={`flex items-center gap-2 cursor-pointer group/cell ${isLoadingSala ? "opacity-50" : ""}`}
             onClick={() => onStartEdit(turma.id, "sala")}
           >
-            <span className="text-sm text-slate-600 truncate max-w-[80px]">
+            <span className="text-sm text-muted-foreground truncate max-w-[80px]">
               {isLoadingSala ? "..." : turma.sala || "—"}
             </span>
-            <Pencil size={10} className="text-slate-300 opacity-0 group-hover/cell:opacity-100 transition-opacity" />
+            <Pencil size={10} className="text-muted-foreground opacity-0 group-hover/cell:opacity-100 transition-opacity" />
           </div>
         )}
       </td>
@@ -699,26 +681,26 @@ function TurmaRow({
           const atual = turma.ocupacao_atual    || 0;
           const livre = Math.max(max - atual, 0);
           const pct   = Math.min(Math.round((atual / max) * 100), 100);
-          const barColor = pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-[#1F6B3B]";
-          const pctColor = pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-[#1F6B3B]";
+          const barColor = pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-klasse-green";
+          const pctColor = pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-klasse-green dark:text-klasse-green-300";
           return (
             <div className="space-y-1.5 min-w-[120px]">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-700">
-                  {atual}<span className="text-slate-400 font-normal">/{max}</span>
+                <span className="text-xs font-bold text-foreground">
+                  {atual}<span className="text-muted-foreground font-normal">/{max}</span>
                 </span>
                 <span className={`text-[10px] font-bold ${pctColor}`}>
                   {pct}%
                 </span>
               </div>
-              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${barColor}`}
                   style={{ width: `${pct}%` }}
                 />
               </div>
               <div className="flex items-center justify-between text-[10px]">
-                <span className="text-slate-400">
+                <span className="text-muted-foreground">
                   {livre > 0 ? (
                     <>{livre} vaga{livre !== 1 ? "s" : ""} livre{livre !== 1 ? "s" : ""}</>
                   ) : (
@@ -729,7 +711,7 @@ function TurmaRow({
                   <input
                     autoFocus
                     type="number"
-                    className="w-12 px-1 py-0.5 text-[10px] border border-[#E3B23C] rounded outline-none focus:ring-1 focus:ring-[#E3B23C]/20"
+                    className="w-12 px-1 py-0.5 text-[10px] border border-klasse-gold rounded outline-none focus:ring-1 focus:ring-klasse-gold/20"
                     defaultValue={max}
                     onBlur={(e) => onSaveEdit(turma.id, "capacidade_maxima", Number(e.target.value))}
                     onKeyDown={(e) => {
@@ -739,7 +721,7 @@ function TurmaRow({
                   />
                 ) : (
                   <button
-                    className={`flex items-center gap-0.5 text-slate-400 hover:text-[#E3B23C] transition-colors ${isLoadingCap ? "opacity-50" : ""}`}
+                    className={`flex items-center gap-0.5 text-muted-foreground hover:text-klasse-gold-700 dark:hover:text-klasse-gold-300 transition-colors ${isLoadingCap ? "opacity-50" : ""}`}
                     onClick={() => onStartEdit(turma.id, "capacidade_maxima")}
                     title="Editar capacidade"
                   >
@@ -771,7 +753,7 @@ function TurmaRow({
           {canPrint && !isDraft && <ImprimirListaTurmaButton turmaId={turma.id} order={nominalOrder} />}
           {isDraft ? (
             <button onClick={() => onEdit(turma)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#E3B23C] text-white hover:brightness-95 rounded-xl text-xs font-bold shadow-sm transition-all">
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-klasse-gold text-klasse-gold-900 hover:brightness-95 rounded-xl text-xs font-bold shadow-sm transition-all">
               <CheckCircle2 size={13} /> Ativar
             </button>
           ) : (
@@ -779,40 +761,40 @@ function TurmaRow({
               {canManagePedagogy && <>
               <button
                 onClick={() => onOpenHorario?.(turma)}
-                className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2 text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 hover:bg-muted rounded-lg transition-colors"
                 title="Montar/Ver Grade de Horários"
               >
                 <Calendar size={15} />
               </button>
               <button 
                 onClick={() => onAssignProfessors?.(turma)}
-                className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2 text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 hover:bg-muted rounded-lg transition-colors"
                 title="Atribuir Professores às Disciplinas"
               >
                 <GraduationCap size={15} />
               </button>
               <button
                 onClick={() => onManageCurriculum?.(turma)}
-                className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2 text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 hover:bg-muted rounded-lg transition-colors"
                 title="Gerir currículo da turma"
               >
                 <BookOpen size={15} />
               </button>
               </>}
               <Link href={`${detailHrefBase}/${turma.id}`}
-                className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-green-50 rounded-lg transition-colors"
+                className="p-2 text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 hover:bg-green-50 rounded-lg transition-colors"
                 title="Ver detalhes da turma"
               >
                 <Eye size={15} />
               </Link>
               <button onClick={() => onEdit(turma)}
-                className="p-2 text-slate-400 hover:text-[#E3B23C] hover:bg-amber-50 rounded-lg transition-colors"
+                className="p-2 text-muted-foreground hover:text-klasse-gold-700 dark:hover:text-klasse-gold-300 hover:bg-amber-50 rounded-lg transition-colors"
                 title="Editar turma"
               >
                 <Pencil size={15} />
               </button>
               <button onClick={onToggleExpand}
-                className={`p-2 rounded-lg transition-colors ${isExpanded ? "text-slate-800 bg-slate-100" : "text-slate-400 hover:text-slate-800 hover:bg-slate-50"}`}
+                className={`p-2 rounded-lg transition-colors ${isExpanded ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
                 title="Expandir visão rápida"
               >
                 <UsersRound size={15} />
@@ -1444,8 +1426,8 @@ export default function TurmasListClient({
       {/* ... (Header, KPIs, Pending banner) ... */}
 
       {!roleLoading && !canManagePedagogy && (userRole === "secretaria" || userRole === "financeiro") && (
-        <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          <Lock size={16} className="mt-0.5 shrink-0 text-slate-400" />
+        <div className="flex items-start gap-3 rounded-xl border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+          <Lock size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
           <p>
             Currículo, horários e atribuição de professores são geridos por perfis administrativos autorizados.
             Nesta tela, você pode consultar as turmas e acompanhar o estado operacional.
@@ -1454,7 +1436,7 @@ export default function TurmasListClient({
       )}
 
       {/* ── Main content ────────────────────────────────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
 
         <FilterBar
           filters={filters}
@@ -1490,18 +1472,18 @@ export default function TurmasListClient({
         ) : isInitialLoading ? (
           <div className="p-5 space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={`turma-skeleton-${i}`} className="rounded-xl border border-slate-100 bg-white p-4">
+              <div key={`turma-skeleton-${i}`} className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="space-y-2">
-                    <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
-                    <div className="h-3 w-24 animate-pulse rounded bg-slate-100" />
+                    <div className="h-4 w-40 animate-pulse rounded bg-muted-foreground/15" />
+                    <div className="h-3 w-24 animate-pulse rounded bg-muted" />
                   </div>
-                  <div className="h-6 w-20 animate-pulse rounded-full bg-slate-100" />
+                  <div className="h-6 w-20 animate-pulse rounded-full bg-muted" />
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-3">
-                  <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
-                  <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
-                  <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
+                  <div className="h-3 w-full animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-full animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-full animate-pulse rounded bg-muted" />
                 </div>
               </div>
             ))}
@@ -1525,8 +1507,8 @@ export default function TurmasListClient({
         ) : (
           <div className="overflow-x-auto">
             <div ref={scrollParentRef} className="max-h-[600px] overflow-y-auto">
-              <table className="min-w-[1020px] table-fixed divide-y divide-slate-100">
-                <thead className="bg-slate-50 sticky top-0 z-10"
+              <table className="min-w-[1020px] table-fixed divide-y divide-border">
+                <thead className="bg-muted sticky top-0 z-10"
                   style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <tr>
                     <th className="px-5 py-3 text-left w-[40px]">
@@ -1534,46 +1516,46 @@ export default function TurmasListClient({
                         type="checkbox"
                         checked={filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id))}
                         onChange={() => toggleAll(filteredIds)}
-                        className="w-4 h-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
+                        className="w-4 h-4 rounded border-border text-amber-500 focus:ring-amber-500 cursor-pointer"
                       />
                     </th>
-                    <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[30%]">Turma</th>
-                    <th className="px-5 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[18%]">Curso / Nível</th>
-                    <th className="px-5 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[8%]">Sala</th>
-                    <th className="px-5 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[20%]">Ocupação</th>
-                    <th className="px-5 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[14%]">Saúde</th>
-                    <th className="px-5 py-3 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider w-[10%]">Ações</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider w-[30%]">Turma</th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider w-[18%]">Curso / Nível</th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider w-[8%]">Sala</th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider w-[20%]">Ocupação</th>
+                    <th className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider w-[14%]">Saúde</th>
+                    <th className="px-5 py-3 text-right text-[11px] font-bold text-muted-foreground uppercase tracking-wider w-[10%]">Ações</th>
                   </tr>
                 </thead>
                 <tbody
-                  className="divide-y divide-slate-50 bg-white"
+                  className="divide-y divide-border bg-card"
                   style={hasRows ? { position: "relative", display: "block", height: rowVirtualizer.getTotalSize() } : undefined}
                 >
                   {loading ? (
                     [...Array(5)].map((_, i) => (
                       <tr key={i} className="animate-pulse"
                         style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                        <td className="px-5 py-4.5 w-[40px]"><div className="h-4 w-4 bg-slate-100 rounded" /></td>
-                        <td className="px-6 py-4.5"><div className="h-9 w-9 bg-slate-100 rounded-xl" /></td>
-                        <td className="px-5 py-4.5"><div className="h-4 w-28 bg-slate-100 rounded" /></td>
-                        <td className="px-5 py-4.5"><div className="h-4 w-12 bg-slate-100 rounded" /></td>
+                        <td className="px-5 py-4.5 w-[40px]"><div className="h-4 w-4 bg-muted rounded" /></td>
+                        <td className="px-6 py-4.5"><div className="h-9 w-9 bg-muted rounded-xl" /></td>
+                        <td className="px-5 py-4.5"><div className="h-4 w-28 bg-muted rounded" /></td>
+                        <td className="px-5 py-4.5"><div className="h-4 w-12 bg-muted rounded" /></td>
                         <td className="px-5 py-4.5">
                           <div className="space-y-1.5">
-                            <div className="h-3 w-16 bg-slate-100 rounded" />
-                            <div className="h-2 w-full bg-slate-100 rounded-full" />
-                            <div className="h-3 w-20 bg-slate-100 rounded" />
+                            <div className="h-3 w-16 bg-muted rounded" />
+                            <div className="h-2 w-full bg-muted rounded-full" />
+                            <div className="h-3 w-20 bg-muted rounded" />
                           </div>
                         </td>
-                        <td className="px-5 py-4.5"><div className="h-4 w-16 bg-slate-100 rounded" /></td>
+                        <td className="px-5 py-4.5"><div className="h-4 w-16 bg-muted rounded" /></td>
                         <td className="px-5 py-4.5" />
                       </tr>
                     ))
                   ) : filteredItems.length === 0 ? (
                     <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                       <td colSpan={7} className="py-20 text-center">
-                        <div className="flex flex-col items-center gap-2 text-slate-400">
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
                           <Search size={22} />
-                          <p className="font-medium text-slate-600">Nenhuma turma encontrada</p>
+                          <p className="font-medium text-muted-foreground">Nenhuma turma encontrada</p>
                           <p className="text-xs">Ajuste os filtros acima.</p>
                         </div>
                       </td>
@@ -1598,42 +1580,42 @@ export default function TurmasListClient({
                         const inadimplencia = Number(fin?.inadimplenciaPct ?? 0);
 
                         return (
-                          <tr key={row.key} className="bg-slate-50/50" style={vs}>
+                          <tr key={row.key} className="bg-muted/50" style={vs}>
                             <td colSpan={7} className="px-5 py-4">
                               <div className="ml-11 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {/* Status Operacional */}
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
-                                    <CheckCircle2 size={12} className="text-[#1F6B3B]" /> Status Operacional
+                                <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+                                    <CheckCircle2 size={12} className="text-klasse-green dark:text-klasse-green-300" /> Status Operacional
                                   </h4>
                                   <div className="space-y-2 text-xs">
                                     <div className="flex items-center justify-between">
-                                      <span className="text-slate-500">Professor:</span>
-                                      <span className="font-semibold text-slate-800 truncate max-w-[120px]" title={row.turma.professor_nome || "Sem professor"}>
+                                      <span className="text-muted-foreground">Professor:</span>
+                                      <span className="font-semibold text-foreground truncate max-w-[120px]" title={row.turma.professor_nome || "Sem professor"}>
                                         {row.turma.professor_nome || "Não atribuído"}
                                       </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                      <span className="text-slate-500">Currículo:</span>
-                                      <span className={`font-semibold ${row.turma.status_curriculo === "pendente" ? "text-amber-600" : "text-[#1F6B3B]"}`}>
+                                      <span className="text-muted-foreground">Currículo:</span>
+                                      <span className={`font-semibold ${row.turma.status_curriculo === "pendente" ? "text-amber-600" : "text-klasse-green dark:text-klasse-green-300"}`}>
                                         {row.turma.status_curriculo === "pendente" ? "Pendente" : "OK"}
                                       </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                      <span className="text-slate-500">Inadimplência:</span>
-                                      <span className={`font-semibold ${inadimplencia >= 20 ? "text-rose-600" : "text-slate-700"}`}>
+                                      <span className="text-muted-foreground">Inadimplência:</span>
+                                      <span className={`font-semibold ${inadimplencia >= 20 ? "text-rose-600" : "text-foreground"}`}>
                                         {inadimplencia}%
                                       </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                      <span className="text-slate-500">Lotação:</span>
-                                      <span className="font-semibold text-slate-800">
+                                      <span className="text-muted-foreground">Lotação:</span>
+                                      <span className="font-semibold text-foreground">
                                         {atual} / {max} ({pct}%)
                                       </span>
                                     </div>
                                     {ped && ped.candidatos_espera > 0 && (
-                                      <div className="flex items-center justify-between border-t border-slate-100 pt-1.5 mt-1.5">
-                                        <span className="text-slate-500">Em Espera:</span>
+                                      <div className="flex items-center justify-between border-t border-border pt-1.5 mt-1.5">
+                                        <span className="text-muted-foreground">Em Espera:</span>
                                         <Link 
                                           href={`${secretariaBase}/admissoes?turmaId=${row.turma.id}&search=${encodeURIComponent(row.turma.nome || "")}`}
                                           className="font-bold text-amber-600 hover:underline"
@@ -1646,20 +1628,20 @@ export default function TurmasListClient({
                                 </div>
 
                                 {/* Alunos em Risco */}
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                                <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
                                     <AlertTriangle size={12} className="text-rose-500" /> Alunos em Risco
                                   </h4>
                                   {loading ? (
                                     <div className="space-y-2 animate-pulse">
-                                      <div className="h-4 bg-slate-100 rounded w-full" />
-                                      <div className="h-4 bg-slate-100 rounded w-3/4" />
+                                      <div className="h-4 bg-muted rounded w-full" />
+                                      <div className="h-4 bg-muted rounded w-3/4" />
                                     </div>
                                   ) : qv?.risks?.length > 0 ? (
                                     <div className="space-y-2 max-h-[100px] overflow-y-auto">
                                       {qv.risks.map((r: any, idx: number) => (
                                         <div key={idx} className="flex items-center justify-between text-xs">
-                                          <span className="font-medium text-slate-700 truncate max-w-[120px]">{r.nome}</span>
+                                          <span className="font-medium text-foreground truncate max-w-[120px]">{r.nome}</span>
                                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                             r.status === "critical" ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"
                                           }`}>
@@ -1669,15 +1651,15 @@ export default function TurmasListClient({
                                       ))}
                                     </div>
                                   ) : (
-                                    <p className="text-xs text-slate-400 py-2">Sem alertas críticos no momento.</p>
+                                    <p className="text-xs text-muted-foreground py-2">Sem alertas críticos no momento.</p>
                                   )}
                                 </div>
 
                                 {/* Aula Atual */}
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center justify-between">
+                                <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center justify-between">
                                     <span className="flex items-center gap-2">
-                                      <CalendarCheck size={12} className="text-[#1F6B3B]" /> Aula Atual / Próxima
+                                      <CalendarCheck size={12} className="text-klasse-green dark:text-klasse-green-300" /> Aula Atual / Próxima
                                     </span>
                                     {qv?.currentSubject && !substituting && (
                                       <button 
@@ -1690,16 +1672,16 @@ export default function TurmasListClient({
                                   </h4>
                                   {loading ? (
                                     <div className="space-y-2 animate-pulse">
-                                      <div className="h-4 bg-slate-100 rounded w-1/2" />
-                                      <div className="h-4 bg-slate-100 rounded w-full" />
+                                      <div className="h-4 bg-muted rounded w-1/2" />
+                                      <div className="h-4 bg-muted rounded w-full" />
                                     </div>
                                   ) : substituting === row.turma.id ? (
                                     <div className="space-y-3 animate-in fade-in duration-200">
-                                      <p className="text-xs font-semibold text-slate-600">Substituto para {qv?.currentSubject?.nome}:</p>
+                                      <p className="text-xs font-semibold text-muted-foreground">Substituto para {qv?.currentSubject?.nome}:</p>
                                       <select 
                                         value={selectedProf}
                                         onChange={(e) => setSelectedProf(e.target.value)}
-                                        className="w-full p-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-amber"
+                                        className="w-full p-1.5 bg-card border border-border rounded-xl text-xs outline-none focus:border-amber"
                                       >
                                         <option value="">Selecione um professor...</option>
                                         {professors.map(p => (
@@ -1709,14 +1691,14 @@ export default function TurmasListClient({
                                       <div className="flex justify-end gap-1.5">
                                         <button 
                                           onClick={() => setSubstituting(null)}
-                                          className="px-2.5 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                                          className="px-2.5 py-1 text-[10px] font-bold text-muted-foreground hover:bg-muted rounded-lg transition-colors"
                                         >
                                           Cancelar
                                         </button>
                                         <button 
                                           onClick={() => handleAssignSubstitute(row.turma.id, qv.currentSubject.slot_id)}
                                           disabled={!selectedProf}
-                                          className="px-2.5 py-1 text-[10px] font-bold bg-[#1F6B3B] text-white hover:brightness-95 rounded-lg shadow-sm transition-all disabled:opacity-50"
+                                          className="px-2.5 py-1 text-[10px] font-bold bg-klasse-green text-white hover:brightness-95 rounded-lg shadow-sm transition-all disabled:opacity-50"
                                         >
                                           Confirmar
                                         </button>
@@ -1724,48 +1706,48 @@ export default function TurmasListClient({
                                     </div>
                                   ) : qv?.currentSubject ? (
                                     <div>
-                                      <p className="text-sm font-bold text-slate-900 truncate">{qv.currentSubject.nome}</p>
-                                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 truncate">
+                                      <p className="text-sm font-bold text-foreground truncate">{qv.currentSubject.nome}</p>
+                                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 truncate">
                                         <UserCheck size={12} /> {qv.currentSubject.professor}
                                       </p>
-                                      <p className="text-[10px] text-slate-400 mt-2 flex items-center gap-1.5">
+                                      <p className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1.5">
                                         <MapPin size={12} /> {qv.currentSubject.sala} · Agora
                                       </p>
                                     </div>
                                   ) : (
-                                    <p className="text-xs text-slate-400 py-2">Sem aulas agendadas.</p>
+                                    <p className="text-xs text-muted-foreground py-2">Sem aulas agendadas.</p>
                                   )}
                                 </div>
 
                                 {/* Log de Ocupação Histórica (Fase 4) */}
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                                <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
                                     <UsersRound size={12} className="text-blue-500" /> Lotação Histórica
                                   </h4>
                                   {loading ? (
                                     <div className="space-y-2 animate-pulse">
-                                      <div className="h-4 bg-slate-100 rounded w-full" />
-                                      <div className="h-4 bg-slate-100 rounded w-full" />
+                                      <div className="h-4 bg-muted rounded w-full" />
+                                      <div className="h-4 bg-muted rounded w-full" />
                                     </div>
                                   ) : qv?.history?.length > 0 ? (
                                     <div className="space-y-2">
                                       {qv.history.slice(-3).map((h: any, idx: number) => (
                                         <div key={idx} className="flex items-center justify-between text-[10px]">
-                                          <span className="text-slate-500 font-medium">{h.mes_referencia}</span>
+                                          <span className="text-muted-foreground font-medium">{h.mes_referencia}</span>
                                           <div className="flex items-center gap-2 flex-1 mx-3">
-                                            <div className="h-1 bg-slate-100 rounded-full flex-1 overflow-hidden">
+                                            <div className="h-1 bg-muted rounded-full flex-1 overflow-hidden">
                                               <div 
                                                 className="h-full bg-blue-400 rounded-full"
                                                 style={{ width: `${Math.min((h.total_alunos / max) * 100, 100)}%` }}
                                               />
                                             </div>
                                           </div>
-                                          <span className="font-bold text-slate-700 w-4 text-right">{h.total_alunos}</span>
+                                          <span className="font-bold text-foreground w-4 text-right">{h.total_alunos}</span>
                                         </div>
                                       ))}
                                     </div>
                                   ) : (
-                                    <p className="text-xs text-slate-400 py-2">Sem histórico disponível.</p>
+                                    <p className="text-xs text-muted-foreground py-2">Sem histórico disponível.</p>
                                   )}
                                 </div>
                               </div>
@@ -1836,13 +1818,13 @@ export default function TurmasListClient({
       {/* ── Form modal ──────────────────────────────────────────────────────── */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-bold text-lg text-slate-800">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted">
+              <h3 className="font-bold text-lg text-foreground">
                 {editingTurma ? "Editar Turma" : "Nova Turma"}
               </h3>
               <button onClick={() => setShowForm(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Fechar">
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" aria-label="Fechar">
                 <X size={18} />
               </button>
             </div>
@@ -1851,7 +1833,7 @@ export default function TurmasListClient({
                 <TurmaForm escolaId={escolaId} initialData={editingTurma}
                   onSuccess={() => { setShowForm(false); fetchData(); }} />
               ) : (
-                <p className="text-sm text-slate-500 text-center py-4">
+                <p className="text-sm text-muted-foreground text-center py-4">
                   Escola não identificada. Recarregue a página.
                 </p>
               )}
@@ -1862,18 +1844,18 @@ export default function TurmasListClient({
 
       {showTransferModal && selectedTurmaForTransfer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted">
               <div>
                 <h3 className="font-bold text-lg text-foreground">Transferir alunos entre turmas</h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  Origem: <span className="font-semibold text-slate-700">{selectedTurmaForTransfer.nome ?? selectedTurmaForTransfer.turma_codigo}</span>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Origem: <span className="font-semibold text-foreground">{selectedTurmaForTransfer.nome ?? selectedTurmaForTransfer.turma_codigo}</span>
                   {" "}· {selectedTurmaForTransfer.ocupacao_atual ?? "—"} matrícula(s)
                 </p>
               </div>
               <button
                 onClick={() => setShowTransferModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                 aria-label="Fechar"
               >
                 <X size={18} />
@@ -1881,11 +1863,11 @@ export default function TurmasListClient({
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Turma destino</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Turma destino</label>
                 <select
                   value={transferTargetTurmaId}
                   onChange={(e) => { setTransferTargetTurmaId(e.target.value); setTransferConfirmed(false); }}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#E3B23C]"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-klasse-gold"
                 >
                   <option value="">{transferCandidatesLoading ? "A carregar destinos..." : "Selecione a turma destino"}</option>
                   {transferTargetOptions.map((turma) => (
@@ -1910,13 +1892,13 @@ export default function TurmasListClient({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Motivo</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Motivo</label>
                 <textarea
                   value={transferReason}
                   onChange={(e) => { setTransferReason(e.target.value); setTransferConfirmed(false); }}
                   rows={3}
                   placeholder="Ex.: não existe 8ª classe no período da manhã."
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#E3B23C]"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-klasse-gold"
                 />
               </div>
 
@@ -1952,7 +1934,7 @@ export default function TurmasListClient({
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={() => setShowTransferModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-muted"
                 >
                   Cancelar
                 </button>
@@ -2012,10 +1994,10 @@ export default function TurmasListClient({
       {selectedIds.size > 0 && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-8 duration-300 z-40 border border-slate-700/50 backdrop-blur-md">
           <div className="flex items-center gap-3 border-r border-slate-700 pr-8">
-            <div className="w-6 h-6 rounded-full bg-amber-500 text-slate-900 flex items-center justify-center text-xs font-bold">
+            <div className="w-6 h-6 rounded-full bg-amber-500 text-foreground flex items-center justify-center text-xs font-bold">
               {selectedIds.size}
             </div>
-            <span className="text-sm font-semibold text-slate-300">Selecionadas</span>
+            <span className="text-sm font-semibold text-muted-foreground">Selecionadas</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -2024,7 +2006,7 @@ export default function TurmasListClient({
                 onClick={handleTransferSelectedTurma}
                 className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-xl transition-colors text-sm font-bold group"
               >
-                <ArrowUpDown size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                <ArrowUpDown size={16} className="text-muted-foreground group-hover:text-white transition-colors" />
                 Mover alunos
               </button>
             )}
@@ -2049,14 +2031,14 @@ export default function TurmasListClient({
               className="flex items-center gap-2 px-4 py-2 hover:bg-muted/20 rounded-xl transition-colors text-sm font-bold group disabled:cursor-not-allowed disabled:opacity-50"
               title={selectedIds.size > MAX_TURMAS_POR_LOTE ? "Máximo 10 turmas por lote" : "Gerar lista nominal de todas as turmas seleccionadas"}
             >
-              <Printer size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+              <Printer size={16} className="text-muted-foreground group-hover:text-white transition-colors" />
               {bulkPrinting ? "A enviar lote…" : "Impressão em Lote"}
             </button>}
             <button
               onClick={handleBulkClose}
               className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-xl transition-colors text-sm font-bold group"
             >
-              <Lock size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+              <Lock size={16} className="text-muted-foreground group-hover:text-white transition-colors" />
               Fechamento em Bloco
             </button>
             <button
