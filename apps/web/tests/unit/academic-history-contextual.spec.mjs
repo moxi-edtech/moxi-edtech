@@ -26,7 +26,7 @@ test("Central de Documentos envia o ano escolhido e recarrega períodos associad
   assert.match(hub, /const anoSelecionado = selectedYearId/);
   assert.match(hub, /new URLSearchParams\(\{ escola_id: escolaId, ano_letivo_id: selectedYearId \}\)/);
   assert.doesNotMatch(hub, /const anoSelecionado = academicYearIdFromUrl/);
-  assert.match(hub, /setTurmaId\(" "\)/.source ? /setTurmaId\(" "\)/ : /setTurmaId\(""/);
+  assert.match(hub, /setTurmaId\(""/);
 });
 
 test("Turmas documentais são sempre filtradas por sessão autorizada", () => {
@@ -44,4 +44,11 @@ test("Emissão oficial não envia ano da URL diretamente e respeita histórico e
   assert.match(batch, /isHistoricalYear/);
   assert.match(batch, /turmas\?ano_letivo_id=/);
   assert.match(batch, /periodos-letivos\?\$\{params\}/);
+});
+
+test("Dossier mostra o intervalo completo e abre apenas o ano solicitado", () => {
+  const timeline = src("components/aluno/DossierHistoricoTimelineSection.tsx");
+  assert.match(timeline, /formatAcademicYear/);
+  assert.match(timeline, /ordered\.filter\(\(item\) => item\.ano_letivo === selectedYearNumber\)/);
+  assert.match(timeline, /Ver todos os anos/);
 });
