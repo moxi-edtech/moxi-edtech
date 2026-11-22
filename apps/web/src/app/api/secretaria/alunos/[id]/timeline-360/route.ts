@@ -8,6 +8,7 @@ import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle"
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 const ParamsSchema = z.object({
   id: z.string().uuid("alunoId inválido"),
@@ -55,7 +56,11 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     });
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      const forbidden = error.code === "42501";
+      return NextResponse.json(
+        { ok: false, error: forbidden ? "Sem permissão para consultar o dossier desta escola." : "Falha ao consultar a timeline anual." },
+        { status: forbidden ? 403 : 500, headers: { "Cache-Control": "private, no-store" } },
+      );
     }
 
     const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, params.data.id).catch(() => null);
@@ -65,7 +70,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
       cicloVidaIndisponivel: cicloVida === null,
       aluno_id: params.data.id,
       timeline: Array.isArray(data) ? data : [],
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
