@@ -22,6 +22,7 @@ export type AcademicWorkspaceContext = {
 export type ResolveAcademicYearContextInput = {
   userId: string;
   requestedAcademicYearId?: string | null;
+  requestedEscolaId?: string | null;
   operation: "READ" | "WRITE";
 };
 
@@ -158,7 +159,9 @@ async function resolveAcademicYearContextUnbounded(
     );
   }
 
-  const escolaId = await resolveEscolaIdForUser(supabase, input.userId);
+  // A escola explícita do portal prevalece sobre a escola padrão da sessão.
+  // O resolver valida obrigatoriamente a pertença do actor.
+  const escolaId = await resolveEscolaIdForUser(supabase, input.userId, input.requestedEscolaId ?? null);
   if (!escolaId) {
     throw new AcademicYearContextError(
       "ACADEMIC_YEAR_NOT_FOUND",
