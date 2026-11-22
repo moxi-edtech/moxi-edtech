@@ -1,0 +1,40 @@
+# KLASSE — Theme Switcher P0: Escola, Secretaria e Gestão Académica
+
+**Data:** 22 de novembro de 2026. **Base:** `main` no commit `1d2daedfb`.
+**Objetivo:** eliminar superfícies neutras fixas que não respondem a Claro/Escuro/Sistema.
+
+## Entrega
+
+| Frente | Ficheiros modificados | Padrões neutros fixos (antes) | Após |
+|---|---:|---:|---:|
+| Páginas operacionais de Escola | 68 | 2.137 | 0 |
+| Secretaria — componentes restantes | 67 | 1.540 | 0 |
+| Gestão académica/Escola — componentes restantes | 19 | 819 | 0 |
+| Secretaria — páginas restantes | 30 | 729 | 0 |
+| **Total** | **184** | **5.225** | **0** |
+
+Os números são **ocorrências de classes neutras por expressão regular**, não número de bugs nem contagem de componentes visuais. O inventário nominal dos ficheiros está em `docs/product/KLASSE_THEME_P0_INVENTORY_20261122.json`.
+
+Convertemos `bg-white`, `bg-slate-50/100/200`, `text-slate-400..950`, `border-slate-100..400`, `ring-slate` e equivalentes para `bg-card`, `bg-muted`, `bg-muted-foreground/15`, `text-foreground`, `text-muted-foreground`, `border-border`, `ring-ring` e outros tokens semânticos. Variações de `hover` e `focus` continuam acessíveis em ambos os modos.
+
+Classes com os hexadecimais institucionais KLASSE foram convertidas para as classes do pacote de design tokens, com tratamento explícito de contraste em textos verdes/dourados. Botões primários dourados usam `text-klasse-gold-900`; elementos ativos com fundo invertido usam `bg-foreground text-background`.
+
+## Restrições
+
+- **Não** modificar APIs, RPCs, migrações, policies RLS, permissões, cálculos financeiros, regras de matrículas/rematrículas, notas, frequência ou histórico.
+- **Não** incluir os 23 ficheiros da PR #446; esta entrega é independente e paralela.
+- **Não** alterar ficheiros fiscais, impressão, documentos PDF, emails, artefactos legados `onboarding.bak` ou portais deliberadamente *light-only* de alunos/professores.
+- Preservar os estados de sucesso/alerta/erro e os painéis deliberadamente escuros, inclusive os que exibem texto branco sobre fundo escuro.
+- Preservar os contratos dos componentes, os handlers, os dados e a navegação.
+
+Algumas classes de estados (`amber`, `rose`, `emerald`) e alguns fundos escuros intencionais continuam sendo candidatos a uma futura inspeção visual de contraste. Eles não fazem parte da contagem neutralizada; mudar todas essas cores de forma mecânica causaria regressões semânticas.
+
+## Controlo de regressão
+
+`apps/web/tests/unit/p0-operational-theme-coverage.spec.mjs` examina os 184 ficheiros documentados, exige zero classes neutras fixas e rejeita hexadecimais institucionais inline em classes utilitárias. É importado por `theme-color-coverage.spec.mjs`, que já integra o workflow `Theme Switcher Guard`.
+
+**Gates de entrega:** `git diff --check`, ESLint (sem erros), `pnpm --filter web typecheck`, testes unitários de tema e `THEME_GUARD_BASE_REF=origin/main node scripts/check-theme-switcher-colors.mjs`. Verificar também os checks do PR no GitHub. A aprovação do CI não substitui a homologação visual autenticada em Claro/Escuro/Sistema e em ecrãs móveis.
+
+### Áreas principais para inspeção visual
+
+Gestão de professores, tabela e detalhe de turma, admissão/rematrícula, emissão de documentos, configuração curricular, horários, mensalidades e fecho académico.

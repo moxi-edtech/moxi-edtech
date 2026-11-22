@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import "./p0-operational-theme-coverage.spec.mjs";
 
 const repoFile = path => readFileSync(new URL("../../../../" + path, import.meta.url), "utf8");
 
