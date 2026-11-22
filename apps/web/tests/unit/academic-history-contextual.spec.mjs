@@ -34,7 +34,7 @@ test("Turmas documentais são sempre filtradas por sessão autorizada", () => {
   assert.match(route, /resolveAcademicYearScope/);
   assert.match(route, /requestedAcademicYearId/);
   assert.match(route, /\.eq\("session_id", year\.id\)/);
-  assert.match(route, /authorizeTurmasManage/);
+  assert.match(route, /authorizeAcademicArchiveRead/);
 });
 
 test("Emissão oficial não envia ano da URL diretamente e respeita histórico encerrado", () => {
@@ -57,7 +57,7 @@ test("Dossier mostra o intervalo completo e abre apenas o ano solicitado", () =>
 test("Arquivo real exige escola/sessão, histórico fechado e bloqueia filtros de polo", () => {
   const route = src("app/api/secretaria/operacoes-academicas/arquivo/turmas/route.ts");
   const panel = src("components/academico/HistoricalTurmasPanel.tsx");
-  assert.match(route, /authorizeTurmasManage/);
+  assert.match(route, /authorizeAcademicArchiveRead/);
   assert.match(route, /resolveAcademicYearScope/);
   assert.match(route, /session\.status !== "CLOSED"/);
   assert.match(route, /\.eq\("escola_id", escolaId\)/);
