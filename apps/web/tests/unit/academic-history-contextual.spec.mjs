@@ -136,7 +136,7 @@ test("Resultados completos por ano usam o histórico oficial da mesma escola e a
 
 test("SEC-ACADEMIC-360 exige autorização dentro da RPC SECURITY DEFINER", () => {
   const migration = readFileSync(
-    resolve(process.cwd(), "../../supabase/migrations/20271201000000_guard_timeline_360_school_role.sql"),
+    resolve(process.cwd(), "../../supabase/migrations/20271202000000_guard_timeline_360_school_role.sql"),
     "utf8"
   );
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.get_aluno_timeline_360/);
