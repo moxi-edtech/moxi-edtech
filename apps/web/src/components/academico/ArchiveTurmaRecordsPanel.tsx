@@ -46,6 +46,7 @@ export default function ArchiveTurmaRecordsPanel({
 }) {
   const [type, setType] = useState<Tipo>("pautas");
   const [versionId, setVersionId] = useState("");
+  const [periodFilter, setPeriodFilter] = useState("");
   const [result, setResult] = useState<ArchiveResponse | null>(null);
   const [loadedKey, setLoadedKey] = useState("");
   const [loading, setLoading] = useState(true);
@@ -90,7 +91,7 @@ export default function ArchiveTurmaRecordsPanel({
     const period = periodos.get(id);
     return period ? (period.numero ? String(period.numero) + "º trimestre" : (period.tipo || "Período")) : "Período não identificado";
   };
-  const pautas = type === "pautas" ? (data?.items ?? []) as Pauta[] : [];
+  const pautas = type === "pautas" ? ((data?.items ?? []) as Pauta[]).filter((p) => !periodFilter || p.periodo_letivo_id === periodFilter) : [];
   const horarios = type === "horarios" ? (data?.versoes ?? []) as Horario[] : [];
   const frequencias = type === "frequencia" ? (data?.items ?? []) as Frequencia[] : [];
   const curriculos = type === "curriculo" ? (data?.versoes ?? []) as Curriculo[] : [];
@@ -122,7 +123,13 @@ export default function ArchiveTurmaRecordsPanel({
       {!loading && !error && data && type === "pautas" && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Somente pautas já emitidas. A consulta não gera nem altera documentos.</p>
-          {!pautas.length && <p className="text-sm text-muted-foreground">Sem pautas oficiais registadas para esta turma e ano.</p>}
+          <label htmlFor={"archive-pauta-period-" + turmaId} className="block text-xs font-medium text-foreground">Trimestre</label>
+          <select id={"archive-pauta-period-" + turmaId} value={periodFilter} onChange={(e) => setPeriodFilter(e.target.value)}
+            className="w-full max-w-sm rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground">
+            <option value="">Todos os trimestres</option>
+            {data.context?.periodos.map((p) => <option key={p.id} value={p.id}>{periodName(p.id)}</option>)}
+          </select>
+          {!pautas.length && <p className="text-sm text-muted-foreground">Sem pautas oficiais registadas neste período da turma.</p>}
           {pautas.map((p) => {
             const params = new URLSearchParams({ ano_letivo_id: academicYearId, turma_id: turmaId });
             if (escolaParam) params.set("escola_id", escolaParam);
