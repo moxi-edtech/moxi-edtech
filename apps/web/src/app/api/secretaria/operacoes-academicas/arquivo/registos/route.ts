@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { authorizeAcademicArchiveRead } from "@/lib/academico/archive-read-authorization";
 import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
@@ -49,8 +49,8 @@ export async function GET(req: Request) {
     if (authError || !auth?.user) return failed("Não autenticado.", 401);
     const escolaId = await resolveEscolaIdForUser(supabase, auth.user.id, url.searchParams.get("escola_id"));
     if (!escolaId) return failed("Sem acesso à escola.", 403);
-    const permission = await authorizeTurmasManage(supabase, escolaId, auth.user.id);
-    if (!permission.allowed) return failed("Sem permissão para consultar o arquivo.", 403);
+    const permission = await authorizeAcademicArchiveRead(supabase, escolaId);
+    if (permission.error) return permission.error;
 
     const year = await resolveAcademicYearScope(supabase, {
       escolaId, requestedAcademicYearId: ano_letivo_id, operation: "READ",
