@@ -46,6 +46,7 @@ test("super-admin school settings retain privileged change workflow and explicit
   assert.match(content, /focus:ring-klasse-gold\/20/);
   assert.match(content, /method: 'PATCH'/);
   assert.match(content, /disabled=\{saving\}/);
+  assert.match(content, /tone="gold"/);
 });
 
 test("student reclassification preserves financial choice, danger colors and summary", () => {
