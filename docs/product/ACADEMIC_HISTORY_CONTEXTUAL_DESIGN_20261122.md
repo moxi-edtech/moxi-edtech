@@ -52,7 +52,7 @@ Não sincronizar automaticamente notas finais históricas para avaliações trim
 - `HistoricalTurmasPanel`: consulta autónoma com pesquisa, paginação, estados de carregamento/erro e isolamento quando o ano muda. Ligação para detalhe da turma; PDF/Excel nominal usam os endpoints existentes com `mode=ano_letivo` para aplicar a política de lista histórica.
 - `loadHistoricalRosterCounts`: contagem por cursor de matrículas da sessão histórica, incluindo os estados históricos admitidos pela política de lista nominal; exclui canceladas/pendentes e falha se não conseguir concluir a leitura. O ano atual mantém a regra operacional de matrículas ativas.
 - `Admin/turmas/page.tsx`: tanto SSR pela view como o fallback por tabela confirmam a sessão académica autorizada, incluindo a visita sem `ano_letivo_id`. O fallback não pode listar todos os anos.
-- `resolveAcademicYearContext`: recebe opcionalmente `requestedEscolaId` e chama o resolver de pertença antes de procurar o ano. `periodos-letivos` e os pedidos de lotes/documentos usam a escola explícita do portal.
+- `resolveAcademicYearContext`: recebe opcionalmente `requestedEscolaId` e chama o resolver de pertença antes de procurar o ano. `periodos-letivos`, `mapa-aproveitamento` e os pedidos de lotes/documentos usam a escola explícita do portal.
 - `QuickDocHub` e `DocumentosOficiaisBatchClient`: link de ano desconhecido ou de outra escola não pode resultar silenciosamente em emissão no ano atual. Ano duplicado bloqueia o pedido e exige ajuste de configuração.
 - Os lotes recentes da Central de Documentos continuam **gerais da escola**, sem filtro por ano: a UI informa isso explicitamente. Não atribuir um ZIP antigo ao ano escolhido sem conferência das turmas e proveniência.
 
@@ -60,7 +60,7 @@ Não sincronizar automaticamente notas finais históricas para avaliações trim
 
 - `apps/web/tests/unit/archive-turmas-query.spec.ts`: validação de UUID/página/pesquisa, bloqueio de filtro de polo e escape literal de caracteres `ILIKE`.
 - `apps/web/tests/unit/historical-roster-count.spec.ts`: 503 matrículas, paginação com cursor, status históricos e rejeição de matrículas de outra escola/ano.
-- `apps/web/tests/unit/academic-history-contextual.spec.mjs`: contratos de shell, arquivo, consulta histórica, SSR/fallback, documentação nominal, read-only e escola explícita.
+- `apps/web/tests/unit/academic-history-contextual.spec.mjs`: contratos de shell, arquivo, consulta histórica, SSR/fallback, documentação nominal, read-only, períodos e relatórios com escola explícita.
 - `apps/web/tests/unit/admin-theme-coverage.spec.mjs`: adaptado ao `AppShell` sem a antiga faixa de seletor. Os novos componentes usam tokens semânticos do tema.
 
 **Estado de validação:** os testes acima foram adicionados ao repositório e fazem parte dos workflows GitHub aplicáveis. Não assinalar como aprovados enquanto o último SHA da branch não tiver checks concluídos. Testes autenticados com RLS real, permissões de múltiplas escolas, duas abas, histórico legal e concorrência permanecem obrigatórios antes de merge.
