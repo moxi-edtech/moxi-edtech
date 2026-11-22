@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { authorizeAcademicArchiveRead } from "@/lib/academico/archive-read-authorization";
 import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 import { readVerifiedAcademicTrimesters, requireVerifiedTrimester } from "@/lib/academico/read-verified-academic-trimesters";
 import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read";
@@ -46,8 +46,8 @@ export async function GET(req: Request) {
     if (authError || !auth?.user) return response({ ok: false, error: "Não autenticado." }, 401);
     const escolaId = await resolveEscolaIdForUser(supabase, auth.user.id, search.get("escola_id"));
     if (!escolaId) return response({ ok: false, error: "Sem acesso à escola." }, 403);
-    const permission = await authorizeTurmasManage(supabase, escolaId, auth.user.id);
-    if (!permission.allowed) return response({ ok: false, error: "Sem permissão para comparar indicadores.", }, 403);
+    const permission = await authorizeAcademicArchiveRead(supabase, escolaId);
+    if (permission.error) return permission.error;
 
     const [left, right] = await Promise.all([
       resolveAcademicYearScope(supabase, { escolaId, requestedAcademicYearId: parsed.data.ano_letivo_id, operation: "READ" }),
