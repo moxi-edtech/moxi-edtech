@@ -34,7 +34,7 @@ test("Turmas documentais são sempre filtradas por sessão autorizada", () => {
   assert.match(route, /resolveAcademicYearScope/);
   assert.match(route, /requestedAcademicYearId/);
   assert.match(route, /\.eq\("session_id", year\.id\)/);
-  assert.match(route, /authorizeAcademicArchiveRead/);
+  assert.match(route, /authorizeTurmasManage/);
 });
 
 test("Emissão oficial não envia ano da URL diretamente e respeita histórico encerrado", () => {
