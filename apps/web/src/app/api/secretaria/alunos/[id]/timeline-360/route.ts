@@ -13,7 +13,7 @@ const ParamsSchema = z.object({
   id: z.string().uuid("alunoId inválido"),
 });
 
-export async function GET(_req: Request, context: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const params = ParamsSchema.safeParse(await context.params);
     if (!params.success) {
@@ -27,7 +27,8 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
 
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    const requestedEscolaId = new URL(req.url).searchParams.get("escola_id");
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
 
     const roleCheck = await requireRoleInSchool({
@@ -36,6 +37,17 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
       roles: [...K12_ADMIN_SECRETARIA_ROLE_GROUP, "secretaria_financeiro"],
     });
     if (roleCheck.error) return roleCheck.error;
+
+    // A RPC é SECURITY DEFINER: confirmar a identidade do aluno na escola autorizada
+    // antes de a invocar, mesmo quando o operador pertence a várias escolas.
+    const { data: aluno, error: alunoError } = await supabase
+      .from("alunos")
+      .select("id")
+      .eq("id", params.data.id)
+      .eq("escola_id", escolaId)
+      .maybeSingle();
+    if (alunoError) return NextResponse.json({ ok: false, error: "Falha ao confirmar a escola do aluno." }, { status: 500 });
+    if (!aluno) return NextResponse.json({ ok: false, error: "Aluno não encontrado nesta escola." }, { status: 404 });
 
     const { data, error } = await supabase.rpc("get_aluno_timeline_360", {
       p_escola_id: escolaId,
