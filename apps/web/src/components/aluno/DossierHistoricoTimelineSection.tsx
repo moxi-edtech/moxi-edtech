@@ -55,6 +55,10 @@ type TimelineAno = {
   };
 };
 
+function formatAcademicYear(year: number): string {
+  return `${year}/${year + 1}`;
+}
+
 function detalheAnoHref(role: DossierRole, alunoId: string, ano: number, escolaId?: string | null) {
   if (role === "admin" && escolaId) {
     return `/escola/${escolaId}/admin/alunos/${alunoId}?tab=historico&ano=${ano}`;
@@ -130,7 +134,10 @@ export function DossierHistoricoTimelineSection({
     };
   }, [alunoId]);
 
-  const cards = useMemo(() => timeline, [timeline]);
+  const cards = useMemo(() => {
+    const ordered = [...timeline].sort((a, b) => b.ano_letivo - a.ano_letivo);
+    return selectedYearNumber == null ? ordered : ordered.filter((item) => item.ano_letivo === selectedYearNumber);
+  }, [timeline, selectedYearNumber]);
 
   if (loading) {
     return (
@@ -167,7 +174,9 @@ export function DossierHistoricoTimelineSection({
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 shadow-sm">
         <BookOpen className="mx-auto mb-2 text-slate-400" size={18} />
-        Sem dados anuais para este aluno.
+        {selectedYearNumber
+          ? `Nenhum registo encontrado para ${formatAcademicYear(selectedYearNumber)}.`
+          : "Sem dados anuais para este aluno."}
       </div>
     );
   }
@@ -184,13 +193,13 @@ export function DossierHistoricoTimelineSection({
                 : `/secretaria/alunos/${alunoId}?tab=historico`}
               className="text-xs font-semibold text-[#1F6B3B] hover:underline"
             >
-              Ver ano atual
+              Ver todos os anos
             </Link>
           ) : null}
         </div>
         {selectedYearNumber ? (
           <div className="mb-3 rounded-lg border border-[#E3B23C]/30 bg-[#E3B23C]/10 px-3 py-2 text-xs font-semibold text-slate-700">
-            Contexto selecionado: ano letivo {selectedYearNumber}
+            Matrícula de {formatAcademicYear(selectedYearNumber)} · Consulta contextual
           </div>
         ) : null}
         <div className="space-y-3">
@@ -207,7 +216,7 @@ export function DossierHistoricoTimelineSection({
               <article key={ano.ano_letivo} className="rounded-xl border border-slate-200 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-[#1F6B3B]">Ano letivo {ano.ano_letivo}</p>
+                    <p className="text-sm font-semibold text-[#1F6B3B]">Ano letivo {formatAcademicYear(ano.ano_letivo)}</p>
                     <p className="text-xs text-slate-500">
                       Matrícula {ano.matricula.numero_matricula ?? "—"} · {formatDate(ano.matricula.data_matricula)}
                     </p>
@@ -215,6 +224,7 @@ export function DossierHistoricoTimelineSection({
                   <div className="flex items-center gap-2">
                     {ano.matricula.status ? <StatusPill status={ano.matricula.status} variant="matricula" size="xs" /> : null}
                     <Link
+                      aria-current={selectedYearNumber === ano.ano_letivo ? "page" : undefined}
                       href={detalheAnoHref(role, alunoId, ano.ano_letivo, escolaId)}
                       className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[#E3B23C] hover:text-[#E3B23C]"
                     >
