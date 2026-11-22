@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { authorizeAcademicArchiveRead } from "@/lib/academico/archive-read-authorization";
 import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 import { ARCHIVE_TURMAS_PAGE_SIZE, literalIlikePattern, parseArchiveTurmasQuery } from "@/lib/academico/archive-turmas-query";
 
@@ -33,8 +33,8 @@ export async function GET(req: Request) {
 
     const escolaId = await resolveEscolaIdForUser(supabase, auth.user.id, params.get("escola_id"));
     if (!escolaId) return response({ ok: false, error: "Escola não encontrada" }, 404);
-    const authz = await authorizeTurmasManage(supabase, escolaId, auth.user.id);
-    if (!authz.allowed) return response({ ok: false, error: "Sem permissão" }, 403);
+    const permission = await authorizeAcademicArchiveRead(supabase, escolaId);
+    if (permission.error) return permission.error;
 
     const session = await resolveAcademicYearScope(supabase, {
       escolaId,
