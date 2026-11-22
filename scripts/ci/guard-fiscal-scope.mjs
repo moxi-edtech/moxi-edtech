@@ -127,6 +127,9 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   "20271119090000_matricula_desistencia_operacional_v1.sql",
   // Reativação auditada; status ativo somente pela RPC autorizada, sem fiscal.
   "20271119093000_matricula_desistencia_reativacao_v2.sql",
+  // PR #434: exact CURTUME academic document review (signed provenance and PG17).
+  // The existing executable SQL fiscal/AGT/SAF-T scanner is unchanged.
+  "20271201090000_curtume_2025_documental_self_service.sql",
   // PR #379: migração de rematrícula entre ciclos sem mudanças fiscais.
   "20271119121000_balcao_rematricula_transicoes_idempotentes.sql",
   // PR #378: calendário escolar operacional; RLS e auditoria append-only, sem notas ou fiscal.
@@ -219,6 +222,30 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
         violations.push("Calendar active-class migration cannot change table data or schema: " + path);
       }
     }
+    if (name === "20271201090000_curtume_2025_documental_self_service.sql") {
+      // Don't silently turn a school-document review into any grade mutation or
+      // a privileged bypass. Preserve the fiscal/AGT/SAF-T scanner below.
+      for (const token of [
+        "CREATE TABLE IF NOT EXISTS internal.curtume_2025_documento_revisoes",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL ON TABLE internal.curtume_2025_documento_revisoes",
+        "CREATE OR REPLACE FUNCTION public.curtume_2025_documentos_pendentes",
+        "CREATE OR REPLACE FUNCTION public.curtume_2025_confirmar_pauta_documental",
+        "pg_catalog.md5(v_body)",
+        "CURTUME_2025_FUNCTION_BASELINE_DRIFT",
+        "CURTUME_2025_FUNCTION_PATCH_PATTERN_DRIFT",
+        "CONFIRMO_PAUTA_2025_2026",
+        "ON CONFLICT (historico_disciplina_id,fonte_sha256) DO NOTHING",
+      ]) {
+        if (!content.includes(token)) {
+          violations.push("Reviewed Curtume document migration missing guard: " + token);
+        }
+      }
+      if (/(?:TRUNCATE|DISABLE\s+TRIGGER|(?:UPDATE|DELETE\s+FROM|INSERT\s+INTO)\s+public\.(?:notas|matriculas|historico_anos|historico_disciplinas|pagamentos|mensalidades)\b)/i.test(executableSql)) {
+        violations.push("Document review migration cannot rewrite historical, grade or financial data: " + path);
+      }
+    }
+
     if (FISCAL_SQL.test(executableSql)) {
       violations.push(`Fiscal/AGT activation marker in lifecycle migration: ${path}`);
     }
