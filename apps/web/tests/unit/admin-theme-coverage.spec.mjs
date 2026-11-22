@@ -85,5 +85,6 @@ test("gold and amber primary actions never use insufficient-contrast white text"
 test("operational shell theme changes do not override white print pages", () => {
   const shell = load("layout/klasse/AppShell.tsx");
   assert.match(shell, /isPrintView[\s\S]*min-h-screen bg-white/);
-  assert.match(shell, /border-b border-border\/70 bg-muted/);
+  assert.doesNotMatch(shell, /border-b border-border\/70 bg-muted/, "Não renderizar faixa vazia após remover seletor universal");
+  assert.match(shell, /<AcademicContextBanner\s*\/>/, "Preservar alerta contextual do arquivo");
 });
