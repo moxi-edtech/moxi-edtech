@@ -204,11 +204,12 @@ export default function DocumentosOficiaisBatchClient() {
 
   const loadTurmas = useCallback(async () => {
     const version = ++turmasFetchVersion.current;
-    if (!academicYearId) { setTurmas([]); setLoading(false); return; }
+    if (!academicYearId || !escolaId) { setTurmas([]); setLoading(false); return; }
     setLoading(true);
     setTurmasError(null);
     try {
-      const res = await fetch(`/api/secretaria/documentos-oficiais/turmas?ano_letivo_id=${encodeURIComponent(academicYearId)}`, { cache: "no-store" });
+      const params = new URLSearchParams({ ano_letivo_id: academicYearId, escola_id: escolaId });
+      const res = await fetch(`/api/secretaria/documentos-oficiais/turmas?${params.toString()}`, { cache: "no-store" });
       if (res.status === 429) throw new Error("Muitos pedidos. Aguarde uns segundos.");
       if (res.status === 503) throw new Error("Servidor ocupado. A tentar novamente…");
       const json = await res.json().catch(() => null);
@@ -223,7 +224,7 @@ export default function DocumentosOficiaisBatchClient() {
     } finally {
       if (version === turmasFetchVersion.current) setLoading(false);
     }
-  }, [academicYearId]);
+  }, [academicYearId, escolaId]);
 
   const loadPeriodos = useCallback(async () => {
     const version = ++periodsFetchVersion.current;
@@ -246,7 +247,8 @@ export default function DocumentosOficiaisBatchClient() {
   const loadJobs = useCallback(async () => {
     setJobsError(null);
     try {
-      const res = await fetch("/api/secretaria/documentos-oficiais/lote", { cache: "no-store" });
+      const params = escolaId ? `?escola_id=${encodeURIComponent(escolaId)}` : "";
+      const res = await fetch(`/api/secretaria/documentos-oficiais/lote${params}`, { cache: "no-store" });
       if (res.status === 429) throw new Error("Muitos pedidos. Aguarde uns segundos.");
       if (res.status === 503) throw new Error("Servidor ocupado. A tentar novamente…");
       const json = await res.json().catch(() => null);
@@ -258,7 +260,7 @@ export default function DocumentosOficiaisBatchClient() {
     } catch (e: any) {
       setJobsError(e?.message || "Falha ao carregar lotes");
     }
-  }, []);
+  }, [escolaId]);
 
   useEffect(() => {
     loadTurmas();
@@ -377,6 +379,7 @@ export default function DocumentosOficiaisBatchClient() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(escolaId ? { escola_id: escolaId } : {}),
           turma_ids: Array.from(selected),
           tipo,
           ano_letivo_id: academicYearId,
