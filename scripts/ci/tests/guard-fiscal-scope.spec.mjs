@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { checkFiscalAndSchemaScope, LIFECYCLE_MIGRATION_ALLOWLIST } from "../guard-fiscal-scope.mjs";
 
 const firstLifecycle = "supabase/migrations/20261028211433_lifecycle_sync_status_ativo_20261028.sql";
@@ -498,7 +499,6 @@ test("timeline 360 security migration is the only newly reviewed RPC authorizati
 
   // The policy also rejects a realistic patch with all required authorization
   // markers but with a surprise data mutation at the tail.
-  const { readFileSync } = await import("node:fs");
   const reviewed = readFileSync(path, "utf8");
   assert.match(checkFiscalAndSchemaScope([path], () =>
     reviewed.replace("COMMIT;", "UPDATE public.notas SET valor = 20;\nCOMMIT;")
