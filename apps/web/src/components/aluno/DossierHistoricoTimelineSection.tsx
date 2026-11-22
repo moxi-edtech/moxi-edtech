@@ -102,7 +102,9 @@ export function DossierHistoricoTimelineSection({
   const searchParams = useSearchParams();
   const selectedYear = searchParams?.get("ano");
   const selectedYearNumber = selectedYear && /^\d{4}$/.test(selectedYear) ? Number(selectedYear) : null;
+  const scopeKey = `${alunoId}:${escolaId ?? "default"}`;
   const [timeline, setTimeline] = useState<TimelineAno[]>([]);
+  const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,7 +128,7 @@ export function DossierHistoricoTimelineSection({
         setError(err instanceof Error ? err.message : "Erro desconhecido.");
         setTimeline([]);
       } finally {
-        if (alive) setLoading(false);
+        if (alive) { setLoading(false); setLoadedScopeKey(scopeKey); }
       }
     }
 
@@ -141,7 +143,7 @@ export function DossierHistoricoTimelineSection({
     return selectedYearNumber == null ? ordered : ordered.filter((item) => item.ano_letivo === selectedYearNumber);
   }, [timeline, selectedYearNumber]);
 
-  if (loading) {
+  if (loading || loadedScopeKey !== scopeKey) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
         <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Percurso académico 360º</p>
@@ -287,7 +289,7 @@ export function DossierHistoricoTimelineSection({
 
                 {selectedYearNumber === ano.ano_letivo && (
                   <HistoricalDisciplineResultsPanel
-                    key={ano.ano_letivo}
+                    key={`${scopeKey}:${ano.ano_letivo}`}
                     alunoId={alunoId}
                     year={ano.ano_letivo}
                     escolaId={escolaId}
