@@ -1,0 +1,60 @@
+name: Curtume RAA - safe automatic closure PG17
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20271201100000_curtume_2025_autofecho_proteger_ano_documental.sql'
+      - 'supabase/ops/tests/raa_historico/prepare_autofecho_fixture.py'
+      - 'supabase/ops/tests/raa_historico/curtume_autofecho_regression.sql'
+      - 'apps/web/src/app/api/secretaria/operacoes-academicas/fecho-historico-lote/**'
+      - 'apps/web/src/components/secretaria/CurtumeFechoHistoricoLote.tsx'
+      - '.github/workflows/curtume-raa-autofecho-pg17.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  auto-close-authorized-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: fixture-only
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      PGURL: postgresql://postgres:fixture-only@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert disposable PostgreSQL 17
+        run: |
+          psql "$PGURL" -Atc "SELECT current_setting('server_version_num')" | grep -E '^17[0-9]{4}$'
+      - name: Prepare existing synthetic RAA fixture and load legacy function
+        run: |
+          python3 supabase/ops/tests/raa_historico/prepare_autofecho_fixture.py layout
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f /tmp/curtume-autofecho-pg17/setup.sql
+      - name: Verify exact guard against the current synthetic function
+        run: |
+          # Change only the hash in a throwaway SQL COPY to match the old fixture.
+          # The committed migration stays pinned to the live audited body.
+          python3 supabase/ops/tests/raa_historico/prepare_autofecho_fixture.py migration
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 -f /tmp/curtume-autofecho-pg17/migration_test_only.sql
+      - name: Only legal eligible pupils close, mismatched document years never auto-ratify
+        run: |
+          psql "$PGURL" -X -v ON_ERROR_STOP=1 \
+            -f /tmp/curtume-autofecho-pg17/data.sql \
+            -f supabase/ops/tests/raa_historico/curtume_autofecho_regression.sql
+      - name: Rollback leaves disposable data empty
+        run: |
+          test "$(psql "$PGURL" -Atc "SELECT count(*) FROM public.historico_anos")" = 0
+          test "$(psql "$PGURL" -Atc "SELECT count(*) FROM public.historico_snapshot_locks")" = 0

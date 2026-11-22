@@ -130,6 +130,9 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // PR #434: exact CURTUME academic document review (signed provenance and PG17).
   // The existing executable SQL fiscal/AGT/SAF-T scanner is unchanged.
   "20271201090000_curtume_2025_documental_self_service.sql",
+  // Curated Curtume 2025 automatic-closure guard only, no grade/finance write.
+  // Existing fiscal and SQL content scanner continues to apply to this exact file.
+  "20271201100000_curtume_2025_autofecho_proteger_ano_documental.sql",
   // PR #379: migração de rematrícula entre ciclos sem mudanças fiscais.
   "20271119121000_balcao_rematricula_transicoes_idempotentes.sql",
   // PR #378: calendário escolar operacional; RLS e auditoria append-only, sem notas ou fiscal.
@@ -243,6 +246,23 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
       }
       if (/(?:TRUNCATE|DISABLE\s+TRIGGER|(?:UPDATE|DELETE\s+FROM|INSERT\s+INTO)\s+public\.(?:notas|matriculas|historico_anos|historico_disciplinas|pagamentos|mensalidades)\b)/i.test(executableSql)) {
         violations.push("Document review migration cannot rewrite historical, grade or financial data: " + path);
+      }
+    }
+
+    if (name === "20271201100000_curtume_2025_autofecho_proteger_ano_documental.sql") {
+      for (const token of [
+        "CURTUME_2025_BATCH_SOURCE_DRIFT",
+        "CURTUME_2025_BATCH_PATCH_ANCHOR_DRIFT",
+        "pg_catalog.md5(v_original)",
+        "PAUTA_ANO_DIVERGENTE_EXIGE_CONFERENCIA",
+        "pg_catalog.replace(v_definition,v_old,v_new)",
+      ]) {
+        if (!content.includes(token)) {
+          violations.push("Reviewed Curtume auto-close guard missing: " + token);
+        }
+      }
+      if (/(?:TRUNCATE|DISABLE\s+TRIGGER|(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+public\.(?:notas|matriculas|historico_anos|historico_disciplinas|pagamentos|mensalidades)\b)/i.test(executableSql)) {
+        violations.push("Auto-close guard cannot rewrite school, grade or financial data: " + path);
       }
     }
 

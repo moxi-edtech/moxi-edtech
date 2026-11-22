@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { getHistoricBatchIssueAdvice } from "@/lib/academico/curtume-historic-batch-issues";
@@ -32,6 +32,8 @@ const MAX_PAGES = 40; // 25 histories/chunk; bounds repeated or corrupted respon
 export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComplete?: () => void; balcaoHref?: string } = {}) {
   const [abertos, setAbertos] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
+  const runningRef = useRef(false);
+  const [toAnalyze, setToAnalyze] = useState(0);
   const [processados, setProcessados] = useState(0);
   const [fechados, setFechados] = useState(0);
   const [bloqueados, setBloqueados] = useState(0);
@@ -53,6 +55,7 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
         if (!response.ok || data?.ok !== true) throw Error(data.error || "Não foi possível obter o total.");
         if (live) {
           setAbertos(Number(data.abertos ?? 0));
+          setToAnalyze(Number(data.sem_diagnostico ?? 0));
           setPendencias(Array.isArray(data.pendencias) ? data.pendencias : []);
         }
         return data;
@@ -62,12 +65,10 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
   }, [refreshKey]);
 
   async function concluir() {
-    if (running) return;
-    if (!window.confirm(
-      "Concluir em lote os históricos elegíveis de 2025/2026 da CURTUME, " +
-      "conforme as notas já importadas? Apenas casos válidos serão ratificados e fechados. " +
-      "As notas serão preservadas e os conflitos ficarão para revisão."
-    )) return;
+    // One deliberate school action, no second browser confirm, no write on GET.
+    // Only the existing canonical PG17-tested RPC may ratify legal histories.
+    if (runningRef.current || running) return;
+    runningRef.current = true;
     setRunning(true);
     setDone(false);
     setError(null);
@@ -128,6 +129,7 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
       setRefreshKey((value) => value + 1);
       onComplete?.();
     } finally {
+      runningRef.current = false;
       setRunning(false);
     }
   }
@@ -140,18 +142,25 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
         <div className="flex items-start gap-3">
           <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-emerald" />
           <div>
-            <h2 className="font-semibold text-emerald">Concluir ano 2025/2026 · CURTUME</h2>
+            <h2 className="font-semibold text-emerald">Regularização académica · 2025/2026</h2>
             <p className="mt-1 text-muted-foreground">
-              {abertos === null ? "A consultar históricos…" : `${abertos} históricos ainda abertos.`}
-              {" "}Usar as pautas importadas, respeitar o RAA e separar apenas os conflitos.
+              {abertos === null ? "A consultar históricos…" :
+                abertos === 0 ? "Todos os históricos estão concluídos." :
+                `${abertos} históricos por analisar. O KLASSE concluirá apenas os comprovadamente elegíveis.`}
             </p>
+            {toAnalyze > 0 && !running && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {toAnalyze} aguardam validação automática; ainda não são exceções.
+              </p>
+            )}
           </div>
         </div>
         <button type="button" onClick={() => void concluir()}
           disabled={running || !abertos}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber px-4 py-2.5 font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
           {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-          {running ? "A concluir…" : done && bloqueados > 0 ? "Reanalisar os pendentes" : "Concluir históricos elegíveis"}
+          {running ? "A verificar com segurança…" :
+              done && bloqueados > 0 ? "Reanalisar casos pendentes" : "Resolver elegíveis automaticamente"}
         </button>
       </div>
       {(running || done || processados > 0) && (
@@ -159,7 +168,7 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
           <span className="font-semibold">{fechados} fechados</span>
           {" · "}{bloqueados} para revisão
           {" · "}{processados} analisados
-          {done && <span className="ml-2 text-emerald">Lote concluído.</span>}
+          {done && <span className="ml-2 text-emerald">Verificação concluída.</span>}
         </div>
       )}
       {error && <p role="alert" className="mt-3 flex items-start gap-2 text-red-700">
@@ -168,11 +177,11 @@ export function CurtumeFechoHistoricoLote({ onComplete, balcaoHref }: { onComple
       {pendencias.length > 0 && (
         <section aria-label="Casos que exigem intervenção" className="mt-4 border-t border-border pt-4">
           <h3 className="font-semibold text-foreground">
-            {pendencias.length} históricos por resolver
+            {pendencias.length} casos que precisam de decisão da escola
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Cada motivo identificado corresponde à validação real da RPC.
-            Os casos ainda não analisados estão assinalados sem inventar um diagnóstico.
+            Só são apresentados bloqueios reais devolvidos pela verificação académica.
+            Os casos ainda sem diagnóstico não são tratados como erros da escola.
           </p>
           <div className="mt-3 max-h-96 space-y-2 overflow-y-auto">
             {pendencias.map((issue, index) => {

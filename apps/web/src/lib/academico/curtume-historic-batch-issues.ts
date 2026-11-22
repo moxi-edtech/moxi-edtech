@@ -20,6 +20,10 @@ const REASONS: Record<string, HistoricBatchIssueAdvice> = {
     title: "Pauta sem notas",
     nextStep: "Transcrever apenas as notas comprovadas pela pauta de 2025/2026.",
   },
+  PAUTA_ANO_DIVERGENTE_EXIGE_CONFERENCIA: {
+    title: "Confirmar o ano da pauta original",
+    nextStep: "O ficheiro indica outro ano. Confirme a pauta original e registe a correção documental na Reconciliação; não alterar notas.",
+  },
   PAUTA_HISTORICA_INCONSISTENTE: {
     title: "Dados da pauta por rever",
     nextStep: "Conferir a classificação e a referência da pauta importada.",

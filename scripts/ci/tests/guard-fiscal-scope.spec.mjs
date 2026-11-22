@@ -18,7 +18,7 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 77);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 78);
   const reativacao = "20271119093000_matricula_desistencia_reativacao_v2.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(reativacao));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + reativacao]), []);
@@ -444,4 +444,20 @@ test("Curtume document review is the only new audited migration, never a fiscal 
     /Reviewed Curtume document migration missing guard|Fiscal\/AGT activation/);
   assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271201090001_unreviewed_notes_override.sql"])[0] ?? "",
     /Unapproved database migration/);
+});
+
+test("automatic historical close guards only the exact audited Curtume source", () => {
+  const filename = "20271201100000_curtume_2025_autofecho_proteger_ano_documental.sql";
+  const path = "supabase/migrations/" + filename;
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.has(filename), true);
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "UPDATE public.notas SET valor=20;")[0] ?? "",
+    /Reviewed Curtume auto-close guard missing|Auto-close guard cannot rewrite/);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "CREATE TABLE public.agt_registro(id uuid);")[0] ?? "",
+    /Reviewed Curtume auto-close guard missing|Fiscal\/AGT activation/);
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271201100001_unapproved_close.sql"
+  ])[0] ?? "", /Unapproved database migration/);
 });
