@@ -42,7 +42,8 @@ test("Emissão oficial não envia ano da URL diretamente e respeita histórico e
   assert.match(batch, /setAcademicYearId/);
   assert.match(batch, /ano_letivo_id: academicYearId/);
   assert.match(batch, /isHistoricalYear/);
-  assert.match(batch, /turmas\?ano_letivo_id=/);
+  assert.match(batch, /new URLSearchParams\(\{ ano_letivo_id: academicYearId, escola_id: escolaId \}\)/);
+  assert.match(batch, /documentos-oficiais\/turmas\?\$\{params\.toString\(\)\}/);
   assert.match(batch, /periodos-letivos\?\$\{params\}/);
 });
 
