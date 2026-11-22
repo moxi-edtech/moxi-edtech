@@ -18,7 +18,7 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 78);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 79);
   const reativacao = "20271119093000_matricula_desistencia_reativacao_v2.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(reativacao));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + reativacao]), []);

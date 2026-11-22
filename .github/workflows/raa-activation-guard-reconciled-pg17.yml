@@ -1,0 +1,61 @@
+name: RAA activation trigger — reconciled current main, PG17
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20271201110000_raa_activation_guard_reconciled.sql'
+      - 'supabase/ops/tests/raa_historico/enrollment_guard_activation_*.sql'
+      - '.github/workflows/raa-activation-guard-reconciled-pg17.yml'
+      - 'apps/web/src/hooks/useRematriculaBalcao.ts'
+      - 'apps/web/src/components/secretaria/RematriculaBalcaoModal.tsx'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local-fixture-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: local-fixture-only
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check disposable PostgreSQL 17
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -Atc "select current_setting('server_version_num')" |
+            grep -E '^17[0-9]{4}$'
+      - name: Create synthetic RAA fixture and install candidate trigger
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/enrollment_guard_activation_fixture.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271201110000_raa_activation_guard_reconciled.sql
+      - name: Verify activation matrix; roll back every synthetic write
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/enrollment_guard_activation_regression.sql
+      - name: Verify no fixture rows survived transaction
+        run: |
+          test "$(psql -X -Atc 'select count(*) from public.matriculas')" = "0"
+      - name: Exercise trigger with real RAA historical ratification (separate PG17 DB)
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -c 'CREATE DATABASE raa_real'
+          PGDATABASE=raa_real psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/finalist_guard_fixture.sql
+          PGDATABASE=raa_real psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/raa_historico/enrollment_guard_real_raa_regression.sql
+          test "$(PGDATABASE=raa_real psql -X -Atc 'select count(*) from public.matriculas')" = "0"

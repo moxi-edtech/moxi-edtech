@@ -133,6 +133,8 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // Curated Curtume 2025 automatic-closure guard only, no grade/finance write.
   // Existing fiscal and SQL content scanner continues to apply to this exact file.
   "20271201100000_curtume_2025_autofecho_proteger_ano_documental.sql",
+  // Reconciled #344: enforce canonical RAA before activating successor enrollment.
+  "20271201110000_raa_activation_guard_reconciled.sql",
   // PR #379: migração de rematrícula entre ciclos sem mudanças fiscais.
   "20271119121000_balcao_rematricula_transicoes_idempotentes.sql",
   // PR #378: calendário escolar operacional; RLS e auditoria append-only, sem notas ou fiscal.
@@ -263,6 +265,24 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
       }
       if (/(?:TRUNCATE|DISABLE\s+TRIGGER|(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+public\.(?:notas|matriculas|historico_anos|historico_disciplinas|pagamentos|mensalidades)\b)/i.test(executableSql)) {
         violations.push("Auto-close guard cannot rewrite school, grade or financial data: " + path);
+      }
+    }
+
+    if (name === "20271201110000_raa_activation_guard_reconciled.sql") {
+      for (const token of [
+        "RAA_ACTIVATION_DEPENDENCY_DRIFT",
+        "RAA_ACTIVATION_TRIGGER_ALREADY_EXISTS",
+        "resolve_raa_progression_for_matricula(",
+        "NEW.origem_transicao_matricula_id",
+        "trg_klasse_guard_enrollment_raa_progression",
+        "REVOKE ALL ON FUNCTION public.guard_enrollment_raa_progression_v1()",
+      ]) {
+        if (!content.includes(token)) {
+          violations.push("Reviewed RAA activation migration missing guard: " + token);
+        }
+      }
+      if (/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE)\s+public\.(?:notas|historico_anos|historico_disciplinas|pagamentos|mensalidades)/i.test(executableSql)) {
+        violations.push("RAA activation gate cannot write grades, historical data or payments: " + path);
       }
     }
 
