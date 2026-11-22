@@ -28,6 +28,8 @@ on:
       - "apps/web/src/lib/theme-preference.ts"
       - "apps/web/tests/unit/theme-preference.spec.ts"
       - "apps/web/package.json"
+      - "apps/web/visual-harness/ThemeSwitcherVisualFixture.tsx"
+      - "apps/web/scripts/visual/theme-operational-smoke.mjs"
       - ".github/workflows/theme-switcher-guard.yml"
   workflow_dispatch:
 
@@ -60,3 +62,50 @@ jobs:
         env:
           THEME_GUARD_BASE_REF: ${{ github.event.pull_request.base.sha || '' }}
         run: node scripts/check-theme-switcher-colors.mjs
+
+  theme-operational-visual:
+    name: Theme operations — 4 widths × 3 zooms × Claro/Escuro/Sistema
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install isolated visual test dependencies
+        run: |
+          mkdir -p /tmp/klasse-theme-visual
+          npm --prefix /tmp/klasse-theme-visual install --no-save vite@6.4.0 playwright@1.57.0 axe-core@4.10.3
+          /tmp/klasse-theme-visual/node_modules/.bin/playwright install --with-deps chromium
+      - name: Start synthetic theme fixture
+        run: |
+          /tmp/klasse-theme-visual/node_modules/.bin/vite --config apps/web/visual-harness/vite.config.mjs --host 127.0.0.1 --port 6006 >/tmp/klasse-theme-vite.log 2>&1 &
+          for attempt in $(seq 1 50); do
+            if curl -fsS http://127.0.0.1:6006/?story=theme-switcher >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          tail -n 100 /tmp/klasse-theme-vite.log
+          exit 1
+      - name: Homologate semantic operations in Claro/Escuro/Sistema
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-theme-visual/node_modules/playwright/index.mjs
+          AXE_CORE_FILE: /tmp/klasse-theme-visual/node_modules/axe-core/axe.min.js
+          QA_CAPTURE: "1"
+        run: node apps/web/scripts/visual/theme-operational-smoke.mjs
+      - name: Fixture diagnostics
+        if: failure()
+        run: tail -n 120 /tmp/klasse-theme-vite.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: klasse-theme-operational-visual
+          path: apps/web/visual-evidence/theme-operational/
+          retention-days: 14
+          if-no-files-found: warn
