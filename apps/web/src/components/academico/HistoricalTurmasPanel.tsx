@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BookOpen, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, Search } from "lucide-react";
+import ArchiveTurmaRecordsPanel from "@/components/academico/ArchiveTurmaRecordsPanel";
 
 type TurmaHistorica = {
   id: string;
@@ -41,6 +42,7 @@ export default function HistoricalTurmasPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  const [expandedTurmaId, setExpandedTurmaId] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setQuery(q.trim()), 250);
@@ -109,7 +111,7 @@ export default function HistoricalTurmasPanel({
           type="search"
           maxLength={80}
           value={q}
-          onChange={(event) => { setQ(event.target.value); setPage(1); }}
+          onChange={(event) => { setQ(event.target.value); setPage(1); setExpandedTurmaId(null); }}
           placeholder="Pesquisar turma pelo nome"
           className="w-full rounded-xl border border-border bg-background py-2.5 pl-10 pr-3 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
         />
@@ -132,7 +134,8 @@ export default function HistoricalTurmasPanel({
       {!loading && !error && rows.length > 0 && (
         <div className="divide-y divide-border rounded-xl border border-border">
           {rows.map((turma) => (
-            <div key={turma.id} className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4">
+            <div key={turma.id} className="min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
                   <BookOpen className="h-4 w-4 text-klasse-green" aria-hidden="true" />
@@ -145,6 +148,11 @@ export default function HistoricalTurmasPanel({
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <button type="button" aria-expanded={expandedTurmaId === turma.id}
+                  onClick={() => setExpandedTurmaId((old) => old === turma.id ? null : turma.id)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold">
+                  {expandedTurmaId === turma.id ? "Fechar histórico" : "Consultar histórico"}
+                </button>
                 <a
                   href={`/api/secretaria/turmas/${encodeURIComponent(turma.id)}/alunos/pdf?mode=ano_letivo`}
                   className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold"
@@ -166,6 +174,11 @@ export default function HistoricalTurmasPanel({
                   Ver turma <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 </Link>
               </div>
+              </div>
+              {expandedTurmaId === turma.id && (
+                <ArchiveTurmaRecordsPanel key={academicYearId + ":" + turma.id}
+                  academicYearId={academicYearId} turmaId={turma.id} escolaParam={escolaParam} />
+              )}
             </div>
           ))}
         </div>
