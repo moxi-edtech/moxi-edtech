@@ -75,7 +75,7 @@ test("year comparison counts exact scoped records without cross-year or tenant f
   assert.match(api, /resolveEscolaIdForUser/);
   assert.match(api, /authorizeAcademicArchiveRead/);
   assert.match(api, /parsed\.data\.ano_letivo_id === parsed\.data\.comparar_ano_letivo_id/);
-  assert.match(api, /\.eq\("escola_id", escolaId\)\.eq\("session_id", year\.id\)/);
+  assert.match(api, /\.eq\("escola_id", authorizedEscolaId\)\.eq\("session_id", year\.id\)/);
   assert.match(api, /count: "exact", head: true/);
   assert.match(api, /Matrículas sem session_id não são inferidas/);
   assert.match(api, /readVerifiedAcademicTrimesters/);
