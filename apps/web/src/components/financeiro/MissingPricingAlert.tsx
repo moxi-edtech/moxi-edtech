@@ -106,7 +106,7 @@ export function MissingPricingAlert({
             </Link>
             <button
               onClick={() => setIsVisible(false)}
-              className="text-xs font-bold text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 dark:text-amber-200 px-2 py-2"
+              className="text-xs font-bold text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 px-2 py-2"
             >
               Lembrar depois
             </button>
