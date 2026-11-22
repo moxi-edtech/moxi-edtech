@@ -309,7 +309,7 @@ export function MatriculasEmMassa({
             </div>
 
             {/* Lista de alunos (preview) */}
-            <div className="mt-2 max-h-32 overflow-y-auto rounded-lg border border-border bg-slate-50/60">
+            <div className="mt-2 max-h-32 overflow-y-auto rounded-lg border border-border bg-muted/60">
               {grupo.alunos.slice(0, 10).map((aluno) => (
                 <div
                   key={aluno.id}
