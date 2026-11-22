@@ -173,7 +173,7 @@ export function MatriculasEmMassa({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-10 text-slate-500 gap-2 text-sm">
+      <div className="flex items-center justify-center py-10 text-muted-foreground gap-2 text-sm">
         <Loader2 className="h-4 w-4 animate-spin" />
         A carregar grupos de pré-matrícula...
       </div>
@@ -195,15 +195,15 @@ export function MatriculasEmMassa({
   return (
     <div className="space-y-5">
       {/* Header explicativo */}
-      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 flex items-start gap-3 shadow-sm">
-        <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-slate-50 text-slate-600">
+      <div className="rounded-xl border border-border bg-card px-4 py-4 flex items-start gap-3 shadow-sm">
+        <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <School className="h-5 w-5" />
         </div>
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-slate-900">
+          <h3 className="text-sm font-semibold text-foreground">
             Matrículas em massa por grupo
           </h3>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Usamos as colunas <strong>Curso</strong>, <strong>Classe</strong>,{" "}
             <strong>Turno</strong>, <strong>Turma</strong> e{" "}
             <strong>Ano letivo</strong> do ficheiro para agrupar alunos. Depois
@@ -219,7 +219,7 @@ export function MatriculasEmMassa({
       )}
 
       {grupos.length === 0 && !info && (
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+        <div className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
           Não há mais grupos pendentes para matrícula em massa.
         </div>
       )}
@@ -234,31 +234,31 @@ export function MatriculasEmMassa({
         return (
           <div
             key={key}
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm space-y-3"
+            className="rounded-xl border border-border bg-card px-4 py-4 shadow-sm space-y-3"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-foreground">
                     <Users className="h-3 w-3" />
                     {grupo.count} aluno(s)
                   </span>
                 </div>
-                <h4 className="text-sm font-semibold text-slate-900">
+                <h4 className="text-sm font-semibold text-foreground">
                   Turma {grupo.turma_codigo || "indefinida"} · Ano {grupo.ano_letivo ?? "?"}
                 </h4>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Alunos agrupados pelo mesmo código de turma informado no ficheiro.
                 </p>
               </div>
 
               <div className="flex flex-col items-stretch sm:items-end gap-2 min-w-[220px]">
-                <label className="text-[11px] font-medium text-slate-500">
+                <label className="text-[11px] font-medium text-muted-foreground">
                   Selecionar turma real
                 </label>
                 <div className="flex items-center gap-2">
                   <select
-                    className="w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+                    className="w-full sm:w-56 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
                     disabled={!hasTurmas || disabled}
                     onChange={(e) => {
                       const turmaId = e.target.value;
@@ -289,12 +289,12 @@ export function MatriculasEmMassa({
                   </select>
 
                   {disabled ? (
-                    <div className="inline-flex items-center gap-1 text-xs text-slate-500">
+                    <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Matriculando...
                     </div>
                   ) : hasTurmas ? (
-                    <ArrowRight className="h-4 w-4 text-slate-400" />
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
                   ) : (
                     <AlertTriangle className="h-4 w-4 text-amber-500" />
                   )}
@@ -309,13 +309,13 @@ export function MatriculasEmMassa({
             </div>
 
             {/* Lista de alunos (preview) */}
-            <div className="mt-2 max-h-32 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50/60">
+            <div className="mt-2 max-h-32 overflow-y-auto rounded-lg border border-border bg-slate-50/60">
               {grupo.alunos.slice(0, 10).map((aluno) => (
                 <div
                   key={aluno.id}
-                  className="flex items-center justify-between px-3 py-1.5 border-b last:border-b-0 border-slate-100 text-xs"
+                  className="flex items-center justify-between px-3 py-1.5 border-b last:border-b-0 border-border text-xs"
                 >
-                  <span className="text-slate-800">
+                  <span className="text-foreground">
                     {aluno.nome || "Nome não informado"}
                   </span>
                   {!aluno.profile_id && (
@@ -327,7 +327,7 @@ export function MatriculasEmMassa({
                 </div>
               ))}
               {grupo.alunos.length > 10 && (
-                <div className="px-3 py-1.5 text-[11px] text-slate-500 text-center border-t border-slate-100 bg-white/60">
+                <div className="px-3 py-1.5 text-[11px] text-muted-foreground text-center border-t border-border bg-card/60">
                   ... e mais {grupo.alunos.length - 10} aluno(s)
                 </div>
               )}
@@ -338,7 +338,7 @@ export function MatriculasEmMassa({
 
       {/* Hint final */}
       {grupos.length > 0 && (
-        <p className="text-[11px] text-slate-500 flex items-center gap-1">
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1">
           <CheckCircle2 className="h-3 w-3 text-emerald-500" />
           Dica: você pode repetir o processo quantas vezes quiser para o mesmo
           ficheiro de importação. Matrículas existentes serão atualizadas.
