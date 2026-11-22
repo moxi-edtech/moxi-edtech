@@ -18,7 +18,7 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 79);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 80);
   const reativacao = "20271119093000_matricula_desistencia_reativacao_v2.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(reativacao));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + reativacao]), []);
@@ -475,4 +475,32 @@ test("RAA successor activation is the sole additional reviewed migration", () =>
     /RAA activation gate cannot write grades|Reviewed RAA activation migration missing guard/);
   assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271201110001_unreviewed_raa.sql"])[0] ?? "",
     /Unapproved database migration/);
+});
+
+test("timeline 360 security migration is the only newly reviewed RPC authorization patch", () => {
+  const file = "20271201000000_guard_timeline_360_school_role.sql";
+  const path = "supabase/migrations/" + file;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(file));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(checkFiscalAndSchemaScope([
+    "supabase/migrations/20271201000001_unreviewed_timeline_bypass.sql"
+  ])[0] ?? "", /Unapproved database migration/);
+
+  for (const sql of [
+    "CREATE OR REPLACE FUNCTION public.unsafe() RETURNS void LANGUAGE sql AS $$ SELECT 1 $$;",
+    "UPDATE public.notas SET valor = 20;",
+    "ALTER TABLE public.alunos DISABLE ROW LEVEL SECURITY;",
+    "CREATE TABLE public.fiscal_config (enabled boolean);",
+    "GRANT ALL ON public.historico_disciplinas TO authenticated;",
+  ]) {
+    assert.ok(checkFiscalAndSchemaScope([path], () => sql).length > 0, sql);
+  }
+
+  // The policy also rejects a realistic patch with all required authorization
+  // markers but with a surprise data mutation at the tail.
+  const { readFileSync } = await import("node:fs");
+  const reviewed = readFileSync(path, "utf8");
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    reviewed.replace("COMMIT;", "UPDATE public.notas SET valor = 20;\nCOMMIT;")
+  )[0] ?? "", /Timeline RPC migration cannot modify/);
 });
