@@ -461,3 +461,18 @@ test("automatic historical close guards only the exact audited Curtume source", 
     "supabase/migrations/20271201100001_unapproved_close.sql"
   ])[0] ?? "", /Unapproved database migration/);
 });
+
+test("RAA successor activation is the sole additional reviewed migration", () => {
+  const file = "20271201110000_raa_activation_guard_reconciled.sql";
+  const path = "supabase/migrations/" + file;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(file));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "CREATE OR REPLACE FUNCTION public.unsafe() RETURNS void LANGUAGE sql AS $x$ SELECT 1 $x$;")[0] ?? "",
+    /Reviewed RAA activation migration missing guard/);
+  assert.match(checkFiscalAndSchemaScope([path], () =>
+    "UPDATE public.notas SET valor=20;")[0] ?? "",
+    /RAA activation gate cannot write grades|Reviewed RAA activation migration missing guard/);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271201110001_unreviewed_raa.sql"])[0] ?? "",
+    /Unapproved database migration/);
+});
