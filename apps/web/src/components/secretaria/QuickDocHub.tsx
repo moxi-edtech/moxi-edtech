@@ -298,12 +298,15 @@ export default function QuickDocHub({
   const [anosLetivos, setAnosLetivos] = useState<AnoLetivoItem[]>([]);
   const [anoLetivo, setAnoLetivo] = useState<number | null>(null);
   // A fonte do pedido é o ano selecionado neste documento, nunca o estado global da URL.
-  const selectedYearId = anosLetivos.find((item) => item.ano_letivo === anoLetivo)?.id ?? null;
+  const matchingYears = anosLetivos.filter((item) => item.ano_letivo === anoLetivo);
+  const selectedYearId = matchingYears.length === 1 ? matchingYears[0].id : null;
+  const ambiguousYear = matchingYears.length > 1;
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
   const [loadingTurmas, setLoadingTurmas] = useState(false);
   const [loadingPeriodos, setLoadingPeriodos] = useState(false);
   const [loadingAnos, setLoadingAnos] = useState(false);
+  const [yearContextError, setYearContextError] = useState<string | null>(null);
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [turmaId, setTurmaId] = useState("");
@@ -338,7 +341,10 @@ export default function QuickDocHub({
         const params = new URLSearchParams({ escola_id: escolaId });
         const res = await fetch(`/api/secretaria/school-sessions?${params.toString()}`, { cache: "no-store" });
         const json = await res.json().catch(() => ({}));
-        if (!active || !res.ok || !json.ok || !Array.isArray(json.data)) return;
+        if (!active) return;
+        if (!res.ok || !json.ok || !Array.isArray(json.data)) {
+          throw new Error(json.error || "Não foi possível carregar os anos letivos.");
+        }
 
         const fetched = (json.data as AnoLetivoItem[])
           .filter((item) => typeof item.ano_letivo === "number")
@@ -347,8 +353,23 @@ export default function QuickDocHub({
         setAnosLetivos(fetched);
         const activeAno = fetched.find((item) => item.status === "ativa")?.ano_letivo ?? fetched[0]?.ano_letivo ?? null;
         const requested = fetched.find((item) => item.id === academicYearIdFromUrl)?.ano_letivo;
+        if (academicYearIdFromUrl && requested == null) {
+          setYearContextError("Ano letivo indisponível para esta escola. Selecione um ano válido para emitir.");
+          setAnoLetivo(null);
+          setTurmaId("");
+          setTurmas([]);
+          return;
+        }
+        setYearContextError(null);
         setAnoLetivo((current) => requested ?? current ?? activeAno);
       } catch (error) {
+        if (active) {
+          setYearContextError(error instanceof Error ? error.message : "Falha ao consultar anos letivos.");
+          setAnosLetivos([]);
+          setAnoLetivo(null);
+          setTurmaId("");
+          setTurmas([]);
+        }
         console.error("Erro ao carregar anos letivos:", error);
       } finally {
         if (active) setLoadingAnos(false);
@@ -791,6 +812,10 @@ export default function QuickDocHub({
   }, [anoLetivo, escolaId, includeAllStatus, isAlbum, modoLista, nominalOrder, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, selectedYearId, turmasFiltradas]);
 
   const canSubmit =
+    Boolean(selectedYearId) &&
+    !ambiguousYear &&
+    !yearContextError &&
+    !loadingAnos &&
     selectedDocs.length > 0 &&
     selectedDocDefs.every((doc) => docDisabledReason(doc.key) === null) &&
     !submitting;
@@ -836,12 +861,19 @@ export default function QuickDocHub({
         )}
       </div>
 
+      {(yearContextError || ambiguousYear) && (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-card px-3 py-2 text-sm text-destructive">
+          {yearContextError ?? "Existem anos letivos duplicados. Peça à direção para corrigir a configuração antes de emitir."}
+        </p>
+      )}
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Field label="Ano letivo">
           <select
             value={anoLetivo ?? ""}
             onChange={(event) => {
               setAnoLetivo(event.target.value ? Number(event.target.value) : null);
+              setYearContextError(null);
               setTurmaId("");
               setTurmas([]);
               setPeriodoId("");
