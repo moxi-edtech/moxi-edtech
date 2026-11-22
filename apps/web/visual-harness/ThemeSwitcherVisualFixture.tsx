@@ -55,7 +55,7 @@ export default function ThemeSwitcherVisualFixture() {
                 Ver situação
               </button>
             </div>
-            <div className="min-w-0 max-w-full overflow-x-auto rounded-xl border border-border" data-testid="operations-table-scroll">
+            <div className="min-w-0 max-w-full overflow-x-auto rounded-xl border border-border" tabIndex={0} role="region" aria-label="Tabela de situação académica" data-testid="operations-table-scroll">
               <table className="w-full min-w-[540px] border-collapse bg-card text-sm text-foreground" data-testid="operations-table">
                 <thead className="bg-muted text-foreground">
                   <tr>
