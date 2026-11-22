@@ -23,6 +23,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Typecheck web
+        env:
+          # The project-wide TypeScript program exceeds Node's default ~2 GiB heap.
+          # Keep this budget on the typecheck step (runner has ~7 GiB RAM).
+          NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm -C apps/web typecheck
       - name: Lint transfer files
         run: pnpm -C apps/web exec eslint src/components/secretaria/TransferForm.tsx src/components/secretaria/MatriculasListClient.tsx 'src/app/api/secretaria/matriculas/[matriculaId]/transfer/route.ts' 'src/app/api/secretaria/turmas/[id]/transferir/route.ts'
