@@ -2,7 +2,8 @@
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   AlertCircle,
   Check,
@@ -81,6 +82,7 @@ function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void 
 
 export default function DocumentosOficiaisBatchClient() {
   const searchParams = useSearchParams();
+  const pathname = usePathname() ?? "";
   const requestedAcademicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM) ?? null;
   const { escolaId, escolaSlug } = useEscolaId();
   const [yearOptions, setYearOptions] = useState<YearOption[]>([]);
@@ -89,6 +91,11 @@ export default function DocumentosOficiaisBatchClient() {
   const [yearsLoading, setYearsLoading] = useState(true);
   const isHistoricalYear = yearOptions.some((year) => year.id === academicYearId && year.status !== "ativa");
   const escolaParam = escolaSlug || escolaId;
+  const portalScope = pathname.includes("/operacoes/") ? "operacoes" : "secretaria";
+  const turmaHref = (id: string) => {
+    const prefix = escolaParam ? `/escola/${encodeURIComponent(escolaParam)}/${portalScope}` : `/${portalScope}`;
+    return `${prefix}/turmas/${encodeURIComponent(id)}?ano_letivo_id=${encodeURIComponent(academicYearId)}`;
+  };
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
   const [periodoId, setPeriodoId] = useState<string>("");
@@ -129,12 +136,12 @@ export default function DocumentosOficiaisBatchClient() {
   }, [pendencias]);
 
   const filteredTurmas = useMemo(() => {
-    return hidePendencias ? turmas.filter((t) => t.pendencias === 0) : turmas;
-  }, [hidePendencias, turmas]);
+    return isHistoricalYear || !hidePendencias ? turmas : turmas.filter((t) => t.pendencias === 0);
+  }, [hidePendencias, isHistoricalYear, turmas]);
 
   const selectableTurmas = useMemo(() => {
-    return filteredTurmas.filter((t) => t.pendencias === 0);
-  }, [filteredTurmas]);
+    return isHistoricalYear ? [] : filteredTurmas.filter((t) => t.pendencias === 0);
+  }, [filteredTurmas, isHistoricalYear]);
 
   const allSelected = selectableTurmas.length > 0 && selectableTurmas.every((t) => selected.has(t.id));
 
@@ -616,14 +623,14 @@ export default function DocumentosOficiaisBatchClient() {
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-xs text-slate-600">
+        {!isHistoricalYear && <label className="flex items-center gap-2 text-xs text-slate-600">
           <input
             type="checkbox"
             checked={hidePendencias}
             onChange={(e) => setHidePendencias(e.target.checked)}
           />
           Ocultar turmas com pendências de notas
-        </label>
+        </label>}
         <select
           value={periodoId}
           onChange={(e) => setPeriodoId(e.target.value)}
@@ -642,13 +649,13 @@ export default function DocumentosOficiaisBatchClient() {
         >
           Atualizar status
         </button>
-        <button
+        {!isHistoricalYear && <button
           type="button"
           onClick={() => setSelected(new Set(selectableTurmas.map((t) => t.id)))}
           className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
         >
           Selecionar turmas prontas
-        </button>
+        </button>}
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
@@ -659,6 +666,7 @@ export default function DocumentosOficiaisBatchClient() {
                 <input
                   type="checkbox"
                   checked={allSelected}
+                  disabled={isHistoricalYear}
                   onChange={toggleAll}
                   className="rounded text-[#1F6B3B] focus:ring-[#1F6B3B]"
                 />
@@ -687,7 +695,7 @@ export default function DocumentosOficiaisBatchClient() {
                     <input
                       type="checkbox"
                       checked={isChecked}
-                      disabled={hasPendencias}
+                      disabled={hasPendencias || isHistoricalYear}
                       onChange={() => toggleTurma(turma.id)}
                       className="rounded text-[#1F6B3B] focus:ring-[#1F6B3B] disabled:opacity-50 cursor-pointer"
                     />
@@ -698,7 +706,11 @@ export default function DocumentosOficiaisBatchClient() {
                   </td>
                   <td className="px-6 py-4 font-mono text-slate-600">{turma.alunos ?? "—"}</td>
                   <td className="px-6 py-4">
-                    {hasPendencias ? (
+                    {isHistoricalYear ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                        <Archive className="h-3.5 w-3.5" /> Arquivo
+                      </span>
+                    ) : hasPendencias ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-red-600 text-xs font-bold border border-red-100">
                         <AlertCircle className="w-3.5 h-3.5" /> Faltam Notas
                       </span>
@@ -709,10 +721,22 @@ export default function DocumentosOficiaisBatchClient() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-xs text-slate-500">
-                    {hasPendencias ? `${turma.pendencias} pendência(s)` : "—"}
+                    {isHistoricalYear ? "Consulta" : hasPendencias ? `${turma.pendencias} pendência(s)` : "—"}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap items-center gap-2">
+                      {isHistoricalYear ? (
+                        <>
+                          <a href={`/api/secretaria/turmas/${encodeURIComponent(turma.id)}/alunos/pdf?mode=ano_letivo`}
+                            className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold">
+                            <FileText className="h-4 w-4 text-muted-foreground" /> Lista histórica PDF
+                          </a>
+                          <Link href={turmaHref(turma.id)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-foreground hover:border-klasse-gold">
+                            <Eye className="h-4 w-4 text-muted-foreground" /> Ver turma
+                          </Link>
+                        </>
+                      ) : <>
                       {hasPendencias && (
                         <button
                           type="button"
@@ -743,6 +767,7 @@ export default function DocumentosOficiaisBatchClient() {
                       >
                         <ExternalLink className="h-3 w-3" /> Modelo
                       </button>
+                      </>}
                     </div>
                   </td>
                 </tr>
@@ -759,6 +784,7 @@ export default function DocumentosOficiaisBatchClient() {
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-bold text-slate-900 mb-3">{labels.history}</h2>
+        {isHistoricalYear && <p className="mb-3 text-xs text-muted-foreground">Lotes recentes da escola, não filtrados pelo ano letivo selecionado. Para a lista histórica de uma turma, use a ação própria acima.</p>}
         <div className="space-y-2">
           {jobs.map((job) => (
             <div key={job.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-xs">
