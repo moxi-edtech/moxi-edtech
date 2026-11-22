@@ -79,7 +79,7 @@ export default function AcademicArchiveHub() {
   }, [base, isOperations, selectedYear]);
 
   return (
-    <main className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-500"><Archive className="h-4 w-4" /> Operações académicas</div>
@@ -123,6 +123,6 @@ export default function AcademicArchiveHub() {
           ))}
         </section>
       )}
-    </main>
+    </div>
   );
 }
