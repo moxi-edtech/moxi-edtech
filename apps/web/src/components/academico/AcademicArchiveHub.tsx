@@ -93,7 +93,7 @@ export default function AcademicArchiveHub() {
           <p className="mt-1 text-sm text-muted-foreground">Consulte anos anteriores sem mudar o contexto de trabalho da escola.</p>
         </div>
         <Link href={base + "/turmas"} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted">
-          <BookOpen className="h-4 w-4 text-slate-400" /> Voltar às turmas atuais
+          <BookOpen className="h-4 w-4 text-muted-foreground" /> Voltar às turmas atuais
         </Link>
       </div>
 
