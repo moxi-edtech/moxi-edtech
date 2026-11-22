@@ -17,17 +17,17 @@ export default function EscolaSettingsClient({ escolaId, initialAlunoPortalEnabl
   const [msg, setMsg] = useState('')
 
   return (
-    <section className="bg-white shadow rounded-lg p-4 border">
+    <section className="rounded-xl border border-border bg-card p-4 text-foreground shadow-sm">
       <h2 className="text-lg font-semibold mb-3">Plano e Recursos</h2>
       <div className="grid md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Plano</label>
-          <select value={plano} onChange={(e)=>setPlano(e.target.value as PlanTier)} className="border rounded px-3 py-2 w-full">
+          <label htmlFor="escola-plano" className="mb-1 block text-sm font-medium text-foreground">Plano</label>
+          <select id="escola-plano" value={plano} onChange={(e)=>setPlano(e.target.value as PlanTier)} className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
             <option value="essencial">{PLAN_NAMES.essencial} (Financeiro Essencial)</option>
             <option value="profissional">{PLAN_NAMES.profissional} (Financeiro Avançado)</option>
             <option value="premium">{PLAN_NAMES.premium} (Financeiro + Fiscal)</option>
           </select>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             - Essencial: cobranças internas, registros manuais, relatórios simples, despesas manuais.
             <br/>
             - Profissional: + boletos/links, relatórios detalhados, alertas automáticos, exportações.
@@ -36,7 +36,7 @@ export default function EscolaSettingsClient({ escolaId, initialAlunoPortalEnabl
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <input id="aluno_portal" type="checkbox" className="h-4 w-4" checked={alunoPortalEnabled} onChange={(e)=>setAlunoPortalEnabled(e.target.checked)} />
+          <input id="aluno_portal" type="checkbox" className="h-4 w-4 accent-klasse-gold" checked={alunoPortalEnabled} onChange={(e)=>setAlunoPortalEnabled(e.target.checked)} />
           <label htmlFor="aluno_portal" className="text-sm">Habilitar Portal do Aluno</label>
         </div>
       </div>
@@ -49,7 +49,7 @@ export default function EscolaSettingsClient({ escolaId, initialAlunoPortalEnabl
             setMsg('Configurações salvas com sucesso.')
           } catch (e: any) { setMsg(e?.message || 'Erro ao salvar') } finally { setSaving(false) }
         }} tone="blue">{saving ? 'Salvando...' : 'Salvar alterações'}</Button>
-        {msg && <span className="ml-3 text-sm text-gray-600">{msg}</span>}
+        {msg && <span className="ml-3 text-sm text-muted-foreground">{msg}</span>}
       </div>
     </section>
   )
