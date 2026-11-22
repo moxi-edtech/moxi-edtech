@@ -51,6 +51,11 @@ export default function AcademicArchiveHub() {
       .then((items) => {
         if (controller.signal.aborted) return;
         setYears(items);
+        if (requestedId && !items.some((year) => year.id === requestedId)) {
+          setSelectedYearId("");
+          setError("O ano letivo solicitado não pertence ao arquivo desta escola. Selecione um ano válido.");
+          return;
+        }
         setSelectedYearId((previous) =>
           items.some((year) => year.id === requestedId) ? (requestedId ?? "") :
           items.some((year) => year.id === previous) ? previous : (items[0]?.id ?? "")
@@ -97,8 +102,8 @@ export default function AcademicArchiveHub() {
         <p className="mt-1 text-xs text-muted-foreground">Esta seleção vale apenas para os resultados e ligações deste arquivo.</p>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <select id="archive-year" className="min-w-56 rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
-            value={selectedYearId} onChange={(event) => setSelectedYearId(event.target.value)} disabled={loading || years.length === 0}>
-            {years.length === 0 && <option value="">Nenhum ano anterior</option>}
+            value={selectedYearId} onChange={(event) => { setSelectedYearId(event.target.value); setError(""); }} disabled={loading || years.length === 0}>
+            {(!selectedYearId || years.length === 0) && <option value="">Selecione um ano anterior</option>}
             {years.map((year) => <option key={year.id} value={year.id}>{year.nome || `${year.ano_letivo}/${year.ano_letivo + 1}`}</option>)}
           </select>
           {selectedYear && <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"><History className="h-3.5 w-3.5" /> Consulta histórica</span>}
