@@ -38,6 +38,9 @@ jobs:
         working-directory: apps/web
         run: node --test --import tsx tests/unit/workspace-student-dossier.spec.tsx tests/unit/balcao-return-context-reconciliation.spec.ts
       - name: TypeScript
+        # Full web typecheck needs more than the default Node ~2 GiB V8 heap.
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm -C apps/web typecheck
       - name: Focused lint
         working-directory: apps/web
