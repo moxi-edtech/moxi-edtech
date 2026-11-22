@@ -417,7 +417,7 @@ export function DisciplinaModal({
       <div className={embedded ? "w-full bg-muted rounded-2xl border border-border overflow-hidden flex flex-col" : "w-full max-w-3xl bg-muted rounded-2xl shadow-2xl border border-border overflow-hidden flex flex-col max-h-[80vh]"}>
         <div className="bg-klasse-green px-6 py-4 text-white flex justify-between items-start shrink-0">
           <div className="space-y-1">
-            <div className="text-[#D7E7DC] text-xs font-bold uppercase tracking-wider">
+            <div className="text-white/80 text-xs font-bold uppercase tracking-wider">
               {mode === "create" ? "Nova disciplina" : "Configurando Disciplina"}
             </div>
             {mode === "create" ? (
@@ -449,7 +449,7 @@ export function DisciplinaModal({
                   />
                 </div>
                 {(errors.nome || errors.codigo) && (
-                  <p className="text-xs text-[#FFE7B8]">
+                  <p className="text-xs text-amber-100">
                     {errors.nome ?? errors.codigo}
                   </p>
                 )}
@@ -807,7 +807,7 @@ export function DisciplinaModal({
                   </div>
                   <div
                     className={`font-bold text-sm ${
-                      form.classificacao === opt.id ? "text-[#7A5510]" : "text-foreground"
+                      form.classificacao === opt.id ? "text-klasse-gold-900 dark:text-klasse-gold-300" : "text-foreground"
                     }`}
                   >
                     {opt.label}
@@ -999,7 +999,7 @@ export function DisciplinaModal({
               type="button"
               onClick={handleSave}
               disabled={!canSave || saving}
-              className="px-8 py-3 rounded-xl font-bold text-white bg-slate-900 hover:bg-slate-800 shadow-lg hover:shadow-xl transition-all flex items-center gap-2 disabled:opacity-70"
+              className="px-8 py-3 rounded-xl font-bold text-klasse-gold-900 bg-klasse-gold hover:brightness-95 shadow-lg hover:shadow-xl transition-all flex items-center gap-2 disabled:opacity-70"
             >
               <Check className="w-5 h-5" />
               {saving ? "Salvando..." : "Salvar Configuração"}

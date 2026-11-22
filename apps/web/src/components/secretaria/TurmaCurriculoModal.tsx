@@ -233,7 +233,7 @@ export default function TurmaCurriculoModal({ turma, escolaId, isOpen, onClose, 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/60 p-4 backdrop-blur-xs">
       <div className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="curriculo-turma-title">
         <header className="flex items-start justify-between border-b border-border bg-muted/70 p-6">
           <div>

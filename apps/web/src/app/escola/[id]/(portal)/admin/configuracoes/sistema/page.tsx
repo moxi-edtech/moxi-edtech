@@ -257,7 +257,7 @@ export default function SistemaConfiguracoesPage() {
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between relative z-10">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <div className="rounded-lg bg-slate-900 p-2 text-white">
+                <div className="rounded-xl bg-klasse-green p-2 text-white">
                   <LayoutDashboard className="h-5 w-5" />
                 </div>
                 <h2 className="text-xl font-bold text-foreground">
@@ -308,7 +308,7 @@ export default function SistemaConfiguracoesPage() {
             </div>
             <a 
               href={setupState.next_action.href}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-slate-800 transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-bold text-klasse-gold-900 shadow-sm hover:brightness-95 transition-colors"
             >
               Continuar Configuração
               <ArrowRight className="h-3 w-3" />
@@ -387,7 +387,7 @@ export default function SistemaConfiguracoesPage() {
                     {isDone ? (
                       <CheckCircle2 className="h-5 w-5 text-klasse-green dark:text-klasse-green-300" />
                     ) : (
-                      <Circle className="h-5 w-5 text-slate-200 group-hover:text-muted-foreground" />
+                      <Circle className="h-5 w-5 text-muted-foreground/50 group-hover:text-muted-foreground" />
                     )}
                   </div>
                   

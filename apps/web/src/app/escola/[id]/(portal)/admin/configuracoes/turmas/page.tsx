@@ -120,7 +120,7 @@ const ModalShell = ({
   footer?: React.ReactNode;
   onClose: () => void;
 }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/60 backdrop-blur-sm p-4">
     <div className="w-full max-w-3xl rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       <div className="flex items-start justify-between gap-4 border-b border-border bg-muted px-6 py-4">
         <div>
@@ -1160,7 +1160,7 @@ export default function TurmasConfiguracoesPage() {
                 type="button"
                 onClick={handleAutoAssignTeachers}
                 disabled={assigningTeachers}
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:cursor-wait disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg bg-klasse-gold px-3 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95 disabled:cursor-wait disabled:opacity-60"
               >
                 {assigningTeachers && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
                 {assigningTeachers ? "Atribuindo..." : "Atribuir automaticamente"}
@@ -1264,7 +1264,7 @@ export default function TurmasConfiguracoesPage() {
                         <button
                           type="button"
                           onClick={() => openModal(curso.id, "generate")}
-                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                          className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95"
                         >
                           <Wand2 className="h-4 w-4" />
                           Gerar turmas
@@ -1297,7 +1297,7 @@ export default function TurmasConfiguracoesPage() {
               <button type="button" onClick={() => setActiveReadinessBlocker(null)} className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted">
                 Voltar à revisão
               </button>
-              <Link href={portalHref(blockerHref(activeReadinessBlocker.code))} onClick={() => setActiveReadinessBlocker(null)} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+              <Link href={portalHref(blockerHref(activeReadinessBlocker.code))} onClick={() => setActiveReadinessBlocker(null)} className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95">
                 Abrir configuração completa <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -1554,7 +1554,7 @@ export default function TurmasConfiguracoesPage() {
                 type="button"
                 onClick={handleGenerateTurmas}
                 disabled={modalActionLoading}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95 disabled:opacity-60"
               >
                 {modalActionLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
                 Gerar turmas
@@ -1624,7 +1624,7 @@ export default function TurmasConfiguracoesPage() {
               <button
                 type="button"
                 onClick={openCreateDisciplina}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-klasse-gold-900"
               >
                 <Plus className="h-4 w-4" /> Nova disciplina
               </button>
@@ -1643,7 +1643,7 @@ export default function TurmasConfiguracoesPage() {
                     <div className="font-semibold text-foreground flex items-center gap-2">
                       {disc.nome}
                       {disc.is_core && (
-                        <span className="rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-semibold">
+                        <span className="rounded-full bg-klasse-green text-white px-2 py-0.5 text-[10px] font-semibold">
                           Core
                         </span>
                       )}

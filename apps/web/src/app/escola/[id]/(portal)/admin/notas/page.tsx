@@ -262,7 +262,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card p-5 rounded-xl border border-border shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-moxinexa-navy flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-slate-500" />
+            <div className="w-3 h-3 rounded-full bg-klasse-green" />
             Gestão de Notas
           </h1>
           <p className="text-sm text-muted-foreground mt-1">

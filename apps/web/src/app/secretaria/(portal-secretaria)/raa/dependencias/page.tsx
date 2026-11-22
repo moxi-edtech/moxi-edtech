@@ -204,7 +204,7 @@ export default function DependenciasAcademicasPage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link
                     href="/secretaria/raa/reapreciacoes"
-                    className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                    className="rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95"
                   >
                     Abrir recursos
                   </Link>

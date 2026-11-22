@@ -120,7 +120,7 @@ function CourseMatrixTable({
   });
 
   // Styles helpers
-  const inputClass = "w-14 h-9 text-center font-bold text-foreground bg-card border border-border rounded-lg outline-none transition-all focus:border-klasse-gold focus:ring-2 focus:ring-klasse-gold/20 placeholder:text-slate-200";
+  const inputClass = "w-14 h-9 text-center font-bold text-foreground bg-card border border-border rounded-lg outline-none transition-all focus:border-klasse-gold focus:ring-2 focus:ring-klasse-gold/20 placeholder:text-muted-foreground/50";
   const headerClass = "px-6 py-3 font-semibold text-center w-36 uppercase text-[10px] tracking-wider border-l border-border";
 
   return (
@@ -514,7 +514,7 @@ export default function AcademicStep2({
               onClick={() => onPresetCategoryChange(cat.id as any)}
               className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-[11px] font-bold transition-all ${
                 presetCategory === cat.id
-                  ? "border-slate-800 bg-slate-800 text-white shadow-md"
+                  ? "border-klasse-gold bg-klasse-gold text-klasse-gold-900 shadow-sm"
                   : "border-border bg-card text-muted-foreground hover:bg-muted hover:border-border"
               }`}
             >
@@ -747,7 +747,7 @@ export default function AcademicStep2({
             type="button"
             onClick={onApplyCurriculumPreset}
             disabled={applyingPreset || matrix.length === 0}
-            // TOKEN: Botão Dourado Action (#E3B23C)
+            // TOKEN: Botão Dourado Action (klasse-gold)
             className="flex items-center gap-2 rounded-xl bg-klasse-gold px-6 py-2.5 text-sm font-bold text-klasse-gold-900 shadow-md shadow-orange-900/5 transition-all hover:brightness-95 hover:shadow-lg hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale"
           >
             {applyingPreset ? (

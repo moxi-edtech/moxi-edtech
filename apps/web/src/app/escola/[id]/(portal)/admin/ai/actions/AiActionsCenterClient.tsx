@@ -350,7 +350,7 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
       </div>
 
       {selected ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/40 p-4">
           <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl">
             <div className="flex items-start justify-between border-b border-border p-5">
               <div>

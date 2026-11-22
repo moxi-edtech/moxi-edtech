@@ -252,8 +252,8 @@ export default function ConfigurationStep({
                 className={`
                   inline-flex items-center justify-center gap-2
                   rounded-lg px-4 py-2.5 text-sm font-medium
-                  bg-slate-600 text-white
-                  hover:bg-slate-700
+                  bg-klasse-gold text-klasse-gold-900
+                  hover:brightness-95
                   disabled:opacity-50 disabled:cursor-not-allowed
                   focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
                   transition-colors
@@ -340,7 +340,7 @@ export default function ConfigurationStep({
               {turma.status_validacao === 'rascunho' && (
                 <button
                   onClick={() => handleTurmaChange(turma.id, 'status_validacao', 'ativo')}
-                  className="px-4 py-2 text-sm font-medium text-white bg-slate-600 rounded-md hover:bg-slate-700 mt-2"
+                  className="px-4 py-2 text-sm font-medium text-klasse-gold-900 bg-klasse-gold rounded-xl hover:brightness-95 mt-2"
                 >
                   <CheckCircle className="inline-block w-4 h-4 mr-2" /> Ativar Turma
                 </button>
@@ -369,8 +369,8 @@ export default function ConfigurationStep({
           className={`
             inline-flex items-center justify-center gap-2
             rounded-lg px-4 py-2.5 text-sm font-medium
-            bg-slate-600 text-white
-            hover:bg-slate-700
+            bg-klasse-gold text-klasse-gold-900
+            hover:brightness-95
             disabled:opacity-50 disabled:cursor-not-allowed
             focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
             transition-colors

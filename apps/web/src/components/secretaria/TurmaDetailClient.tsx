@@ -188,7 +188,7 @@ function ConfirmDialog({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-klasse-dark/70 backdrop-blur-sm p-4">
       <div className="bg-card rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
         <div className="flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-klasse-gold-700 dark:text-klasse-gold-300 flex-shrink-0 mt-0.5" />
@@ -200,7 +200,7 @@ function ConfirmDialog({
             Cancelar
           </button>
           <button onClick={onConfirm} disabled={loading}
-            className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold disabled:opacity-60 transition-colors">
+            className="px-4 py-2 rounded-xl bg-klasse-gold text-klasse-gold-900 text-sm font-bold hover:brightness-95 disabled:opacity-60 transition-colors">
             {loading ? confirmLoadingLabel : confirmLabel}
           </button>
         </div>
@@ -214,7 +214,7 @@ function ConfirmDialog({
 function UpgradeModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-klasse-dark/70 backdrop-blur-sm p-4">
       <div className="bg-card rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-klasse-gold/10">
@@ -2080,7 +2080,7 @@ export default function TurmaDetailClient({
       <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
       <Toast toast={toast} onDismiss={() => setToast(null)} />
       {actionModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-klasse-dark/70 backdrop-blur-sm p-4">
           <div
             className={`bg-card rounded-2xl shadow-2xl w-full animate-in zoom-in-95 duration-150 overflow-hidden ${
               actionModal.type === "notas" ? "max-w-6xl" : "max-w-lg"

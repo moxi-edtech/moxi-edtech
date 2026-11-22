@@ -115,7 +115,7 @@ export default function CourseManager({
               <span className="text-foreground">{selectedCourse?.nome}</span>
             </nav>
             <div className="flex items-center gap-3">
-              <div className="bg-slate-900 p-2 rounded-xl">
+              <div className="bg-klasse-green p-2 rounded-xl">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -333,7 +333,7 @@ export default function CourseManager({
 
                       {turmas.length === 0 ? (
                         <div className="p-12 rounded-2xl border border-dashed border-border flex flex-col items-center justify-center text-center">
-                          <Users className="w-8 h-8 text-slate-200 mb-2" />
+                          <Users className="w-8 h-8 text-muted-foreground/50 mb-2" />
                           <p className="text-sm text-muted-foreground">Nenhuma turma criada para a {classe.nome}.</p>
                         </div>
                       ) : (
@@ -372,7 +372,7 @@ export default function CourseManager({
 
             {managerTab === "disciplinas" && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <Card className="bg-slate-900 text-white border-none overflow-hidden shadow-xl">
+                <Card className="bg-klasse-dark text-white border-none overflow-hidden shadow-xl">
                   <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
                     <BookOpen size={120} />
                   </div>
@@ -461,7 +461,7 @@ export default function CourseManager({
                               <span className="text-sm font-bold text-foreground flex items-center gap-2">
                                 {disc.nome}
                                 {disc.is_core && (
-                                  <Badge className="bg-slate-900 text-white text-[9px] h-4 py-0 px-1.5 border-none font-bold uppercase">Core</Badge>
+                                  <Badge className="bg-klasse-green text-white text-[9px] h-4 py-0 px-1.5 border-none font-bold uppercase">Core</Badge>
                                 )}
                               </span>
                               <span className="text-[11px] text-muted-foreground mt-0.5 sm:hidden">{disc.codigo}</span>
@@ -513,7 +513,7 @@ export default function CourseManager({
                   </table>
                   {details.disciplinas.length === 0 && (
                     <div className="px-6 py-12 flex flex-col items-center justify-center text-center">
-                      <BookOpen className="w-10 h-10 text-slate-200 mb-2" />
+                      <BookOpen className="w-10 h-10 text-muted-foreground/50 mb-2" />
                       <p className="text-sm text-muted-foreground">Nenhuma disciplina cadastrada.</p>
                       <Button variant="link" size="sm" onClick={onCreateDisciplina} className="mt-1">Começar agora</Button>
                     </div>

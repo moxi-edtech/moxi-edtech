@@ -104,7 +104,7 @@ function ConfirmDialog({ open, message, loading, onConfirm, onCancel }: {
 }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-klasse-dark/60 backdrop-blur-sm p-4">
       <div className="bg-card rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
         <div className="flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -292,7 +292,7 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
   ]
 
   return (
-    <div className="fixed inset-0 z-[70] flex justify-end bg-slate-950/60 backdrop-blur-sm"
+    <div className="fixed inset-0 z-[70] flex justify-end bg-klasse-dark/60 backdrop-blur-sm"
       onClick={onClose}>
       <div
         className="h-full w-full max-w-lg bg-card shadow-2xl overflow-y-auto animate-in slide-in-from-right-4 duration-200 flex flex-col"
@@ -1862,7 +1862,7 @@ export default function ProfessoresPage() {
 
       {/* ── Modal: editar professor ─────────────────────────────────────────── */}
       {editOpen && editTarget && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-klasse-dark/60 backdrop-blur-sm p-4">
           <div className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted">
               <div>

@@ -161,7 +161,7 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
           A estrutura acadêmica no ficheiro já existe na escola. Pode avançar diretamente para a matrícula.
         </p>
         <div className="mt-8">
-          <button onClick={onNext} className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg">
+          <button onClick={onNext} className="bg-klasse-gold text-klasse-gold-900 px-8 py-3 rounded-xl font-bold hover:brightness-95 transition shadow-lg">
             Avançar para Matrículas <ArrowRight className="inline w-4 h-4 ml-2" />
           </button>
         </div>
@@ -214,7 +214,7 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
             <div className="flex items-center gap-2 text-emerald-600 font-bold mb-6 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100">
               <CheckCircle2 className="w-5 h-5" /> Estrutura criada com sucesso!
             </div>
-            <button onClick={onNext} className="bg-slate-900 hover:bg-slate-800 text-white px-10 py-4 rounded-xl font-bold text-base shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2">
+            <button onClick={onNext} className="bg-klasse-gold hover:brightness-95 text-klasse-gold-900 px-10 py-4 rounded-xl font-bold text-base shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2">
               Prosseguir para Matrícula <ArrowRight className="w-5 h-5" />
             </button>
           </div>

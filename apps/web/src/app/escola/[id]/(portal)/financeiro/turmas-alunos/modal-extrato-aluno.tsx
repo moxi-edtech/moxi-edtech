@@ -92,7 +92,7 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
 
   return (
     <>
-      <div className="fixed inset-0 bg-slate-900/70 flex items-center justify-center p-4 z-50">
+      <div className="fixed inset-0 bg-klasse-dark/70 flex items-center justify-center p-4 z-50">
         <div className="bg-card rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
         <div className="border-b border-border px-6 py-4 flex items-center justify-between">
           <div>

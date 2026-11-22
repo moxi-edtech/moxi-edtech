@@ -66,7 +66,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-klasse-dark/75 flex items-center justify-center p-4 z-50">
       <div className="bg-card rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Cabeçalho */}
         <div className="border-b border-border px-6 py-4">

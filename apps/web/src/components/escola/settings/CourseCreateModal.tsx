@@ -47,7 +47,7 @@ function Modal({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm p-4 flex items-center justify-center animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-klasse-dark/60 backdrop-blur-sm p-4 flex items-center justify-center animate-in fade-in duration-200">
       <div className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="px-6 py-4 border-b border-border bg-muted/50 flex items-center justify-between">
           <div>
@@ -150,7 +150,7 @@ export default function CourseCreateModal({
                     className={cx(
                       "rounded-full px-5 py-2 text-xs font-bold border transition-all duration-200",
                       selected
-                        ? "bg-slate-900 text-white border-slate-900 shadow-sm scale-105"
+                        ? "bg-klasse-gold text-klasse-gold-900 border-klasse-gold shadow-sm scale-105"
                         : "bg-card text-muted-foreground border-border hover:border-border"
                     )}
                   >

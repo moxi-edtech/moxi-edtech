@@ -645,7 +645,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
               onClick={() => setActiveTab(tab as any)}
               className={`flex-1 text-center py-2 px-3 text-sm font-medium rounded-md transition-all ${
                 activeTab === tab
-                  ? "bg-slate-900 text-white shadow-sm"
+                  ? "bg-klasse-gold text-klasse-gold-900 shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
@@ -1078,7 +1078,7 @@ export default function WhatsAppKlassePage({ params }: Props) {
                 {activeTab === "templates" ? (
                   <div className="grid gap-3 md:grid-cols-2">
                     {(data?.templates || []).map((template) => (
-                      <div key={template.key} className="rounded-md border bg-card p-3 shadow-sm border-slate-150 space-y-2">
+                      <div key={template.key} className="rounded-md border bg-card p-3 shadow-sm border-border space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <p className="font-semibold text-sm text-foreground">{template.title}</p>
                           <Badge variant="outline" className={statusClass(template.requires_approval ? "review_required" : "sent")}>

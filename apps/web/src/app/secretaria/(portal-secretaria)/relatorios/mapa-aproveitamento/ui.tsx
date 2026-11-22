@@ -138,7 +138,7 @@ export default function MapaAproveitamentoClient() {
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-950 text-slate-200">
+          <thead className="bg-klasse-green text-white">
             <tr>
               <th className="px-3 py-2 text-left">Aluno</th>
               <th className="px-3 py-2 text-left">Processo</th>

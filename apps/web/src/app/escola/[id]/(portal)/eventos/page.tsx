@@ -155,7 +155,7 @@ export default function EventosPage() {
         <h1 className="text-xl font-semibold text-foreground">Eventos</h1>
         <button
           onClick={abrirCriar}
-          className="px-3 py-2 text-sm rounded-md bg-[#0B2C45] text-white hover:bg-[#0D4C73]"
+          className="px-3 py-2 text-sm rounded-xl bg-klasse-gold text-klasse-gold-900 hover:brightness-95"
         >
           + Novo evento
         </button>

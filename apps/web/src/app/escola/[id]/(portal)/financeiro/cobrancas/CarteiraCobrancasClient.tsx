@@ -345,7 +345,7 @@ export default function CarteiraCobrancasClient() {
           <button
             type="button"
             onClick={() => navigateWithinFinance("radar")}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-klasse-gold px-4 py-2.5 text-sm font-semibold text-klasse-gold-900 hover:brightness-95"
           >
             <Megaphone className="h-4 w-4" />
             Campanhas de cobrança
@@ -395,7 +395,7 @@ export default function CarteiraCobrancasClient() {
               onClick={() => updateStatus(value)}
               className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                 status === value
-                  ? "bg-slate-900 text-white"
+                  ? "bg-klasse-gold text-klasse-gold-900"
                   : "bg-muted text-muted-foreground hover:bg-muted"
               }`}
             >

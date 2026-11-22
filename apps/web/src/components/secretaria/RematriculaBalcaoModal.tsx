@@ -347,7 +347,7 @@ export function RematriculaBalcaoModal(props: RematriculaBalcaoModalProps) {
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div
-      className={embedded ? "w-full" : "fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"}
+      className={embedded ? "w-full" : "fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/70 p-4 backdrop-blur-sm"}
       onClick={embedded ? undefined : handleOverlayClick}
     >
       <div
@@ -892,7 +892,7 @@ function StepFinanceiro({
               <button
                 type="button"
                 onClick={onRegularizeDebt}
-                className="shrink-0 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
+                className="shrink-0 rounded-xl bg-klasse-gold px-4 py-2.5 text-xs font-bold text-klasse-gold-900 transition hover:brightness-95"
               >
                 Regularizar dívida
               </button>

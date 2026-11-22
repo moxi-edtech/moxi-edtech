@@ -290,7 +290,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
             {/* AÇÕES DE BILLING RÁPIDAS */}
             <div className="flex flex-col gap-3 min-w-[220px]">
               <Button 
-                className="w-full bg-slate-950 text-white hover:bg-slate-800 rounded-xl justify-between group shadow-sm"
+                className="w-full bg-klasse-gold text-klasse-gold-900 hover:brightness-95 rounded-xl justify-between group shadow-sm"
                 onClick={() => handleBillingAction("upgrade")}
                 loading={actionLoading === "upgrade"}
               >

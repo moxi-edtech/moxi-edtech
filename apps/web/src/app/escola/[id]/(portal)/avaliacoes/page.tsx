@@ -927,7 +927,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
                     ? "bg-green-600 text-white" 
                     : t.tone === "error" 
                     ? "bg-red-600 text-white" 
-                    : "bg-slate-600 text-white"
+                    : "bg-muted text-foreground"
                 }`}>
                   {t.tone === "success" ? <SvgIcons.check /> : t.tone === "error" ? "!" : "i"}
                 </div>

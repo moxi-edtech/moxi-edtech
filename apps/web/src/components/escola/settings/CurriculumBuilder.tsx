@@ -681,7 +681,7 @@ export default function CurriculumBuilder({
         <div className="lg:col-span-3 space-y-6">
           <div className="bg-card rounded-2xl p-6 shadow-sm border border-border sticky top-6">
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-white shadow-lg">
+              <div className="w-10 h-10 bg-klasse-green rounded-xl flex items-center justify-center text-white shadow-lg">
                 <Layers size={20} />
               </div>
               <span className="font-bold text-lg leading-tight">
@@ -875,7 +875,7 @@ export default function CurriculumBuilder({
                         onClick={() => handleTrackSelect("all")}
                         className={`p-4 rounded-xl border-2 text-left flex gap-3 items-start transition-all ${
                           trackFilter === "all"
-                            ? "border-slate-900 bg-slate-900 text-white"
+                            ? "border-klasse-gold bg-klasse-gold text-klasse-gold-900"
                             : "border-border hover:border-border"
                         }`}
                       >
@@ -910,7 +910,7 @@ export default function CurriculumBuilder({
                           onClick={() => setCategory(cat.id)}
                           className={`px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${
                             isActive
-                              ? "bg-slate-900 text-white"
+                              ? "bg-klasse-gold text-klasse-gold-900"
                               : "bg-muted text-muted-foreground hover:bg-muted-foreground/15"
                           }`}
                         >
@@ -1022,7 +1022,7 @@ export default function CurriculumBuilder({
                         className={`w-16 h-12 rounded-xl text-sm font-bold transition-all border-2
                           ${
                             config.classes.includes(cls)
-                              ? "bg-slate-800 text-white border-slate-800 shadow-lg"
+                              ? "bg-klasse-gold text-klasse-gold-900 border-klasse-gold shadow-sm"
                               : "bg-card text-muted-foreground border-border hover:border-border"
                           }
                         `}
@@ -1118,15 +1118,15 @@ export default function CurriculumBuilder({
                   <div className="overflow-x-auto border border-border rounded-xl shadow-sm">
                     <div ref={subjectsScrollRef} className="max-h-[400px] overflow-y-auto">
                     <table className="w-full table-fixed text-sm text-left">
-                      <thead className="bg-slate-900 text-white text-xs uppercase sticky top-0 z-20" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+                      <thead className="bg-klasse-green text-white text-xs uppercase sticky top-0 z-20" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                         <tr>
-                          <th className="px-4 py-3 sticky left-0 bg-slate-900 z-30">
+                          <th className="px-4 py-3 sticky left-0 bg-klasse-green z-30">
                             Disciplina
                           </th>
                           {config.classes.map((cls) => (
                             <th
                               key={cls}
-                              className="px-4 py-3 text-center border-l border-slate-700"
+                              className="px-4 py-3 text-center border-l border-white/20"
                               colSpan={
                                 Object.values(config.turnos).filter(Boolean)
                                   .length || 1
@@ -1137,14 +1137,14 @@ export default function CurriculumBuilder({
                           ))}
                         </tr>
                         <tr className="bg-muted text-foreground text-[10px]">
-                          <th className="px-4 py-2 sticky left-0 bg-slate-800" />
+                          <th className="px-4 py-2 sticky left-0 bg-muted" />
                           {config.classes.map((cls) =>
                             Object.entries(config.turnos).map(
                               ([key, active]) =>
                                 active && (
                                   <th
                                     key={`${cls}-${key}`}
-                                    className="px-2 py-1 text-center border-l border-slate-700 w-12"
+                                    className="px-2 py-1 text-center border-l border-border w-12"
                                   >
                                     {key[0].toUpperCase()}
                                   </th>
@@ -1258,7 +1258,7 @@ export default function CurriculumBuilder({
               {step < 4 ? (
                 <button
                   onClick={handleNext}
-                  className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold text-sm hover:bg-slate-800 transition shadow-lg flex items-center gap-2"
+                  className="bg-klasse-gold text-klasse-gold-900 px-8 py-3 rounded-xl font-bold text-sm hover:brightness-95 transition shadow-lg flex items-center gap-2"
                 >
                   Próximo <ChevronRight size={16} />
                 </button>
@@ -1372,7 +1372,7 @@ function CustomCourseModal({
     (selectedTipo && TYPE_COLORS[selectedTipo]) || TYPE_COLORS.geral;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/50 backdrop-blur-sm animate-in fade-in">
       <div className="bg-card w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden scale-100 animate-in zoom-in-95 p-6 space-y-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center">
           <div>
@@ -1504,7 +1504,7 @@ function CustomCourseModal({
                     }}
                     className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
                       active
-                        ? "bg-slate-800 text-white border-slate-800"
+                        ? "bg-klasse-gold text-klasse-gold-900 border-klasse-gold"
                         : "bg-card border-border hover:border-border"
                     }`}
                   >
@@ -1594,7 +1594,7 @@ function CustomCourseModal({
                 subjects: data.subjects,
               });
             }}
-            className="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-lg transition"
+            className="px-6 py-2 bg-klasse-gold hover:brightness-95 text-klasse-gold-900 text-sm font-bold rounded-lg transition"
           >
             Criar Curso Personalizado
           </button>

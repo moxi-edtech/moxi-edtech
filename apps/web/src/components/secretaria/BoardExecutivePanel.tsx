@@ -58,7 +58,7 @@ export function BoardExecutivePanel({
               </div>
             </div>
             <div className="h-12 w-px bg-muted" />
-            <div className="rounded-2xl bg-slate-900 px-4 py-3 text-right text-white">
+            <div className="rounded-xl bg-klasse-dark px-4 py-3 text-right text-white">
               <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Saldo acumulado</p>
               <p className="mt-2 text-2xl font-bold">{formatCurrency(saldoFinalResultado)}</p>
             </div>

@@ -697,7 +697,7 @@ export default function DocumentosOficiaisBatchClient() {
                 {job.download_url && (
                   <a
                     href={job.download_url}
-                    className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1 text-white"
+                    className="inline-flex items-center gap-1 rounded-xl bg-klasse-gold px-3 py-1 text-klasse-gold-900 hover:brightness-95"
                   >
                     <Download size={12} /> ZIP
                   </a>
@@ -772,7 +772,7 @@ export default function DocumentosOficiaisBatchClient() {
               <button
                 type="button"
                 onClick={() => activeTurma && handleDownloadRascunho(activeTurma.id)}
-                className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
+                className="rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95"
               >
                 Baixar rascunho
               </button>
@@ -860,9 +860,9 @@ export default function DocumentosOficiaisBatchClient() {
       </ModalShell>
 
       {selected.size > 0 && effectiveStatus !== "RUNNING" && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-950 p-3 pr-4 rounded-full shadow-2xl flex items-center gap-6 animate-in slide-in-from-bottom-8">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-klasse-dark p-3 pr-4 rounded-full shadow-2xl flex items-center gap-6 animate-in slide-in-from-bottom-8">
           <div className="flex items-center gap-3 pl-4">
-            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-800 text-white text-xs font-bold">
+            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-klasse-gold text-klasse-gold-900 text-xs font-bold">
               {selected.size}
             </span>
             <span className="text-sm font-medium text-muted-foreground">Turmas selecionadas</span>

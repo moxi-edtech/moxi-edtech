@@ -187,7 +187,7 @@ export default function AlunosPage() {
                 </button>
                 <button 
                     onClick={() => setView('form')}
-                    className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-slate-900/20 hover:-translate-y-0.5 transition-all"
+                    className="flex items-center gap-2 bg-klasse-gold text-klasse-gold-900 px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-klasse-gold/20 hover:-translate-y-0.5 transition-all"
                 >
                     <UserPlus size={18}/> <span className="hidden sm:inline">Adicionar Aluno</span>
                 </button>
@@ -382,8 +382,8 @@ export default function AlunosPage() {
                             type="submit"
                             disabled={isSubmitting}
                             className={`
-                                flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold text-white shadow-lg transition-all
-                                ${isSubmitting ? 'bg-slate-400 cursor-wait' : 'bg-slate-900 hover:bg-slate-800 hover:-translate-y-1 shadow-slate-900/20'}
+                                flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold text-klasse-gold-900 shadow-sm transition-all
+                                ${isSubmitting ? 'bg-klasse-gold/50 cursor-wait' : 'bg-klasse-gold hover:brightness-95 hover:-translate-y-1 shadow-klasse-gold/20'}
                             `}
                         >
                             {isSubmitting ? (

@@ -640,7 +640,7 @@ function TurmaRow({
           <p className="text-sm font-medium text-foreground truncate">{turma.curso_nome || "Ensino Geral"}</p>
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground">{turma.classe_nome || "—"}</span>
-            <span className="text-slate-200">·</span>
+            <span className="text-muted-foreground">·</span>
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-muted-foreground border border-border">
               {TURNO_LABELS[turma.turno || ""] || turma.turno || "—"}
             </span>
@@ -1817,7 +1817,7 @@ export default function TurmasListClient({
 
       {/* ── Form modal ──────────────────────────────────────────────────────── */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted">
               <h3 className="font-bold text-lg text-foreground">
@@ -1843,7 +1843,7 @@ export default function TurmasListClient({
       )}
 
       {showTransferModal && selectedTurmaForTransfer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted">
               <div>
@@ -1944,7 +1944,7 @@ export default function TurmasListClient({
                     !transferConfirmed || transferReason.trim().length < 10 ||
                     !selectedTurmaForTransfer.session_id ||
                     (selectedTurmaForTransfer.ocupacao_atual ?? 0) <= 0}
-                  className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold disabled:opacity-60"
+                  className="px-4 py-2 rounded-xl bg-klasse-gold text-klasse-gold-900 text-sm font-bold hover:brightness-95 disabled:opacity-60"
                 >
                   {transferLoading ? "A transferir..." : "Confirmar transferência"}
                 </button>
@@ -1992,8 +1992,8 @@ export default function TurmasListClient({
 
       {/* ── Bulk Actions Bar (Fase 3) ────────────────────────────────────────── */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-8 duration-300 z-40 border border-slate-700/50 backdrop-blur-md">
-          <div className="flex items-center gap-3 border-r border-slate-700 pr-8">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-klasse-dark text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-8 duration-300 z-40 border border-white/15 backdrop-blur-md">
+          <div className="flex items-center gap-3 border-r border-white/20 pr-8">
             <div className="w-6 h-6 rounded-full bg-amber-500 text-foreground flex items-center justify-center text-xs font-bold">
               {selectedIds.size}
             </div>
@@ -2010,7 +2010,7 @@ export default function TurmasListClient({
                 Mover alunos
               </button>
             )}
-            {canPrint && <label className="flex items-center gap-2 text-xs font-semibold text-slate-200">
+            {canPrint && <label className="flex items-center gap-2 text-xs font-semibold text-white/80">
               Ordem
               <select
                 aria-label="Ordem dos alunos na impressão em lote"

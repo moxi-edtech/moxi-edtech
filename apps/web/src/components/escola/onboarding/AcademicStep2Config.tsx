@@ -32,7 +32,7 @@ export default function AcademicStep2Config({
               onClick={() => onFrequenciaModeloChange(opt)}
               className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
                 frequenciaModelo === opt
-                  ? "bg-slate-900 text-white border-slate-900"
+                  ? "bg-klasse-gold text-klasse-gold-900 border-klasse-gold"
                   : "bg-card text-muted-foreground border-border hover:border-border"
               }`}
             >
@@ -87,7 +87,7 @@ export default function AcademicStep2Config({
                 <span>{opt.nome}</span>
                 {opt.id === recommendedModeloId || opt.isDefault ? (
                   <span className={`ml-1 rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide ${
-                    modeloAvaliacao === opt.id ? "bg-white/15 text-white" : "bg-emerald-50 text-emerald-700"
+                    modeloAvaliacao === opt.id ? "bg-klasse-gold/15 text-klasse-gold-900 dark:text-klasse-gold-300" : "bg-emerald-50 text-emerald-700"
                   }`}>
                     Recomendado
                   </span>

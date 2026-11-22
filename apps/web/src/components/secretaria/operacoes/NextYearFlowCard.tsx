@@ -47,14 +47,14 @@ export function NextYearFlowCard({ href }: { href: (path: string) => string }) {
   if (!action?.href) return null;
 
   return (
-    <section className="rounded-2xl border border-klasse-gold/30 bg-gradient-to-br from-[#fffdf5] to-card p-5 shadow-sm">
+    <section className="rounded-2xl border border-klasse-gold/30 bg-gradient-to-br from-klasse-gold/5 to-card p-5 shadow-sm">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-klasse-gold-700 dark:text-klasse-gold-300"><Sparkles className="h-4 w-4" /> Próximo ano letivo</div>
           <h2 className="text-lg font-bold text-foreground">{state.next_year ? `Prepare ${state.next_year} sem saltos` : "Prepare o próximo ano sem saltos"}</h2>
           <p className="mt-1 text-xs text-muted-foreground">O sistema encontrou o próximo passo mais importante para a escola.</p>
         </div>
-        <Link href={href(action.href)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800">{action.label}<ArrowRight className="h-4 w-4" /></Link>
+        <Link href={href(action.href)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-klasse-gold px-4 py-2.5 text-xs font-bold text-klasse-gold-900 hover:brightness-95">{action.label}<ArrowRight className="h-4 w-4" /></Link>
       </div>
       <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {items.map(([key, label]) => {

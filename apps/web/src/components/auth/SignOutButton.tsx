@@ -28,10 +28,10 @@ export default function SignOutButton({
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
 
-  const base = 'inline-flex items-center justify-center rounded-md transition'
+  const base = 'inline-flex items-center justify-center rounded-xl transition'
   const variants = {
     ghost: 'bg-transparent text-muted-foreground hover:text-foreground',
-    solid: 'bg-slate-800 text-white hover:bg-slate-900',
+    solid: 'bg-klasse-gold text-klasse-gold-900 hover:brightness-95',
   }
   const sizes = {
     sm: 'px-2 py-1 text-sm',

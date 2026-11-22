@@ -358,7 +358,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
 
           <button 
             onClick={() => setModalCobranca(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all text-sm font-bold shadow-sm print:hidden"
+            className="flex items-center gap-2 px-4 py-2.5 bg-klasse-gold text-klasse-gold-900 rounded-xl hover:brightness-95 transition-all text-sm font-bold shadow-sm print:hidden"
           >
             <Mail className="w-4 h-4" /> Disparar Cobranças
           </button>
@@ -776,7 +776,7 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-klasse-dark/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card text-card-foreground shadow-2xl flex flex-col">
         <div className="p-6 border-b border-border flex justify-between items-center bg-muted">
           <div>
@@ -889,7 +889,7 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
             type="button"
             disabled={sending || targetAlunos.length === 0}
             onClick={handleSend}
-            className="px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 text-xs font-bold flex items-center gap-2 transition disabled:opacity-50"
+            className="px-4 py-2 bg-klasse-gold text-klasse-gold-900 rounded-xl hover:brightness-95 text-xs font-bold flex items-center gap-2 transition disabled:opacity-50"
           >
             {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
             Enviar Lote

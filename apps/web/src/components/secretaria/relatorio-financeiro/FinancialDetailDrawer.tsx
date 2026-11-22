@@ -251,7 +251,7 @@ export function FinancialDetailDrawer({
               </div>
               <button
                 onClick={onClose}
-                className="rounded-lg bg-slate-900 px-6 py-2 text-sm font-bold text-white hover:bg-slate-800 transition-colors shadow-sm"
+                className="rounded-xl border border-border bg-card px-6 py-2 text-sm font-bold text-foreground hover:bg-muted transition-colors shadow-sm"
               >
                 Fechar Visualização
               </button>

@@ -311,7 +311,7 @@ export default function IdentidadePage({ params }: Props) {
                     placeholder="https://..."
                   />
                   <div className="mt-3 flex items-center gap-2">
-                    <label className="inline-flex cursor-pointer items-center rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700">
+                    <label className="inline-flex cursor-pointer items-center rounded-xl bg-klasse-gold px-3 py-2 text-xs font-bold text-klasse-gold-900 hover:brightness-95">
                       {savingLogo ? "A carregar..." : "Carregar logo"}
                       <input
                         type="file"

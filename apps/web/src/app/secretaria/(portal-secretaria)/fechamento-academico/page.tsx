@@ -535,7 +535,7 @@ function FechamentoAcademicoContent() {
       </div>
 
       {currentState === "concluido" && (
-        <div className="mt-10 p-6 bg-[#E8F5EE] border border-klasse-green/20 rounded-xl text-center animate-klasse-fade-up">
+        <div className="mt-10 p-6 bg-klasse-green/10 border border-klasse-green/20 rounded-xl text-center animate-klasse-fade-up">
           <CheckCircle2 className="w-12 h-12 text-klasse-green dark:text-klasse-green-300 mx-auto mb-3" />
           <h3 className="text-xl font-bold text-klasse-green dark:text-klasse-green-300 font-sora">Fecho concluído com sucesso</h3>
           <button

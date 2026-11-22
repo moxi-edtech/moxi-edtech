@@ -172,7 +172,7 @@ export default function AcademicSection({
 
         <Link
           href={adminBase}
-          className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-[#1F6B3B] hover:underline"
+          className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-klasse-green dark:text-klasse-green-300 hover:underline"
         >
           Ver tudo <ArrowRight className="h-3.5 w-3.5" />
         </Link>

@@ -203,7 +203,7 @@ export default function FechoCaixaPage() {
           {/* Botão de Impressão */}
           <Link
             href={`/escola/${escolaId}/financeiro/fecho/print?date=${date}&operador_scope=${scope}`}
-            className="flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition-all"
+            className="flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-klasse-gold-900 shadow-sm hover:brightness-95 transition-all"
           >
             <Printer className="h-4 w-4" />
             Imprimir Relatório
@@ -322,7 +322,7 @@ export default function FechoCaixaPage() {
               <Button
                 onClick={aprovarFecho}
                 disabled={approving}
-                className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+                className="bg-klasse-gold text-klasse-gold-900 px-4 py-2 rounded-xl text-sm font-semibold hover:brightness-95 disabled:opacity-60"
               >
                 {approving ? "Salvando..." : "Atualizar"}
               </Button>
@@ -416,7 +416,7 @@ export default function FechoCaixaPage() {
               {!loading && rows.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center flex flex-col items-center justify-center gap-2">
-                    <Search className="w-8 h-8 text-slate-200" />
+                    <Search className="w-8 h-8 text-muted-foreground/50" />
                     <span className="text-muted-foreground font-medium">Nenhum lançamento encontrado.</span>
                     <span className="text-xs text-muted-foreground">Verifique a data ou o filtro de operador.</span>
                   </td>

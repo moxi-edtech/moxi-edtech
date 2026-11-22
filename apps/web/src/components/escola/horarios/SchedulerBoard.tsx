@@ -240,7 +240,7 @@ export function SchedulerBoard({
     if (!aula) return null;
 
     return (
-      <div className="w-40 h-24 rounded-xl shadow-xl p-3 rotate-3 cursor-grabbing bg-slate-900 text-white border border-amber/50 flex flex-col justify-center items-center">
+      <div className="w-40 h-24 rounded-xl shadow-xl p-3 rotate-3 cursor-grabbing bg-klasse-dark text-white border border-klasse-gold/50 flex flex-col justify-center items-center">
         <span className="font-sora font-bold text-lg">{aula.sigla}</span>
         <span className="text-xs text-muted-foreground">Alocando...</span>
       </div>
@@ -420,7 +420,7 @@ const ActionButtons = React.memo(({
         onClick={() => onPublicar(grid)}
         disabled={!canPublicar || publishing}
         title={!canPublicar ? publishDisabledReason : undefined}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-klasse-gold text-klasse-gold-900 text-sm font-bold shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
       >
         <Check className="w-4 h-4" />
         {publishing ? "Publicando..." : "Publicar"}
@@ -478,7 +478,7 @@ const GridRow = React.memo(({
 
       {tempo.tipo === "intervalo" ? (
         <div className="col-span-5 bg-stripes-gray flex items-center justify-center">
-          <span className="text-slate-200 font-black text-4xl tracking-[1.5em] opacity-40 select-none uppercase">
+          <span className="text-muted-foreground/50 font-black text-4xl tracking-[1.5em] opacity-40 select-none uppercase">
             Recreio
           </span>
         </div>

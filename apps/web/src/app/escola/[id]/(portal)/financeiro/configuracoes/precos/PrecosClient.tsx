@@ -312,7 +312,7 @@ export default function PrecosClient({
                     onClick={() => editar(item)}
                     className={`group relative p-3.5 rounded-xl border transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/10"
+                        ? "bg-klasse-gold text-klasse-gold-900 border-klasse-gold shadow-sm ring-2 ring-klasse-gold/20"
                         : "bg-card border-border hover:border-border hover:shadow-sm"
                     }`}
                   >
@@ -418,7 +418,7 @@ export default function PrecosClient({
                             }}
                             className={`p-2 text-center cursor-pointer transition-colors border-l border-border ${
                               isExact
-                                ? "bg-slate-900 text-white font-semibold"
+                                ? "bg-klasse-gold text-klasse-gold-900 font-semibold"
                                 : isCourseDefault
                                 ? "bg-amber-50/80 text-amber-900"
                                 : isClassDefault
@@ -466,7 +466,7 @@ export default function PrecosClient({
                       {form.id ? "Editar Regra de Preço" : "Nova Regra de Preço"}
                     </h2>
                     {form.id && (
-                      <span className="rounded bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white">
+                      <span className="rounded-xl bg-klasse-green px-2 py-0.5 text-[10px] font-semibold text-white">
                         Edição em curso
                       </span>
                     )}
@@ -604,7 +604,7 @@ export default function PrecosClient({
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-xs transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-klasse-gold hover:brightness-95 text-klasse-gold-900 rounded-xl font-semibold text-xs transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                   {form.id ? "Guardar Alterações" : "Criar Regra de Preço"}
@@ -652,7 +652,7 @@ export default function PrecosClient({
                   type="button"
                   onClick={aplicarAosPendentes}
                   disabled={applying}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold disabled:opacity-50 transition-colors shadow-sm"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-klasse-gold hover:brightness-95 text-klasse-gold-900 text-xs font-semibold disabled:opacity-50 transition-colors shadow-sm"
                 >
                   {applying ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
                   Aplicar aos Pendentes

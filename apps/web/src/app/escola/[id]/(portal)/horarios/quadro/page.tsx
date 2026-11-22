@@ -1566,7 +1566,7 @@ function QuadroHorariosContent() {
               </Link>
               <Link
                 href={quadroHref}
-                className="rounded-full bg-slate-950 px-4 py-1.5 text-xs font-semibold text-white"
+                className="rounded-full bg-klasse-gold px-4 py-1.5 text-xs font-semibold text-klasse-gold-900 hover:brightness-95"
               >
                 Quadro
               </Link>

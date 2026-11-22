@@ -154,7 +154,7 @@ export function StepCargas({ escolaId, turmaId, onComplete }: StepCargasProps) {
 
         {/* Resumo */}
         <div className="space-y-6">
-          <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl">
+          <div className="bg-klasse-dark rounded-xl p-6 text-white shadow-xl">
             <h3 className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-4">Resumo da Matriz</h3>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-4xl font-black">{totalAulas}</span>

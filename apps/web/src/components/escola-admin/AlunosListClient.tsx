@@ -438,7 +438,7 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30
       flex items-center gap-3 rounded-xl bg-klasse-dark px-5 py-3.5
-      shadow-2xl shadow-black/30 animate-in slide-in-from-bottom-3 duration-200 border border-slate-700">
+      shadow-2xl shadow-black/30 animate-in slide-in-from-bottom-3 duration-200 border border-white/20">
 
       <div className="flex items-center gap-2.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-klasse-gold text-xs font-black text-klasse-gold-900">
@@ -447,31 +447,31 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
         <span className="text-sm font-semibold text-white">
           {count === 1 ? "aluno seleccionado" : "alunos seleccionados"}
         </span>
-        <span className="text-muted-foreground text-xs">de {total}</span>
+        <span className="text-white/75 text-xs">de {total}</span>
       </div>
 
-      <div className="h-4 w-px bg-slate-700 mx-1" />
+      <div className="h-4 w-px bg-white/20 mx-1" />
 
       <div className="flex items-center gap-2">
         <button
           onClick={onExportSelection}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-700
-            px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-klasse-gold/60
+          className="flex items-center gap-1.5 rounded-xl border border-white/20
+            px-3 py-1.5 text-xs font-semibold text-white/80 hover:border-klasse-gold/60
             hover:text-white transition-colors"
         >
           <Download size={12} /> Exportar
         </button>
         <button
           onClick={onMessage}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-700
-            px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-klasse-gold/60
+          className="flex items-center gap-1.5 rounded-xl border border-white/20
+            px-3 py-1.5 text-xs font-semibold text-white/80 hover:border-klasse-gold/60
             hover:text-white transition-colors"
         >
           <MessageSquare size={12} /> Comunicado
         </button>
         <button
           onClick={onArchive}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-700
+          className="flex items-center gap-1.5 rounded-xl border border-white/20
             px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-amber-500
             hover:text-amber-400 transition-colors"
         >
@@ -479,11 +479,11 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
         </button>
       </div>
 
-      <div className="h-4 w-px bg-slate-700 mx-1" />
+      <div className="h-4 w-px bg-white/20 mx-1" />
 
       <button
         onClick={onClear}
-        className="text-muted-foreground hover:text-white transition-colors"
+        className="text-white/75 hover:text-white transition-colors"
         title="Limpar selecção"
       >
         <X size={16} />
@@ -1377,14 +1377,14 @@ export default function AlunosListClient({
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-border">
                 {loading ? (
                   Array.from({ length: 6 }).map((_, i) => <RowSkeleton key={i} />)
                 ) : alunos.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-2">
-                        <Users size={28} className="text-slate-200" />
+                        <Users size={28} className="text-muted-foreground/40" />
                         <p className="text-sm font-semibold text-muted-foreground">
                           Nenhum aluno encontrado.
                         </p>

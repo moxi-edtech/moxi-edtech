@@ -257,7 +257,7 @@ function HorariosSlotsContent() {
           <div className="flex items-center gap-2 rounded-full bg-muted p-1">
             <Link
               href={`${horarioBasePath}/slots`}
-              className="rounded-full bg-slate-950 px-4 py-1.5 text-xs font-semibold text-white"
+              className="rounded-full bg-klasse-gold px-4 py-1.5 text-xs font-semibold text-klasse-gold-900 hover:brightness-95"
             >
               Slots
             </Link>
@@ -293,7 +293,7 @@ function HorariosSlotsContent() {
               </div>
               <Link
                 href={quadroHref}
-                className="rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white"
+                className="rounded-full bg-klasse-gold px-4 py-1.5 text-xs font-semibold text-klasse-gold-900 hover:brightness-95"
               >
                 Abrir Quadro
               </Link>

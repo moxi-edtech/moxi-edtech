@@ -301,7 +301,7 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
                 className={[
                   "flex flex-col items-center gap-1 rounded-xl border py-2.5 text-[10px] font-bold transition",
                   active
-                    ? "border-slate-950 bg-slate-950 text-white"
+                    ? "border-klasse-gold bg-klasse-gold text-klasse-gold-900"
                     : "border-border bg-card text-muted-foreground hover:border-border hover:bg-muted",
                 ].join(" ")}
               >
@@ -408,7 +408,7 @@ export function PagamentoDividaModal({ open, onOpenChange, embedded = false, men
           type="button"
           onClick={() => void pay()}
           disabled={!canSubmit}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-klasse-gold px-4 py-3 text-sm font-bold text-klasse-gold-900 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
           {submitting

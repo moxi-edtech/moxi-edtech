@@ -92,7 +92,7 @@ export function RelatorioHeader({
         <button
           type="button"
           onClick={onExportCsv}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-2 text-sm font-medium text-klasse-gold-900 hover:brightness-95"
         >
           <Download className="h-4 w-4" />
           Exportar CSV

@@ -219,7 +219,7 @@ export default function SistemaCobrancas() {
         >
           <span
             aria-current="page"
-            className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white"
+            className="rounded-xl bg-klasse-gold px-3 py-2 text-sm font-semibold text-klasse-gold-900 hover:brightness-95"
           >
             Inadimplência
           </span>
@@ -307,7 +307,7 @@ export default function SistemaCobrancas() {
 
         {/* MODAL NOVA CAMPANHA */}
         {mostrarCriarCampanha && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/40 backdrop-blur-sm p-4">
             <div className="bg-card rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-border shadow-xl">
               <div className="flex justify-between items-center p-5 border-b border-border bg-muted/50">
                 <h2 className="text-lg font-bold text-foreground">Nova Campanha</h2>

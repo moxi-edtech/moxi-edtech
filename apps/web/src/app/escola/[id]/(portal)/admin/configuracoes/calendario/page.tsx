@@ -455,7 +455,7 @@ export default function CalendarioConfigPage({ params }: Props) {
               type="button"
               onClick={handleSave}
               disabled={saving || loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-amber px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#D4A32C] disabled:opacity-70"
+              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-6 py-2.5 text-sm font-bold text-klasse-gold-900 shadow-sm transition-all hover:brightness-95 disabled:opacity-70"
             >
               {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {saving ? "A guardar..." : "Guardar Tudo"}
@@ -581,7 +581,7 @@ export default function CalendarioConfigPage({ params }: Props) {
                       ) : (
                         <button 
                           onClick={handleSetActiveAno}
-                          className="text-[10px] bg-muted text-muted-foreground hover:bg-amber hover:text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider transition-colors"
+                          className="text-[10px] bg-muted text-muted-foreground hover:bg-klasse-gold hover:text-klasse-gold-900 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider transition-colors"
                         >
                           Tornar Ativo
                         </button>
@@ -782,7 +782,7 @@ export default function CalendarioConfigPage({ params }: Props) {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-amber px-8 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#D4A32C] disabled:opacity-70"
+              className="rounded-xl bg-klasse-gold px-8 py-2.5 text-sm font-bold text-klasse-gold-900 shadow-sm transition-all hover:brightness-95 disabled:opacity-70"
             >
               {saving ? "A criar..." : "Criar Evento"}
             </button>

@@ -39,7 +39,7 @@ export function EducationalEmptyState({
           <p className="mt-1 text-sm text-muted-foreground">{message}</p>
           <Link
             href={ctaHref}
-            className="mt-3 inline-flex rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+            className="mt-3 inline-flex rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95"
           >
             {ctaLabel}
           </Link>

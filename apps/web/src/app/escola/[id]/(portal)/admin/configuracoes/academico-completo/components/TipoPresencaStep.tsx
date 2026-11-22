@@ -203,7 +203,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
         {!isEditing ? (
           <button
             onClick={() => setIsEditing(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+            className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-klasse-gold-900 shadow-sm hover:brightness-95"
           >
             <Pencil className="h-4 w-4" /> Editar Regras
           </button>
@@ -219,7 +219,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#D4A32C] disabled:opacity-70"
+              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-klasse-gold-900 shadow-sm hover:brightness-95 disabled:opacity-70"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Salvar

@@ -398,7 +398,7 @@ export default function TurmaHorarioModal({
   const totalCargaNecessaria = disciplinas.reduce((acc, d) => acc + d.cargaSemanal, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-klasse-dark/60 backdrop-blur-xs animate-in fade-in duration-150">
       <div 
         className="bg-card w-full max-w-5xl rounded-2xl shadow-2xl border border-border overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
         role="dialog"
@@ -462,7 +462,7 @@ export default function TurmaHorarioModal({
                 </span>
               )}
             </div>
-            <span className="text-slate-200">|</span>
+            <span className="text-muted-foreground/50">|</span>
             <span className="text-muted-foreground">
               {selectedDisciplinaId ? (
                 <span className="text-foreground font-medium">
@@ -639,7 +639,7 @@ export default function TurmaHorarioModal({
                       <div className="flex items-start justify-between gap-1">
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="w-2.5 h-2.5 rounded-full bg-slate-400 flex-shrink-0" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/50 flex-shrink-0" />
                             <span className="font-bold text-xs text-foreground truncate">
                               {disc.nome}
                             </span>

@@ -300,7 +300,7 @@ export default async function FinanceiroDashboardPage({
                 href={hrefForTab(tab.id)}
                 className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
                   active
-                    ? "bg-slate-900 text-amber ring-1 ring-amber/25"
+                    ? "bg-klasse-gold/10 text-klasse-gold-900 dark:text-klasse-gold-300 ring-1 ring-klasse-gold/25"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >

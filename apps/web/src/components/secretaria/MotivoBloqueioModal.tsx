@@ -13,7 +13,7 @@ export function MotivoBloqueioModal({ open, onClose, reasonCode, reasonDetail }:
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/70 p-4 backdrop-blur-sm">
       <div className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="font-bold text-foreground">Serviço bloqueado</div>

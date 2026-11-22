@@ -161,7 +161,7 @@ export default function SandboxConfiguracoesPage() {
             {!simulating && !result && (
               <button
                 onClick={runSimulation}
-                className="group inline-flex items-center gap-2 rounded-full bg-amber px-6 py-3 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#D4A32C]"
+                className="group inline-flex items-center gap-2 rounded-full bg-amber px-6 py-3 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 hover:brightness-95"
               >
                 <Play className="h-4 w-4 fill-current" />
                 Rodar Simulação

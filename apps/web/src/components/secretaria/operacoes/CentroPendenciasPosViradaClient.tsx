@@ -228,7 +228,7 @@ export function CentroPendenciasPosViradaClient() {
             onClick={() => { setFilter(value); setPage(1); }}
             className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
               filter === value
-                ? "bg-slate-900 text-white shadow-2xs"
+                ? "bg-klasse-gold text-klasse-gold-900 shadow-2xs"
                 : "bg-card border border-border text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -274,7 +274,7 @@ export function CentroPendenciasPosViradaClient() {
                     <button
                       disabled={busy === row.id || paymentLoading}
           onClick={() => void openPayment(row)}
-                      className="rounded-xl bg-klasse-green hover:bg-[#18542e] px-4 py-2 text-xs font-bold text-white transition shadow-2xs disabled:cursor-not-allowed disabled:opacity-40 flex items-center gap-2"
+                      className="rounded-xl bg-klasse-green hover:brightness-95 px-4 py-2 text-xs font-bold text-white transition shadow-2xs disabled:cursor-not-allowed disabled:opacity-40 flex items-center gap-2"
                     >
                       {busy === row.id || (paymentLoading && paymentRow?.id === row.id) ? (
                         <Loader2 className="h-4 w-4 animate-spin text-white" />
@@ -286,7 +286,7 @@ export function CentroPendenciasPosViradaClient() {
                     <button
                       type="button"
                       onClick={() => setResolutionRow(row)}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-klasse-gold hover:bg-[#d8a733] px-4 py-2 text-xs font-bold text-foreground transition shadow-2xs"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-klasse-gold hover:brightness-95 px-4 py-2 text-xs font-bold text-klasse-gold-900 transition shadow-2xs"
                     >
                       <span>Resolver destino</span>
                     </button>
@@ -338,7 +338,7 @@ export function CentroPendenciasPosViradaClient() {
       </div>
 
       {promotionRow && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Escolher turma de destino">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-klasse-dark/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Escolher turma de destino">
           <div className="w-full max-w-xl rounded-t-3xl bg-card shadow-2xl sm:rounded-3xl">
             <div className="flex items-start justify-between border-b border-border px-5 py-4 sm:px-6">
               <div>
@@ -377,7 +377,7 @@ export function CentroPendenciasPosViradaClient() {
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setPromotionRow(null)} className="rounded-xl border border-border px-4 py-2.5 text-xs font-bold text-foreground hover:bg-muted">Cancelar</button>
                 {promotionOptions.length > 0 && (
-                  <button type="button" disabled={!promotionTargetId || busy === promotionRow.id} onClick={() => void promote(promotionRow, promotionTargetId)} className="inline-flex items-center gap-2 rounded-xl bg-klasse-green px-4 py-2.5 text-xs font-bold text-white hover:bg-[#18542e] disabled:cursor-not-allowed disabled:opacity-50">
+                  <button type="button" disabled={!promotionTargetId || busy === promotionRow.id} onClick={() => void promote(promotionRow, promotionTargetId)} className="inline-flex items-center gap-2 rounded-xl bg-klasse-green px-4 py-2.5 text-xs font-bold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
                     {busy === promotionRow.id && <Loader2 className="h-4 w-4 animate-spin" />}
                     Confirmar promoção
                   </button>
@@ -389,7 +389,7 @@ export function CentroPendenciasPosViradaClient() {
       )}
 
       {resolutionRow && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Resolver pendência pós-virada">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-klasse-dark/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label="Resolver pendência pós-virada">
           <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl bg-card shadow-2xl sm:rounded-3xl">
             <div className="flex items-start justify-between border-b border-border px-5 py-4 sm:px-6">
               <div>
@@ -430,7 +430,7 @@ export function CentroPendenciasPosViradaClient() {
                     type="button"
                     disabled={busy === resolutionRow.id}
                     onClick={() => void promote(resolutionRow)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-klasse-green px-4 py-2.5 text-xs font-bold text-white hover:bg-[#18542e] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-klasse-green px-4 py-2.5 text-xs font-bold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {busy === resolutionRow.id && <Loader2 className="h-4 w-4 animate-spin" />}
                     Tentar resolver agora

@@ -19,7 +19,7 @@ export default function ConfirmDialog({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[60] bg-slate-950/60 backdrop-blur-sm p-4 flex items-center justify-center animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] bg-klasse-dark/60 backdrop-blur-sm p-4 flex items-center justify-center animate-in fade-in duration-200">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="p-6">
           <div className="flex items-start gap-4">

@@ -297,8 +297,8 @@ export default function AvaliacaoUnificadaClient() {
             disabled={loading}
             aria-busy={loading}
             // TOKEN: Botão Secundário (Bg-white) ou Primário dependendo da ênfase. 
-            // Aqui usei Slate-950 para "Admin Action" neutra, mas Gold se fosse CTA principal.
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-slate-900 transition-all"
+            // Ação administrativa usa a cor semântica de CTA do KLASSE.
+            className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-klasse-gold-900 shadow-sm hover:brightness-95 transition-all"
           >
             <Pencil className="h-4 w-4" /> Editar Regras
           </button>
@@ -314,7 +314,7 @@ export default function AvaliacaoUnificadaClient() {
             <button
               onClick={handleSave}
               disabled={saving}
-              // TOKEN: Gold (#E3B23C) para Ação de Salvar (CTA)
+              // TOKEN: klasse-gold para Ação de Salvar (CTA)
               className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-6 py-2.5 text-sm font-bold text-klasse-gold-900 shadow-sm hover:brightness-95 transition-all disabled:opacity-70 disabled:grayscale"
             >
               {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -336,7 +336,7 @@ export default function AvaliacaoUnificadaClient() {
               <div className="group rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:border-klasse-gold/50">
                 <div className="mb-6 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {/* TOKEN: Icon Brand Green (#1F6B3B) */}
+                    {/* TOKEN: Icon Brand klasse-green */}
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300">
                       <Calculator className="h-5 w-5" />
                     </div>
@@ -410,7 +410,7 @@ export default function AvaliacaoUnificadaClient() {
                 <div className="rounded-xl border border-border bg-card p-6 shadow-sm md:col-span-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-klasse-gold/15 text-[#A87500]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-klasse-gold/15 text-klasse-gold-900 dark:text-klasse-gold-300">
                         <GraduationCap className="h-5 w-5" />
                       </div>
                       <div>

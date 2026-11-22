@@ -1456,7 +1456,7 @@ function Catalogo({
             <button
               type="button"
               onClick={onRegularize}
-              className="shrink-0 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
+              className="shrink-0 rounded-xl bg-klasse-gold px-4 py-2.5 text-xs font-bold text-klasse-gold-900 transition hover:brightness-95"
             >
               Regularizar dívida
             </button>
@@ -1481,7 +1481,7 @@ function Catalogo({
                   <button
                     type="button"
                     onClick={onRegularize}
-                    className="shrink-0 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
+                    className="shrink-0 rounded-xl bg-klasse-gold px-4 py-2.5 text-xs font-bold text-klasse-gold-900 transition hover:brightness-95"
                   >
                     Regularizar dívida
                   </button>
@@ -1916,7 +1916,7 @@ function Catalogo({
                         paid
                           ? selected
                             ? "bg-muted text-muted-foreground"
-                            : "bg-slate-950 text-white hover:bg-slate-800"
+                            : "bg-klasse-gold text-klasse-gold-900 hover:brightness-95"
                           : "border border-border bg-card text-foreground hover:bg-muted",
                       ].join(" ")}
                     >
@@ -2159,7 +2159,7 @@ function CarrinhoPanel({
           </div>
         </div>
       ) : (
-        <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <div className="bg-klasse-dark px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5 text-amber" />
             <span className="text-sm font-bold text-white font-sora">Resumo da venda</span>
@@ -2566,7 +2566,7 @@ function BillingWindowRepairPanel({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="billing-window-title">
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-klasse-dark/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="billing-window-title">
       <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-card p-5 shadow-2xl sm:rounded-3xl">
         <div className="flex items-start justify-between gap-4">
           <div>

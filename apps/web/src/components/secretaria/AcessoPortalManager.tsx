@@ -436,7 +436,7 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
 
       {/* Modal de Motivo de Bloqueio */}
       {showBlockModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-klasse-dark/70 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <h3 className="font-bold text-foreground">Bloquear Acesso</h3>
@@ -477,7 +477,7 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
 
       {/* Modal de Distribuição de Credenciais */}
       {showDistributionModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-klasse-dark/70 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
               <h3 className="font-bold text-foreground">Gerar e Enviar Acessos</h3>
@@ -541,12 +541,12 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
       {/* Floating Action Bar (FAB) */}
       {selecionados.length > 0 && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="bg-slate-900 rounded-2xl shadow-2xl p-4 flex items-center justify-between border border-slate-700/50 backdrop-blur-md">
+          <div className="bg-klasse-dark rounded-xl shadow-2xl p-4 flex items-center justify-between border border-white/15 backdrop-blur-md">
             <div className="flex items-center gap-4 pl-2">
               <div className="bg-klasse-gold text-klasse-gold-900 rounded-xl px-3 py-1.5 text-sm font-bold shadow-lg shadow-klasse-gold/20">
                 {selecionados.length} selecionados
               </div>
-              <div className="h-8 w-px bg-slate-700" />
+              <div className="h-8 w-px bg-white/20" />
             </div>
 
             <div className="flex items-center gap-2">

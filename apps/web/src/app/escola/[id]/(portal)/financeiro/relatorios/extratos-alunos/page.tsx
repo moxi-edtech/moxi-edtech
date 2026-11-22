@@ -49,7 +49,7 @@ export default async function Page({
         </div>
         <form action="" className="flex gap-2 text-sm">
           <input type="text" name="q" defaultValue={q} placeholder="Buscar por nome" className="border rounded px-2 py-1" />
-          <button className="px-3 py-1.5 rounded bg-slate-600 text-white">Buscar</button>
+          <button className="px-3 py-1.5 rounded-xl bg-klasse-gold text-klasse-gold-900 hover:brightness-95">Buscar</button>
         </form>
       </div>
 

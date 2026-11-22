@@ -605,7 +605,7 @@ export default async function Page(props: {
                 </div>
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 rounded-xl bg-klasse-green px-4 py-2 text-xs font-bold text-white hover:bg-[#185830] transition-colors"
+                  className="flex items-center gap-1.5 rounded-xl bg-klasse-green px-4 py-2 text-xs font-bold text-white hover:brightness-95 transition-colors"
                 >
                   <Filter size={11} />
                   Filtrar

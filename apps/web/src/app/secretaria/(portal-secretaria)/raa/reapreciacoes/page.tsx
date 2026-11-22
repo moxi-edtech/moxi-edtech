@@ -165,7 +165,7 @@ export default function ReapreciacoesPage() {
       </section>
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="raa-decision-title">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/40 p-4" role="dialog" aria-modal="true" aria-labelledby="raa-decision-title">
           <div className="w-full max-w-lg rounded-xl bg-card p-5 shadow-xl">
             <div className="flex items-start justify-between gap-4">
               <div><h2 id="raa-decision-title" className="font-semibold text-foreground">Decidir {selected.protocolo_publico}</h2><p className="mt-1 text-xs text-muted-foreground">A decisão fica registada no pedido e será visível no fluxo do professor.</p></div>

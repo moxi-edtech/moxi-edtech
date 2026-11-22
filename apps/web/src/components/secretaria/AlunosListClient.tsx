@@ -24,8 +24,8 @@ import { OperationalCursorPagination, OperationalTableEmptyState, OperationalTab
 
 /**
  * KLASSE UI notes:
- * - Gold (#E3B23C) = action/active states
- * - Green (#1F6B3B) = brand/headings
+ * - klasse-gold = action/active states
+ * - klasse-green = brand/headings
  * - Radius: rounded-xl (cards/inputs/buttons), rounded-full (badges)
  * - Focus: ring-4 ring-amber/20 + border-amber
  */

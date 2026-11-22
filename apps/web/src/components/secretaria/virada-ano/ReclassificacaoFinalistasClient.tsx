@@ -296,7 +296,7 @@ export function ReclassificacaoFinalistasClient({
             onClick={() => setFilterTipo("all")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
               filterTipo === "all"
-                ? "bg-slate-900 text-white"
+                ? "bg-klasse-gold text-klasse-gold-900"
                 : "bg-card border border-border text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -376,7 +376,7 @@ export function ReclassificacaoFinalistasClient({
 
             <button
               onClick={() => handleOpenDrawer("enroll")}
-              className="px-4 py-2 rounded-xl bg-klasse-gold hover:bg-[#d8a733] text-foreground text-xs font-bold transition shadow-sm flex items-center gap-2"
+              className="px-4 py-2 rounded-xl bg-klasse-gold hover:brightness-95 text-klasse-gold-900 text-xs font-bold transition shadow-sm flex items-center gap-2"
             >
               <UserCheck className="h-4 w-4" />
               <span>Matricular no Novo Ciclo</span>
@@ -499,7 +499,7 @@ export function ReclassificacaoFinalistasClient({
       </div>
 
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex justify-end">
+        <div className="fixed inset-0 z-50 bg-klasse-dark/40 backdrop-blur-xs flex justify-end">
           <div className="w-full max-w-lg bg-card h-full shadow-2xl border-l border-border flex flex-col justify-between">
             <div className="p-6 border-b border-border flex items-start justify-between bg-muted/50">
               <div className="space-y-1">
@@ -547,7 +547,7 @@ export function ReclassificacaoFinalistasClient({
                 <button
                   type="button"
                   onClick={() => onPaymentRequired(selectedRecords[0].aluno_id)}
-                  className="w-full rounded-xl border border-klasse-gold bg-klasse-gold/10 px-4 py-3 text-left text-xs font-bold text-[#795b08] hover:bg-klasse-gold/20"
+                  className="w-full rounded-xl border border-klasse-gold bg-klasse-gold/10 px-4 py-3 text-left text-xs font-bold text-klasse-gold-900 dark:text-klasse-gold-300 hover:bg-klasse-gold/20"
                 >
                   Abrir o Balcão para pagar a taxa no ano correto
                 </button>
@@ -639,8 +639,8 @@ export function ReclassificacaoFinalistasClient({
                 disabled={submitting || (actionType === "enroll" && !targetTurmaId)}
                 className={`px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 disabled:opacity-50 ${
                   actionType === "enroll"
-                    ? "bg-klasse-gold hover:bg-[#d8a733] text-foreground"
-                    : "bg-slate-900 hover:bg-slate-800 text-white"
+                    ? "bg-klasse-gold hover:brightness-95 text-klasse-gold-900"
+                    : "bg-klasse-gold hover:brightness-95 text-klasse-gold-900"
                 }`}
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -674,7 +674,7 @@ export function ReceiptBlockReclassificacaoModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-klasse-dark/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-3xl bg-card rounded-3xl shadow-2xl border border-border overflow-hidden flex flex-col max-h-[90vh]">
         <div className="p-6 bg-amber-50 border-b border-amber-200 flex items-start justify-between">
           <div className="flex items-center gap-3">

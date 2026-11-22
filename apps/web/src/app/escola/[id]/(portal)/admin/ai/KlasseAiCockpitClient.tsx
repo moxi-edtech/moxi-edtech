@@ -274,7 +274,7 @@ export default function KlasseAiCockpitClient({ schoolId }: { schoolId: string }
             <div className="mt-4 rounded-lg bg-card/70 p-3"><p className="text-[10px] font-bold uppercase opacity-60">Próximo passo recomendado</p><p className="mt-1 text-sm font-semibold">{insight.recommendation}</p></div>
             <div className="mt-4 flex flex-wrap gap-2">
               {insight.status === "new" ? <button onClick={() => transition(insight, "seen")} disabled={mutatingId === insight.id} className="rounded-md border border-current/20 bg-card px-3 py-2 text-xs font-bold">Marcar como visto</button> : null}
-              {!['resolved', 'ignored'].includes(insight.status) ? <button onClick={() => transition(insight, "in_progress")} disabled={mutatingId === insight.id} className="rounded-md bg-slate-950 px-3 py-2 text-xs font-bold text-white">Iniciar ação</button> : null}
+              {!['resolved', 'ignored'].includes(insight.status) ? <button onClick={() => transition(insight, "in_progress")} disabled={mutatingId === insight.id} className="rounded-xl bg-klasse-gold px-3 py-2 text-xs font-bold text-klasse-gold-900 hover:brightness-95">Iniciar ação</button> : null}
               {insight.status === "in_progress" ? <button onClick={() => transition(insight, "resolved")} disabled={mutatingId === insight.id} className="rounded-md bg-emerald-700 px-3 py-2 text-xs font-bold text-white">Resolver</button> : null}
               {!['resolved', 'ignored'].includes(insight.status) ? <button onClick={() => transition(insight, "ignored")} disabled={mutatingId === insight.id} className="px-3 py-2 text-xs font-bold opacity-70">Ignorar</button> : null}
               {!['resolved', 'ignored'].includes(insight.status) ? <button type="button" onClick={() => openWhatsappDrawer(insight)} className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">Preparar WhatsApp</button> : null}
@@ -286,7 +286,7 @@ export default function KlasseAiCockpitClient({ schoolId }: { schoolId: string }
 
       {whatsappInsight ? (
         <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="whatsapp-drawer-title">
-          <button type="button" aria-label="Fechar preparação de WhatsApp" className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1px]" onClick={closeWhatsappDrawer} />
+          <button type="button" aria-label="Fechar preparação de WhatsApp" className="absolute inset-0 bg-klasse-dark/45 backdrop-blur-[1px]" onClick={closeWhatsappDrawer} />
           <aside className="relative flex h-full w-full max-w-xl flex-col overflow-hidden bg-card shadow-2xl">
             <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
               <div>
@@ -340,7 +340,7 @@ export default function KlasseAiCockpitClient({ schoolId }: { schoolId: string }
               <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground"><CheckCircle2 className="h-4 w-4 text-emerald-700" /> Aprovação humana obrigatória antes de qualquer envio.</div>
               <div className="flex gap-2">
                 <button type="button" onClick={closeWhatsappDrawer} disabled={savingDraft} className="flex-1 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-bold text-foreground">{draftSuccess ? "Continuar no cockpit" : "Cancelar"}</button>
-                {draftSuccess ? <Link href={`/escola/${schoolId}/admin/comunicacao/whatsapp`} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-bold text-white">Abrir caixa de revisão <ArrowRight className="h-4 w-4" /></Link> : <button type="button" onClick={createWhatsappDraft} disabled={savingDraft || selectedRecipients.length === 0} className="flex-1 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{savingDraft ? "A preparar..." : `Criar rascunho (${selectedRecipients.length})`}</button>}
+                {draftSuccess ? <Link href={`/escola/${schoolId}/admin/comunicacao/whatsapp`} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-klasse-gold px-4 py-2.5 text-sm font-bold text-klasse-gold-900 hover:brightness-95">Abrir caixa de revisão <ArrowRight className="h-4 w-4" /></Link> : <button type="button" onClick={createWhatsappDraft} disabled={savingDraft || selectedRecipients.length === 0} className="flex-1 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{savingDraft ? "A preparar..." : `Criar rascunho (${selectedRecipients.length})`}</button>}
               </div>
             </footer>
           </aside>

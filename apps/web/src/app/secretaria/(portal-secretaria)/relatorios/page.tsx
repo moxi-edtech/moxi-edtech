@@ -23,7 +23,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
     return (
       <>
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="relatorios" />
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl text-amber-800 dark:text-amber-200 text-sm">
           Vincule seu perfil a uma escola para ver relatórios.
         </div>
       </>
@@ -74,7 +74,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
                   href={`/secretaria/relatorios?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`}
                   className={`px-2.5 py-1 rounded border ${
                     days === d
-                      ? "bg-slate-600 text-white border-slate-600"
+                      ? "bg-klasse-gold text-klasse-gold-900 border-klasse-gold"
                       : "bg-card text-foreground border-border hover:bg-muted"
                   }`}
                 >
@@ -133,7 +133,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
               className="border rounded px-2 py-1"
             />
             <input type="hidden" name="days" value={days} />
-            <button className="px-3 py-1.5 rounded bg-slate-600 text-white">Filtrar</button>
+            <button className="px-3 py-1.5 rounded-xl bg-klasse-gold text-klasse-gold-900 hover:brightness-95">Filtrar</button>
           </form>
         </div>
 

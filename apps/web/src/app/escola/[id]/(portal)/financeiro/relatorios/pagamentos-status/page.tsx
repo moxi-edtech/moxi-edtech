@@ -85,7 +85,7 @@ export default function Page() {
                   <td className="py-2 pr-4">
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-40 bg-muted rounded">
-                        <div className={`h-2 rounded ${colors[it.status] || 'bg-slate-500'}`} style={{ width: `${Math.min(100, Math.max(0, it.pct))}%` }} />
+                        <div className={`h-2 rounded ${colors[it.status] || 'bg-muted-foreground/50'}`} style={{ width: `${Math.min(100, Math.max(0, it.pct))}%` }} />
                       </div>
                       <span className="tabular-nums">{it.pct.toFixed(1)}%</span>
                     </div>

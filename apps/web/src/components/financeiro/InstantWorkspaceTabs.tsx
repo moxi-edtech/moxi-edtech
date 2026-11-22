@@ -72,7 +72,7 @@ export function InstantWorkspaceTabs({
                 onClick={() => selectTab(tab.id)}
                 className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
                   activeTab === tab.id
-                    ? "bg-slate-900 text-white"
+                    ? "bg-klasse-gold text-klasse-gold-900"
                     : "text-foreground/80 hover:bg-muted"
                 }`}
               >

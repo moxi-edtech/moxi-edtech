@@ -1805,7 +1805,7 @@ function TurmaCleanupModal({
   const canConfirm = selectedCount > 0 && !running;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-3xl rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="flex items-start justify-between gap-4 border-b border-border bg-muted/50 px-6 py-4">
           <div>
@@ -1888,7 +1888,7 @@ function TurmaCleanupModal({
         <div className="border-t border-border bg-muted/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-slate-900" />
+              <span className="w-2 h-2 rounded-full bg-klasse-green" />
               {selectedCount} selecionadas
             </span>
             <span className="flex items-center gap-1.5">

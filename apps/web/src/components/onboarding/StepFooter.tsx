@@ -41,12 +41,12 @@ export function StepFooter({
           disabled={!canProceed || loading}
           className={`text-sm font-bold px-8 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all ${
             isLast
-              ? "bg-teal-600 hover:bg-teal-700 text-white shadow-teal-600/20"
-              : "bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/20"
+              ? "bg-klasse-gold hover:brightness-95 text-klasse-gold-900 shadow-sm"
+              : "bg-klasse-gold hover:brightness-95 text-klasse-gold-900 shadow-sm"
           } disabled:opacity-60 disabled:cursor-not-allowed`}
         >
           {loading && (
-            <span className="h-3 w-3 rounded-full border-2 border-white/40 border-t-transparent animate-spin" />
+            <span className="h-3 w-3 rounded-full border-2 border-klasse-gold-900/40 border-t-transparent animate-spin" />
           )}
           {label}
           {!loading && <span className="text-xs">→</span>}

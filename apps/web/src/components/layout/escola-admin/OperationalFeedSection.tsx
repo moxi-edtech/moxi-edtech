@@ -205,7 +205,7 @@ export default function OperationalFeedSection({ escolaId, portalBase = "admin" 
       ) : (
         <header className="mb-6 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="rounded-lg bg-slate-900 p-2 text-white shadow-sm">
+            <div className="rounded-xl bg-klasse-green p-2 text-white shadow-sm">
               <Activity className="h-4 w-4" />
             </div>
             <div className="min-w-0">
