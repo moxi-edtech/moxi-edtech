@@ -70,7 +70,7 @@ export function ExplorerRosterExportButton({
   return (
     <div className="min-w-0">
       <button type="button" onClick={() => void download()} disabled={busy}
-        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:border-emerald-400 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-700 disabled:opacity-50">
+        className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:border-emerald-400 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-700 disabled:opacity-50">
         {busy ? "A validar exportação…" : "Exportar lista"}
       </button>
       {error && <p role="alert" className="mt-1 text-xs text-rose-700">{error}</p>}

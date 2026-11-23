@@ -437,7 +437,7 @@ export default function TurmaAtribuirProfessoresModal({
                       <button type="button"
                         disabled={!replaceProfessorUserId || Boolean(savingId)}
                         onClick={() => replaceReviewed ? void handleReplace(disc) : setReplaceReviewed(true)}
-                        className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                        className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-klasse-gold-900 disabled:opacity-50">
                         {savingId ? "A guardar…" : replaceReviewed ? "Confirmar troca" : "Rever troca"}
                       </button>
                     </div>
@@ -521,7 +521,7 @@ export default function TurmaAtribuirProfessoresModal({
                         className="rounded-xl border border-border px-3 py-2 text-sm text-foreground">Cancelar</button>
                       <button type="button" disabled={!selectedBulkTeacher || bulkLoading || bulkSaving || bulkSelected.length === 0 || Boolean(bulkError && bulkCandidates.length === 0)}
                         onClick={() => void handleBulkAssign()}
-                        className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50">
+                        className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-klasse-gold-900 hover:brightness-95 disabled:opacity-50">
                         {bulkSaving ? <Loader2 size={15} className="animate-spin"/> : <Check size={15}/>}
                         Atribuir a {selectedCandidates.length} turma(s)
                       </button>

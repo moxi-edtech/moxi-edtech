@@ -854,7 +854,7 @@ export default function RelatorioMensalidadesClient() {
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm print:rounded-none print:border-none print:p-0 print:shadow-none">
+        <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-sm print:rounded-none print:border-none print:p-0 print:shadow-none">
           Carregando relatório...
         </div>
       ) : (

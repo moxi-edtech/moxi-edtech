@@ -211,17 +211,17 @@ export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: E
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
             <AlertTriangle className="text-amber-500 w-5 h-5" />
             Reabertura Excecional de Pauta
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Autorize professores a editar notas em períodos já trancados ou fora do calendário.
           </p>
         </div>
         <button
           onClick={() => setShowAdd(!showAdd)}
-          className="flex items-center gap-2 bg-[#1F6B3B] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#1F6B3B]/90 transition-all"
+          className="flex items-center gap-2 bg-klasse-green text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-klasse-green/90 transition-all"
         >
           {showAdd ? <XCircle className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showAdd ? "Cancelar" : "Nova Exceção"}
@@ -229,16 +229,16 @@ export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: E
       </div>
 
       {showAdd && (
-        <div className="bg-white border-2 border-amber-100 rounded-2xl p-6 shadow-sm space-y-4">
-          <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Configurar Acesso Temporário</h3>
+        <div className="bg-card border-2 border-amber-100 rounded-2xl p-6 shadow-sm space-y-4">
+          <h3 className="font-bold text-foreground text-sm uppercase tracking-wider">Configurar Acesso Temporário</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Utilizador (Professor/Admin)</label>
+              <label className="text-xs font-bold text-muted-foreground uppercase">Utilizador (Professor/Admin)</label>
               <select 
                 value={selectedUser} 
                 onChange={e => setSelectedUser(e.target.value)}
-                className="w-full rounded-xl border-slate-200 text-sm"
+                className="w-full rounded-xl border-border text-sm"
               >
                 <option value="">Selecionar utilizador...</option>
                 {users.map(u => <option key={u.user_id} value={u.user_id}>{u.nome} ({u.role})</option>)}
@@ -246,11 +246,11 @@ export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: E
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Turma</label>
+              <label className="text-xs font-bold text-muted-foreground uppercase">Turma</label>
               <select 
                 value={selectedTurma} 
                 onChange={e => setSelectedTurma(e.target.value)}
-                className="w-full rounded-xl border-slate-200 text-sm"
+                className="w-full rounded-xl border-border text-sm"
               >
                 <option value="">Selecionar turma...</option>
                 {turmas.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
@@ -258,11 +258,11 @@ export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: E
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Disciplina (Opcional)</label>
+              <label className="text-xs font-bold text-muted-foreground uppercase">Disciplina (Opcional)</label>
               <select 
                 value={selectedDisciplina} 
                 onChange={e => setSelectedDisciplina(e.target.value)}
-                className="w-full rounded-xl border-slate-200 text-sm"
+                className="w-full rounded-xl border-border text-sm"
               >
                 <option value="">Todas as disciplinas</option>
                 {disciplinas.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
@@ -271,11 +271,11 @@ export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: E
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Trimestre</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Trimestre</label>
                 <select 
                   value={selectedTrimestre} 
                   onChange={e => setSelectedTrimestre(e.target.value)}
-                  className="w-full rounded-xl border-slate-200 text-sm"
+                  className="w-full rounded-xl border-border text-sm"
                 >
                   <option value="">Todos</option>
                   <option value="1">1º Trimestre</option>
@@ -284,11 +284,11 @@ export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: E
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Duração (Horas)</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Duração (Horas)</label>
                 <select 
                   value={horas} 
                   onChange={e => setHoras(e.target.value)}
-                  className="w-full rounded-xl border-slate-200 text-sm"
+                  className="w-full rounded-xl border-border text-sm"
                 >
                   <option value="1">1 hora</option>
                   <option value="4">4 horas</option>
@@ -302,12 +302,12 @@ export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: E
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">Motivo da Reabertura (Auditoria)</label>
+            <label className="text-xs font-bold text-muted-foreground uppercase">Motivo da Reabertura (Auditoria)</label>
             <textarea 
               value={motivo}
               onChange={e => setMotivo(e.target.value)}
               placeholder="Ex: Erro na soma da prova de Matemática detectado pelo encarregado..."
-              className="w-full h-20 rounded-xl border-slate-200 text-sm p-3"
+              className="w-full h-20 rounded-xl border-border text-sm p-3"
             />
           </div>
 
@@ -324,9 +324,9 @@ export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: E
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] border-b border-slate-200">
+          <thead className="bg-muted text-muted-foreground font-bold uppercase text-[10px] border-b border-border">
             <tr>
               <th className="px-6 py-4 text-left">Utilizador</th>
               <th className="px-6 py-4 text-left">Contexto</th>
@@ -335,10 +335,10 @@ export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: E
               <th className="px-6 py-4 text-right">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border">
             {excecoes.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
                   Nenhuma exceção ativa registada.
                 </td>
               </tr>
@@ -346,39 +346,39 @@ export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: E
               excecoes.map(ex => {
                 const expirada = new Date(ex.expira_em) < new Date();
                 return (
-                  <tr key={ex.id} className={expirada ? "opacity-60 bg-slate-50/50" : ""}>
+                  <tr key={ex.id} className={expirada ? "opacity-60 bg-muted/50" : ""}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
                           <User className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{ex.profiles?.nome}</p>
-                          <p className="text-[10px] text-slate-500 uppercase">{ex.motivo}</p>
+                          <p className="font-bold text-foreground">{ex.profiles?.nome}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase">{ex.motivo}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
-                        <p className="flex items-center gap-1.5 font-medium text-slate-700">
-                          <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                        <p className="flex items-center gap-1.5 font-medium text-foreground">
+                          <BookOpen className="w-3.5 h-3.5 text-muted-foreground" />
                           {ex.turmas?.nome}
                         </p>
-                        <p className="text-xs text-slate-500 pl-5">
+                        <p className="text-xs text-muted-foreground pl-5">
                           {ex.disciplinas_catalogo?.nome || "Todas as disciplinas"}
                           {ex.trimestre && ` · ${ex.trimestre}º Trimestre`}
                         </p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-slate-600">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
                         <Clock className="w-3.5 h-3.5" />
                         {new Date(ex.expira_em).toLocaleString('pt-AO')}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       {expirada ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold">
                           <XCircle className="w-3 h-3" /> EXPIRADA
                         </span>
                       ) : (
@@ -390,7 +390,7 @@ export default function ExcecoesPautaPanel({ escolaId: escolaIdProp, params }: E
                     <td className="px-6 py-4 text-right">
                       <button 
                         onClick={() => handleDelete(ex.id)}
-                        className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                        className="p-2 text-muted-foreground hover:text-rose-600 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

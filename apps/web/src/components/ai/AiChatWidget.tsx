@@ -1203,7 +1203,7 @@ export default function AiChatWidget({
           setIsOpen((value) => !value);
         }}
         style={{ right: position.right, bottom: position.bottom, visibility: isOpen && expanded ? "hidden" : "visible" }}
-        className={`fixed z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#16A34A] text-white shadow-md hover:bg-[#15803D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16A34A] ${dragging ? "" : "transition-colors"}`}
+        className={`fixed z-50 flex h-12 w-12 items-center justify-center rounded-full bg-klasse-gold text-klasse-gold-900 shadow-md hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold ${dragging ? "" : "transition-colors"}`}
         ref={launcherRef}
         aria-label={isOpen ? "Fechar KLASSE IA" : "Abrir KLASSE IA"}
         aria-expanded={isOpen}
@@ -1218,41 +1218,41 @@ export default function AiChatWidget({
           role="dialog"
           aria-label="Conversa com o KLASSE IA"
           style={panelStyle}
-          className={`fixed z-50 flex min-h-0 flex-col overflow-hidden border border-slate-200 bg-white shadow-xl shadow-slate-900/10 ${expanded ? "w-full rounded-none md:w-[min(840px,calc(100vw-32px))] md:rounded-2xl" : "w-[min(440px,calc(100vw-28px))] rounded-2xl"}`}
+          className={`fixed z-50 flex min-h-0 flex-col overflow-hidden border border-border bg-card shadow-sm ${expanded ? "w-full rounded-none md:w-[min(840px,calc(100vw-32px))] md:rounded-xl" : "w-[min(440px,calc(100vw-28px))] rounded-xl"}`}
         >
           <header
             onMouseDown={expanded ? undefined : handleDragStart}
             onTouchStart={expanded ? undefined : handleDragStart}
-            className="flex cursor-grab select-none items-center justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4"
+            className="flex cursor-grab select-none items-center justify-between gap-4 border-b border-border bg-card px-5 py-4"
           >
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold tracking-tight text-slate-900">KLASSE IA</h3>
-              <p className="mt-0.5 truncate text-xs font-normal text-slate-500">{contextName}</p>
+              <h3 className="text-sm font-semibold tracking-tight text-foreground">KLASSE IA</h3>
+              <p className="mt-0.5 truncate text-xs font-normal text-muted-foreground">{contextName}</p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <button type="button" onClick={() => { setMessages([]); setFlow(null); setInputValue(""); setScopeNotice("Nova conversa iniciada neste contexto."); intelligenceConversationRef.current = null; queryEpochRef.current += 1; requestControllerRef.current?.abort(); pendingRef.current = false; setThinking(false); queryCache.clear(); }} aria-label="Nova conversa" className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
+              <button type="button" onClick={() => { setMessages([]); setFlow(null); setInputValue(""); setScopeNotice("Nova conversa iniciada neste contexto."); intelligenceConversationRef.current = null; queryEpochRef.current += 1; requestControllerRef.current?.abort(); pendingRef.current = false; setThinking(false); queryCache.clear(); }} aria-label="Nova conversa" className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold">
                 <RotateCcw className="h-3.5 w-3.5" /><span className="hidden sm:inline">Nova conversa</span>
               </button>
-              <button ref={toggleExpandedRef} type="button" aria-label={expanded ? "Recolher conversa" : "Expandir conversa"} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
+              <button ref={toggleExpandedRef} type="button" aria-label={expanded ? "Recolher conversa" : "Expandir conversa"} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)} className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold">
                 {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </button>
-              <button ref={closeRef} type="button" onClick={() => { setIsOpen(false); requestAnimationFrame(() => launcherRef.current?.focus()); }} aria-label="Fechar conversa" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
+              <button ref={closeRef} type="button" onClick={() => { setIsOpen(false); requestAnimationFrame(() => launcherRef.current?.focus()); }} aria-label="Fechar conversa" className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold">
                 <X className="h-4 w-4" />
               </button>
             </div>
           </header>
 
           {showHelp ? (
-            <section className="flex min-h-0 flex-1 flex-col bg-white">
-              <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
-                <Search className="h-4 w-4 text-slate-400" />
+            <section className="flex min-h-0 flex-1 flex-col bg-card">
+              <div className="flex items-center gap-3 border-b border-border px-5 py-4">
+                <Search className="h-4 w-4 text-muted-foreground" />
                 <input
                   value={helpSearch}
                   onChange={(event) => {
                     setHelpSearch(event.target.value);
                     setHelpTopics(findHelpTopics(event.target.value, userRole));
                   }}
-                  className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none"
+                  className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
                   aria-label="Pesquisar na ajuda"
                   placeholder="Procurar na ajuda..."
                 />
@@ -1260,11 +1260,11 @@ export default function AiChatWidget({
               <div className="min-h-0 flex-1 overflow-y-auto p-5">
                 {selectedTopic ? (
                   <div className="space-y-3">
-                    <button type="button" onClick={() => setSelectedTopic(null)} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
+                    <button type="button" onClick={() => setSelectedTopic(null)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
                       <ArrowLeft className="h-3 w-3" /> Voltar
                     </button>
-                    <h4 className="text-base font-semibold text-slate-900">{selectedTopic.title}</h4>
-                    <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{selectedTopic.answer}</p>
+                    <h4 className="text-base font-semibold text-foreground">{selectedTopic.title}</h4>
+                    <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">{selectedTopic.answer}</p>
                     {selectedTopic.href ? (
                       <button
                         type="button"
@@ -1272,7 +1272,7 @@ export default function AiChatWidget({
                           router.push(selectedTopic.href!(routeSchoolParam));
                           setIsOpen(false);
                         }}
-                        className="rounded-lg bg-[#1F6B3B] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#18572f]"
+                        className="rounded-lg bg-klasse-gold px-4 py-2.5 text-sm font-medium text-klasse-gold-900 hover:brightness-95"
                       >
                         Abrir tela
                       </button>
@@ -1285,18 +1285,18 @@ export default function AiChatWidget({
                         key={topic.key}
                         type="button"
                         onClick={() => setSelectedTopic(topic)}
-                        className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left text-sm transition-colors hover:bg-slate-50"
+                        className="w-full rounded-xl border border-border bg-card p-4 text-left text-sm transition-colors hover:bg-muted"
                       >
-                        <span className="block font-semibold text-slate-900">{topic.title}</span>
-                        <span className="mt-1 block text-xs text-slate-500">{topic.category}</span>
+                        <span className="block font-semibold text-foreground">{topic.title}</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">{topic.category}</span>
                       </button>
                     ))}
-                    {helpTopics.length === 0 ? <p className="text-xs text-slate-500">Sem caminho documentado para essa busca.</p> : null}
+                    {helpTopics.length === 0 ? <p className="text-xs text-muted-foreground">Sem caminho documentado para essa busca.</p> : null}
                   </div>
                 )}
               </div>
-              <div className="border-t border-slate-100 bg-white p-4">
-                <button type="button" onClick={() => setShowHelp(false)} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <div className="border-t border-border bg-card p-4">
+                <button type="button" onClick={() => setShowHelp(false)} className="w-full rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted">
                   Voltar ao assistente
                 </button>
               </div>
@@ -1304,8 +1304,8 @@ export default function AiChatWidget({
           ) : (
             <section className="flex min-h-0 flex-1 flex-col">
               <div aria-live="polite" aria-atomic="true" className="sr-only">{liveAnnouncement}</div>
-              <div ref={transcriptRef} data-testid="klasse-ai-transcript" className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white px-4 py-5 sm:px-5">
-                {scopeNotice ? <p role="status" className="mb-5 border-b border-slate-100 pb-3 text-xs text-slate-600">{scopeNotice}</p> : null}
+              <div ref={transcriptRef} data-testid="klasse-ai-transcript" className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-card px-4 py-5 sm:px-5">
+                {scopeNotice ? <p role="status" className="mb-5 border-b border-border pb-3 text-xs text-muted-foreground">{scopeNotice}</p> : null}
                 {messages.length <= 1 && !thinking && actions.length > 0 ? (
                   <div className="mb-6 flex flex-wrap gap-2" aria-label="Sugestões de consulta">
                     {actions.slice(0, 3).map((act) => (
@@ -1313,7 +1313,7 @@ export default function AiChatWidget({
                         key={act.key}
                         type="button"
                         onClick={() => handleActionSuggestion(act.key)}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-xs font-medium leading-5 text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]"
+                        className="rounded-lg border border-border bg-card px-3 py-2 text-left text-xs font-medium leading-5 text-muted-foreground transition-colors hover:border-ring hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold"
                       >
                         {act.title}
                       </button>
@@ -1327,66 +1327,66 @@ export default function AiChatWidget({
                     return (
                       <div key={message.id} className={`flex ${isAi ? "justify-start" : "justify-end"}`}>
                         <div className={isAi
-                          ? "w-full min-w-0 text-[13px] leading-6 text-slate-800"
-                          : "max-w-[88%] min-w-0 rounded-2xl rounded-br-md bg-slate-100 px-4 py-3 text-[13px] leading-6 text-slate-800"}>
+                          ? "w-full min-w-0 text-[13px] leading-6 text-foreground"
+                          : "max-w-[88%] min-w-0 rounded-xl rounded-br-md bg-muted px-4 py-3 text-[13px] leading-6 text-foreground"}>
                           {isAi && message.insight ? (
                             <div className="space-y-3">
                               {message.insight.provenance ? (
                                 <>
-                                  <p className="whitespace-pre-wrap break-words text-sm font-medium leading-6 text-slate-900">
+                                  <p className="whitespace-pre-wrap break-words text-sm font-medium leading-6 text-foreground">
                                     {presentChatResponse(message.insight.diagnosis).summary}
                                   </p>
                                   {message.insight.provenance.freshness !== "live" ? (
-                                    <p className="text-xs leading-5 text-slate-600">
+                                    <p className="text-xs leading-5 text-muted-foreground">
                                       {message.insight.provenance.freshness === "unknown"
                                         ? "Dado indisponível ou não confirmado. Não utilize este resultado como total verificado."
                                         : "Dados com cobertura parcial; confirme os limites em Ver detalhes."}
                                     </p>
                                   ) : null}
-                                  <p className="whitespace-pre-wrap text-[13px] leading-6 text-slate-700">
+                                  <p className="whitespace-pre-wrap text-[13px] leading-6 text-foreground">
                                     {presentChatResponse(message.insight.recommendation).summary}
                                   </p>
-                                  <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3">
+                                  <div className="grid grid-cols-2 gap-4 border-t border-border pt-3">
                                     {message.insight.evidence.slice(0, 2).map((item) => (
                                       <div key={`${message.id}-${item.label}`} className="min-w-0">
-                                        <p className="break-words text-[11px] leading-5 text-slate-600">{item.label}</p>
-                                        <p className="mt-1 break-words text-base font-semibold tabular-nums text-slate-900">{item.value}</p>
+                                        <p className="break-words text-[11px] leading-5 text-muted-foreground">{item.label}</p>
+                                        <p className="mt-1 break-words text-base font-semibold tabular-nums text-foreground">{item.value}</p>
                                       </div>
                                     ))}
                                   </div>
                                 </>
                               ) : (
-                                <p className="text-sm text-slate-700">Fonte não disponibilizada. Não é possível confirmar os dados desta resposta.</p>
+                                <p className="text-sm text-foreground">Fonte não disponibilizada. Não é possível confirmar os dados desta resposta.</p>
                               )}
-                              <details className="group border-t border-slate-100 pt-2 text-xs text-slate-700">
-                                <summary className="cursor-pointer rounded-md py-2 font-medium text-slate-700 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">Ver detalhes</summary>
+                              <details className="group border-t border-border pt-2 text-xs text-foreground">
+                                <summary className="cursor-pointer rounded-xl py-2 font-medium text-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold">Ver detalhes</summary>
                                 <div className="space-y-4 pb-2 pt-3 leading-5">
                                   {presentChatResponse(message.insight.diagnosis).details ? <p className="whitespace-pre-wrap break-words">{presentChatResponse(message.insight.diagnosis).details}</p> : null}
                                   {presentChatResponse(message.insight.diagnosis).tables.map((table, tableIndex) => (
                                     <div key={`${message.id}-insight-table-${tableIndex}`} className="max-w-full overflow-x-auto" tabIndex={0} aria-label="Tabela de indicadores; pode deslocar horizontalmente">
                                       <table className="min-w-max border-collapse text-left text-xs">
-                                        <thead><tr>{table.headers.map((header, index) => <th key={index} scope="col" className="border-b border-slate-200 px-3 py-2 font-semibold text-slate-900">{header}</th>)}</tr></thead>
-                                        <tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, columnIndex) => <td key={columnIndex} className="border-b border-slate-100 px-3 py-2 tabular-nums">{cell}</td>)}</tr>)}</tbody>
+                                        <thead><tr>{table.headers.map((header, index) => <th key={index} scope="col" className="border-b border-border px-3 py-2 font-semibold text-foreground">{header}</th>)}</tr></thead>
+                                        <tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, columnIndex) => <td key={columnIndex} className="border-b border-border px-3 py-2 tabular-nums">{cell}</td>)}</tr>)}</tbody>
                                       </table>
                                     </div>
                                   ))}
                                   <section>
-                                    <h4 className="font-semibold text-slate-900">Impacto</h4>
+                                    <h4 className="font-semibold text-foreground">Impacto</h4>
                                     <p className="mt-1 whitespace-pre-wrap break-words">{message.insight.impact}</p>
                                   </section>
                                   <section>
-                                    <h4 className="font-semibold text-slate-900">Indicadores e unidades</h4>
+                                    <h4 className="font-semibold text-foreground">Indicadores e unidades</h4>
                                     <dl className="mt-2 grid grid-cols-2 gap-3">
                                       {message.insight.evidence.map((item) => (
                                         <div key={`${message.id}-detail-${item.label}`} className="min-w-0">
-                                          <dt className="break-words text-slate-600">{item.label}</dt>
-                                          <dd className="mt-1 break-words font-semibold tabular-nums text-slate-900">{item.value}</dd>
+                                          <dt className="break-words text-muted-foreground">{item.label}</dt>
+                                          <dd className="mt-1 break-words font-semibold tabular-nums text-foreground">{item.value}</dd>
                                         </div>
                                       ))}
                                     </dl>
                                   </section>
                                   <section>
-                                    <h4 className="font-semibold text-slate-900">Fonte e filtros aplicados</h4>
+                                    <h4 className="font-semibold text-foreground">Fonte e filtros aplicados</h4>
                                     <p className="mt-1 break-words">Fonte: {message.insight.provenance ? formatInsightSource(message.insight.provenance.source) : "não disponibilizada"}</p>
                                     <p className="mt-1 break-words">Filtros / âmbito: {message.insight.provenance?.scope ?? "não disponibilizados"}</p>
                                     <p className="mt-1">Consulta: {message.insight.provenance ? new Date(message.insight.provenance.consultedAt).toLocaleString("pt-AO", { timeZone: "Africa/Luanda", timeZoneName: "short" }) : "sem horário"}</p>
@@ -1398,7 +1398,7 @@ export default function AiChatWidget({
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              {isAi && message.mode ? <p className="text-xs font-medium text-slate-600">{message.mode === "action" ? "Preparar ação" : "Ajuda KLASSE"}</p> : null}
+                              {isAi && message.mode ? <p className="text-xs font-medium text-muted-foreground">{message.mode === "action" ? "Preparar ação" : "Ajuda KLASSE"}</p> : null}
                               {(() => {
                                 const view = isAi ? presentChatResponse(message.text) : null;
                                 return view ? (
@@ -1408,22 +1408,22 @@ export default function AiChatWidget({
                                       <div className="max-w-full overflow-x-auto" tabIndex={0} aria-label="Tabela de resultados; pode deslocar horizontalmente">
                                         {view.tables.map((table, tableIndex) => (
                                           <table key={`${message.id}-table-${tableIndex}`} className="min-w-max border-collapse text-left text-xs">
-                                            <thead><tr>{table.headers.map((header, columnIndex) => <th key={`${tableIndex}-h-${columnIndex}`} scope="col" className="border-b border-slate-200 px-3 py-2 font-semibold text-slate-900">{header}</th>)}</tr></thead>
-                                            <tbody>{table.rows.map((row, rowIndex) => <tr key={`${tableIndex}-${rowIndex}`}>{row.map((cell, columnIndex) => <td key={`${rowIndex}-${columnIndex}`} className="border-b border-slate-100 px-3 py-2 tabular-nums text-slate-800">{cell}</td>)}</tr>)}</tbody>
+                                            <thead><tr>{table.headers.map((header, columnIndex) => <th key={`${tableIndex}-h-${columnIndex}`} scope="col" className="border-b border-border px-3 py-2 font-semibold text-foreground">{header}</th>)}</tr></thead>
+                                            <tbody>{table.rows.map((row, rowIndex) => <tr key={`${tableIndex}-${rowIndex}`}>{row.map((cell, columnIndex) => <td key={`${rowIndex}-${columnIndex}`} className="border-b border-border px-3 py-2 tabular-nums text-foreground">{cell}</td>)}</tr>)}</tbody>
                                           </table>
                                         ))}
                                       </div>
                                     ) : null}
                                     {view.details || view.tables.some((table) => table.rows.length > 3) ? (
-                                      <details className="group border-t border-slate-100 pt-2">
-                                        <summary className="cursor-pointer rounded-md py-2 text-xs font-medium text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">Ver detalhes</summary>
+                                      <details className="group border-t border-border pt-2">
+                                        <summary className="cursor-pointer rounded-xl py-2 text-xs font-medium text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold">Ver detalhes</summary>
                                         <div className="space-y-3 pt-2">
                                           {view.details ? <p className="whitespace-pre-wrap break-words">{view.details}</p> : null}
                                           {view.tables.filter((table) => table.rows.length > 3).map((table, tableIndex) => (
                                             <div key={`${message.id}-longtable-${tableIndex}`} className="max-w-full overflow-x-auto" tabIndex={0} aria-label="Tabela extensa; pode deslocar horizontalmente">
                                               <table className="min-w-max border-collapse text-left text-xs">
-                                                <thead><tr>{table.headers.map((header, index) => <th key={`h-${index}`} scope="col" className="border-b border-slate-200 px-3 py-2 font-semibold text-slate-900">{header}</th>)}</tr></thead>
-                                                <tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, colIndex) => <td key={colIndex} className="border-b border-slate-100 px-3 py-2 text-slate-800">{cell}</td>)}</tr>)}</tbody>
+                                                <thead><tr>{table.headers.map((header, index) => <th key={`h-${index}`} scope="col" className="border-b border-border px-3 py-2 font-semibold text-foreground">{header}</th>)}</tr></thead>
+                                                <tbody>{table.rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell, colIndex) => <td key={colIndex} className="border-b border-border px-3 py-2 text-foreground">{cell}</td>)}</tr>)}</tbody>
                                               </table>
                                             </div>
                                           ))}
@@ -1437,7 +1437,7 @@ export default function AiChatWidget({
                             </div>
                           )}
                           {isAi && message.retryQuery ? (
-                            <button type="button" onClick={() => void handleGeneralQuery(message.retryQuery!, true)} disabled={thinking} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
+                            <button type="button" onClick={() => void handleGeneralQuery(message.retryQuery!, true)} disabled={thinking} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold">
                               <RotateCcw className="h-3.5 w-3.5" /> Tentar de novo
                             </button>
                           ) : null}
@@ -1457,7 +1457,7 @@ export default function AiChatWidget({
                                       setIsOpen(false);
                                     }
                                   }}
-                                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-border px-3 py-2.5 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted"
                                 >
                                   <span className="truncate">{link.label}</span>
                                   <ExternalLink className="h-3 w-3 shrink-0" />
@@ -1478,7 +1478,7 @@ export default function AiChatWidget({
                                       ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
                                       : action.riskLevel === "medium"
                                         ? "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100"
-                                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                                        : "border-border bg-card text-foreground hover:bg-muted"
                                   }`}
                                   title={action.description}
                                 >
@@ -1495,24 +1495,24 @@ export default function AiChatWidget({
                           ) : null}
 
                           {isAi && message.copyable ? (
-                            <div className="mt-4 flex flex-wrap gap-3 border-t border-slate-100 pt-3">
+                            <div className="mt-4 flex flex-wrap gap-3 border-t border-border pt-3">
                               <button
                                 type="button"
                                 onClick={() => {
                                   navigator.clipboard.writeText(cleanGeneratedText(message.text));
                                   setCopiedId(message.id);
                                 }}
-                                className="rounded-md px-1 py-1 text-xs text-slate-500 transition-colors hover:text-slate-900"
+                                className="rounded-xl px-1 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
                               >
                                 {copiedId === message.id ? <Check className="inline h-3 w-3 mr-0.5" /> : <Copy className="inline h-3 w-3 mr-0.5" />} Copiar
                               </button>
-                              <button type="button" onClick={() => sendFeedback(message, "useful")} className="rounded-md px-1 py-1 text-xs text-slate-500 transition-colors hover:text-slate-900">
+                              <button type="button" onClick={() => sendFeedback(message, "useful")} className="rounded-xl px-1 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
                                 <ThumbsUp className="inline h-3 w-3 mr-0.5" /> Útil
                               </button>
-                              <button type="button" onClick={() => sendFeedback(message, "not_useful", "redo")} className="rounded-md px-1 py-1 text-xs text-slate-500 transition-colors hover:text-slate-900">
+                              <button type="button" onClick={() => sendFeedback(message, "not_useful", "redo")} className="rounded-xl px-1 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
                                 <ThumbsDown className="inline h-3 w-3 mr-0.5" /> Ruim
                               </button>
-                              {feedbackId === message.id ? <span className="ml-1 self-center text-xs text-slate-500">Salvo</span> : null}
+                              {feedbackId === message.id ? <span className="ml-1 self-center text-xs text-muted-foreground">Salvo</span> : null}
                             </div>
                           ) : null}
                           {message.quickReplies?.length ? (
@@ -1522,7 +1522,7 @@ export default function AiChatWidget({
                                   key={`${message.id}-${reply.action}`}
                                   type="button"
                                   onClick={() => handleQuickAction(reply.action)}
-                                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                                  className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
                                 >
                                   {reply.label}
                                 </button>
@@ -1534,10 +1534,10 @@ export default function AiChatWidget({
                     );
                   })}
                   {thinking ? (
-                    <div className="flex items-center justify-between gap-3 text-xs text-slate-600" role="status">
+                    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground" role="status">
                       <span>{/nota|pauta|avaliaç/i.test(messages[messages.length - 1]?.text ?? "") ? "A consultar notas…" : "A consultar dados da escola…"}</span>
                       {requestControllerRef.current ? (
-                        <button type="button" onClick={cancelCurrentQuery} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F6B3B]">
+                        <button type="button" onClick={cancelCurrentQuery} className="inline-flex items-center gap-1.5 rounded-xl px-2 py-1 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold">
                           <Square className="h-3 w-3" /> Cancelar consulta
                         </button>
                       ) : null}
@@ -1547,8 +1547,8 @@ export default function AiChatWidget({
                 </div>
               </div>
 
-              <form onSubmit={submitInput} className="shrink-0 border-t border-slate-100 bg-white px-4 pb-4 pt-3 sm:px-5">
-                <div className="flex items-end gap-2 rounded-xl border border-slate-200 bg-white p-2 transition-colors focus-within:border-[#1F6B3B] focus-within:ring-1 focus-within:ring-[#1F6B3B]/10">
+              <form onSubmit={submitInput} className="shrink-0 border-t border-border bg-card px-4 pb-4 pt-3 sm:px-5">
+                <div className="flex items-end gap-2 rounded-xl border border-border bg-card p-2 transition-colors focus-within:border-klasse-gold focus-within:ring-1 focus-within:ring-klasse-gold/20">
                   <textarea
                     ref={textareaRef}
                     aria-label="Mensagem para o KLASSE IA"
@@ -1562,23 +1562,23 @@ export default function AiChatWidget({
                         submitInput(event);
                       }
                     }}
-                    className="max-h-32 min-h-10 min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 text-slate-900 placeholder:text-slate-400 outline-none disabled:opacity-50"
+                    className="max-h-32 min-h-10 min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 text-foreground placeholder:text-muted-foreground outline-none disabled:opacity-50"
                     placeholder={flow ? "Escreva para este fluxo…" : "Escreva a sua pergunta…"}
                   />
-                  <button type="submit" aria-label="Enviar mensagem" disabled={thinking || pendingRef.current || !inputValue.trim()} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#1F6B3B] text-white transition-colors hover:bg-[#18572f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F6B3B] disabled:bg-slate-100 disabled:text-slate-400">
+                  <button type="submit" aria-label="Enviar mensagem" disabled={thinking || pendingRef.current || !inputValue.trim()} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-klasse-gold text-klasse-gold-900 transition-colors hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold disabled:bg-muted disabled:text-muted-foreground">
                     <Send className="h-4 w-4" />
                   </button>
                 </div>
                 {flow ? (
-                  <button type="button" onClick={() => handleQuickAction("cancel_flow")} className="mt-3 text-xs text-slate-500 hover:text-slate-900">
+                  <button type="button" onClick={() => handleQuickAction("cancel_flow")} className="mt-3 text-xs text-muted-foreground hover:text-foreground">
                     Cancelar fluxo
                   </button>
                 ) : (
-                  <div className="mt-3 flex items-center justify-between gap-4 text-xs text-slate-500">
-                    <button type="button" onClick={showContextCapabilities} className="text-left transition-colors hover:text-slate-900">
+                  <div className="mt-3 flex items-center justify-between gap-4 text-xs text-muted-foreground">
+                    <button type="button" onClick={showContextCapabilities} className="text-left transition-colors hover:text-foreground">
                       O que posso fazer aqui?
                     </button>
-                    <button type="button" onClick={openHelp} className="flex shrink-0 items-center gap-1.5 transition-colors hover:text-slate-900">
+                    <button type="button" onClick={openHelp} className="flex shrink-0 items-center gap-1.5 transition-colors hover:text-foreground">
                       <HelpCircle className="h-3.5 w-3.5" /> Ajuda
                     </button>
                   </div>

@@ -55,7 +55,7 @@ type TurmaOption = {
 
 const TIPO_LABELS: Record<string, { label: string; badgeCls: string }> = {
   FIM_PRIMARIO: { label: "Fim do Primário (6.ª)", badgeCls: "bg-blue-50 text-blue-700 border-blue-200" },
-  FIM_I_CICLO: { label: "Fim do I Ciclo (9.ª)", badgeCls: "bg-[#E3B23C]/10 text-[#9a7010] border-[#E3B23C]/20" },
+  FIM_I_CICLO: { label: "Fim do I Ciclo (9.ª)", badgeCls: "bg-klasse-gold/10 text-klasse-gold-700 dark:text-klasse-gold-300 border-klasse-gold/20" },
   PRE_ESCOLAR: { label: "Pré-Escolar", badgeCls: "bg-purple-50 text-purple-700 border-purple-200" },
 };
 
@@ -259,15 +259,15 @@ export function ReclassificacaoFinalistasClient({
       )}
 
       {!isModalContext && (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-6 rounded-2xl border border-border shadow-sm">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
-              <div className="h-10 w-10 rounded-xl bg-[#E3B23C]/10 border border-[#E3B23C]/20 flex items-center justify-center">
-                <GraduationCap className="h-5 w-5 text-[#9a7010]" />
+              <div className="h-10 w-10 rounded-xl bg-klasse-gold/10 border border-klasse-gold/20 flex items-center justify-center">
+                <GraduationCap className="h-5 w-5 text-klasse-gold-700 dark:text-klasse-gold-300" />
               </div>
-              <h1 className="text-xl font-bold text-slate-900 font-sora">Reclassificação de Finalistas</h1>
+              <h1 className="text-xl font-bold text-foreground font-sora">Reclassificação de Finalistas</h1>
             </div>
-            <p className="text-xs text-slate-500 max-w-2xl">
+            <p className="text-xs text-muted-foreground max-w-2xl">
               Resolva alunos que terminaram um ciclo antes de emitir novos recibos ou concluir a matrícula no próximo ano letivo.
             </p>
           </div>
@@ -281,9 +281,9 @@ export function ReclassificacaoFinalistasClient({
             <button
               onClick={fetchRecords}
               disabled={loading}
-              className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition flex items-center gap-2 text-xs font-semibold"
+              className="p-2.5 rounded-xl border border-border bg-muted hover:bg-muted text-foreground transition flex items-center gap-2 text-xs font-semibold"
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin text-[#1F6B3B]" : ""}`} />
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin text-klasse-green dark:text-klasse-green-300" : ""}`} />
               <span className="hidden md:inline">Atualizar</span>
             </button>
           </div>
@@ -296,8 +296,8 @@ export function ReclassificacaoFinalistasClient({
             onClick={() => setFilterTipo("all")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
               filterTipo === "all"
-                ? "bg-slate-900 text-white"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                ? "bg-klasse-gold text-klasse-gold-900"
+                : "bg-card border border-border text-muted-foreground hover:bg-muted"
             }`}
           >
             Todos ({records.length})
@@ -307,7 +307,7 @@ export function ReclassificacaoFinalistasClient({
             className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
               filterTipo === "FIM_PRIMARIO"
                 ? "bg-blue-600 text-white border-blue-600"
-                : "bg-white border-slate-200 text-slate-600 hover:bg-blue-50"
+                : "bg-card border-border text-muted-foreground hover:bg-blue-50"
             }`}
           >
             6.ª classe (Primário)
@@ -316,8 +316,8 @@ export function ReclassificacaoFinalistasClient({
             onClick={() => setFilterTipo("FIM_I_CICLO")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
               filterTipo === "FIM_I_CICLO"
-                ? "bg-[#E3B23C] text-slate-950 border-[#E3B23C]"
-                : "bg-white border-slate-200 text-slate-600 hover:bg-amber-50"
+                ? "bg-klasse-gold text-foreground border-klasse-gold"
+                : "bg-card border-border text-muted-foreground hover:bg-amber-50"
             }`}
           >
             9.ª classe (I Ciclo)
@@ -327,7 +327,7 @@ export function ReclassificacaoFinalistasClient({
             className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
               filterTipo === "PRE_ESCOLAR"
                 ? "bg-purple-600 text-white border-purple-600"
-                : "bg-white border-slate-200 text-slate-600 hover:bg-purple-50"
+                : "bg-card border-border text-muted-foreground hover:bg-purple-50"
             }`}
           >
             Pré-Escolar
@@ -335,18 +335,18 @@ export function ReclassificacaoFinalistasClient({
         </div>
 
         <div className="relative min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Buscar por aluno ou BI..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#1F6B3B]/20 focus:border-[#1F6B3B]"
+            className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-xl text-xs outline-none focus:ring-2 focus:ring-klasse-green/20 focus:border-klasse-green"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -357,7 +357,7 @@ export function ReclassificacaoFinalistasClient({
       {selectedCount > 0 && (
         <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 shadow-sm">
           <div className="flex items-center gap-3">
-            <span className="h-7 w-7 rounded-lg bg-[#E3B23C] text-slate-950 font-black text-xs flex items-center justify-center">
+            <span className="h-7 w-7 rounded-lg bg-klasse-gold text-foreground font-black text-xs flex items-center justify-center">
               {selectedCount}
             </span>
             <span className="text-xs font-bold">
@@ -368,15 +368,15 @@ export function ReclassificacaoFinalistasClient({
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleOpenDrawer("archive")}
-              className="px-3.5 py-2 rounded-xl bg-white border border-amber-300 hover:bg-amber-100/50 text-slate-800 text-xs font-bold transition flex items-center gap-2"
+              className="px-3.5 py-2 rounded-xl bg-card border border-amber-300 hover:bg-amber-100/50 text-foreground text-xs font-bold transition flex items-center gap-2"
             >
-              <Archive className="h-4 w-4 text-slate-600" />
+              <Archive className="h-4 w-4 text-muted-foreground" />
               <span>Concluir e Arquivar</span>
             </button>
 
             <button
               onClick={() => handleOpenDrawer("enroll")}
-              className="px-4 py-2 rounded-xl bg-[#E3B23C] hover:bg-[#d8a733] text-slate-950 text-xs font-bold transition shadow-sm flex items-center gap-2"
+              className="px-4 py-2 rounded-xl bg-klasse-gold hover:brightness-95 text-klasse-gold-900 text-xs font-bold transition shadow-sm flex items-center gap-2"
             >
               <UserCheck className="h-4 w-4" />
               <span>Matricular no Novo Ciclo</span>
@@ -385,10 +385,10 @@ export function ReclassificacaoFinalistasClient({
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
         {loading ? (
-          <div className="p-16 text-center text-slate-500 space-y-3">
-            <Loader2 className="h-8 w-8 text-[#1F6B3B] animate-spin mx-auto" />
+          <div className="p-16 text-center text-muted-foreground space-y-3">
+            <Loader2 className="h-8 w-8 text-klasse-green dark:text-klasse-green-300 animate-spin mx-auto" />
             <p className="text-sm font-semibold">Carregando lista de finalistas...</p>
           </div>
         ) : error ? (
@@ -397,16 +397,16 @@ export function ReclassificacaoFinalistasClient({
             <p className="text-sm font-bold">{error}</p>
             <button
               onClick={fetchRecords}
-              className="mt-2 px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-xs font-bold text-rose-800 hover:bg-rose-100"
+              className="mt-2 px-3 py-1.5 rounded-xl bg-card border border-rose-200 text-xs font-bold text-rose-800 hover:bg-rose-100"
             >
               Tentar novamente
             </button>
           </div>
         ) : filteredRecords.length === 0 ? (
-          <div className="p-16 text-center text-slate-500 space-y-2">
+          <div className="p-16 text-center text-muted-foreground space-y-2">
             <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto opacity-80" />
-            <h3 className="text-base font-bold text-slate-800">Nenhum finalista pendente</h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
+            <h3 className="text-base font-bold text-foreground">Nenhum finalista pendente</h3>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
               Todos os alunos que terminaram o ciclo primário ou secundário já foram reclassificados com sucesso.
             </p>
           </div>
@@ -414,13 +414,13 @@ export function ReclassificacaoFinalistasClient({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                <tr className="bg-muted border-b border-border text-muted-foreground font-bold uppercase tracking-wider text-[10px]">
                   <th className="p-4 w-10">
                     <input
                       type="checkbox"
                       checked={selectedCount > 0 && selectedCount === filteredRecords.length}
                       onChange={handleSelectAll}
-                      className="h-4 w-4 rounded border-slate-300 text-[#1F6B3B] focus:ring-[#1F6B3B]"
+                      className="h-4 w-4 rounded border-border text-klasse-green dark:text-klasse-green-300 focus:ring-klasse-green"
                     />
                   </th>
                   <th className="p-4">Aluno</th>
@@ -430,20 +430,20 @@ export function ReclassificacaoFinalistasClient({
                   <th className="p-4 text-right">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {filteredRecords.map((record) => {
                   const isSelected = selectedIds.has(record.id);
                   const alunoNome = record.aluno?.nome_completo || record.aluno?.nome || "Aluno sem nome";
                   const bi = record.aluno?.bi_numero;
                   const tipoConfig = TIPO_LABELS[record.tipo] || {
                     label: record.tipo,
-                    badgeCls: "bg-slate-100 text-slate-700 border-slate-200",
+                    badgeCls: "bg-muted text-foreground border-border",
                   };
 
                   return (
                     <tr
                       key={record.id}
-                      className={`hover:bg-slate-50/70 transition ${
+                      className={`hover:bg-muted/70 transition ${
                         isSelected ? "bg-amber-50/40" : ""
                       }`}
                     >
@@ -452,19 +452,19 @@ export function ReclassificacaoFinalistasClient({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelect(record.id)}
-                          className="h-4 w-4 rounded border-slate-300 text-[#1F6B3B] focus:ring-[#1F6B3B]"
+                          className="h-4 w-4 rounded border-border text-klasse-green dark:text-klasse-green-300 focus:ring-klasse-green"
                         />
                       </td>
                       <td className="p-4">
-                        <p className="font-bold text-slate-900 text-sm">{alunoNome}</p>
-                        {bi && <p className="text-[11px] text-slate-400 font-mono">BI: {bi}</p>}
+                        <p className="font-bold text-foreground text-sm">{alunoNome}</p>
+                        {bi && <p className="text-[11px] text-muted-foreground font-mono">BI: {bi}</p>}
                       </td>
                       <td className="p-4">
-                        <p className="font-semibold text-slate-700">
+                        <p className="font-semibold text-foreground">
                           {record.origem_turma?.nome || "Turma de origem"}
                         </p>
                         {record.matricula?.ano_letivo && (
-                          <p className="text-[10px] text-slate-400">Ano: {record.matricula.ano_letivo}</p>
+                          <p className="text-[10px] text-muted-foreground">Ano: {record.matricula.ano_letivo}</p>
                         )}
                       </td>
                       <td className="p-4">
@@ -483,10 +483,10 @@ export function ReclassificacaoFinalistasClient({
                       <td className="p-4 text-right">
                         <button
                           onClick={() => handleOpenDrawer("enroll", record.id)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold transition text-xs shadow-2xs"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground font-bold transition text-xs shadow-2xs"
                         >
                           <span>Resolver</span>
-                          <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                       </td>
                     </tr>
@@ -499,38 +499,38 @@ export function ReclassificacaoFinalistasClient({
       </div>
 
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex justify-end">
-          <div className="w-full max-w-lg bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col justify-between">
-            <div className="p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+        <div className="fixed inset-0 z-50 bg-klasse-dark/40 backdrop-blur-xs flex justify-end">
+          <div className="w-full max-w-lg bg-card h-full shadow-2xl border-l border-border flex flex-col justify-between">
+            <div className="p-6 border-b border-border flex items-start justify-between bg-muted/50">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-amber-900 text-[10px] font-bold">
                     {selectedCount} {selectedCount === 1 ? "aluno selecionado" : "alunos selecionados"}
                   </span>
-                  <span className="text-xs text-slate-400 font-semibold">• Reclassificação</span>
+                  <span className="text-xs text-muted-foreground font-semibold">• Reclassificação</span>
                 </div>
-                <h2 className="text-lg font-bold text-slate-900 font-sora">
+                <h2 className="text-lg font-bold text-foreground font-sora">
                   {actionType === "enroll" ? "Matricular no Novo Ciclo" : "Concluir e Arquivar"}
                 </h2>
               </div>
               <button
                 onClick={() => setDrawerOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="p-6 space-y-6 overflow-y-auto flex-1">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <div className="rounded-2xl border border-border bg-muted p-4 space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   Alunos em resolução ({selectedCount})
                 </p>
                 <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
                   {selectedRecords.map((r) => (
-                    <div key={r.id} className="text-xs font-semibold text-slate-800 flex justify-between">
+                    <div key={r.id} className="text-xs font-semibold text-foreground flex justify-between">
                       <span>{r.aluno?.nome_completo || r.aluno?.nome}</span>
-                      <span className="text-slate-400 text-[10px]">{r.origem_turma?.nome}</span>
+                      <span className="text-muted-foreground text-[10px]">{r.origem_turma?.nome}</span>
                     </div>
                   ))}
                 </div>
@@ -547,7 +547,7 @@ export function ReclassificacaoFinalistasClient({
                 <button
                   type="button"
                   onClick={() => onPaymentRequired(selectedRecords[0].aluno_id)}
-                  className="w-full rounded-xl border border-[#E3B23C] bg-[#E3B23C]/10 px-4 py-3 text-left text-xs font-bold text-[#795b08] hover:bg-[#E3B23C]/20"
+                  className="w-full rounded-xl border border-klasse-gold bg-klasse-gold/10 px-4 py-3 text-left text-xs font-bold text-klasse-gold-900 dark:text-klasse-gold-300 hover:bg-klasse-gold/20"
                 >
                   Abrir o Balcão para pagar a taxa no ano correto
                 </button>
@@ -556,14 +556,14 @@ export function ReclassificacaoFinalistasClient({
               {actionType === "enroll" && (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-900">
+                    <label className="block text-xs font-bold text-foreground">
                       Turma de Destino <span className="text-rose-500">*</span>
                     </label>
                     <select
                       value={targetTurmaId}
                       onChange={(e) => setTargetTurmaId(e.target.value)}
                       disabled={loadingTurmas || submitting}
-                      className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/20 bg-white"
+                      className="w-full rounded-xl border border-border px-3.5 py-2.5 text-xs font-semibold text-foreground outline-none focus:border-klasse-green focus:ring-2 focus:ring-klasse-green/20 bg-card"
                     >
                       <option value="">-- Selecionar Turma de Destino --</option>
                       {turmas.map((t) => (
@@ -572,14 +572,14 @@ export function ReclassificacaoFinalistasClient({
                         </option>
                       ))}
                     </select>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-muted-foreground">
                       Apenas turmas do novo ano letivo e com vagas disponíveis são exibidas.
                     </p>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-900">
-                      Observação/Motivo <span className="text-slate-400 font-normal">(opcional)</span>
+                    <label className="block text-xs font-bold text-foreground">
+                      Observação/Motivo <span className="text-muted-foreground font-normal">(opcional)</span>
                     </label>
                     <textarea
                       value={motivo}
@@ -587,7 +587,7 @@ export function ReclassificacaoFinalistasClient({
                       maxLength={500}
                       rows={3}
                       placeholder="Ex: Escolha de curso confirmada pela encarregada..."
-                      className="w-full rounded-xl border border-slate-200 p-3 text-xs text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/20 bg-white resize-none"
+                      className="w-full rounded-xl border border-border p-3 text-xs text-foreground outline-none focus:border-klasse-green focus:ring-2 focus:ring-klasse-green/20 bg-card resize-none"
                     />
                   </div>
                 </div>
@@ -607,13 +607,13 @@ export function ReclassificacaoFinalistasClient({
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-900">
-                      Motivo da Conclusão/Saída <span className="text-slate-400 font-normal">(opcional)</span>
+                    <label className="block text-xs font-bold text-foreground">
+                      Motivo da Conclusão/Saída <span className="text-muted-foreground font-normal">(opcional)</span>
                     </label>
                     <select
                       value={motivo}
                       onChange={(e) => setMotivo(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-900 outline-none focus:border-[#1F6B3B] bg-white"
+                      className="w-full rounded-xl border border-border px-3.5 py-2.5 text-xs font-semibold text-foreground outline-none focus:border-klasse-green bg-card"
                     >
                       <option value="">Concluiu o percurso da escola</option>
                       <option value="Transferência para outra instituição">Transferência para outra instituição</option>
@@ -625,11 +625,11 @@ export function ReclassificacaoFinalistasClient({
               )}
             </div>
 
-            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3">
+            <div className="p-6 border-t border-border bg-muted/50 flex items-center justify-end gap-3">
               <button
                 onClick={() => setDrawerOpen(false)}
                 disabled={submitting}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold transition"
+                className="px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground text-xs font-bold transition"
               >
                 Cancelar
               </button>
@@ -639,8 +639,8 @@ export function ReclassificacaoFinalistasClient({
                 disabled={submitting || (actionType === "enroll" && !targetTurmaId)}
                 className={`px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 disabled:opacity-50 ${
                   actionType === "enroll"
-                    ? "bg-[#E3B23C] hover:bg-[#d8a733] text-slate-950"
-                    : "bg-slate-900 hover:bg-slate-800 text-white"
+                    ? "bg-klasse-gold hover:brightness-95 text-klasse-gold-900"
+                    : "bg-klasse-gold hover:brightness-95 text-klasse-gold-900"
                 }`}
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -674,8 +674,8 @@ export function ReceiptBlockReclassificacaoModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 bg-klasse-dark/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-3xl bg-card rounded-3xl shadow-2xl border border-border overflow-hidden flex flex-col max-h-[90vh]">
         <div className="p-6 bg-amber-50 border-b border-amber-200 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-amber-500/20 border border-amber-300 flex items-center justify-center">
@@ -697,10 +697,10 @@ export function ReceiptBlockReclassificacaoModal({
           <ReclassificacaoFinalistasClient initialAlunoId={alunoId} onResolved={onResolved} isModalContext />
         </div>
 
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+        <div className="p-4 bg-muted border-t border-border flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700"
+            className="px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold text-foreground"
           >
             Fechar e Resolver Depois
           </button>

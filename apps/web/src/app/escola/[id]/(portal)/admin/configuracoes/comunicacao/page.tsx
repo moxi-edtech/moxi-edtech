@@ -184,7 +184,7 @@ export default function ComunicacaoConfigPage({ params }: Props) {
           <div>
             <Link
               href={base}
-              className="group inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-muted-foreground transition-colors"
+              className="group inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />
               Voltar ao painel
@@ -347,7 +347,7 @@ export default function ComunicacaoConfigPage({ params }: Props) {
                   </div>
                 ) : (
                   <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-center">
-                    <QrCode className="h-10 w-10 text-slate-300" />
+                    <QrCode className="h-10 w-10 text-muted-foreground" />
                     <p className="max-w-sm text-sm text-muted-foreground">
                       {qrMessage || "Nenhum QR pendente no momento. Se a sessão já estiver ligada, o WAHA pode não expor um QR activo."}
                     </p>

@@ -121,14 +121,14 @@ export function PaymentDrawer({
 
   return (
     <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose}>
-      <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-4 shadow-xl" style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }} onClick={(e) => e.stopPropagation()}>
-        <p className="text-sm font-semibold text-slate-900">Pagamento consolidado</p>
-        <p className="text-xs text-slate-500">{mensalidades.length} mensalidade(s) · Total exacto: {money.format(total)}</p>
+      <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-card p-4 shadow-xl" style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }} onClick={(e) => e.stopPropagation()}>
+        <p className="text-sm font-semibold text-foreground">Pagamento consolidado</p>
+        <p className="text-xs text-muted-foreground">{mensalidades.length} mensalidade(s) · Total exacto: {money.format(total)}</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {mensalidades.map((item) => <span key={item.id} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{item.competencia} · {money.format(item.valor)}</span>)}
+          {mensalidades.map((item) => <span key={item.id} className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-foreground">{item.competencia} · {money.format(item.valor)}</span>)}
         </div>
-        <div className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-          <p className="font-medium text-slate-900">Coordenadas bancárias</p>
+        <div className="mt-4 rounded-xl bg-muted p-3 text-sm text-foreground">
+          <p className="font-medium text-foreground">Coordenadas bancárias</p>
           <p>Banco: {dadosPagamento?.banco || "Consultar secretaria"}</p>
           <p>IBAN: {dadosPagamento?.iban || "Indisponível no momento"}</p>
           {(dadosPagamento?.titular_conta || dadosPagamento?.titular) && (
@@ -138,9 +138,9 @@ export function PaymentDrawer({
           <p>Referência: LOTE-{mensalidades[0].id.slice(0, 8).toUpperCase()}</p>
         </div>
         <label className="mt-4 block">
-          <span className="mb-2 block text-xs text-slate-500">Mensagem para a secretaria (opcional)</span>
+          <span className="mb-2 block text-xs text-muted-foreground">Mensagem para a secretaria (opcional)</span>
           <textarea
-            className="block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="block w-full rounded-xl border border-border px-3 py-2 text-sm"
             rows={3}
             maxLength={500}
             placeholder="Ex.: Pagamento parcial enviado da conta do encarregado."
@@ -150,10 +150,10 @@ export function PaymentDrawer({
           />
         </label>
         <label className="mt-4 block">
-          <span className="mb-2 block text-xs text-slate-500">Comprovativo (PDF/Imagem)</span>
+          <span className="mb-2 block text-xs text-muted-foreground">Comprovativo (PDF/Imagem)</span>
           <input type="file" className="block w-full text-sm" accept=".pdf,image/jpeg,image/png,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) void submitFile(f); }} disabled={sending} />
         </label>
-        {sending && <p className="mt-2 text-xs text-slate-500">Upload: {progress}%</p>}
+        {sending && <p className="mt-2 text-xs text-muted-foreground">Upload: {progress}%</p>}
         {friendlyError && <p className="mt-2 text-xs text-red-600">{friendlyError}</p>}
         <Button tone="green" className="mt-4 min-h-11 w-full" disabled={sending}>{sending ? "A anexar..." : "Anexar Comprovativo"}</Button>
       </div>

@@ -58,28 +58,28 @@ export default async function Page({
     <>
       <AuditPageView portal="financeiro" acao="PAGE_VIEW" entity="relatorios_detalhados" />
       <div className={PORTAL_PAGE_INSET}>
-      <div className="bg-white rounded-xl shadow border p-5">
+      <div className="bg-card rounded-xl shadow border p-5">
         <div className="flex items-end justify-between gap-4 mb-4">
           <div>
             <h1 className="text-lg font-semibold">Relatórios Detalhados</h1>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-gray-500">Período:</span>
+              <span className="text-muted-foreground">Período:</span>
               {['1', '7', '30', '90'].map((d) => (
                 <Link
                   key={d}
                   href={`/escola/${escolaParam}/financeiro/relatorios/detalhados?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`}
                   className={`px-2.5 py-1 rounded border ${
                     days === d
-                      ? 'bg-slate-600 text-white border-slate-600'
-                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                      ? 'bg-klasse-gold text-klasse-gold-900 border-klasse-gold'
+                      : 'bg-card text-foreground border-border hover:bg-muted'
                   }`}
                 >
                   {d === '1' ? '1 dia' : `${d} dias`}
                 </Link>
               ))}
-              <span className="mx-2 h-4 w-px bg-gray-200" />
-              <span className="text-gray-500">Total:</span>
-              <span className="text-gray-700">{logs.length}</span>
+              <span className="mx-2 h-4 w-px bg-muted-foreground/15" />
+              <span className="text-muted-foreground">Total:</span>
+              <span className="text-foreground">{logs.length}</span>
             </div>
           </div>
           <form action="" className="flex gap-2 text-sm">
@@ -91,14 +91,14 @@ export default async function Page({
               className="border rounded px-2 py-1"
             />
             <input type="hidden" name="days" value={days} />
-            <button className="px-3 py-1.5 rounded bg-slate-600 text-white">Filtrar</button>
+            <button className="px-3 py-1.5 rounded-xl bg-klasse-gold text-klasse-gold-900 hover:brightness-95">Filtrar</button>
           </form>
         </div>
 
         <div className="w-full overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="text-left text-gray-500 border-b">
+            <tr className="text-left text-muted-foreground border-b">
               <th className="py-2 pr-4">Quando</th>
               <th className="py-2 pr-4">Ação</th>
               <th className="py-2 pr-4">Entidade</th>
@@ -116,13 +116,13 @@ export default async function Page({
                 <td className="py-2 pr-4">{l.entity}</td>
                 <td className="py-2 pr-4">{l.entity_id ?? '—'}</td>
                 <td className="py-2 pr-4 max-w-[360px]">
-                  <pre className="text-xs text-gray-600 overflow-auto">{JSON.stringify(l.details || {}, null, 2)}</pre>
+                  <pre className="text-xs text-muted-foreground overflow-auto">{JSON.stringify(l.details || {}, null, 2)}</pre>
                 </td>
               </tr>
             ))}
             {logs.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-gray-500">
+                <td colSpan={5} className="py-6 text-center text-muted-foreground">
                   Sem eventos neste período.
                 </td>
               </tr>

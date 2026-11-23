@@ -26,18 +26,18 @@ export function ProfessorContextView({
   const { data, error, status, loading, refreshing, retry } = useProfessorContext(context);
 
   if (loading) return (
-    <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-slate-600" role="status">
+    <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-muted-foreground" role="status">
       <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> A carregar o professor…
     </div>
   );
 
   if (error || !data) return (
     <div className="space-y-3 p-3 text-sm" role="alert">
-      <h2 className="text-lg font-semibold text-slate-900">Professor · {context.label}</h2>
+      <h2 className="text-lg font-semibold text-foreground">Professor · {context.label}</h2>
       <p className="text-rose-700">{error || "Não foi possível carregar o professor."}</p>
       {status !== 401 && status !== 403 && status !== 404 && (
         <button type="button" onClick={() => void retry()}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-emerald-600">
           <RefreshCw className="h-4 w-4" aria-hidden /> Tentar novamente
         </button>
       )}
@@ -60,26 +60,26 @@ export function ProfessorContextView({
     <div className="min-w-0 space-y-5 px-1 pb-3 text-sm">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Perfil académico · Ano letivo {data.anoLetivo.ano}
             {data.anoLetivo.historico ? " · Histórico" : ""}
           </p>
-          <h2 className="mt-1 text-xl font-semibold text-slate-900">{data.professor.nome}</h2>
+          <h2 className="mt-1 text-xl font-semibold text-foreground">{data.professor.nome}</h2>
         </div>
         <button type="button" onClick={() => onNavigate(pageHref)}
           title="Abre o módulo de gestão de professores. As escritas ficam nesse módulo."
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-emerald-600">
           Abrir gestão de professores <ArrowUpRight className="h-4 w-4" aria-hidden />
         </button>
       </header>
 
             {data.anoLetivo.historico && <ExplorerHistoricalScopeNotice />}
 
-      <section aria-label="Indicadores académicos" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-slate-100 py-4">
+      <section aria-label="Indicadores académicos" className="flex flex-wrap gap-x-8 gap-y-4 border-y border-border py-4">
         <ExplorerMetric label="Turmas" value={data.stats.turmas} partial={limited} />
         <ExplorerMetric label="Disciplinas distintas" value={data.stats.disciplinas} partial={limited} />
         <ExplorerMetric label="Aulas em horário publicado" value={data.stats.aulasPublicadas} partial={limited} />
-        {refreshing && <span role="status" className="self-center text-xs text-slate-500">A atualizar…</span>}
+        {refreshing && <span role="status" className="self-center text-xs text-muted-foreground">A atualizar…</span>}
       </section>
 
       {limited && (
@@ -89,26 +89,26 @@ export function ProfessorContextView({
         </p>
       )}
       {semVinculos && !limited && (
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-muted-foreground">
           Sem turmas ou disciplinas atribuídas.
         </p>
       )}
       {!semVinculos && !semHorario && !data.atribuicoes.length && !limited && (
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-muted-foreground">
           Horário · atribuição de disciplina por confirmar.
         </p>
       )}
       {!semVinculos && semHorario && !limited && (
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-muted-foreground">
           Atribuições sem horário publicado.
         </p>
       )}
 
       <section className="min-w-0" aria-labelledby="professor-atribuicoes-heading">
-        <h3 id="professor-atribuicoes-heading" className="mb-1 flex items-center gap-2 font-semibold text-slate-900">
+        <h3 id="professor-atribuicoes-heading" className="mb-1 flex items-center gap-2 font-semibold text-foreground">
           <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Turmas e disciplinas
         </h3>
-        <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+        <div className="divide-y divide-border rounded-xl border border-border">
           {data.atribuicoes.map((atribuicao) => (
             <div key={`${atribuicao.turmaId}:${atribuicao.disciplinaId}`}
               className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
@@ -116,7 +116,7 @@ export function ProfessorContextView({
                 id: atribuicao.turmaId, label: atribuicao.turmaNome, academicYearId: data.anoLetivo.id,
               })} className="min-w-0 text-left focus-visible:outline-2 focus-visible:outline-emerald-600">
                 <span className="block font-medium text-emerald-800 hover:underline">{atribuicao.turmaNome}</span>
-                <span className="block text-xs text-slate-500">
+                <span className="block text-xs text-muted-foreground">
                   {[atribuicao.cursoNome, atribuicao.classeNome].filter(Boolean).join(" · ") || "Turma do ano"}
                 </span>
               </button>
@@ -129,7 +129,7 @@ export function ProfessorContextView({
             </div>
           ))}
           {!data.atribuicoes.length && (
-            <p className="px-3 py-4 text-xs text-slate-600">
+            <p className="px-3 py-4 text-xs text-muted-foreground">
               {limited || data.unresolvedDisciplineLinks > 0
                 ? "Não foi possível identificar todas as disciplinas atribuídas."
                 : semAtribuicao ? "Nenhuma disciplina atribuída neste ano."
@@ -146,25 +146,25 @@ export function ProfessorContextView({
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <section className="min-w-0" aria-labelledby="professor-turmas-heading">
-          <h3 id="professor-turmas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
+          <h3 id="professor-turmas-heading" className="mb-2 flex items-center gap-2 font-semibold text-foreground">
             <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Turmas atribuídas
           </h3>
-          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+          <div className="divide-y divide-border rounded-xl border border-border">
             {data.turmas.map((turma) => (
               <button type="button" key={turma.id}
                 onClick={() => onExploreTurma({
                   id: turma.id, label: turma.nome, academicYearId: data.anoLetivo.id,
                 })}
-                className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
-                <GraduationCap className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
+                <GraduationCap className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-slate-900">{turma.nome}</span>
-                  <span className="mt-0.5 block truncate text-xs text-slate-500">
+                  <span className="block truncate font-medium text-foreground">{turma.nome}</span>
+                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                     {[turma.cursoNome, turma.classeNome, turma.turno].filter(Boolean).join(" · ")
                       || "Sem detalhes académicos"}
                   </span>
                 </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               </button>
             ))}
             {!data.turmas.length && (
@@ -174,18 +174,18 @@ export function ProfessorContextView({
         </section>
 
         <section className="min-w-0" aria-labelledby="professor-disciplinas-heading">
-          <h3 id="professor-disciplinas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
+          <h3 id="professor-disciplinas-heading" className="mb-2 flex items-center gap-2 font-semibold text-foreground">
             <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Disciplinas
           </h3>
-          <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
+          <div className="divide-y divide-border  rounded-xl border border-border">
             {data.disciplinas.map((disciplina) => (
               <button type="button" key={disciplina.id}
                 onClick={() => onExploreDisciplina({
                   id: disciplina.id, label: disciplina.nome, academicYearId: data.anoLetivo.id,
                 })}
-                className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
-                <span className="font-medium text-slate-900">{disciplina.nome}</span>
-                <span className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-slate-500">
+                className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
+                <span className="font-medium text-foreground">{disciplina.nome}</span>
+                <span className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
                   {disciplina.turmas} {disciplina.turmas === 1 ? "turma" : "turmas"}
                   <ChevronRight className="h-4 w-4" aria-hidden />
                 </span>
@@ -199,7 +199,7 @@ export function ProfessorContextView({
       </div>
 
       <section className="min-w-0" aria-labelledby="professor-horario-heading">
-        <h3 id="professor-horario-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
+        <h3 id="professor-horario-heading" className="mb-2 flex items-center gap-2 font-semibold text-foreground">
           <CalendarDays className="h-4 w-4 text-emerald-700" aria-hidden /> Horário publicado
         </h3>
         {data.horarios.length > 0 ? (
@@ -218,7 +218,7 @@ export function ProfessorContextView({
             }))}
           />
         ) : (
-          <p className="rounded-lg border border-slate-200 px-3 py-4 text-xs text-slate-600">
+          <p className="rounded-lg border border-border px-3 py-4 text-xs text-muted-foreground">
             {limited
               ? "Nenhum horário nesta lista. Podem existir outras aulas."
               : "Sem horário publicado para este professor neste ano letivo."}

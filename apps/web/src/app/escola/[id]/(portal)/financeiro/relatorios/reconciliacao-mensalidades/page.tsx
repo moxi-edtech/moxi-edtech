@@ -164,20 +164,20 @@ export default function ReconciliacaoMensalidadesPage() {
   return (
     <div className={`${PORTAL_PAGE_INSET} space-y-5`}>
       <div>
-        <h1 className="text-2xl font-bold text-slate-950">Reconciliação de Mensalidades</h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <h1 className="text-2xl font-bold text-foreground">Reconciliação de Mensalidades</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Relatório somente leitura. Nenhuma linha é corrigida automaticamente.
         </p>
       </div>
 
-      {loading && <div className="rounded-xl border bg-white p-5 text-slate-600">A verificar mensalidades…</div>}
+      {loading && <div className="rounded-xl border bg-card p-5 text-muted-foreground">A verificar mensalidades…</div>}
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">{error}</div>}
       {actionMessage && <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">{actionMessage}</div>}
 
       {!loading && !error && (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border bg-white p-4"><div className="text-xs uppercase text-slate-500">Itens com problema</div><div className="mt-1 text-2xl font-bold">{total}</div></div>
+            <div className="rounded-xl border bg-card p-4"><div className="text-xs uppercase text-muted-foreground">Itens com problema</div><div className="mt-1 text-2xl font-bold">{total}</div></div>
             {summary.slice(0, 3).map((row) => (
               <div key={row.problema} className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
                 <div className="text-xs uppercase text-amber-800">{LABELS[row.problema] ?? row.problema}</div>
@@ -187,9 +187,9 @@ export default function ReconciliacaoMensalidadesPage() {
             ))}
           </div>
 
-          <div className="overflow-x-auto rounded-xl border bg-white">
+          <div className="overflow-x-auto rounded-xl border bg-card">
             <table className="min-w-full text-sm">
-              <thead className="border-b bg-slate-50 text-left text-xs uppercase text-slate-500">
+              <thead className="border-b bg-muted text-left text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">Aluno</th>
                   <th className="px-4 py-3">Competência</th>
@@ -203,46 +203,46 @@ export default function ReconciliacaoMensalidadesPage() {
                 {items.map((item) => (
                   <Fragment key={item.mensalidade_id}>
                   <tr className="border-b last:border-0">
-                    <td className="px-4 py-3 font-medium text-slate-800">{item.aluno_nome}</td>
-                    <td className="px-4 py-3 text-slate-600">{item.data_vencimento ?? "Sem data"}</td>
-                    <td className="px-4 py-3 text-slate-600">{item.ano_letivo ?? item.mensalidade_ano_letivo ?? "—"} · {item.turma_nome ?? "Sem turma"}</td>
+                    <td className="px-4 py-3 font-medium text-foreground">{item.aluno_nome}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{item.data_vencimento ?? "Sem data"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{item.ano_letivo ?? item.mensalidade_ano_letivo ?? "—"} · {item.turma_nome ?? "Sem turma"}</td>
                     <td className="px-4 py-3"><div className="flex flex-wrap gap-1">{item.problemas.map((problem) => <span key={problem} className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-900">{LABELS[problem] ?? problem}</span>)}</div></td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{Number(item.saldo ?? 0).toLocaleString("pt-AO")} Kz</td>
-                    <td className="px-4 py-3 text-right"><button type="button" onClick={() => openReview(item)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-emerald hover:text-emerald">Rever</button></td>
+                    <td className="px-4 py-3 text-right"><button type="button" onClick={() => openReview(item)} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:border-emerald hover:text-emerald">Rever</button></td>
                   </tr>
                   {reviewing?.mensalidade_id === item.mensalidade_id && (
-                    <tr className="border-b bg-slate-50">
+                    <tr className="border-b bg-muted">
                       <td colSpan={6} className="px-4 py-4">
-                        <div className="max-w-3xl space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+                        <div className="max-w-3xl space-y-3 rounded-xl border border-border bg-card p-4">
                           <div className="flex items-start justify-between gap-3">
-                            <div><div className="font-semibold text-slate-900">Revisar {item.aluno_nome}</div><div className="mt-1 text-xs text-slate-500">{HELP[reviewProblem] ?? "Confirme a decisão com evidência."}</div></div>
-                            <button type="button" onClick={() => setReviewing(null)} className="text-xs text-slate-500 hover:text-slate-900">Fechar</button>
+                            <div><div className="font-semibold text-foreground">Revisar {item.aluno_nome}</div><div className="mt-1 text-xs text-muted-foreground">{HELP[reviewProblem] ?? "Confirme a decisão com evidência."}</div></div>
+                            <button type="button" onClick={() => setReviewing(null)} className="text-xs text-muted-foreground hover:text-foreground">Fechar</button>
                           </div>
-                          <label className="block text-xs font-semibold text-slate-700">Problema a tratar
-                            <select value={reviewProblem} onChange={(event) => { const value = event.target.value; setReviewProblem(value); setSelectedCandidate(""); if (value === "SEM_MATRICULA") void loadCandidates(item); }} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal">
+                          <label className="block text-xs font-semibold text-foreground">Problema a tratar
+                            <select value={reviewProblem} onChange={(event) => { const value = event.target.value; setReviewProblem(value); setSelectedCandidate(""); if (value === "SEM_MATRICULA") void loadCandidates(item); }} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm font-normal">
                               {item.problemas.map((problem) => <option key={problem} value={problem}>{LABELS[problem] ?? problem}</option>)}
                             </select>
                           </label>
                           {actionFor(reviewProblem) === "corrigir_vinculo" && (
-                            <label className="block text-xs font-semibold text-slate-700">Matrícula correcta
-                              <select value={selectedCandidate} onChange={(event) => setSelectedCandidate(event.target.value)} disabled={candidateLoading || candidates.length === 0} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal">
+                            <label className="block text-xs font-semibold text-foreground">Matrícula correcta
+                              <select value={selectedCandidate} onChange={(event) => setSelectedCandidate(event.target.value)} disabled={candidateLoading || candidates.length === 0} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm font-normal">
                                 <option value="">{candidateLoading ? "A procurar candidatos…" : candidates.length ? "Seleccione uma matrícula" : "Nenhuma matrícula inequívoca encontrada"}</option>
                                 {candidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.ano_letivo} · {candidate.turma_nome ?? "Sem turma"} · {candidate.status ?? "sem status"}</option>)}
                               </select>
                             </label>
                           )}
                           {candidateError && <p className="text-xs text-rose-700">{candidateError}</p>}
-                          <label className="block text-xs font-semibold text-slate-700">Justificativa obrigatória
-                            <textarea value={justification} onChange={(event) => setJustification(event.target.value)} rows={3} placeholder="Ex.: confirmado pela pauta/recibo da secretaria…" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal" />
+                          <label className="block text-xs font-semibold text-foreground">Justificativa obrigatória
+                            <textarea value={justification} onChange={(event) => setJustification(event.target.value)} rows={3} placeholder="Ex.: confirmado pela pauta/recibo da secretaria…" className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm font-normal" />
                           </label>
-                          <div className="flex items-center justify-between gap-3"><p className="text-xs text-slate-500">A ação ficará registada no histórico de auditoria.</p><button type="button" onClick={() => void resolveReview()} disabled={submitting || (actionFor(reviewProblem) === "corrigir_vinculo" && !selectedCandidate)} className="rounded-lg bg-emerald px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{submitting ? "A guardar…" : actionFor(reviewProblem) === "justificar" ? "Justificar e fechar" : "Confirmar correcção"}</button></div>
+                          <div className="flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">A ação ficará registada no histórico de auditoria.</p><button type="button" onClick={() => void resolveReview()} disabled={submitting || (actionFor(reviewProblem) === "corrigir_vinculo" && !selectedCandidate)} className="rounded-lg bg-emerald px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{submitting ? "A guardar…" : actionFor(reviewProblem) === "justificar" ? "Justificar e fechar" : "Confirmar correcção"}</button></div>
                         </div>
                       </td>
                     </tr>
                   )}
                   </Fragment>
                 ))}
-                {items.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">Nenhuma inconsistência encontrada no ano selecionado.</td></tr>}
+                {items.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Nenhuma inconsistência encontrada no ano selecionado.</td></tr>}
               </tbody>
             </table>
           </div>

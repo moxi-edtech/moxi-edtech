@@ -279,29 +279,29 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
     <>
       {children}
       {locked && user ? (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/85 px-4 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-klasse-dark/85 px-4 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald/10 text-emerald">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald/10 text-emerald">
                 <Lock className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Sessão protegida</p>
-                <h1 className="mt-1 text-xl font-black text-slate-950">Tela bloqueada</h1>
-                <p className="mt-1 text-sm text-slate-500">Confirme a senha para continuar a operação.</p>
+                <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Sessão protegida</p>
+                <h1 className="mt-1 text-xl font-black text-foreground">Tela bloqueada</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Confirme a senha para continuar a operação.</p>
               </div>
             </div>
 
-            <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50 p-3">
+            <div className="mt-5 rounded-xl border border-border bg-muted p-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-bold text-slate-900">{user.name}</p>
-                  <p className="text-xs text-slate-500">{user.email}</p>
+                  <p className="text-sm font-bold text-foreground">{user.name}</p>
+                  <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowConfig(!showConfig)}
-                  className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                  className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-muted-foreground transition-colors"
                   title="Configurações de sessão"
                 >
                   <ShieldCheck className="h-4 w-4" />
@@ -311,7 +311,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
 
             {showConfig && (
               <div className="mt-4 rounded-xl border border-emerald/20 bg-emerald/5 p-4 animate-in fade-in slide-in-from-top-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-emerald-900 mb-3">Tempo para bloqueio</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-klasse-green dark:text-emerald-300 mb-3">Tempo para bloqueio</p>
                 <div className="flex flex-wrap gap-2">
                   {TIMEOUT_OPTIONS.map((opt) => (
                     <button
@@ -323,7 +323,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
                         flex-1 min-w-[70px] rounded-lg px-2 py-2 text-xs font-bold transition-all
                         ${user.idleTimeoutMinutes === opt.value
                           ? "bg-emerald text-white shadow-md shadow-emerald/20"
-                          : "bg-white text-slate-600 border border-slate-200 hover:border-emerald/40 hover:text-emerald"
+                          : "bg-card text-muted-foreground border border-border hover:border-emerald/40 hover:text-emerald"
                         }
                       `}
                     >
@@ -331,7 +331,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-[10px] text-emerald-800/70 italic">
+                <p className="mt-2 text-[10px] text-klasse-green/80 dark:text-emerald-300 italic">
                   * Alteração salva no seu perfil.
                 </p>
               </div>
@@ -339,13 +339,13 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
 
             <form className="mt-5 space-y-3" onSubmit={handleUnlock}>
               <label className="block">
-                <span className="mb-1 block text-xs font-bold uppercase tracking-widest text-slate-500">Senha</span>
+                <span className="mb-1 block text-xs font-bold uppercase tracking-widest text-muted-foreground">Senha</span>
                 <input
                   autoFocus
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-emerald focus:ring-4 focus:ring-emerald/10"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-3 text-sm outline-none focus:border-emerald focus:ring-4 focus:ring-emerald/10"
                   placeholder="Digite a sua senha"
                 />
               </label>
@@ -366,7 +366,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
               type="button"
               onClick={handleLogout}
               disabled={busy}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 text-sm font-bold text-foreground transition hover:bg-muted"
             >
               <LogOut className="h-4 w-4" />
               Sair da conta
@@ -375,14 +375,14 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
         </div>
       ) : null}
       {warningVisible && !locked && user ? (
-        <div className="fixed bottom-4 right-4 z-[9998] w-[min(420px,calc(100vw-2rem))] rounded-2xl border border-amber-200 bg-white p-4 shadow-2xl">
+        <div className="fixed bottom-4 right-4 z-[9998] w-[min(420px,calc(100vw-2rem))] rounded-xl border border-amber-200 dark:border-amber-900 bg-card p-4 shadow-2xl">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
               <Lock className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-black text-slate-950">Sessão prestes a bloquear</p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">
+              <p className="text-sm font-black text-foreground">Sessão prestes a bloquear</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Sem atividade recente. A tela será bloqueada em menos de 1 minuto.
               </p>
             </div>
@@ -398,7 +398,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
             <button
               type="button"
               onClick={lock}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center justify-center rounded-xl border border-border px-3 py-2 text-xs font-bold text-foreground transition hover:bg-muted"
             >
               Bloquear agora
             </button>
@@ -408,21 +408,21 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
 
       {/* Standalone Config Modal (Unlocked) */}
       {showConfig && !locked && user ? (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-klasse-dark/40 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-start gap-4 mb-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald/10 text-emerald">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald/10 text-emerald">
                 <ShieldCheck className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-xl font-black text-slate-950">Sessão</h1>
-                <p className="text-sm text-slate-500">Ajuste o tempo de inatividade.</p>
+                <h1 className="text-xl font-black text-foreground">Sessão</h1>
+                <p className="text-sm text-muted-foreground">Ajuste o tempo de inatividade.</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Tempo para bloqueio</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-3">Tempo para bloqueio</p>
                 <div className="flex flex-wrap gap-2">
                   {TIMEOUT_OPTIONS.map((opt) => (
                     <button
@@ -434,7 +434,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
                         flex-1 min-w-[80px] rounded-xl px-2 py-2.5 text-xs font-bold transition-all
                         ${user.idleTimeoutMinutes === opt.value
                           ? "bg-emerald text-white shadow-md shadow-emerald/20"
-                          : "bg-slate-50 text-slate-600 border border-slate-200 hover:border-emerald/40 hover:text-emerald"
+                          : "bg-muted text-muted-foreground border border-border hover:border-emerald/40 hover:text-emerald"
                         }
                       `}
                     >
@@ -448,7 +448,7 @@ export default function SessionLockProvider({ children }: { children: ReactNode 
                 <button
                   type="button"
                   onClick={() => setShowConfig(false)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                  className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-bold text-foreground transition hover:bg-muted"
                 >
                   Fechar
                 </button>

@@ -144,14 +144,14 @@ export default function Page() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Relatório de Propinas</h1>
-          <p className="text-sm text-gray-600">Resumo mensal e ranking por turma</p>
+          <p className="text-sm text-muted-foreground">Resumo mensal e ranking por turma</p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <label className="text-gray-600">Sessão Acadêmica</label>
+          <label className="text-muted-foreground">Sessão Acadêmica</label>
           <select
               value={selectedSession}
               onChange={(e) => setSelectedSession(e.target.value)}
-              className="w-48 border rounded px-2 py-1 bg-white"
+              className="w-48 border rounded px-2 py-1 bg-card"
             >
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -163,7 +163,7 @@ export default function Page() {
       </div>
 
       {loading && (
-        <div className="p-4 bg-white rounded-xl shadow border text-gray-600">Carregando…</div>
+        <div className="p-4 bg-card rounded-xl shadow border text-muted-foreground">Carregando…</div>
       )}
       {error && (
         <div className="p-4 bg-rose-50 border border-rose-200 rounded text-rose-700 text-sm">{error}</div>
@@ -171,11 +171,11 @@ export default function Page() {
 
       {!loading && !error && (
         <>
-          <div className="bg-white rounded-xl shadow border p-4 overflow-x-auto">
+          <div className="bg-card rounded-xl shadow border p-4 overflow-x-auto">
             <h2 className="text-base font-semibold mb-3">Série mensal ({anoLetivoAtivo})</h2>
             <table className="min-w-full text-sm align-middle">
               <thead>
-                <tr className="text-left text-gray-500 border-b">
+                <tr className="text-left text-muted-foreground border-b">
                   <th className="py-2 pr-4">Competência</th>
                   <th className="py-2 pr-4 text-right">Previsto</th>
                   <th className="py-2 pr-4 text-right">Pago</th>
@@ -200,17 +200,17 @@ export default function Page() {
                   </tr>
                 ))}
                 {mensal.length === 0 && (
-                  <tr><td className="py-4 text-gray-500" colSpan={8}>Sem dados para o ano letivo de {anoLetivoAtivo}.</td></tr>
+                  <tr><td className="py-4 text-muted-foreground" colSpan={8}>Sem dados para o ano letivo de {anoLetivoAtivo}.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          <div className="bg-white rounded-xl shadow border p-4 overflow-x-auto">
+          <div className="bg-card rounded-xl shadow border p-4 overflow-x-auto">
             <h2 className="text-base font-semibold mb-3">Ranking por turma ({anoLetivoAtivo})</h2>
             <table className="min-w-full text-sm align-middle">
               <thead>
-                <tr className="text-left text-gray-500 border-b">
+                <tr className="text-left text-muted-foreground border-b">
                   <th className="py-2 pr-4">Turma</th>
                   <th className="py-2 pr-4">Classe</th>
                   <th className="py-2 pr-4">Turno</th>
@@ -239,7 +239,7 @@ export default function Page() {
                   </tr>
                 ))}
                 {porTurma.length === 0 && (
-                  <tr><td className="py-4 text-gray-500" colSpan={9}>Sem dados para o ano letivo de {anoLetivoAtivo}.</td></tr>
+                  <tr><td className="py-4 text-muted-foreground" colSpan={9}>Sem dados para o ano letivo de {anoLetivoAtivo}.</td></tr>
                 )}
               </tbody>
             </table>

@@ -96,7 +96,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
       <div className="bg-card w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="bg-slate-950 p-6 flex justify-between items-center text-white shrink-0 border-b border-slate-800">
+        <div className="bg-klasse-dark p-6 flex justify-between items-center text-white shrink-0 border-b border-border">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Lock className="w-4 h-4 text-amber-300" />
@@ -109,7 +109,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
           </div>
 
           {step === "contagem" && (
-            <div className="text-right bg-slate-900 p-3 rounded-xl border border-slate-800">
+            <div className="text-right bg-muted-foreground/20 p-3 rounded-xl border border-border">
               <div className="text-[10px] text-muted-foreground uppercase font-bold">Total Físico (Cash)</div>
               <div className="text-2xl font-mono font-bold text-emerald-300">
                 {kwanza.format(totalNumerario)}

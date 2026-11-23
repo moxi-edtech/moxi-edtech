@@ -22,21 +22,21 @@ type StatCardProps = {
 const toneStyles: Record<Tone, { iconBg: string; iconText: string; valueText: string; border: string }> = {
   default: {
     iconBg: "bg-emerald/10",
-    iconText: "text-emerald",
-    valueText: "text-emerald",
+    iconText: "text-emerald dark:text-emerald-300",
+    valueText: "text-emerald dark:text-emerald-300",
     border: "border-emerald/15",
   },
   warning: {
     iconBg: "bg-amber/15",
-    iconText: "text-amber-700",
-    valueText: "text-amber-700",
+    iconText: "text-amber-700 dark:text-amber-300",
+    valueText: "text-amber-700 dark:text-amber-300",
     border: "border-amber/30",
   },
   critical: {
-    iconBg: "bg-rose-50",
-    iconText: "text-rose-600",
-    valueText: "text-rose-600",
-    border: "border-rose-200",
+    iconBg: "bg-rose-50 dark:bg-rose-950",
+    iconText: "text-rose-600 dark:text-rose-300",
+    valueText: "text-rose-600 dark:text-rose-300",
+    border: "border-rose-200 dark:border-rose-900",
   },
 };
 
@@ -81,7 +81,7 @@ export default function StatCard({
 
   const card = (
     <div
-      className={`rounded-xl border bg-white p-4 shadow-sm transition ${
+      className={`rounded-xl border bg-card p-4 shadow-sm transition ${
         disabled ? "opacity-60" : "hover:shadow-md"
       } ${toneStyle.border}`}
     >
@@ -92,12 +92,12 @@ export default function StatCard({
           >
             {icon}
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             {label}
           </span>
         </div>
         {href && !disabled && (
-          <Link href={href} className="text-[10px] font-semibold text-emerald hover:underline">
+          <Link href={href} className="text-[10px] font-semibold text-emerald dark:text-emerald-300 hover:underline">
             Ver todos
           </Link>
         )}

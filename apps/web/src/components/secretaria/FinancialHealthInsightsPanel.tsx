@@ -10,8 +10,8 @@ export function FinancialHealthInsightsPanel({
   insights,
 }: FinancialHealthInsightsPanelProps) {
   return (
-    <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-900">Insights Automáticos</h3>
+    <div className="rounded-[28px] border border-border bg-card p-5 shadow-sm">
+      <h3 className="text-lg font-semibold text-foreground">Insights Automáticos</h3>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {insights.map((insight, index) => (
           <div
@@ -23,7 +23,7 @@ export function FinancialHealthInsightsPanel({
                   ? "border-rose-100 bg-rose-50/30"
                   : insight.type === "goal"
                     ? "border-sky-100 bg-sky-50/30"
-                    : "border-slate-100 bg-slate-50/30"
+                    : "border-border bg-muted/30"
             }`}
           >
             <div
@@ -34,7 +34,7 @@ export function FinancialHealthInsightsPanel({
                     ? "bg-rose-100 text-rose-600"
                     : insight.type === "goal"
                       ? "bg-sky-100 text-sky-600"
-                      : "bg-slate-200 text-slate-600"
+                      : "bg-muted-foreground/15 text-muted-foreground"
               }`}
             >
               <insight.icon className="h-4 w-4" />
@@ -47,7 +47,7 @@ export function FinancialHealthInsightsPanel({
                     ? "text-rose-900"
                     : insight.type === "goal"
                       ? "text-sky-900"
-                      : "text-slate-900"
+                      : "text-foreground"
               }`}
             >
               {insight.text}

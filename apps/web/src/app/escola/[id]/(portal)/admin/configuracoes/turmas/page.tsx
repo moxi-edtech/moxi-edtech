@@ -120,23 +120,23 @@ const ModalShell = ({
   footer?: React.ReactNode;
   onClose: () => void;
 }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-    <div className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4">
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/60 backdrop-blur-sm p-4">
+    <div className="w-full max-w-3xl rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="flex items-start justify-between gap-4 border-b border-border bg-muted px-6 py-4">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-          {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900"
+          className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           Fechar
         </button>
       </div>
       <div className="p-6 space-y-5">{children}</div>
-      {footer && <div className="border-t border-slate-200 bg-slate-50 px-6 py-4">{footer}</div>}
+      {footer && <div className="border-t border-border bg-muted px-6 py-4">{footer}</div>}
     </div>
   </div>
 );
@@ -987,12 +987,12 @@ export default function TurmasConfiguracoesPage() {
       saveDisabled={modalActionLoading}
     >
       <div className="space-y-6">
-        <div className="rounded-xl bg-slate-50 border border-slate-200 p-5 text-sm text-slate-600 flex gap-4">
-          <div className="rounded-full bg-slate-100 p-2 text-slate-600 h-fit">
+        <div className="rounded-xl bg-muted border border-border p-5 text-sm text-muted-foreground flex gap-4">
+          <div className="rounded-full bg-muted p-2 text-muted-foreground h-fit">
             <School className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-semibold text-slate-900">Command Center de Turmas</p>
+            <p className="font-semibold text-foreground">Command Center de Turmas</p>
             <p className="mt-1">
               Publique currículos, ajuste classes base e gere turmas sem navegar. Todas as ações são
               seguras por padrão.
@@ -1001,18 +1001,18 @@ export default function TurmasConfiguracoesPage() {
         </div>
         <nav
           aria-label="Contexto da preparação académica"
-          className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+          className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm"
         >
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
-            <span className="font-semibold text-slate-900">Contexto atual</span>
-            <span className="text-slate-300" aria-hidden="true">/</span>
-            <span className="text-slate-600">Escola: <strong className="text-slate-900">{escolaParam ?? "não identificada"}</strong></span>
-            <span className="text-slate-300" aria-hidden="true">/</span>
-            <span className="text-slate-600">Ano: <strong className="text-slate-900">{contextYear ?? "não definido"}</strong></span>
-            <span className="text-slate-300" aria-hidden="true">/</span>
-            <span className="text-slate-600">Curso: <strong className="text-slate-900">{selectedCurso?.nome ?? "todos"}</strong></span>
-            <span className="text-slate-300" aria-hidden="true">/</span>
-            <span className="text-slate-600">Etapa: <strong className="text-slate-900">{contextStage}</strong></span>
+            <span className="font-semibold text-foreground">Contexto atual</span>
+            <span className="text-muted-foreground" aria-hidden="true">/</span>
+            <span className="text-muted-foreground">Escola: <strong className="text-foreground">{escolaParam ?? "não identificada"}</strong></span>
+            <span className="text-muted-foreground" aria-hidden="true">/</span>
+            <span className="text-muted-foreground">Ano: <strong className="text-foreground">{contextYear ?? "não definido"}</strong></span>
+            <span className="text-muted-foreground" aria-hidden="true">/</span>
+            <span className="text-muted-foreground">Curso: <strong className="text-foreground">{selectedCurso?.nome ?? "todos"}</strong></span>
+            <span className="text-muted-foreground" aria-hidden="true">/</span>
+            <span className="text-muted-foreground">Etapa: <strong className="text-foreground">{contextStage}</strong></span>
             <span className={`ml-auto rounded-full px-2.5 py-1 font-semibold ${contextStatus === "Pronta para revisão" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
               {contextStatus}
             </span>
@@ -1028,7 +1028,7 @@ export default function TurmasConfiguracoesPage() {
               {pendingPublishedClasses.map((cls) => (
                 <span
                   key={cls.id}
-                  className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-700"
+                  className="rounded-full border border-amber-200 bg-card px-3 py-1 text-xs font-semibold text-amber-700"
                 >
                   {cls.nome}
                 </span>
@@ -1100,11 +1100,11 @@ export default function TurmasConfiguracoesPage() {
           </div>
         )}
         {setupReadiness && (
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-900">Prontidão académica</p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="text-sm font-semibold text-foreground">Prontidão académica</p>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Ano letivo {setupReadiness.ano_letivo ?? "não definido"}. O estado mostra o próximo passo operacional.
                 </p>
               </div>
@@ -1127,19 +1127,19 @@ export default function TurmasConfiguracoesPage() {
                   href={portalHref(String(href))}
                   className={`rounded-lg border px-3 py-3 text-xs transition hover:border-amber ${ok ? "border-emerald-200 bg-emerald-50/60" : "border-amber-200 bg-amber-50/60"}`}
                 >
-                  <span className="flex items-center gap-2 font-semibold text-slate-800">
+                  <span className="flex items-center gap-2 font-semibold text-foreground">
                     {ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertCircle className="h-4 w-4 text-amber-600" />}
                     {String(label)}
                   </span>
-                  <span className="mt-1 block text-slate-500">{ok ? "Concluído" : "Ver próximo passo"}</span>
+                  <span className="mt-1 block text-muted-foreground">{ok ? "Concluído" : "Ver próximo passo"}</span>
                 </Link>
               ))}
             </div>
             {readinessBlockers.length > 0 && (
-              <div className="mt-3 space-y-2 rounded-lg bg-slate-50 px-3 py-3 text-xs text-slate-600">
-                <p className="font-semibold text-slate-800">Próximos bloqueios</p>
+              <div className="mt-3 space-y-2 rounded-lg bg-muted px-3 py-3 text-xs text-muted-foreground">
+                <p className="font-semibold text-foreground">Próximos bloqueios</p>
                 {readinessBlockers.slice(0, 3).map((blocker) => (
-                  <div key={blocker.code ?? blocker.title} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-3 py-2">
+                  <div key={blocker.code ?? blocker.title} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                     <span>{blocker.detail || blocker.title || "Revise a configuração académica."}</span>
                     <button type="button" onClick={() => setActiveReadinessBlocker(blocker)} className="inline-flex shrink-0 items-center gap-1 font-semibold text-amber-700 hover:underline">
                       Corrigir agora <ArrowRight className="h-3.5 w-3.5" />
@@ -1148,19 +1148,19 @@ export default function TurmasConfiguracoesPage() {
                 ))}
               </div>
             )}
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted px-3 py-3">
               <div className="flex items-start gap-2">
-                <UserRound className="mt-0.5 h-4 w-4 text-slate-500" />
+                <UserRound className="mt-0.5 h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs font-semibold text-slate-800">Professores sem atribuição?</p>
-                  <p className="mt-0.5 text-xs text-slate-500">Preencher por especialidade e disponibilidade; o horário continua em revisão.</p>
+                  <p className="text-xs font-semibold text-foreground">Professores sem atribuição?</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Preencher por especialidade e disponibilidade; o horário continua em revisão.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={handleAutoAssignTeachers}
                 disabled={assigningTeachers}
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:cursor-wait disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg bg-klasse-gold px-3 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95 disabled:cursor-wait disabled:opacity-60"
               >
                 {assigningTeachers && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
                 {assigningTeachers ? "Atribuindo..." : "Atribuir automaticamente"}
@@ -1172,7 +1172,7 @@ export default function TurmasConfiguracoesPage() {
         {loading ? (
           <CoursesSettingsSkeleton />
         ) : cursos.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 border border-dashed rounded-xl">
+          <div className="text-center py-8 text-muted-foreground border border-dashed rounded-xl">
             Nenhum curso cadastrado na escola.
           </div>
         ) : (
@@ -1205,7 +1205,7 @@ export default function TurmasConfiguracoesPage() {
               return (
                 <div
                   key={curso.id}
-                  className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col gap-4"
+                  className="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col gap-4"
                 >
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-start gap-3">
@@ -1223,8 +1223,8 @@ export default function TurmasConfiguracoesPage() {
                         )}
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-900">{curso.nome}</h4>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-0.5">
+                        <h4 className="font-bold text-foreground">{curso.nome}</h4>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
                           <span className={`font-medium ${isPublished ? "text-emerald-700" : "text-amber-700"}`}>
                             {isPublished ? "Currículo Publicado" : "Rascunho"}
                           </span>
@@ -1240,14 +1240,14 @@ export default function TurmasConfiguracoesPage() {
                       <button
                         type="button"
                         onClick={() => openModal(curso.id, "disciplinas")}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
                       >
                         Disciplinas
                       </button>
                       <button
                         type="button"
                         onClick={() => openModal(curso.id, "classes")}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
                       >
                         Classes base
                       </button>
@@ -1264,7 +1264,7 @@ export default function TurmasConfiguracoesPage() {
                         <button
                           type="button"
                           onClick={() => openModal(curso.id, "generate")}
-                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                          className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95"
                         >
                           <Wand2 className="h-4 w-4" />
                           Gerar turmas
@@ -1280,7 +1280,7 @@ export default function TurmasConfiguracoesPage() {
 
         <Link
           href={portalHref("/admin/turmas")}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted sm:w-auto"
         >
           <span>Gerenciar turmas manualmente</span>
           <ArrowRight className="h-4 w-4" />
@@ -1294,19 +1294,19 @@ export default function TurmasConfiguracoesPage() {
           onClose={() => setActiveReadinessBlocker(null)}
           footer={
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <button type="button" onClick={() => setActiveReadinessBlocker(null)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={() => setActiveReadinessBlocker(null)} className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted">
                 Voltar à revisão
               </button>
-              <Link href={portalHref(blockerHref(activeReadinessBlocker.code))} onClick={() => setActiveReadinessBlocker(null)} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+              <Link href={portalHref(blockerHref(activeReadinessBlocker.code))} onClick={() => setActiveReadinessBlocker(null)} className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95">
                 Abrir configuração completa <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           }
         >
-          <div className="space-y-4 text-sm text-slate-600">
+          <div className="space-y-4 text-sm text-muted-foreground">
             <p>{activeReadinessBlocker.detail ?? "Esta pendência precisa de atenção antes de a escola ficar operacional."}</p>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs">
-              <p className="font-semibold text-slate-900">Próximo passo</p>
+            <div className="rounded-xl border border-border bg-muted p-4 text-xs">
+              <p className="font-semibold text-foreground">Próximo passo</p>
               <p className="mt-1">A revisão atual será mantida. Ao concluir a correção, volte a esta tela para atualizar o estado e continuar.</p>
             </div>
             {(activeReadinessBlocker.code === "TEAM_TEACHERS_MISSING" || activeReadinessBlocker.code === "TEAM_TEACHER_CONSISTENCY") && (
@@ -1348,7 +1348,7 @@ export default function TurmasConfiguracoesPage() {
           onClose={closeModal}
           footer={
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-slate-600">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <input
                   type="checkbox"
                   checked={publishConfirm}
@@ -1372,25 +1372,25 @@ export default function TurmasConfiguracoesPage() {
             </div>
           }
         >
-          <div className="space-y-3 text-sm text-slate-600">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs">
-              <p className="font-semibold text-slate-900">O que será publicado</p>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <div className="rounded-xl border border-border bg-muted p-4 text-xs">
+              <p className="font-semibold text-foreground">O que será publicado</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                  <span className="block text-slate-500">Escola</span>
-                  <span className="font-semibold text-slate-900">{escolaParam ?? "não identificada"}</span>
+                <div className="rounded-lg border border-border bg-card px-3 py-2">
+                  <span className="block text-muted-foreground">Escola</span>
+                  <span className="font-semibold text-foreground">{escolaParam ?? "não identificada"}</span>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                  <span className="block text-slate-500">Ano letivo</span>
-                  <span className="font-semibold text-slate-900">{selectedCurriculo.ano_letivo_id === anoLetivo?.id ? anoLetivo.ano : contextYear ?? "não definido"}</span>
+                <div className="rounded-lg border border-border bg-card px-3 py-2">
+                  <span className="block text-muted-foreground">Ano letivo</span>
+                  <span className="font-semibold text-foreground">{selectedCurriculo.ano_letivo_id === anoLetivo?.id ? anoLetivo.ano : contextYear ?? "não definido"}</span>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                  <span className="block text-slate-500">Curso</span>
-                  <span className="font-semibold text-slate-900">{selectedCurso.nome}</span>
+                <div className="rounded-lg border border-border bg-card px-3 py-2">
+                  <span className="block text-muted-foreground">Curso</span>
+                  <span className="font-semibold text-foreground">{selectedCurso.nome}</span>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                  <span className="block text-slate-500">Versão / classes</span>
-                  <span className="font-semibold text-slate-900">v.{selectedCurriculo.version} · {classes.filter((item) => item.curso_id === selectedCurso.id).length}</span>
+                <div className="rounded-lg border border-border bg-card px-3 py-2">
+                  <span className="block text-muted-foreground">Versão / classes</span>
+                  <span className="font-semibold text-foreground">v.{selectedCurriculo.version} · {classes.filter((item) => item.curso_id === selectedCurso.id).length}</span>
                 </div>
               </div>
             </div>
@@ -1398,16 +1398,16 @@ export default function TurmasConfiguracoesPage() {
               <p className="font-semibold">Próximo estado</p>
               <p className="mt-1">O currículo ficará publicado e qualquer horário automático será criado apenas como proposta para revisão posterior.</p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs">
-              <p className="font-semibold text-slate-800">Impacto estimado</p>
+            <div className="rounded-xl border border-border bg-card p-4 text-xs">
+              <p className="font-semibold text-foreground">Impacto estimado</p>
               <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div className="rounded-lg border border-slate-200 px-3 py-2">
+                <div className="rounded-lg border border-border px-3 py-2">
                   Turmas afetadas: {impact.turmas ?? "-"}
                 </div>
-                <div className="rounded-lg border border-slate-200 px-3 py-2">
+                <div className="rounded-lg border border-border px-3 py-2">
                   Alunos afetados: {impact.alunos ?? "-"}
                 </div>
-                <div className="rounded-lg border border-slate-200 px-3 py-2">
+                <div className="rounded-lg border border-border px-3 py-2">
                   Professores: {impact.professores ?? "-"}
                 </div>
               </div>
@@ -1469,7 +1469,7 @@ export default function TurmasConfiguracoesPage() {
                     },
                   ])
                 }
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
               >
                 <Plus className="h-4 w-4" /> Nova classe
               </button>
@@ -1486,7 +1486,7 @@ export default function TurmasConfiguracoesPage() {
         >
           {modalLoading ? (
             <div className="py-10 flex justify-center">
-              <RefreshCw className="animate-spin text-slate-300" />
+              <RefreshCw className="animate-spin text-muted-foreground" />
             </div>
           ) : (
             <div className="space-y-3">
@@ -1503,7 +1503,7 @@ export default function TurmasConfiguracoesPage() {
                         )
                       )
                     }
-                    className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    className="flex-1 rounded-xl border border-border px-3 py-2 text-sm"
                     placeholder="Ex: 10ª Classe"
                   />
                   <select
@@ -1517,7 +1517,7 @@ export default function TurmasConfiguracoesPage() {
                         )
                       )
                     }
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    className="rounded-xl border border-border px-3 py-2 text-sm"
                   >
                     <option value="M">Manhã</option>
                     <option value="T">Tarde</option>
@@ -1526,14 +1526,14 @@ export default function TurmasConfiguracoesPage() {
                   <button
                     type="button"
                     onClick={() => handleDeleteClass(row.id)}
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:text-red-600"
+                    className="rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground hover:text-red-600"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               ))}
               {classesDrafts.length === 0 && (
-                <div className="text-sm text-slate-500">Nenhuma classe base cadastrada.</div>
+                <div className="text-sm text-muted-foreground">Nenhuma classe base cadastrada.</div>
               )}
             </div>
           )}
@@ -1547,14 +1547,14 @@ export default function TurmasConfiguracoesPage() {
           onClose={closeModal}
           footer={
             <div className="flex items-center justify-between">
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-muted-foreground">
                 Estimativa: {totalGeneratePreview} turmas
               </div>
               <button
                 type="button"
                 onClick={handleGenerateTurmas}
                 disabled={modalActionLoading}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95 disabled:opacity-60"
               >
                 {modalActionLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
                 Gerar turmas
@@ -1564,13 +1564,13 @@ export default function TurmasConfiguracoesPage() {
         >
           {modalLoading ? (
             <div className="py-10 flex justify-center">
-              <RefreshCw className="animate-spin text-slate-300" />
+              <RefreshCw className="animate-spin text-muted-foreground" />
             </div>
           ) : (
             <div className="space-y-3">
               {generateRows.map((row) => (
                 <div key={row.classId} className="flex flex-wrap items-center gap-2">
-                  <label className="flex items-center gap-2 text-xs text-slate-600">
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
                     <input
                       type="checkbox"
                       checked={row.enabled}
@@ -1586,7 +1586,7 @@ export default function TurmasConfiguracoesPage() {
                     />
                     {row.nome}
                   </label>
-                  <span className="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600">
+                  <span className="rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground">
                     {row.turno === "T" ? "Tarde" : row.turno === "N" ? "Noite" : "Manhã"}
                   </span>
                   <input
@@ -1602,12 +1602,12 @@ export default function TurmasConfiguracoesPage() {
                         )
                       )
                     }
-                    className="w-24 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    className="w-24 rounded-xl border border-border px-3 py-2 text-sm"
                   />
                 </div>
               ))}
               {generateRows.length === 0 && (
-                <div className="text-sm text-slate-500">Nenhuma classe base disponível.</div>
+                <div className="text-sm text-muted-foreground">Nenhuma classe base disponível.</div>
               )}
             </div>
           )}
@@ -1624,7 +1624,7 @@ export default function TurmasConfiguracoesPage() {
               <button
                 type="button"
                 onClick={openCreateDisciplina}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-klasse-gold-900"
               >
                 <Plus className="h-4 w-4" /> Nova disciplina
               </button>
@@ -1633,22 +1633,22 @@ export default function TurmasConfiguracoesPage() {
         >
           {modalLoading ? (
             <div className="py-10 flex justify-center">
-              <RefreshCw className="animate-spin text-slate-300" />
+              <RefreshCw className="animate-spin text-muted-foreground" />
             </div>
           ) : (
             <div className="space-y-3">
               {(ctx?.disciplinas ?? []).map((disc) => (
-                <div key={disc.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+                <div key={disc.id} className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
                   <div>
-                    <div className="font-semibold text-slate-900 flex items-center gap-2">
+                    <div className="font-semibold text-foreground flex items-center gap-2">
                       {disc.nome}
                       {disc.is_core && (
-                        <span className="rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-semibold">
+                        <span className="rounded-full bg-klasse-green text-white px-2 py-0.5 text-[10px] font-semibold">
                           Core
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-500 font-mono">
+                    <div className="text-xs text-muted-foreground font-mono">
                       {disc.codigo} · {disc.carga_horaria_semanal} aulas/sem ·{" "}
                       {disc.is_avaliavel
                         ? disc.avaliacao_mode === "herdar_escola"
@@ -1661,14 +1661,14 @@ export default function TurmasConfiguracoesPage() {
                     <button
                       type="button"
                       onClick={() => openEditDisciplina(disc)}
-                      className="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                      className="rounded-xl border border-border px-3 py-2 text-xs text-foreground hover:bg-muted"
                     >
                       Editar
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDeleteDisciplina(disc.id)}
-                      className="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-700 hover:text-red-600"
+                      className="rounded-xl border border-border px-3 py-2 text-xs text-foreground hover:text-red-600"
                     >
                       Remover
                     </button>
@@ -1676,7 +1676,7 @@ export default function TurmasConfiguracoesPage() {
                 </div>
               ))}
               {(ctx?.disciplinas ?? []).length === 0 && (
-                <div className="text-sm text-slate-500">Nenhuma disciplina cadastrada.</div>
+                <div className="text-sm text-muted-foreground">Nenhuma disciplina cadastrada.</div>
               )}
             </div>
           )}

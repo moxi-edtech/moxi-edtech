@@ -88,7 +88,7 @@ export function FreezeStep({ onComplete, retroactivePending = false }: { onCompl
     }
   };
 
-  if (loading && !stats) return <div className="py-10 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-slate-300" /></div>;
+  if (loading && !stats) return <div className="py-10 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-muted-foreground" /></div>;
 
   const isComplete = stats && stats.pendentes_count === 0;
   const progressPercent = activeJob ? Math.round((activeJob.processed / activeJob.total_turmas) * 100) : 0;
@@ -97,11 +97,11 @@ export function FreezeStep({ onComplete, retroactivePending = false }: { onCompl
     <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-2">
       {/* 1. Status das Pautas */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pautas Anuais Oficiais</p>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Pautas Anuais Oficiais</p>
           <div className="mt-3 flex items-end justify-between">
-            <div className="text-3xl font-black text-slate-900">
-              {stats?.geradas} <span className="text-sm font-medium text-slate-400">de {stats?.total}</span>
+            <div className="text-3xl font-black text-foreground">
+              {stats?.geradas} <span className="text-sm font-medium text-muted-foreground">de {stats?.total}</span>
             </div>
             {isComplete ? (
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">
@@ -115,22 +115,22 @@ export function FreezeStep({ onComplete, retroactivePending = false }: { onCompl
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-center">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm flex flex-col justify-center">
             {activeJob?.status === "PROCESSING" ? (
                 <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs font-bold">
-                        <span className="text-slate-500 uppercase tracking-tighter">Processando Lote...</span>
+                        <span className="text-muted-foreground uppercase tracking-tighter">Processando Lote...</span>
                         <span className="text-emerald">{progressPercent}%</span>
                     </div>
-                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                         <div className="h-full bg-emerald transition-all duration-500" style={{ width: `${progressPercent}%` }} />
                     </div>
-                    <p className="text-[10px] text-slate-400 text-center italic">Isto pode levar alguns minutos. Pode continuar navegando.</p>
+                    <p className="text-[10px] text-muted-foreground text-center italic">Isto pode levar alguns minutos. Pode continuar navegando.</p>
                 </div>
             ) : isComplete ? (
                 <div className="text-center py-2">
                      <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-1" />
-                     <p className="text-xs font-bold text-slate-700">Tudo pronto para o congelamento.</p>
+                     <p className="text-xs font-bold text-foreground">Tudo pronto para o congelamento.</p>
                 </div>
             ) : (
                 <Button 
@@ -148,15 +148,15 @@ export function FreezeStep({ onComplete, retroactivePending = false }: { onCompl
 
       {/* 2. Lista de Pendências */}
       {!isComplete && stats && stats.pendentes_count > 0 && (
-          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-              <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Turmas Pendentes</h3>
-                  <button onClick={fetchStatus} className="text-slate-400 hover:text-slate-600"><RefreshCcw className="h-3.5 w-3.5" /></button>
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="bg-muted px-4 py-3 border-b border-border flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Turmas Pendentes</h3>
+                  <button onClick={fetchStatus} className="text-muted-foreground hover:text-foreground"><RefreshCcw className="h-3.5 w-3.5" /></button>
               </div>
               <div className="p-4 max-h-48 overflow-y-auto grid grid-cols-2 gap-2">
                   {stats.pendentes_list.map((nome, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                          <FileText className="h-3 w-3 text-slate-400" />
+                      <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-lg border border-border">
+                          <FileText className="h-3 w-3 text-muted-foreground" />
                           <span className="truncate font-medium">{nome}</span>
                       </div>
                   ))}

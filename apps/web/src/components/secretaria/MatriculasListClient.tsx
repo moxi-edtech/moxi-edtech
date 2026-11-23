@@ -693,7 +693,7 @@ export default function MatriculasListClient() {
             </thead>
 
             <tbody
-              className="divide-y divide-slate-50 bg-card"
+              className="divide-y divide-border bg-card"
               style={
                 hasRows
                   ? {

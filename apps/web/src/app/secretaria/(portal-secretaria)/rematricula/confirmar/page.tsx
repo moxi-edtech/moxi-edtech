@@ -156,7 +156,7 @@ export default function ConfirmarRematriculaPage() {
                 <li key={idx}>
                   Origem {it.origem} → Destino {it.destino}: {it.inserted} inseridos, {it.skipped} ignorados
                   {it.blocked.length > 0 && (
-                    <span className="text-xs text-slate-600 ml-2">• bloqueios: {it.blocked.length}</span>
+                    <span className="text-xs text-muted-foreground ml-2">• bloqueios: {it.blocked.length}</span>
                   )}
                   {it.blocked.length > 0 && (
                     <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
@@ -255,11 +255,11 @@ export default function ConfirmarRematriculaPage() {
 
       <div className="flex justify-between items-center gap-4">
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2 text-sm text-foreground">
             <input type="checkbox" checked={gerarMensalidades} onChange={(e)=>setGerarMensalidades(e.target.checked)} />
             Gerar mensalidades
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2 text-sm text-foreground">
             <input type="checkbox" checked={gerarTodas} onChange={(e)=>setGerarTodas(e.target.checked)} disabled={!gerarMensalidades} />
             Para todo o ano letivo
           </label>
@@ -267,7 +267,7 @@ export default function ConfirmarRematriculaPage() {
         <div className="flex gap-2">
           <button
             onClick={() => router.push(buildPortalHref(escolaSlug, '/secretaria/rematricula'))}
-            className="inline-flex justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex justify-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
           >
             Voltar
           </button>

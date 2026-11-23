@@ -233,54 +233,54 @@ export default function TurmaCurriculoModal({ turma, escolaId, isOpen, onClose, 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="curriculo-turma-title">
-        <header className="flex items-start justify-between border-b border-slate-100 bg-slate-50/70 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/60 p-4 backdrop-blur-xs">
+      <div className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="curriculo-turma-title">
+        <header className="flex items-start justify-between border-b border-border bg-muted/70 p-6">
           <div>
-            <div className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              <BookOpen size={14} className="text-[#1F6B3B]" /> Currículo da classe
+            <div className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              <BookOpen size={14} className="text-klasse-green dark:text-klasse-green-300" /> Currículo da classe
             </div>
-            <h2 id="curriculo-turma-title" className="text-lg font-bold text-slate-900">{turma.nome || turma.turma_codigo}</h2>
-            <p className="mt-1 text-xs text-slate-500">{turma.curso_nome || "Ensino Geral"} {turma.classe_nome ? `· ${turma.classe_nome}` : ""} · usado por todas as turmas desta classe</p>
+            <h2 id="curriculo-turma-title" className="text-lg font-bold text-foreground">{turma.nome || turma.turma_codigo}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{turma.curso_nome || "Ensino Geral"} {turma.classe_nome ? `· ${turma.classe_nome}` : ""} · usado por todas as turmas desta classe</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Fechar">
+          <button type="button" onClick={onClose} className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Fechar">
             <X size={18} />
           </button>
         </header>
 
-        <div className="grid grid-cols-2 border-b border-slate-100 bg-white text-center text-xs">
-          <div className="border-r border-slate-100 p-3"><strong className="block text-lg text-slate-900">{items.length}</strong><span className="text-slate-500">disciplinas ativas</span></div>
-          <div className="p-3"><strong className="block text-lg text-[#1F6B3B]">{available.length}</strong><span className="text-slate-500">opções no catálogo</span></div>
+        <div className="grid grid-cols-2 border-b border-border bg-card text-center text-xs">
+          <div className="border-r border-border p-3"><strong className="block text-lg text-foreground">{items.length}</strong><span className="text-muted-foreground">disciplinas ativas</span></div>
+          <div className="p-3"><strong className="block text-lg text-klasse-green dark:text-klasse-green-300">{available.length}</strong><span className="text-muted-foreground">opções no catálogo</span></div>
         </div>
 
         <main className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
-          {loadError ? <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-center"><p className="text-sm font-semibold text-rose-800">{errorKind === "load" ? "Não foi possível carregar o currículo." : "Não foi possível atualizar o currículo."}</p><p className="mt-1 text-xs text-rose-700">{loadError}</p><button type="button" onClick={() => void load()} disabled={loading} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50"><Loader2 size={13} className={loading ? "animate-spin" : "hidden"} />Tentar novamente</button></div> : loading ? <div className="flex h-48 items-center justify-center text-slate-400"><Loader2 className="animate-spin text-[#E3B23C]" /></div> : (
+          {loadError ? <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-center"><p className="text-sm font-semibold text-rose-800">{errorKind === "load" ? "Não foi possível carregar o currículo." : "Não foi possível atualizar o currículo."}</p><p className="mt-1 text-xs text-rose-700">{loadError}</p><button type="button" onClick={() => void load()} disabled={loading} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50"><Loader2 size={13} className={loading ? "animate-spin" : "hidden"} />Tentar novamente</button></div> : loading ? <div className="flex h-48 items-center justify-center text-muted-foreground"><Loader2 className="animate-spin text-klasse-gold-700 dark:text-klasse-gold-300" /></div> : (
             <>
               <section>
-                <div className="mb-2 flex items-center justify-between"><div><h3 className="text-sm font-bold text-slate-800">Disciplinas da classe</h3><p className="text-[11px] text-slate-400">A mesma composição será usada por todas as turmas desta classe.</p></div>{isDraft && <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">Rascunho</span>}</div>
-                {items.length === 0 ? <p className="rounded-xl border border-dashed border-slate-200 p-5 text-center text-xs text-slate-500">Nenhuma disciplina configurada para esta turma.</p> : <div className="space-y-2">
+                <div className="mb-2 flex items-center justify-between"><div><h3 className="text-sm font-bold text-foreground">Disciplinas da classe</h3><p className="text-[11px] text-muted-foreground">A mesma composição será usada por todas as turmas desta classe.</p></div>{isDraft && <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">Rascunho</span>}</div>
+                {items.length === 0 ? <p className="rounded-xl border border-dashed border-border p-5 text-center text-xs text-muted-foreground">Nenhuma disciplina configurada para esta turma.</p> : <div className="space-y-2">
                   {items.map((item) => {
                     const cargaHorariaSemanal = resolveCargaHorariaSemanal(item);
-                    return <div key={item.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
-                    <div className="flex min-w-0 items-center gap-3"><span className="rounded-lg bg-green-50 p-2 text-[#1F6B3B]"><BookOpen size={15} /></span><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{item.nome}</p><p className="text-[11px] text-slate-400">{cargaHorariaSemanal ? `${cargaHorariaSemanal}h/semana` : "Carga horária não definida"} · {item.obrigatoria === false ? "Optativa" : "Obrigatória"}</p></div></div>
-                    <div className="ml-3 flex items-center gap-1"><button type="button" disabled={saving || editingLoading} onClick={() => void openDisciplineEditor(item)} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-[#1F6B3B] hover:bg-green-50 disabled:opacity-50">Configurar</button><button type="button" disabled={saving || editingLoading} onClick={() => void handleRemove(item)} className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50" title="Remover disciplina" aria-label={`Remover ${item.nome}`}><Trash2 size={15} /></button></div>
+                    return <div key={item.id} className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+                    <div className="flex min-w-0 items-center gap-3"><span className="rounded-lg bg-green-50 p-2 text-klasse-green dark:text-klasse-green-300"><BookOpen size={15} /></span><div className="min-w-0"><p className="truncate text-sm font-semibold text-foreground">{item.nome}</p><p className="text-[11px] text-muted-foreground">{cargaHorariaSemanal ? `${cargaHorariaSemanal}h/semana` : "Carga horária não definida"} · {item.obrigatoria === false ? "Optativa" : "Obrigatória"}</p></div></div>
+                    <div className="ml-3 flex items-center gap-1"><button type="button" disabled={saving || editingLoading} onClick={() => void openDisciplineEditor(item)} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-klasse-green dark:text-klasse-green-300 hover:bg-green-50 disabled:opacity-50">Configurar</button><button type="button" disabled={saving || editingLoading} onClick={() => void handleRemove(item)} className="rounded-lg p-2 text-muted-foreground hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50" title="Remover disciplina" aria-label={`Remover ${item.nome}`}><Trash2 size={15} /></button></div>
                   </div>})}
                 </div>}
               </section>
 
-              {editingDiscipline && <section className="rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-4"><div className="mb-3 flex items-center justify-between"><div><h3 className="text-sm font-bold text-slate-800">Configurar disciplina</h3><p className="text-[11px] text-slate-500">Esta edição altera a definição no currículo base, não apenas a composição desta turma.</p></div><button type="button" onClick={() => setEditingDiscipline(null)} className="text-xs font-semibold text-slate-500 hover:text-slate-800">Voltar à lista</button></div><DisciplinaModal embedded open mode="edit" initial={editingDiscipline} existingCodes={[]} existingNames={[]} classOptions={[]} onClose={() => setEditingDiscipline(null)} onSave={saveDisciplineDefinition} /></section>}
+              {editingDiscipline && <section className="rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-4"><div className="mb-3 flex items-center justify-between"><div><h3 className="text-sm font-bold text-foreground">Configurar disciplina</h3><p className="text-[11px] text-muted-foreground">Esta edição altera a definição no currículo base, não apenas a composição desta turma.</p></div><button type="button" onClick={() => setEditingDiscipline(null)} className="text-xs font-semibold text-muted-foreground hover:text-foreground">Voltar à lista</button></div><DisciplinaModal embedded open mode="edit" initial={editingDiscipline} existingCodes={[]} existingNames={[]} classOptions={[]} onClose={() => setEditingDiscipline(null)} onSave={saveDisciplineDefinition} /></section>}
 
-              <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                <h3 className="mb-3 text-sm font-bold text-slate-800">Adicionar ao currículo da classe</h3>
-                <div className="mb-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3"><Search size={14} className="text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar disciplina…" className="w-full bg-transparent py-2 text-xs outline-none" /></div>
-                <div className="flex gap-2"><select value={selected} onChange={(event) => setSelected(event.target.value)} disabled={saving || !filteredAvailable.length} className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#E3B23C]"><option value="">Selecione uma disciplina</option>{filteredAvailable.map((item) => <option key={item.id} value={item.id}>{item.nome}{item.obrigatoria === false ? " · Optativa" : ""}</option>)}</select><button type="button" disabled={saving || !selected} onClick={() => void mutate("POST", { action: "add", disciplina_id: selected })} className="inline-flex items-center gap-2 rounded-lg bg-[#1F6B3B] px-4 py-2 text-sm font-bold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"><Plus size={15} /> Adicionar</button></div>
-                {!available.length && <p className="mt-2 text-[11px] text-slate-500">{items.length === 0 ? "O catálogo da escola ainda não tem disciplinas para adicionar." : <><Check size={12} className="mr-1 inline text-[#1F6B3B]" />Todas as disciplinas do catálogo já estão nesta composição.</>}</p>}
+              <section className="rounded-xl border border-border bg-muted/60 p-4">
+                <h3 className="mb-3 text-sm font-bold text-foreground">Adicionar ao currículo da classe</h3>
+                <div className="mb-3 flex items-center gap-2 rounded-lg border border-border bg-card px-3"><Search size={14} className="text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar disciplina…" className="w-full bg-transparent py-2 text-xs outline-none" /></div>
+                <div className="flex gap-2"><select value={selected} onChange={(event) => setSelected(event.target.value)} disabled={saving || !filteredAvailable.length} className="min-w-0 flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-klasse-gold"><option value="">Selecione uma disciplina</option>{filteredAvailable.map((item) => <option key={item.id} value={item.id}>{item.nome}{item.obrigatoria === false ? " · Optativa" : ""}</option>)}</select><button type="button" disabled={saving || !selected} onClick={() => void mutate("POST", { action: "add", disciplina_id: selected })} className="inline-flex items-center gap-2 rounded-lg bg-klasse-green px-4 py-2 text-sm font-bold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"><Plus size={15} /> Adicionar</button></div>
+                {!available.length && <p className="mt-2 text-[11px] text-muted-foreground">{items.length === 0 ? "O catálogo da escola ainda não tem disciplinas para adicionar." : <><Check size={12} className="mr-1 inline text-klasse-green dark:text-klasse-green-300" />Todas as disciplinas do catálogo já estão nesta composição.</>}</p>}
               </section>
             </>
           )}
         </main>
 
-        <footer className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 p-4"><p className="max-w-md text-[11px] text-slate-500">{isDraft ? "As alterações ainda não foram aplicadas às turmas." : "Currículo publicado e partilhado pelas turmas da classe."}</p><div className="flex gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Fechar</button>{isDraft && <button type="button" onClick={() => void applyToAllTurmas()} disabled={saving} className="rounded-xl bg-[#1F6B3B] px-4 py-2 text-sm font-bold text-white hover:brightness-95 disabled:opacity-50">Aplicar a todas as turmas</button>}</div></footer>
+        <footer className="flex items-center justify-between border-t border-border bg-muted/50 p-4"><p className="max-w-md text-[11px] text-muted-foreground">{isDraft ? "As alterações ainda não foram aplicadas às turmas." : "Currículo publicado e partilhado pelas turmas da classe."}</p><div className="flex gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted">Fechar</button>{isDraft && <button type="button" onClick={() => void applyToAllTurmas()} disabled={saving} className="rounded-xl bg-klasse-green px-4 py-2 text-sm font-bold text-white hover:brightness-95 disabled:opacity-50">Aplicar a todas as turmas</button>}</div></footer>
       </div>
     </div>
   );

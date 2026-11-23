@@ -188,7 +188,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
         <Dialog open={!!confirmState} onOpenChange={(open) => !open && handleCancel()}>
           <DialogContent overlayClassName="z-[110]" className="z-[110] max-w-md border-border bg-card text-foreground">
             <DialogHeader>
-              <DialogTitle className={confirmState?.variant === "danger" ? "text-rose-600" : ""}>
+              <DialogTitle className={confirmState?.variant === "danger" ? "text-rose-600 dark:text-rose-300" : ""}>
                 {confirmState?.title}
               </DialogTitle>
               <DialogDescription>{confirmState?.message}</DialogDescription>
@@ -259,7 +259,7 @@ const TOAST_CONFIG: Record<
     border: "border-amber/30",
     icon: <AlertTriangle size={18} />,
     textColor: "text-foreground",
-    iconColor: "text-amber",
+    iconColor: "text-amber dark:text-amber-300",
     barColor: "bg-amber",
   },
   info: {
@@ -378,7 +378,7 @@ export function SyncIndicator({
   const config = {
     syncing: {
       icon: <Loader2 size={11} className="animate-spin" />,
-      color: "text-slate-400",
+      color: "text-muted-foreground",
       text: "A guardar…",
     },
     synced: {
@@ -388,12 +388,12 @@ export function SyncIndicator({
     },
     error: {
       icon: <AlertCircle size={11} />,
-      color: "text-rose-600",
+      color: "text-rose-600 dark:text-rose-300",
       text: "Falhou",
     },
     offline: {
       icon: <WifiOff size={11} />,
-      color: "text-amber",
+      color: "text-amber dark:text-amber-300",
       text: "Offline",
     },
   }[status]
@@ -413,7 +413,7 @@ export function SyncIndicator({
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null
   return (
-    <p className="flex items-center gap-1 text-xs text-rose-600 mt-1 font-medium">
+    <p className="flex items-center gap-1 text-xs text-rose-600 dark:text-rose-300 mt-1 font-medium">
       <AlertCircle size={11} className="flex-shrink-0" />
       {message}
     </p>
@@ -466,25 +466,25 @@ function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (a
   const router = useRouter()
   const cfg = {
     critical: {
-      border: "border-rose-200",
-      bg: "bg-rose-50",
-      icon: <AlertCircle size={16} className="text-rose-600 flex-shrink-0 mt-0.5" />,
-      badge: "bg-rose-100 text-rose-700",
-      count: "text-rose-600",
+      border: "border-rose-200 dark:border-rose-900",
+      bg: "bg-rose-50 dark:bg-rose-950/30",
+      icon: <AlertCircle size={16} className="text-rose-600 dark:text-rose-300 flex-shrink-0 mt-0.5" />,
+      badge: "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300",
+      count: "text-rose-600 dark:text-rose-300",
     },
     warning: {
       border: "border-amber/25",
       bg: "bg-amber/10",
-      icon: <AlertTriangle size={16} className="text-amber flex-shrink-0 mt-0.5" />,
-      badge: "bg-amber/20 text-amber",
-      count: "text-amber",
+      icon: <AlertTriangle size={16} className="text-amber dark:text-amber-300 flex-shrink-0 mt-0.5" />,
+      badge: "bg-amber/20 text-amber dark:text-amber-300",
+      count: "text-amber dark:text-amber-300",
     },
     info: {
-      border: "border-slate-200",
-      bg: "bg-slate-50",
-      icon: <Info size={16} className="text-slate-400 flex-shrink-0 mt-0.5" />,
-      badge: "bg-slate-100 text-slate-400",
-      count: "text-slate-400",
+      border: "border-border",
+      bg: "bg-muted",
+      icon: <Info size={16} className="text-muted-foreground flex-shrink-0 mt-0.5" />,
+      badge: "bg-muted text-muted-foreground",
+      count: "text-muted-foreground",
     },
   }[alert.severity]
 
@@ -493,14 +493,14 @@ function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (a
       {cfg.icon}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-bold text-slate-900 leading-tight">{alert.titulo}</p>
+          <p className="text-sm font-bold text-foreground leading-tight">{alert.titulo}</p>
           {alert.count !== undefined && (
             <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${cfg.badge}`}>
               {alert.count}
             </span>
           )}
         </div>
-        <p className="text-xs text-slate-500 mt-1 font-medium">{alert.descricao}</p>
+        <p className="text-xs text-muted-foreground mt-1 font-medium">{alert.descricao}</p>
       </div>
       {(alert.link || onAction) && (
         <button
@@ -511,8 +511,8 @@ function AlertCard({ alert, onAction }: { alert: OperationalAlert; onAction?: (a
             }
             if (alert.link) router.push(alert.link)
           }}
-          className={`flex items-center gap-1.5 flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-700
-            hover:text-emerald rounded-lg border border-slate-200 px-3 py-2 bg-white shadow-sm
+          className={`flex items-center gap-1.5 flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-foreground
+            hover:text-emerald rounded-lg border border-border px-3 py-2 bg-card shadow-sm
             hover:border-emerald/30 transition-all active:scale-95 hover:shadow-md`}
         >
           {alert.link_label ?? "Resolver"} <ArrowRight size={12} />
@@ -563,23 +563,23 @@ function RadarCompacto({
           : "Sem pendências no radar"
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="flex items-center gap-3">
           <div
             className={`rounded-xl border p-2 ${
               limpo
                 ? "border-emerald-100 bg-emerald-50 text-emerald-600"
-                : "border-slate-100 bg-slate-50 text-slate-500"
+                : "border-border bg-muted text-muted-foreground"
             }`}
           >
             {limpo ? <CheckCircle2 className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
               {role === "admin" ? "Cockpit de Gestão" : "Radar Operacional"}
             </p>
-            <p className="text-xs font-bold text-slate-700 mt-0.5">{subline}</p>
+            <p className="text-xs font-bold text-foreground mt-0.5">{subline}</p>
           </div>
         </div>
 
@@ -587,17 +587,17 @@ function RadarCompacto({
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
             {critical.length > 0 && (
               <div className="flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5 text-slate-400" />
-                <span className="font-medium text-slate-400">Crítico:</span>
-                <span className="rounded-full border border-rose-100/50 bg-rose-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-rose-700">
+                <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="font-medium text-muted-foreground">Crítico:</span>
+                <span className="rounded-full border border-rose-100/50 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-rose-700 dark:text-rose-300">
                   {critical.length}
                 </span>
               </div>
             )}
             {warnings.length > 0 && (
               <div className="flex items-center gap-1.5">
-                <AlertTriangle className="h-3.5 w-3.5 text-slate-400" />
-                <span className="font-medium text-slate-400">Alerta:</span>
+                <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="font-medium text-muted-foreground">Alerta:</span>
                 <span className="rounded-full border border-amber-100/50 bg-amber-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-700">
                   {warnings.length}
                 </span>
@@ -605,9 +605,9 @@ function RadarCompacto({
             )}
             {infos.length > 0 && (
               <div className="flex items-center gap-1.5">
-                <Info className="h-3.5 w-3.5 text-slate-400" />
-                <span className="font-medium text-slate-400">Info:</span>
-                <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-slate-500">
+                <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="font-medium text-muted-foreground">Info:</span>
+                <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-muted-foreground">
                   {infos.length}
                 </span>
               </div>
@@ -616,7 +616,7 @@ function RadarCompacto({
               type="button"
               aria-expanded={!collapsed}
               onClick={onToggle}
-              className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 transition-colors hover:text-slate-600"
+              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-muted-foreground"
             >
               {collapsed ? "Ver alertas" : "Ocultar"}
               <ChevronDown
@@ -628,11 +628,11 @@ function RadarCompacto({
       </div>
 
       {loading ? (
-        <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4 text-xs font-medium text-slate-400">
+        <div className="mt-4 flex items-center gap-2 border-t border-border pt-4 text-xs font-medium text-muted-foreground">
           <Loader2 size={14} className="animate-spin" /> A mapear o radar…
         </div>
       ) : !collapsed && total > 0 ? (
-        <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
           {[...critical, ...warnings, ...infos].map((alert) => (
             <AlertCard key={alert.id} alert={alert} onAction={onAction} />
           ))}
@@ -677,8 +677,8 @@ export function RadarOperacional({
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-3 text-sm font-bold text-slate-400 uppercase tracking-widest">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex items-center gap-3 text-sm font-bold text-muted-foreground uppercase tracking-widest">
           <Loader2 size={16} className="animate-spin text-emerald" /> Mapeando Cockpit…
         </div>
       </div>
@@ -688,24 +688,24 @@ export function RadarOperacional({
   if (alerts.length === 0) {
     return (
       <div
-        className="flex items-center gap-4 rounded-xl border border-emerald-100 bg-white px-6 py-4 shadow-sm"
+        className="flex items-center gap-4 rounded-xl border border-emerald-100 bg-card px-6 py-4 shadow-sm"
       >
         <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-600">
           <CheckCircle2 size={20} />
         </div>
         <div>
-          <p className="text-sm font-bold text-slate-900">Céu Limpo</p>
-          <p className="text-xs text-slate-500 mt-0.5 font-medium">Zero pendências críticas no radar actual.</p>
+          <p className="text-sm font-bold text-foreground">Céu Limpo</p>
+          <p className="text-xs text-muted-foreground mt-0.5 font-medium">Zero pendências críticas no radar actual.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:border-ring hover:shadow-md">
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="w-full flex items-center justify-between px-6 py-5 hover:bg-slate-50 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-5 hover:bg-muted transition-colors"
       >
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -717,12 +717,12 @@ export function RadarOperacional({
             )}
           </div>
           <div className="text-left">
-            <span className="text-sm font-black text-slate-900 uppercase tracking-tight">
+            <span className="text-sm font-black text-foreground uppercase tracking-tight">
               {role === "admin" ? "Cockpit de Gestão" : "Radar Operacional"}
             </span>
             <div className="flex items-center gap-2 mt-1">
               {critical.length > 0 && (
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 uppercase">
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 uppercase">
                   {critical.length} Crítico
                 </span>
               )}
@@ -735,10 +735,10 @@ export function RadarOperacional({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">Monitorização Live</span>
+          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest hidden sm:inline">Monitorização Live</span>
           <ChevronDown
             size={18}
-            className={`text-slate-400 transition-transform duration-300 ${collapsed ? "" : "rotate-180"}`}
+            className={`text-muted-foreground transition-transform duration-300 ${collapsed ? "" : "rotate-180"}`}
           />
         </div>
       </button>
@@ -748,7 +748,7 @@ export function RadarOperacional({
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: "auto", opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
-          className="space-y-3 border-t border-slate-100 bg-slate-50/30 px-6 pb-6"
+          className="space-y-3 border-t border-border bg-muted/30 px-6 pb-6"
         >
           <div className="pt-4 space-y-3">
             {[...critical, ...warnings, ...infos].map((alert) => (
@@ -779,10 +779,10 @@ export type DisciplinaBoletim = {
 function FaltasIndicador({ faltas, max }: { faltas: number; max: number }) {
   if (max <= 0) {
     return (
-      <div className="rounded-lg px-2.5 py-1.5 bg-slate-50">
+      <div className="rounded-lg px-2.5 py-1.5 bg-muted">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold text-slate-500">Sem dados de faltas</span>
-          <span className="text-[10px] text-slate-400">0/0</span>
+          <span className="text-[10px] font-bold text-muted-foreground">Sem dados de faltas</span>
+          <span className="text-[10px] text-muted-foreground">0/0</span>
         </div>
       </div>
     )
@@ -793,8 +793,8 @@ function FaltasIndicador({ faltas, max }: { faltas: number; max: number }) {
 
   const cfg = {
     ok: { color: "text-emerald", bg: "bg-emerald/10", bar: "bg-emerald" },
-    atencao: { color: "text-amber", bg: "bg-amber/10", bar: "bg-amber" },
-    critico: { color: "text-rose-600", bg: "bg-rose-50", bar: "bg-rose-500" },
+    atencao: { color: "text-amber dark:text-amber-300", bg: "bg-amber/10", bar: "bg-amber" },
+    critico: { color: "text-rose-600 dark:text-rose-300", bg: "bg-rose-50 dark:bg-rose-950/30", bar: "bg-rose-500" },
   }[risco]
 
   const pct = Math.min(Math.round((faltas / max) * 100), 100)
@@ -813,7 +813,7 @@ function FaltasIndicador({ faltas, max }: { faltas: number; max: number }) {
           {faltas}/{max}
         </span>
       </div>
-      <div className="h-1 w-full bg-white/60 rounded-full overflow-hidden">
+      <div className="h-1 w-full bg-card/60 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all ${cfg.bar}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -838,17 +838,17 @@ function DisciplinaRow({
 
   const notaColor =
     nota === null || nota === undefined
-      ? "text-slate-400"
+      ? "text-muted-foreground"
       : nota >= 10
         ? "text-emerald font-black"
         : nota >= 8
-          ? "text-amber font-bold"
-          : "text-rose-600 font-bold"
+          ? "text-amber dark:text-amber-300 font-bold"
+          : "text-rose-600 dark:text-rose-300 font-bold"
 
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0">
+    <div className="flex items-center gap-3 py-3 border-b border-border last:border-0">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-slate-800 truncate">{d.nome}</p>
+        <p className="text-sm font-semibold text-foreground truncate">{d.nome}</p>
         <div className="mt-1.5">
           <FaltasIndicador faltas={d.faltas} max={d.faltas_max} />
         </div>
@@ -857,10 +857,10 @@ function DisciplinaRow({
         {nota !== null && nota !== undefined ? (
           <span className={`text-lg ${notaColor}`}>{nota}</span>
         ) : (
-          <span className="text-sm text-slate-300 font-medium">—</span>
+          <span className="text-sm text-muted-foreground font-medium">—</span>
         )}
         {d.status === "pendente" && (
-          <p className="mt-0.5 text-[9px] font-bold uppercase text-amber">Pendente</p>
+          <p className="mt-0.5 text-[9px] font-bold uppercase text-amber dark:text-amber-300">Pendente</p>
         )}
         {d.status === "bloqueada" && (
           <p className="text-[9px] text-rose-500 font-bold uppercase mt-0.5">Bloqueada</p>
@@ -912,7 +912,7 @@ export function BoletimAluno({
   }).length
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className="bg-emerald px-5 py-4">
         <div className="flex items-center justify-between">
           <div>
@@ -935,13 +935,13 @@ export function BoletimAluno({
           </div>
         </div>
 
-        <div className="flex items-center gap-1 mt-4 bg-white/10 rounded-xl p-1">
+        <div className="flex items-center gap-1 mt-4 bg-muted-foreground/20 rounded-xl p-1">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all
-                ${tab === t.id ? "bg-white text-emerald" : "text-white/70 hover:text-white"}`}
+                ${tab === t.id ? "bg-card text-foreground" : "text-white/70 hover:text-white"}`}
             >
               {t.label}
             </button>
@@ -965,12 +965,12 @@ export function Skeleton({
   className?: string
   style?: React.CSSProperties
 }) {
-  return <div className={`animate-pulse rounded-lg bg-slate-100 ${className}`} style={style} />
+  return <div className={`animate-pulse rounded-lg bg-muted ${className}`} style={style} />
 }
 
 export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
   return (
-    <div className="space-y-0 divide-y divide-slate-100">
+    <div className="space-y-0 divide-y divide-border">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="flex items-center gap-4 px-6 py-4">
           <Skeleton className="h-4 w-4 rounded" />
@@ -991,7 +991,7 @@ export function StatCardsSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div key={i} className="space-y-3 rounded-xl border border-border bg-card p-5 shadow-sm">
           <Skeleton className="h-10 w-10 rounded-xl" />
           <Skeleton className="h-7 w-16" />
           <Skeleton className="h-3 w-20" />
@@ -1015,28 +1015,28 @@ export function OperationProgress({
   const pct = total > 0 ? Math.round((current / total) * 100) : 0
 
   const cfg = {
-    running: { bar: "bg-amber", icon: <Loader2 size={14} className="animate-spin text-amber" /> },
+    running: { bar: "bg-amber", icon: <Loader2 size={14} className="animate-spin text-amber dark:text-amber-300" /> },
     done: { bar: "bg-emerald", icon: <CheckCircle2 size={14} className="text-emerald" /> },
-    error: { bar: "bg-rose-500", icon: <AlertCircle size={14} className="text-rose-600" /> },
+    error: { bar: "bg-rose-500", icon: <AlertCircle size={14} className="text-rose-600 dark:text-rose-300" /> },
   }[status]
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-5 py-4 space-y-3">
+    <div className="rounded-xl border border-border bg-card px-5 py-4 space-y-3">
       <div className="flex items-center gap-2">
         {cfg.icon}
-        <p className="text-sm font-semibold text-slate-700">{label}</p>
-        <span className="ml-auto text-xs font-bold text-slate-500">
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <span className="ml-auto text-xs font-bold text-muted-foreground">
           {current}/{total}
         </span>
       </div>
-      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${cfg.bar}`}
           style={{ width: `${pct}%` }}
         />
       </div>
       {status === "running" && (
-        <p className="text-[11px] text-slate-400">A processar… pode navegar noutras abas.</p>
+        <p className="text-[11px] text-muted-foreground">A processar… pode navegar noutras abas.</p>
       )}
     </div>
   )
@@ -1056,13 +1056,13 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
       {icon && (
-        <div className="mb-4 rounded-lg bg-slate-100 p-4 text-slate-400">
+        <div className="mb-4 rounded-lg bg-muted p-4 text-muted-foreground">
           {icon}
         </div>
       )}
-      <p className="text-sm font-bold text-slate-700">{title}</p>
+      <p className="text-sm font-bold text-foreground">{title}</p>
       {description && (
-        <p className="text-xs text-slate-400 mt-1 max-w-xs">{description}</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-xs">{description}</p>
       )}
       {action && (
         <button
@@ -1088,18 +1088,18 @@ export function ErrorState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-      <div className="mb-4 rounded-lg bg-rose-50 p-4 text-rose-400">
+      <div className="mb-4 rounded-lg bg-rose-50 dark:bg-rose-950/30 p-4 text-rose-400">
         <AlertCircle size={24} />
       </div>
-      <p className="text-sm font-bold text-slate-700">{title}</p>
+      <p className="text-sm font-bold text-foreground">{title}</p>
       {description && (
-        <p className="text-xs text-slate-400 mt-1 max-w-xs">{description}</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-xs">{description}</p>
       )}
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200
-            px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+          className="mt-4 flex items-center gap-2 rounded-xl border border-border
+            px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors"
         >
           <RefreshCw size={13} /> Tentar novamente
         </button>

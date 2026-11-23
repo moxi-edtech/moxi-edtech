@@ -398,31 +398,31 @@ export default function TurmaHorarioModal({
   const totalCargaNecessaria = disciplinas.reduce((acc, d) => acc + d.cargaSemanal, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-klasse-dark/60 backdrop-blur-xs animate-in fade-in duration-150">
       <div 
-        className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
+        className="bg-card w-full max-w-5xl rounded-2xl shadow-2xl border border-border overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
         role="dialog"
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/50">
           <div>
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-muted text-foreground">
                 {turma.turno || "Turno não def."}
               </span>
-              <span className="text-xs text-slate-400 font-mono">
+              <span className="text-xs text-muted-foreground font-mono">
                 {turma.ano_letivo || "Ano letivo"}
               </span>
               {turma.sala && (
-                <span className="text-xs text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded">
+                <span className="text-xs text-muted-foreground bg-card border border-border px-2 py-0.5 rounded">
                   Sala: {turma.sala}
                 </span>
               )}
             </div>
-            <h2 className="text-lg font-bold text-slate-900 mt-1 flex items-center gap-2">
-              <Calendar size={18} className="text-[#1F6B3B]" /> Grade de Horários — {turma.nome || turma.turma_codigo}
+            <h2 className="text-lg font-bold text-foreground mt-1 flex items-center gap-2">
+              <Calendar size={18} className="text-klasse-green dark:text-klasse-green-300" /> Grade de Horários — {turma.nome || turma.turma_codigo}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {turma.curso_nome || "Ensino Geral"} {turma.classe_nome ? `· ${turma.classe_nome}` : ""}
             </p>
           </div>
@@ -430,14 +430,14 @@ export default function TurmaHorarioModal({
           <div className="flex items-center gap-2">
             <button
               onClick={() => void handleDownloadPdf()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors shadow-2xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-foreground bg-card border border-border hover:bg-muted rounded-xl transition-colors shadow-2xs"
               title="Baixar ou imprimir horário em PDF"
             >
               <Printer size={14} /> PDF
             </button>
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-colors"
             >
               <X size={18} />
             </button>
@@ -445,15 +445,15 @@ export default function TurmaHorarioModal({
         </div>
 
         {/* Barra de Status & Ações Rápidas */}
-        <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="px-6 py-2.5 bg-muted border-b border-border flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">Alocação:</span>
-              <span className="font-bold text-slate-800">
+              <span className="text-muted-foreground">Alocação:</span>
+              <span className="font-bold text-foreground">
                 {totalAlocados}/{totalCargaNecessaria} tempos
               </span>
               {totalAlocados >= totalCargaNecessaria ? (
-                <span className="inline-flex items-center text-[10px] font-bold text-[#1F6B3B] bg-emerald-50 px-1.5 py-0.5 rounded">
+                <span className="inline-flex items-center text-[10px] font-bold text-klasse-green dark:text-klasse-green-300 bg-emerald-50 px-1.5 py-0.5 rounded">
                   <CheckCircle2 size={11} className="mr-0.5" /> Completa
                 </span>
               ) : (
@@ -462,10 +462,10 @@ export default function TurmaHorarioModal({
                 </span>
               )}
             </div>
-            <span className="text-slate-200">|</span>
-            <span className="text-slate-400">
+            <span className="text-muted-foreground/50">|</span>
+            <span className="text-muted-foreground">
               {selectedDisciplinaId ? (
-                <span className="text-slate-700 font-medium">
+                <span className="text-foreground font-medium">
                   Modo preenchimento ativo: clique nas células para alocar
                 </span>
               ) : (
@@ -478,7 +478,7 @@ export default function TurmaHorarioModal({
             <button
               onClick={handleAutoComplete}
               disabled={autoScheduling || loading}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#1F6B3B] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-klasse-green dark:text-klasse-green-300 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors disabled:opacity-50"
             >
               {autoScheduling ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
               Auto-preencher
@@ -498,44 +498,44 @@ export default function TurmaHorarioModal({
         {/* Corpo Principal (Grade + Sidebar) */}
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
           {/* Lado Esquerdo: Grade Semanal */}
-          <div className="flex-1 overflow-y-auto p-5 bg-slate-50/40">
+          <div className="flex-1 overflow-y-auto p-5 bg-muted/40">
             {loading ? (
-              <div className="py-24 flex flex-col items-center justify-center text-slate-400 gap-2">
-                <Loader2 className="w-7 h-7 animate-spin text-[#E3B23C]" />
+              <div className="py-24 flex flex-col items-center justify-center text-muted-foreground gap-2">
+                <Loader2 className="w-7 h-7 animate-spin text-klasse-gold-700 dark:text-klasse-gold-300" />
                 <p className="text-xs">Carregando estrutura de horários…</p>
               </div>
             ) : ordensUnicas.length === 0 ? (
-              <div className="py-20 text-center text-slate-400 space-y-2 bg-white rounded-xl border border-slate-200 p-8">
-                <Clock className="w-10 h-10 mx-auto text-slate-300" />
-                <p className="text-sm font-semibold text-slate-700">Nenhum tempo/slot configurado para a escola.</p>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              <div className="py-20 text-center text-muted-foreground space-y-2 bg-card rounded-xl border border-border p-8">
+                <Clock className="w-10 h-10 mx-auto text-muted-foreground" />
+                <p className="text-sm font-semibold text-foreground">Nenhum tempo/slot configurado para a escola.</p>
+                <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                   Configure os horários de início e fim dos tempos no menu de Configurações de Horários da escola.
                 </p>
               </div>
             ) : (
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+              <div className="bg-card rounded-xl border border-border overflow-hidden shadow-2xs">
                 <table className="w-full border-collapse table-fixed text-center">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="w-20 p-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-r border-slate-100">
+                    <tr className="bg-muted border-b border-border">
+                      <th className="w-20 p-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-r border-border">
                         Tempo
                       </th>
                       {DIAS_SEMANA.map((dia) => (
-                        <th key={dia} className="p-2.5 text-xs font-bold text-slate-700 border-r border-slate-100 last:border-r-0">
+                        <th key={dia} className="p-2.5 text-xs font-bold text-foreground border-r border-border last:border-r-0">
                           {dia}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-border">
                     {ordensUnicas.map((slot) => {
                       if (slot.is_intervalo) {
                         return (
-                          <tr key={`intervalo-${slot.ordem}`} className="bg-slate-100/60">
-                            <td className="p-2 text-[10px] font-mono text-slate-400 border-r border-slate-200">
+                          <tr key={`intervalo-${slot.ordem}`} className="bg-muted/60">
+                            <td className="p-2 text-[10px] font-mono text-muted-foreground border-r border-border">
                               {slot.inicio} - {slot.fim}
                             </td>
-                            <td colSpan={5} className="p-2 text-center text-xs font-semibold text-slate-400 tracking-wider">
+                            <td colSpan={5} className="p-2 text-center text-xs font-semibold text-muted-foreground tracking-wider">
                               — INTERVALO / RECREIO —
                             </td>
                           </tr>
@@ -543,10 +543,10 @@ export default function TurmaHorarioModal({
                       }
 
                       return (
-                        <tr key={slot.ordem} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="p-2.5 text-left border-r border-slate-100 bg-slate-50/30">
-                            <div className="font-bold text-xs text-slate-700">{slot.ordem}º Tempo</div>
-                            <div className="text-[10px] font-mono text-slate-400">
+                        <tr key={slot.ordem} className="hover:bg-muted/50 transition-colors">
+                          <td className="p-2.5 text-left border-r border-border bg-muted/30">
+                            <div className="font-bold text-xs text-foreground">{slot.ordem}º Tempo</div>
+                            <div className="text-[10px] font-mono text-muted-foreground">
                               {slot.inicio} - {slot.fim}
                             </div>
                           </td>
@@ -562,12 +562,12 @@ export default function TurmaHorarioModal({
                               <td
                                 key={key}
                                 onClick={() => handleCellClick(dia, slot.ordem)}
-                                className={`p-1.5 border-r border-slate-100 last:border-r-0 h-16 align-middle cursor-pointer transition-all ${
+                                className={`p-1.5 border-r border-border last:border-r-0 h-16 align-middle cursor-pointer transition-all ${
                                   disc
                                     ? "hover:opacity-90"
                                     : selectedDisciplinaId
-                                    ? "hover:bg-amber-50/60 bg-white"
-                                    : "hover:bg-slate-100/60 bg-slate-50/20"
+                                    ? "hover:bg-amber-50/60 bg-card"
+                                    : "hover:bg-muted/60 bg-muted/20"
                                 }`}
                               >
                                 {disc ? (
@@ -587,7 +587,7 @@ export default function TurmaHorarioModal({
                                     </p>
                                   </div>
                                 ) : (
-                                  <div className="w-full h-full rounded-lg border border-dashed border-slate-200 flex items-center justify-center text-slate-300 text-[11px] hover:border-slate-400 hover:text-slate-500 transition-colors">
+                                  <div className="w-full h-full rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground text-[11px] hover:border-border hover:text-muted-foreground transition-colors">
                                     +
                                   </div>
                                 )}
@@ -604,19 +604,19 @@ export default function TurmaHorarioModal({
           </div>
 
           {/* Lado Direito: Painel de Disciplinas & Cargas */}
-          <div className="w-full md:w-80 bg-white border-t md:border-t-0 md:border-l border-slate-200 p-4 flex flex-col">
+          <div className="w-full md:w-80 bg-card border-t md:border-t-0 md:border-l border-border p-4 flex flex-col">
             <div className="mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Disciplinas da Turma
               </h3>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-muted-foreground">
                 Clique numa matéria para selecionar e preencher na grade.
               </p>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {disciplinas.length === 0 ? (
-                <div className="text-center py-10 text-slate-400 text-xs">
+                <div className="text-center py-10 text-muted-foreground text-xs">
                   Nenhuma disciplina na matriz da turma.
                 </div>
               ) : (
@@ -630,24 +630,24 @@ export default function TurmaHorarioModal({
                       onClick={() => setSelectedDisciplinaId(isSelected ? null : disc.id)}
                       className={`p-3 rounded-xl border transition-all cursor-pointer ${
                         isSelected
-                          ? "ring-2 ring-[#E3B23C] border-[#E3B23C] bg-amber-50/40"
+                          ? "ring-2 ring-klasse-gold border-klasse-gold bg-amber-50/40"
                           : isComplete
-                          ? "bg-slate-50/60 border-slate-200 opacity-70 hover:opacity-100"
-                          : "bg-white border-slate-200 hover:border-slate-300 shadow-2xs"
+                          ? "bg-muted/60 border-border opacity-70 hover:opacity-100"
+                          : "bg-card border-border hover:border-border shadow-2xs"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-1">
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="w-2.5 h-2.5 rounded-full bg-slate-400 flex-shrink-0" />
-                            <span className="font-bold text-xs text-slate-800 truncate">
+                            <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/50 flex-shrink-0" />
+                            <span className="font-bold text-xs text-foreground truncate">
                               {disc.nome}
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
+                          <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
                             {disc.professorNome ? (
                               <>
-                                <UserCheck size={11} className="text-[#1F6B3B]" />
+                                <UserCheck size={11} className="text-klasse-green dark:text-klasse-green-300" />
                                 <span className="truncate">{disc.professorNome}</span>
                               </>
                             ) : (
@@ -664,8 +664,8 @@ export default function TurmaHorarioModal({
                           <span
                             className={`text-xs font-bold px-1.5 py-0.5 rounded ${
                               isComplete
-                                ? "bg-emerald-50 text-[#1F6B3B]"
-                                : "bg-slate-100 text-slate-700"
+                                ? "bg-emerald-50 text-klasse-green dark:text-klasse-green-300"
+                                : "bg-muted text-foreground"
                             }`}
                           >
                             {disc.alocados}/{disc.cargaSemanal}
@@ -693,8 +693,8 @@ export default function TurmaHorarioModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs text-slate-400 flex items-center gap-1.5">
+        <div className="p-4 border-t border-border bg-muted/50 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
             <Info size={13} />
             <span>Clique num tempo vazio para alocar a matéria selecionada; clique num tempo ocupado para desocupar.</span>
           </div>
@@ -703,21 +703,21 @@ export default function TurmaHorarioModal({
             <button
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold transition-colors"
+              className="px-4 py-2 bg-card border border-border text-foreground hover:bg-muted rounded-xl text-xs font-semibold transition-colors"
             >
               Fechar
             </button>
             <button
               onClick={() => handleSave("draft")}
               disabled={saving || loading}
-              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-card border border-border text-foreground hover:bg-muted rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
             >
               Guardar rascunho
             </button>
             <button
               onClick={() => handleSave("publish")}
               disabled={saving || loading}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#1F6B3B] hover:brightness-95 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-2 bg-klasse-green hover:brightness-95 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
             >
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
               Publicar Horário

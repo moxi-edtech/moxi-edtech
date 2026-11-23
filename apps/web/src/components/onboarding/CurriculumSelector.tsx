@@ -86,10 +86,10 @@ export function CurriculumPresetSelector({
     <section className="w-full space-y-8">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h2 className="text-2xl md:text-3xl font-bold text-slate-900">
+        <h2 className="text-2xl md:text-3xl font-bold text-foreground">
           Plano Curricular Base
         </h2>
-        <p className="text-slate-500 max-w-2xl mx-auto">
+        <p className="text-muted-foreground max-w-2xl mx-auto">
           Selecione um modelo curricular de referência. Depois você poderá
           ajustar disciplinas, remover ou adicionar conforme a realidade da escola.
         </p>
@@ -104,14 +104,14 @@ export function CurriculumPresetSelector({
           <div key={groupId} className="space-y-4">
             {/* Título do grupo */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
+              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
                 <Icon size={20} />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">
+                <h3 className="text-lg font-semibold text-foreground">
                   {GROUP_LABELS[groupId]}
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Modelos de currículo mais usados neste segmento
                 </p>
               </div>
@@ -129,11 +129,11 @@ export function CurriculumPresetSelector({
                     type="button"
                     onClick={() => onChange(preset.key)}
                     className={[
-                      "relative flex flex-col items-start text-left p-4 md:p-5 rounded-2xl border transition-all duration-200",
-                      "hover:shadow-md hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/60",
+                      "relative flex flex-col items-start text-left p-4 md:p-5 rounded-xl border transition-all duration-200",
+                      "hover:shadow-md hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-gold/30",
                       isSelected
-                        ? "border-slate-500 bg-slate-50/60 shadow-sm"
-                        : "border-slate-200 bg-white",
+                        ? "border-klasse-gold bg-muted/60 shadow-sm"
+                        : "border-border bg-card",
                     ].join(" ")}
                   >
                     {/* Check no canto */}
@@ -141,8 +141,8 @@ export function CurriculumPresetSelector({
                       className={[
                         "absolute top-3 right-3 inline-flex items-center justify-center rounded-full border w-6 h-6 text-xs",
                         isSelected
-                          ? "bg-slate-500 border-slate-500 text-white"
-                          : "bg-white border-slate-300 text-transparent",
+                          ? "bg-klasse-gold border-klasse-gold text-klasse-gold-900"
+                          : "bg-card border-border text-transparent",
                       ].join(" ")}
                     >
                       <Check size={14} />
@@ -151,26 +151,26 @@ export function CurriculumPresetSelector({
                     {/* Título + badge */}
                     <div className="space-y-2 mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-900">
+                        <span className="font-semibold text-foreground">
                           {preset.title}
                         </span>
                         {preset.badge && (
-                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
+                          <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                             {preset.badge}
                           </span>
                         )}
                       </div>
                       {preset.desc && (
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           {preset.desc}
                         </p>
                       )}
                     </div>
 
                     {/* Meta / estatísticas */}
-                    <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
-                        <Layers size={12} className="text-slate-400" />
+                    <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5">
+                        <Layers size={12} className="text-muted-foreground" />
                         <span>{countsLoading ? "—" : `${disciplinesCount} disciplinas`}</span>
                       </span>
                       <span className="truncate">

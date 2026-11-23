@@ -15,7 +15,7 @@ type CardContentProps = {
  */
 export function Card({ children, className = '' }: CardProps) {
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-200/50 p-6 sm:p-8 ${className}`}>
+    <div className={`bg-card rounded-xl shadow-sm border border-border/50 p-6 sm:p-8 ${className}`}>
       {children}
     </div>
   );
@@ -43,7 +43,7 @@ export function CardHeader({ children, className = '' }: CardContentProps) {
 
 export function CardTitle({ children, className = '' }: CardContentProps) {
   return (
-    <h3 className={`text-lg font-semibold text-gray-900 ${className}`}>
+    <h3 className={`text-lg font-semibold text-foreground ${className}`}>
       {children}
     </h3>
   );
@@ -51,7 +51,7 @@ export function CardTitle({ children, className = '' }: CardContentProps) {
 
 export function CardDescription({ children, className = '' }: CardContentProps) {
   return (
-    <p className={`text-sm text-gray-600 mt-1 ${className}`}>
+    <p className={`text-sm text-muted-foreground mt-1 ${className}`}>
       {children}
     </p>
   );

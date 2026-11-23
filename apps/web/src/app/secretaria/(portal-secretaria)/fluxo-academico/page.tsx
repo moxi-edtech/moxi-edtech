@@ -20,7 +20,7 @@ export default function Page() {
           ]}
         />
       </div>
-      <Mermaid chart={fluxoAcademico} className="overflow-auto rounded-lg border bg-white p-4" />
+      <Mermaid chart={fluxoAcademico} className="overflow-auto rounded-lg border bg-card p-4" />
     </div>
   );
 }

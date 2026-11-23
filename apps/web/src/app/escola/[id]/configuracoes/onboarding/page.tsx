@@ -77,7 +77,7 @@ export default function ConfiguracoesPage({ params }: Props) {
       return <SettingsHubSkeleton />;
     } else { // If setup was not complete, or its initial load, show generic loader for the wizard flow
       return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="min-h-screen flex items-center justify-center bg-muted">
           <div className="flex flex-col items-center gap-3">
             <Skeleton className="h-5 w-44" />
             <Skeleton className="h-4 w-56" />
@@ -91,13 +91,13 @@ export default function ConfiguracoesPage({ params }: Props) {
   // AQUI ESTÁ A CORREÇÃO: Renderizamos o componente, não redirecionamos.
   if (!setupComplete || forceWizard) {
     return (
-      <div className="bg-slate-50 min-h-screen">
+      <div className="bg-muted min-h-screen">
         {/* Botão de voltar (só aparece se ele já tiver o setup feito e estiver a editar) */}
         {setupComplete && (
           <div className="max-w-6xl mx-auto pt-6 px-6">
             <button 
               onClick={() => setForceWizard(false)} 
-              className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-2 transition-colors"
+              className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
             >
               ← Voltar ao menu
             </button>
@@ -125,7 +125,7 @@ export default function ConfiguracoesPage({ params }: Props) {
   // 4. MODO HUB (Painel de Configurações)
   // Se já tem tudo pronto, mostra o menu bonito
   return (
-    <div className="bg-slate-50 min-h-screen">
+    <div className="bg-muted min-h-screen">
       <SettingsHub 
         escolaId={escolaParam} 
         onOpenWizard={() => setForceWizard(true)} 

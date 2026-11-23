@@ -207,7 +207,7 @@ export default function BalcaoPageClient({
       leading={
         <Link
           href={`/escola/${escolaParam}/secretaria`}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
           aria-label="Voltar à Secretaria"
         >
           <ArrowLeft className="h-4 w-4" />

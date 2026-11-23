@@ -232,22 +232,22 @@ export default function IdentidadePage({ params }: Props) {
   }, [escolaParam]);
 
   const inputClass =
-    "w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-amber focus:ring-1 focus:ring-amber placeholder:text-slate-300 bg-slate-50";
+    "w-full rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-foreground outline-none transition-all focus:border-amber focus:ring-1 focus:ring-amber placeholder:text-muted-foreground bg-muted";
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-muted">
       <div className={`${PORTAL_PAGE_INSET} space-y-8`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link
               href={base}
-              className="group inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-colors"
+              className="group inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />
               Voltar ao painel
             </Link>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 font-sora">Identidade da Escola</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground font-sora">Identidade da Escola</h1>
+            <p className="text-sm text-muted-foreground">
               Dados oficiais definidos pelo super admin. Caso precise alterar,
               solicite ao suporte.
             </p>
@@ -259,9 +259,9 @@ export default function IdentidadePage({ params }: Props) {
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-6">
-              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-50 pb-4 mb-2">
-                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Identidade Oficial</h3>
+              <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between border-b border-border pb-4 mb-2">
+                  <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Identidade Oficial</h3>
                   {formData.plano_atual && (
                     <span className="inline-flex items-center rounded-full bg-emerald px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-sm">
                       Plano {formData.plano_atual}
@@ -270,7 +270,7 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Nome oficial</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nome oficial</label>
                   <input
                     className={inputClass}
                     value={formData.nome}
@@ -280,7 +280,7 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">NIF</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">NIF</label>
                   <input
                     className={inputClass}
                     value={formData.nif ?? ""}
@@ -290,7 +290,7 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Endereço</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Endereço</label>
                   <input
                     className={inputClass}
                     value={formData.endereco ?? ""}
@@ -300,10 +300,10 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
-                <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-4 mb-2">Aparência da Marca</h3>
+              <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-sm">
+                <h3 className="text-xs font-black text-foreground uppercase tracking-widest border-b border-border pb-4 mb-2">Aparência da Marca</h3>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Logótipo (URL)</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Logótipo (URL)</label>
                   <input
                     className={inputClass}
                     value={formData.logo_url ?? ""}
@@ -311,7 +311,7 @@ export default function IdentidadePage({ params }: Props) {
                     placeholder="https://..."
                   />
                   <div className="mt-3 flex items-center gap-2">
-                    <label className="inline-flex cursor-pointer items-center rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700">
+                    <label className="inline-flex cursor-pointer items-center rounded-xl bg-klasse-gold px-3 py-2 text-xs font-bold text-klasse-gold-900 hover:brightness-95">
                       {savingLogo ? "A carregar..." : "Carregar logo"}
                       <input
                         type="file"
@@ -327,7 +327,7 @@ export default function IdentidadePage({ params }: Props) {
                     </label>
                     <button
                       type="button"
-                      className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      className="rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground hover:bg-muted disabled:opacity-50"
                       disabled={savingLogo || !formData.logo_url}
                       onClick={() => void removeLogo()}
                     >
@@ -337,22 +337,22 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cor principal</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cor principal</label>
                   <input
                     className={inputClass}
                     value={formData.cor_primaria ?? ""}
                     readOnly
                     placeholder="#E3B23C"
                   />
-                  <p className="text-xs text-slate-400 mt-2 italic">* Definido automaticamente para o portal da sua escola.</p>
+                  <p className="text-xs text-muted-foreground mt-2 italic">* Definido automaticamente para o portal da sua escola.</p>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-50 pb-4 mb-2">
+              <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between border-b border-border pb-4 mb-2">
                   <div>
-                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Dados Bancários</h3>
-                    <p className="mt-1 text-xs text-slate-400">Usados em documentos e instruções de pagamento da escola.</p>
+                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Dados Bancários</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">Usados em documentos e instruções de pagamento da escola.</p>
                   </div>
                   <button
                     type="button"
@@ -365,9 +365,9 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Banco</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Banco</label>
                   <input
-                    className={inputClass.replace("bg-slate-50", "bg-white")}
+                    className={inputClass.replace("bg-muted", "bg-card")}
                     value={formData.dados_pagamento.banco}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -380,9 +380,9 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Titular da conta</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Titular da conta</label>
                   <input
-                    className={inputClass.replace("bg-slate-50", "bg-white")}
+                    className={inputClass.replace("bg-muted", "bg-card")}
                     value={formData.dados_pagamento.titular_conta}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -395,9 +395,9 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">IBAN</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">IBAN</label>
                   <input
-                    className={`${inputClass.replace("bg-slate-50", "bg-white")} font-mono uppercase`}
+                    className={`${inputClass.replace("bg-muted", "bg-card")} font-mono uppercase`}
                     value={formData.dados_pagamento.iban}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -410,9 +410,9 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Chave KWIK</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chave KWIK</label>
                   <input
-                    className={inputClass.replace("bg-slate-50", "bg-white")}
+                    className={inputClass.replace("bg-muted", "bg-card")}
                     value={formData.dados_pagamento.kwik_chave}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -425,9 +425,9 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">Número da conta</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Número da conta</label>
                   <input
-                    className={inputClass.replace("bg-slate-50", "bg-white")}
+                    className={inputClass.replace("bg-muted", "bg-card")}
                     value={formData.dados_pagamento.numero_conta}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -442,25 +442,25 @@ export default function IdentidadePage({ params }: Props) {
             </div>
 
             <aside className="space-y-4">
-              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-6 shadow-sm">
+              <div className="rounded-xl border border-border bg-card p-6 space-y-6 shadow-sm">
                 <div>
-                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-3 mb-4">Estado da Subscrição</h3>
+                  <h3 className="text-xs font-black text-foreground uppercase tracking-widest border-b border-border pb-3 mb-4">Estado da Subscrição</h3>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Status</span>
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Status</span>
                       <Badge className={`${formData.status === 'ativa' ? 'bg-emerald-500' : 'bg-rose-500'} text-white border-0 text-[9px] font-black`}>
                         {formData.status?.toUpperCase()}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Portal Aluno</span>
-                      <Badge className={`${formData.aluno_portal_enabled ? 'bg-slate-500' : 'bg-slate-200'} text-white border-0 text-[9px] font-black`}>
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Portal Aluno</span>
+                      <Badge className={`${formData.aluno_portal_enabled ? 'bg-muted-foreground' : 'bg-muted-foreground/15'} text-white border-0 text-[9px] font-black`}>
                         {formData.aluno_portal_enabled ? 'ACTIVADO' : 'DESACTIVADO'}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-slate-400 uppercase">Membro desde</span>
-                      <span className="text-xs font-bold text-slate-700 font-mono">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">Membro desde</span>
+                      <span className="text-xs font-bold text-foreground font-mono">
                         {formData.created_at ? new Date(formData.created_at).toLocaleDateString('pt-AO') : '—'}
                       </span>
                     </div>
@@ -469,12 +469,12 @@ export default function IdentidadePage({ params }: Props) {
               </div>
 
               {planoLimites && (
-                <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
-                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-3 mb-2">Contrato do Plano</h3>
-                  <div className="grid gap-3 text-xs text-slate-600">
+                <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-sm">
+                  <h3 className="text-xs font-black text-foreground uppercase tracking-widest border-b border-border pb-3 mb-2">Contrato do Plano</h3>
+                  <div className="grid gap-3 text-xs text-muted-foreground">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold uppercase text-slate-400">Preço mensal</span>
-                      <span className="font-bold text-slate-800">
+                      <span className="font-semibold uppercase text-muted-foreground">Preço mensal</span>
+                      <span className="font-bold text-foreground">
                         {assinatura?.valor_kz
                           ? `Kz ${assinatura.valor_kz.toLocaleString("pt-AO")}`
                           : planoLimites.price_mensal_kz
@@ -483,44 +483,44 @@ export default function IdentidadePage({ params }: Props) {
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold uppercase text-slate-400">Alunos</span>
-                      <span className="font-bold text-slate-800">
+                      <span className="font-semibold uppercase text-muted-foreground">Alunos</span>
+                      <span className="font-bold text-foreground">
                         {planoLimites.max_alunos ? `Até ${planoLimites.max_alunos}` : "Ilimitado"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold uppercase text-slate-400">Utilizadores admin</span>
-                      <span className="font-bold text-slate-800">
+                      <span className="font-semibold uppercase text-muted-foreground">Utilizadores admin</span>
+                      <span className="font-bold text-foreground">
                         {planoLimites.max_admin_users ? `Até ${planoLimites.max_admin_users}` : "Ilimitado"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold uppercase text-slate-400">Professores</span>
-                      <span className="font-bold text-slate-800">
+                      <span className="font-semibold uppercase text-muted-foreground">Professores</span>
+                      <span className="font-bold text-foreground">
                         {planoLimites.professores_ilimitados ? "Ilimitado" : "Limitado"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold uppercase text-slate-400">Storage</span>
-                      <span className="font-bold text-slate-800">
+                      <span className="font-semibold uppercase text-muted-foreground">Storage</span>
+                      <span className="font-bold text-foreground">
                         {planoLimites.max_storage_gb ? `${planoLimites.max_storage_gb} GB` : "Ilimitado"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold uppercase text-slate-400">API</span>
-                      <span className="font-bold text-slate-800">{planoLimites.api_enabled ? "Ativa" : "Não"}</span>
+                      <span className="font-semibold uppercase text-muted-foreground">API</span>
+                      <span className="font-bold text-foreground">{planoLimites.api_enabled ? "Ativa" : "Não"}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold uppercase text-slate-400">Multi-campus</span>
-                      <span className="font-bold text-slate-800">{planoLimites.multi_campus ? "Ativo" : "Não"}</span>
+                      <span className="font-semibold uppercase text-muted-foreground">Multi-campus</span>
+                      <span className="font-bold text-foreground">{planoLimites.multi_campus ? "Ativo" : "Não"}</span>
                     </div>
                     <div className="pt-2">
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Benefícios</div>
-                      <div className="mt-2 grid gap-2 text-[11px] text-slate-600">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Benefícios</div>
+                      <div className="mt-2 grid gap-2 text-[11px] text-muted-foreground">
                         {beneficiosPlano.map((item) => (
                           <div key={item.label} className="flex items-center justify-between">
                             <span>{item.label}</span>
-                            <span className={`font-semibold ${item.enabled ? "text-emerald-600" : "text-slate-400"}`}>
+                            <span className={`font-semibold ${item.enabled ? "text-emerald-600" : "text-muted-foreground"}`}>
                               {item.enabled ? "Ativo" : "Indisponível"}
                             </span>
                           </div>
@@ -528,7 +528,7 @@ export default function IdentidadePage({ params }: Props) {
                       </div>
                     </div>
                     {planoLimites.max_admin_users && (
-                      <div className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+                      <div className="rounded-xl bg-muted px-3 py-2 text-[11px] text-muted-foreground">
                         No piloto (3–6 meses), o limite de utilizadores administrativos é apenas monitorado.
                       </div>
                     )}
@@ -536,13 +536,13 @@ export default function IdentidadePage({ params }: Props) {
                 </div>
               )}
 
-              <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-800">Prévia do logótipo</h3>
-                <div className="flex items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 min-h-[180px]">
+              <div className="rounded-xl border border-border bg-card p-6 space-y-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-foreground">Prévia do logótipo</h3>
+                <div className="flex items-center justify-center rounded-xl border border-dashed border-border bg-muted p-6 min-h-[180px]">
                   {logoPreview ? (
                     <img src={logoPreview} alt="Logótipo" className="max-h-40 object-contain animate-in fade-in zoom-in duration-300" />
                   ) : (
-                    <div className="text-xs text-slate-400 text-center">
+                    <div className="text-xs text-muted-foreground text-center">
                       Logótipo oficial não carregado.
                     </div>
                   )}

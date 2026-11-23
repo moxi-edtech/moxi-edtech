@@ -58,7 +58,14 @@ try {
   diff = execFileSync("git", [
     "diff", "--unified=0", "--no-color", "--diff-filter=ACMR",
     range, "--", "apps/web/src/components", "apps/web/src/app"
-  ], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  ], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    // Whole-PR unified diff can exceed Node child_process default 1 MiB
+    // in broad visual reconciliations. Bound memory while retaining every
+    // added line for the existing security/contrast rules.
+    maxBuffer: 64 * 1024 * 1024,
+  });
 } catch (error) {
   console.error("Theme Switcher Guard: cannot compare with " + range + " (full git history required).");
   console.error(String(error.message));

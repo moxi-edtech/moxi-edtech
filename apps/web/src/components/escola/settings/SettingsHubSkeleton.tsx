@@ -42,7 +42,7 @@ export default function SettingsHubSkeleton() {
         <Pulse className="h-3 w-28 mb-4" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Highlight card (wizard) */}
-          <div className="p-4 rounded-xl border border-klasse-gold/30 bg-gradient-to-br from-klasse-gold/5 to-white flex flex-col gap-3">
+          <div className="p-4 rounded-xl border border-klasse-gold/30 bg-gradient-to-br from-klasse-gold/5 to-card flex flex-col gap-3">
             <div className="flex items-start justify-between">
               <Pulse className="w-9 h-9 rounded-xl" />
               <Pulse className="w-4 h-4 rounded" />

@@ -377,16 +377,16 @@ export default function FluxosConfiguracaoPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Contexto operacional único</p>
-              <h3 className="mt-1 text-sm font-bold text-slate-900">
+              <h3 className="mt-1 text-sm font-bold text-foreground">
                 Ano letivo usado pelos fluxos: {anoLetivoAdmissoesLabel}
               </h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 O modo automático acompanha o ano letivo ativo. A mesma referência deve alimentar admissões, calendário, turmas, notas e matrícula.
               </p>
             </div>
             <Link
               href={buildPortalHref(escolaParam, "/admin/operacoes-academicas/wizard")}
-              className="inline-flex shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"
+              className="inline-flex shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-card px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"
             >
               Ver virada e calendário
             </Link>
@@ -397,14 +397,14 @@ export default function FluxosConfiguracaoPage() {
             </p>
           )}
         </div>
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Prontidão de candidaturas</p>
-              <h3 className="mt-1 text-sm font-bold text-slate-900">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Prontidão de candidaturas</p>
+              <h3 className="mt-1 text-sm font-bold text-foreground">
                 {formalAdmissionsReady ? "Pronta para candidaturas formais" : "Ainda existem requisitos para candidaturas formais"}
               </h3>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Ano consultado: {admissionReadiness?.ano_letivo ?? anoLetivoAdmissoesLabel}.
               </p>
             </div>
@@ -468,8 +468,8 @@ export default function FluxosConfiguracaoPage() {
             <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Rematrículas pelo portal</p>
-              <h3 className="mt-1 text-sm font-bold text-slate-900">Gerir ou reabrir janela de rematrícula</h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600">Defina o período em que os alunos podem confirmar a rematrícula. Uma janela desativada pode ser reaberta nessa área.</p>
+              <h3 className="mt-1 text-sm font-bold text-foreground">Gerir ou reabrir janela de rematrícula</h3>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Defina o período em que os alunos podem confirmar a rematrícula. Uma janela desativada pode ser reaberta nessa área.</p>
             </div>
           </div>
           <Link
@@ -480,10 +480,10 @@ export default function FluxosConfiguracaoPage() {
           </Link>
         </div>
         <div className="flex items-center justify-between mb-6">
-            <h3 className="text-sm font-bold text-slate-900">Pipeline de Aprovação de Notas</h3>
+            <h3 className="text-sm font-bold text-foreground">Pipeline de Aprovação de Notas</h3>
             <button 
                 onClick={() => setIsSistemaModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                className="inline-flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted-foreground/15"
             >
                 <LayoutDashboard className="h-4 w-4" />
                 Ver Status do Sistema
@@ -493,11 +493,11 @@ export default function FluxosConfiguracaoPage() {
           
           {/* COLUNA DA ESQUERDA: PIPELINE */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Administração de Candidaturas</h3>
-                  <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-500">
+                  <h3 className="text-sm font-bold text-foreground">Administração de Candidaturas</h3>
+                  <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">
                     Defina o prazo padrão de reserva mostrado no Cofre e usado quando a secretaria aprova uma candidatura para pagamento.
                   </p>
                 </div>
@@ -508,26 +508,26 @@ export default function FluxosConfiguracaoPage() {
 
               <div className="mt-5 grid gap-4 sm:grid-cols-3">
                 <label className="block sm:col-span-3">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     Modo do portal público
                   </span>
                   <select
                     disabled={loadingAdmissoes}
                     value={modoPortalAdmissoes}
                     onChange={(event) => setModoPortalAdmissoes(event.target.value === "pre_candidatura_proximo_ano" ? "pre_candidatura_proximo_ano" : "ingresso_imediato")}
-                    className="mt-2 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10"
+                    className="mt-2 h-10 w-full rounded-lg border border-border px-3 text-sm font-bold text-foreground outline-none focus:border-klasse-green focus:ring-2 focus:ring-klasse-green/10"
                   >
                     <option value="ingresso_imediato">Ingresso imediato no ano letivo ativo</option>
                     <option value="pre_candidatura_proximo_ano">Pré-candidaturas para o próximo ano</option>
                   </select>
-                  <p className="mt-2 text-xs font-medium leading-relaxed text-slate-500">
+                  <p className="mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
                     {modoPortalAdmissoes === "pre_candidatura_proximo_ano"
                       ? "O candidato demonstra interesse. O sistema não cria reserva, cobrança ou matrícula até a escola preparar o próximo ano."
                       : "O candidato entra no fluxo formal de candidatura, reserva, pagamento e matrícula."}
                   </p>
                 </label>
                 <label className="block">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     Ano de admissões
                   </span>
                   <select
@@ -536,7 +536,7 @@ export default function FluxosConfiguracaoPage() {
                     onChange={(event) => {
                       setAnoLetivoAdmissoes(parseOptionalAcademicYear(event.target.value));
                     }}
-                    className="mt-2 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10"
+                    className="mt-2 h-10 w-full rounded-lg border border-border px-3 text-sm font-bold text-foreground outline-none focus:border-klasse-green focus:ring-2 focus:ring-klasse-green/10"
                   >
                     <option value="">Automático: ano operacional ativo</option>
                     {anosLetivos.map((ano) => (
@@ -546,12 +546,12 @@ export default function FluxosConfiguracaoPage() {
                       </option>
                     ))}
                   </select>
-                  <p className="mt-2 text-xs font-medium leading-relaxed text-slate-500">
+                  <p className="mt-2 text-xs font-medium leading-relaxed text-muted-foreground">
                     As novas candidaturas públicas entram em {anoLetivoAdmissoesLabel}.
                   </p>
                 </label>
                 <label className="block">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     Expiração da reserva
                   </span>
                   <div className="mt-2 flex items-center gap-2">
@@ -565,13 +565,13 @@ export default function FluxosConfiguracaoPage() {
                         const nextValue = Number(event.target.value);
                         setReservaExpiracaoHoras(Number.isFinite(nextValue) ? nextValue : 48);
                       }}
-                      className="h-10 w-24 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10"
+                      className="h-10 w-24 rounded-lg border border-border px-3 text-sm font-bold text-foreground outline-none focus:border-klasse-green focus:ring-2 focus:ring-klasse-green/10"
                     />
-                    <span className="text-sm font-semibold text-slate-600">horas</span>
+                    <span className="text-sm font-semibold text-muted-foreground">horas</span>
                   </div>
                 </label>
                 <label className="block">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     Prazo para corrigir pendência
                   </span>
                   <div className="mt-2 flex items-center gap-2">
@@ -585,23 +585,23 @@ export default function FluxosConfiguracaoPage() {
                         const nextValue = Number(event.target.value);
                         setPendenciaSlaHoras(Number.isFinite(nextValue) ? nextValue : 72);
                       }}
-                      className="h-10 w-24 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10"
+                      className="h-10 w-24 rounded-lg border border-border px-3 text-sm font-bold text-foreground outline-none focus:border-klasse-green focus:ring-2 focus:ring-klasse-green/10"
                     />
-                    <span className="text-sm font-semibold text-slate-600">horas</span>
+                    <span className="text-sm font-semibold text-muted-foreground">horas</span>
                   </div>
                 </label>
               </div>
 
-              <div className="mt-6 border-t border-slate-100 pt-5">
+              <div className="mt-6 border-t border-border pt-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-500">Documentos do catálogo</h4>
-                    <p className="mt-1 text-xs text-slate-500">A secretaria deve usar estes nomes ao solicitar correções.</p>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Documentos do catálogo</h4>
+                    <p className="mt-1 text-xs text-muted-foreground">A secretaria deve usar estes nomes ao solicitar correções.</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setDocumentosAdmissao((prev) => [...prev, { id: `documento_${prev.length + 1}`, label: "Novo documento" }])}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                    className="rounded-lg border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted"
                   >
                     Adicionar
                   </button>
@@ -615,7 +615,7 @@ export default function FluxosConfiguracaoPage() {
                           const id = normalizeDocumentoId(event.target.value);
                           setDocumentosAdmissao((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, id } : item));
                         }}
-                        className="h-10 rounded-lg border border-slate-200 px-3 text-xs font-mono text-slate-700 outline-none focus:border-[#1F6B3B]"
+                        className="h-10 rounded-lg border border-border px-3 text-xs font-mono text-foreground outline-none focus:border-klasse-green"
                       />
                       <input
                         value={doc.label}
@@ -623,7 +623,7 @@ export default function FluxosConfiguracaoPage() {
                           const label = event.target.value;
                           setDocumentosAdmissao((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, label, id: item.id || normalizeDocumentoId(label) } : item));
                         }}
-                        className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#1F6B3B]"
+                        className="h-10 rounded-lg border border-border px-3 text-sm font-semibold text-foreground outline-none focus:border-klasse-green"
                       />
                       <button
                         type="button"
@@ -637,13 +637,13 @@ export default function FluxosConfiguracaoPage() {
                 </div>
               </div>
               <div className="mt-4">
-                <p className="text-xs leading-relaxed text-slate-500">
+                <p className="text-xs leading-relaxed text-muted-foreground">
                   O padrão atual é aplicado em novas reservas e novas pendências. Registos já emitidos mantêm as datas gravadas.
                 </p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
               
               <div className="relative space-y-0">
                 {steps.map((step, index) => (
@@ -651,14 +651,14 @@ export default function FluxosConfiguracaoPage() {
                     
                     {/* Linha Conectora */}
                     {index !== steps.length - 1 && (
-                      <div className={`absolute left-[19px] top-10 h-full w-[2px] border-l-2 border-dashed z-0 ${step.active ? 'border-slate-300' : 'border-slate-100'}`} />
+                      <div className={`absolute left-[19px] top-10 h-full w-[2px] border-l-2 border-dashed z-0 ${step.active ? 'border-border' : 'border-border'}`} />
                     )}
 
                     {/* Ícone Redondo */}
                     <div className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                       step.active 
-                        ? 'border-[#1F6B3B] bg-white text-[#1F6B3B]' 
-                        : 'border-slate-200 bg-slate-50 text-slate-300'
+                        ? 'border-klasse-green bg-card text-klasse-green dark:text-klasse-green-300'
+                        : 'border-border bg-muted text-muted-foreground'
                     }`}>
                       <step.icon className="h-5 w-5" strokeWidth={1.5} />
                     </div>
@@ -666,17 +666,17 @@ export default function FluxosConfiguracaoPage() {
                     {/* Card do Passo */}
                     <div className={`flex flex-1 flex-col justify-between gap-4 rounded-xl border p-4 sm:flex-row sm:items-center transition-all ${
                       step.active 
-                        ? 'border-slate-200 bg-white' 
-                        : 'border-slate-100 bg-slate-50/50 opacity-70'
+                        ? 'border-border bg-card'
+                        : 'border-border bg-muted/50 opacity-70'
                     }`}>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-bold text-slate-900">{step.title}</span>
-                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                          <span className="text-sm font-bold text-foreground">{step.title}</span>
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
                             {step.role}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 leading-relaxed">{step.description}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
                       </div>
 
                       {/* Controles (Badge Horas + Toggle) */}
@@ -696,15 +696,15 @@ export default function FluxosConfiguracaoPage() {
                             onChange={() => !step.mandatory && toggleStep(step.id)}
                             disabled={step.mandatory}
                           />
-                          <div className="peer h-6 w-11 rounded-full bg-slate-200 
+                          <div className="peer h-6 w-11 rounded-full bg-muted-foreground/15
                             peer-focus:outline-none 
-                            peer-checked:bg-[#1F6B3B] 
+                            peer-checked:bg-klasse-green
                             after:content-[''] 
                             after:absolute after:top-[2px] after:left-[2px] 
-                            after:bg-white after:border-gray-300 after:border 
+                            after:bg-card after:border-border after:border
                             after:rounded-full after:h-5 after:w-5 
                             after:transition-all 
-                            peer-checked:after:translate-x-full peer-checked:after:border-white">
+                            peer-checked:after:translate-x-full peer-checked:after:border-border">
                           </div>
                         </label>
                       </div>
@@ -717,32 +717,32 @@ export default function FluxosConfiguracaoPage() {
 
           {/* COLUNA DA DIREITA: RECURSOS EXTRAS (Fiel ao print) */}
           <div className="space-y-4">
-            <div className="rounded-xl bg-[#020617] p-5 text-white shadow-md">
+            <div className="rounded-xl bg-klasse-dark p-5 text-white shadow-md">
               <h4 className="text-sm font-bold text-white">Automações Disponíveis</h4>
-              <p className="mt-1 text-xs text-slate-400">Recursos extras para turbinar seu fluxo.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Recursos extras para turbinar seu fluxo.</p>
               
               <div className="mt-4 space-y-3">
                 <div className="flex items-start gap-3 rounded-lg bg-white/5 p-3 hover:bg-white/10 transition cursor-pointer group">
                   <Mail className="h-4 w-4 mt-0.5 text-white" />
                   <div>
                     <p className="text-xs font-bold text-white">Notificação Automática</p>
-                    <p className="text-[10px] text-slate-400 leading-tight">Email para pais ao publicar.</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Email para pais ao publicar.</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start gap-3 rounded-lg bg-white/5 p-3 hover:bg-white/10 transition cursor-pointer group">
-                  <Stamp className="h-4 w-4 mt-0.5 text-slate-400 group-hover:text-white" />
+                  <Stamp className="h-4 w-4 mt-0.5 text-muted-foreground group-hover:text-white" />
                   <div>
-                    <p className="text-xs font-bold text-slate-300 group-hover:text-white">Assinatura Digital</p>
-                    <p className="text-[10px] text-slate-500 leading-tight">Exige e-CPF do Diretor (Em breve).</p>
+                    <p className="text-xs font-bold text-muted-foreground group-hover:text-white">Assinatura Digital</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Exige e-CPF do Diretor (Em breve).</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3 rounded-lg bg-white/5 p-3 hover:bg-white/10 transition cursor-pointer group">
-                  <FileSignature className="h-4 w-4 mt-0.5 text-slate-400 group-hover:text-white" />
+                  <FileSignature className="h-4 w-4 mt-0.5 text-muted-foreground group-hover:text-white" />
                   <div>
-                    <p className="text-xs font-bold text-slate-300 group-hover:text-white">Ata de Conselho</p>
-                    <p className="text-[10px] text-slate-500 leading-tight">Gera PDF da ata (Em breve).</p>
+                    <p className="text-xs font-bold text-muted-foreground group-hover:text-white">Ata de Conselho</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Gera PDF da ata (Em breve).</p>
                   </div>
                 </div>
               </div>

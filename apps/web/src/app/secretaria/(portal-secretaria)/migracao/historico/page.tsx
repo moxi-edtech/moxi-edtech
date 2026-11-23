@@ -72,7 +72,7 @@ export default function HistoricoImportacao() {
                 </a>
                 <a
                   href={`/api/migracao/${encodeURIComponent(item.id)}/erros`}
-                  className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200"
+                  className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-foreground bg-muted hover:bg-muted-foreground/15"
                 >
                   Ver erros
                 </a>

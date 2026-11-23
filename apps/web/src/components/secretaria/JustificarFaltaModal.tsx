@@ -88,27 +88,27 @@ export function JustificarFaltaModal() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted-foreground">
         A justificativa de faltas é registrada na turma dentro do painel acadêmico.
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-xs font-semibold uppercase text-slate-500">Ano letivo</label>
+          <label className="text-xs font-semibold uppercase text-muted-foreground">Ano letivo</label>
           <input
             type="number"
             value={anoLetivo}
             onChange={(event) => setAnoLetivo(Number(event.target.value))}
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
           />
         </div>
         <div>
-          <label className="text-xs font-semibold uppercase text-slate-500">Turma</label>
+          <label className="text-xs font-semibold uppercase text-muted-foreground">Turma</label>
           <div className="mt-1 flex items-center gap-2">
             <select
               value={turmaId}
               onChange={(event) => setTurmaId(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
             >
               <option value="">Selecione a turma</option>
               {turmas.map((turma) => {
@@ -121,7 +121,7 @@ export function JustificarFaltaModal() {
                 );
               })}
             </select>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
           </div>
         </div>
       </div>
@@ -144,7 +144,7 @@ export function JustificarFaltaModal() {
         onClick={() => {
           router.push(buildContextualPortalHref(escolaParam, "/secretaria/calendario", pathname));
         }}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted"
       >
         Ver calendário de faltas
       </button>

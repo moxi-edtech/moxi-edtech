@@ -97,8 +97,8 @@ function SituacaoFinanceiraChip({ situacao, meses, valor }: {
   useEffect(() => { setMounted(true); }, []);
 
   if (situacao === "em_dia") return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-[#1F6B3B]/10
-      px-2.5 py-1 text-[11px] font-bold text-[#1F6B3B]">
+    <span className="inline-flex items-center gap-1 rounded-full bg-klasse-green/10
+      px-2.5 py-1 text-[11px] font-bold text-klasse-green dark:text-klasse-green-300">
       <CheckCircle2 size={10} /> Em dia
     </span>
   );
@@ -117,8 +117,8 @@ function SituacaoFinanceiraChip({ situacao, meses, valor }: {
   );
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100
-      px-2.5 py-1 text-[11px] font-medium text-slate-500">
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted
+      px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
       <Minus size={10} /> Sem registo
     </span>
   );
@@ -126,10 +126,10 @@ function SituacaoFinanceiraChip({ situacao, meses, valor }: {
 
 function MatriculaBadge({ status }: { status: StatusMatricula }) {
   const cfg = {
-    matriculado:    { bg: "bg-[#1F6B3B]/8 text-[#1F6B3B]",  label: "Matriculado" },
-    sem_matricula:  { bg: "bg-slate-100 text-slate-500",      label: "Sem matrícula" },
-    pendente:       { bg: "bg-[#E3B23C]/10 text-[#9a7010]",  label: "Pendente" },
-  }[status] ?? { bg: "bg-slate-100 text-slate-500", label: "Sem matrícula" };
+    matriculado:    { bg: "bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300",  label: "Matriculado" },
+    sem_matricula:  { bg: "bg-muted text-muted-foreground",      label: "Sem matrícula" },
+    pendente:       { bg: "bg-klasse-gold/10 text-klasse-gold-900 dark:text-klasse-gold-300",  label: "Pendente" },
+  }[status] ?? { bg: "bg-muted text-muted-foreground", label: "Sem matrícula" };
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${cfg.bg}`}>
       {cfg.label}
@@ -167,30 +167,30 @@ function ConfirmModal({ cfg, onConfirm, onCancel }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200
+      <div className="relative bg-card rounded-xl shadow-2xl border border-border
         w-full max-w-md p-6 animate-in zoom-in-95 duration-150">
         <div className="flex items-start gap-4">
-          <div className={`flex-shrink-0 p-2.5 rounded-xl ${cfg.danger ? "bg-rose-100" : "bg-[#E3B23C]/10"}`}>
-            <AlertTriangle size={20} className={cfg.danger ? "text-rose-600" : "text-[#E3B23C]"} />
+          <div className={`flex-shrink-0 p-2.5 rounded-xl ${cfg.danger ? "bg-rose-100" : "bg-klasse-gold/10"}`}>
+            <AlertTriangle size={20} className={cfg.danger ? "text-rose-600" : "text-klasse-gold-900 dark:text-klasse-gold-300"} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-bold text-slate-900">{cfg.title}</h3>
-            <p className="text-sm text-slate-500 mt-1 leading-relaxed">{cfg.message}</p>
+            <h3 className="text-base font-bold text-foreground">{cfg.title}</h3>
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{cfg.message}</p>
           </div>
-          <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onCancel} className="text-muted-foreground hover:text-muted-foreground">
             <X size={18} />
           </button>
         </div>
         <div className="flex justify-end gap-3 mt-6">
           <button onClick={onCancel} disabled={cfg.loading}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold
-              text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50">
+            className="rounded-xl border border-border px-4 py-2 text-sm font-semibold
+              text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50">
             Cancelar
           </button>
           <button onClick={onConfirm} disabled={cfg.loading}
             className={`flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white
               transition-colors disabled:opacity-50
-              ${cfg.danger ? "bg-rose-600 hover:bg-rose-700" : "bg-[#1F6B3B] hover:bg-[#185830]"}`}>
+              ${cfg.danger ? "bg-rose-600 hover:bg-rose-700" : "bg-klasse-green hover:brightness-95"}`}>
             {cfg.loading && <Loader2 size={13} className="animate-spin" />}
             {cfg.confirm}
           </button>
@@ -280,23 +280,23 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
 
       {/* Drawer */}
       {aluno ? (
-      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-white shadow-2xl
-        border-l border-slate-200 flex flex-col transition-transform duration-300 translate-x-0">
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-card shadow-2xl
+        border-l border-border flex flex-col transition-transform duration-300 translate-x-0">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-[#1F6B3B]/10">
-              <Receipt size={16} className="text-[#1F6B3B]" />
+            <div className="p-2 rounded-xl bg-klasse-green/10">
+              <Receipt size={16} className="text-klasse-green dark:text-klasse-green-300" />
             </div>
             <div>
-              <p className="text-sm font-black text-slate-900">Registar Pagamento</p>
-              <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[180px]">
+              <p className="text-sm font-black text-foreground">Registar Pagamento</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[180px]">
                 {aluno?.nome ?? "—"}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} className="text-muted-foreground hover:text-muted-foreground transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -306,8 +306,8 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
           <div className={`mx-5 mt-5 rounded-xl px-4 py-3
             ${aluno.situacao_financeira === "em_atraso"
               ? "bg-rose-50 border border-rose-200"
-              : "bg-slate-50 border border-slate-200"}`}>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
+              : "bg-muted border border-border"}`}>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
               Situação actual
             </p>
             <div className="flex items-center justify-between">
@@ -330,11 +330,11 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
 
           {/* Valor */}
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-2">
+            <label className="block text-xs font-bold text-muted-foreground mb-2">
               Valor a registar (Kz) <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">
                 Kz
               </span>
               <input
@@ -345,9 +345,9 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
                 required
                 value={valor}
                 onChange={e => setValor(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-border
                   text-base font-bold focus:outline-none focus:ring-2
-                  focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                  focus:ring-klasse-gold/20 focus:border-klasse-gold"
                 placeholder="0"
               />
             </div>
@@ -355,7 +355,7 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
 
           {/* Método */}
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-2">
+            <label className="block text-xs font-bold text-muted-foreground mb-2">
               Método de pagamento
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -367,8 +367,8 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
                   className={`flex items-center gap-2 rounded-xl border px-3 py-2.5
                     text-sm font-semibold transition-all
                     ${metodo === m.id
-                      ? "border-[#1F6B3B] bg-[#1F6B3B]/5 text-[#1F6B3B]"
-                      : "border-slate-200 text-slate-600 hover:border-slate-300"}`}
+                      ? "border-klasse-green bg-klasse-green/5 text-klasse-green dark:text-klasse-green-300"
+                      : "border-border text-muted-foreground hover:border-ring"}`}
                 >
                   {m.icon} {m.label}
                 </button>
@@ -378,28 +378,28 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
 
           {/* Referência (opcional) */}
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-2">
-              Referência / Nº comprovativo <span className="text-slate-400 font-normal">(opcional)</span>
+            <label className="block text-xs font-bold text-muted-foreground mb-2">
+              Referência / Nº comprovativo <span className="text-muted-foreground font-normal">(opcional)</span>
             </label>
             <input
               type="text"
               value={ref}
               onChange={e => setRef(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm
-                focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+              className="w-full rounded-xl border border-border px-3 py-2.5 text-sm
+                focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-gold"
               placeholder="Ex: TRF-2026-00123"
             />
           </div>
         </form>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-slate-100 space-y-2">
+        <div className="px-5 py-4 border-t border-border space-y-2">
           <button
             onClick={submit as any}
             disabled={loading || !valor || Number(valor) <= 0}
             className="w-full flex items-center justify-center gap-2 rounded-xl
-              bg-[#1F6B3B] py-3 text-sm font-bold text-white
-              hover:bg-[#185830] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              bg-klasse-green py-3 text-sm font-bold text-white
+              hover:brightness-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading
               ? <><Loader2 size={14} className="animate-spin" /> A registar…</>
@@ -408,8 +408,8 @@ function PagamentoDrawer({ aluno, onClose, onSuccess }: {
           </button>
           <button
             onClick={onClose}
-            className="w-full rounded-xl border border-slate-200 py-2.5 text-sm
-              font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+            className="w-full rounded-xl border border-border py-2.5 text-sm
+              font-semibold text-muted-foreground hover:bg-muted transition-colors"
           >
             Cancelar
           </button>
@@ -437,53 +437,53 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30
-      flex items-center gap-3 rounded-2xl bg-slate-900 px-5 py-3.5
-      shadow-2xl shadow-black/30 animate-in slide-in-from-bottom-3 duration-200 border border-slate-700">
+      flex items-center gap-3 rounded-xl bg-klasse-dark px-5 py-3.5
+      shadow-2xl shadow-black/30 animate-in slide-in-from-bottom-3 duration-200 border border-border">
 
       <div className="flex items-center gap-2.5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#E3B23C] text-xs font-black text-slate-900">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-klasse-gold text-xs font-black text-klasse-gold-900">
           {count}
         </div>
         <span className="text-sm font-semibold text-white">
           {count === 1 ? "aluno seleccionado" : "alunos seleccionados"}
         </span>
-        <span className="text-slate-600 text-xs">de {total}</span>
+        <span className="text-white/75 text-xs">de {total}</span>
       </div>
 
-      <div className="h-4 w-px bg-slate-700 mx-1" />
+      <div className="h-4 w-px bg-muted-foreground/30 mx-1" />
 
       <div className="flex items-center gap-2">
         <button
           onClick={onExportSelection}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-700
-            px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-slate-500
+          className="flex items-center gap-1.5 rounded-xl border border-border
+            px-3 py-1.5 text-xs font-semibold text-white/80 hover:border-klasse-gold/60
             hover:text-white transition-colors"
         >
           <Download size={12} /> Exportar
         </button>
         <button
           onClick={onMessage}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-700
-            px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-slate-500
+          className="flex items-center gap-1.5 rounded-xl border border-border
+            px-3 py-1.5 text-xs font-semibold text-white/80 hover:border-klasse-gold/60
             hover:text-white transition-colors"
         >
           <MessageSquare size={12} /> Comunicado
         </button>
         <button
           onClick={onArchive}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-700
-            px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-amber-500
+          className="flex items-center gap-1.5 rounded-xl border border-border
+            px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-amber-500
             hover:text-amber-400 transition-colors"
         >
           <Archive size={12} /> Arquivar
         </button>
       </div>
 
-      <div className="h-4 w-px bg-slate-700 mx-1" />
+      <div className="h-4 w-px bg-muted-foreground/30 mx-1" />
 
       <button
         onClick={onClear}
-        className="text-slate-500 hover:text-white transition-colors"
+        className="text-white/75 hover:text-white transition-colors"
         title="Limpar selecção"
       >
         <X size={16} />
@@ -516,12 +516,12 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
   const reset = () => { setLocal(FILTROS_VAZIOS); onChange(FILTROS_VAZIOS); onClose(); };
 
   return (
-    <div className="absolute right-0 top-full mt-2 z-20 w-80 rounded-2xl bg-white
-      border border-slate-200 shadow-xl animate-in slide-in-from-top-2 duration-150">
+    <div className="absolute right-0 top-full mt-2 z-20 w-80 rounded-xl bg-card
+      border border-border shadow-xl animate-in slide-in-from-top-2 duration-150">
 
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-        <p className="text-sm font-bold text-slate-900">Filtros</p>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <p className="text-sm font-bold text-foreground">Filtros</p>
+        <button onClick={onClose} className="text-muted-foreground hover:text-muted-foreground">
           <X size={16} />
         </button>
       </div>
@@ -530,7 +530,7 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
 
         {/* Situação financeira */}
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+          <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
             Situação financeira
           </label>
           <div className="space-y-1.5">
@@ -547,9 +547,9 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
                   value={opt.value}
                   checked={local.situacao_financeira === opt.value}
                   onChange={() => setLocal(f => ({ ...f, situacao_financeira: opt.value as any }))}
-                  className="accent-[#1F6B3B]"
+                  className="accent-klasse-green"
                 />
-                <span className="text-sm text-slate-700">{opt.label}</span>
+                <span className="text-sm text-foreground">{opt.label}</span>
               </label>
             ))}
           </div>
@@ -557,14 +557,14 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
 
         {/* Turma */}
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+          <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
             Turma
           </label>
           <select
             value={local.turma_id}
             onChange={e => setLocal(f => ({ ...f, turma_id: e.target.value }))}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm
-              focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30"
+            className="w-full rounded-xl border border-border px-3 py-2 text-sm
+              focus:outline-none focus:ring-2 focus:ring-klasse-gold/20"
           >
             <option value="">Todas as turmas</option>
             {turmas.map(t => (
@@ -577,7 +577,7 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
 
         {/* Status matrícula */}
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+          <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
             Estado de matrícula
           </label>
           <div className="space-y-1.5">
@@ -594,27 +594,27 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
                   value={opt.value}
                   checked={local.status_matricula === opt.value}
                   onChange={() => setLocal(f => ({ ...f, status_matricula: opt.value as any }))}
-                  className="accent-[#1F6B3B]"
+                  className="accent-klasse-green"
                 />
-                <span className="text-sm text-slate-700">{opt.label}</span>
+                <span className="text-sm text-foreground">{opt.label}</span>
               </label>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 px-5 py-4 border-t border-slate-100">
+      <div className="flex items-center gap-2 px-5 py-4 border-t border-border">
         <button
           onClick={reset}
-          className="flex-1 rounded-xl border border-slate-200 py-2 text-sm
-            font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+          className="flex-1 rounded-xl border border-border py-2 text-sm
+            font-semibold text-muted-foreground hover:bg-muted transition-colors"
         >
           Limpar
         </button>
         <button
           onClick={apply}
-          className="flex-1 rounded-xl bg-[#1F6B3B] py-2 text-sm
-            font-bold text-white hover:bg-[#185830] transition-colors"
+          className="flex-1 rounded-xl bg-klasse-green py-2 text-sm
+            font-bold text-white hover:brightness-95 transition-colors"
         >
           Aplicar
         </button>
@@ -639,39 +639,39 @@ function ExportDropdown({ onExport, onClose, hasFilters }: {
   }, [onClose]);
 
   return (
-    <div className="absolute right-0 top-full mt-2 z-20 w-64 rounded-2xl bg-white
-      border border-slate-200 shadow-xl animate-in slide-in-from-top-2 duration-150 overflow-hidden">
+    <div className="absolute right-0 top-full mt-2 z-20 w-64 rounded-xl bg-card
+      border border-border shadow-xl animate-in slide-in-from-top-2 duration-150 overflow-hidden">
 
-      <div className="px-4 py-3 border-b border-slate-100">
-        <p className="text-xs font-bold text-slate-700">Exportar lista</p>
+      <div className="px-4 py-3 border-b border-border">
+        <p className="text-xs font-bold text-foreground">Exportar lista</p>
         {hasFilters && (
-          <p className="text-[10px] text-slate-400 mt-0.5">Aplica os filtros activos</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Aplica os filtros activos</p>
         )}
       </div>
 
       <button
         onClick={() => onExport("excel")}
-        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors text-left"
+        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted transition-colors text-left"
       >
         <div className="p-2 rounded-lg bg-green-50">
           <FileSpreadsheet size={14} className="text-green-700" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-slate-800">Excel (.xlsx)</p>
-          <p className="text-[10px] text-slate-400">Com dados financeiros e turma</p>
+          <p className="text-sm font-semibold text-foreground">Excel (.xlsx)</p>
+          <p className="text-[10px] text-muted-foreground">Com dados financeiros e turma</p>
         </div>
       </button>
 
       <button
         onClick={() => onExport("pdf")}
-        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors text-left border-t border-slate-50"
+        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted transition-colors text-left border-t border-border"
       >
         <div className="p-2 rounded-lg bg-rose-50">
           <FileText size={14} className="text-rose-700" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-slate-800">PDF oficial</p>
-          <p className="text-[10px] text-slate-400">Nome, número, turma, ano lectivo</p>
+          <p className="text-sm font-semibold text-foreground">PDF oficial</p>
+          <p className="text-[10px] text-muted-foreground">Nome, número, turma, ano lectivo</p>
         </div>
       </button>
     </div>
@@ -685,10 +685,10 @@ function ExportDropdown({ onExport, onClose, hasFilters }: {
 function RowSkeleton() {
   return (
     <tr className="animate-pulse">
-      <td className="px-4 py-4"><div className="h-4 w-4 rounded bg-slate-100" /></td>
+      <td className="px-4 py-4"><div className="h-4 w-4 rounded bg-muted" /></td>
       {[50, 160, 100, 90, 80, 60].map((w, i) => (
         <td key={i} className="px-4 py-4">
-          <div className="h-4 rounded-lg bg-slate-100" style={{ width: w }} />
+          <div className="h-4 rounded-lg bg-muted" style={{ width: w }} />
         </td>
       ))}
     </tr>
@@ -1038,35 +1038,35 @@ export default function AlunosListClient({
       {priorityModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setPriorityModal({ open: false, aluno: null, note: "" })} />
-          <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 animate-in zoom-in-95 duration-150">
+          <div className="relative bg-card rounded-xl shadow-2xl border border-border w-full max-w-md p-6 animate-in zoom-in-95 duration-150">
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0 p-2.5 rounded-xl bg-rose-100">
                 <Flame size={20} className="text-rose-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-base font-bold text-slate-900">Definir Prioridade</h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  Marcar <span className="font-bold text-slate-800">{priorityModal.aluno?.nome}</span> como prioridade para a secretaria?
+                <h3 className="text-base font-bold text-foreground">Definir Prioridade</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Marcar <span className="font-bold text-foreground">{priorityModal.aluno?.nome}</span> como prioridade para a secretaria?
                 </p>
               </div>
             </div>
             
             <div className="mt-5">
-               <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+               <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
                  Nota / Instrução para a Secretaria
                </label>
                <textarea 
                 value={priorityModal.note}
                 onChange={e => setPriorityModal(p => ({ ...p, note: e.target.value }))}
                 placeholder="Ex: Aluno precisa deste BI para o exame. Ou: Pai prometeu pagar amanhã."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 transition-all min-h-[100px]"
+                className="w-full bg-muted border border-border rounded-xl px-4 py-3 text-sm font-semibold text-foreground outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 transition-all min-h-[100px]"
                />
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
               <button 
                 onClick={() => setPriorityModal({ open: false, aluno: null, note: "" })}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors"
               >
                 Cancelar
               </button>
@@ -1101,14 +1101,14 @@ export default function AlunosListClient({
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-black text-foreground tracking-tight">
               Gestão de Alunos
             </h1>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-sm text-muted-foreground mt-0.5">
               {tab === "ativos" ? "Alunos activos na escola" : "Alunos arquivados"}
               {filtrosActivos > 0 && (
                 <span className="ml-2 inline-flex items-center gap-1 rounded-full
-                  bg-[#E3B23C]/10 px-2 py-0.5 text-[10px] font-bold text-[#9a7010]">
+                  bg-klasse-gold/10 px-2 py-0.5 text-[10px] font-bold text-klasse-gold-900 dark:text-klasse-gold-300">
                   {filtrosActivos} filtro{filtrosActivos !== 1 ? "s" : ""} activo{filtrosActivos !== 1 ? "s" : ""}
                 </span>
               )}
@@ -1118,9 +1118,9 @@ export default function AlunosListClient({
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={() => { setTab(t => t === "ativos" ? "arquivados" : "ativos"); setQ(""); setFiltros(FILTROS_VAZIOS); }}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white
-                px-4 py-2.5 text-sm font-semibold text-slate-600 hover:border-slate-300
-                hover:bg-slate-50 transition-all shadow-sm"
+              className="flex items-center gap-2 rounded-xl border border-border bg-card
+                px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:border-ring
+                hover:bg-muted transition-all shadow-sm"
             >
               {tab === "ativos" ? <><Archive size={14} /> Arquivados</> : <><Users size={14} /> Activos</>}
             </button>
@@ -1128,8 +1128,8 @@ export default function AlunosListClient({
             {tab === "ativos" && (
               <button
                 onClick={() => setShowForm(f => !f)}
-                className="flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-2.5
-                  text-sm font-bold text-white hover:bg-[#185830] transition-colors shadow-sm"
+                className="flex items-center gap-2 rounded-xl bg-klasse-green px-4 py-2.5
+                  text-sm font-bold text-white hover:brightness-95 transition-colors shadow-sm"
               >
                 <UserPlus size={14} /> Adicionar aluno
               </button>
@@ -1140,40 +1140,40 @@ export default function AlunosListClient({
         {/* ── Formulário colapsável ──────────────────────────────────────── */}
         {showForm && tab === "ativos" && (
           <form onSubmit={submitInvite}
-            className="rounded-2xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-5
+            className="rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-5
               animate-in slide-in-from-top-2 duration-150">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-bold text-[#1F6B3B]">Novo aluno</p>
-              <button type="button" onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600">
+              <p className="text-sm font-bold text-klasse-green dark:text-klasse-green-300">Novo aluno</p>
+              <button type="button" onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-muted-foreground">
                 <X size={16} />
               </button>
             </div>
             <div className="flex items-end gap-3">
               <div className="flex-1">
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">Nome completo</label>
+                <label className="block text-xs font-bold text-muted-foreground mb-1.5">Nome completo</label>
                 <input
                   autoFocus
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
-                    focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-gold"
                   placeholder="Ex: João Baptista"
                   value={invite.nome}
                   onChange={e => setInvite(v => ({ ...v, nome: e.target.value }))}
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">E-mail</label>
+                <label className="block text-xs font-bold text-muted-foreground mb-1.5">E-mail</label>
                 <input
                   type="email"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
-                    focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30 focus:border-[#1F6B3B]"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-gold"
                   placeholder="Ex: joao@escola.ao"
                   value={invite.email}
                   onChange={e => setInvite(v => ({ ...v, email: e.target.value }))}
                 />
               </div>
               <button type="submit" disabled={creating}
-                className="flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-5 py-2.5
-                  text-sm font-bold text-white hover:bg-[#185830] transition-colors
+                className="flex items-center gap-2 rounded-xl bg-klasse-green px-5 py-2.5
+                  text-sm font-bold text-white hover:brightness-95 transition-colors
                   disabled:opacity-50 flex-shrink-0">
                 {creating
                   ? <><Loader2 size={13} className="animate-spin" /> A criar…</>
@@ -1189,27 +1189,27 @@ export default function AlunosListClient({
           <form onSubmit={e => { e.preventDefault(); setNextCursor(null); fetchAlunos(); }}
             className="flex items-center gap-2 flex-1">
             <div className="relative flex-1">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="search"
                 placeholder="Pesquisar por nome, número de login ou ID…"
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 bg-white
-                  text-sm focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30
-                  focus:border-[#1F6B3B] shadow-sm"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-border bg-card
+                  text-sm focus:outline-none focus:ring-2 focus:ring-klasse-gold/20
+                  focus:border-klasse-gold shadow-sm"
                 value={q}
                 onChange={e => setQ(e.target.value)}
               />
               {q && (
                 <button type="button"
                   onClick={() => { setQ(""); fetchAlunos(); }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground">
                   <X size={14} />
                 </button>
               )}
             </div>
             <button type="submit"
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
-                font-semibold text-slate-600 hover:bg-slate-50 shadow-sm transition-colors">
+              className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm
+                font-semibold text-muted-foreground hover:bg-muted shadow-sm transition-colors">
               Pesquisar
             </button>
           </form>
@@ -1217,7 +1217,7 @@ export default function AlunosListClient({
           <select
             value={orderBy}
             onChange={e => { setOrderBy(e.target.value as "" | "nome_asc"); setNextCursor(null); }}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#1F6B3B]/30"
+            className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-klasse-gold/20"
           >
             <option value="">Mais recentes</option>
             <option value="nome_asc">Nome A-Z</option>
@@ -1230,14 +1230,14 @@ export default function AlunosListClient({
               className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm
                 font-semibold shadow-sm transition-all
                 ${filtrosActivos > 0
-                  ? "border-[#1F6B3B] bg-[#1F6B3B]/5 text-[#1F6B3B]"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                  ? "border-klasse-green bg-klasse-green/5 text-klasse-green dark:text-klasse-green-300"
+                  : "border-border bg-card text-muted-foreground hover:bg-muted"}`}
             >
               <SlidersHorizontal size={14} />
               Filtros
               {filtrosActivos > 0 && (
                 <span className="flex h-4 w-4 items-center justify-center rounded-full
-                  bg-[#1F6B3B] text-[9px] font-black text-white">
+                  bg-klasse-green text-[9px] font-black text-white">
                   {filtrosActivos}
                 </span>
               )}
@@ -1258,8 +1258,8 @@ export default function AlunosListClient({
             <button
               onClick={() => setShowExport(e => !e)}
               disabled={exporting}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white
-                px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50
+              className="flex items-center gap-2 rounded-xl border border-border bg-card
+                px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted
                 shadow-sm transition-colors disabled:opacity-50"
             >
               {exporting
@@ -1278,8 +1278,8 @@ export default function AlunosListClient({
           </div>
 
           <button onClick={() => fetchAlunos()}
-            className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-500
-              hover:bg-slate-50 shadow-sm transition-colors" title="Actualizar">
+            className="rounded-xl border border-border bg-card p-2.5 text-muted-foreground
+              hover:bg-muted shadow-sm transition-colors" title="Actualizar">
             <RefreshCw size={15} />
           </button>
         </div>
@@ -1287,11 +1287,11 @@ export default function AlunosListClient({
         {/* ── Chips de filtros activos ───────────────────────────────────── */}
         {filtrosActivos > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-slate-400 font-semibold">Filtros:</span>
+            <span className="text-xs text-muted-foreground font-semibold">Filtros:</span>
             {filtros.situacao_financeira && (
               <button onClick={() => setFiltros(f => ({ ...f, situacao_financeira: "" }))}
-                className="flex items-center gap-1.5 rounded-full border border-slate-200
-                  bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:border-rose-300
+                className="flex items-center gap-1.5 rounded-full border border-border
+                  bg-card px-3 py-1 text-xs font-semibold text-muted-foreground hover:border-rose-300
                   hover:text-rose-600 transition-colors">
                 {filtros.situacao_financeira === "em_dia" ? "Em dia"
                   : filtros.situacao_financeira === "em_atraso" ? "Em atraso"
@@ -1301,8 +1301,8 @@ export default function AlunosListClient({
             )}
             {filtros.turma_id && (
               <button onClick={() => setFiltros(f => ({ ...f, turma_id: "" }))}
-                className="flex items-center gap-1.5 rounded-full border border-slate-200
-                  bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:border-rose-300
+                className="flex items-center gap-1.5 rounded-full border border-border
+                  bg-card px-3 py-1 text-xs font-semibold text-muted-foreground hover:border-rose-300
                   hover:text-rose-600 transition-colors">
                 {turmas.find(t => t.id === filtros.turma_id)?.turma_codigo
                   || turmas.find(t => t.id === filtros.turma_id)?.nome
@@ -1312,40 +1312,40 @@ export default function AlunosListClient({
             )}
             {filtros.status_matricula && (
               <button onClick={() => setFiltros(f => ({ ...f, status_matricula: "" }))}
-                className="flex items-center gap-1.5 rounded-full border border-slate-200
-                  bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:border-rose-300
+                className="flex items-center gap-1.5 rounded-full border border-border
+                  bg-card px-3 py-1 text-xs font-semibold text-muted-foreground hover:border-rose-300
                   hover:text-rose-600 transition-colors">
                 {filtros.status_matricula}
                 <X size={10} />
               </button>
             )}
             <button onClick={() => setFiltros(FILTROS_VAZIOS)}
-              className="text-xs text-slate-400 hover:text-rose-500 font-semibold transition-colors">
+              className="text-xs text-muted-foreground hover:text-rose-500 font-semibold transition-colors">
               Limpar tudo
             </button>
           </div>
         )}
 
         {/* ── Tabela ───────────────────────────────────────────────────────── */}
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
 
           {/* Cabeçalho */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-muted/50">
             <div className="flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full
-                ${tab === "ativos" ? "bg-[#1F6B3B]" : "bg-[#E3B23C]"}`} />
-              <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                ${tab === "ativos" ? "bg-klasse-green" : "bg-klasse-gold"}`} />
+              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 {tab === "ativos" ? "Alunos activos" : "Alunos arquivados"}
               </span>
               {!loading && (
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-muted-foreground">
                   — {alunos.length}{nextCursor ? "+" : ""} registos
                 </span>
               )}
             </div>
             {selected.size > 0 && (
               <button onClick={() => setSelected(new Set())}
-                className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+                className="text-xs text-muted-foreground hover:text-muted-foreground flex items-center gap-1">
                 <XCircle size={12} /> Limpar selecção
               </button>
             )}
@@ -1354,15 +1354,15 @@ export default function AlunosListClient({
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100">
+                <tr className="border-b border-border">
                   {/* Checkbox seleccionar tudo */}
                   <th className="px-4 py-3 w-10">
                     <button onClick={toggleAll}
-                      className="text-slate-400 hover:text-[#1F6B3B] transition-colors">
+                      className="text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors">
                       {allSelected
-                        ? <CheckSquare size={16} className="text-[#1F6B3B]" />
+                        ? <CheckSquare size={16} className="text-klasse-green dark:text-klasse-green-300" />
                         : someSelected
-                        ? <Minus size={16} className="text-[#E3B23C]" />
+                        ? <Minus size={16} className="text-klasse-gold-900 dark:text-klasse-gold-300" />
                         : <Square size={16} />
                       }
                     </button>
@@ -1370,28 +1370,28 @@ export default function AlunosListClient({
                   {["Nº Processo", "Aluno", "Turma", "Situação Financeira", "Matrícula", "Acções"].map((h, i) => (
                     <th key={h}
                       className={`px-4 py-3 text-left text-[10px] font-bold uppercase
-                        tracking-widest text-slate-400 ${i === 5 ? "text-center" : ""}`}>
+                        tracking-widest text-muted-foreground ${i === 5 ? "text-center" : ""}`}>
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-border">
                 {loading ? (
                   Array.from({ length: 6 }).map((_, i) => <RowSkeleton key={i} />)
                 ) : alunos.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-2">
-                        <Users size={28} className="text-slate-200" />
-                        <p className="text-sm font-semibold text-slate-400">
+                        <Users size={28} className="text-muted-foreground/40" />
+                        <p className="text-sm font-semibold text-muted-foreground">
                           Nenhum aluno encontrado.
                         </p>
                         {(q || filtrosActivos > 0) && (
                           <button
                             onClick={() => { setQ(""); setFiltros(FILTROS_VAZIOS); fetchAlunos(); }}
-                            className="mt-1 text-xs text-[#1F6B3B] font-semibold hover:underline"
+                            className="mt-1 text-xs text-klasse-green dark:text-klasse-green-300 font-semibold hover:underline"
                           >
                             Limpar pesquisa e filtros
                           </button>
@@ -1405,14 +1405,14 @@ export default function AlunosListClient({
                     return (
                       <tr key={aluno.id}
                         className={`group transition-colors
-                          ${isSelected ? "bg-[#1F6B3B]/5" : "hover:bg-slate-50/80"}`}>
+                          ${isSelected ? "bg-klasse-green/5" : "hover:bg-muted/80"}`}>
 
                         {/* Checkbox */}
                         <td className="px-4 py-3.5">
                           <button onClick={() => toggleOne(aluno.id)}
-                            className="text-slate-300 hover:text-[#1F6B3B] transition-colors">
+                            className="text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors">
                             {isSelected
-                              ? <CheckSquare size={16} className="text-[#1F6B3B]" />
+                              ? <CheckSquare size={16} className="text-klasse-green dark:text-klasse-green-300" />
                               : <Square size={16} />
                             }
                           </button>
@@ -1421,23 +1421,23 @@ export default function AlunosListClient({
                         {/* Nº Processo */}
                         <td className="px-4 py-3.5">
                           {aluno.numero_processo_login || aluno.numero_processo
-                            ? <span className="font-mono text-sm font-semibold text-slate-700">
+                            ? <span className="font-mono text-sm font-semibold text-foreground">
                                 {aluno.numero_processo_login || aluno.numero_processo}
                               </span>
-                            : <span className="text-xs text-slate-300">—</span>
+                            : <span className="text-xs text-muted-foreground">—</span>
                           }
                         </td>
 
                         {/* Nome */}
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2.5">
-                            <div className="h-8 w-8 rounded-lg bg-[#1F6B3B]/10 flex items-center
-                              justify-center flex-shrink-0 text-xs font-black text-[#1F6B3B]">
+                            <div className="h-8 w-8 rounded-lg bg-klasse-green/10 flex items-center
+                              justify-center flex-shrink-0 text-xs font-black text-klasse-green dark:text-klasse-green-300">
                               {aluno.nome?.charAt(0).toUpperCase() ?? "?"}
                             </div>
                             <div>
-                              <p className="font-bold text-slate-800">{aluno.nome ?? "—"}</p>
-                              <p className="font-mono text-[10px] text-slate-400">
+                              <p className="font-bold text-foreground">{aluno.nome ?? "—"}</p>
+                              <p className="font-mono text-[10px] text-muted-foreground">
                                 {aluno.id.slice(0, 8)}…
                               </p>
                             </div>
@@ -1447,11 +1447,11 @@ export default function AlunosListClient({
                         {/* Turma */}
                         <td className="px-4 py-3.5">
                           {aluno.turma_codigo ? (
-                            <span className="font-bold text-slate-900">
+                            <span className="font-bold text-foreground">
                               {aluno.turma_codigo}
                             </span>
                           ) : (
-                            <span className="text-xs text-slate-300">—</span>
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </td>
 
@@ -1476,33 +1476,33 @@ export default function AlunosListClient({
                             {tab === "ativos" ? (
                               <>
                                 <Link href={buildPortalHref(escolaParam, isOperacoesContext ? `/operacoes/alunos/${aluno.id}` : isSecretariaContext ? `/secretaria/alunos/${aluno.id}` : `/admin/alunos/${aluno.id}`)}
-                                  className="flex items-center gap-1 rounded-lg border border-slate-200
-                                    px-2 py-1.5 text-xs font-semibold text-slate-600
-                                    hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors"
+                                  className="flex items-center gap-1 rounded-lg border border-border
+                                    px-2 py-1.5 text-xs font-semibold text-muted-foreground
+                                    hover:border-klasse-green hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors"
                                   title="Ver perfil">
                                   <ChevronRight size={12} />
                                 </Link>
                                 {aluno.situacao_financeira !== "sem_registo" && (
                                   <button
                                     onClick={() => setDrawerAluno(aluno)}
-                                    className="flex items-center gap-1 rounded-lg border border-slate-200
-                                      px-2 py-1.5 text-xs font-semibold text-slate-600
-                                      hover:border-[#E3B23C] hover:text-[#9a7010] transition-colors"
+                                    className="flex items-center gap-1 rounded-lg border border-border
+                                      px-2 py-1.5 text-xs font-semibold text-muted-foreground
+                                      hover:border-klasse-gold hover:text-klasse-gold-900 dark:hover:text-klasse-gold-300 transition-colors"
                                     title="Registar pagamento"
                                   >
                                     <DollarSign size={12} />
                                   </button>
                                 )}
                                 <button onClick={() => setPriorityModal({ open: true, aluno, note: "" })}
-                                  className="flex items-center gap-1 rounded-lg border border-slate-200
-                                    px-2 py-1.5 text-xs font-semibold text-slate-500
+                                  className="flex items-center gap-1 rounded-lg border border-border
+                                    px-2 py-1.5 text-xs font-semibold text-muted-foreground
                                     hover:border-rose-400 hover:text-rose-600 transition-colors"
                                   title="Pedir Prioridade">
                                   <Flame size={12} />
                                 </button>
                                 <button onClick={() => archiveOne(aluno)}
-                                  className="flex items-center gap-1 rounded-lg border border-slate-200
-                                    px-2 py-1.5 text-xs font-semibold text-slate-500
+                                  className="flex items-center gap-1 rounded-lg border border-border
+                                    px-2 py-1.5 text-xs font-semibold text-muted-foreground
                                     hover:border-amber-300 hover:text-amber-600 transition-colors"
                                   title="Arquivar">
                                   <Archive size={12} />
@@ -1511,14 +1511,14 @@ export default function AlunosListClient({
                             ) : (
                               <>
                                 <button onClick={() => restoreOne(aluno)}
-                                  className="flex items-center gap-1 rounded-lg border border-slate-200
-                                    px-2 py-1.5 text-xs font-semibold text-slate-600
-                                    hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors">
+                                  className="flex items-center gap-1 rounded-lg border border-border
+                                    px-2 py-1.5 text-xs font-semibold text-muted-foreground
+                                    hover:border-klasse-green hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors">
                                   <RotateCcw size={12} />
                                 </button>
                                 <button onClick={() => hardDelete(aluno)}
-                                  className="flex items-center gap-1 rounded-lg border border-slate-200
-                                    px-2 py-1.5 text-xs font-semibold text-slate-500
+                                  className="flex items-center gap-1 rounded-lg border border-border
+                                    px-2 py-1.5 text-xs font-semibold text-muted-foreground
                                     hover:border-rose-300 hover:text-rose-600 transition-colors">
                                   <Trash2 size={12} />
                                 </button>
@@ -1536,12 +1536,12 @@ export default function AlunosListClient({
 
           {/* Load more */}
           {nextCursor && !loading && (
-            <div className="flex justify-center border-t border-slate-100 bg-slate-50/30 p-4">
+            <div className="flex justify-center border-t border-border bg-muted/30 p-4">
               <button
                 onClick={() => fetchAlunos({ cursor: nextCursor, append: true })}
                 disabled={loadingMore}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-2.5
-                  text-sm font-semibold text-slate-600 hover:bg-white disabled:opacity-50 transition-colors"
+                className="flex items-center gap-2 rounded-xl border border-border px-5 py-2.5
+                  text-sm font-semibold text-muted-foreground hover:bg-card disabled:opacity-50 transition-colors"
               >
                 {loadingMore
                   ? <><Loader2 size={13} className="animate-spin" /> A carregar…</>

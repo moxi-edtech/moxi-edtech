@@ -15,7 +15,7 @@ export function Select({ label, id, error, className = '', options, children, ..
     <select
       id={selectId}
       className={`w-full p-3 border rounded-lg transition-colors ${
-        error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-teal-500 focus:border-teal-500'
+        error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-border focus:ring-teal-500 focus:border-teal-500'
       } ${className}`}
       {...props}
     >
@@ -33,7 +33,7 @@ export function Select({ label, id, error, className = '', options, children, ..
 
   return (
     <div className="w-full">
-      <label htmlFor={selectId} className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+      <label htmlFor={selectId} className="block text-sm font-medium text-foreground mb-1.5">{label}</label>
       {selectEl}
       {error && <p className="mt-1.5 text-sm text-red-600">{error}</p>}
     </div>

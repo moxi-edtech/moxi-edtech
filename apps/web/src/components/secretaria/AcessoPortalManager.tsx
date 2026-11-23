@@ -222,57 +222,57 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
       )}
 
       {/* Header & Estatísticas */}
-      <Card className="rounded-xl shadow-sm border-slate-200 overflow-hidden">
-        <div className="bg-slate-50/50 border-b border-slate-100 p-6 flex flex-row items-center justify-between">
+      <Card className="rounded-xl shadow-sm border-border overflow-hidden">
+        <div className="bg-muted/50 border-b border-border p-6 flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2 text-[#1F6B3B]">
+            <CardTitle className="flex items-center gap-2 text-klasse-green dark:text-klasse-green-300">
               <Users className="w-6 h-6" />
               Gestor de Acessos ao Portal
             </CardTitle>
-            <p className="text-sm text-slate-500 mt-1 font-sora">
+            <p className="text-sm text-muted-foreground mt-1 font-sora">
               Controle o ciclo de vida das contas dos alunos e distribuição de credenciais.
             </p>
           </div>
           
           {!loadingLimites && (
-            <div className="flex flex-col items-end rounded-xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Licenças Disponíveis</span>
+            <div className="flex flex-col items-end rounded-xl border border-border bg-card px-5 py-3 shadow-sm">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Licenças Disponíveis</span>
               <div className="flex items-baseline gap-1">
-                <span className={`text-2xl font-bold ${licencasTotais !== null && licencasDisponiveis <= 5 ? 'text-rose-600' : 'text-[#E3B23C]'}`}>
+                <span className={`text-2xl font-bold ${licencasTotais !== null && licencasDisponiveis <= 5 ? 'text-rose-600' : 'text-klasse-gold-700 dark:text-klasse-gold-300'}`}>
                   {licencasDisponiveisLabel}
                 </span>
-                <span className="text-sm text-slate-500 font-medium">/ {licencasTotaisLabel}</span>
+                <span className="text-sm text-muted-foreground font-medium">/ {licencasTotaisLabel}</span>
               </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div className="w-full bg-muted h-1.5 rounded-full mt-2 overflow-hidden">
                 <div 
-                  className="bg-[#E3B23C] h-full transition-all duration-500" 
+                  className="bg-klasse-gold h-full transition-all duration-500"
                   style={{ width: `${licencasTotais ? (licencasUsadas / licencasTotais) * 100 : 0}%` }}
                 />
               </div>
-              <span className="mt-1.5 text-[10px] text-slate-500 font-medium">Usadas: {licencasUsadas}</span>
+              <span className="mt-1.5 text-[10px] text-muted-foreground font-medium">Usadas: {licencasUsadas}</span>
             </div>
           )}
         </div>
 
         <CardContent className="p-0">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)} className="w-full">
-            <div className="px-6 pt-4 border-b border-slate-100">
+            <div className="px-6 pt-4 border-b border-border">
               <TabsList className="bg-transparent h-auto p-0 gap-6 w-full justify-start border-none">
                 <TabsTrigger 
                   value="pendentes" 
-                  className="px-0 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-[#E3B23C] data-[state=active]:bg-transparent data-[state=active]:text-[#E3B23C] data-[state=active]:shadow-none font-bold text-slate-500"
+                  className="px-0 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-klasse-gold data-[state=active]:bg-transparent data-[state=active]:text-klasse-gold-700 dark:data-[state=active]:text-klasse-gold-300 data-[state=active]:shadow-none font-bold text-muted-foreground"
                 >
                   Pendentes
                 </TabsTrigger>
                 <TabsTrigger 
                   value="ativos" 
-                  className="px-0 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-[#E3B23C] data-[state=active]:bg-transparent data-[state=active]:text-[#E3B23C] data-[state=active]:shadow-none font-bold text-slate-500"
+                  className="px-0 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-klasse-gold data-[state=active]:bg-transparent data-[state=active]:text-klasse-gold-700 dark:data-[state=active]:text-klasse-gold-300 data-[state=active]:shadow-none font-bold text-muted-foreground"
                 >
                   Ativos
                 </TabsTrigger>
                 <TabsTrigger 
                   value="bloqueados" 
-                  className="px-0 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-[#E3B23C] data-[state=active]:bg-transparent data-[state=active]:text-[#E3B23C] data-[state=active]:shadow-none font-bold text-slate-500"
+                  className="px-0 py-3 rounded-none border-b-2 border-transparent data-[state=active]:border-klasse-gold data-[state=active]:bg-transparent data-[state=active]:text-klasse-gold-700 dark:data-[state=active]:text-klasse-gold-300 data-[state=active]:shadow-none font-bold text-muted-foreground"
                 >
                   Bloqueados
                 </TabsTrigger>
@@ -280,13 +280,13 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
             </div>
 
             {/* Filtros */}
-            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/30">
+            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/30">
               <div className="relative">
-                <Search className="absolute left-3 top-[42px] w-4 h-4 text-slate-400" />
+                <Search className="absolute left-3 top-[42px] w-4 h-4 text-muted-foreground" />
                 <Input 
                   label="Pesquisar"
                   placeholder="Nome ou processo..." 
-                  className="pl-10 rounded-xl border-slate-200"
+                  className="pl-10 rounded-xl border-border"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -294,7 +294,7 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
               <Select 
                 value={turmaId}
                 onChange={(e) => setTurmaId(e.target.value)}
-                className="rounded-xl border-slate-200"
+                className="rounded-xl border-border"
                 options={[
                   { value: "", label: "Todas as Turmas" },
                   ...(turmas?.map(t => ({ value: t.id, label: `${t.nome} (${t.turma_codigo})` })) || [])
@@ -305,7 +305,7 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
                    Selecionar Todos
                  </Button>
                  {selecionados.length > 0 && (
-                   <Button variant="ghost" className="rounded-xl text-slate-500" onClick={limparSelecao}>
+                   <Button variant="ghost" className="rounded-xl text-muted-foreground" onClick={limparSelecao}>
                      Limpar ({selecionados.length})
                    </Button>
                  )}
@@ -339,14 +339,14 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
 
               {/* Lista de Alunos */}
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
-                  <Loader2 className="w-8 h-8 animate-spin text-[#E3B23C]" />
+                <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+                  <Loader2 className="w-8 h-8 animate-spin text-klasse-gold-700 dark:text-klasse-gold-300" />
                   <p className="text-sm font-medium">Carregando alunos...</p>
                 </div>
               ) : items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                  <div className="bg-slate-50 p-4 rounded-full mb-4">
-                    <Users className="w-10 h-10 text-slate-300" />
+                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                  <div className="bg-muted p-4 rounded-full mb-4">
+                    <Users className="w-10 h-10 text-muted-foreground" />
                   </div>
                   <p className="text-sm font-medium">Nenhum aluno encontrado nesta aba.</p>
                 </div>
@@ -360,25 +360,25 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
                         onClick={() => toggleSelecionar(aluno.id)}
                         className={`group relative flex flex-col p-4 rounded-2xl border transition-all cursor-pointer ${
                           isActive 
-                            ? 'border-[#E3B23C] bg-white ring-2 ring-[#E3B23C]/10 shadow-md' 
-                            : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                            ? 'border-klasse-gold bg-card ring-2 ring-klasse-gold/10 shadow-md'
+                            : 'border-border bg-card hover:border-border hover:shadow-sm'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-slate-900 truncate">{aluno.nome}</h3>
-                            <p className="text-xs text-slate-500 font-medium">Proc: {aluno.numero_processo || '—'}</p>
+                            <h3 className="font-bold text-foreground truncate">{aluno.nome}</h3>
+                            <p className="text-xs text-muted-foreground font-medium">Proc: {aluno.numero_processo || '—'}</p>
                           </div>
                           <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                            isActive ? 'bg-[#E3B23C] border-[#E3B23C]' : 'border-slate-300 group-hover:border-[#E3B23C]'
+                            isActive ? 'bg-klasse-gold border-klasse-gold' : 'border-border group-hover:border-klasse-gold'
                           }`}>
-                            {isActive && <Check className="w-3 h-3 text-white stroke-[3px]" />}
+                            {isActive && <Check className="w-3 h-3 text-klasse-gold-900 stroke-[3px]" />}
                           </div>
                         </div>
 
                         <div className="space-y-2">
                           {activeTab === 'pendentes' && (
-                            <div className="flex items-center gap-2 text-[10px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg w-fit">
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-muted px-2 py-1 rounded-lg w-fit">
                               <Calendar className="w-3 h-3" />
                               Criado em: {aluno.created_at ? format(new Date(aluno.created_at), "dd/MM/yyyy") : '—'}
                             </div>
@@ -386,12 +386,12 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
 
                           {activeTab === 'ativos' && (
                             <>
-                              <div className="flex items-center gap-2 text-[10px] text-slate-500 bg-slate-50 px-2 py-1 rounded-lg w-fit">
+                              <div className="flex items-center gap-2 text-[10px] text-muted-foreground bg-muted px-2 py-1 rounded-lg w-fit">
                                 <Clock className="w-3 h-3" />
                                 Último Login: {aluno.last_login ? format(new Date(aluno.last_login), "dd/MM/yyyy HH:mm") : 'Nunca logou'}
                               </div>
                               {aluno.data_ativacao && (
-                                <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1 ml-1">
+                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-1 ml-1">
                                   <UserCheck className="w-3 h-3 text-emerald-500" />
                                   Ativado em: {format(new Date(aluno.data_ativacao), "dd/MM/yyyy")}
                                 </div>
@@ -436,12 +436,12 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
 
       {/* Modal de Motivo de Bloqueio */}
       {showBlockModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h3 className="font-bold text-slate-900">Bloquear Acesso</h3>
-              <button onClick={() => setShowBlockModal(false)} className="rounded-xl p-2 hover:bg-slate-50 transition-colors">
-                <X className="h-5 w-5 text-slate-400" />
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-klasse-dark/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <h3 className="font-bold text-foreground">Bloquear Acesso</h3>
+              <button onClick={() => setShowBlockModal(false)} className="rounded-xl p-2 hover:bg-muted transition-colors">
+                <X className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
             <div className="p-6">
@@ -451,15 +451,15 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
                   O acesso ao portal será interrompido imediatamente para os {selecionados.length} alunos selecionados.
                 </p>
               </div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Motivo do Bloqueio</label>
+              <label className="block text-sm font-bold text-foreground mb-2">Motivo do Bloqueio</label>
               <textarea 
-                className="w-full rounded-xl border-slate-200 focus:ring-[#E3B23C] focus:border-[#E3B23C] min-h-[100px] text-sm p-3"
+                className="w-full rounded-xl border-border focus:ring-klasse-gold focus:border-klasse-gold min-h-[100px] text-sm p-3"
                 placeholder="Ex: Pendência financeira, mau comportamento digital, etc..."
                 value={blockReason}
                 onChange={(e) => setBlockReason(e.target.value)}
               />
             </div>
-            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
+            <div className="flex justify-end gap-3 border-t border-border bg-muted px-6 py-4">
               <Button variant="ghost" className="rounded-xl" onClick={() => setShowBlockModal(false)}>
                 Cancelar
               </Button>
@@ -477,16 +477,16 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
 
       {/* Modal de Distribuição de Credenciais */}
       {showDistributionModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h3 className="font-bold text-slate-900">Gerar e Enviar Acessos</h3>
-              <button onClick={() => setShowDistributionModal(false)} className="rounded-xl p-2 hover:bg-slate-50 transition-colors">
-                <X className="h-5 w-5 text-slate-400" />
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-klasse-dark/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <h3 className="font-bold text-foreground">Gerar e Enviar Acessos</h3>
+              <button onClick={() => setShowDistributionModal(false)} className="rounded-xl p-2 hover:bg-muted transition-colors">
+                <X className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
             <div className="p-6">
-              <p className="text-sm text-slate-600 mb-6">
+              <p className="text-sm text-muted-foreground mb-6">
                 Como deseja distribuir as credenciais para os {selecionados.length} alunos?
               </p>
               
@@ -500,34 +500,34 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
                     key={channel.id}
                     className={`flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer ${
                       selectedChannel === channel.id 
-                        ? 'border-[#E3B23C] bg-white ring-2 ring-[#E3B23C]/10' 
-                        : 'border-slate-200 hover:border-slate-300'
+                        ? 'border-klasse-gold bg-card ring-2 ring-klasse-gold/10'
+                        : 'border-border hover:border-border'
                     }`}
                   >
                     <input 
                       type="radio" 
                       name="channel" 
-                      className="mt-1 accent-[#E3B23C]" 
+                      className="mt-1 accent-klasse-gold"
                       checked={selectedChannel === channel.id}
                       onChange={() => setSelectedChannel(channel.id as any)}
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <channel.icon className={`w-4 h-4 ${selectedChannel === channel.id ? 'text-[#E3B23C]' : 'text-slate-400'}`} />
-                        <span className="text-sm font-bold text-slate-900">{channel.label}</span>
+                        <channel.icon className={`w-4 h-4 ${selectedChannel === channel.id ? 'text-klasse-gold-700 dark:text-klasse-gold-300' : 'text-muted-foreground'}`} />
+                        <span className="text-sm font-bold text-foreground">{channel.label}</span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{channel.desc}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{channel.desc}</p>
                     </div>
                   </label>
                 ))}
               </div>
             </div>
-            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
+            <div className="flex justify-end gap-3 border-t border-border bg-muted px-6 py-4">
               <Button variant="ghost" className="rounded-xl" onClick={() => setShowDistributionModal(false)}>
                 Cancelar
               </Button>
               <Button 
-                className="bg-[#E3B23C] hover:bg-[#D4A134] text-white rounded-xl px-8"
+                className="bg-klasse-gold hover:bg-klasse-gold-500 text-klasse-gold-900 rounded-xl px-8"
                 onClick={() => handleAction('gerar')}
                 disabled={submitting}
               >
@@ -541,18 +541,18 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
       {/* Floating Action Bar (FAB) */}
       {selecionados.length > 0 && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="bg-slate-900 rounded-2xl shadow-2xl p-4 flex items-center justify-between border border-slate-700/50 backdrop-blur-md">
+          <div className="bg-klasse-dark rounded-xl shadow-2xl p-4 flex items-center justify-between border border-border backdrop-blur-md">
             <div className="flex items-center gap-4 pl-2">
-              <div className="bg-[#E3B23C] text-white rounded-xl px-3 py-1.5 text-sm font-bold shadow-lg shadow-[#E3B23C]/20">
+              <div className="bg-klasse-gold text-klasse-gold-900 rounded-xl px-3 py-1.5 text-sm font-bold shadow-lg shadow-klasse-gold/20">
                 {selecionados.length} selecionados
               </div>
-              <div className="h-8 w-px bg-slate-700" />
+              <div className="h-8 w-px bg-muted-foreground/30" />
             </div>
 
             <div className="flex items-center gap-2">
               {activeTab === 'pendentes' && (
                 <Button 
-                  className="bg-[#E3B23C] hover:bg-[#D4A134] text-white rounded-xl h-11 px-6 shadow-lg shadow-[#E3B23C]/10 border-none transition-all active:scale-95"
+                  className="bg-klasse-gold hover:bg-klasse-gold-500 text-klasse-gold-900 rounded-xl h-11 px-6 shadow-lg shadow-klasse-gold/10 border-none transition-all active:scale-95"
                   onClick={() => handleAction('gerar')}
                   disabled={submitting || isOverLimit}
                   loading={submitting}
@@ -566,7 +566,7 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
                 <>
                   <Button 
                     variant="ghost"
-                    className="text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl h-11"
+                    className="text-muted-foreground hover:text-white hover:bg-foreground/10 rounded-xl h-11"
                     onClick={() => handleAction('reset-senha')}
                     disabled={submitting}
                   >
@@ -603,28 +603,28 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
 
       {/* Bloco de Credenciais Geradas (Exibir quando houver) */}
       {liberados.length > 0 && (
-        <Card className="rounded-2xl border-[#E3B23C]/30 bg-[#E3B23C]/5 shadow-sm overflow-hidden animate-in zoom-in-95 duration-300">
-          <div className="p-5 border-b border-[#E3B23C]/20 flex items-center justify-between">
+        <Card className="rounded-2xl border-klasse-gold/30 bg-klasse-gold/5 shadow-sm overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="p-5 border-b border-klasse-gold/20 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-[#E3B23C] p-2 rounded-xl">
-                <Key className="w-5 h-5 text-white" />
+              <div className="bg-klasse-gold p-2 rounded-xl">
+                <Key className="w-5 h-5 text-klasse-gold-900" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900">Credenciais Geradas com Sucesso</h3>
-                <p className="text-xs text-slate-500 font-medium">Os alunos agora podem acessar o portal com os dados abaixo.</p>
+                <h3 className="font-bold text-foreground">Credenciais Geradas com Sucesso</h3>
+                <p className="text-xs text-muted-foreground font-medium">Os alunos agora podem acessar o portal com os dados abaixo.</p>
               </div>
             </div>
             <div className="flex gap-2">
                <Button 
                  variant="outline" 
                  size="sm" 
-                 className="rounded-xl border-slate-200 bg-white"
+                 className="rounded-xl border-border bg-card"
                  onClick={() => window.print()}
                >
-                 <Printer className="w-4 h-4 mr-2 text-[#E3B23C]" />
+                 <Printer className="w-4 h-4 mr-2 text-klasse-gold-700 dark:text-klasse-gold-300" />
                  Imprimir Slips
                </Button>
-               <Button variant="ghost" size="sm" className="rounded-xl text-slate-400" onClick={() => setLiberados([])}>
+               <Button variant="ghost" size="sm" className="rounded-xl text-muted-foreground" onClick={() => setLiberados([])}>
                  <X className="w-4 h-4" />
                </Button>
             </div>
@@ -632,19 +632,19 @@ export function AcessoPortalManager({ escolaId, initialAlunoId = null }: Props) 
           <CardContent className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {liberados.map((item) => (
-                <div key={item.id} className="flex flex-col gap-2 rounded-xl border border-white bg-white/60 p-3 shadow-sm">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-1">
-                    <p className="text-sm font-bold text-slate-900 truncate">{item.nome ?? "Aluno"}</p>
+                <div key={item.id} className="flex flex-col gap-2 rounded-xl border border-border bg-card/60 p-3 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-border pb-2 mb-1">
+                    <p className="text-sm font-bold text-foreground truncate">{item.nome ?? "Aluno"}</p>
                     <Badge variant="outline" className="text-[10px] font-bold border-emerald-200 text-emerald-700 bg-emerald-50">OK</Badge>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400 font-medium">Usuário:</span>
-                      <span className="font-mono font-bold text-[#E3B23C]">{item.login || "—"}</span>
+                      <span className="text-muted-foreground font-medium">Usuário:</span>
+                      <span className="font-mono font-bold text-klasse-gold-700 dark:text-klasse-gold-300">{item.login || "—"}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400 font-medium">Senha:</span>
-                      <span className="font-mono font-bold text-slate-700">{item.senha || "********"}</span>
+                      <span className="text-muted-foreground font-medium">Senha:</span>
+                      <span className="font-mono font-bold text-foreground">{item.senha || "********"}</span>
                     </div>
                   </div>
                   {item.status === "bi_missing" && (

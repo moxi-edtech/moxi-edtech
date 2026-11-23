@@ -104,13 +104,13 @@ export function OmniSearchInput<T extends OmniSearchAluno>({
   return (
     <div className="relative">
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <input
           ref={inputRef}
           autoFocus={autoFocus}
           placeholder={placeholder}
           className={cx(
-            "w-full rounded-xl border border-slate-200 bg-white pl-12 pr-10 font-medium text-slate-900 leading-none placeholder:text-slate-400",
+            "w-full rounded-xl border border-border bg-card pl-12 pr-10 font-medium text-foreground leading-none placeholder:text-muted-foreground",
             "focus:border-amber focus:ring-4 focus:ring-amber/20",
             sizeStyles
           )}
@@ -131,7 +131,7 @@ export function OmniSearchInput<T extends OmniSearchAluno>({
               setOpen(false);
               setActiveIndex(-1);
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </button>
@@ -139,7 +139,7 @@ export function OmniSearchInput<T extends OmniSearchAluno>({
       </div>
 
       {open && results.length > 0 && (
-        <div className="absolute z-40 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="absolute z-40 mt-2 max-h-80 w-full overflow-y-auto rounded-xl border border-border bg-card shadow-sm">
           {results.map((aluno, index) => {
             const isActive = index === activeIndex;
             return (
@@ -150,8 +150,8 @@ export function OmniSearchInput<T extends OmniSearchAluno>({
                 onClick={() => onSelect(aluno)}
                 className={cx(
                   "flex w-full items-center justify-between gap-3 px-4 py-3 text-left",
-                  "border-b border-slate-100 last:border-b-0",
-                  isActive ? "bg-amber/10" : "hover:bg-slate-50"
+                  "border-b border-border last:border-b-0",
+                  isActive ? "bg-amber/10" : "hover:bg-muted"
                 )}
               >
                 <div className="flex min-w-0 items-center gap-3">
@@ -164,10 +164,10 @@ export function OmniSearchInput<T extends OmniSearchAluno>({
                     />
                   ) : null}
                   <div className="min-w-0">
-                    <div className="font-semibold text-slate-900">
+                    <div className="font-semibold text-foreground">
                       {aluno.nome || "Aluno"}
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-muted-foreground">
                       {aluno.numero_processo ? `Proc: ${aluno.numero_processo}` : "Sem processo"}
                       {aluno.bi_numero ? ` • BI ${aluno.bi_numero}` : ""}
                       {aluno.turma_atual ? ` • ${aluno.turma_atual}` : ""}
@@ -182,7 +182,7 @@ export function OmniSearchInput<T extends OmniSearchAluno>({
       )}
 
       {open && query && results.length === 0 && !loading && (
-        <div className="absolute z-40 mt-2 w-full rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm">
+        <div className="absolute z-40 mt-2 w-full rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground shadow-sm">
           Nenhum estudante encontrado.
         </div>
       )}

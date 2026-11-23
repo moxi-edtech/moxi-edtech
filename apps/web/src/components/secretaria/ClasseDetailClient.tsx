@@ -48,7 +48,7 @@ export default function ClasseDetailClient({ classeId }: { classeId: string }) {
 
   return (
     <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-5 rounded-xl border border-border shadow-sm">
             <h1 className="text-2xl font-bold text-moxinexa-navy">Disciplinas da Classe</h1>
         </div>
 
@@ -64,23 +64,23 @@ export default function ClasseDetailClient({ classeId }: { classeId: string }) {
         {(error || escolaError) && <div className="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200">{error || escolaError}</div>}
 
         {!loading && !error && disciplinas.length > 0 && (
-            <div className="bg-white rounded-xl shadow border">
-            <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
+            <div className="bg-card rounded-xl shadow border">
+            <table className="min-w-full divide-y divide-border">
+                <thead className="bg-muted">
                 <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nome</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Sigla</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Carga</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Ordem</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Nome</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Sigla</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Carga</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Ordem</th>
                 </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
+                <tbody className="bg-card divide-y divide-border">
                 {disciplinas.map((disciplina) => (
                     <tr key={disciplina.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{disciplina.nome}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-600">{disciplina.sigla ?? '—'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-600">{disciplina.carga_horaria ?? '—'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-600">{disciplina.ordem ?? '—'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{disciplina.nome}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">{disciplina.sigla ?? '—'}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">{disciplina.carga_horaria ?? '—'}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">{disciplina.ordem ?? '—'}</td>
                     </tr>
                 ))}
                 </tbody>

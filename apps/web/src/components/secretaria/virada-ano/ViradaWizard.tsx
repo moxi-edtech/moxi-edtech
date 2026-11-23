@@ -252,7 +252,7 @@ export function ViradaWizard() {
     return list;
   })();
 
-  if (loading) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
+  if (loading) return <div className="h-40 animate-pulse rounded-2xl bg-muted" />;
 
   const hasTechnicalPreparationBlocker = health?.blockers.some((blocker) =>
     blocker.includes("Falha técnica") ||
@@ -265,11 +265,11 @@ export function ViradaWizard() {
   const retroactivePending = payload.retroactive_pending === true;
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="rounded-3xl border border-border bg-card p-8 shadow-sm">
       <div className="mb-10 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Assistente de Virada de Ano Letivo</h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">Siga o percurso guiado para uma transição segura e auditável.</p>
+          <h1 className="text-2xl font-black text-foreground tracking-tight">Assistente de Virada de Ano Letivo</h1>
+          <p className="text-sm font-medium text-muted-foreground mt-1">Siga o percurso guiado para uma transição segura e auditável.</p>
         </div>
         <div className="h-12 w-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
             <ShieldCheck className="h-6 w-6 text-emerald-600" />
@@ -279,10 +279,10 @@ export function ViradaWizard() {
       <div className="mb-12">
         <div className="mb-3 flex items-center justify-between gap-4">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Percurso completo</p>
-            <p className="mt-1 text-xs text-slate-500">Trabalhe a transição sem perder o contexto entre académico e financeiro.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Percurso completo</p>
+            <p className="mt-1 text-xs text-muted-foreground">Trabalhe a transição sem perder o contexto entre académico e financeiro.</p>
           </div>
-          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+          <span className="shrink-0 rounded-full border border-border bg-muted px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
             {STEPS[currentStep].title}
           </span>
         </div>
@@ -299,20 +299,20 @@ export function ViradaWizard() {
                     ? "border-emerald-200 bg-emerald-50"
                     : active
                       ? "border-amber/60 bg-amber/10 ring-2 ring-amber/10"
-                      : "border-slate-200 bg-slate-50"
+                      : "border-border bg-muted"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <span className={`flex h-6 w-6 items-center justify-center rounded-lg text-[10px] font-black ${
-                    completed ? "bg-emerald-600 text-white" : active ? "bg-amber text-slate-950" : "bg-white text-slate-400"
+                    completed ? "bg-emerald-600 text-white" : active ? "bg-amber text-foreground" : "bg-card text-muted-foreground"
                   }`}>
                     {completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
                   </span>
-                  <span className={`text-[10px] font-black uppercase tracking-wide ${active || completed ? "text-slate-900" : "text-slate-400"}`}>
+                  <span className={`text-[10px] font-black uppercase tracking-wide ${active || completed ? "text-foreground" : "text-muted-foreground"}`}>
                     {stage.title}
                   </span>
                 </div>
-                <p className="mt-2 text-[10px] leading-relaxed text-slate-500">{stage.description}</p>
+                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">{stage.description}</p>
               </li>
             );
           })}
@@ -320,27 +320,27 @@ export function ViradaWizard() {
       </div>
 
       {/* Conteúdo Dinâmico por Passo */}
-      <div className="mb-10 min-h-[450px] rounded-3xl border border-slate-100 bg-slate-50/40 p-10 flex flex-col items-center justify-center relative overflow-hidden">
+      <div className="mb-10 min-h-[450px] rounded-3xl border border-border bg-muted/40 p-10 flex flex-col items-center justify-center relative overflow-hidden">
         {/* Decorative background element */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-white/40 blur-3xl" />
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-card/40 blur-3xl" />
         
         <div className="w-full max-w-3xl relative z-10">
           <div className="text-center mb-10">
-            <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-xl shadow-slate-200/50 ring-1 ring-slate-100/50">
+            <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-card shadow-xl shadow-slate-200/50 ring-1 ring-ring/50">
                 {currentStep === 0 && <Zap className="h-7 w-7 text-amber fill-current" />}
                 {currentStep === 1 && <Users className="h-7 w-7 text-orange-500" />}
                 {currentStep === 2 && <ShieldCheck className="h-7 w-7 text-emerald-600" />}
             </div>
-            <h2 className="mb-2 text-2xl font-black text-slate-900 tracking-tight">{STEPS[currentStep].title}</h2>
-            <p className="text-sm font-medium text-slate-500">{STEPS[currentStep].description}</p>
+            <h2 className="mb-2 text-2xl font-black text-foreground tracking-tight">{STEPS[currentStep].title}</h2>
+            <p className="text-sm font-medium text-muted-foreground">{STEPS[currentStep].description}</p>
           </div>
           
           {/* Roteamento de Componentes por Passo */}
           {currentStep === 0 && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
                <div className="flex items-center justify-between mb-4">
-                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Diagnóstico de Requisitos</h3>
-                 <button onClick={fetchHealth} disabled={loadingHealth} className="p-2 text-slate-400 hover:text-slate-900 transition-all hover:bg-white rounded-xl shadow-sm">
+                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Diagnóstico de Requisitos</h3>
+                 <button onClick={fetchHealth} disabled={loadingHealth} className="p-2 text-muted-foreground hover:text-foreground transition-all hover:bg-card rounded-xl shadow-sm">
                     <RefreshCcw className={`h-4 w-4 ${loadingHealth ? 'animate-spin' : ''}`} />
                  </button>
                </div>
@@ -359,12 +359,12 @@ export function ViradaWizard() {
 
                {loadingHealth ? (
                  <div className="space-y-3">
-                    {[1,2].map(i => <div key={i} className="h-16 bg-white/50 rounded-2xl border border-slate-100 animate-pulse" />)}
+                    {[1,2].map(i => <div key={i} className="h-16 bg-card/50 rounded-2xl border border-border animate-pulse" />)}
                  </div>
                ) : (
                  <div className="space-y-4">
                     {step0Issues.length === 0 && health?.status === "OK" ? (
-                        <div className="rounded-3xl border border-emerald-100 bg-white p-8 text-center shadow-sm">
+                        <div className="rounded-3xl border border-emerald-100 bg-card p-8 text-center shadow-sm">
                             <div className="h-16 w-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <CheckCircle2 className="h-10 w-10 text-emerald-500" />
                             </div>
@@ -373,14 +373,14 @@ export function ViradaWizard() {
                         </div>
                     ) : (
                         step0Issues.map((issue) => (
-                            <div key={issue.id} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-amber/50 hover:shadow-md transition-all duration-300">
+                            <div key={issue.id} className="group rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-amber/50 hover:shadow-md transition-all duration-300">
                                 <div className="flex flex-wrap items-center justify-between gap-6">
                                     <div className="flex items-center gap-4">
                                         <div className="p-3 rounded-2xl bg-amber-50 text-amber-500 group-hover:scale-110 transition-transform">
                                             <AlertCircle className="h-6 w-6" />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-slate-800 leading-snug">{issue.label}</p>
+                                            <p className="text-sm font-bold text-foreground leading-snug">{issue.label}</p>
                                             <p className={`text-[10px] uppercase font-black tracking-widest mt-1 ${retroactivePending ? "text-blue-600" : "text-amber-600"}`}>
                                               {retroactivePending ? "Pendência acompanhada após a virada" : "Bloqueador de Virada"}
                                             </p>
@@ -416,19 +416,19 @@ export function ViradaWizard() {
           )}
 
           {currentStep === 0 && (
-            <div className="mt-10 space-y-10 border-t border-slate-200 pt-10">
+            <div className="mt-10 space-y-10 border-t border-border pt-10">
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-black text-slate-900">1. Fechar o ano atual</h3>
-                  <p className="mt-1 text-xs text-slate-500">As pautas são geradas em lote e o histórico fica protegido.</p>
+                  <h3 className="text-sm font-black text-foreground">1. Fechar o ano atual</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">As pautas são geradas em lote e o histórico fica protegido.</p>
                 </div>
                 <FreezeStep onComplete={fetchHealth} retroactivePending={retroactivePending} />
               </section>
 
-              <section className="space-y-4 border-t border-slate-200 pt-10">
+              <section className="space-y-4 border-t border-border pt-10">
                 <div>
-                  <h3 className="text-sm font-black text-slate-900">2. Preparar o próximo ano</h3>
-                  <p className="mt-1 text-xs text-slate-500">O KLASSE seleciona o destino, valida preços e reutiliza a estrutura da escola.</p>
+                  <h3 className="text-sm font-black text-foreground">2. Preparar o próximo ano</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">O KLASSE seleciona o destino, valida preços e reutiliza a estrutura da escola.</p>
                 </div>
                 <ConfigStep onComplete={fetchHealth} saveProgress={saveProgress} />
               </section>
@@ -456,7 +456,7 @@ export function ViradaWizard() {
       </div>
 
       {/* Ações de Rodapé */}
-      <div className="flex justify-between border-t border-slate-100 pt-8">
+      <div className="flex justify-between border-t border-border pt-8">
         <Button 
           tone="gray" 
           variant="ghost" 
@@ -468,7 +468,7 @@ export function ViradaWizard() {
         </Button>
         
         <div className="flex items-center gap-6">
-            {saving && <span className="text-[10px] font-black uppercase text-slate-300 animate-pulse tracking-widest">Salvando Progresso...</span>}
+            {saving && <span className="text-[10px] font-black uppercase text-muted-foreground animate-pulse tracking-widest">Salvando Progresso...</span>}
             <Button 
               tone="gold" 
               className="h-12 px-10 gap-2 font-black rounded-2xl shadow-lg shadow-amber/20"
@@ -486,9 +486,9 @@ export function ViradaWizard() {
       </div>
 
       {/* Footer Audit */}
-      <div className="mt-8 flex items-center justify-center gap-2.5 py-3 px-6 rounded-2xl bg-slate-50/50 border border-slate-100 w-fit mx-auto">
-        <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Ambiente de Produção • Auditado via Ledger SSOT</span>
+      <div className="mt-8 flex items-center justify-center gap-2.5 py-3 px-6 rounded-2xl bg-muted/50 border border-border w-fit mx-auto">
+        <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ambiente de Produção • Auditado via Ledger SSOT</span>
       </div>
     </div>
   );

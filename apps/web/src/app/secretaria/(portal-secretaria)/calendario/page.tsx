@@ -222,7 +222,7 @@ export default function CalendarioPage() {
           <ul className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
             {events.map((event) => (
               <li key={event.id} className="p-4 border rounded-xl bg-muted/50 hover:bg-background transition-colors relative overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: event.cor_hex || '#64748b' }} />
+                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: event.cor_hex || "var(--muted-foreground)" }} />
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-bold text-foreground">{event.nome}</p>

@@ -182,30 +182,30 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
       };
   }, [summary, searchTerm]);
 
-  if (loading && !summary) return <div className="py-10 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-slate-300" /></div>;
+  if (loading && !summary) return <div className="py-10 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-muted-foreground" /></div>;
 
   return (
     <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-2">
       
       {/* 1. Configuração de Tolerância */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-slate-100 text-slate-500">
+                  <div className="p-2 rounded-xl bg-muted text-muted-foreground">
                     <Settings2 className="h-5 w-5" />
                   </div>
                   <div>
-                      <h3 className="text-sm font-bold text-slate-900 leading-none">Limite de alerta financeiro</h3>
-                      <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">Não altera a decisão académica</p>
+                      <h3 className="text-sm font-bold text-foreground leading-none">Limite de alerta financeiro</h3>
+                      <p className="text-[10px] text-muted-foreground mt-1 uppercase font-black tracking-widest">Não altera a decisão académica</p>
                   </div>
               </div>
-              <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-xl border border-slate-200">
-                  <span className="pl-3 text-xs font-bold text-slate-500">AOA</span>
+              <div className="flex items-center gap-3 bg-muted p-1 rounded-xl border border-border">
+                  <span className="pl-3 text-xs font-bold text-muted-foreground">AOA</span>
                   <input 
                     type="number"
                     value={tolerance}
                     onChange={(e) => setTolerance(Number(e.target.value))}
-                    className="w-24 h-9 rounded-lg border-none bg-transparent px-2 text-sm font-black text-slate-800 outline-none focus:ring-0"
+                    className="w-24 h-9 rounded-lg border-none bg-transparent px-2 text-sm font-black text-foreground outline-none focus:ring-0"
                     placeholder="0"
                   />
                   <Button size="sm" tone="gray" variant="ghost" onClick={() => fetchSummary(tolerance)}>Aplicar</Button>
@@ -214,31 +214,31 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-emerald-100 bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2 text-emerald-600 mb-2">
             <CheckCircle2 className="h-4 w-4" />
             <span className="text-[10px] font-bold uppercase">Reservas a preparar</span>
           </div>
-          <div className="text-3xl font-black text-slate-900">{summary?.counts.aptos}</div>
-          <p className="text-[10px] text-slate-400 mt-1">A RPC valida o RAA e escolhe a classe correcta.</p>
+          <div className="text-3xl font-black text-foreground">{summary?.counts.aptos}</div>
+          <p className="text-[10px] text-muted-foreground mt-1">A RPC valida o RAA e escolhe a classe correcta.</p>
         </div>
 
-        <div className="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-amber-100 bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2 text-amber-600 mb-2">
             <AlertCircle className="h-4 w-4" />
             <span className="text-[10px] font-bold uppercase tracking-tight">Pendência financeira</span>
           </div>
-          <div className="text-3xl font-black text-slate-900">{summary?.counts.inadimplentes}</div>
-          <p className="text-[10px] text-slate-400 mt-1">A reserva continua; apenas a activação final fica bloqueada.</p>
+          <div className="text-3xl font-black text-foreground">{summary?.counts.inadimplentes}</div>
+          <p className="text-[10px] text-muted-foreground mt-1">A reserva continua; apenas a activação final fica bloqueada.</p>
         </div>
 
-        <div className="rounded-2xl border border-rose-100 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-rose-100 bg-card p-5 shadow-sm">
           <div className="flex items-center gap-2 text-rose-600 mb-2">
             <XCircle className="h-4 w-4" />
             <span className="text-[10px] font-bold uppercase tracking-tight">Revisão posterior</span>
           </div>
-          <div className="text-3xl font-black text-slate-900">{summary?.counts.retidos}</div>
-          <p className="text-[10px] text-slate-400 mt-1">A classe será confirmada pela secretaria.</p>
+          <div className="text-3xl font-black text-foreground">{summary?.counts.retidos}</div>
+          <p className="text-[10px] text-muted-foreground mt-1">A classe será confirmada pela secretaria.</p>
         </div>
       </div>
 
@@ -260,39 +260,39 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
 
       {/* 2. Filtro de Busca */}
       <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input 
             type="text"
             placeholder="Procurar aluno ou turma na simulação..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-11 pl-11 pr-4 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:ring-4 focus:ring-amber/10 transition-all"
+            className="w-full h-11 pl-11 pr-4 rounded-xl border border-border bg-card text-sm outline-none focus:ring-4 focus:ring-amber/10 transition-all"
           />
       </div>
 
       {/* 3. Listas Detalhadas */}
       <div className="space-y-3">
           {/* Inadimplentes */}
-          <div className={`rounded-2xl border transition-all ${expanded === 'inadimplentes' ? 'border-amber-200 bg-white' : 'border-slate-100 bg-slate-50'}`}>
+          <div className={`rounded-2xl border transition-all ${expanded === 'inadimplentes' ? 'border-amber-200 bg-card' : 'border-border bg-muted'}`}>
               <button 
                 onClick={() => setExpanded(expanded === 'inadimplentes' ? null : 'inadimplentes')}
                 className="w-full px-5 py-4 flex items-center justify-between"
               >
                   <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-amber-100 text-amber-600"><AlertCircle className="h-4 w-4" /></div>
-                      <span className="text-sm font-bold text-slate-700">Ver Alunos com Dívida ({summary?.counts.inadimplentes})</span>
+                      <span className="text-sm font-bold text-foreground">Ver Alunos com Dívida ({summary?.counts.inadimplentes})</span>
                   </div>
-                  {expanded === 'inadimplentes' ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                  {expanded === 'inadimplentes' ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
               </button>
               
               {expanded === 'inadimplentes' && (
                   <div className="px-5 pb-5 animate-in slide-in-from-top-2">
                       <div className="max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                           {filteredLists?.inadimplentes.map(s => (
-                              <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                              <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-muted border border-border">
                                   <div className="flex flex-col">
-                                      <span className="text-xs font-bold text-slate-800">{s.nome}</span>
-                                      <span className="text-[10px] text-slate-400">{s.classe} · {s.turma}</span>
+                                      <span className="text-xs font-bold text-foreground">{s.nome}</span>
+                                      <span className="text-[10px] text-muted-foreground">{s.classe} · {s.turma}</span>
                                   </div>
                                   <span className="text-xs font-black text-rose-600">{money.format(s.saldo)}</span>
                                   <Button
@@ -306,38 +306,38 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
                                   </Button>
                               </div>
                           ))}
-                          {filteredLists?.inadimplentes.length === 0 && <p className="text-center py-4 text-xs text-slate-400">Nenhum aluno encontrado nesta categoria.</p>}
+                          {filteredLists?.inadimplentes.length === 0 && <p className="text-center py-4 text-xs text-muted-foreground">Nenhum aluno encontrado nesta categoria.</p>}
                       </div>
                   </div>
               )}
           </div>
 
           {/* Retidos */}
-          <div className={`rounded-2xl border transition-all ${expanded === 'retidos' ? 'border-rose-200 bg-white' : 'border-slate-100 bg-slate-50'}`}>
+          <div className={`rounded-2xl border transition-all ${expanded === 'retidos' ? 'border-rose-200 bg-card' : 'border-border bg-muted'}`}>
               <button 
                 onClick={() => setExpanded(expanded === 'retidos' ? null : 'retidos')}
                 className="w-full px-5 py-4 flex items-center justify-between"
               >
                   <div className="flex items-center gap-3">
                       <div className="p-1.5 rounded-lg bg-rose-100 text-rose-600"><XCircle className="h-4 w-4" /></div>
-                      <span className="text-sm font-bold text-slate-700">Ver Alunos Reprovados ({summary?.counts.retidos})</span>
+                      <span className="text-sm font-bold text-foreground">Ver Alunos Reprovados ({summary?.counts.retidos})</span>
                   </div>
-                  {expanded === 'retidos' ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                  {expanded === 'retidos' ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
               </button>
               
               {expanded === 'retidos' && (
                   <div className="px-5 pb-5 animate-in slide-in-from-top-2">
                       <div className="max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                           {filteredLists?.retidos.map(s => (
-                              <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                              <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-muted border border-border">
                                   <div className="flex flex-col">
-                                      <span className="text-xs font-bold text-slate-800">{s.nome}</span>
-                                      <span className="text-[10px] text-slate-400">{s.classe} · {s.turma}</span>
+                                      <span className="text-xs font-bold text-foreground">{s.nome}</span>
+                                      <span className="text-[10px] text-muted-foreground">{s.classe} · {s.turma}</span>
                                   </div>
                                   <span className="text-[10px] font-black uppercase text-rose-500 bg-rose-50 px-2 py-0.5 rounded">Reprovado</span>
                               </div>
                           ))}
-                          {filteredLists?.retidos.length === 0 && <p className="text-center py-4 text-xs text-slate-400">Nenhum aluno encontrado nesta categoria.</p>}
+                          {filteredLists?.retidos.length === 0 && <p className="text-center py-4 text-xs text-muted-foreground">Nenhum aluno encontrado nesta categoria.</p>}
                       </div>
                   </div>
               )}
@@ -364,14 +364,14 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
             value={reviewSearch}
             onChange={(event) => setReviewSearch(event.target.value)}
             placeholder="Pesquisar aluno na revisão..."
-            className="h-9 flex-1 rounded-lg border border-violet-100 bg-white px-3 text-xs outline-none focus:ring-2 focus:ring-violet-200"
+            className="h-9 flex-1 rounded-lg border border-violet-100 bg-card px-3 text-xs outline-none focus:ring-2 focus:ring-violet-200"
           />
           <span className="text-[10px] font-bold uppercase tracking-wider text-violet-500">{reviewStudents.length} migrados</span>
         </div>
         {reviewLoading && reviewStudents.length === 0 ? (
           <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-violet-400" /></div>
         ) : reviewStudents.length === 0 ? (
-          <p className="mt-4 rounded-lg border border-dashed border-violet-200 bg-white/70 px-3 py-4 text-center text-xs text-violet-700">
+          <p className="mt-4 rounded-lg border border-dashed border-violet-200 bg-card/70 px-3 py-4 text-center text-xs text-violet-700">
             Ainda não há reservas no ano destino. Gere as reservas para abrir esta revisão.
           </p>
         ) : (
@@ -379,17 +379,17 @@ export function PromotionStep({ onComplete, fromSession, toSession }: { onComple
             {reviewStudents
               .filter((student) => student.nome.toLowerCase().includes(reviewSearch.toLowerCase()))
               .map((student) => (
-                <div key={student.matricula_id} className="flex flex-col gap-3 rounded-xl border border-violet-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div key={student.matricula_id} className="flex flex-col gap-3 rounded-xl border border-violet-100 bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-bold text-slate-800">{student.nome}</p>
-                    <p className="text-[10px] text-slate-400">Matrícula {student.numero_matricula ?? "—"} · {student.status ?? "ativa"}</p>
+                    <p className="truncate text-xs font-bold text-foreground">{student.nome}</p>
+                    <p className="text-[10px] text-muted-foreground">Matrícula {student.numero_matricula ?? "—"} · {student.status ?? "ativa"}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <select
                       value={student.turma_id ?? ""}
                       disabled={reclassifyingId !== null}
                       onChange={(event) => void reclassifyStudent(student, event.target.value)}
-                      className="h-9 min-w-56 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 disabled:opacity-60"
+                      className="h-9 min-w-56 rounded-lg border border-border bg-card px-2 text-xs text-foreground disabled:opacity-60"
                     >
                       <option value="">Sem turma destino</option>
                       {reviewTurmas.map((turma) => (

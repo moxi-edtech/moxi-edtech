@@ -85,3 +85,15 @@ test("private enrollment/reenrollment drafts have user+polo+school scope, cleanu
   assert.match(logout,/\['localStorage', 'sessionStorage'\]/);
   assert.match(logout,/window\[storageName\]/);
 });
+
+test("benchmark mede pintura no browser, sem contabilizar a latência do Playwright", () => {
+  const benchmark = readFileSync(new URL("../../scripts/performance/balcao-benchmark.mjs", import.meta.url), "utf8");
+  assert.match(benchmark, /element\.addEventListener\("click"/);
+  assert.match(benchmark, /const started=performance\.now\(\)/);
+  assert.match(benchmark, /requestAnimationFrame\(\(\) => requestAnimationFrame/);
+  assert.match(benchmark, /const paintedMs = await page\.evaluate\(\(\) => window\.__balcaoPaint\)/);
+  assert.match(benchmark, /driverRoundtripMs/);
+  assert.doesNotMatch(benchmark, /const paintedMs = Date\.now\(\) - start/);
+  const checker = readFileSync(new URL("../../scripts/performance/balcao-check-budget.mjs", import.meta.url), "utf8");
+  assert.match(checker, /original\.timeMs\.median\*1\.65\+30/);
+});

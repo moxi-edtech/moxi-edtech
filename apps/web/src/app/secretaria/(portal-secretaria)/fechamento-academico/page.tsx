@@ -70,9 +70,9 @@ const mapEstadoToStep = (estado?: string | null): JobStep => {
 export default function FechamentoAcademicoPage() {
   return (
     <Suspense fallback={
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center max-w-4xl mx-auto">
-        <RefreshCw className="w-10 h-10 text-[#1F6B3B] animate-spin mx-auto mb-4" />
-        <h2 className="text-lg font-bold text-slate-900 font-sora">A carregar assistente...</h2>
+      <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center max-w-4xl mx-auto">
+        <RefreshCw className="w-10 h-10 text-klasse-green dark:text-klasse-green-300 animate-spin mx-auto mb-4" />
+        <h2 className="text-lg font-bold text-foreground font-sora">A carregar assistente...</h2>
       </div>
     }>
       <FechamentoAcademicoContent />
@@ -321,9 +321,9 @@ function FechamentoAcademicoContent() {
   if (currentState === "validando") {
     return (
       <div className={`${PORTAL_PAGE_INSET} rounded-xl border border-border bg-card text-center shadow-sm`}>
-        <RefreshCw className="w-10 h-10 text-[#1F6B3B] animate-spin mx-auto mb-4" />
-        <h2 className="text-lg font-bold text-slate-900 font-sora">A preparar o fecho...</h2>
-        <p className="text-slate-500 text-sm mt-2">Estamos a confirmar se está tudo pronto.</p>
+        <RefreshCw className="w-10 h-10 text-klasse-green dark:text-klasse-green-300 animate-spin mx-auto mb-4" />
+        <h2 className="text-lg font-bold text-foreground font-sora">A preparar o fecho...</h2>
+        <p className="text-muted-foreground text-sm mt-2">Estamos a confirmar se está tudo pronto.</p>
       </div>
     );
   }
@@ -347,11 +347,11 @@ function FechamentoAcademicoContent() {
             {pendencias.map((p) => (
               <li
                 key={p.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-100"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-foreground bg-muted p-4 rounded-xl border border-border"
               >
                 <div className="flex items-center gap-3">
                   <span className="font-bold min-w-[80px]">{p.turma_id ?? "-"}</span>
-                  <span className="text-slate-600">{p.mensagem}</span>
+                  <span className="text-muted-foreground">{p.mensagem}</span>
                 </div>
                 <span className="text-xs font-semibold text-red-600">
                   {p.severidade}{p.pode_excecao ? " · Exceção permitida" : ""}
@@ -362,13 +362,13 @@ function FechamentoAcademicoContent() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={validarSanidade}
-              className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-50"
+              className="px-4 py-2 rounded-xl bg-card border border-border text-foreground text-sm font-bold hover:bg-muted"
             >
               Verificar novamente
             </button>
             <Link
               href={buildPortalHref(escolaParam, "/operacoes/academico/fechamento-academico/sanidade")}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold"
+              className="px-4 py-2 rounded-xl border border-border text-foreground text-sm font-semibold"
             >
               Abrir relatório completo
             </Link>
@@ -391,7 +391,7 @@ function FechamentoAcademicoContent() {
 
   return (
     <div className={`${PORTAL_PAGE_INSET} rounded-xl border border-border bg-card shadow-sm`}>
-      <div className="mb-8 border-b border-slate-100 pb-6 space-y-4">
+      <div className="mb-8 border-b border-border pb-6 space-y-4">
         <div>
           <DashboardHeader
             title={titulo}
@@ -409,7 +409,7 @@ function FechamentoAcademicoContent() {
             <option value="fechar_ano">Fechar ano</option>
           </select>
           <div className="space-y-1">
-            <label className="text-[10px] font-semibold uppercase text-slate-400">Ano letivo</label>
+            <label className="text-[10px] font-semibold uppercase text-muted-foreground">Ano letivo</label>
             <select
               className="w-full rounded border p-2 text-sm"
               value={anoLetivoId}
@@ -424,7 +424,7 @@ function FechamentoAcademicoContent() {
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-semibold uppercase text-slate-400">Trimestre</label>
+            <label className="text-[10px] font-semibold uppercase text-muted-foreground">Trimestre</label>
             <select
               className="w-full rounded border p-2 text-sm"
               value={periodoLetivoId}
@@ -450,25 +450,25 @@ function FechamentoAcademicoContent() {
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={buildPortalHref(escolaParam, "/operacoes/academico/fechamento-academico/cockpit")}
-            className="px-4 py-2 rounded-xl bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white text-sm font-semibold transition flex items-center gap-1.5 shadow-sm"
+            className="px-4 py-2 rounded-xl bg-klasse-green hover:bg-klasse-green/90 text-white text-sm font-semibold transition flex items-center gap-1.5 shadow-sm"
           >
             <Sliders className="w-4 h-4" /> Cockpit de Prontidão
           </Link>
           <button
             onClick={validarSanidade}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50"
+            className="px-4 py-2 rounded-xl border border-border text-foreground text-sm font-semibold hover:bg-muted"
           >
             Verificar se está tudo pronto
           </button>
           <Link
             href={buildPortalHref(escolaParam, "/operacoes/academico/fechamento-academico/sanidade")}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold"
+            className="px-4 py-2 rounded-xl border border-border text-foreground text-sm font-semibold"
           >
             Abrir sanidade detalhada
           </Link>
           <a
             href="/docs/academico/runbook-fechamento-academico"
-            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold"
+            className="px-4 py-2 rounded-xl border border-border text-foreground text-sm font-semibold"
             target="_blank"
             rel="noreferrer"
           >
@@ -497,7 +497,7 @@ function FechamentoAcademicoContent() {
         <div className="mb-6 flex justify-end">
           <button
             onClick={iniciarFecho}
-            className="flex items-center gap-2 px-8 py-3 bg-[#1F6B3B] text-white rounded-xl text-sm font-bold hover:brightness-110 transition-all shadow-lg shadow-[#1F6B3B]/20"
+            className="flex items-center gap-2 px-8 py-3 bg-klasse-green text-white rounded-xl text-sm font-bold hover:brightness-110 transition-all shadow-lg shadow-klasse-green/20"
           >
             <Play className="w-4 h-4" fill="currentColor" />
             Iniciar fecho
@@ -535,12 +535,12 @@ function FechamentoAcademicoContent() {
       </div>
 
       {currentState === "concluido" && (
-        <div className="mt-10 p-6 bg-[#E8F5EE] border border-[#1F6B3B]/20 rounded-xl text-center animate-klasse-fade-up">
-          <CheckCircle2 className="w-12 h-12 text-[#1F6B3B] mx-auto mb-3" />
-          <h3 className="text-xl font-bold text-[#1F6B3B] font-sora">Fecho concluído com sucesso</h3>
+        <div className="mt-10 p-6 bg-klasse-green/10 border border-klasse-green/20 rounded-xl text-center animate-klasse-fade-up">
+          <CheckCircle2 className="w-12 h-12 text-klasse-green dark:text-klasse-green-300 mx-auto mb-3" />
+          <h3 className="text-xl font-bold text-klasse-green dark:text-klasse-green-300 font-sora">Fecho concluído com sucesso</h3>
           <button
             onClick={() => router.push(buildPortalHref(escolaParam, "/secretaria"))}
-            className="mt-6 px-6 py-2.5 bg-[#1F6B3B] text-white rounded-xl text-sm font-bold hover:brightness-110 transition-all inline-flex items-center gap-2"
+            className="mt-6 px-6 py-2.5 bg-klasse-green text-white rounded-xl text-sm font-bold hover:brightness-110 transition-all inline-flex items-center gap-2"
           >
             Voltar ao painel <ArrowRight className="w-4 h-4" />
           </button>
@@ -566,15 +566,15 @@ function AutomatedStep({
   description: string;
 }) {
   const borderColor = isActive
-    ? "border-[#E3B23C] ring-4 ring-[#E3B23C]/10 bg-white"
+    ? "border-klasse-gold ring-4 ring-klasse-gold/10 bg-card"
     : isDone
-      ? "border-[#1F6B3B]/30 bg-slate-50/50"
-      : "border-slate-100 bg-slate-50 opacity-60";
+      ? "border-klasse-green/30 bg-muted/50"
+      : "border-border bg-muted opacity-60";
   const iconBg = isActive
-    ? "bg-[#E3B23C]/10 text-[#E3B23C]"
+    ? "bg-klasse-gold/10 text-klasse-gold-700 dark:text-klasse-gold-300"
     : isDone
-      ? "bg-[#1F6B3B] text-white"
-      : "bg-slate-200 text-slate-400";
+      ? "bg-klasse-green text-white"
+      : "bg-muted-foreground/15 text-muted-foreground";
 
   return (
     <div className={`flex items-center justify-between p-5 rounded-xl border-2 transition-all duration-500 ${borderColor}`}>
@@ -583,17 +583,17 @@ function AutomatedStep({
           {isDone ? <CheckCircle2 className="w-5 h-5" /> : icon}
         </div>
         <div>
-          <h3 className={`text-sm md:text-base font-bold font-sora ${isActive || isDone ? "text-slate-900" : "text-slate-500"}`}>
+          <h3 className={`text-sm md:text-base font-bold font-sora ${isActive || isDone ? "text-foreground" : "text-muted-foreground"}`}>
             {title}
           </h3>
-          <p className="text-xs md:text-sm text-slate-500 mt-0.5">{description}</p>
+          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">{description}</p>
         </div>
       </div>
 
       <div className="ml-4 flex-shrink-0">
-        {isActive && <RefreshCw className="w-5 h-5 text-[#E3B23C] animate-spin" />}
-        {isDone && <span className="text-xs font-bold uppercase tracking-wider text-[#1F6B3B]">OK</span>}
-        {isPending && <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Pendente</span>}
+        {isActive && <RefreshCw className="w-5 h-5 text-klasse-gold-700 dark:text-klasse-gold-300 animate-spin" />}
+        {isDone && <span className="text-xs font-bold uppercase tracking-wider text-klasse-green dark:text-klasse-green-300">OK</span>}
+        {isPending && <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pendente</span>}
       </div>
     </div>
   );

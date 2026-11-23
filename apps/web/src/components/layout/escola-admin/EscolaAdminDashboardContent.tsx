@@ -481,7 +481,7 @@ export default function EscolaAdminDashboardContent({
                 className="absolute top-0 bottom-0 w-0.5 bg-border z-10 flex flex-col items-center"
                 style={{ left: `${dynamicPacingTarget}%` }}
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-400 -mt-0.5" />
+                <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 -mt-0.5" />
                 <div className="absolute top-3 bg-card border border-border px-1 py-0.5 rounded shadow-sm">
                   <span className="text-[8px] font-black text-muted-foreground whitespace-nowrap">
                     HOJE {dynamicPacingTarget}%

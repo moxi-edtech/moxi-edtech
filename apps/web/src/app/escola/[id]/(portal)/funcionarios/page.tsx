@@ -89,7 +89,7 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
       </div>
 
       {!embedded && (
-        <div className="flex border-b border-slate-200">
+        <div className="flex border-b border-border">
           {["funcionarios", "novo"].map((tab) => (
             <Link
               key={tab}
@@ -99,7 +99,7 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
               className={`px-6 py-3 font-medium relative ${
                 tab === "funcionarios"
                   ? "text-amber"
-                  : "text-slate-500 hover:text-slate-900"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {tab === "novo" ? "Cadastrar" : "Funcionários"}
@@ -111,39 +111,39 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-emerald">Equipe cadastrada</h2>
-            <p className="text-sm text-slate-500">Busque por nome, e-mail, telefone ou login.</p>
+            <p className="text-sm text-muted-foreground">Busque por nome, e-mail, telefone ou login.</p>
           </div>
           <div className="relative w-full max-w-sm">
-            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar funcionário"
-              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+              className="w-full rounded-xl border border-border bg-card py-2 pl-9 pr-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
             />
           </div>
         </div>
 
-        {loading && <div className="text-sm text-slate-500">Carregando funcionários...</div>}
+        {loading && <div className="text-sm text-muted-foreground">Carregando funcionários...</div>}
         {!loading && error && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {error}
           </div>
         )}
         {!loading && !error && items.length === 0 && (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+          <div className="rounded-xl border border-border bg-muted p-4 text-sm text-muted-foreground">
             Nenhum funcionário encontrado.
           </div>
         )}
 
         {!loading && !error && items.length > 0 && (
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <div className="overflow-x-auto rounded-xl border border-border">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500">
+              <thead className="bg-muted text-muted-foreground">
                 <tr>
                   <th className="p-3 text-left">Nome</th>
                   <th className="p-3 text-left">Contato</th>
@@ -151,20 +151,20 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
                   <th className="p-3 text-left">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {items.map((item) => (
                   <tr key={item.user_id}>
                     <td className="p-3">
-                      <div className="font-semibold text-slate-900">{item.nome || "Sem nome"}</div>
-                      <div className="text-xs text-slate-400">
+                      <div className="font-semibold text-foreground">{item.nome || "Sem nome"}</div>
+                      <div className="text-xs text-muted-foreground">
                         Login: {item.email || "—"}
                       </div>
                     </td>
-                    <td className="p-3 text-slate-600">
+                    <td className="p-3 text-muted-foreground">
                       <div>{item.email || "—"}</div>
-                      <div className="text-xs text-slate-400">{item.telefone || "—"}</div>
+                      <div className="text-xs text-muted-foreground">{item.telefone || "—"}</div>
                     </td>
-                    <td className="p-3 text-slate-600">
+                    <td className="p-3 text-muted-foreground">
                       {item.papel ? (papelLabels[item.papel] || item.papel) : "—"}
                     </td>
                     <td className="p-3">

@@ -208,7 +208,7 @@ export function TabPropinas({
                     return (
                       <td 
                         key={m} 
-                        className={`py-1.5 px-3 text-right group relative ${val > 0 ? "text-rose-600 font-bold cursor-pointer hover:bg-rose-50" : "text-slate-300"}`}
+                        className={`py-1.5 px-3 text-right group relative ${val > 0 ? "text-rose-600 font-bold cursor-pointer hover:bg-rose-50" : "text-muted-foreground"}`}
                         onClick={() => val > 0 && handleOpenDrillDown({ classeLabel: c, monthKey: m })}
                         title={val > 0 ? `Clique para ver os alunos em atraso da ${c} em ${formatMonthRef(m)}` : ""}
                       >

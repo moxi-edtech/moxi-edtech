@@ -22,7 +22,7 @@ export function AlunoDossierRouteModal({ children }: AlunoDossierRouteModalProps
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-klasse-dark/60 p-2 backdrop-blur-sm sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="aluno-dossier-modal-title"

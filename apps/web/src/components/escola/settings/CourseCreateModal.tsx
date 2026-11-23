@@ -47,19 +47,19 @@ function Modal({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm p-4 flex items-center justify-center animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 bg-klasse-dark/60 backdrop-blur-sm p-4 flex items-center justify-center animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b border-border bg-muted/50 flex items-center justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-900">{title}</h3>
-            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+            <h3 className="text-base font-bold text-foreground">{title}</h3>
+            {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 text-slate-400">
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 text-muted-foreground">
             <X className="w-4 h-4" />
           </Button>
         </div>
         <div className="p-6 max-h-[70vh] overflow-y-auto">{children}</div>
-        {footer && <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">{footer}</div>}
+        {footer && <div className="px-6 py-4 border-t border-border bg-muted/50 flex justify-end gap-3">{footer}</div>}
       </div>
     </div>
   );
@@ -121,24 +121,24 @@ export default function CourseCreateModal({
       >
         <div className="space-y-8">
           <div className="space-y-3">
-            <label className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-slate-400" />
+            <label className="text-sm font-bold text-foreground flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-muted-foreground" />
               Nome do curso
             </label>
             <input
               value={draft.label}
               onChange={(e) => onChangeLabel(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all"
+              className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold outline-none transition-all"
               placeholder="Ex: Técnico de Gestão Empresarial"
             />
           </div>
 
           <div className="space-y-3">
-            <label className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-slate-400" />
+            <label className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Layers className="w-4 h-4 text-muted-foreground" />
               Classes disponíveis
             </label>
-            <div className="flex flex-wrap gap-2 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+            <div className="flex flex-wrap gap-2 p-4 rounded-2xl bg-muted border border-border">
               {allClasses.map((clsKey) => {
                 const clsName = `${clsKey} Classe`;
                 const selected = draft.classes.includes(clsName);
@@ -150,8 +150,8 @@ export default function CourseCreateModal({
                     className={cx(
                       "rounded-full px-5 py-2 text-xs font-bold border transition-all duration-200",
                       selected
-                        ? "bg-slate-900 text-white border-slate-900 shadow-sm scale-105"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
+                        ? "bg-klasse-gold text-klasse-gold-900 border-klasse-gold shadow-sm scale-105"
+                        : "bg-card text-muted-foreground border-border hover:border-border"
                     )}
                   >
                     {clsKey}
@@ -163,8 +163,8 @@ export default function CourseCreateModal({
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-slate-400" />
+              <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Layers className="w-4 h-4 text-muted-foreground" />
                 Plano Curricular ({draft.subjects.length})
               </label>
               <Button
@@ -178,20 +178,20 @@ export default function CourseCreateModal({
               </Button>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-sm">
+            <div className="rounded-2xl border border-border divide-y divide-border overflow-hidden shadow-sm">
               {draft.subjects.map((disciplina) => (
                 <div
                   key={disciplina.nome}
-                  className="flex items-center justify-between gap-4 bg-white px-5 py-4 group hover:bg-slate-50 transition-colors"
+                  className="flex items-center justify-between gap-4 bg-card px-5 py-4 group hover:bg-muted transition-colors"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <p className="text-sm font-bold text-foreground flex items-center gap-2">
                       {disciplina.nome}
                       {disciplina.is_core && (
-                        <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-[9px] font-bold uppercase">Core</Badge>
+                        <Badge className="bg-muted text-muted-foreground border-border text-[9px] font-bold uppercase">Core</Badge>
                       )}
                     </p>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-1">
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-1">
                       <span className="font-medium">{disciplina.carga_horaria}h semanais</span>
                       <span>•</span>
                       <span>{disciplina.area || "Geral"}</span>
@@ -201,18 +201,18 @@ export default function CourseCreateModal({
                     variant="ghost"
                     size="icon"
                     onClick={() => onRemoveDisciplina(disciplina.nome)}
-                    className="h-8 w-8 text-slate-300 hover:text-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-8 w-8 text-muted-foreground hover:text-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
               ))}
               {draft.subjects.length === 0 && (
-                <div className="px-6 py-10 flex flex-col items-center justify-center text-center bg-slate-50/50">
-                  <div className="bg-white p-3 rounded-full border border-slate-200 mb-3 shadow-sm">
-                    <BookOpen className="w-6 h-6 text-slate-300" />
+                <div className="px-6 py-10 flex flex-col items-center justify-center text-center bg-muted/50">
+                  <div className="bg-card p-3 rounded-full border border-border mb-3 shadow-sm">
+                    <BookOpen className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  <p className="text-xs text-slate-400 font-medium">Nenhuma disciplina adicionada ainda.</p>
+                  <p className="text-xs text-muted-foreground font-medium">Nenhuma disciplina adicionada ainda.</p>
                 </div>
               )}
             </div>
@@ -249,18 +249,18 @@ export default function CourseCreateModal({
         >
           <div className="space-y-5">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-600 ml-1">Nome da Disciplina</label>
+              <label className="text-xs font-bold text-muted-foreground ml-1">Nome da Disciplina</label>
               <input
                 value={disciplinaDraft.nome}
                 onChange={(e) => setDisciplinaDraft({ ...disciplinaDraft, nome: e.target.value })}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold outline-none transition-all"
                 placeholder="Ex: Língua Portuguesa"
               />
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-600 ml-1">Aulas por semana</label>
+                <label className="text-xs font-bold text-muted-foreground ml-1">Aulas por semana</label>
                 <input
                   type="number"
                   min={0}
@@ -271,21 +271,21 @@ export default function CourseCreateModal({
                       carga_horaria: Number(e.target.value || 0),
                     })
                   }
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none"
+                  className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold outline-none"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-600 ml-1">Área de Conhecimento</label>
+                <label className="text-xs font-bold text-muted-foreground ml-1">Área de Conhecimento</label>
                 <input
                   value={disciplinaDraft.area}
                   onChange={(e) => setDisciplinaDraft({ ...disciplinaDraft, area: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none"
+                  className="w-full rounded-xl border border-border px-4 py-3 text-sm text-foreground focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold outline-none"
                   placeholder="Ex: Linguagens"
                 />
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-6 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+            <div className="flex flex-wrap gap-6 p-4 rounded-2xl bg-muted border border-border">
               <label className="flex items-center gap-3 cursor-pointer group">
                 <input
                   type="checkbox"
@@ -293,9 +293,9 @@ export default function CourseCreateModal({
                   onChange={(e) =>
                     setDisciplinaDraft({ ...disciplinaDraft, is_core: e.target.checked })
                   }
-                  className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                  className="w-4 h-4 rounded border-border text-foreground focus:ring-klasse-gold/20"
                 />
-                <span className="text-xs font-bold text-slate-700 group-hover:text-slate-900">Disciplina obrigatória (Core)</span>
+                <span className="text-xs font-bold text-foreground group-hover:text-foreground">Disciplina obrigatória (Core)</span>
               </label>
               <label className="flex items-center gap-3 cursor-pointer group">
                 <input
@@ -304,9 +304,9 @@ export default function CourseCreateModal({
                   onChange={(e) =>
                     setDisciplinaDraft({ ...disciplinaDraft, is_avaliavel: e.target.checked })
                   }
-                  className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                  className="w-4 h-4 rounded border-border text-foreground focus:ring-klasse-gold/20"
                 />
-                <span className="text-xs font-bold text-slate-700 group-hover:text-slate-900">Gera notas e faltas (Avaliável)</span>
+                <span className="text-xs font-bold text-foreground group-hover:text-foreground">Gera notas e faltas (Avaliável)</span>
               </label>
             </div>
           </div>

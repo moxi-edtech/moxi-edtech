@@ -94,14 +94,14 @@ export function TabResumo({
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 print:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:rounded-xl print:shadow-none">
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Ano letivo</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{anoLetivoAtivo}</p>
-          <p className="mt-1 text-xs text-slate-500">{resumo.mensalidades} mensalidades no período</p>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm print:rounded-xl print:shadow-none">
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Ano letivo</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{anoLetivoAtivo}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{resumo.mensalidades} mensalidades no período</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:rounded-xl print:shadow-none">
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Previsto</p>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{kwanza.format(resumo.previsto)}</p>
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm print:rounded-xl print:shadow-none">
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Previsto</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{kwanza.format(resumo.previsto)}</p>
           <TrendIndicator current={resumo.previsto} previous={prevResumo?.previsto} />
         </div>
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 shadow-sm print:rounded-xl print:shadow-none">
@@ -124,24 +124,24 @@ export function TabResumo({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 print:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:rounded-xl print:shadow-none">
-          <p className="text-xs uppercase tracking-wide text-slate-400">Pagas adiantadas</p>
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm print:rounded-xl print:shadow-none">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Pagas adiantadas</p>
           <p className="mt-2 text-xl font-bold text-sky-700">{resumo.pagasAdiantadas}</p>
           <TrendIndicator current={resumo.pagasAdiantadas} previous={prevResumo?.pagasAdiantadas} />
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:rounded-xl print:shadow-none">
-          <p className="text-xs uppercase tracking-wide text-slate-400">Parciais</p>
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm print:rounded-xl print:shadow-none">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Parciais</p>
           <p className="mt-2 text-xl font-bold text-amber-700">{resumo.parciais}</p>
           <TrendIndicator current={resumo.parciais} previous={prevResumo?.parciais} inverse />
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:rounded-xl print:shadow-none">
-          <p className="text-xs uppercase tracking-wide text-slate-400">Saldo parcial</p>
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm print:rounded-xl print:shadow-none">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Saldo parcial</p>
           <p className="mt-2 text-xl font-bold text-amber-800">{kwanza.format(resumo.parcialEmAberto)}</p>
           <TrendIndicator current={resumo.parcialEmAberto} previous={prevResumo?.parcialEmAberto} inverse />
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:rounded-xl print:shadow-none">
-          <p className="text-xs uppercase tracking-wide text-slate-400">Taxa de atraso</p>
-          <p className="mt-2 text-xl font-bold text-slate-900">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm print:rounded-xl print:shadow-none">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Taxa de atraso</p>
+          <p className="mt-2 text-xl font-bold text-foreground">
             {resumo.taxaAtrasoPct.toFixed(1)}%
           </p>
           <TrendIndicator current={resumo.taxaAtrasoPct} previous={prevResumo?.taxaAtrasoPct} inverse />

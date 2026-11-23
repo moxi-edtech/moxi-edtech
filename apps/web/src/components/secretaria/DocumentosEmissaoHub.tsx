@@ -151,18 +151,18 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
   return (
     <main className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-slate-900">Balcão de Emissão Rápida</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">Balcão de Emissão Rápida</h1>
+        <p className="text-sm text-muted-foreground">
           Selecione o aluno, escolha o tipo de declaração e imprima na hora.
         </p>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Quem precisa do documento?
         </label>
         <div className="relative mt-3">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
             onChange={(event) => {
@@ -170,7 +170,7 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
               setSelectedAluno(null);
             }}
             placeholder="Buscar aluno por nome, processo ou BI..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-10 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/10"
+            className="w-full rounded-xl border border-border bg-muted px-10 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/10"
           />
           {loading && (
             <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-emerald" />
@@ -178,20 +178,20 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
         </div>
 
         {query && normalizedResults.length > 0 && (
-          <div className="mt-3 rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="mt-3 rounded-xl border border-border bg-card shadow-sm">
             {normalizedResults.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => handleSelectAluno(item.id, item.label)}
-                className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left text-sm hover:bg-slate-50"
+                className="flex w-full items-center gap-3 border-b border-border px-4 py-3 text-left text-sm hover:bg-muted"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-                  <User className="h-4 w-4 text-slate-400" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                  <User className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-900">{item.label}</div>
-                  <div className="text-xs text-slate-500">{item.highlight ?? ""}</div>
+                  <div className="font-semibold text-foreground">{item.label}</div>
+                  <div className="text-xs text-muted-foreground">{item.highlight ?? ""}</div>
                 </div>
               </button>
             ))}
@@ -217,16 +217,16 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
               className={`rounded-2xl border px-5 py-6 text-left transition-all ${
                 isActive
                   ? "border-amber bg-amber-50 shadow-sm"
-                  : "border-slate-200 bg-white hover:border-amber/60"
+                  : "border-border bg-card hover:border-amber/60"
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`rounded-xl p-2 ${isActive ? "bg-amber/20 text-amber" : "bg-slate-100 text-slate-500"}`}>
+                <div className={`rounded-xl p-2 ${isActive ? "bg-amber/20 text-amber" : "bg-muted text-muted-foreground"}`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-slate-900">{doc.title}</h2>
-                  <p className="mt-1 text-sm text-slate-500">{doc.description}</p>
+                  <h2 className="text-base font-semibold text-foreground">{doc.title}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{doc.description}</p>
                 </div>
               </div>
             </button>

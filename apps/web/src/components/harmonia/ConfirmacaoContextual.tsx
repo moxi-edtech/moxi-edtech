@@ -1,4 +1,3 @@
-// apps/web/src/components/harmonia/ConfirmacaoContextual.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -26,43 +25,25 @@ export default function ConfirmacaoContextual({ acaoId, contexto, onClose }: Con
   if (!config) return null;
 
   return (
-    <div style={{
-      position: "fixed", bottom: 24, right: 24,
-      background: "#1f6b3b",
-      borderRadius: 14,
-      padding: "14px 18px",
-      display: "flex", alignItems: "center", gap: 12,
-      boxShadow: "0 8px 24px #1f6b3b44",
-      zIndex: 999,
-      maxWidth: 340,
-      opacity: saindo ? 0 : 1,
-      transform: saindo ? "translateY(8px)" : "translateY(0)",
-      transition: "opacity 0.3s ease, transform 0.3s ease",
-      animation: "toastIn 0.3s cubic-bezier(0.16,1,0.3,1)",
-      fontFamily: "'DM Sans', system-ui, sans-serif",
-    }}>
-      <div style={{
-        width: 32, height: 32, borderRadius: "50%",
-        background: "#ffffff18",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 14, color: "#fff", flexShrink: 0,
-      }}>✓</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 2 }}>
-          {config.titulo}
-        </div>
-        <div style={{
-          fontSize: 11, color: "#86efac",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          {config.subtitulo(contexto)}
-        </div>
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed bottom-6 right-6 z-[999] flex w-[calc(100vw-3rem)] max-w-[340px] items-center gap-3 rounded-xl border border-klasse-green/30 bg-klasse-green p-4 text-white shadow-sm transition-[opacity,transform] duration-300"
+      style={{ opacity: saindo ? 0 : 1, transform: saindo ? "translateY(8px)" : "translateY(0)" }}
+    >
+      <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted-foreground/20 text-sm">✓</span>
+      <div className="min-w-0 flex-1">
+        <div className="mb-0.5 text-sm font-bold">{config.titulo}</div>
+        <div className="truncate text-xs text-emerald-100">{config.subtitulo(contexto)}</div>
       </div>
-      <button onClick={() => { setSaindo(true); setTimeout(onClose, 300); }} style={{
-        background: "none", border: "none",
-        color: "#86efac", cursor: "pointer",
-        fontSize: 16, padding: 4, flexShrink: 0,
-      }}>×</button>
+      <button
+        type="button"
+        onClick={() => { setSaindo(true); setTimeout(onClose, 300); }}
+        aria-label="Fechar confirmação"
+        className="shrink-0 rounded-xl p-1 text-emerald-100 transition hover:bg-muted-foreground/20 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold"
+      >
+        ×
+      </button>
     </div>
   );
 }

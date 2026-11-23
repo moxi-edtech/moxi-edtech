@@ -2181,7 +2181,7 @@ function Step3Pagamento(props: {
           )}
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Resumo dos itens pagos</p>
-            <div className="mt-3 divide-y divide-slate-200">
+            <div className="mt-3 divide-y divide-border">
               {(result.itens_pagamento ?? []).map((item, index) => (
                 <div key={`${item.nome ?? item.descricao ?? 'item'}-${index}`} className="flex items-center justify-between gap-4 py-2 text-sm">
                   <span className="text-muted-foreground">{item.nome ?? item.descricao ?? 'Serviço escolar'}{Number(item.quantidade ?? 1) > 1 ? ` × ${item.quantidade}` : ''}</span>
