@@ -329,7 +329,7 @@ export default function DocumentosEmissaoHubClient({
     if (!selectedAluno?.id || !tipo || !selectedAnoLetivoId) {
       throw new Error("Selecione aluno, documento e ano letivo.");
     }
-    const res = await fetch("/api/secretaria/documentos/individual", {
+    const res = await fetch("/api/secretaria/documentos/emitir", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -351,7 +351,7 @@ export default function DocumentosEmissaoHubClient({
     documentRequestRef.current = null;
     if (!selectedAluno?.id || !tipo || !selectedAnoLetivoId) return;
     setStatusLoading(true);
-    fetch("/api/secretaria/documentos/individual", {
+    fetch("/api/secretaria/documentos/emitir", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
