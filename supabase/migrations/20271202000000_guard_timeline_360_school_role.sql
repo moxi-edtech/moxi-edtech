@@ -24,6 +24,7 @@ BEGIN
       p_escola_id,
       ARRAY[
         'admin', 'admin_escola', 'staff_admin', 'admin_secretaria',
+        'admin_secretario', 'diretor',
         'secretaria', 'secretaria_financeiro', 'admin_financeiro'
       ]::text[]
     ),
