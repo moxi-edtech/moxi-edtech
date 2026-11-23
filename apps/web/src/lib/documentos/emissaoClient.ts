@@ -35,6 +35,23 @@ export type ConsultarDocumentoInput = {
   action: "status" | "solicitar";
 };
 
+export type DocumentoNextAction = { label: string; href: string };
+
+export class DocumentoOperacaoErro extends Error {
+  constructor(message: string, public readonly nextAction: DocumentoNextAction | null) {
+    super(message);
+    this.name = "DocumentoOperacaoErro";
+  }
+}
+
+function nextActionSegura(value: unknown): DocumentoNextAction | null {
+  if (!value || typeof value !== "object") return null;
+  const action = value as Record<string, unknown>;
+  if (typeof action.label !== "string" || typeof action.href !== "string" ||
+      !action.href.startsWith("/") || action.href.startsWith("//")) return null;
+  return { label: action.label, href: action.href };
+}
+
 export async function consultarDocumentoIndividual(input: ConsultarDocumentoInput): Promise<Record<string, unknown>> {
   const response = await fetch("/api/secretaria/documentos/emitir", {
     method: "POST",
@@ -49,14 +66,14 @@ export async function consultarDocumentoIndividual(input: ConsultarDocumentoInpu
   });
   const json = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (!response.ok || json.ok !== true) {
-    throw new Error(mensagemDeErro(json.error));
+    throw new DocumentoOperacaoErro(mensagemDeErro(json.error), nextActionSegura(json.next_action));
   }
   return json;
 }
 
 export type EmitirDocumentoResult =
   | { ok: true; docId: string; printUrl: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; nextAction?: DocumentoNextAction | null };
 
 /**
  * Emite e devolve SEMPRE o URL de impressão junto com o `docId`, para que
@@ -91,10 +108,11 @@ export async function emitirDocumento(
       ok?: boolean;
       docId?: string;
       error?: unknown;
+      next_action?: unknown;
     };
 
     if (!response.ok || !json?.ok || !json?.docId) {
-      return { ok: false, error: mensagemDeErro(json?.error) };
+      return { ok: false, error: mensagemDeErro(json?.error), nextAction: nextActionSegura(json?.next_action) };
     }
 
     const docId = String(json.docId);
