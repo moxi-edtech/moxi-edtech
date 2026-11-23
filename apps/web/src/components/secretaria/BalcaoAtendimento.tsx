@@ -40,7 +40,7 @@ import { PagamentoDividaModal } from "@/components/secretaria/PagamentoDividaMod
 import { getTipoDocumentoFromCodigo } from "@/lib/documentos/identificacao";
 import { OmniSearchInput } from "@/components/secretaria/OmniSearchInput";
 import { isTipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
-import { emitirDocumento as emitirDocumentoViaApi, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
+import { abrirParaImpressao } from "@/lib/documentos/emissaoClient";
 import { kwanza } from "@/lib/formatters";
 import { isOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { resolveCheckoutPaymentState } from "@/lib/financeiro/checkout-payment-state";
@@ -156,6 +156,15 @@ function isServicoRematricula(s: Servico): boolean {
 // prefixo DOC_.
 function getDocTipo(s: Servico): string | null {
   return getTipoDocumentoFromCodigo(s.documento_tipo ?? s.codigo);
+}
+
+
+function hrefEmissaoIndividual(alunoId: string | null, servico: Servico, anoLetivoId: string | null): string | null {
+  const tipo = getDocTipo(servico);
+  if (!alunoId || !isTipoDocumentoEmitivel(tipo)) return null;
+  const params = new URLSearchParams({ alunoId, tipo });
+  if (anoLetivoId) params.set("ano_letivo_id", anoLetivoId);
+  return `/secretaria/documentos?${params.toString()}`;
 }
 
 function getDocumentoResumo(servico: Servico): string {
@@ -661,10 +670,8 @@ function useCheckout({
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [billingWindowIssue, setBillingWindowIssue] = useState<BillingWindowIssue | null>(null);
-  const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
   const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
   const checkoutRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
-  const documentRequestRef = useRef<Map<string, { fingerprint: string; key: string }>>(new Map());
   // Serviços que emitem documento e acabaram de ser pagos. O carrinho é limpo no
   // sucesso, e sem isto o item pago desaparecia do ecrã sem forma de emitir o
   // documento — que é exactamente o que faltava ao pagar uma declaração.
@@ -797,65 +804,9 @@ function useCheckout({
     }
   }, [billingWindowIssue, error, success]);
 
-  const emitirDocumento = useCallback(
-    async (servico: Servico): Promise<string | null> => {
-      if (!aluno) return null;
-
-      const tipoDocumento = getDocTipo(servico);
-      if (!tipoDocumento) {
-        error(`O serviço "${servico.nome}" não tem um documento associado.`);
-        return null;
-      }
-      // `getTipoDocumentoFromCodigo` pode devolver tipos que a rota de emissão
-      // não aceita — "recibo" é o caso real, e existe no catálogo de serviços.
-      // Sem esta guarda o POST devolvia 400 e o operador via um erro genérico.
-      if (!isTipoDocumentoEmitivel(tipoDocumento)) {
-        error(`O serviço "${servico.nome}" é emitido pelo fluxo de pagamento, não pelo balcão.`);
-        return null;
-      }
-
-      const fingerprint = JSON.stringify({
-        escolaId,
-        alunoId: aluno.id,
-        servicoId: servico.id,
-        tipoDocumento,
-        anoLetivoId: academicYearId ?? null,
-      });
-      const previousRequest = documentRequestRef.current.get(servico.id);
-      const request =
-        previousRequest?.fingerprint === fingerprint
-          ? previousRequest
-          : { fingerprint, key: crypto.randomUUID() };
-      documentRequestRef.current.set(servico.id, request);
-
-      setEmittingDocId(servico.id);
-      try {
-        const resultado = await emitirDocumentoViaApi({
-          escolaId,
-          alunoId: aluno.id,
-          tipoDocumento,
-          idempotencyKey: request.key,
-          anoLetivoId: academicYearId,
-        });
-        if (!resultado.ok) {
-          // A chave permanece associada à tentativa: retry após timeout/500 não
-          // pode fabricar um segundo documento oficial.
-          error(resultado.error);
-          return null;
-        }
-        documentRequestRef.current.delete(servico.id);
-        await onSuccess();
-        return resultado.printUrl;
-      } finally {
-        setEmittingDocId(null);
-      }
-    },
-    [aluno, escolaId, academicYearId, error, onSuccess]
-  );
 
   return {
     isSubmitting,
-    emittingDocId,
     printQueue,
     setPrintQueue,
     pagos,
@@ -863,7 +814,6 @@ function useCheckout({
     pendentes,
     setPendentes,
     checkout,
-    emitirDocumento,
     billingWindowIssue,
     setBillingWindowIssue,
     saveBillingWindow,
@@ -2044,6 +1994,7 @@ function CarrinhoPanel({
   checkout,
   audit,
   aluno,
+  academicYearId,
   embedded = false,
   mode = "all",
   atalhoActivo = true,
@@ -2052,6 +2003,7 @@ function CarrinhoPanel({
   checkout: ReturnType<typeof useCheckout>;
   audit: ReturnType<typeof useAuditTrail>;
   aluno: AlunoDossier | null;
+  academicYearId: string | null;
   embedded?: boolean;
   mode?: "all" | "payment" | "document";
   /** Desligado enquanto há um modal aberto — ver o efeito abaixo. */
@@ -2216,7 +2168,10 @@ function CarrinhoPanel({
           </div>
         ) : (
           itens.map((item) => {
-            const podeImprimir = item.tipo === "servico" && Number(item.preco ?? 0) <= 0 && getDocTipo(item as Servico) !== null;
+            const hrefDocumento = item.tipo === "servico"
+              ? hrefEmissaoIndividual(aluno?.id ?? null, item, academicYearId)
+              : null;
+            const podeImprimir = Boolean(hrefDocumento) && item.tipo === "servico" && Number(item.preco ?? 0) <= 0;
 
             return (
               <div
@@ -2232,20 +2187,11 @@ function CarrinhoPanel({
                         ? "Documento"
                         : item.tipo}
                   </p>
-                  {podeImprimir && (
-                    <button
-                      type="button"
-                      disabled={checkout.emittingDocId === item.id}
-                      onClick={async () => {
-                        const url = await checkout.emitirDocumento(item as Servico);
-                        if (!url) return;
-                        const impressao = abrirParaImpressao(url);
-                        if (!impressao.ok) checkout.setPrintQueue((prev) => [{ label: item.nome, url: impressao.url }, ...prev]);
-                      }}
-                      className="mt-1.5 text-[10px] font-semibold text-emerald hover:underline disabled:opacity-50"
-                    >
-                      {checkout.emittingDocId === item.id ? "A emitir…" : "Imprimir agora"}
-                    </button>
+                  {podeImprimir && hrefDocumento && (
+                    <Link href={hrefDocumento}
+                      className="mt-1.5 inline-block text-[10px] font-semibold text-emerald hover:underline">
+                      Abrir na Central de Documentos
+                    </Link>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -2313,19 +2259,12 @@ function CarrinhoPanel({
             {checkout.pagos.map((servico) => (
               <div key={servico.id} className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold text-foreground min-w-0 truncate">{servico.nome}</p>
-                <button
-                  type="button"
-                  disabled={checkout.emittingDocId === servico.id}
-                  onClick={async () => {
-                    const url = await checkout.emitirDocumento(servico);
-                    if (!url) return;
-                    const impressao = abrirParaImpressao(url);
-                    if (!impressao.ok) checkout.setPrintQueue((prev) => [{ label: servico.nome, url: impressao.url }, ...prev]);
-                  }}
-                  className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald hover:underline disabled:opacity-50"
+                <Link
+                  href={hrefEmissaoIndividual(aluno?.id ?? null, servico, academicYearId) ?? "/secretaria/documentos"}
+                  className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald hover:underline"
                 >
-                  {checkout.emittingDocId === servico.id ? "A emitir…" : "Emitir documento"}
-                </button>
+                  Abrir na Central
+                </Link>
               </div>
             ))}
           </div>
@@ -2891,17 +2830,13 @@ export default function BalcaoAtendimento({
 
   const abrirEmissaoIndividual = useCallback(
     (servico: Servico) => {
-      const alunoId = dossier.aluno?.id;
-      if (!alunoId) {
+      if (!dossier.aluno?.id) {
         error("Selecione um aluno primeiro.");
         return false;
       }
-      const tipo = getDocTipo(servico);
-      if (!isTipoDocumentoEmitivel(tipo)) return false;
-      const params = new URLSearchParams({ alunoId, tipo });
-      if (effectiveAcademicYearId) params.set("ano_letivo_id", effectiveAcademicYearId);
-      // A navegação mantém o contexto e não inicia qualquer cobrança.
-      window.location.assign(`/secretaria/documentos?${params.toString()}`);
+      const href = hrefEmissaoIndividual(dossier.aluno.id, servico, effectiveAcademicYearId);
+      if (!href) return false;
+      window.location.assign(href);
       return true;
     },
     [dossier.aluno?.id, effectiveAcademicYearId, error],
@@ -3161,7 +3096,7 @@ export default function BalcaoAtendimento({
                   onAdicionarMensalidade={handleAdicionarMensalidade}
                   onAdicionarServico={handleAdicionarServico}
                   onEmitirDocumento={handleEmitirDocumento}
-                  emittingDocId={checkout.emittingDocId}
+                  emittingDocId={null}
                   unlockedMensalidadeIds={unlockedMensalidadeIds}
                   selectedItemKeys={selectedItemKeys}
                   selectedTotal={carrinho.total}
@@ -3263,6 +3198,7 @@ export default function BalcaoAtendimento({
                   checkout={checkout}
                   audit={audit}
                   aluno={dossier.aluno}
+                  academicYearId={effectiveAcademicYearId}
                   embedded={embedded}
                   mode={view === "payment" ? "payment" : view === "document" || view === "reenrollment" ? "document" : "all"}
                   atalhoActivo={
