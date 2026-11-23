@@ -11,7 +11,6 @@ import { requireFeature } from "@/lib/plan/requireFeature";
 import { HttpError } from "@/lib/errors";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
-import { checkSpecificDocumentPaid, BOLETIM_SERVICE_CODE, BOLETIM_LEGACY_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
 
 const payloadSchema = z.object({
   alunoId: z.string().uuid(),
@@ -131,23 +130,23 @@ export async function POST(request: Request) {
       }
     }
 
-    // Declaração oficial ≠ boletim dinâmico. Cada tipo exige a sua própria
-    // intenção liquidada e a concessão para a matrícula do ano selecionado.
-    // Uma aprovação gratuita da secretaria nunca abre acesso a notas.
-    if (tipoDocumento === "declaracao_notas" || tipoDocumento === "boletim_trimestral") {
-      const { data: matricula, error: matriculaError } = await supabase
-        .from("matriculas").select("id")
-        .eq("escola_id", escolaId).eq("aluno_id", alunoId)
-        .eq("session_id", academicContext!.anoLetivoId)
-        .limit(1).maybeSingle();
-      if (matriculaError) return NextResponse.json({ ok: false, error: "Falha ao consultar matrícula." }, { status: 503 });
-      if (!matricula) return NextResponse.json({ ok: false, error: "Matrícula não encontrada no ano letivo selecionado." }, { status: 409 });
-      const code = tipoDocumento === "declaracao_notas" ? BOLETIM_LEGACY_SERVICE_CODE : BOLETIM_SERVICE_CODE;
-      const access = await checkSpecificDocumentPaid(supabase, { escolaId, alunoId, matriculaId: matricula.id }, code);
-      if (access.error) return NextResponse.json({ ok: false, error: "Não foi possível confirmar a liquidação." }, { status: 503 });
-      if (!access.granted) {
-        return NextResponse.json({ ok: false, error: "Documento não emitido: confirme a liquidação efectiva da taxa deste serviço em Recebimentos. Aprovação administrativa não equivale a pagamento." }, { status: 409 });
-      }
+    // O servidor valida o serviço exato, matrícula/ano e liquidação no ledger.
+    // Nunca confiar em status ou valor enviados pelo cliente.
+    const { data: access, error: accessError } = await (supabase as any)
+      .rpc("documento_individual_acesso", {
+        p_escola_id: escolaId,
+        p_aluno_id: alunoId,
+        p_session_id: academicContext!.anoLetivoId,
+        p_tipo: tipoDocumento,
+      });
+    if (accessError) {
+      return NextResponse.json({ ok: false, error: "Falha ao validar pagamento." }, { status: 503 });
+    }
+    if (access?.granted !== true) {
+      return NextResponse.json({
+        ok: false, code: "DOCUMENT_PAYMENT_REQUIRED",
+        error: "Documento não emitido. Registe ou valide a taxa deste serviço, ou aguarde a aprovação quando aplicável.",
+      }, { status: 409 });
     }
 
     // Se for um documento final, usa a nova RPC baseada no histórico
@@ -160,10 +159,11 @@ export async function POST(request: Request) {
       }
 
       const { data: result, error: rpcError } = await (supabase as any)
-        .rpc("emitir_documento_final_idempotente", {
+        .rpc("emitir_documento_final_individual", {
           p_escola_id: escolaId,
           p_aluno_id: alunoId,
           p_ano_letivo: anoLetivoNumero,
+          p_session_id: academicContext!.anoLetivoId,
           p_tipo_documento: FINAL_DOC_BACKEND_TYPE[tipoDocumento],
           p_idempotency_key: idempotencyKey,
         });
