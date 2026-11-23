@@ -44,3 +44,32 @@ test("gestão retroativa é explícita, justificada e limitada à matrícula", (
   assert.match(apiGestao, /p_justificativa/);
   assert.match(apiGestao, /\.eq\("aluno_id",id\)/);
 });
+
+const admissao = source("components/secretaria/AdmissaoWizardClient.tsx");
+const perfil = source("components/aluno/AlunoPerfilPage.tsx");
+const conciliacaoApi = source("app/api/financeiro/relatorios/reconciliacao-mensalidades/route.ts");
+const migration = readFileSync(new URL("../../../../supabase/migrations/20271202030000_bolsa_integral_matricula_ssot.sql", import.meta.url), "utf8");
+
+test("admissão permite bolsa integral antes da geração do carnet e bloqueia avanço durante salvamento", () => {
+  assert.match(admissao, /Bolsa integral de estudo/);
+  assert.match(admissao, /percentagemDesconto: 100, motivoDesconto: "Bolsa integral"/);
+  assert.match(admissao, /!saving && !error/);
+  assert.match(migration, /AFTER UPDATE OF status, matricula_id ON public.candidaturas/);
+  assert.match(migration, /classe.*bolsa_admissao|klasse_bolsa_candidatura_matriculada/);
+  assert.match(migration, /NEW.status <> 'matriculado'/);
+  assert.match(migration, /NEW.aluno_id/);
+});
+
+test("a gestão da bolsa aparece no financeiro com prévia e histórico por matrícula", () => {
+  assert.match(perfil, /slotFinanceiro=/);
+  assert.match(perfil, /<BolsaIntegralCard/);
+  assert.match(gestao, /Prévia antes de confirmar/);
+  assert.match(gestao, /previsao_incompleta/);
+  assert.match(gestao, /Histórico da bolsa/);
+  assert.match(apiGestao, /\.eq\("entity_id", atual.id\)/);
+  assert.match(apiGestao, /\.eq\("escola_id", ctx.escolaId\)/);
+  assert.match(apiGestao, /"pagamentos"\)\.select\("mensalidade_id,status,valor_pago,status_fiscal,fiscal_documento_id"\)/);
+  assert.match(conciliacaoApi, /\.eq\("aluno_id", alunoId\)/);
+  assert.match(portal, /bolsaVigente/);
+  assert.match(portal, /Histórico de bolsas/);
+});

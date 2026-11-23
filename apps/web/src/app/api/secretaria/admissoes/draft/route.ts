@@ -162,6 +162,17 @@ export async function POST(request: Request) {
   });
   if (authError) return authError;
 
+  // A bolsa é uma decisão financeira privilegiada, não um desconto genérico.
+  if (normalized.percentagem_desconto === 100 &&
+      /bolsa/i.test(normalized.motivo_desconto ?? "")) {
+    const { error: bolsaAuth } = await requireRoleInSchool({
+      supabase, escolaId,
+      roles: ["admin", "admin_escola", "admin_financeiro", "admin_secretaria",
+        "admin_secretario", "secretaria", "financeiro", "diretor", "staff_admin"],
+    });
+    if (bolsaAuth) return bolsaAuth;
+  }
+
   try {
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;

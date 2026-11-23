@@ -1244,7 +1244,7 @@ function Step2FitAcademico(props: {
     });
   };
 
-  const canAdvance = safeUuid(sel.turmaId) && safeUuid(candidaturaId);
+  const canAdvance = safeUuid(sel.turmaId) && safeUuid(candidaturaId) && !saving && !error;
 
   useEffect(() => {
     if (!hydrated || !isUuid(escolaId)) return;
@@ -1419,9 +1419,21 @@ function Step2FitAcademico(props: {
       <div className="space-y-4 rounded-xl border border-border bg-muted/60 p-5">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Opcional</p>
-          <h3 className="mt-1 text-sm font-black text-foreground">Desconto da matrícula</h3>
+          <h3 className="mt-1 text-sm font-black text-foreground">Bolsa e descontos</h3>
           <p className="mt-1 text-xs text-muted-foreground">Use apenas quando existir uma condição financeira autorizada.</p>
         </div>
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card p-4">
+          <input type="checkbox" className="mt-1 h-4 w-4 accent-[#E3B23C]"
+            checked={sel.percentagemDesconto === 100 && sel.motivoDesconto === "Bolsa integral"}
+            disabled={!canEditDraft || saving}
+            onChange={(event) => void onUpdateFinanceiro(event.target.checked
+              ? { percentagemDesconto: 100, motivoDesconto: "Bolsa integral" }
+              : { percentagemDesconto: 0, motivoDesconto: "" })} />
+          <span>
+            <span className="block text-sm font-semibold text-foreground">Bolsa integral de estudo</span>
+            <span className="block text-xs text-muted-foreground">Isenta 100% das propinas do ano letivo. Não elimina a taxa de matrícula nem outros serviços.</span>
+          </span>
+        </label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -1436,7 +1448,7 @@ function Step2FitAcademico(props: {
                 const val = Math.min(100, Math.max(0, Number(e.target.value)));
                 onUpdateFinanceiro({ percentagemDesconto: val });
               }}
-              disabled={!canEditDraft}
+              disabled={!canEditDraft || saving || (sel.percentagemDesconto === 100 && sel.motivoDesconto === "Bolsa integral")}
               className="w-full rounded-xl border-border bg-card px-3 py-2 text-sm focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
               placeholder="Ex: 15"
             />
@@ -1450,7 +1462,7 @@ function Step2FitAcademico(props: {
               onChange={(e) => {
                 onUpdateFinanceiro({ motivoDesconto: e.target.value });
               }}
-              disabled={!canEditDraft}
+              disabled={!canEditDraft || saving || (sel.percentagemDesconto === 100 && sel.motivoDesconto === "Bolsa integral")}
               className="w-full rounded-xl border-border bg-card px-3 py-2 text-sm focus:ring-4 focus:ring-amber/20 focus:border-amber disabled:opacity-60"
             >
               <option value="">Sem desconto</option>
@@ -1463,7 +1475,7 @@ function Step2FitAcademico(props: {
           </div>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          O desconto será aplicado automaticamente às propinas geradas para esta matrícula.
+          A bolsa integral é registada na matrícula do ano selecionado. Para outro ano letivo, a escola deve confirmar uma nova atribuição.
         </p>
       </div>
 

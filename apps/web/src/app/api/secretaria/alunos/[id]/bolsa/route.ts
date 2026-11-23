@@ -87,24 +87,85 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     (Number(m.percentagem_desconto ?? 0) === 100 && /bolsa/i.test(m.motivo_desconto ?? ""))));
 
   const { data: ano, error: anoError } = await ctx.supabase!
-    .from("anos_letivos").select("data_inicio")
+    .from("anos_letivos").select("data_inicio,data_fim")
     .eq("escola_id",ctx.escolaId).eq("ano",atual.ano_letivo)
     .order("ativo",{ascending:false}).order("created_at",{ascending:false}).limit(1).maybeSingle();
   if (anoError) return NextResponse.json({ok:false,error:"Não foi possível consultar o ano letivo"},{status:500});
   const { data: cobrancas, error: cobrancasError } = await ctx.supabase!
     .from("mensalidades")
-    .select("id,matricula_id,turma_id,ano_referencia,mes_referencia,valor_pago_total,status,fiscal_documento_id,status_fiscal")
+    .select("id,matricula_id,turma_id,ano_referencia,mes_referencia,valor_pago_total,valor_previsto,valor,valor_original,status,bolsa_isencao_integral,fiscal_documento_id,status_fiscal")
     .eq("escola_id",ctx.escolaId).eq("aluno_id",id)
     .eq("ano_letivo",String(atual.ano_letivo)).limit(300);
   if (cobrancasError) return NextResponse.json({ok:false,error:"Não foi possível consultar propinas"},{status:500});
-  const mesAtual = new Date().toISOString().slice(0,7);
-  const mensalidadesPendentes = (cobrancas ?? [])
-    .filter((me: any) => me.matricula_id === atual.id || (!me.matricula_id && me.turma_id === atual.turma_id))
-    .filter((me: any) => me.status === "pendente" && Number(me.valor_pago_total ?? 0) === 0
-      && !me.fiscal_documento_id && (!me.status_fiscal || me.status_fiscal === "pending"))
-    .map((me: any) => `${me.ano_referencia}-${String(me.mes_referencia).padStart(2,"0")}`)
-    .filter((mes: string) => mes < mesAtual)
-    .sort();
+  const ids = (cobrancas ?? [])
+    .filter((me: any) => me.matricula_id === atual.id ||
+      (!me.matricula_id && me.turma_id === atual.turma_id))
+    .map((me: any) => me.id as string);
+  // Fail-closed: sem consultar pagamentos/documentos não se pode prometer isenção.
+  const [pagamentosResult, documentosResult, historicoResult] = await Promise.all([
+    ids.length
+      ? ctx.supabase!.from("pagamentos").select("mensalidade_id,status,valor_pago,status_fiscal,fiscal_documento_id").eq("escola_id", ctx.escolaId).in("mensalidade_id", ids)
+      : Promise.resolve({ data: [], error: null }),
+    ids.length
+      ? ctx.supabase!.from("documentos_emitidos").select("mensalidade_id").eq("escola_id", ctx.escolaId).in("mensalidade_id", ids)
+      : Promise.resolve({ data: [], error: null }),
+    ctx.supabase!.from("audit_logs")
+      .select("created_at,action,details")
+      .eq("escola_id", ctx.escolaId)
+      .eq("entity", "matriculas")
+      .eq("entity_id", atual.id)
+      .in("action", ["BOLSA_INTEGRAL_ATUALIZADA", "BOLSA_INTEGRAL_NA_MATRICULA"])
+      .order("created_at", { ascending: false }).limit(20),
+  ]);
+  if (pagamentosResult.error || documentosResult.error) {
+    return NextResponse.json({ ok: false, error: "Não foi possível validar pagamentos e documentos das propinas" }, { status: 500 });
+  }
+  const pagamentosPorMensalidade = new Map<string, Array<{
+    status: string; valor_pago: number; status_fiscal: string | null; fiscal_documento_id: string | null;
+  }>>();
+  for (const pagamento of (pagamentosResult.data ?? [])) {
+    const key = String(pagamento.mensalidade_id);
+    pagamentosPorMensalidade.set(key, [...(pagamentosPorMensalidade.get(key) ?? []), pagamento]);
+  }
+  const comDocumento = new Set((documentosResult.data ?? []).map((row: any) => row.mensalidade_id));
+  const cobrancasDaMatricula = (cobrancas ?? [])
+    .filter((me: any) => me.matricula_id === atual.id || (!me.matricula_id && me.turma_id === atual.turma_id));
+  const previsao = cobrancasDaMatricula
+    .filter((me: any) => Number.isInteger(me.ano_referencia) && me.mes_referencia >= 1 && me.mes_referencia <= 12)
+    .map((me: any) => {
+      const pagamentos = pagamentosPorMensalidade.get(me.id) ?? [];
+      const temPagamento = pagamentos.length > 0 || Number(me.valor_pago_total ?? 0) > 0;
+      const liquidado = pagamentos.filter(pg => ["settled", "concluido", "pago"].includes(pg.status))
+        .reduce((total, pg) => total + Number(pg.valor_pago ?? 0), 0);
+      const parcialConsistente = me.status === "pago_parcial"
+        && Number(me.valor_pago_total ?? 0) > 0
+        && Number(me.valor_pago_total ?? 0) === liquidado
+        && Number(me.valor_pago_total ?? 0) < Number(me.valor_previsto ?? me.valor ?? 0);
+      const temFiscal = Boolean(me.fiscal_documento_id || comDocumento.has(me.id) ||
+        (me.status_fiscal && me.status_fiscal !== "pending") ||
+        pagamentos.some(pg => pg.fiscal_documento_id ||
+          (pg.status_fiscal && pg.status_fiscal !== "pending")));
+      return {
+        competencia: `${me.ano_referencia}-${String(me.mes_referencia).padStart(2, "0")}`,
+        valor_aberto: Math.max(0, Number(me.valor_previsto ?? me.valor ?? 0) - Number(me.valor_pago_total ?? 0)),
+        valor_original: Math.max(0, Number(me.valor_original ?? me.valor_previsto ?? me.valor ?? 0)),
+        status: String(me.status),
+        bolsa_isencao_integral: Boolean(me.bolsa_isencao_integral),
+        elegivel: me.status === "pendente" && !temPagamento && !temFiscal,
+        parcial_possivel: parcialConsistente && !temFiscal,
+        requer_revisao: !["pago", "cancelado", "isento"].includes(me.status) &&
+          (temFiscal || (temPagamento && !parcialConsistente)),
+        motivo_revisao: temFiscal ? "Documento emitido" :
+          temPagamento && !parcialConsistente ? "Pagamentos por conciliar" : null,
+      };
+    })
+    .sort((a: any, b: any) => a.competencia.localeCompare(b.competencia));
+  const mesAtual = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Africa/Luanda", year: "numeric", month: "2-digit",
+  }).format(new Date());
+  const mensalidadesPendentes = [...new Set(previsao
+    .filter(item => item.elegivel && item.competencia < mesAtual)
+    .map(item => item.competencia))].sort();
 
   return NextResponse.json({
     ok: true,
@@ -123,7 +184,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       vigencia_inicio: atual.bolsa_integral_inicio ?? null,
       bolsa_ano_anterior: bolsaAnterior ? Number(bolsaAnterior.ano_letivo) : null,
       ano_inicio: ano?.data_inicio ?? null,
+      ano_fim: ano?.data_fim ?? null,
       propinas_antigas_potenciais: mensalidadesPendentes,
+      previsao,
+      previsao_incompleta: (cobrancas ?? []).length >= 300,
+      historico: historicoResult.error ? null : (historicoResult.data ?? []).map((evento: any) => ({
+        em: evento.created_at,
+        acao: evento.action,
+        inicio: evento.details?.vigencia_inicio ?? null,
+        motivo: evento.details?.motivo ?? null,
+        justificativa: evento.details?.justificativa_retroativa ?? null,
+        isentas: Number(evento.details?.isentas ?? 0),
+        revisoes: Number(evento.details?.pendentes_revisao_fiscal ?? 0)
+          + Number(evento.details?.pendentes_revisao_pagamento ?? 0),
+        atribuiu: Boolean(evento.details?.atual ?? true),
+      })),
     },
   }, { headers: { "Cache-Control": "no-store" } });
 }

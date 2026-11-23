@@ -783,6 +783,83 @@ REVOKE ALL ON FUNCTION public.gerar_mensalidades_lote(uuid,integer,integer,integ
 GRANT EXECUTE ON FUNCTION public.gerar_mensalidades_lote(uuid,integer,integer,integer) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.gerar_mensalidades_lote(uuid,integer,integer,integer,uuid) TO authenticated, service_role;
 
+-- A conversão da candidatura não aplicava o desconto à matrícula.
+-- Sincronizar dentro da mesma transação, ANTES de gerar o carnet anual.
+-- Sem este trigger, a checkbox de bolsa no Balcão não evitaria cobranças.
+CREATE OR REPLACE FUNCTION public.klasse_bolsa_candidatura_matriculada()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public'
+AS $$
+DECLARE
+  v_inicio date;
+BEGIN
+  IF NEW.status <> 'matriculado' OR NEW.matricula_id IS NULL
+     OR coalesce(NEW.percentagem_desconto,0) <> 100
+     OR coalesce(NEW.motivo_desconto,'') NOT ILIKE '%bolsa%' THEN
+    RETURN NEW;
+  END IF;
+  IF OLD.status = 'matriculado' AND OLD.matricula_id IS NOT DISTINCT FROM NEW.matricula_id THEN
+    RETURN NEW;
+  END IF;
+  IF auth.uid() IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.escola_users eu
+    WHERE eu.escola_id=NEW.escola_id AND eu.user_id=auth.uid()
+      AND eu.papel IN ('admin','admin_escola','admin_financeiro',
+        'admin_secretaria','admin_secretario','secretaria','financeiro','diretor','staff_admin')
+  ) THEN
+    RAISE EXCEPTION 'FORBIDDEN: sem permissão para atribuir bolsa na matrícula'
+      USING ERRCODE='42501';
+  END IF;
+  SELECT date_trunc('month', al.data_inicio)::date INTO v_inicio
+  FROM public.anos_letivos al
+  JOIN public.matriculas m ON m.escola_id=al.escola_id AND m.ano_letivo=al.ano
+  WHERE m.id=NEW.matricula_id AND m.escola_id=NEW.escola_id
+    AND m.aluno_id=NEW.aluno_id
+  ORDER BY al.ativo DESC,al.created_at DESC LIMIT 1;
+  IF v_inicio IS NULL THEN
+    RAISE EXCEPTION 'Ano letivo não encontrado para bolsa da matrícula'
+      USING ERRCODE='23514';
+  END IF;
+  UPDATE public.matriculas m
+     SET percentagem_desconto=100, motivo_desconto=NEW.motivo_desconto,
+         bolsa_integral=true,bolsa_integral_motivo=NEW.motivo_desconto,
+         bolsa_integral_inicio=v_inicio
+   WHERE m.id=NEW.matricula_id AND m.escola_id=NEW.escola_id
+     AND m.aluno_id=NEW.aluno_id
+     AND (m.bolsa_integral IS DISTINCT FROM true
+          OR m.bolsa_integral_inicio IS DISTINCT FROM v_inicio);
+  IF NOT FOUND AND NOT EXISTS (
+    SELECT 1 FROM public.matriculas m
+    WHERE m.id=NEW.matricula_id AND m.escola_id=NEW.escola_id
+      AND m.aluno_id=NEW.aluno_id AND m.bolsa_integral=true
+  ) THEN
+    RAISE EXCEPTION 'Matrícula não encontrada para atribuição de bolsa'
+      USING ERRCODE='P0002';
+  END IF;
+  INSERT INTO public.audit_logs(escola_id,user_id,action,entity,entity_id,portal,details)
+  VALUES(NEW.escola_id,auth.uid(),'BOLSA_INTEGRAL_NA_MATRICULA',
+         'matriculas',NEW.matricula_id::text,'secretaria',
+         jsonb_build_object('candidatura_id',NEW.id,
+           'ano_letivo',NEW.ano_letivo,'vigencia_inicio',v_inicio,
+           'motivo',NEW.motivo_desconto,'atual',true));
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.klasse_bolsa_candidatura_matriculada() FROM PUBLIC, anon;
+-- Executável apenas pelo trigger interno; sem acesso direto público.
+DO $$
+BEGIN
+  IF to_regclass('public.candidaturas') IS NOT NULL THEN
+    DROP TRIGGER IF EXISTS trg_klasse_bolsa_admissao ON public.candidaturas;
+    CREATE TRIGGER trg_klasse_bolsa_admissao
+      AFTER UPDATE OF status, matricula_id ON public.candidaturas
+      FOR EACH ROW EXECUTE FUNCTION public.klasse_bolsa_candidatura_matriculada();
+  END IF;
+END;
+$$;
+
 -- Reconcilia apenas títulos abertos, sem pagamentos e sem documento fiscal.
 -- O trigger gera créditos auditáveis na ledger, sem apagar lançamentos.
 UPDATE public.matriculas m

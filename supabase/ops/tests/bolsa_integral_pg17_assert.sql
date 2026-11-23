@@ -20,6 +20,9 @@ DECLARE
   v_mat3 uuid := '77777777-7777-4777-8777-777777777777';
   v_mat4 uuid := '45454545-4545-4454-8454-454545454545';
   v_mat5 uuid := '67676767-6767-4676-8676-676767676767';
+  v_aluno6 uuid := '86868686-8686-4868-8868-868686868686';
+  v_mat6 uuid := '89898989-8989-4898-8898-898989898989';
+  v_cand6 uuid := '85858585-8585-4858-8858-858585858585';
   v_turma1 uuid := '88888888-8888-4888-8888-888888888888';
   v_turma2 uuid := '99999999-9999-4999-8999-999999999999';
   v_parcial uuid := '12121212-1212-4212-8212-121212121212';
@@ -309,6 +312,41 @@ BEGIN
       AND desconto_aplicado=2500 AND status='pendente') THEN
     RAISE EXCEPTION 'FAIL: geração por lote ignorou o desconto parcial de 25%%';
   END IF;
+
+  -- Admissão: atribuição integral no rascunho deve chegar à matrícula
+  -- antes da geração do carnet anual, sem segunda chamada à API.
+  INSERT INTO public.matriculas(id,escola_id,aluno_id,turma_id,ano_letivo,status)
+    VALUES(v_mat6,v_escola1,v_aluno6,v_turma1,y,'ativa');
+  INSERT INTO public.candidaturas(id,escola_id,aluno_id,ano_letivo,status,matricula_id,
+                                  percentagem_desconto,motivo_desconto)
+    VALUES(v_cand6,v_escola1,v_aluno6,y,'aprovada',null,100,'Bolsa integral');
+  PERFORM set_config('request.jwt.claim.sub',v_denied::text,false);
+  BEGIN
+    UPDATE public.candidaturas SET status='matriculado',matricula_id=v_mat6 WHERE id=v_cand6;
+    RAISE EXCEPTION 'FAIL: admissão autorizou bolsa sem papel válido';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  PERFORM set_config('request.jwt.claim.sub',v_actor1::text,false);
+  UPDATE public.candidaturas SET status='matriculado',matricula_id=v_mat6 WHERE id=v_cand6;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.matriculas
+    WHERE id=v_mat6 AND bolsa_integral AND percentagem_desconto=100
+      AND bolsa_integral_inicio=date_trunc('month',(dp - interval '1 month')::date)::date
+  ) THEN
+    RAISE EXCEPTION 'FAIL: bolsa da candidatura não sincronizou com a matrícula';
+  END IF;
+  INSERT INTO public.mensalidades(escola_id,aluno_id,matricula_id,turma_id,ano_letivo,
+        mes_referencia,ano_referencia,data_vencimento,valor,valor_previsto,valor_original,status)
+    VALUES(v_escola1,v_aluno6,v_mat6,v_turma1,y::text,
+      extract(month from d0)::int,extract(year from d0)::int,d0+9,10000,10000,10000,'pendente');
+  IF EXISTS (SELECT 1 FROM public.mensalidades WHERE matricula_id=v_mat6) THEN
+    RAISE EXCEPTION 'FAIL: a candidatura com bolsa gerou mensalidade pendente';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.audit_logs
+    WHERE escola_id=v_escola1 AND entity_id=v_mat6::text
+      AND action='BOLSA_INTEGRAL_NA_MATRICULA'
+  ) THEN RAISE EXCEPTION 'FAIL: falta auditoria da bolsa registada na admissão'; END IF;
 
   RAISE NOTICE 'OK PG17: permissão/tenant, vigência, pré-bolsa, parciais, ledger, fiscal, bloqueio direto, retirada, renovação e desconto 25%%';
 END;

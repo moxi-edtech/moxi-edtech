@@ -68,6 +68,12 @@ export async function GET(request: Request) {
       .order("ano_letivo", { ascending: false });
     if (bolsaError) throw bolsaError;
 
+    // A bolsa histórica nunca deve aparecer como uma concessão do ano vigente.
+    const { data: anoAtivo, error: anoAtivoError } = await supabase.from("anos_letivos")
+      .select("ano").eq("escola_id", ctx.escolaId).eq("ativo", true)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (anoAtivoError) throw anoAtivoError;
+
     const mensalidadeIds = (mensalidades ?? []).map((m) => m.id);
     const reciboByMensalidadeId = new Map<string, string>();
 
@@ -170,6 +176,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ok: true,
       mensalidades: rows,
+      ano_letivo_atual: anoAtivo?.ano ?? null,
       bolsas: (matriculasBolsa ?? []).map(m => ({
         ano_letivo: m.ano_letivo,
         vigencia_inicio: m.bolsa_integral_inicio,

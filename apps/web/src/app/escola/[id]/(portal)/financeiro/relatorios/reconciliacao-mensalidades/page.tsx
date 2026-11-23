@@ -72,6 +72,8 @@ export default function ReconciliacaoMensalidadesPage() {
     const query = new URLSearchParams({ escolaId, limit: "50" });
     const academicYear = searchParams?.get("ano_letivo_id");
     if (academicYear) query.set("ano_letivo_id", academicYear);
+    const alunoId = searchParams?.get("alunoId");
+    if (alunoId) query.set("alunoId", alunoId);
 
     async function load() {
       setLoading(true);
@@ -170,6 +172,15 @@ export default function ReconciliacaoMensalidadesPage() {
         </p>
       </div>
 
+      {searchParams?.get("alunoId") && (
+        <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm">
+          Reconciliação filtrada para o aluno selecionado.{" "}
+          <a className="font-semibold text-klasse-green underline"
+             href={`/escola/${escolaId}/financeiro/relatorios/reconciliacao-mensalidades`}>
+            Ver todas as ocorrências
+          </a>
+        </div>
+      )}
       {loading && <div className="rounded-xl border bg-card p-5 text-muted-foreground">A verificar mensalidades…</div>}
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">{error}</div>}
       {actionMessage && <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">{actionMessage}</div>}
@@ -187,6 +198,9 @@ export default function ReconciliacaoMensalidadesPage() {
             ))}
           </div>
 
+          {items.length === 0 && <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+            Nenhuma inconsistência de vínculo foi encontrada nesta consulta. Para pagamentos ou documentos fiscais, consulte também as propinas no dossiê financeiro do aluno.
+          </p>}
           <div className="overflow-x-auto rounded-xl border bg-card">
             <table className="min-w-full text-sm">
               <thead className="border-b bg-muted text-left text-xs uppercase text-muted-foreground">

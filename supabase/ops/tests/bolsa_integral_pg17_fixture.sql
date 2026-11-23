@@ -27,6 +27,16 @@ CREATE TABLE public.turmas(
   curso_id uuid,
   classe_id uuid
 );
+CREATE TABLE public.candidaturas(
+  id uuid PRIMARY KEY,
+  escola_id uuid NOT NULL,
+  aluno_id uuid,
+  ano_letivo integer,
+  status text NOT NULL,
+  matricula_id uuid,
+  percentagem_desconto numeric DEFAULT 0,
+  motivo_desconto text
+);
 CREATE TABLE public.matriculas(
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   escola_id uuid NOT NULL,
@@ -84,7 +94,7 @@ CREATE TABLE public.pagamentos(
 );
 CREATE TABLE public.audit_logs(
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  escola_id uuid, actor_id uuid,
+  escola_id uuid, actor_id uuid, user_id uuid,
   action text, entity text, entity_id text,
   portal text, details jsonb,
   created_at timestamptz DEFAULT now()

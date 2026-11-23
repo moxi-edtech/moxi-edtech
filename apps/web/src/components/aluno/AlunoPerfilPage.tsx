@@ -67,7 +67,13 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
           )}
           slotMatricula={<CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId}
             alunoNome={aluno.perfil.nome} canManageDesistencia={canManageDesistencia} />}
-          slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} escolaId={resolvedEscolaId} servicos={servicos} />}
+          slotFinanceiro={(
+            <div className="space-y-5">
+              {canManageBolsa && <BolsaIntegralCard alunoId={alunoId} escolaId={resolvedEscolaId}
+                anoLetivo={selectedYear ?? undefined} />}
+              <DossierFinanceiroSection aluno={aluno} role={role} escolaId={resolvedEscolaId} servicos={servicos} />
+            </div>
+          )}
           slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role={role} escolaId={resolvedEscolaId} />}
           slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit={canEditHistoricoTransitado} />}
           slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}
