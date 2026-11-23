@@ -25,6 +25,7 @@ DECLARE
   v_parcial uuid := '12121212-1212-4212-8212-121212121212';
   v_fiscal uuid := '13131313-1313-4313-8313-131313131313';
   v_inconsistente uuid := '24242424-2424-4424-8424-242424242424';
+  v_antiga_parcial uuid := '35353535-3535-4535-8535-353535353535';
   v_actor1 uuid := 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
   v_denied uuid := 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   v_result jsonb;
@@ -208,6 +209,55 @@ BEGIN
   IF (SELECT count(*) FROM public.audit_logs
       WHERE action='BOLSA_INTEGRAL_ATUALIZADA' AND escola_id=v_escola1) <> 2 THEN
     RAISE EXCEPTION 'FAIL: faltam eventos auditados de ativação/retirada';
+  END IF;
+
+  -- Caso real: a escola esqueceu a bolsa na matrícula e já gerou as primeiras
+  -- mensalidades. Uma decisão retroativa com justificativa deve perdoar apenas
+  -- as parcelas anteriores não pagas, preservando qualquer pagamento parcial.
+  INSERT INTO public.mensalidades(id,escola_id,aluno_id,matricula_id,turma_id,ano_letivo,
+      mes_referencia,ano_referencia,data_vencimento,valor,valor_previsto,valor_original,
+      valor_pago_total,status)
+  SELECT v_antiga_parcial,v_escola1,v_aluno1,v_mat1,v_turma1,y::text,
+         extract(month from d)::int,extract(year from d)::int,d+9,
+         10000,10000,10000,3000,'pago_parcial'
+    FROM (SELECT (dp - interval '1 month')::date AS d) q;
+  INSERT INTO public.pagamentos(escola_id,aluno_id,mensalidade_id,valor_pago,status)
+  VALUES(v_escola1,v_aluno1,v_antiga_parcial,3000,'settled');
+
+  BEGIN
+    PERFORM public.klasse_definir_bolsa_integral(
+      v_escola1,v_aluno1,v_mat1,true,'Bolsa aprovada',dp,true,NULL);
+    RAISE EXCEPTION 'FAIL: isenção retroativa sem justificativa foi aceite';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.klasse_definir_bolsa_integral(
+      v_escola1,v_aluno1,v_mat1,true,'Bolsa aprovada',dp,false,'A escola omitiu a bolsa');
+    RAISE EXCEPTION 'FAIL: isenção retroativa sem autorização explícita foi aceite';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+
+  v_result := public.klasse_definir_bolsa_integral(
+    v_escola1,v_aluno1,v_mat1,true,'Bolsa aprovada',(dp-interval '1 month')::date,
+    true,'Bolsa aprovada no ato da matrícula, mas não registada.');
+  IF v_result->>'regularizacao_retroativa' <> 'true'
+     OR NOT EXISTS(SELECT 1 FROM public.mensalidades
+       WHERE matricula_id=v_mat1
+         AND date_trunc('month',data_vencimento)::date=dp
+         AND status='isento' AND valor=0 AND bolsa_isencao_integral)
+     OR NOT EXISTS(SELECT 1 FROM public.mensalidades
+       WHERE id=v_antiga_parcial AND status='pago_parcial'
+         AND valor_pago_total=3000 AND valor=10000)
+     OR NOT EXISTS(SELECT 1 FROM public.pagamentos
+       WHERE mensalidade_id=v_antiga_parcial AND status='settled' AND valor_pago=3000)
+  THEN RAISE EXCEPTION 'FAIL: regularização de mensalidades antigas indevida: %',v_result;
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.audit_logs
+    WHERE action='BOLSA_INTEGRAL_ATUALIZADA' AND escola_id=v_escola1
+      AND details->>'regularizacao_retroativa'='true'
+      AND char_length(details->>'justificativa_retroativa')>=10
+  ) THEN
+    RAISE EXCEPTION 'FAIL: regularização retroativa sem auditoria de motivo';
   END IF;
 
   -- Candidatura ainda grava bolsa legada como desconto 100%.
