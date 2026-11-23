@@ -76,6 +76,10 @@ export async function POST(req: Request) {
     if (BOLETIM_SERVICE_CODES.some((code) => code === resolvedServiceCode)) {
       return NextResponse.json({ ok: false, error: 'Este serviço só pode ser emitido como boletim.' }, { status: 400 });
     }
+    if (resolvedServiceCode === 'DOC_DECLARACAO_NOTAS') {
+      // A declaração oficial com notas exige liquidação específica na Secretaria.
+      return NextResponse.json({ ok: false, error: 'Solicite a declaração oficial de notas à secretaria.' }, { status: 409 });
+    }
 
     const { data: permission, error: permError } = await supabase
       .from('servico_pedidos')

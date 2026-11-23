@@ -141,8 +141,11 @@ export default function DocumentosOficiaisBatchClient() {
   }, [hidePendencias, isHistoricalYear, turmas]);
 
   const selectableTurmas = useMemo(() => {
-    return isHistoricalYear ? [] : filteredTurmas.filter((t) => t.pendencias === 0);
-  }, [filteredTurmas, isHistoricalYear]);
+    if (historicalGenerationBlocked) return [];
+    // O histórico fechado da turma é a fonte de emissão, não as notas operacionais.
+    if (isHistoricalYear && tipo === "certificado") return filteredTurmas;
+    return filteredTurmas.filter((t) => t.pendencias === 0);
+  }, [filteredTurmas, historicalGenerationBlocked, isHistoricalYear, tipo]);
 
   const allSelected = selectableTurmas.length > 0 && selectableTurmas.every((t) => selected.has(t.id));
 
@@ -653,12 +656,12 @@ export default function DocumentosOficiaisBatchClient() {
         >
           Atualizar status
         </button>
-        {!isHistoricalYear && <button
+        {!historicalGenerationBlocked && <button
           type="button"
           onClick={() => setSelected(new Set(selectableTurmas.map((t) => t.id)))}
           className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
         >
-          Selecionar turmas prontas
+          {isHistoricalYear ? "Selecionar turmas para certificados" : "Selecionar turmas prontas"}
         </button>}
       </div>
 
@@ -670,7 +673,7 @@ export default function DocumentosOficiaisBatchClient() {
                 <input
                   type="checkbox"
                   checked={allSelected}
-                  disabled={isHistoricalYear}
+                  disabled={historicalGenerationBlocked}
                   onChange={toggleAll}
                   className="rounded text-klasse-green dark:text-klasse-green-300 focus:ring-klasse-green"
                 />
@@ -699,7 +702,7 @@ export default function DocumentosOficiaisBatchClient() {
                     <input
                       type="checkbox"
                       checked={isChecked}
-                      disabled={hasPendencias || isHistoricalYear}
+                      disabled={historicalGenerationBlocked || (hasPendencias && !isHistoricalYear)}
                       onChange={() => toggleTurma(turma.id)}
                       className="rounded text-klasse-green dark:text-klasse-green-300 focus:ring-klasse-green disabled:opacity-50 cursor-pointer"
                     />

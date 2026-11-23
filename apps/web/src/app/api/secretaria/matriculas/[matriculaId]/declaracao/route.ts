@@ -54,12 +54,13 @@ export async function GET(
   }
 
   const anoLetivoId = new URL(request.url).searchParams.get("ano_letivo_id");
+  if (!anoLetivoId) return NextResponse.json({ ok: false, error: "Selecione o ano letivo da declaração." }, { status: 400 });
   let academicContext;
   try {
     academicContext = await resolveAcademicYearContext(supabase, {
       userId: user.id,
       requestedAcademicYearId: anoLetivoId,
-      operation: "WRITE",
+      operation: "READ",
     });
     await assertAcademicYearEntity(supabase, {
       table: "matriculas",

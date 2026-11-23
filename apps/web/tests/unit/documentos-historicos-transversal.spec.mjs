@@ -36,6 +36,14 @@ test("portal do aluno escolhe a matrícula do ano solicitado", () => {
   assert.match(portal, /Tipo e serviço documental incompatíveis/);
 });
 
+test("declaração com notas tem página própria vinculada ao histórico exato", () => {
+  const print = src("app/secretaria/documentos/[docId]/notas/print/page.tsx");
+  assert.match(print, /doc.tipo !== "declaracao_notas"/);
+  assert.match(print, /\\.eq\\("ano_letivo", ano\\)/);
+  assert.match(print, /historico.snapshot_status !== "fechado"/);
+  assert.match(print, /historico_disciplinas/);
+});
+
 test("RPC do aluno não faz fallback para ano diferente", () => {
   const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271203001000_exact_year_aluno_documento_final.sql"), "utf8");
   assert.match(migration, /CREATE OR REPLACE FUNCTION public.aluno_emitir_documento_final/);

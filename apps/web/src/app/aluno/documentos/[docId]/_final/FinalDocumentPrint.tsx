@@ -5,11 +5,21 @@ import { formatDocumentoIdentificacao } from "@/lib/documentos/identificacao";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { buildCertificadoSnapshot, type CertificadoSnapshot } from "@/lib/documentos/certificadoSnapshot";
 
+function nota(value: number | string | null | undefined) {
+  if (value == null || value === "") return "—";
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? String(parsed).replace(".", ",") : "—";
+}
+
 export default async function FinalDocumentPrint({ docId, expectedType, title, requireStudentOwnership = true }: { docId: string; expectedType: "historico" | "certificado"; title: string; requireStudentOwnership?: boolean }) {
   const result = await getDocumentoEmitido(docId, { requireStudentOwnership });
   if ("error" in result) return <div className="p-8">{result.error}</div>;
   if (result.doc.tipo !== expectedType) return <div className="p-8">Documento inválido para esta página.</div>;
   const snapshot = (result.doc.dados_snapshot || {}) as Record<string, unknown>;
+  const targetYear = Number(snapshot.ano_letivo);
+  if (!Number.isInteger(targetYear) || targetYear < 1900 || targetYear > 3000) {
+    return <div className="p-8">O documento não possui ano letivo válido.</div>;
+  }
   let certificado: CertificadoSnapshot | null = null;
   let historicoNotas: Array<{ disciplina_nome?: string | null; nota_final?: number | string | null; media_final?: number | string | null }> = [];
   if (expectedType === "certificado") {
@@ -34,7 +44,7 @@ export default async function FinalDocumentPrint({ docId, expectedType, title, r
           escolaNome={result.escolaNome}
           logoUrl={result.logoUrl}
           titulo={title}
-          data={new Date().toLocaleDateString("pt-PT")}
+          data={new Date(result.doc.created_at).toLocaleDateString("pt-PT")}
           numero={`Código: ${formatDocumentoIdentificacao(result.doc.tipo, snapshot.numero_sequencial)}`}
         />
         <section className="grid gap-4 text-sm sm:grid-cols-2">
@@ -50,9 +60,33 @@ export default async function FinalDocumentPrint({ docId, expectedType, title, r
         {(certificado?.disciplinas?.length || historicoNotas.length) ? (
           <section className="space-y-3">
             <h2 className="border-b pb-2 text-sm font-bold uppercase tracking-wide">Disciplinas e resultados</h2>
-            <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b text-xs text-slate-500"><th className="py-2">Disciplina</th><th className="py-2">Nota final</th><th className="py-2">Média</th></tr></thead><tbody>
-              {(certificado?.disciplinas ?? historicoNotas).map((item: any, index) => <tr key={`${item.nome ?? item.disciplina_nome}-${index}`} className="border-b border-slate-100"><td className="py-2">{String(item.nome ?? item.disciplina_nome ?? "—")}</td><td className="py-2">{String(item.media_final ?? item.nota_final ?? "—")}</td><td className="py-2">{String(item.media_final ?? "—")}</td></tr>)}
-            </tbody></table></div>
+            {certificado ? (
+              <div className="overflow-x-auto"><table className="w-full text-left text-sm">
+                <thead><tr className="border-b text-xs text-slate-500">
+                  <th className="py-2">Disciplina</th>
+                  {certificado.colunas.map((coluna) => <th key={coluna.key} className="px-2 py-2 text-center">{coluna.label} classe</th>)}
+                  <th className="py-2 text-center">Média</th>
+                </tr></thead>
+                <tbody>{certificado.disciplinas.map((item, index) => (
+                  <tr key={`${item.nome}-${index}`} className="border-b border-slate-100">
+                    <td className="py-2">{item.nome}</td>
+                    {certificado.colunas.map((coluna) => <td key={coluna.key} className="px-2 py-2 text-center">{nota(item.notas[coluna.key])}</td>)}
+                    <td className="py-2 text-center">{nota(item.media_final)}</td>
+                  </tr>
+                ))}</tbody>
+              </table></div>
+            ) : (
+              <div className="overflow-x-auto"><table className="w-full text-left text-sm">
+                <thead><tr className="border-b text-xs text-slate-500"><th className="py-2">Disciplina</th><th className="py-2">Nota final</th><th className="py-2">Média</th></tr></thead>
+                <tbody>{historicoNotas.map((item, index) => (
+                  <tr key={`${item.disciplina_nome}-${index}`} className="border-b border-slate-100">
+                    <td className="py-2">{item.disciplina_nome ?? "—"}</td>
+                    <td className="py-2">{nota(item.nota_final)}</td>
+                    <td className="py-2">{nota(item.media_final)}</td>
+                  </tr>
+                ))}</tbody>
+              </table></div>
+            )
           </section>
         ) : null}
         <p className="text-sm leading-7">Este documento foi emitido a partir do histórico anual fechado da escola e pode ser validado pelo identificador oficial associado.</p>

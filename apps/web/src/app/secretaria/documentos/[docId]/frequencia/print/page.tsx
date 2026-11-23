@@ -67,7 +67,7 @@ export default async function DeclaracaoFrequenciaPrintPage({
           <section className="space-y-3 text-sm leading-relaxed">
             <p>
               Declara-se, para os devidos efeitos, que <strong>{snapshot.aluno_nome || "—"}</strong>,
-              portador do BI nº <strong>{snapshot.aluno_bi || "—"}</strong>, está regularmente
+              portador do BI nº <strong>{snapshot.aluno_bi || "—"}</strong>, consta como
               matriculado na <strong>{snapshot.classe_nome || "—"}</strong>, Turma
               <strong> {snapshot.turma_nome ? formatTurmaDisplayName({ turma_nome: snapshot.turma_nome, turma_turno: snapshot.turma_turno }) : "—"}</strong>, Turno
               <strong> {formatTurnoDisplay(snapshot.turma_turno) || "—"}</strong>, no ano letivo

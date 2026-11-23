@@ -79,7 +79,7 @@ test("Documentos históricos apenas consultam ou descarregam, sem lançar notas"
   assert.match(batch, /isHistoricalYear \? \(/);
   assert.match(batch, /Lista histórica PDF/);
   assert.match(batch, /Ver turma/);
-  assert.match(batch, /disabled=\{hasPendencias \|\| isHistoricalYear\}/);
+  assert.match(batch, /disabled=\{historicalGenerationBlocked \|\| \(hasPendencias && !isHistoricalYear\)\}/);
 });
 
 test("Contexto académico e emissão documental respeitam escola explícita do portal", () => {
