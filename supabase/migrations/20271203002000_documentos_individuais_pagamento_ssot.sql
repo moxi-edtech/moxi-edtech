@@ -331,8 +331,11 @@ $$;
 REVOKE ALL ON FUNCTION public.emitir_documento_final_individual(uuid,uuid,integer,uuid,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.emitir_documento_final_individual(uuid,uuid,integer,uuid,text,text) TO authenticated, service_role;
 
-REVOKE ALL ON FUNCTION public.emitir_documento_final_idempotente(uuid,uuid,integer,text,text) FROM PUBLIC, authenticated;
-GRANT EXECUTE ON FUNCTION public.emitir_documento_final_idempotente(uuid,uuid,integer,text,text) TO service_role;
+-- EXPAND (fase 1): a API publicada na Vercel ainda chama a RPC legada.
+-- Mantemos temporariamente o EXECUTE já existente para authenticated durante
+-- a transição. A revogação contratual acontece EXCLUSIVAMENTE na migração
+-- 20271203003000, após deploy e smoke da nova API.
+-- Não ampliar permissões: preservar exatamente os grants preexistentes.
 
 
 -- Duas sessões não devem liquidar a mesma intenção duas vezes.
