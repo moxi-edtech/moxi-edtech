@@ -147,3 +147,18 @@ As consultas adicionais preservam as tabelas canónicas, sempre em `READ` e por 
 
 ## Publicação
 Validar typecheck, lint, testes unitários, integração e smoke autenticado; abrir PR como draft até concluir os gates. Sem merge/deploy automáticos nesta branch.
+
+### Auditoria de cobertura de rotas e trimestres — follow-up
+
+A remoção do seletor universal não altera automaticamente cada API. Auditoria dirigida após CI verde anterior identificou contratos antigos e adicionou correções fail-closed:
+
+- `POST /api/secretaria/documentos-oficiais/lote`: `ano_letivo_id` e `turma.session_id` já eram validados. Agora qualquer `periodo_letivo_id` explícito também deve pertencer à escola e ao ano do pedido **antes** de criar o job; pautas trimestrais e boletins trimestrais com período explícito exigem `readVerifiedAcademicTrimesters` e `requireVerifiedTrimester`. Não abre emissão em anos encerrados.
+- `GET /api/secretaria/turmas/[id]/horario/versao`: confirma que a turma pertence à escola e a um ano canónico, rejeita `ano_letivo_id` cruzado e **nunca cria draft** se o ano estiver encerrado ou planeado. O editor corrente mantém criação de draft no ano ativo por compatibilidade.
+- `GET /api/financeiro/relatorios/{resumo,propinas}`: elimina fallback silencioso para `new Date().getFullYear()`; ID inexistente devolve 404, ano mal formatado 400, ID e ano inconsistentes 409. Isto não altera nem oculta dívidas históricas.
+
+**Cobertura conhecida, não exaustiva:** `GET /api/professor/periodos` e `GET /api/secretaria/relatorios/mapa-aproveitamento` já verificam o ano e a origem canónica dos trimestres; `GET /api/secretaria/operacoes-academicas/arquivo/registos` filtra os períodos de leitura por ano/escola, enquanto `/arquivo/comparacao` verifica o trimestre canónico dos dois anos. Outros consumidores legados, por exemplo seleção de trimestre no portal do professor e módulos de notas/frequência, precisam de varredura de rota/cliente e E2E autenticado; não confundir testes de contrato com cobertura universal.
+
+A barra de navegação já não mostra `AcademicYearSelector`, mas `AcademicContextSync` ainda acrescenta automaticamente `ano_letivo_id` nas rotas operacionais permitidas e `preserveAcademicContextHref` pode transportar o filtro em ligações contextuais. Isto é diferente do seletor global visual e merece auditoria em navegação entre operações para impedir estado antigo herdado.
+
+Os testes adicionais estão em `apps/web/tests/unit/academic-year-period-coverage.spec.mjs`. A migração SQL P0 `20271202000000_guard_timeline_360_school_role.sql` continua obrigatória antes de produção.
+
