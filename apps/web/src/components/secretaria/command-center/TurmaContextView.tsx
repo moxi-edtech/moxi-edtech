@@ -118,7 +118,7 @@ export function TurmaContextView({
   }
 
   if (loading) return (
-    <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-slate-600" role="status">
+    <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-muted-foreground" role="status">
       <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> A carregar a turma…
     </div>
   );
@@ -128,7 +128,7 @@ export function TurmaContextView({
       <p className="text-rose-700">{error || "Não foi possível carregar a turma."}</p>
       {status !== 401 && status !== 403 && status !== 404 && (
         <button type="button" onClick={() => void retry()}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-emerald-600">
           <RefreshCw className="h-4 w-4" aria-hidden /> Tentar novamente
         </button>
       )}
@@ -155,7 +155,7 @@ export function TurmaContextView({
       )}
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             {turma.curso?.nome || "Curso"} · Ano letivo {turma.anoLetivo.ano}
             {turma.anoLetivo.historico ? " · Histórico" : ""}
           </p>
@@ -166,14 +166,14 @@ export function TurmaContextView({
               {turma.classe.nome} <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             </button>
           )}
-          <h2 className="mt-1 text-xl font-semibold text-slate-900">{turma.nome}</h2>
-          <p className="mt-1 text-xs text-slate-600">
+          <h2 className="mt-1 text-xl font-semibold text-foreground">{turma.nome}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
             {turma.turno || "Turno não definido"} · {turma.sala ? `Sala ${turma.sala}` : "Sala não definida"}
           </p>
         </div>
         <button type="button" onClick={openExisting}
           title="Abrir gestão da turma"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-emerald-600">
           Abrir página da turma <ArrowUpRight className="h-4 w-4" aria-hidden />
         </button>
       </header>
@@ -190,7 +190,7 @@ export function TurmaContextView({
       </section>
 
       <div role="tablist" aria-label="Vistas da turma"
-        className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
+        className="flex flex-wrap gap-1 rounded-xl border border-border bg-muted p-1">
         {([
           { id: "alunos", label: "Alunos" },
           { id: "horario", label: "Horário" },
@@ -199,8 +199,8 @@ export function TurmaContextView({
           <button key={id} type="button" role="tab" id={"turma-tab-" + id}
             aria-controls={"turma-tabpanel-" + id} aria-selected={activeTab === id}
             tabIndex={0} onClick={() => setActiveTab(id)}
-            className={"min-w-0 flex-1 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 " +
-              (activeTab === id ? "bg-white text-emerald-900 shadow-sm" : "text-slate-600 hover:text-slate-900")}>
+            className={"min-w-24 flex-1 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 " +
+              (activeTab === id ? "bg-card text-foreground shadow-sm" : "text-foreground hover:bg-card/70")}>
             {label}
           </button>
         ))}
@@ -259,24 +259,24 @@ export function TurmaContextView({
         <section role="tabpanel" id="turma-tabpanel-alunos" aria-labelledby="turma-tab-alunos"
           tabIndex={0} className="min-w-0">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h3 id="turma-alunos-heading" className="flex items-center gap-2 font-semibold text-slate-900">
+            <h3 id="turma-alunos-heading" className="flex items-center gap-2 font-semibold text-foreground">
               <UsersRound className="h-4 w-4 text-emerald-700" aria-hidden /> Alunos
             </h3>
-            <span className="text-xs text-slate-500" aria-live="polite">
+            <span className="text-xs text-muted-foreground" aria-live="polite">
               {searchActive ? rosterBusy ? "A pesquisar…" : roster.error ? "Pesquisa indisponível" : `${roster.total} encontrados` : refreshing ? "A actualizar…" : `${alunos.total} no total`}
             </span>
           </div>
-          {rosterBusy && <p role="status" className="my-2 text-xs text-slate-600">A pesquisar alunos…</p>}
+          {rosterBusy && <p role="status" className="my-2 text-xs text-muted-foreground">A pesquisar alunos…</p>}
           {searchActive && roster.error && <p role="alert" className="my-2 text-xs text-rose-700">{roster.error} <button type="button" onClick={() => void roster.retry()} className="underline">Tentar novamente</button></p>}
-          {!turma.anoLetivo.historico && roster.waitingForMinimum && <p className="my-2 text-xs text-slate-600">Introduza pelo menos dois caracteres para pesquisar.</p>}
-          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+          {!turma.anoLetivo.historico && roster.waitingForMinimum && <p className="my-2 text-xs text-muted-foreground">Introduza pelo menos dois caracteres para pesquisar.</p>}
+          <div className="divide-y divide-border rounded-xl border border-border">
             {visibleStudents.map((student) => (
-<div key={student.id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-slate-100 px-2 py-1 last:border-0">
+<div key={student.id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-border px-2 py-1 last:border-0">
               <button type="button"
                 data-student-id={student.id} aria-current={selectedStudentId === student.id ? "true" : undefined} onClick={() => selectStudent({ id: student.id, label: student.nome })}
-                className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
-                <span className="w-8 shrink-0 text-xs tabular-nums text-slate-500">{student.numeroChamada ?? "—"}</span>
-                <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{student.nome}</span>
+                className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
+                <span className="w-8 shrink-0 text-xs tabular-nums text-muted-foreground">{student.numeroChamada ?? "—"}</span>
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground">{student.nome}</span>
                 {searchActive && "situacaoMatricula" in student && isSituacaoMatriculaContextual(student.situacaoMatricula) && (
                   <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
                     {rotuloSituacaoMatricula(student.situacaoMatricula)}
@@ -288,7 +288,7 @@ export function TurmaContextView({
                 {searchActive && "propinasVencidas" in student && student.propinasVencidas === true && (
                   <span className="rounded border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-[10px] text-orange-950">Propina vencida</span>
                 )}
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               </button>
   {!turma.anoLetivo.historico && selectedStudentId === student.id && (
     <DesistenciaMatriculaAction
@@ -306,7 +306,7 @@ export function TurmaContextView({
 </div>
             ))}
             {!visibleStudents.length && !rosterBusy && !(searchActive && roster.error) && (
-            <p className="px-3 py-5 text-slate-500">
+            <p className="px-3 py-5 text-muted-foreground">
               {searchActive ? "Nenhum aluno encontrado nos filtros selecionados."
                 : alunos.total > 0 ? "Nenhum aluno nesta página; consulte outra página."
                 : "Nenhum aluno matriculado neste âmbito."}
@@ -314,18 +314,18 @@ export function TurmaContextView({
           )}
           </div>
           {!searchActive && <div className="mt-3 flex items-center justify-between gap-2">
-            <span className="text-xs tabular-nums text-slate-500" aria-live="polite">
+            <span className="text-xs tabular-nums text-muted-foreground" aria-live="polite">
               Página {alunos.page} de {pages}
             </span>
             <div className="flex gap-2">
               <button type="button" disabled={page <= 1 || refreshing}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-emerald-600">
+                className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-medium disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-emerald-600">
                 <ChevronLeft className="h-4 w-4" aria-hidden /> Anterior
               </button>
               <button type="button" disabled={!alunos.hasMore || refreshing}
                 onClick={() => setPage((p) => p + 1)}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-emerald-600">
+                className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-medium disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-emerald-600">
                 Seguinte <ChevronRight className="h-4 w-4" aria-hidden />
               </button>
             </div>
@@ -337,10 +337,10 @@ export function TurmaContextView({
         {activeTab === "disciplinas" && (
         <section role="tabpanel" id="turma-tabpanel-disciplinas" aria-labelledby="turma-tab-disciplinas"
           tabIndex={0} className="min-w-0">
-          <h3 id="turma-disciplinas-heading" className="mb-2 flex items-center gap-2 font-semibold text-slate-900">
+          <h3 id="turma-disciplinas-heading" className="mb-2 flex items-center gap-2 font-semibold text-foreground">
             <BookOpen className="h-4 w-4 text-emerald-700" aria-hidden /> Disciplinas e professores
           </h3>
-          <div className="divide-y divide-slate-100  rounded-xl border border-slate-200">
+          <div className="divide-y divide-border  rounded-xl border border-border">
             {disciplinas.map((d) => (
               <div key={d.id} className="px-3 py-3">
                 <button type="button"
@@ -355,7 +355,7 @@ export function TurmaContextView({
                       : "Currículo inativo · Rever na gestão académica"}
                   </p>
                 )}
-                <p className={`mt-1 text-xs ${d.professores.length ? "text-slate-500" : "text-amber-800"}`}>
+                <p className={`mt-1 text-xs ${d.professores.length ? "text-muted-foreground" : "text-amber-800"}`}>
                   {d.professores.length ? d.professores.join(", ") : missingTeacherEvidenceLabel(data.disciplinasLimitadas)}
                 </p>
               </div>
@@ -365,12 +365,12 @@ export function TurmaContextView({
             )}
           </div>
           {data.disciplinasLimitadas && (
-            <p className="mt-2 flex gap-2 text-xs text-slate-600">
+            <p className="mt-2 flex gap-2 text-xs text-muted-foreground">
               <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
               Lista parcial de disciplinas.
             </p>
           )}
-          <h4 className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <h4 className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Professores da turma
           </h4>
           {data.professoresDetalhes?.length ? (
@@ -380,13 +380,13 @@ export function TurmaContextView({
                   onClick={() => onExploreProfessor({
                     id: teacher.id, label: teacher.nome, academicYearId: turma.anoLetivo.id,
                   })}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-emerald-800 hover:border-emerald-200 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
+                  className="rounded-lg border border-border px-3 py-2 text-xs font-medium text-emerald-800 hover:border-emerald-200 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-600">
                   {teacher.nome}
                 </button>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {professores.length ? professores.join(", ") : data.disciplinasLimitadas ? "Não aparecem professores nesta lista. Podem existir outros." : "Nenhum professor vinculado."}
             </p>
           )}

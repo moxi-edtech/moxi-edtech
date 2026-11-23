@@ -23,7 +23,7 @@ export default async function RelatoriosPage({
         ]}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link href={`/escola/${escolaId}/financeiro/relatorios/mensal-escolar`} className="block bg-card rounded-xl shadow border p-5 hover:shadow-md transition border-blue-100 bg-gradient-to-br from-white to-blue-50/30">
+        <Link href={`/escola/${escolaId}/financeiro/relatorios/mensal-escolar`} className="block bg-card rounded-xl shadow border p-5 hover:shadow-md transition border-blue-100 bg-gradient-to-br from-card to-blue-50/30">
           <div className="text-lg font-semibold mb-1 text-blue-900">Relatório Mensal Escolar</div>
           <div className="text-sm text-foreground/80">Visão executiva consolidada: propinas, arrecadação e inadimplência</div>
         </Link>

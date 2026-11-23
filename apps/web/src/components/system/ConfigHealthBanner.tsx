@@ -60,7 +60,7 @@ export default function ConfigHealthBanner() {
   }
 
   return (
-    <div className="w-full bg-amber/10 border-b border-amber/20 text-slate-900 text-sm">
+    <div className="w-full bg-amber/10 border-b border-amber/20 text-foreground text-sm">
       <div className="max-w-screen-2xl mx-auto px-4 py-2 flex items-start gap-3">
         <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber/20 border border-amber/30 text-[10px] mt-0.5">!</span>
         <div className="flex-1">
@@ -68,11 +68,11 @@ export default function ConfigHealthBanner() {
           <div className="mt-1">
             Faltando: {missing.join(', ')}
           </div>
-          <div className="mt-1 text-[12px] text-slate-600">
+          <div className="mt-1 text-[12px] text-muted-foreground">
             {hint}
           </div>
         </div>
-        <button onClick={onClose} className="text-slate-600 hover:text-slate-800 px-2">Fechar</button>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground px-2">Fechar</button>
       </div>
     </div>
   )

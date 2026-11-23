@@ -169,14 +169,14 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
       <fieldset className="flex flex-wrap gap-4 rounded-xl bg-muted p-3 text-sm"><legend className="sr-only">Tipo de alteração</legend><label><input type="radio" checked={!retificarClasse} onChange={() => { setRetificarClasse(false); setTurmaId(""); setImpacto(null); setConfirming(false); setConfirmarHistorico(false); }} /> Trocar turma</label>{canRectifyClass && <label><input type="radio" checked={retificarClasse} onChange={() => { setRetificarClasse(true); setTurmaId(""); setImpacto(null); setConfirming(false); setConfirmarHistorico(false); }} /> Corrigir classe</label>}</fieldset>
       {retificarClasse && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Retificação administrativa, não progressão. Notas, pautas e movimentos financeiros anteriores serão preservados. Reveja os avisos e confirme para avançar.</p>}
       <div>
-        <label htmlFor="turma" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="turma" className="block text-sm font-medium text-foreground">
           Nova Turma
         </label>
         <select
           id="turma"
           value={turmaId}
           onChange={(e) => { setTurmaId(e.target.value); setImpacto(null); setAcademicConflict(false); setConfirming(false); }}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+          className="mt-1 block w-full rounded-md border-border shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
           required
           disabled={!anoLetivo}
         >
@@ -194,7 +194,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
       </div>
 
       {checking && (
-        <div className="flex items-center gap-2 text-sm text-slate-600">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Calculando impacto...
         </div>
       )}
@@ -220,7 +220,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
       {retificarClasse && impacto?.avisos?.length ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><strong>Histórico existente</strong>{impacto.avisos.map(item=><p key={item} className="mt-1">{item}</p>)}<label className="mt-3 flex items-start gap-2"><input type="checkbox" checked={confirmarHistorico} onChange={e=>{setConfirmarHistorico(e.target.checked);setConfirming(false);}} className="mt-1"/><span>Compreendo que o histórico será preservado e confirmo a retificação da classe.</span></label></div> : null}
       {impacto?.blockers?.length ? <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{impacto.blockers.map((item) => <p key={item}>{item}</p>)}</div> : null}
       {impacto && !checking && (
-        <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="space-y-3 rounded-xl border border-border bg-muted p-4">
           {impacto.lotada && (
             <div className="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700 border border-red-200">
               <AlertCircle className="h-4 w-4 mt-0.5" />
@@ -228,8 +228,8 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2 text-xs text-slate-700">
-            <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">Vagas restantes: {impacto.vagas_restantes ?? 0}</span>
+          <div className="flex flex-wrap gap-2 text-xs text-foreground">
+            <span className="rounded-full bg-card px-3 py-1 ring-1 ring-ring">Vagas restantes: {impacto.vagas_restantes ?? 0}</span>
             {impacto.mudanca_turno && (
               <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800 ring-1 ring-amber-200">Mudança de turno</span>
             )}
@@ -246,8 +246,8 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
       )}
 
       <div>
-        <label htmlFor="motivo-transferencia" className="block text-sm font-medium text-slate-700">Motivo da correcção ou transferência</label>
-        <textarea id="motivo-transferencia" value={motivo} onChange={(e) => { setMotivo(e.target.value); setConfirming(false); }} minLength={10} maxLength={300} required placeholder="Explique o motivo (mínimo 10 caracteres)" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20" rows={3} />
+        <label htmlFor="motivo-transferencia" className="block text-sm font-medium text-foreground">Motivo da correcção ou transferência</label>
+        <textarea id="motivo-transferencia" value={motivo} onChange={(e) => { setMotivo(e.target.value); setConfirming(false); }} minLength={10} maxLength={300} required placeholder="Explique o motivo (mínimo 10 caracteres)" className="mt-1 w-full rounded-xl border border-border p-3 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20" rows={3} />
         <p className="mt-1 text-xs text-muted-foreground">A matrícula e os pagamentos mantêm os identificadores. Se existirem notas, exames ou frequência, a operação será bloqueada até à conciliação académica.</p>
       </div>
       {!anoLetivoId && <p className="text-sm text-amber-700">Não foi possível identificar o ano letivo académico. Selecione o ano letivo antes de continuar.</p>}
@@ -270,7 +270,7 @@ export default function TransferForm({ matriculaId, currentTurmaId, anoLetivo, a
         <button
           type="button"
           onClick={() => { if (confirming) setConfirming(false); else onSuccess(); }}
-          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
         >
           Cancelar
         </button>

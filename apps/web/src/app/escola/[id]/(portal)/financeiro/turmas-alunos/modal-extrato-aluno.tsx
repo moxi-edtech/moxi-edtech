@@ -36,7 +36,7 @@ const statusLabel = (status: ModalExtratoAlunoProps["mensalidades"][number]["sta
 const statusTone = (status: ModalExtratoAlunoProps["mensalidades"][number]["status"]) => {
   if (status === "paga") return "bg-emerald-50 text-emerald-700 border-emerald-200";
   if (status === "atrasada") return "bg-rose-50 text-rose-700 border-rose-200";
-  if (status === "cancelada") return "bg-slate-50 text-slate-600 border-slate-200";
+  if (status === "cancelada") return "bg-muted text-muted-foreground border-border";
   return "bg-amber-50 text-amber-700 border-amber-200";
 };
 
@@ -92,12 +92,12 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
 
   return (
     <>
-      <div className="fixed inset-0 bg-slate-900/70 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
-        <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+      <div className="fixed inset-0 bg-klasse-dark/70 flex items-center justify-center p-4 z-50">
+        <div className="bg-card rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        <div className="border-b border-border px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Extrato do Aluno</h2>
-            <p className="text-slate-600">{aluno.nome} • {aluno.turma}</p>
+            <h2 className="text-xl font-bold text-foreground">Extrato do Aluno</h2>
+            <p className="text-muted-foreground">{aluno.nome} • {aluno.turma}</p>
           </div>
           <div className="flex items-center gap-3">
             {selectedMensalidades.length > 0 ? (
@@ -110,16 +110,16 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
               </button>
             ) : null}
             <ExtratoActions alunoId={aluno.id} />
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
               <X className="h-6 w-6" />
             </button>
           </div>
         </div>
 
         <div className="p-6 overflow-y-auto max-h-[75vh]">
-          <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
+          <div className="bg-muted border border-border rounded-xl overflow-hidden">
             <table className="w-full text-left text-sm">
-              <thead className="bg-white text-slate-500 border-b border-slate-200">
+              <thead className="bg-card text-muted-foreground border-b border-border">
                 <tr>
                   <th className="px-4 py-3 font-medium w-10"></th>
                   <th className="px-4 py-3 font-medium">Referência</th>
@@ -133,7 +133,7 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
                 {ordenadas.map((mensalidade, index) => (
                   <tr
                     key={mensalidade.id || `${mensalidade.anoReferencia}-${mensalidade.mesReferencia}-${index}`}
-                    className="border-b last:border-b-0 border-slate-200 bg-white"
+                    className="border-b last:border-b-0 border-border bg-card"
                   >
                     <td className="px-4 py-3">
                       {(mensalidade.status === "pendente" || mensalidade.status === "atrasada") ? (
@@ -141,14 +141,14 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
                           type="checkbox"
                           checked={selectedIds.includes(mensalidade.id)}
                           onChange={() => toggleSelected(mensalidade.id)}
-                          className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                          className="h-4 w-4 rounded border-border text-amber-500 focus:ring-amber-500"
                         />
                       ) : null}
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-700">
+                    <td className="px-4 py-3 font-medium text-foreground">
                       {String(mensalidade.mesReferencia).padStart(2, "0")}/{mensalidade.anoReferencia}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-muted-foreground">
                       {formatVencimento(mensalidade)}
                     </td>
                     <td className="px-4 py-3">
@@ -156,7 +156,7 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
                         {statusLabel(mensalidade.status)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-800">
+                    <td className="px-4 py-3 text-right font-semibold text-foreground">
                       {formatMoney(mensalidade.valor)}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -177,7 +177,7 @@ const ModalExtratoAluno: React.FC<ModalExtratoAlunoProps> = ({ aluno, mensalidad
                 ))}
                 {ordenadas.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                       Nenhuma mensalidade encontrada.
                     </td>
                   </tr>

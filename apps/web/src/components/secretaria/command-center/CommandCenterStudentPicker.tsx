@@ -64,18 +64,18 @@ export function CommandCenterStudentPicker({
   }, [currentAlunoId, search]);
 
   return (
-    <section aria-label="Trocar aluno em atendimento" className="mx-auto max-w-2xl space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
+    <section aria-label="Trocar aluno em atendimento" className="mx-auto max-w-2xl space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-bold text-slate-900">Selecionar outro aluno</h2>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
+          <h2 className="text-base font-bold text-foreground">Selecionar outro aluno</h2>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
             O aluno anterior permanece selecionado até escolher outro.
           </p>
         </div>
         <button
           type="button"
           onClick={onCancel}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground hover:bg-muted"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Cancelar
@@ -97,7 +97,7 @@ export function CommandCenterStudentPicker({
       />
       {error ? <p role="alert" className="text-xs text-rose-700">{error}</p> : null}
       {query.trim().length < 2 ? (
-        <p className="text-xs text-slate-500">Introduza pelo menos duas letras para encontrar outro aluno.</p>
+        <p className="text-xs text-muted-foreground">Introduza pelo menos duas letras para encontrar outro aluno.</p>
       ) : null}
     </section>
   );

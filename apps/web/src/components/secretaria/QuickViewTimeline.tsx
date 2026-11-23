@@ -50,18 +50,18 @@ export function QuickViewTimeline({
   }, [months.length]);
 
   return (
-    <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(190,242,100,0.22),_transparent_35%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#1e293b)] p-4 text-white shadow-sm print:hidden sm:p-5">
+    <div className="overflow-hidden rounded-[28px] border border-border bg-[radial-gradient(circle_at_top_left,_rgba(190,242,100,0.22),_transparent_35%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#1e293b)] p-4 text-white shadow-sm print:hidden sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.24em] text-lime-200/80">Quick View</p>
           <h2 className="mt-2 text-lg font-semibold sm:text-xl">Filtre o relatório por mês com um toque</h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-300">
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             {selectedMonth === "all"
               ? "Tudo está consolidado no período completo."
               : `Visualizando ${selectedMonthLabel}. Os blocos abaixo já foram recortados para esta competência.`}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-slate-200">
+            <span className="rounded-full bg-muted-foreground/20 px-3 py-1 text-[11px] font-semibold text-white/80">
               {months.length} meses
             </span>
             <span className="rounded-full bg-lime-300/15 px-3 py-1 text-[11px] font-semibold text-lime-100">
@@ -74,22 +74,22 @@ export function QuickViewTimeline({
           onClick={onResetMonth}
           className={`hidden rounded-full px-4 py-2 text-sm font-semibold transition sm:self-start lg:inline-flex lg:self-auto ${
             selectedMonth === "all"
-              ? "bg-white text-slate-900"
-              : "bg-white/10 text-white hover:bg-white/20"
+              ? "bg-card text-foreground"
+              : "bg-muted-foreground/20 text-white hover:bg-muted-foreground/30"
           }`}
         >
           Tudo
         </button>
       </div>
 
-      <div className="sticky top-2 z-10 -mx-1 mb-4 flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/65 px-3 py-2 backdrop-blur sm:hidden">
+      <div className="sticky top-2 z-10 -mx-1 mb-4 flex items-center justify-between rounded-2xl border border-border bg-klasse-dark/65 px-3 py-2 backdrop-blur sm:hidden">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Filtro ativo</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filtro ativo</p>
           <p className="text-sm font-semibold text-white">{selectedMonthLabel}</p>
         </div>
         <div className="flex items-center gap-2">
           {showOverflowHint ? (
-            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-300">
+            <span className="rounded-full border border-foreground/15 bg-foreground/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Arraste para ver mais
             </span>
           ) : null}
@@ -98,8 +98,8 @@ export function QuickViewTimeline({
             onClick={onResetMonth}
             className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
               selectedMonth === "all"
-                ? "bg-white text-slate-900"
-                : "bg-white/10 text-white hover:bg-white/20"
+                ? "bg-card text-foreground"
+                : "bg-muted-foreground/20 text-white hover:bg-muted-foreground/30"
             }`}
           >
             Tudo
@@ -123,20 +123,20 @@ export function QuickViewTimeline({
                   onClick={() => onSelectMonth(item.key)}
                   className={`group min-w-[112px] snap-start rounded-2xl border p-2.5 text-left transition duration-200 sm:min-w-0 sm:p-3.5 ${
                     isActive
-                      ? "scale-[1.02] border-lime-300 bg-white text-slate-900 shadow-[0_12px_30px_rgba(190,242,100,0.18)]"
-                      : "border-white/10 bg-white/5 text-white hover:border-white/20 hover:bg-white/10 hover:translate-y-[-1px]"
+                      ? "scale-[1.02] border-lime-300 bg-card text-foreground shadow-[0_12px_30px_rgba(190,242,100,0.18)]"
+                      : "border-foreground/15 bg-foreground/5 text-white hover:border-foreground/30 hover:bg-foreground/10 hover:translate-y-[-1px]"
                   }`}
                 >
                   <div className="flex h-16 items-end sm:h-20">
                     <div
                       className={`w-full rounded-xl transition duration-300 ${
-                        isActive ? "bg-lime-300 ring-2 ring-lime-200/50" : "bg-white/50 group-hover:bg-white/70"
+                        isActive ? "bg-lime-300 ring-2 ring-lime-200/50" : "bg-card/50 group-hover:bg-card/70"
                       }`}
                       style={{ height: `${heightPct}%` }}
                     />
                   </div>
                   <p className="mt-3 text-sm font-semibold">{item.label}</p>
-                  <p className={`mt-1 text-[11px] sm:text-xs ${isActive ? "text-slate-500" : "text-slate-300"}`}>
+                  <p className={`mt-1 text-[11px] sm:text-xs ${isActive ? "text-muted-foreground" : "text-muted-foreground"}`}>
                     {formatCurrency(item.metric)}
                   </p>
                   {isActive ? (

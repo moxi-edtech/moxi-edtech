@@ -11,7 +11,7 @@ export default function DocumentosPage() {
     return (
       <>
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="documentos" />
-        <div className="p-4 text-sm text-slate-500">Carregando contexto da escola...</div>
+        <div className="p-4 text-sm text-muted-foreground">Carregando contexto da escola...</div>
       </>
     );
   }

@@ -22,10 +22,10 @@ export default async function ControleCaixaPage({
         ariaLabel="Vistas de controlo de caixa"
         header={
           <>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Controlo de caixa
             </p>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-muted-foreground">
               Confirme entradas bancárias antes de declarar e aprovar o fecho diário.
             </p>
           </>

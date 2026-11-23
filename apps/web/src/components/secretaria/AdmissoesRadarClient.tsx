@@ -302,14 +302,14 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="h-8 w-64 rounded-xl bg-slate-100" />
+        <div className="h-8 w-64 rounded-xl bg-muted" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, idx) => (
-            <div key={idx} className="rounded-xl bg-slate-100 p-4">
-              <div className="h-5 w-40 rounded bg-white/70" />
+            <div key={idx} className="rounded-xl bg-muted p-4">
+              <div className="h-5 w-40 rounded bg-card/70" />
               <div className="mt-3 space-y-2">
-                <div className="h-14 rounded-xl bg-white/70" />
-                <div className="h-14 rounded-xl bg-white/70" />
+                <div className="h-14 rounded-xl bg-card/70" />
+                <div className="h-14 rounded-xl bg-card/70" />
               </div>
             </div>
           ))}
@@ -338,8 +338,8 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">Radar de Admissões</h1>
-          <p className="text-sm text-slate-500">Acompanhe o funil por status e priorize a secretaria.</p>
+          <h1 className="text-lg font-semibold text-foreground">Radar de Admissões</h1>
+          <p className="text-sm text-muted-foreground">Acompanhe o funil por status e priorize a secretaria.</p>
         </div>
 
         <button
@@ -362,10 +362,10 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
           )
 
           return (
-            <div key={col.key} className="rounded-xl bg-slate-950 p-4">
+            <div key={col.key} className="rounded-xl bg-klasse-dark p-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-white">{col.title}</h2>
-                <span className="rounded-full bg-slate-900 px-2 py-1 text-xs text-amber ring-1 ring-amber/25">
+                <span className="rounded-full bg-muted-foreground/20 px-2 py-1 text-xs text-amber ring-1 ring-amber/25">
                   {count}
                 </span>
               </div>
@@ -394,13 +394,13 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                           router.push(withSlug(`/secretaria/admissoes/nova?candidaturaId=${item.id}`))
                         }
                       }}
-                      className="w-full rounded-xl bg-slate-900 p-3 text-left ring-1 ring-white/5 hover:ring-amber/25"
+                      className="w-full rounded-xl bg-muted-foreground/20 p-3 text-left ring-1 ring-klasse-gold/10 hover:ring-amber/25"
                     >
                       <div className="text-sm font-semibold text-white">{nome}</div>
-                      <div className="mt-0.5 text-xs text-slate-400">
+                      <div className="mt-0.5 text-xs text-muted-foreground">
                         {curso} • {classe}
                       </div>
-                      <div className="mt-1 text-[11px] text-slate-500">{dt}</div>
+                      <div className="mt-1 text-[11px] text-muted-foreground">{dt}</div>
                       {rawStatus === 'aguardando_pagamento' && (
                         <div className="mt-1 text-[11px] text-amber-300">Aguardando pagamento</div>
                       )}
@@ -426,7 +426,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                                 void reject(item)
                               }}
                                 disabled={busy}
-                                className="rounded-lg border border-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:border-red-400 hover:text-red-300 disabled:opacity-60"
+                                className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:border-red-400 hover:text-red-300 disabled:opacity-60"
                               >
                                 Rejeitar
                               </button>
@@ -452,7 +452,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                                 void archive(item)
                               }}
                               disabled={busy}
-                              className="rounded-lg border border-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:border-slate-500 hover:text-slate-100 disabled:opacity-60"
+                              className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold text-white/80 hover:border-klasse-gold/40 hover:text-white disabled:opacity-60"
                             >
                               <span className="inline-flex items-center gap-1">
                                 <Archive className="h-3 w-3" />
@@ -467,7 +467,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                 })}
 
                 {items.length === 0 && (
-                  <div className="rounded-xl bg-slate-900 p-3 text-xs text-slate-400 ring-1 ring-white/5">
+                  <div className="rounded-xl bg-klasse-dark p-3 text-xs text-white/75 ring-1 ring-border/20">
                     {col.emptyText}
                   </div>
                 )}
@@ -480,7 +480,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                     void loadMoreOpen()
                   }}
                   disabled={loadingMoreOpen}
-                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-amber/40 hover:text-white disabled:opacity-60"
+                  className="mt-3 w-full rounded-xl border border-klasse-gold/15 px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-amber/40 hover:text-white disabled:opacity-60"
                 >
                   {loadingMoreOpen ? 'Carregando...' : 'Carregar mais'}
                 </button>
@@ -493,7 +493,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                     void loadMoreMat()
                   }}
                   disabled={loadingMoreMat}
-                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-amber/40 hover:text-white disabled:opacity-60"
+                  className="mt-3 w-full rounded-xl border border-klasse-gold/15 px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-amber/40 hover:text-white disabled:opacity-60"
                 >
                   {loadingMoreMat ? 'Carregando...' : 'Carregar mais'}
                 </button>

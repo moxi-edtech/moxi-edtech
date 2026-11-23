@@ -9,7 +9,7 @@ export default function SecretariaAcessoPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center text-slate-600 gap-2">
+      <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground gap-2">
         <Loader2 className="w-5 h-5 animate-spin" /> Carregando escola...
       </div>
     );
@@ -25,7 +25,7 @@ export default function SecretariaAcessoPage() {
 
   if (!escolaId) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-slate-600 gap-2">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-muted-foreground gap-2">
         <KeyRound className="w-6 h-6" />
         Vincule-se a uma escola para gerir acessos.
       </div>

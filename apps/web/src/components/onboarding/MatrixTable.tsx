@@ -27,14 +27,14 @@ export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
 
   if (!matrix.length) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm py-12 flex flex-col items-center text-center">
-        <div className="p-3 bg-slate-50 rounded-full mb-3 text-slate-300">
+      <div className="bg-card rounded-xl border border-border shadow-sm py-12 flex flex-col items-center text-center">
+        <div className="p-3 bg-muted rounded-full mb-3 text-muted-foreground">
           ↑
         </div>
-        <p className="text-slate-500 text-sm font-medium">
+        <p className="text-muted-foreground text-sm font-medium">
           Selecione um curso acima
         </p>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           A tabela de turmas aparecerá aqui.
         </p>
       </div>
@@ -42,53 +42,53 @@ export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+      <div className="bg-muted px-6 py-4 border-b border-border flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500 font-semibold">
+          <span className="text-xs text-muted-foreground font-semibold">
             Matriz de Turmas
           </span>
         </div>
-        <span className="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
+        <span className="text-xs font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/30 px-3 py-1 rounded-full border border-teal-100 dark:border-teal-900">
           {total} turmas a criar
         </span>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="max-w-full overflow-x-auto" role="region" aria-label="Matriz de turmas por turno" tabIndex={0}>
         <table className="w-full text-sm text-left">
-          <thead className="text-xs text-slate-400 uppercase bg-white border-b border-slate-100">
+          <thead className="text-xs text-muted-foreground uppercase bg-card border-b border-border">
             <tr>
-              <th className="px-6 py-3 font-semibold text-slate-500">Classe</th>
+              <th className="px-6 py-3 font-semibold text-muted-foreground">Classe</th>
               {turnos.Manhã && (
-                <th className="px-6 py-3 font-semibold text-center w-32 bg-orange-50/50 text-orange-600 border-l border-slate-100">
+                <th className="px-6 py-3 font-semibold text-center w-32 bg-orange-50/50 dark:bg-orange-950/25 text-orange-700 dark:text-orange-300 border-l border-border">
                   Manhã
                 </th>
               )}
               {turnos.Tarde && (
-                <th className="px-6 py-3 font-semibold text-center w-32 bg-amber-50/50 text-amber-600 border-l border-slate-100">
+                <th className="px-6 py-3 font-semibold text-center w-32 bg-amber-50/50 dark:bg-amber-950/25 text-amber-700 dark:text-amber-300 border-l border-border">
                   Tarde
                 </th>
               )}
               {turnos.Noite && (
-                <th className="px-6 py-3 font-semibold text-center w-32 bg-indigo-50/50 text-indigo-600 border-l border-slate-100">
+                <th className="px-6 py-3 font-semibold text-center w-32 bg-indigo-50/50 dark:bg-indigo-950/25 text-indigo-700 dark:text-indigo-300 border-l border-border">
                   Noite
                 </th>
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border">
             {matrix.map((row) => (
-              <tr key={row.id} className="hover:bg-slate-50 transition group">
-                <td className="px-6 py-4 font-bold text-slate-700 border-r border-transparent group-hover:border-slate-100">
+              <tr key={row.id} className="hover:bg-muted transition group">
+                <td className="px-6 py-4 font-bold text-foreground border-r border-transparent group-hover:border-border">
                   {row.nome}
                 </td>
 
                 {turnos.Manhã && (
-                  <td className="px-6 py-2 text-center bg-orange-50/10 border-l border-slate-100">
+                  <td className="px-6 py-2 text-center bg-orange-50/10 dark:bg-orange-950/10 border-l border-border">
                     <input
                       type="number"
                       min={0}
-                      className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
+                      className="w-12 h-9 text-center font-bold text-foreground bg-card border border-border rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
                       value={row.manha || ""}
                       placeholder="0"
                       onChange={(e) => updateRow(row.id, "manha", e.target.value)}
@@ -97,11 +97,11 @@ export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
                 )}
 
                 {turnos.Tarde && (
-                  <td className="px-6 py-2 text-center bg-amber-50/10 border-l border-slate-100">
+                  <td className="px-6 py-2 text-center bg-amber-50/10 dark:bg-amber-950/10 border-l border-border">
                     <input
                       type="number"
                       min={0}
-                      className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
+                      className="w-12 h-9 text-center font-bold text-foreground bg-card border border-border rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
                       value={row.tarde || ""}
                       placeholder="0"
                       onChange={(e) => updateRow(row.id, "tarde", e.target.value)}
@@ -110,11 +110,11 @@ export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
                 )}
 
                 {turnos.Noite && (
-                  <td className="px-6 py-2 text-center bg-indigo-50/10 border-l border-slate-100">
+                  <td className="px-6 py-2 text-center bg-indigo-50/10 dark:bg-indigo-950/10 border-l border-border">
                     <input
                       type="number"
                       min={0}
-                      className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
+                      className="w-12 h-9 text-center font-bold text-foreground bg-card border border-border rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
                       value={row.noite || ""}
                       placeholder="0"
                       onChange={(e) => updateRow(row.id, "noite", e.target.value)}

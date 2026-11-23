@@ -58,6 +58,15 @@ async function run(size, zoom) {
   const input = () => page.getByRole("searchbox", { name: "Nome ou processo" });
 
   await reset();
+  for (const tab of ["Alunos", "Horário", "Disciplinas"]) {
+    const dims = await page.getByRole("tab", { name: tab }).evaluate(el => ({
+      text: el.textContent?.trim(),
+      clientWidth: el.clientWidth,
+      scrollWidth: el.scrollWidth,
+    }));
+    assert.ok(dims.scrollWidth <= dims.clientWidth + 1,
+      "Clipped turma tab at " + size.join("x") + "/" + zoom + ": " + JSON.stringify(dims));
+  }
   await capture(page,size,zoom,"lista");
   await checkAutomatedAccessibility(page, "turma-lista");
   assert.equal(await page.getByText("55").first().isVisible(),true);

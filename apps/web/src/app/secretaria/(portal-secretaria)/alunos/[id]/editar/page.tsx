@@ -190,17 +190,17 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
         />
       </div>
       {/* Header Fixo */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+      <div className="bg-card border-b border-border sticky top-0 z-10">
         <div className={`${PORTAL_PAGE_HORIZONTAL_INSET} flex h-16 items-center justify-between`}>
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+              className="p-2 hover:bg-muted rounded-full transition-colors"
             >
-              <ArrowLeftIcon className="w-5 h-5 text-slate-600" />
+              <ArrowLeftIcon className="w-5 h-5 text-muted-foreground" />
             </button>
             <div>
-              <h1 className="text-lg font-bold text-slate-900 truncate max-w-[200px] md:max-w-md">
+              <h1 className="text-lg font-bold text-foreground truncate max-w-[200px] md:max-w-md">
                 Editar: {form?.nome}
               </h1>
             </div>
@@ -244,7 +244,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
             <TabsList className="w-full justify-start mb-8 bg-transparent p-0 h-auto gap-4 overflow-x-auto scrollbar-hide">
               <TabsTrigger 
                 value="identificacao" 
-                className="bg-white border border-slate-200 data-[state=active]:border-moxinexa-teal data-[state=active]:bg-moxinexa-teal/5 data-[state=active]:text-moxinexa-teal rounded-xl px-6 py-3 h-auto shadow-sm transition-all"
+                className="bg-card border border-border data-[state=active]:border-moxinexa-teal data-[state=active]:bg-moxinexa-teal/5 data-[state=active]:text-moxinexa-teal rounded-xl px-6 py-3 h-auto shadow-sm transition-all"
               >
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4" />
@@ -253,7 +253,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
               </TabsTrigger>
               <TabsTrigger 
                 value="documentacao" 
-                className="bg-white border border-slate-200 data-[state=active]:border-moxinexa-teal data-[state=active]:bg-moxinexa-teal/5 data-[state=active]:text-moxinexa-teal rounded-xl px-6 py-3 h-auto shadow-sm transition-all"
+                className="bg-card border border-border data-[state=active]:border-moxinexa-teal data-[state=active]:bg-moxinexa-teal/5 data-[state=active]:text-moxinexa-teal rounded-xl px-6 py-3 h-auto shadow-sm transition-all"
               >
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
@@ -262,7 +262,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
               </TabsTrigger>
               <TabsTrigger 
                 value="contactos" 
-                className="bg-white border border-slate-200 data-[state=active]:border-moxinexa-teal data-[state=active]:bg-moxinexa-teal/5 data-[state=active]:text-moxinexa-teal rounded-xl px-6 py-3 h-auto shadow-sm transition-all"
+                className="bg-card border border-border data-[state=active]:border-moxinexa-teal data-[state=active]:bg-moxinexa-teal/5 data-[state=active]:text-moxinexa-teal rounded-xl px-6 py-3 h-auto shadow-sm transition-all"
               >
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4" />
@@ -271,7 +271,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
               </TabsTrigger>
               <TabsTrigger 
                 value="responsavel" 
-                className="bg-white border border-slate-200 data-[state=active]:border-moxinexa-teal data-[state=active]:bg-moxinexa-teal/5 data-[state=active]:text-moxinexa-teal rounded-xl px-6 py-3 h-auto shadow-sm transition-all"
+                className="bg-card border border-border data-[state=active]:border-moxinexa-teal data-[state=active]:bg-moxinexa-teal/5 data-[state=active]:text-moxinexa-teal rounded-xl px-6 py-3 h-auto shadow-sm transition-all"
               >
                 <div className="flex items-center gap-2">
                   <CreditCard className="w-4 h-4" />
@@ -280,7 +280,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
               </TabsTrigger>
             </TabsList>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+            <div className="bg-card rounded-xl shadow-sm border border-border p-6 md:p-8">
               {/* Tab 1: Identificação */}
               <TabsContent value="identificacao" className="space-y-6 m-0">
                 <div className="grid md:grid-cols-2 gap-6">
@@ -333,7 +333,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
                   />
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+                <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border">
                   <Input
                     label="Nome do Pai"
                     value={form?.pai_nome ?? ''}
@@ -373,7 +373,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
                     onChange={(e) => updateField('nif', e.target.value)}
                   />
                 </div>
-                <div className="grid md:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
+                <div className="grid md:grid-cols-3 gap-6 pt-4 border-t border-border">
                    <Input
                     label="BI (Legado/Referência)"
                     value={form?.bi_numero ?? ''}
@@ -403,7 +403,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
                     onChange={(e) => updateField('telefone', e.target.value)}
                   />
                 </div>
-                <div className="pt-4 border-t border-slate-100">
+                <div className="pt-4 border-t border-border">
                   <Input
                     label="Endereço Completo"
                     value={form?.endereco ?? ''}
@@ -415,7 +415,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
               {/* Tab 4: Responsável & Financeiro */}
               <TabsContent value="responsavel" className="space-y-8 m-0">
                 <div className="space-y-6">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Dados do Encarregado de Educação</h3>
+                  <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Dados do Encarregado de Educação</h3>
                   <div className="grid md:grid-cols-2 gap-6">
                     <Input
                       label="Nome do Encarregado"
@@ -444,13 +444,13 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
                   </div>
                 </div>
 
-                <div className="space-y-6 pt-8 border-t border-slate-100">
+                <div className="space-y-6 pt-8 border-t border-border">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Responsável Financeiro (Faturação)</h3>
+                    <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Responsável Financeiro (Faturação)</h3>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input 
                         type="checkbox" 
-                        className="rounded border-slate-300 text-moxinexa-teal focus:ring-moxinexa-teal"
+                        className="rounded border-border text-moxinexa-teal focus:ring-moxinexa-teal"
                         checked={form?.mesmo_que_encarregado || false}
                         onChange={(e) => {
                           const checked = e.target.checked;
@@ -461,7 +461,7 @@ export default function EditarAlunoPage({ id: propId }: { id?: string }) {
                           }
                         }}
                       />
-                      <span className="text-xs text-slate-500 font-medium">Mesmo que o encarregado</span>
+                      <span className="text-xs text-muted-foreground font-medium">Mesmo que o encarregado</span>
                     </label>
                   </div>
                   <div className="grid md:grid-cols-2 gap-6">

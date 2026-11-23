@@ -46,7 +46,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
     && aluno.perfil.escola_id === resolvedEscolaId;
 
   return (
-    <div className={workspace ? "min-w-0" : embedded ? "bg-slate-50" : "min-h-screen bg-slate-50"}>
+    <div className={workspace ? "min-w-0" : embedded ? "bg-muted" : "min-h-screen bg-muted"}>
       <div className={workspace ? "min-w-0 space-y-4" : `max-w-6xl mx-auto space-y-5 ${embedded ? "p-4 sm:p-6" : "px-6 py-8"}`}>
         {!workspace && <DossierHeader aluno={aluno} role={role} escolaId={resolvedEscolaId} />}
         <DossierTabs
@@ -67,7 +67,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
           slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}
         />
         {role === "secretaria" && !workspace && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
             <AcoesRapidasBalcao
               alunoId={alunoId}
               alunoNome={aluno.perfil.nome}

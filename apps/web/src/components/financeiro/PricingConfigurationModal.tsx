@@ -10,7 +10,7 @@ const PrecosClient = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex min-h-64 items-center justify-center gap-3 text-sm font-semibold text-slate-500">
+      <div className="flex min-h-64 items-center justify-center gap-3 text-sm font-semibold text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin text-emerald" />
         A carregar configuração de preços...
       </div>

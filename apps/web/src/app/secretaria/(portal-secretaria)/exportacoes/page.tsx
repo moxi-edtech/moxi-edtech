@@ -58,7 +58,7 @@ export default async function Page() {
             )}
           </div>
         ) : (
-          <div className="text-sm text-gray-600">Em breve: Exportação avançada em Excel/PDF.</div>
+          <div className="text-sm text-muted-foreground">Em breve: Exportação avançada em Excel/PDF.</div>
         )}
       </div>
     </>

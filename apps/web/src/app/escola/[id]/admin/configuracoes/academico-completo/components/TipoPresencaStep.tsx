@@ -48,21 +48,21 @@ export default function TipoPresencaStep({ escolaId, tipoPresenca, estrutura, on
         <button
           type="button"
           onClick={() => onTipoPresencaChange('secao')}
-          className={`p-6 border-2 rounded-lg text-left transition-all ${tipoPresenca === 'secao' ? 'border-teal-500 bg-teal-50' : 'border-gray-200 hover:border-gray-300'}`}
+          className={`p-6 border-2 rounded-lg text-left transition-all ${tipoPresenca === 'secao' ? 'border-teal-500 bg-teal-50' : 'border-border hover:border-border'}`}
         >
           <div className="text-3xl mb-2">👥</div>
           <h3 className="font-semibold mb-1">Por Seção/Turma</h3>
-          <p className="text-sm text-gray-600">Ideal para escolas com organização tradicional por turmas.</p>
+          <p className="text-sm text-muted-foreground">Ideal para escolas com organização tradicional por turmas.</p>
         </button>
 
         <button
           type="button"
           onClick={() => onTipoPresencaChange('curso')}
-          className={`p-6 border-2 rounded-lg text-left transition-all ${tipoPresenca === 'curso' ? 'border-teal-500 bg-teal-50' : 'border-gray-200 hover:border-gray-300'}`}
+          className={`p-6 border-2 rounded-lg text-left transition-all ${tipoPresenca === 'curso' ? 'border-teal-500 bg-teal-50' : 'border-border hover:border-border'}`}
         >
           <div className="text-3xl mb-2">📚</div>
           <h3 className="font-semibold mb-1">Por Curso/Disciplina</h3>
-          <p className="text-sm text-gray-600">Ideal para contextos com grades curriculares variadas.</p>
+          <p className="text-sm text-muted-foreground">Ideal para contextos com grades curriculares variadas.</p>
         </button>
       </div>
 
@@ -72,7 +72,7 @@ export default function TipoPresencaStep({ escolaId, tipoPresenca, estrutura, on
           <option value="secoes">Seções</option>
           <option value="cursos">Cursos</option>
         </Select>
-        <p className="text-xs text-gray-500 mt-1">Escolha a estrutura predominante para organização.</p>
+        <p className="text-xs text-muted-foreground mt-1">Escolha a estrutura predominante para organização.</p>
       </div>
 
       <div className="max-w-sm">
@@ -80,7 +80,7 @@ export default function TipoPresencaStep({ escolaId, tipoPresenca, estrutura, on
           <option value="semestre">Semestral (2 períodos)</option>
           <option value="trimestre">Trimestral (3 períodos)</option>
         </Select>
-        <p className="text-xs text-gray-500 mt-1">Define como o ano letivo será dividido.</p>
+        <p className="text-xs text-muted-foreground mt-1">Define como o ano letivo será dividido.</p>
       </div>
 
       <div className="max-w-sm">
@@ -92,7 +92,7 @@ export default function TipoPresencaStep({ escolaId, tipoPresenca, estrutura, on
           />
           Gerar períodos automaticamente ao salvar sessão
         </label>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           Ao criar/atualizar o ano letivo, cria automaticamente os períodos (semestres/trimestres) de acordo com as preferências.
         </p>
       </div>

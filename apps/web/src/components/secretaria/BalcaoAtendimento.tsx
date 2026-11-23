@@ -890,7 +890,7 @@ function StatusPill({ status }: { status: "em_dia" | "inadimplente" | "sem_matri
       Inadimplente
     </span>
   ) : status === "sem_matricula" ? (
-    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+    <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
       Sem matricula
     </span>
   ) : (
@@ -902,7 +902,7 @@ function StatusPill({ status }: { status: "em_dia" | "inadimplente" | "sem_matri
 
 function SecaoLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 pl-1 font-mono">
+    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 pl-1 font-mono">
       {children}
     </p>
   );
@@ -1264,7 +1264,7 @@ function CommandCenterOverview({
                       ? "text-rose-700"
                       : row.tone === "success"
                         ? "text-emerald"
-                        : "text-slate-600",
+                        : "text-muted-foreground",
                   ].join(" ")}
                 >
                   {row.value}
@@ -1387,7 +1387,7 @@ function Catalogo({
   );
 
   const servicoBtnCls = (busy: boolean) =>
-    `p-3 rounded-xl border border-slate-200/90 bg-slate-50/70 text-left transition-all hover:bg-white hover:border-amber hover:shadow-xs ${
+    `p-3 rounded-xl border border-border/90 bg-muted/70 text-left transition-all hover:bg-card hover:border-amber hover:shadow-xs ${
       busy ? "opacity-50 cursor-not-allowed" : ""
     }`;
 
@@ -1416,11 +1416,11 @@ function Catalogo({
   return (
     <div className={`${view === "all" ? "xl:col-span-8" : "xl:col-span-12"} ${view === "reenrollment" ? "text-foreground" : "rounded-xl border border-border bg-card p-5 sm:p-6"}`}>
       {view === "payment" ? (
-        <div className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-5 flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Pagamento</p>
-            <h2 className="mt-1 text-base font-black text-slate-900">O que será pago agora?</h2>
-            <p className="mt-1 text-xs leading-5 text-slate-500">Selecione mensalidades ou serviços. O total é calculado automaticamente.</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Pagamento</p>
+            <h2 className="mt-1 text-base font-black text-foreground">O que será pago agora?</h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Selecione mensalidades ou serviços. O total é calculado automaticamente.</p>
           </div>
           {selectedCount > 0 ? (
             <a
@@ -1434,7 +1434,7 @@ function Catalogo({
       ) : view === "all" ? (
         <div className="mb-4 flex items-center gap-2">
           <Plus className="h-4 w-4 text-amber" />
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Adicionar item</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-mono">Adicionar item</p>
         </div>
       ) : null}
 
@@ -1456,7 +1456,7 @@ function Catalogo({
             <button
               type="button"
               onClick={onRegularize}
-              className="shrink-0 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
+              className="shrink-0 rounded-xl bg-klasse-gold px-4 py-2.5 text-xs font-bold text-klasse-gold-900 transition hover:brightness-95"
             >
               Regularizar dívida
             </button>
@@ -1467,7 +1467,7 @@ function Catalogo({
             <div className={["mb-2 flex items-center gap-3", view === "reenrollment" ? "justify-end" : "justify-between"].join(" ")}>
               {view === "all" ? <SecaoLabel>Operações escolares</SecaoLabel> : null}
               {view !== "reenrollment" && rematriculaAnoLabel && (
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">
+                <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold text-muted-foreground">
                   Ano: {rematriculaAnoLabel}
                 </span>
               )}
@@ -1481,7 +1481,7 @@ function Catalogo({
                   <button
                     type="button"
                     onClick={onRegularize}
-                    className="shrink-0 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800"
+                    className="shrink-0 rounded-xl bg-klasse-gold px-4 py-2.5 text-xs font-bold text-klasse-gold-900 transition hover:brightness-95"
                   >
                     Regularizar dívida
                   </button>
@@ -1675,11 +1675,11 @@ function Catalogo({
                 className="flex w-full items-center justify-between gap-4 rounded-xl border border-emerald/25 bg-emerald/5 p-4 text-left transition hover:bg-emerald/10"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-black text-slate-900">{operacaoCopy.titulo}</p>
-                  <p className="mt-0.5 text-xs leading-5 text-slate-500">{operacaoCopy.descricao}</p>
+                  <p className="text-sm font-black text-foreground">{operacaoCopy.titulo}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{operacaoCopy.descricao}</p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <span className="block text-sm font-black text-slate-900 font-sora">
+                  <span className="block text-sm font-black text-foreground font-sora">
                     {rematriculaPrice != null && rematriculaPrice > 0
                       ? kwanza.format(rematriculaPrice)
                       : "Sem taxa"}
@@ -1701,7 +1701,7 @@ function Catalogo({
                   type="button"
                   onClick={() => atrasadas.forEach((mensalidade) => onAdicionarMensalidade(mensalidade))}
                   disabled={atrasadas.every((mensalidade) => selectedItemKeys.has(`mensalidade:${mensalidade.id}`))}
-                  className="text-[11px] font-bold text-emerald transition hover:underline disabled:cursor-default disabled:text-slate-300 disabled:no-underline"
+                  className="text-[11px] font-bold text-emerald transition hover:underline disabled:cursor-default disabled:text-muted-foreground disabled:no-underline"
                 >
                   {atrasadas.every((mensalidade) => selectedItemKeys.has(`mensalidade:${mensalidade.id}`))
                     ? "Todas selecionadas"
@@ -1728,19 +1728,19 @@ function Catalogo({
                   >
                     <div className="min-w-0 pr-3">
                       <div className="flex items-center gap-2">
-                        <p className={`truncate text-xs font-bold ${selected ? "text-slate-900" : "text-rose-900"}`}>{m.nome}</p>
+                        <p className={`truncate text-xs font-bold ${selected ? "text-foreground" : "text-rose-900"}`}>{m.nome}</p>
                         {selected ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald">
                             <CheckCircle className="h-3 w-3" /> Selecionada
                           </span>
                         ) : null}
                       </div>
-                      <p className={`mt-0.5 truncate text-[10px] font-medium ${selected ? "text-slate-400" : "text-rose-500"}`}>
+                      <p className={`mt-0.5 truncate text-[10px] font-medium ${selected ? "text-muted-foreground" : "text-rose-500"}`}>
                         {[m.origem_ano && `Ano ${m.origem_ano}`, m.origem_turma].filter(Boolean).join(" · ") ||
                           (!unlocked ? "Bloqueada até regularizar a anterior" : "Vencida")}
                       </p>
                     </div>
-                    <span className="shrink-0 text-xs font-black text-slate-900 font-sora">{kwanza.format(m.preco)}</span>
+                    <span className="shrink-0 text-xs font-black text-foreground font-sora">{kwanza.format(m.preco)}</span>
                   </button>
                 );
               })}
@@ -1765,24 +1765,24 @@ function Catalogo({
                       "flex items-center justify-between rounded-xl border p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-50",
                       selected
                         ? "border-emerald/30 bg-emerald/5"
-                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                        : "border-border bg-card hover:border-border hover:bg-muted",
                     ].join(" ")}
                   >
                     <div className="min-w-0 pr-3">
                       <div className="flex items-center gap-2">
-                        <p className="truncate text-xs font-bold text-slate-800">{m.nome}</p>
+                        <p className="truncate text-xs font-bold text-foreground">{m.nome}</p>
                         {selected ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald">
                             <CheckCircle className="h-3 w-3" /> Selecionada
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-0.5 truncate text-[10px] text-slate-400">
+                      <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
                         {[m.origem_ano && `Ano ${m.origem_ano}`, m.origem_turma].filter(Boolean).join(" · ") ||
                           (!unlocked ? "Bloqueada até regularizar a anterior" : "Disponível")}
                       </p>
                     </div>
-                    <span className="shrink-0 text-xs font-bold text-slate-900 font-sora">{kwanza.format(m.preco)}</span>
+                    <span className="shrink-0 text-xs font-bold text-foreground font-sora">{kwanza.format(m.preco)}</span>
                   </button>
                 );
               })}
@@ -1835,10 +1835,10 @@ function Catalogo({
         {(view === "all" || view === "document") && documentos.length > 0 && (
           <div data-balcao-action="document">
             {view === "document" ? (
-              <div className="mb-5 border-b border-slate-100 pb-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Documentos</p>
-                <h2 className="mt-1 text-base font-black text-slate-900">O que precisa emitir?</h2>
-                <p className="mt-1 text-xs text-slate-500">
+              <div className="mb-5 border-b border-border pb-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Documentos</p>
+                <h2 className="mt-1 text-base font-black text-foreground">O que precisa emitir?</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Documentos gratuitos são emitidos imediatamente. Os pagos seguem para cobrança antes da emissão.
                 </p>
                 {selectedCount > 0 ? (
@@ -1868,9 +1868,9 @@ function Catalogo({
                       onClick={() => void onAdicionarServico(servico)}
                       className={servicoBtnCls(busy)}
                     >
-                      <p className="truncate text-xs font-bold text-slate-800" title={servico.nome}>{servico.nome}</p>
+                      <p className="truncate text-xs font-bold text-foreground" title={servico.nome}>{servico.nome}</p>
                       <div className="mt-2 flex items-center justify-between gap-1">
-                        <span className="text-[11px] font-semibold text-slate-500 font-sora">{kwanza.format(servico.preco)}</span>
+                        <span className="text-[11px] font-semibold text-muted-foreground font-sora">{kwanza.format(servico.preco)}</span>
                         <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${paid ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald"}`}>
                           {busy ? "..." : paid ? "Cobrar" : "Adicionar"}
                         </span>
@@ -1884,13 +1884,13 @@ function Catalogo({
                     key={servico.id}
                     className={[
                       "flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between",
-                      selected ? "border-emerald/30 bg-emerald/5" : "border-slate-200 bg-white",
+                      selected ? "border-emerald/30 bg-emerald/5" : "border-border bg-card",
                     ].join(" ")}
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-black text-slate-900">{servico.nome}</p>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${paid ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald"}`}>
+                        <p className="text-sm font-black text-foreground">{servico.nome}</p>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${paid ? "bg-muted text-muted-foreground" : "bg-emerald-50 text-emerald"}`}>
                           {paid ? kwanza.format(servico.preco) : "Gratuito"}
                         </span>
                         {selected ? (
@@ -1899,7 +1899,7 @@ function Catalogo({
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">
+                      <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
                         {getDocumentoResumo(servico)}
                       </p>
                     </div>
@@ -1915,9 +1915,9 @@ function Catalogo({
                         "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition disabled:cursor-not-allowed",
                         paid
                           ? selected
-                            ? "bg-slate-100 text-slate-400"
-                            : "bg-slate-950 text-white hover:bg-slate-800"
-                          : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-klasse-gold text-klasse-gold-900 hover:brightness-95"
+                          : "border border-border bg-card text-foreground hover:bg-muted",
                       ].join(" ")}
                     >
                       {busy ? (
@@ -1949,17 +1949,17 @@ function Catalogo({
                       "rounded-xl border p-3 text-left transition",
                       selected
                         ? "border-emerald/30 bg-emerald/5"
-                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                        : "border-border bg-card hover:border-border hover:bg-muted",
                     ].join(" ")}
                     title={selected ? "Já incluído no pagamento." : s.nome}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="truncate text-xs font-bold text-slate-800">{s.nome}</p>
+                      <p className="truncate text-xs font-bold text-foreground">{s.nome}</p>
                       {selected ? <CheckCircle className="h-3.5 w-3.5 shrink-0 text-emerald" /> : null}
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-1">
-                      <span className="text-[11px] font-semibold text-slate-500 font-sora">{kwanza.format(s.preco)}</span>
-                      <span className={`text-[10px] font-bold ${selected ? "text-emerald" : "text-slate-400"}`}>
+                      <span className="text-[11px] font-semibold text-muted-foreground font-sora">{kwanza.format(s.preco)}</span>
+                      <span className={`text-[10px] font-bold ${selected ? "text-emerald" : "text-muted-foreground"}`}>
                         {selected ? "Selecionado" : "Adicionar"}
                       </span>
                     </div>
@@ -1971,16 +1971,16 @@ function Catalogo({
         )}
 
         {view === "payment" && mensalidades.length === 0 && extras.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-400">Nenhuma cobrança disponível para este aluno.</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma cobrança disponível para este aluno.</p>
         ) : null}
         {view === "document" && documentos.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-400">Nenhum documento configurado para este aluno.</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">Nenhum documento configurado para este aluno.</p>
         ) : null}
         {view === "reenrollment" && !rematriculaState ? (
-          <p className="py-8 text-center text-sm text-slate-400">A rematrícula não está disponível neste contexto.</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">A rematrícula não está disponível neste contexto.</p>
         ) : null}
         {view === "all" && mensalidades.length === 0 && servicos.length === 0 && (
-          <p className="text-sm text-slate-400 text-center py-8">Nenhum item disponivel para este aluno.</p>
+          <p className="text-sm text-muted-foreground text-center py-8">Nenhum item disponivel para este aluno.</p>
         )}
       </div>
     </div>
@@ -1990,15 +1990,15 @@ function Catalogo({
 function AuditTrail({ audit, aluno, onRefresh }: { audit: ReturnType<typeof useAuditTrail>; aluno: AlunoDossier | null; onRefresh: () => void }) {
   if (!audit.open) return null;
   return (
-    <div className="border-b border-slate-100">
+    <div className="border-b border-border">
       <div className="flex items-center justify-between px-6 py-3">
-        <p className="text-[10px] uppercase tracking-widest text-slate-400 font-mono">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono">
           {audit.scope === "aluno" ? "So este aluno" : "Todos"}
         </p>
         <div className="flex items-center gap-3">
           <button
             onClick={() => void audit.alternarScope()}
-            className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-700"
+            className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
           >
             {audit.scope === "aluno" ? "Ver todos" : "Ver aluno"}
           </button>
@@ -2009,19 +2009,19 @@ function AuditTrail({ audit, aluno, onRefresh }: { audit: ReturnType<typeof useA
       </div>
       <div className="max-h-52 overflow-y-auto px-6 pb-4 space-y-2">
         {!aluno ? (
-          <p className="text-xs text-slate-400">Seleccione um aluno para ver o historico.</p>
+          <p className="text-xs text-muted-foreground">Seleccione um aluno para ver o historico.</p>
         ) : audit.loading ? (
           <div className="space-y-2 py-2">
-            <Loader2 className="h-4 w-4 animate-spin text-slate-400 mx-auto" />
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mx-auto" />
           </div>
         ) : audit.entries.length === 0 ? (
-          <p className="text-xs text-slate-400">Sem registos recentes.</p>
+          <p className="text-xs text-muted-foreground">Sem registos recentes.</p>
         ) : (
           audit.entries.map((e, i) => (
-            <div key={`${e.created_at}-${i}`} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+            <div key={`${e.created_at}-${i}`} className="rounded-lg border border-border bg-muted p-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-bold text-slate-800">{e.action || "Evento"}</p>
-                <p className="text-[10px] text-slate-400 flex-shrink-0 font-mono">
+                <p className="text-xs font-bold text-foreground">{e.action || "Evento"}</p>
+                <p className="text-[10px] text-muted-foreground flex-shrink-0 font-mono">
                   {e.created_at
                     ? new Date(e.created_at).toLocaleString("pt-PT", {
                         day: "2-digit",
@@ -2033,7 +2033,7 @@ function AuditTrail({ audit, aluno, onRefresh }: { audit: ReturnType<typeof useA
                     : "-"}
                 </p>
               </div>
-              {(e.entity || e.portal) && <p className="text-[10px] text-slate-500 mt-0.5">{[e.entity, e.portal].filter(Boolean).join(" · ")}</p>}
+              {(e.entity || e.portal) && <p className="text-[10px] text-muted-foreground mt-0.5">{[e.entity, e.portal].filter(Boolean).join(" · ")}</p>}
             </div>
           ))
         )}
@@ -2077,7 +2077,7 @@ function CarrinhoPanel({
     limpar,
   } = carrinho;
 
-  const inputCls = `w-full bg-white border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-semibold text-slate-900 outline-none transition-all focus:border-amber focus:ring-2 focus:ring-amber/20`;
+  const inputCls = `w-full bg-card border border-border rounded-xl py-2.5 px-3 text-sm font-semibold text-foreground outline-none transition-all focus:border-amber focus:ring-2 focus:ring-amber/20`;
 
   /**
    * Cmd/Ctrl+Enter finaliza o pagamento — o operador tem as duas mãos no teclado
@@ -2111,18 +2111,18 @@ function CarrinhoPanel({
   return (
     <div
       id={mode === "payment" ? "payment-checkout" : mode === "document" ? "document-checkout" : undefined}
-      className={`scroll-mt-24 rounded-xl border border-slate-200 bg-white overflow-hidden flex flex-col sticky top-6 ${
+      className={`scroll-mt-24 rounded-xl border border-border bg-card overflow-hidden flex flex-col sticky top-6 ${
         mode === "payment" || mode === "document" ? "shadow-sm" : "shadow-lg"
       } ${embedded ? "h-full min-h-[580px]" : "h-[calc(100vh-140px)]"}`}
     >
       {mode === "payment" || mode === "document" ? (
-        <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+        <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
               {mode === "payment" ? "Pagamento" : "Emissão"}
             </p>
             <div className="mt-1 flex items-center gap-2">
-              <h3 className="text-base font-black text-slate-900">
+              <h3 className="text-base font-black text-foreground">
                 {mode === "payment"
                   ? "Rever e confirmar"
                   : itens.length > 1
@@ -2130,7 +2130,7 @@ function CarrinhoPanel({
                     : "Documento para emitir"}
               </h3>
               {itens.length > 0 ? (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
                   {itens.length} {itens.length === 1 ? "item" : "itens"}
                 </span>
               ) : null}
@@ -2143,7 +2143,7 @@ function CarrinhoPanel({
                 audit.setOpen((open) => !open);
                 if (!audit.open) void audit.fetch(aluno?.id, aluno?.matricula_id);
               }}
-              className="text-xs font-bold text-slate-400 transition hover:text-slate-700"
+              className="text-xs font-bold text-muted-foreground transition hover:text-foreground"
             >
               {audit.open ? "Fechar histórico" : "Histórico"}
             </button>
@@ -2151,7 +2151,7 @@ function CarrinhoPanel({
               <button
                 type="button"
                 onClick={limpar}
-                className="text-xs font-bold text-slate-400 transition hover:text-rose-600"
+                className="text-xs font-bold text-muted-foreground transition hover:text-rose-600"
               >
                 Limpar
               </button>
@@ -2159,12 +2159,12 @@ function CarrinhoPanel({
           </div>
         </div>
       ) : (
-        <div className="bg-slate-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <div className="bg-klasse-dark px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5 text-amber" />
             <span className="text-sm font-bold text-white font-sora">Resumo da venda</span>
             {itens.length > 0 && (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber text-[10px] font-black text-slate-900 font-mono">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber text-[10px] font-black text-foreground font-mono">
                 {itens.length}
               </span>
             )}
@@ -2175,12 +2175,12 @@ function CarrinhoPanel({
                 audit.setOpen((o) => !o);
                 if (!audit.open) void audit.fetch(aluno?.id, aluno?.matricula_id);
               }}
-              className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono"
+              className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-white transition-colors font-mono"
             >
               {audit.open ? "Fechar histórico" : "Histórico"}
             </button>
             {itens.length > 0 && (
-              <button onClick={limpar} className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors font-mono">
+              <button onClick={limpar} className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-white transition-colors font-mono">
                 Limpar
               </button>
             )}
@@ -2190,9 +2190,9 @@ function CarrinhoPanel({
 
       <AuditTrail audit={audit} aluno={aluno} onRefresh={() => void audit.fetch(aluno?.id, aluno?.matricula_id)} />
 
-      <div className={`flex-1 overflow-y-auto p-4 space-y-2 ${mode === "payment" || mode === "document" ? "bg-white" : "bg-slate-50/50"}`}>
+      <div className={`flex-1 overflow-y-auto p-4 space-y-2 ${mode === "payment" || mode === "document" ? "bg-card" : "bg-muted/50"}`}>
         {itens.length === 0 && checkout.pagos.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center text-slate-300">
+          <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center text-muted-foreground">
             {mode === "payment" ? (
               <CreditCard className="h-9 w-9 opacity-30" />
             ) : mode === "document" ? (
@@ -2201,7 +2201,7 @@ function CarrinhoPanel({
               <ShoppingCart className="h-10 w-10 opacity-30" />
             )}
             <div>
-              <p className="text-sm font-bold text-slate-500">
+              <p className="text-sm font-bold text-muted-foreground">
                 {mode === "payment"
                   ? "Nenhuma cobrança selecionada"
                   : mode === "document"
@@ -2209,9 +2209,9 @@ function CarrinhoPanel({
                     : "Carrinho vazio"}
               </p>
               {mode === "payment" ? (
-                <p className="mt-1 text-xs text-slate-400">Escolha mensalidades ou serviços na lista ao lado.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Escolha mensalidades ou serviços na lista ao lado.</p>
               ) : mode === "document" ? (
-                <p className="mt-1 text-xs leading-5 text-slate-400">
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   Documentos gratuitos são emitidos diretamente. Se escolher um documento pago, a cobrança aparece aqui.
                 </p>
               ) : null}
@@ -2224,11 +2224,11 @@ function CarrinhoPanel({
             return (
               <div
                 key={`${item.id}-${item.tipo}`}
-                className={`flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 ${mode === "payment" ? "" : "shadow-xs"}`}
+                className={`flex items-start justify-between gap-3 rounded-xl border border-border bg-card p-4 ${mode === "payment" ? "" : "shadow-xs"}`}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-slate-800 leading-tight">{item.nome}</p>
-                  <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                  <p className="text-sm font-bold text-foreground leading-tight">{item.nome}</p>
+                  <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                     {mode === "payment"
                       ? (item.tipo === "mensalidade" ? "Mensalidade" : "Serviço")
                       : mode === "document" && item.tipo === "servico"
@@ -2252,11 +2252,11 @@ function CarrinhoPanel({
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <p className="text-sm font-black text-slate-900 font-sora">{kwanza.format(item.preco)}</p>
+                  <p className="text-sm font-black text-foreground font-sora">{kwanza.format(item.preco)}</p>
                   <button
                     type="button"
                     onClick={() => remover(item.id, item.tipo)}
-                    className="rounded-lg p-1.5 text-slate-300 transition hover:bg-rose-50 hover:text-rose-500"
+                    className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-rose-50 hover:text-rose-500"
                     aria-label={`Remover ${item.nome}`}
                   >
                     <X className="h-3.5 w-3.5" />
@@ -2288,8 +2288,8 @@ function CarrinhoPanel({
             </p>
             {checkout.pendentes.map((servico) => (
               <div key={servico.id} className="flex items-center justify-between gap-3">
-                <p className="min-w-0 truncate text-xs font-semibold text-slate-700">{servico.nome}</p>
-                <span className="flex-shrink-0 rounded-full border border-amber-200 bg-white px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                <p className="min-w-0 truncate text-xs font-semibold text-foreground">{servico.nome}</p>
+                <span className="flex-shrink-0 rounded-full border border-amber-200 bg-card px-2 py-0.5 text-[10px] font-bold text-amber-800">
                   Aguardando
                 </span>
               </div>
@@ -2307,7 +2307,7 @@ function CarrinhoPanel({
               <button
                 type="button"
                 onClick={() => checkout.setPagos([])}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-muted-foreground hover:text-muted-foreground transition-colors"
                 aria-label="Fechar"
               >
                 <X className="h-3.5 w-3.5" />
@@ -2315,7 +2315,7 @@ function CarrinhoPanel({
             </div>
             {checkout.pagos.map((servico) => (
               <div key={servico.id} className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold text-slate-700 min-w-0 truncate">{servico.nome}</p>
+                <p className="text-xs font-semibold text-foreground min-w-0 truncate">{servico.nome}</p>
                 <button
                   type="button"
                   disabled={checkout.emittingDocId === servico.id}
@@ -2362,7 +2362,7 @@ function CarrinhoPanel({
             </p>
             {checkout.printQueue.map((entrada, indice) => (
               <div key={`${entrada.url}-${indice}`} className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold text-slate-700 min-w-0 truncate">{entrada.label}</p>
+                <p className="text-xs font-semibold text-foreground min-w-0 truncate">{entrada.label}</p>
                 <a
                   href={entrada.url}
                   target="_blank"
@@ -2379,25 +2379,25 @@ function CarrinhoPanel({
       </div>
 
       {(mode !== "document" || itens.length > 0) ? (
-      <div className="border-t border-slate-100 bg-white p-5 space-y-4 flex-shrink-0">
+      <div className="border-t border-border bg-card p-5 space-y-4 flex-shrink-0">
         <div className="flex items-end justify-between">
           <div>
             {mode === "payment" ? (
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total selecionado</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Total selecionado</p>
             ) : mode === "document" ? (
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Total a cobrar</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Total a cobrar</p>
             ) : (
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">Total a pagar</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">Total a pagar</p>
             )}
             {(mode === "payment" || mode === "document") && itens.length > 0 ? (
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {mode === "document"
                   ? "O documento será liberado depois da confirmação do pagamento."
                   : "Escolha a forma de pagamento abaixo."}
               </p>
             ) : null}
           </div>
-          <p className={`${mode === "payment" || mode === "document" ? "text-2xl" : "text-3xl"} font-black text-slate-900 font-sora`}>{kwanza.format(total)}</p>
+          <p className={`${mode === "payment" || mode === "document" ? "text-2xl" : "text-3xl"} font-black text-foreground font-sora`}>{kwanza.format(total)}</p>
         </div>
 
         <div className="grid grid-cols-5 gap-1.5">
@@ -2410,11 +2410,11 @@ function CarrinhoPanel({
                 className={`flex flex-col items-center justify-center gap-1 rounded-xl border py-2.5 transition-all ${
                   (mode === "payment" || mode === "document")
                     ? active
-                      ? "border-amber bg-amber/10 font-bold text-slate-900"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-amber/40 hover:bg-amber/5"
+                      ? "border-amber bg-amber/10 font-bold text-foreground"
+                      : "border-border bg-card text-muted-foreground hover:border-amber/40 hover:bg-amber/5"
                     : active
-                      ? "border-amber bg-amber/10 text-slate-900 font-bold"
-                      : "border-slate-200 text-slate-400 hover:border-slate-300"
+                      ? "border-amber bg-amber/10 text-foreground font-bold"
+                      : "border-border text-muted-foreground hover:border-border"
                 }`}
               >
                 <Icon className={`h-4 w-4 ${mode === "payment" || mode === "document" ? "text-current" : active ? "text-amber" : "text-current"}`} />
@@ -2426,7 +2426,7 @@ function CarrinhoPanel({
 
         {(metodo === "tpa" || metodo === "mcx" || metodo === "kiwk") && (
           <div className="space-y-2">
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">
               Referência {metodo === "tpa" && <span className="text-rose-500">*</span>}
             </label>
             <input
@@ -2448,7 +2448,7 @@ function CarrinhoPanel({
 
         {metodo === "transfer" && (
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 font-mono">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 font-mono">
               Comprovativo (URL) <span className="text-rose-500">*</span>
             </label>
             <input value={detalhes.evidencia_url} onChange={(e) => setDetalhes({ evidencia_url: e.target.value })} placeholder="https://..." className={inputCls} />
@@ -2456,9 +2456,9 @@ function CarrinhoPanel({
         )}
 
         {metodo === "cash" && (
-          <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+          <div className="bg-muted rounded-xl border border-border p-4">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">Recebido</label>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">Recebido</label>
               {valorNum > total && <span className="text-xs font-bold text-emerald">Troco: {kwanza.format(troco)}</span>}
             </div>
             <div className="relative">
@@ -2469,7 +2469,7 @@ function CarrinhoPanel({
                 placeholder="0"
                 className={`${inputCls} pr-12 text-lg font-black font-sora`}
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">KZ</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground font-mono">KZ</span>
             </div>
           </div>
         )}
@@ -2481,7 +2481,7 @@ function CarrinhoPanel({
           className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all ${
             prontoParaPagar && !checkout.isSubmitting
               ? "bg-amber text-white shadow-sm hover:brightness-95"
-              : "cursor-not-allowed bg-slate-100 text-slate-400"
+              : "cursor-not-allowed bg-muted text-muted-foreground"
           }`}
         >
           {checkout.isSubmitting ? (
@@ -2508,7 +2508,7 @@ function CarrinhoPanel({
         </button>
 
         {!prontoParaPagar && !checkout.isSubmitting && disabledReason ? (
-          <p className="text-center text-xs font-medium text-slate-500">{disabledReason}</p>
+          <p className="text-center text-xs font-medium text-muted-foreground">{disabledReason}</p>
         ) : null}
 
         {prontoParaPagar && !checkout.isSubmitting && (
@@ -2566,27 +2566,27 @@ function BillingWindowRepairPanel({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="billing-window-title">
-      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl">
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-klasse-dark/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="billing-window-title">
+      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-card p-5 shadow-2xl sm:rounded-3xl">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald">Ação de recuperação</p>
-            <h2 id="billing-window-title" className="mt-1 text-xl font-black text-slate-900">Configurar janela da turma</h2>
-            <p className="mt-1 text-sm text-slate-500">A mensalidade {issue.competencia || "selecionada"} está fora do período permitido.</p>
+            <h2 id="billing-window-title" className="mt-1 text-xl font-black text-foreground">Configurar janela da turma</h2>
+            <p className="mt-1 text-sm text-muted-foreground">A mensalidade {issue.competencia || "selecionada"} está fora do período permitido.</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+          <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Turma</p>
-            <p className="mt-1 font-bold text-slate-800">{issue.turmaLabel}</p>
+          <div className="rounded-2xl border border-border bg-muted p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Turma</p>
+            <p className="mt-1 font-bold text-foreground">{issue.turmaLabel}</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Ano letivo</p>
-            <p className="mt-1 font-bold text-slate-800">{issue.anoLetivoLabel}</p>
+          <div className="rounded-2xl border border-border bg-muted p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Ano letivo</p>
+            <p className="mt-1 font-bold text-foreground">{issue.anoLetivoLabel}</p>
           </div>
         </div>
 
@@ -2595,33 +2595,33 @@ function BillingWindowRepairPanel({
           <p className="mt-1 text-sm font-semibold text-amber-950">{issue.dataInicio || "—"} até {issue.dataFim || "—"}</p>
         </div>
 
-        <label className="mt-5 block text-sm font-bold text-slate-800" htmlFor="billing-window-end">Data final permitida</label>
+        <label className="mt-5 block text-sm font-bold text-foreground" htmlFor="billing-window-end">Data final permitida</label>
         <input
           id="billing-window-end"
           type="date"
           min={issue.dataFim}
           value={dataFim}
           onChange={(event) => setDataFim(event.target.value)}
-          className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 outline-none ring-emerald focus:ring-2"
+          className="mt-2 h-11 w-full rounded-xl border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none ring-emerald focus:ring-2"
         />
 
-        <div className="mt-5 rounded-2xl border border-slate-200 p-4">
+        <div className="mt-5 rounded-2xl border border-border p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-bold text-slate-800">Prévia das mensalidades</p>
-              <p className="text-xs text-slate-500">Competências abrangidas pela janela</p>
+              <p className="text-sm font-bold text-foreground">Prévia das mensalidades</p>
+              <p className="text-xs text-muted-foreground">Competências abrangidas pela janela</p>
             </div>
             <span className="rounded-full bg-emerald/10 px-2.5 py-1 text-xs font-bold text-emerald">{months.length} meses</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {months.length > 0 ? months.map((month) => (
-              <span key={month} className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold capitalize text-slate-700">{month}</span>
-            )) : <span className="text-xs text-slate-500">Escolha uma data final válida para ver a prévia.</span>}
+              <span key={month} className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-semibold capitalize text-foreground">{month}</span>
+            )) : <span className="text-xs text-muted-foreground">Escolha uma data final válida para ver a prévia.</span>}
           </div>
         </div>
 
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button type="button" onClick={onClose} disabled={saving} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Cancelar</button>
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-xl border border-border px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-muted disabled:opacity-50">Cancelar</button>
           <button type="button" onClick={() => void handleSaveAndRetry()} disabled={saving || !dataFim || dataFim < issue.dataFim} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald px-4 py-3 text-sm font-bold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
             Guardar e tentar novamente
@@ -2992,7 +2992,7 @@ export default function BalcaoAtendimento({
 
       {dossier.aluno && (view === "payment" || view === "document" || view === "overview" || view === "all") ? (
         <div role={dossier.loadError ? "alert" : "status"} aria-live="polite"
-          className="mb-3 flex min-h-9 flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+          className="mb-3 flex min-h-9 flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
           {dossier.loadError ? "Falha ao confirmar dados atuais. Operações financeiras indisponíveis." : dossier.loading || refreshingRevision
             ? "Atualizando dados... As operações aguardam confirmação do servidor." : "Dados financeiros atualizados"}
           {dossier.lastVerifiedAt ? <time dateTime={dossier.lastVerifiedAt.toISOString()}>
@@ -3109,9 +3109,9 @@ export default function BalcaoAtendimento({
         />
       )}
       {(dossier.loading || (visible && (refreshingRevision || refreshRevision > lastRevisionRef.current))) && !dossier.aluno ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
+        <div className="rounded-xl border border-border bg-card p-12 flex flex-col items-center justify-center gap-3 min-h-[300px]">
           <Loader2 className="h-8 w-8 animate-spin text-amber" />
-          <p className="text-xs font-bold text-slate-600 font-mono">A carregar ficha do aluno...</p>
+          <p className="text-xs font-bold text-muted-foreground font-mono">A carregar ficha do aluno...</p>
         </div>
       ) : dossier.aluno ? (
         view === "payment" && debtModalOpen ? (
@@ -3269,10 +3269,10 @@ export default function BalcaoAtendimento({
           </div>
         )
       ) : (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-12 text-center space-y-2">
-          <User className="h-10 w-10 text-slate-300 mx-auto" />
-          <p className="text-sm font-bold text-slate-700 font-sora">Nenhum aluno seleccionado</p>
-          <p className="text-xs text-slate-400">Utilize a barra de pesquisa acima para abrir a ficha de atendimento do aluno.</p>
+        <div className="rounded-xl border border-dashed border-border bg-muted/50 p-12 text-center space-y-2">
+          <User className="h-10 w-10 text-muted-foreground mx-auto" />
+          <p className="text-sm font-bold text-foreground font-sora">Nenhum aluno seleccionado</p>
+          <p className="text-xs text-muted-foreground">Utilize a barra de pesquisa acima para abrir a ficha de atendimento do aluno.</p>
         </div>
       )}
       </div>
@@ -3423,12 +3423,12 @@ export default function BalcaoAtendimento({
         onRetry={checkout.checkout}
       />
       {showReturnPrompt && returnTo && (
-        <div className="fixed bottom-5 right-5 z-50 flex max-w-sm items-center gap-3 rounded-2xl border border-emerald-200 bg-white p-4 shadow-2xl">
+        <div className="fixed bottom-5 right-5 z-50 flex max-w-sm items-center gap-3 rounded-2xl border border-emerald-200 bg-card p-4 shadow-2xl">
           <div className="min-w-0">
             <p className="text-sm font-bold text-emerald-800">Dívida regularizada</p>
-            <p className="text-xs text-slate-500">Pode continuar a rematrícula sem perder o contexto.</p>
+            <p className="text-xs text-muted-foreground">Pode continuar a rematrícula sem perder o contexto.</p>
           </div>
-          <Link href={returnTo} className="shrink-0 rounded-xl bg-[#1F6B3B] px-3 py-2 text-xs font-bold text-white hover:brightness-110">
+          <Link href={returnTo} className="shrink-0 rounded-xl bg-klasse-green px-3 py-2 text-xs font-bold text-white hover:brightness-110">
             Continuar
           </Link>
         </div>

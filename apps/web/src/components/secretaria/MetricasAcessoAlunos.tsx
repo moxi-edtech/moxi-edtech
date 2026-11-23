@@ -45,10 +45,10 @@ export function MetricasAcessoAlunos({ escolaId }: Props) {
   }, [escolaId]);
 
   const cards = [
-    { label: 'Total alunos', value: data?.total_alunos ?? 0, icon: Users, color: 'text-slate-700' },
+    { label: 'Total alunos', value: data?.total_alunos ?? 0, icon: Users, color: 'text-foreground' },
     { label: 'Acesso liberado', value: data?.acesso_liberado ?? 0, icon: UserCheck, color: 'text-emerald-600' },
     { label: 'Sem acesso', value: data?.sem_acesso ?? 0, icon: UserX, color: 'text-orange-600' },
-    { label: 'Enviados (WhatsApp)', value: data?.enviados_whatsapp ?? 0, icon: Smartphone, color: 'text-slate-600' },
+    { label: 'Enviados (WhatsApp)', value: data?.enviados_whatsapp ?? 0, icon: Smartphone, color: 'text-muted-foreground' },
   ];
 
   return (
@@ -56,11 +56,11 @@ export function MetricasAcessoAlunos({ escolaId }: Props) {
       {cards.map((card) => (
         <Card key={card.label} className="p-4">
           <CardHeader className="mb-2 flex items-center justify-between">
-            <CardTitle className="text-sm text-slate-600 font-semibold">{card.label}</CardTitle>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : <card.icon className={`w-4 h-4 ${card.color}`} />}
+            <CardTitle className="text-sm text-muted-foreground font-semibold">{card.label}</CardTitle>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : <card.icon className={`w-4 h-4 ${card.color}`} />}
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="text-2xl font-bold text-slate-900">{card.value}</div>
+            <div className="text-2xl font-bold text-foreground">{card.value}</div>
           </CardContent>
         </Card>
       ))}

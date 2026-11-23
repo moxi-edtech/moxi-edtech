@@ -24,8 +24,8 @@ import { OperationalCursorPagination, OperationalTableEmptyState, OperationalTab
 
 /**
  * KLASSE UI notes:
- * - Gold (#E3B23C) = action/active states
- * - Green (#1F6B3B) = brand/headings
+ * - klasse-gold = action/active states
+ * - klasse-green = brand/headings
  * - Radius: rounded-xl (cards/inputs/buttons), rounded-full (badges)
  * - Focus: ring-4 ring-amber/20 + border-amber
  */
@@ -107,7 +107,7 @@ function KpiCard({
     <div className="bg-card border border-border rounded-xl shadow-sm p-5 flex items-start justify-between">
       <div className="min-w-0">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{title}</p>
-        <p className="text-2xl font-black text-slate-950 mt-1">{value}</p>
+        <p className="text-2xl font-black text-foreground mt-1">{value}</p>
       </div>
 
       <div className="p-3 rounded-xl bg-muted border border-border">
@@ -433,7 +433,7 @@ export default function AlunosListClient() {
                             </div>
 
                             <div className="min-w-0">
-                              <p className="font-bold text-sm text-slate-950 truncate">{aluno.nome}</p>
+                              <p className="font-bold text-sm text-foreground truncate">{aluno.nome}</p>
 
                               <p className="text-xs text-muted-foreground font-mono mt-0.5">
                                 {identificadorLabel !== "—" ? `${identificadorLabel}: ${identificador}` : "—"}
@@ -455,7 +455,7 @@ export default function AlunosListClient() {
                               <span className="truncate">{aluno.email}</span>
                             </div>
                           ) : (
-                            <span className="text-slate-300 text-sm">—</span>
+                            <span className="text-muted-foreground text-sm">—</span>
                           )}
                         </td>
 
@@ -471,7 +471,7 @@ export default function AlunosListClient() {
                               ) : null}
                             </div>
                           ) : (
-                            <span className="text-slate-300 text-sm">—</span>
+                            <span className="text-muted-foreground text-sm">—</span>
                           )}
                         </td>
 

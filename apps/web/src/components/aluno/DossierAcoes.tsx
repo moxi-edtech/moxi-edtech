@@ -61,25 +61,25 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
     return (
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-        <Link href={portalHref(`/admin/alunos/${aluno.id}/editar`)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"><Pencil size={14} className="inline mr-1" />Editar</Link>
+        <Link href={portalHref(`/admin/alunos/${aluno.id}/editar`)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:border-klasse-green hover:text-klasse-green dark:hover:text-emerald-300"><Pencil size={14} className="inline mr-1" />Editar</Link>
         {!isArquivado ? (
-          <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/delete`, { reason: "Arquivado via Admin" })} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#E3B23C]/40 hover:text-[#E3B23C]"><Archive size={14} className="inline mr-1" />Arquivar</button>
+          <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/delete`, { reason: "Arquivado via Admin" })} className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:border-klasse-gold/40 hover:text-klasse-gold-900 dark:hover:text-klasse-gold-300"><Archive size={14} className="inline mr-1" />Arquivar</button>
         ) : (
           <>
-            <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/restore`)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"><RotateCcw size={14} className="inline mr-1" />Restaurar</button>
-            <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/hard-delete`)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-rose-200 hover:text-rose-700"><Trash2 size={14} className="inline mr-1" />Eliminar</button>
+            <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/restore`)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:border-klasse-green hover:text-klasse-green dark:hover:text-emerald-300"><RotateCcw size={14} className="inline mr-1" />Restaurar</button>
+            <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/hard-delete`)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:border-rose-200 hover:text-rose-700"><Trash2 size={14} className="inline mr-1" />Eliminar</button>
           </>
         )}
         <button
           disabled={loading}
           onClick={handleResetSenha}
-          className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"
+          className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:border-klasse-green hover:text-klasse-green dark:hover:text-emerald-300"
         >
           <KeyRound size={14} className="inline mr-1" />Resetar senha
         </button>
         </div>
         {resetResult && (
-          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+          <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground">
             <div><span className="font-semibold">Login:</span> {resetResult.login}</div>
             <div><span className="font-semibold">Senha temporária:</span> {resetResult.senha}</div>
           </div>
@@ -103,20 +103,20 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
       </Link>
       <Link
         href={portalHref(`/secretaria/alunos/${aluno.id}/editar`)}
-        className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
       >
         <Pencil size={14} className="inline mr-1" />Editar
       </Link>
       <Link
         href={portalHref(`/secretaria/alunos/${aluno.id}/documentos`)}
-        className="px-2 py-2 text-sm font-medium text-slate-500 hover:text-slate-700"
+        className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
       >
         <FileText size={14} className="inline mr-1" />Documentos
       </Link>
       {!aluno.matricula_atual?.is_atual && (
         <Link
           href={portalHref(`/secretaria/admissoes/nova?alunoId=${aluno.id}`)}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
         >
           <FileCheck size={14} className="inline mr-1" />Matricular
         </Link>
@@ -124,13 +124,13 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
       <button
         disabled={loading}
         onClick={handleResetSenha}
-        className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
       >
         <KeyRound size={14} className="inline mr-1" />Resetar senha
       </button>
       </div>
       {resetResult && (
-        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground">
           <div><span className="font-semibold">Login:</span> {resetResult.login}</div>
           <div><span className="font-semibold">Senha temporária:</span> {resetResult.senha}</div>
         </div>

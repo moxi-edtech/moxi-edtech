@@ -436,33 +436,33 @@ export function PautaRapidaModal({
       ) : null}
 
       {focusAlunoId ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
             Nota
           </p>
-          <h2 className="mt-1 text-base font-black text-slate-900">
+          <h2 className="mt-1 text-base font-black text-foreground">
             O que precisa lançar?
           </h2>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
             Escolha a disciplina e o período. Apenas o aluno atual será alterado.
           </p>
         </div>
       ) : null}
 
-      <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+      <div className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5">
       <div className="grid gap-3 sm:grid-cols-2">
         {!lockTurma && (
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Ano letivo</label>
-            <div className="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
+            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Ano letivo</label>
+            <div className="mt-1 rounded-xl border border-border bg-muted px-3 py-2 text-sm font-semibold text-foreground">
               {academicYearLabel ?? (academicYearId ? "Ano letivo da escola" : "A identificar ano letivo...")}
             </div>
           </div>
         )}
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Turma</label>
+          <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Turma</label>
           {lockTurma ? (
-            <div className="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-semibold text-slate-700">
+            <div className="mt-1 rounded-xl border border-border bg-muted px-3.5 py-2.5 text-sm font-semibold text-foreground">
               {turmaLabel}
             </div>
           ) : (
@@ -477,7 +477,7 @@ export function PautaRapidaModal({
                   setPautaError(null);
                 }}
                 disabled={!academicYearId || !!academicContextError || loadingTurmas}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               >
                 <option value="">Selecione a turma</option>
                 {turmas.map((turma) => {
@@ -490,7 +490,7 @@ export function PautaRapidaModal({
                   );
                 })}
               </select>
-              {loadingTurmas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+              {loadingTurmas ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
             </div>
           )}
           {!lockTurma && turmasError ? (
@@ -506,12 +506,12 @@ export function PautaRapidaModal({
       </div>
 
       <div>
-        <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Disciplina</label>
+        <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Disciplina</label>
         <div className="mt-1 flex items-center gap-2">
           <select
             value={disciplinaId}
             onChange={(event) => setDisciplinaId(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
             disabled={!turmaId}
           >
             <option value="">Selecione a disciplina</option>
@@ -521,7 +521,7 @@ export function PautaRapidaModal({
               </option>
             ))}
           </select>
-          {loadingDisciplinas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+          {loadingDisciplinas ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
         </div>
         {disciplinasError ? <p role="alert" className="mt-2 text-xs text-red-700">{disciplinasError}</p> : null}
         {turmaId && !loadingDisciplinas && !disciplinasError && disciplinas.length === 0 ? (
@@ -530,7 +530,7 @@ export function PautaRapidaModal({
       </div>
 
       <div>
-        <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Período</label>
+        <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Período</label>
         {showPeriodoTabs && periodos.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-2">
             {periodos.map((periodo) => {
@@ -543,8 +543,8 @@ export function PautaRapidaModal({
                   onClick={() => setPeriodoNumero(periodo.numero)}
                   className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                     active
-                      ? "border border-amber bg-amber/10 text-slate-900"
-                      : "border border-slate-200 bg-white text-slate-600 hover:border-amber/40"
+                      ? "border border-amber bg-amber/10 text-foreground"
+                      : "border border-border bg-card text-muted-foreground hover:border-amber/40"
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -556,14 +556,14 @@ export function PautaRapidaModal({
                 </button>
               )
             })}
-            {loadingDisciplinas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+            {loadingDisciplinas ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
           </div>
         ) : (
           <div className="mt-1 flex items-center gap-2">
             <select
               value={periodoNumero}
               onChange={(event) => setPeriodoNumero(Number(event.target.value))}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               disabled={!turmaId || periodos.length === 0}
             >
               {periodos.length === 0 && (
@@ -575,14 +575,14 @@ export function PautaRapidaModal({
                 </option>
               ))}
             </select>
-            {loadingDisciplinas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+            {loadingDisciplinas ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
           </div>
         )}
       </div>
       </div>
 
       {!focusAlunoId && disciplinaSelecionada ? (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           Disciplina selecionada: {disciplinaSelecionada.disciplina?.nome ?? "—"}
         </p>
       ) : null}
@@ -594,12 +594,12 @@ export function PautaRapidaModal({
           Este aluno não tem uma turma disponível no contexto académico atual. Não é possível lançar nota.
         </div>
       ) : loadingPauta ? (
-        <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+        <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           A carregar avaliação…
         </div>
       ) : pautaInitial.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
           {focusAlunoId && turmaId && disciplinaId
             ? "O aluno não aparece na pauta desta turma para a disciplina e período selecionados."
             : "Selecione turma, disciplina e período para visualizar a pauta."}

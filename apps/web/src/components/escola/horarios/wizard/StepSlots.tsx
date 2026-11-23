@@ -179,12 +179,12 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <div className="p-4 rounded-2xl bg-white shadow-sm border border-slate-100">
+          <div className="p-4 rounded-2xl bg-card shadow-sm border border-border">
             <Clock className="h-8 w-8 text-amber" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">Grade de Tempos</h2>
-            <p className="text-sm text-slate-500">Defina os horários de início e fim de cada tempo de aula.</p>
+            <h2 className="text-xl font-black text-foreground tracking-tight">Grade de Tempos</h2>
+            <p className="text-sm text-muted-foreground">Defina os horários de início e fim de cada tempo de aula.</p>
           </div>
         </div>
         <Button 
@@ -197,16 +197,16 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
         </Button>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm mb-6">
-        <div className="flex border-b border-slate-100 p-2 gap-2 bg-slate-50/50">
+      <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-sm mb-6">
+        <div className="flex border-b border-border p-2 gap-2 bg-muted/50">
           {TURNOS.map(t => (
             <button
               key={t.id}
               onClick={() => setActiveTurno(t.id)}
               className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
                 activeTurno === t.id 
-                  ? "bg-white text-amber shadow-sm ring-1 ring-slate-200"
-                  : "text-slate-400 hover:text-slate-600"
+                  ? "bg-card text-amber shadow-sm ring-1 ring-ring"
+                  : "text-muted-foreground hover:text-muted-foreground"
               }`}
             >
               {t.label}
@@ -217,20 +217,20 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
         <div className="p-6">
           {loading ? (
             <div className="space-y-4">
-              {[1, 2, 3].map(i => <div key={i} className="h-12 w-full rounded-xl bg-slate-50 animate-pulse" />)}
+              {[1, 2, 3].map(i => <div key={i} className="h-12 w-full rounded-xl bg-muted animate-pulse" />)}
             </div>
           ) : (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Configuração de {TURNOS.find(t => t.id === activeTurno)?.label}</h3>
+                <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Configuração de {TURNOS.find(t => t.id === activeTurno)?.label}</h3>
                 <Button variant="outline" size="sm" onClick={handleAutoGenerate} disabled={savingSlot} className="gap-2 text-[10px] font-black uppercase tracking-widest border-2">
                   <Wand2 className="w-3.5 h-3.5" /> Gerar Padrão (MED)
                 </Button>
               </div>
 
-              <div className="rounded-2xl border border-slate-100 overflow-hidden">
+              <div className="rounded-2xl border border-border overflow-hidden">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <thead className="bg-muted text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     <tr>
                       <th className="px-4 py-3">Ordem</th>
                       <th className="px-4 py-3">Início</th>
@@ -238,19 +238,19 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
                       <th className="px-4 py-3">Tipo</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
+                  <tbody className="divide-y divide-border">
                     {activeSlots.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-4 py-10 text-center text-slate-400 italic">
+                        <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground italic">
                           Nenhum horário definido para este turno.
                         </td>
                       </tr>
                     ) : (
                       activeSlots.map(s => (
-                        <tr key={s.id} className="hover:bg-slate-50/50 transition-all">
-                          <td className="px-4 py-3 font-bold text-slate-900">{s.ordem}º Tempo</td>
-                          <td className="px-4 py-3 font-medium text-slate-600">{s.inicio}</td>
-                          <td className="px-4 py-3 font-medium text-slate-600">{s.fim}</td>
+                        <tr key={s.id} className="hover:bg-muted/50 transition-all">
+                          <td className="px-4 py-3 font-bold text-foreground">{s.ordem}º Tempo</td>
+                          <td className="px-4 py-3 font-medium text-muted-foreground">{s.inicio}</td>
+                          <td className="px-4 py-3 font-medium text-muted-foreground">{s.fim}</td>
                           <td className="px-4 py-3">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${s.is_intervalo ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
                               {s.is_intervalo ? 'Intervalo' : 'Aula'}
@@ -270,8 +270,8 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="sm:max-w-[400px] rounded-3xl">
           <DialogHeader>
-              <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">Novo Tempo</DialogTitle>
-            <DialogDescription className="font-medium text-slate-500">
+              <DialogTitle className="text-2xl font-black text-foreground tracking-tight">Novo Tempo</DialogTitle>
+            <DialogDescription className="font-medium text-muted-foreground">
               O horário será aplicado de Segunda a Sexta no turno {TURNOS.find(t => t.id === activeTurno)?.label}.
             </DialogDescription>
           </DialogHeader>
@@ -280,14 +280,14 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
             {(newSlotInvalid || newSlotConflict || localConflicts.length > 0) && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700"><div className="flex items-center gap-2 font-black"><AlertCircle className="h-4 w-4" /> Ajuste os conflitos antes de salvar</div>{newSlotInvalid && <p className="mt-1">A hora de início deve ser anterior à hora de fim.</p>}{newSlotConflict && <p className="mt-1">O novo tempo sobrepõe o {newSlotConflict.ordem}º tempo ({newSlotConflict.inicio}-{newSlotConflict.fim}).</p>}{localConflicts.map((conflict) => <p key={conflict} className="mt-1">{conflict}</p>)}</div>}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Ordem (Posição)</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 ml-1">Ordem (Posição)</label>
                 <input
                   type="number"
                   required
                   min={1}
                   value={newSlot.ordem}
                   onChange={e => setNewSlot(v => ({ ...v, ordem: parseInt(e.target.value) }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
               <div className="flex items-end">
@@ -296,29 +296,29 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
                     type="checkbox"
                     checked={newSlot.is_intervalo}
                     onChange={e => setNewSlot(v => ({ ...v, is_intervalo: e.target.checked }))}
-                    className="w-5 h-5 rounded border-slate-300 text-amber focus:ring-amber"
+                    className="w-5 h-5 rounded border-border text-amber focus:ring-amber"
                   />
-                  <span className="text-xs font-bold text-slate-700">É Intervalo?</span>
+                  <span className="text-xs font-bold text-foreground">É Intervalo?</span>
                 </label>
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Hora Início</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 ml-1">Hora Início</label>
                 <input
                   type="time"
                   required
                   value={newSlot.inicio}
                   onChange={e => setNewSlot(v => ({ ...v, inicio: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Hora Fim</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 ml-1">Hora Fim</label>
                 <input
                   type="time"
                   required
                   value={newSlot.fim}
                   onChange={e => setNewSlot(v => ({ ...v, fim: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
             </div>

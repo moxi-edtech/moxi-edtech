@@ -51,6 +51,10 @@ jobs:
       - name: Contextual modal unit contracts
         run: pnpm -C apps/web exec tsx --test tests/unit/command-center-contextual.spec.ts
       - name: Typecheck
+        env:
+          # Monorepo web tsc exceeds Node's default ~2 GiB heap on CI.
+          # Keep the full typecheck; scope increased heap to this step only.
+          NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm -C apps/web typecheck
       - name: Focused ESLint
         run: |

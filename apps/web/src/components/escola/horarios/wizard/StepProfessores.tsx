@@ -163,8 +163,8 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
-        <h3 className="text-lg font-black text-slate-900">Turma não selecionada</h3>
-        <p className="text-sm text-slate-500 max-w-xs mx-auto mt-2">
+        <h3 className="text-lg font-black text-foreground">Turma não selecionada</h3>
+        <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-2">
           Selecione uma turma no quadro de horários para atribuir professores.
         </p>
       </div>
@@ -177,12 +177,12 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <div className="p-4 rounded-2xl bg-white shadow-sm border border-slate-100">
+          <div className="p-4 rounded-2xl bg-card shadow-sm border border-border">
             <Users className="h-8 w-8 text-amber" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">Atribuição Docente</h2>
-            <p className="text-sm text-slate-500">Defina qual professor será responsável por cada disciplina.</p>
+            <h2 className="text-xl font-black text-foreground tracking-tight">Atribuição Docente</h2>
+            <p className="text-sm text-muted-foreground">Defina qual professor será responsável por cada disciplina.</p>
           </div>
         </div>
         <Button 
@@ -198,11 +198,11 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Lista de Disciplinas */}
         <div className="space-y-4">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-2">Disciplinas da Turma</h3>
+          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-2">Disciplinas da Turma</h3>
           
           {loading ? (
             <div className="space-y-3">
-              {[1, 2, 3, 4].map(i => <div key={i} className="h-20 w-full rounded-2xl bg-slate-50 animate-pulse" />)}
+              {[1, 2, 3, 4].map(i => <div key={i} className="h-20 w-full rounded-2xl bg-muted animate-pulse" />)}
             </div>
           ) : (
             <div className="space-y-3">
@@ -213,21 +213,21 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
                   className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer shadow-sm ${
                     assigningId === disc.id 
                       ? "bg-amber/5 border-amber ring-1 ring-amber"
-                      : "bg-white border-slate-200 hover:border-amber/50"
+                      : "bg-card border-border hover:border-amber/50"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${disc.professor_id ? 'bg-emerald-50' : 'bg-slate-50'}`}>
-                      {disc.professor_id ? <Check className="h-5 w-5 text-emerald-500" /> : <Users className="h-5 w-5 text-slate-300" />}
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${disc.professor_id ? 'bg-emerald-50' : 'bg-muted'}`}>
+                      {disc.professor_id ? <Check className="h-5 w-5 text-emerald-500" /> : <Users className="h-5 w-5 text-muted-foreground" />}
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">{disc.nome}</p>
-                      <p className={`text-[10px] font-black uppercase tracking-widest ${disc.professor_id ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      <p className="text-sm font-bold text-foreground">{disc.nome}</p>
+                      <p className={`text-[10px] font-black uppercase tracking-widest ${disc.professor_id ? 'text-emerald-600' : 'text-muted-foreground'}`}>
                         {disc.professor_nome || "Sem professor atribuído"}
                       </p>
                     </div>
                   </div>
-                  <UserPlus className={`w-5 h-5 ${assigningId === disc.id ? 'text-amber' : 'text-slate-300'}`} />
+                  <UserPlus className={`w-5 h-5 ${assigningId === disc.id ? 'text-amber' : 'text-muted-foreground'}`} />
                 </div>
               ))}
             </div>
@@ -236,26 +236,26 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
 
         {/* Seletor de Professores */}
         <div className={`transition-all duration-300 ${assigningId ? 'opacity-100 translate-x-0' : 'opacity-50 translate-x-4 pointer-events-none'}`}>
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm sticky top-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 mb-4">
+          <div className="bg-card rounded-3xl border border-border p-6 shadow-sm sticky top-6">
+            <h3 className="text-sm font-black uppercase tracking-widest text-foreground mb-4">
               Selecionar Professor
             </h3>
             
             <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Buscar professor..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/10 transition-all"
+                className="w-full rounded-xl border border-border bg-muted/50 pl-10 pr-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/10 transition-all"
               />
             </div>
 
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
               {filteredProfessores.length === 0 ? (
                 <div className="text-center py-10">
-                  <p className="text-xs text-slate-400 mb-4">Nenhum professor encontrado.</p>
+                  <p className="text-xs text-muted-foreground mb-4">Nenhum professor encontrado.</p>
                   <Button variant="ghost" size="sm" onClick={() => setShowAddModal(true)} className="text-amber font-bold">
                     Cadastrar "{searchTerm}"?
                   </Button>
@@ -265,18 +265,18 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
                   <button
                     key={prof.id}
                     onClick={() => assigningId && handleAssign(assigningId, prof.id)}
-                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 text-left transition-all group"
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-muted text-left transition-all group"
                   >
-                    <span className="text-sm font-bold text-slate-700 group-hover:text-amber">{prof.nome}</span>
-                    <ChevronRight className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-all" />
+                    <span className="text-sm font-bold text-foreground group-hover:text-amber">{prof.nome}</span>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all" />
                   </button>
                 ))
               )}
             </div>
 
             {!assigningId && (
-              <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center rounded-3xl z-20">
-                <p className="text-sm font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
+              <div className="absolute inset-0 bg-card/60 backdrop-blur-[1px] flex items-center justify-center rounded-3xl z-20">
+                <p className="text-sm font-black text-muted-foreground uppercase tracking-widest bg-card px-4 py-2 rounded-xl shadow-sm border border-border">
                   Escolha uma disciplina primeiro
                 </p>
               </div>
@@ -289,8 +289,8 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="sm:max-w-[500px] rounded-3xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">Novo Professor</DialogTitle>
-            <DialogDescription className="font-medium text-slate-500">
+            <DialogTitle className="text-2xl font-black text-foreground tracking-tight">Novo Professor</DialogTitle>
+            <DialogDescription className="font-medium text-muted-foreground">
               O professor receberá um e-mail para ativar o acesso.
             </DialogDescription>
           </DialogHeader>
@@ -298,45 +298,45 @@ export function StepProfessores({ escolaId, turmaId, onComplete }: StepProfessor
           <form onSubmit={handleCreateProfessor} className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Nome Completo</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 ml-1">Nome Completo</label>
                 <input
                   type="text"
                   required
                   value={newProf.nome_completo}
                   onChange={e => setNewProf(v => ({ ...v, nome_completo: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">E-mail Institucional</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 ml-1">E-mail Institucional</label>
                 <input
                   type="email"
                   required
                   value={newProf.email}
                   onChange={e => setNewProf(v => ({ ...v, email: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Gênero</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 ml-1">Gênero</label>
                 <select
                   value={newProf.genero}
                   onChange={e => setNewProf(v => ({ ...v, genero: e.target.value as "M" | "F" }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 >
                   <option value="M">Masculino</option>
                   <option value="F">Feminino</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Nº BI (14 chars)</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 ml-1">Nº BI (14 chars)</label>
                 <input
                   type="text"
                   required
                   maxLength={14}
                   value={newProf.numero_bi}
                   onChange={e => setNewProf(v => ({ ...v, numero_bi: e.target.value.toUpperCase() }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-border bg-muted/50 px-4 py-2.5 text-sm font-bold focus:border-amber focus:outline-none transition-all"
                 />
               </div>
             </div>

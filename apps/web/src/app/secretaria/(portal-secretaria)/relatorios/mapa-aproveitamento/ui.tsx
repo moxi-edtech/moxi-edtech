@@ -71,22 +71,22 @@ export default function MapaAproveitamentoClient() {
 
   return (
     <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex items-center gap-2 text-[#1F6B3B]">
+      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-2 text-klasse-green dark:text-klasse-green-300">
           <BarChart3 className="h-5 w-5" />
           <h1 className="text-lg font-semibold">Mapa de Aproveitamento da Turma</h1>
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Turma</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Turma</label>
             <select
               value={turmaId}
               onFocus={() => {
                 if (!data) void carregar(false);
               }}
               onChange={(e) => setTurmaId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-amber focus:ring-4 focus:ring-amber/20"
+              className="w-full rounded-xl border border-border px-3 py-2 text-sm focus:border-amber focus:ring-4 focus:ring-amber/20"
             >
               <option value="">Selecione a turma</option>
               {turmas.map((turma) => (
@@ -100,14 +100,14 @@ export default function MapaAproveitamentoClient() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Período letivo</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Período letivo</label>
             <select
               value={periodoId}
               onFocus={() => {
                 if (!data) void carregar(false);
               }}
               onChange={(e) => setPeriodoId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-amber focus:ring-4 focus:ring-amber/20"
+              className="w-full rounded-xl border border-border px-3 py-2 text-sm focus:border-amber focus:ring-4 focus:ring-amber/20"
             >
               <option value="">Todos</option>
               {periodos.map((periodo) => (
@@ -136,9 +136,9 @@ export default function MapaAproveitamentoClient() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-950 text-slate-200">
+          <thead className="bg-klasse-green text-white">
             <tr>
               <th className="px-3 py-2 text-left">Aluno</th>
               <th className="px-3 py-2 text-left">Processo</th>
@@ -154,22 +154,22 @@ export default function MapaAproveitamentoClient() {
           </thead>
           <tbody>
             {linhas.map((linha) => (
-              <tr key={linha.matricula_id} className="border-t border-slate-100">
-                <td className="px-3 py-2 text-slate-800">{linha.nome_aluno}</td>
-                <td className="px-3 py-2 text-slate-600">{linha.numero_processo || "—"}</td>
+              <tr key={linha.matricula_id} className="border-t border-border">
+                <td className="px-3 py-2 text-foreground">{linha.nome_aluno}</td>
+                <td className="px-3 py-2 text-muted-foreground">{linha.numero_processo || "—"}</td>
                 {colunas.map((coluna) => (
-                  <td key={`${linha.matricula_id}-${coluna.key}`} className="px-3 py-2 text-center text-slate-700">
+                  <td key={`${linha.matricula_id}-${coluna.key}`} className="px-3 py-2 text-center text-foreground">
                     {typeof linha.notas?.[coluna.key] === "number" ? Number(linha.notas[coluna.key]).toFixed(1) : "—"}
                   </td>
                 ))}
-                <td className="px-3 py-2 text-center font-medium text-slate-800">
+                <td className="px-3 py-2 text-center font-medium text-foreground">
                   {typeof linha.estatisticas.media_geral === "number" ? linha.estatisticas.media_geral.toFixed(1) : "—"}
                 </td>
-                <td className="px-3 py-2 text-center text-slate-700">{linha.estatisticas.qtd_negativas}</td>
+                <td className="px-3 py-2 text-center text-foreground">{linha.estatisticas.qtd_negativas}</td>
                 <td className="px-3 py-2 text-center">
                   <span
                     className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                      statusTone[linha.estatisticas.status as keyof typeof statusTone] || "bg-slate-100 text-slate-700"
+                      statusTone[linha.estatisticas.status as keyof typeof statusTone] || "bg-muted text-foreground"
                     }`}
                   >
                     {linha.estatisticas.status}
@@ -179,7 +179,7 @@ export default function MapaAproveitamentoClient() {
             ))}
             {linhas.length === 0 ? (
               <tr>
-                <td colSpan={6 + colunas.length} className="px-3 py-8 text-center text-slate-500">
+                <td colSpan={6 + colunas.length} className="px-3 py-8 text-center text-muted-foreground">
                   Selecione a turma e clique em "Gerar mapa" para visualizar o relatório.
                 </td>
               </tr>

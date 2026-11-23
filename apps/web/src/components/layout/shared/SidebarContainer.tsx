@@ -42,7 +42,7 @@ export default function SidebarContainer({
         {/* Botão de Toggle Flutuante */}
         <button
           onClick={toggle}
-          className="absolute -right-3 top-6 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 hover:text-teal-600 transition-colors hidden md:flex"
+          className="absolute -right-3 top-6 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:bg-muted hover:text-teal-600 transition-colors hidden md:flex"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>

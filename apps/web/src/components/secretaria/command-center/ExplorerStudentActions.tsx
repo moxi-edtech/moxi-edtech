@@ -81,19 +81,19 @@ export function ExplorerStudentActions({
     <div className="shrink-0">
       <button ref={openerRef} type="button" onClick={() => void toggle()} aria-haspopup="dialog"
         aria-expanded={expanded} aria-label={`Ações de ${alunoNome}`}
-        className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-700">
+        className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-emerald-700">
         Ações
       </button>
       <dialog ref={dialogRef} aria-label={`Operações de ${alunoNome}`}
         onCancel={(event) => { event.preventDefault(); setExpanded(false); }}
-        className="w-[min(94vw,450px)] max-h-[min(85dvh,660px)] rounded-xl border border-slate-200 bg-white p-5 text-slate-900 shadow-xl backdrop:bg-slate-900/40">
+        className="w-[min(94vw,450px)] max-h-[min(85dvh,660px)] rounded-xl border border-border bg-card p-5 text-foreground shadow-xl backdrop:bg-klasse-dark/40">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 className="break-words text-base font-semibold">Ações · {alunoNome}</h3>
           </div>
           <button type="button" onClick={() => setExpanded(false)}
             aria-label={`Fechar ações de ${alunoNome}`}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-700">
+            className="rounded-lg border border-border px-3 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-emerald-700">
             Fechar
           </button>
         </div>

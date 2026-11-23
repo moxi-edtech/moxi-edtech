@@ -222,36 +222,36 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     <div className={`${PORTAL_PAGE_INSET} space-y-6 rounded-xl bg-background`}>
       {/* --- HEADER COM MÉTRICAS --- */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
           <div className="text-2xl font-bold text-moxinexa-navy">{total}</div>
-          <div className="text-sm text-slate-500 flex items-center gap-2">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
             <BookCheck className="h-4 w-4" />
             Total de Notas
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
           <div className="text-2xl font-bold text-orange-600">
             {mediaGeral.toFixed(1)}
           </div>
-          <div className="text-sm text-slate-500 flex items-center gap-2">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Média Geral
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
           <div className="text-2xl font-bold text-moxinexa-teal">
             {disciplinasUnicas.size}
           </div>
-          <div className="text-sm text-slate-500 flex items-center gap-2">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
             <BookOpen className="h-4 w-4" />
             Disciplinas
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
           <div className="text-2xl font-bold text-green-600">
             {turmasUnicas.size}
           </div>
-          <div className="text-sm text-slate-500 flex items-center gap-2">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
             <Users className="h-4 w-4" />
             Turmas
           </div>
@@ -259,19 +259,19 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       </div>
 
       {/* --- HEADER DE AÇÃO --- */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-card p-5 rounded-xl border border-border shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-moxinexa-navy flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-slate-500" />
+            <div className="w-3 h-3 rounded-full bg-klasse-green" />
             Gestão de Notas
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {total} notas lançadas • {disciplinasUnicas.size} disciplinas • {turmasUnicas.size} turmas
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-all">
+          <button className="inline-flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted-foreground/15 transition-all">
             <BarChart3 className="h-4 w-4" />
             Relatório
           </button>
@@ -284,24 +284,24 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       </div>
 
       {/* --- FILTROS E PESQUISA --- */}
-      <form method="get" className="flex gap-3 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <form method="get" className="flex gap-3 bg-card p-6 rounded-xl border border-border shadow-sm">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input 
             name="q" 
             defaultValue={q} 
-            className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal"
+            className="w-full pl-10 pr-4 py-3 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-moxinexa-teal"
             placeholder="Buscar por disciplina ou avaliação..."
           />
         </div>
         
         <div className="flex gap-2">
-          <select name="orderBy" defaultValue={orderBy} className="border border-slate-200 rounded-lg px-3 py-3 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal">
+          <select name="orderBy" defaultValue={orderBy} className="border border-border rounded-lg px-3 py-3 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal">
             <option value="recentes">Mais recentes</option>
             <option value="nota">Nota</option>
           </select>
           
-          <select name="dir" defaultValue={dir} className="border border-slate-200 rounded-lg px-3 py-3 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal">
+          <select name="dir" defaultValue={dir} className="border border-border rounded-lg px-3 py-3 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal">
             <option value="desc">Desc</option>
             <option value="asc">Asc</option>
           </select>
@@ -317,37 +317,37 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       </form>
 
       {/* --- TABELA DE NOTAS --- */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
+          <table className="min-w-full divide-y divide-border text-sm">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Aluno
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Turma
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Avaliação
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Disciplina
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Nota
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Status
                 </th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {notas.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">
-                    <BookOpen className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    <BookOpen className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                     Nenhuma nota encontrada.
                     <div className="mt-2 text-sm">
                       {q ? 'Tente ajustar os filtros de busca.' : 'Comece lançando as primeiras notas.'}
@@ -360,38 +360,38 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                   const status = notaValue === null ? 'pending' : notaValue >= 10 ? 'approved' : 'recovery';
                   
                   return (
-                    <tr key={nota.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-4 text-slate-900">
+                    <tr key={nota.id} className="hover:bg-muted transition-colors">
+                      <td className="px-4 py-4 text-foreground">
                         <div className="font-bold text-moxinexa-navy">
                           {nota.aluno || (
-                            <span className="text-slate-400">Aluno não identificado</span>
+                            <span className="text-muted-foreground">Aluno não identificado</span>
                           )}
                         </div>
-                        <div className="text-xs text-slate-500 font-mono">
+                        <div className="text-xs text-muted-foreground font-mono">
                           {nota.id.slice(0, 8)}...
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         {nota.turma ? (
-                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
+                          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold text-foreground">
                             <Users className="w-3 h-3 mr-1" />
                             {nota.turma}
                           </span>
                         ) : (
-                          <span className="text-slate-400 text-xs">—</span>
+                          <span className="text-muted-foreground text-xs">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-700">
+                      <td className="px-4 py-3 text-foreground">
                         —
                       </td>
                       <td className="px-4 py-3">
                         {nota.disciplina ? (
-                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
+                          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold text-foreground">
                             <BookOpen className="w-3 h-3 mr-1" />
                             {nota.disciplina}
                           </span>
                         ) : (
-                          <span className="text-slate-400 text-xs">—</span>
+                          <span className="text-muted-foreground text-xs">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -403,7 +403,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                             {notaValue.toFixed(1)}
                           </div>
                         ) : (
-                          <span className="text-slate-400 text-sm">—</span>
+                          <span className="text-muted-foreground text-sm">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -418,7 +418,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                           </span>
                         )}
                         {status === 'pending' && (
-                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
+                          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold text-foreground">
                             ⌛ Pendente
                           </span>
                         )}
@@ -433,27 +433,27 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       </section>
 
       {/* --- PAGINAÇÃO --- */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="text-sm text-slate-600">
+      <div className="flex items-center justify-between bg-card p-4 rounded-xl border border-border shadow-sm">
+        <div className="text-sm text-muted-foreground">
           Mostrando <strong>{(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)}</strong> de <strong>{total}</strong> notas
         </div>
         <div className="flex gap-2">
           <Link 
-            className={`inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm ${
-              page <= 1 ? 'pointer-events-none opacity-50 text-slate-400' : 'text-slate-700 hover:bg-slate-50'
+            className={`inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm ${
+              page <= 1 ? 'pointer-events-none opacity-50 text-muted-foreground' : 'text-foreground hover:bg-muted'
             }`} 
             href={buildPortalHref(escolaId, `/admin/notas${makeUrl({ page: Math.max(1, page-1) })}`)}
           >
             ← Anterior
           </Link>
           
-          <span className="px-3 py-2 text-sm text-slate-600">
+          <span className="px-3 py-2 text-sm text-muted-foreground">
             Página <strong>{page}</strong> de <strong>{totalPages}</strong>
           </span>
           
           <Link 
-            className={`inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm ${
-              page >= totalPages ? 'pointer-events-none opacity-50 text-slate-400' : 'text-slate-700 hover:bg-slate-50'
+            className={`inline-flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm ${
+              page >= totalPages ? 'pointer-events-none opacity-50 text-muted-foreground' : 'text-foreground hover:bg-muted'
             }`} 
             href={buildPortalHref(escolaId, `/admin/notas${makeUrl({ page: Math.min(totalPages, page+1) })}`)}
           >

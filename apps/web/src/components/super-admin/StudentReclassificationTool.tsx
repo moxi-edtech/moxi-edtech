@@ -169,19 +169,19 @@ export default function StudentReclassificationTool() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
           <label className="flex-1">
-            <span className="text-xs font-black uppercase tracking-widest text-slate-500">Aluno</span>
-            <div className="mt-2 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <Search className="h-4 w-4 text-slate-400" />
+            <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Aluno</span>
+            <div className="mt-2 flex items-center gap-3 rounded-xl border border-border bg-muted px-4 py-3">
+              <Search className="h-4 w-4 text-muted-foreground" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Nome, número de processo ou parte do nome"
-                className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+                className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
               />
-              {isLoading && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
           </label>
         </div>
@@ -199,17 +199,17 @@ export default function StudentReclassificationTool() {
                     setResult(null);
                   }}
                   className={`rounded-xl border p-4 text-left transition ${
-                    active ? "border-emerald bg-emerald-50" : "border-slate-200 bg-white hover:border-slate-300"
+                    active ? "border-emerald bg-emerald-50 dark:bg-emerald-950/30" : "border-border bg-card hover:border-ring"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-black text-slate-950">{student.nome}</p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">{student.escola_nome}</p>
+                      <p className="text-sm font-black text-foreground">{student.nome}</p>
+                      <p className="mt-1 text-xs font-semibold text-muted-foreground">{student.escola_nome}</p>
                     </div>
                     {active && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald" />}
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                     <span>Turma: <strong>{student.turma_nome}</strong></span>
                     <span>Ano: <strong>{student.ano_letivo ?? "-"}</strong></span>
                     <span>Estado: <strong>{student.status ?? "-"}</strong></span>
@@ -224,23 +224,23 @@ export default function StudentReclassificationTool() {
 
       {selectedStudent && (
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white">
                 <ArrowRightLeft className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-950">Reclassificação</h2>
-                <p className="text-sm text-slate-500">{selectedStudent.turma_nome} para nova turma</p>
+                <h2 className="text-lg font-black text-foreground">Reclassificação</h2>
+                <p className="text-sm text-muted-foreground">{selectedStudent.turma_nome} para nova turma</p>
               </div>
             </div>
 
             <label className="mt-5 block">
-              <span className="text-xs font-black uppercase tracking-widest text-slate-500">Turma destino</span>
+              <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Turma destino</span>
               <select
                 value={targetTurmaId}
                 onChange={(event) => setTargetTurmaId(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-emerald"
+                className="mt-2 w-full rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               >
                 <option value="">Selecionar turma</option>
                 {turmas.map((turma) => (
@@ -252,20 +252,20 @@ export default function StudentReclassificationTool() {
             </label>
 
             <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <label className="flex items-start gap-3 rounded-xl border border-border bg-muted p-4">
                 <input
                   type="checkbox"
                   checked={reprecificarAbertas}
                   onChange={(event) => setReprecificarAbertas(event.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald"
+                  className="mt-1 h-4 w-4 rounded border-border text-emerald"
                 />
                 <span>
-                  <span className="block text-sm font-black text-slate-950">Atualizar meses abertos</span>
-                  <span className="block text-xs leading-relaxed text-slate-500">Pendente, parcial ou isento sem pagamento.</span>
+                  <span className="block text-sm font-black text-foreground">Atualizar meses abertos</span>
+                  <span className="block text-xs leading-relaxed text-muted-foreground">Pendente, parcial ou isento sem pagamento.</span>
                 </span>
               </label>
 
-              <label className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+              <label className="flex items-start gap-3 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 p-4">
                 <input
                   type="checkbox"
                   checked={reprecificarPagas}
@@ -273,25 +273,25 @@ export default function StudentReclassificationTool() {
                   className="mt-1 h-4 w-4 rounded border-rose-300 text-rose-600"
                 />
                 <span>
-                  <span className="block text-sm font-black text-rose-950">Atualizar meses pagos</span>
-                  <span className="block text-xs leading-relaxed text-rose-700">Altera mensalidades pagas e pagamentos vinculados.</span>
+                  <span className="block text-sm font-black text-rose-950 dark:text-rose-100">Atualizar meses pagos</span>
+                  <span className="block text-xs leading-relaxed text-rose-700 dark:text-rose-300">Altera mensalidades pagas e pagamentos vinculados.</span>
                 </span>
               </label>
             </div>
 
             <label className="mt-5 block">
-              <span className="text-xs font-black uppercase tracking-widest text-slate-500">Motivo</span>
+              <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Motivo</span>
               <textarea
                 value={motivo}
                 onChange={(event) => setMotivo(event.target.value)}
                 rows={3}
                 placeholder="Ex.: correção de matrícula para classe de exame"
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald"
+                className="mt-2 w-full rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               />
             </label>
 
             {error && (
-              <div className="mt-5 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">
+              <div className="mt-5 flex items-start gap-3 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 p-4 text-sm font-semibold text-rose-700 dark:text-rose-300">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -308,50 +308,50 @@ export default function StudentReclassificationTool() {
             </button>
           </div>
 
-          <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-500">Resumo</h3>
+          <aside className="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground">Resumo</h3>
             <div className="mt-4 space-y-4 text-sm">
               <div>
-                <p className="text-xs font-bold uppercase text-slate-400">Origem</p>
-                <p className="font-black text-slate-950">{selectedStudent.turma_nome}</p>
+                <p className="text-xs font-bold uppercase text-muted-foreground">Origem</p>
+                <p className="font-black text-foreground">{selectedStudent.turma_nome}</p>
               </div>
               <div>
-                <p className="text-xs font-bold uppercase text-slate-400">Destino</p>
-                <p className="font-black text-slate-950">{selectedTarget?.nome ?? "Selecione uma turma"}</p>
+                <p className="text-xs font-bold uppercase text-muted-foreground">Destino</p>
+                <p className="font-black text-foreground">{selectedTarget?.nome ?? "Selecione uma turma"}</p>
               </div>
               <div>
-                <p className="text-xs font-bold uppercase text-slate-400">Aluno</p>
-                <p className="font-black text-slate-950">{selectedStudent.nome}</p>
-                <p className="text-xs text-slate-500">{selectedStudent.escola_nome}</p>
+                <p className="text-xs font-bold uppercase text-muted-foreground">Aluno</p>
+                <p className="font-black text-foreground">{selectedStudent.nome}</p>
+                <p className="text-xs text-muted-foreground">{selectedStudent.escola_nome}</p>
               </div>
             </div>
 
             {result && (
-              <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                <div className="flex items-center gap-2 text-sm font-black text-emerald-800">
+              <div className="mt-6 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 p-4">
+                <div className="flex items-center gap-2 text-sm font-black text-emerald-800 dark:text-emerald-200">
                   <CheckCircle2 className="h-4 w-4" />
                   Concluído
                 </div>
                 <dl className="mt-4 grid grid-cols-1 gap-3 text-xs">
                   <div className="flex justify-between gap-4">
-                    <dt className="text-emerald-700">Propina nova</dt>
-                    <dd className="font-black text-emerald-950">{formatMoney(result.valor_novo)}</dd>
+                    <dt className="text-emerald-700 dark:text-emerald-300">Propina nova</dt>
+                    <dd className="font-black text-emerald-950 dark:text-emerald-100">{formatMoney(result.valor_novo)}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt className="text-emerald-700">Mensalidades movidas</dt>
-                    <dd className="font-black text-emerald-950">{result.mensalidades_turma_atualizadas ?? 0}</dd>
+                    <dt className="text-emerald-700 dark:text-emerald-300">Mensalidades movidas</dt>
+                    <dd className="font-black text-emerald-950 dark:text-emerald-100">{result.mensalidades_turma_atualizadas ?? 0}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt className="text-emerald-700">Abertas reprecificadas</dt>
-                    <dd className="font-black text-emerald-950">{result.mensalidades_abertas_reprecificadas ?? 0}</dd>
+                    <dt className="text-emerald-700 dark:text-emerald-300">Abertas reprecificadas</dt>
+                    <dd className="font-black text-emerald-950 dark:text-emerald-100">{result.mensalidades_abertas_reprecificadas ?? 0}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt className="text-emerald-700">Pagas reprecificadas</dt>
-                    <dd className="font-black text-emerald-950">{result.mensalidades_pagas_reprecificadas ?? 0}</dd>
+                    <dt className="text-emerald-700 dark:text-emerald-300">Pagas reprecificadas</dt>
+                    <dd className="font-black text-emerald-950 dark:text-emerald-100">{result.mensalidades_pagas_reprecificadas ?? 0}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt className="text-emerald-700">Pagamentos alterados</dt>
-                    <dd className="font-black text-emerald-950">{result.pagamentos_reprecificados ?? 0}</dd>
+                    <dt className="text-emerald-700 dark:text-emerald-300">Pagamentos alterados</dt>
+                    <dd className="font-black text-emerald-950 dark:text-emerald-100">{result.pagamentos_reprecificados ?? 0}</dd>
                   </div>
                 </dl>
               </div>

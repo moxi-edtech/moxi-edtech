@@ -51,8 +51,8 @@ export function DossierTabs({
   ] as const;
 
   return (
-    <div className={workspace ? "min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white" : "bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"}>
-      <div className="overflow-x-auto border-b border-slate-200 bg-slate-50/50 px-3 pt-2 sm:px-5 sm:pt-4 -mb-px">
+    <div className={workspace ? "min-w-0 overflow-hidden rounded-xl border border-border bg-card" : "bg-card rounded-2xl border border-border shadow-sm overflow-hidden"}>
+      <div className="overflow-x-auto border-b border-border bg-muted/50 px-3 pt-2 sm:px-5 sm:pt-4 -mb-px">
         <div className="flex min-w-max gap-1">
         {tabs.map((tab) => {
           const isActive = active === tab.id;
@@ -62,8 +62,8 @@ export function DossierTabs({
               onClick={() => setActive(tab.id)}
               className={`relative flex items-center gap-2 px-4 py-3 text-sm border-b-2 ${
                 isActive
-                  ? "border-slate-900 text-slate-900 font-semibold"
-                  : "border-transparent text-slate-400 font-medium hover:text-slate-700"
+                  ? "border-klasse-gold text-foreground font-semibold"
+                  : "border-transparent text-muted-foreground font-medium hover:text-foreground"
               }`}
             >
               {tab.icon}

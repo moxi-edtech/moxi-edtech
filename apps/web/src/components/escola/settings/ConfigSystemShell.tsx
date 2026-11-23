@@ -88,7 +88,7 @@ export default function ConfigSystemShell({
             {nextHref && (
               <Link
                 href={nextHref}
-                className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                className="inline-flex items-center gap-2 rounded-full bg-klasse-gold px-4 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95"
               >
                 Próximo
               </Link>
@@ -154,7 +154,7 @@ export default function ConfigSystemShell({
               {nextHref && (
                 <Link
                   href={nextHref}
-                  className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                  className="inline-flex items-center gap-2 rounded-full bg-klasse-gold px-4 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95"
                 >
                   Próximo
                 </Link>

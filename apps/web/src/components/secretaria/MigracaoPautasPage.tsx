@@ -173,8 +173,8 @@ function GradeMatrixInput({
         invalid
           ? "border-rose-300 bg-rose-50 text-rose-700"
           : value.trim() === ""
-            ? "border-slate-200 bg-slate-50 text-slate-500"
-            : "border-slate-200 bg-white text-slate-900"
+            ? "border-border bg-muted text-muted-foreground"
+            : "border-border bg-card text-foreground"
       }`}
       placeholder="-"
     />
@@ -351,16 +351,16 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
 
   function renderGridByAluno(activePreview: PreviewPayload) {
     return (
-      <table className="min-w-full border-separate border-spacing-0 bg-white text-sm">
+      <table className="min-w-full border-separate border-spacing-0 bg-card text-sm">
         <thead>
           <tr>
-            <th className="sticky left-0 top-0 z-30 border-b border-r border-slate-200 bg-slate-950 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
+            <th className="sticky left-0 top-0 z-30 border-b border-r border-border/20 bg-klasse-dark px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
               Aluno
             </th>
             {activePreview.disciplinas.map((disciplina) => (
               <th
                 key={disciplina.disciplina_id}
-                className="sticky top-0 z-20 border-b border-slate-200 bg-slate-100 px-3 py-3 text-center text-xs font-semibold text-slate-700"
+                className="sticky top-0 z-20 border-b border-border bg-muted px-3 py-3 text-center text-xs font-semibold text-foreground"
               >
                 {disciplina.disciplina_nome}
               </th>
@@ -370,12 +370,12 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
         <tbody>
           {activePreview.linhas.map((linha, rowIndex) => (
             <tr key={linha.aluno_id}>
-              <th className="sticky left-0 z-10 border-b border-r border-slate-200 bg-white px-4 py-3 text-left align-middle">
+              <th className="sticky left-0 z-10 border-b border-r border-border bg-card px-4 py-3 text-left align-middle">
                 <div className="min-w-[220px]">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Nº {linha.numero_chamada ?? rowIndex + 1}
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{linha.nome}</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{linha.nome}</p>
                 </div>
               </th>
 
@@ -387,7 +387,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
                 return (
                   <td
                     key={cellKey}
-                    className="border-b border-r border-slate-100 px-2 py-2 text-center last:border-r-0"
+                    className="border-b border-r border-border px-2 py-2 text-center last:border-r-0"
                   >
                     <GradeMatrixInput
                       value={rawValue}
@@ -411,16 +411,16 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
 
   function renderGridByDisciplina(activePreview: PreviewPayload) {
     return (
-      <table className="min-w-full border-separate border-spacing-0 bg-white text-sm">
+      <table className="min-w-full border-separate border-spacing-0 bg-card text-sm">
         <thead>
           <tr>
-            <th className="sticky left-0 top-0 z-30 border-b border-r border-slate-200 bg-slate-950 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
+            <th className="sticky left-0 top-0 z-30 border-b border-r border-border/20 bg-klasse-dark px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
               Disciplina
             </th>
             {activePreview.linhas.map((linha) => (
               <th
                 key={linha.aluno_id}
-                className="sticky top-0 z-20 border-b border-slate-200 bg-slate-100 px-3 py-3 text-center text-xs font-semibold text-slate-700"
+                className="sticky top-0 z-20 border-b border-border bg-muted px-3 py-3 text-center text-xs font-semibold text-foreground"
               >
                 {`Nº ${linha.numero_chamada ?? "—"} · ${linha.nome}`}
               </th>
@@ -430,12 +430,12 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
         <tbody>
           {activePreview.disciplinas.map((disciplina, rowIndex) => (
             <tr key={disciplina.disciplina_id}>
-              <th className="sticky left-0 z-10 border-b border-r border-slate-200 bg-white px-4 py-3 text-left align-middle">
+              <th className="sticky left-0 z-10 border-b border-r border-border bg-card px-4 py-3 text-left align-middle">
                 <div className="min-w-[220px]">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Ordem {disciplina.ordem ?? "—"}
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{disciplina.disciplina_nome}</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{disciplina.disciplina_nome}</p>
                 </div>
               </th>
 
@@ -447,7 +447,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
                 return (
                   <td
                     key={cellKey}
-                    className="border-b border-r border-slate-100 px-2 py-2 text-center last:border-r-0"
+                    className="border-b border-r border-border px-2 py-2 text-center last:border-r-0"
                   >
                     <GradeMatrixInput
                       value={rawValue}
@@ -542,7 +542,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
                 }
               }}
               disabled={!preview || loadingPreview}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:border-border hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loadingPreview ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               Atualizar
@@ -562,15 +562,15 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
 
       <section className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
         <div className="space-y-4">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Contexto</p>
+          <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Contexto</p>
             <div className="mt-4 space-y-4">
               <label className="block space-y-1.5">
-                <span className="text-xs font-semibold text-slate-600">Turma actual</span>
+                <span className="text-xs font-semibold text-muted-foreground">Turma actual</span>
                 <select
                   value={selectedTurmaId}
                   onChange={(event) => applyTurmaDefaults(event.target.value, turmas, classes)}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald focus:ring-2 focus:ring-emerald/20"
+                  className="w-full rounded-2xl border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-emerald focus:ring-2 focus:ring-emerald/20"
                 >
                   <option value="">Selecione a turma</option>
                   {turmas.map((turma) => (
@@ -582,7 +582,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
               </label>
 
               <label className="block space-y-1.5">
-                <span className="text-xs font-semibold text-slate-600">Classe passada</span>
+                <span className="text-xs font-semibold text-muted-foreground">Classe passada</span>
                 <select
                   value={selectedClasseId}
                   onChange={(event) => {
@@ -590,7 +590,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
                     setPreview(null);
                     setDraftGrades({});
                   }}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald focus:ring-2 focus:ring-emerald/20"
+                  className="w-full rounded-2xl border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-emerald focus:ring-2 focus:ring-emerald/20"
                   disabled={availableClasses.length === 0}
                 >
                   <option value="">Selecione a classe</option>
@@ -603,7 +603,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
               </label>
 
               <label className="block space-y-1.5">
-                <span className="text-xs font-semibold text-slate-600">Ano letivo do histórico</span>
+                <span className="text-xs font-semibold text-muted-foreground">Ano letivo do histórico</span>
                 <input
                   type="number"
                   value={anoLetivo}
@@ -612,24 +612,24 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
                     setPreview(null);
                     setDraftGrades({});
                   }}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald focus:ring-2 focus:ring-emerald/20"
+                  className="w-full rounded-2xl border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-emerald focus:ring-2 focus:ring-emerald/20"
                 />
               </label>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Grelha</p>
-                <h2 className="mt-1 text-sm font-semibold text-slate-900">Modo de navegação</h2>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Grelha</p>
+                <h2 className="mt-1 text-sm font-semibold text-foreground">Modo de navegação</h2>
               </div>
-              <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
+              <div className="inline-flex rounded-2xl border border-border bg-muted p-1">
                 <button
                   type="button"
                   onClick={() => setOrientation("alunos")}
                   className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                    orientation === "alunos" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                    orientation === "alunos" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                   }`}
                 >
                   Alunos em linhas
@@ -638,7 +638,7 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
                   type="button"
                   onClick={() => setOrientation("disciplinas")}
                   className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                    orientation === "disciplinas" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                    orientation === "disciplinas" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                   }`}
                 >
                   Disciplinas em linhas
@@ -646,35 +646,35 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
               </div>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-              <p className="font-semibold text-slate-700">Atalhos</p>
+            <div className="mt-4 rounded-2xl border border-dashed border-border bg-muted px-4 py-3 text-xs text-muted-foreground">
+              <p className="font-semibold text-foreground">Atalhos</p>
               <p className="mt-1">Use setas e `Enter` para navegar como Excel. O save dispara apenas quando decidir fechar a grelha.</p>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Resumo</p>
+          <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Resumo</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                <div className="flex items-center gap-2 text-slate-500">
+              <div className="rounded-2xl border border-border bg-muted p-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   <Users className="h-4 w-4" />
                   <span className="text-[11px] font-semibold uppercase tracking-wider">Alunos</span>
                 </div>
-                <p className="mt-2 text-2xl font-bold text-slate-900">{preview?.stats.total_alunos ?? 0}</p>
+                <p className="mt-2 text-2xl font-bold text-foreground">{preview?.stats.total_alunos ?? 0}</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                <div className="flex items-center gap-2 text-slate-500">
+              <div className="rounded-2xl border border-border bg-muted p-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   <BookOpen className="h-4 w-4" />
                   <span className="text-[11px] font-semibold uppercase tracking-wider">Disciplinas</span>
                 </div>
-                <p className="mt-2 text-2xl font-bold text-slate-900">{preview?.stats.total_disciplinas ?? 0}</p>
+                <p className="mt-2 text-2xl font-bold text-foreground">{preview?.stats.total_disciplinas ?? 0}</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Preenchidas</p>
+              <div className="rounded-2xl border border-border bg-card p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Preenchidas</p>
                 <p className="mt-2 text-xl font-bold text-emerald">{filledCells}</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Pendentes</p>
+              <div className="rounded-2xl border border-border bg-card p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pendentes</p>
                 <p className="mt-2 text-xl font-bold text-amber-600">{missingCells + invalidCells}</p>
               </div>
             </div>
@@ -689,15 +689,15 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+          <div className="rounded-3xl border border-border bg-card shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Editor</p>
-                <h2 className="mt-1 text-sm font-semibold text-slate-900">
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Editor</p>
+                <h2 className="mt-1 text-sm font-semibold text-foreground">
                   {preview ? `${preview.turma.nome} → ${preview.classe.nome} (${preview.ano_letivo})` : "Monte a grelha"}
                 </h2>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-500">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-[11px] font-semibold text-muted-foreground">
                 <ArrowLeftRight className="h-3.5 w-3.5" />
                 {orientation === "alunos" ? "Vertical por aluno" : "Horizontal por aluno"}
               </div>
@@ -710,31 +710,31 @@ export default function MigracaoPautasPage({ portal }: { portal: Portal }) {
             ) : null}
 
             {loadingBase || loadingPreview ? (
-              <div className="flex min-h-[420px] items-center justify-center px-5 py-10 text-sm text-slate-500">
+              <div className="flex min-h-[420px] items-center justify-center px-5 py-10 text-sm text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Montando grelha de migração...
               </div>
             ) : preview ? (
               preview.stats.total_alunos === 0 || preview.stats.total_disciplinas === 0 ? (
-                <div className="px-5 py-10 text-center text-sm text-slate-500">
+                <div className="px-5 py-10 text-center text-sm text-muted-foreground">
                   A turma actual ou a classe passada ainda não têm dados suficientes para montar a pauta.
                 </div>
               ) : (
                 <div className="overflow-auto px-5 py-5">
-                  <div className="mb-3 text-xs text-slate-500">
+                  <div className="mb-3 text-xs text-muted-foreground">
                     {invalidCells > 0
                       ? `${invalidCells} célula(s) com valor inválido.`
                       : missingCells > 0
                         ? `${missingCells} célula(s) por preencher antes do save.`
                         : "Grelha pronta para salvar em lote."}
                   </div>
-                  <div className="max-h-[72vh] overflow-auto rounded-2xl border border-slate-200">
+                  <div className="max-h-[72vh] overflow-auto rounded-2xl border border-border">
                     {orientation === "alunos" ? renderGridByAluno(preview) : renderGridByDisciplina(preview)}
                   </div>
                 </div>
               )
             ) : (
-              <div className="flex min-h-[420px] items-center justify-center px-5 py-10 text-center text-sm text-slate-500">
+              <div className="flex min-h-[420px] items-center justify-center px-5 py-10 text-center text-sm text-muted-foreground">
                 Selecione a turma actual, a classe passada e o ano letivo para montar a grelha.
               </div>
             )}

@@ -55,7 +55,7 @@ export default async function Page({ params }: PageProps = {}) {
 
   if (!escolaId) {
     return (
-      <div className="p-8 text-slate-500">
+      <div className="p-8 text-muted-foreground">
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="admissoes_inbox" />
           Vincule seu perfil a uma escola para ver o inbox de admissões.
       </div>

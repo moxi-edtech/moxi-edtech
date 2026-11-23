@@ -94,39 +94,39 @@ export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center gap-4 mb-8">
-        <div className="p-4 rounded-2xl bg-white shadow-sm border border-slate-100">
+        <div className="p-4 rounded-2xl bg-card shadow-sm border border-border">
           <School className="h-8 w-8 text-amber" />
         </div>
         <div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">Ambientes e Salas</h2>
-          <p className="text-sm text-slate-500">Cadastre as salas de aula, laboratórios e outros espaços.</p>
+          <h2 className="text-xl font-black text-foreground tracking-tight">Ambientes e Salas</h2>
+          <p className="text-sm text-muted-foreground">Cadastre as salas de aula, laboratórios e outros espaços.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Formulário de Cadastro */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">Nova Sala</h3>
+        <div className="bg-card rounded-3xl border border-border p-6 shadow-sm">
+          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-6">Nova Sala</h3>
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Nome da Sala</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 ml-1">Nome da Sala</label>
               <input
                 type="text"
                 value={nome}
                 onChange={e => setNome(e.target.value)}
                 placeholder="Ex: Sala 01, Lab de Química..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/10 transition-all"
+                className="w-full rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm font-bold focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/10 transition-all"
                 required
               />
             </div>
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5 ml-1">Capacidade (Opcional)</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5 ml-1">Capacidade (Opcional)</label>
               <input
                 type="number"
                 value={capacidade}
                 onChange={e => setCapacidade(e.target.value)}
                 placeholder="Ex: 30"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/10 transition-all"
+                className="w-full rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm font-bold focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/10 transition-all"
               />
             </div>
             <Button type="submit" tone="gold" className="w-full h-12 font-black gap-2" loading={saving}>
@@ -137,29 +137,29 @@ export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
 
         {/* Listagem */}
         <div className="flex flex-col gap-4">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-2">Salas Cadastradas ({salas.length})</h3>
+          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-2">Salas Cadastradas ({salas.length})</h3>
           
           {loading ? (
             <div className="flex flex-col gap-3">
-              {[1, 2, 3].map(i => <div key={i} className="h-16 w-full rounded-2xl bg-slate-100 animate-pulse" />)}
+              {[1, 2, 3].map(i => <div key={i} className="h-16 w-full rounded-2xl bg-muted animate-pulse" />)}
             </div>
           ) : salas.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-200 p-10 text-center">
-              <School className="h-10 w-10 text-slate-300 mx-auto mb-4" />
-              <p className="text-sm font-bold text-slate-400">Nenhuma sala cadastrada ainda.</p>
+            <div className="rounded-3xl border border-dashed border-border p-10 text-center">
+              <School className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+              <p className="text-sm font-bold text-muted-foreground">Nenhuma sala cadastrada ainda.</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
               {salas.map(sala => (
-                <div key={sala.id} className="group flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200 hover:border-amber/50 transition-all shadow-sm">
+                <div key={sala.id} className="group flex items-center justify-between p-4 rounded-2xl bg-card border border-border hover:border-amber/50 transition-all shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center">
-                      <School className="h-5 w-5 text-slate-400" />
+                    <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center">
+                      <School className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">{sala.nome}</p>
+                      <p className="text-sm font-bold text-foreground">{sala.nome}</p>
                       {sala.capacidade && (
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1">
                           <Users className="w-3 h-3" /> {sala.capacidade} alunos
                         </p>
                       )}
@@ -167,7 +167,7 @@ export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
                   </div>
                   <button 
                     onClick={() => handleDelete(sala.id)}
-                    className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                    className="p-2 text-muted-foreground hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

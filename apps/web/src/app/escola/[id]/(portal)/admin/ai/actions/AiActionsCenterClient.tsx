@@ -88,9 +88,9 @@ function statusClass(status: string) {
     case "sent":
       return "bg-sky-50 text-sky-700 border-sky-200";
     case "cancelled":
-      return "bg-slate-100 text-slate-600 border-slate-200";
+      return "bg-muted text-muted-foreground border-border";
     default:
-      return "bg-white text-slate-700 border-slate-200";
+      return "bg-card text-foreground border-border";
   }
 }
 
@@ -197,11 +197,11 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
   return (
     <div className="min-h-full bg-background text-foreground">
       <div className={`${PORTAL_PAGE_INSET} flex flex-col gap-6`}>
-        <header className="flex flex-col gap-3 border-b border-slate-200 pb-5 md:flex-row md:items-end md:justify-between">
+        <header className="flex flex-col gap-3 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">KLASSE AI</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Central de Ações IA</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">KLASSE AI</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-foreground">Central de Ações IA</h1>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
               Rascunhos, recomendações e resumos preparados pela IA para revisão humana.
             </p>
           </div>
@@ -219,19 +219,19 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
             ["Enviadas", summary.byStatus.sent ?? 0],
             ["Falhas", summary.byStatus.failed ?? 0],
           ].map(([label, value]) => (
-            <div key={label} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500">{label}</p>
-              <p className="mt-2 text-2xl font-black text-slate-950">{value}</p>
+            <div key={label} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+              <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+              <p className="mt-2 text-2xl font-black text-foreground">{value}</p>
             </div>
           ))}
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="grid gap-3 md:grid-cols-6">
             <select
               value={filters.status}
               onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}
-              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-md border border-border bg-card px-3 text-sm"
             >
               <option value="">Status</option>
               {STATUS_OPTIONS.map((status) => (
@@ -241,7 +241,7 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
             <select
               value={filters.type}
               onChange={(event) => setFilters((prev) => ({ ...prev, type: event.target.value }))}
-              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-md border border-border bg-card px-3 text-sm"
             >
               <option value="">Tipo</option>
               {TYPE_OPTIONS.map((type) => (
@@ -251,7 +251,7 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
             <select
               value={filters.module}
               onChange={(event) => setFilters((prev) => ({ ...prev, module: event.target.value }))}
-              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-md border border-border bg-card px-3 text-sm"
             >
               <option value="">Módulo</option>
               {MODULE_OPTIONS.map((module) => (
@@ -261,7 +261,7 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
             <select
               value={filters.risk}
               onChange={(event) => setFilters((prev) => ({ ...prev, risk: event.target.value }))}
-              className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm"
+              className="h-10 rounded-md border border-border bg-card px-3 text-sm"
             >
               <option value="">Risco</option>
               {RISK_OPTIONS.map((risk) => (
@@ -272,11 +272,11 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
               value={filters.createdBy}
               onChange={(event) => setFilters((prev) => ({ ...prev, createdBy: event.target.value }))}
               placeholder="Criado por"
-              className="h-10 rounded-md border border-slate-200 px-3 text-sm"
+              className="h-10 rounded-md border border-border px-3 text-sm"
             />
-            <div className="flex items-center gap-2 rounded-md border border-slate-200 px-3">
-              <Search className="h-4 w-4 text-slate-400" />
-              <span className="text-sm text-slate-500">{summary.total} ações</span>
+            <div className="flex items-center gap-2 rounded-md border border-border px-3">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">{summary.total} ações</span>
             </div>
           </div>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -284,13 +284,13 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
               type="date"
               value={filters.from}
               onChange={(event) => setFilters((prev) => ({ ...prev, from: event.target.value }))}
-              className="h-10 rounded-md border border-slate-200 px-3 text-sm"
+              className="h-10 rounded-md border border-border px-3 text-sm"
             />
             <input
               type="date"
               value={filters.to}
               onChange={(event) => setFilters((prev) => ({ ...prev, to: event.target.value }))}
-              className="h-10 rounded-md border border-slate-200 px-3 text-sm"
+              className="h-10 rounded-md border border-border px-3 text-sm"
             />
           </div>
         </section>
@@ -299,8 +299,8 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{error}</div>
         ) : null}
 
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div className="grid grid-cols-12 border-b border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+          <div className="grid grid-cols-12 border-b border-border bg-muted px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">
             <div className="col-span-4">Título</div>
             <div className="col-span-2">Tipo</div>
             <div className="col-span-2">Módulo</div>
@@ -311,19 +311,19 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
           </div>
 
           {loading ? (
-            <div className="p-8 text-sm text-slate-500">Carregando ações IA...</div>
+            <div className="p-8 text-sm text-muted-foreground">Carregando ações IA...</div>
           ) : actions.length === 0 ? (
-            <div className="p-8 text-sm text-slate-500">Nenhuma ação IA encontrada para os filtros atuais.</div>
+            <div className="p-8 text-sm text-muted-foreground">Nenhuma ação IA encontrada para os filtros atuais.</div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-border">
               {actions.map((action) => (
                 <div key={action.id} className="grid grid-cols-12 items-center gap-2 px-4 py-4 text-sm">
                   <div className="col-span-4 min-w-0">
-                    <p className="truncate font-bold text-slate-900">{action.title}</p>
-                    <p className="truncate text-xs text-slate-500">{action.summary ?? action.content}</p>
+                    <p className="truncate font-bold text-foreground">{action.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{action.summary ?? action.content}</p>
                   </div>
-                  <div className="col-span-2 text-slate-700">{typeLabels[action.action_type] ?? action.action_type}</div>
-                  <div className="col-span-2 text-slate-600">{action.source_module}</div>
+                  <div className="col-span-2 text-foreground">{typeLabels[action.action_type] ?? action.action_type}</div>
+                  <div className="col-span-2 text-muted-foreground">{action.source_module}</div>
                   <div className="col-span-1">
                     <span className={`rounded-md border px-2 py-1 text-xs font-bold ${statusClass(action.status)}`}>
                       {statusLabels[action.status] ?? action.status}
@@ -334,7 +334,7 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
                       {action.risk_level}
                     </span>
                   </div>
-                  <div className="col-span-1 text-xs text-slate-500">
+                  <div className="col-span-1 text-xs text-muted-foreground">
                     {new Date(action.created_at).toLocaleDateString("pt-AO")}
                   </div>
                   <div className="col-span-1 flex justify-end">
@@ -350,12 +350,12 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
       </div>
 
       {selected ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
-            <div className="flex items-start justify-between border-b border-slate-200 p-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/40 p-4">
+          <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl">
+            <div className="flex items-start justify-between border-b border-border p-5">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{typeLabels[selected.action_type] ?? selected.action_type}</p>
-                <h2 className="mt-1 text-lg font-black text-slate-950">{selected.title}</h2>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">{typeLabels[selected.action_type] ?? selected.action_type}</p>
+                <h2 className="mt-1 text-lg font-black text-foreground">{selected.title}</h2>
               </div>
               <Button type="button" variant="ghost" size="icon" onClick={() => setSelected(null)} title="Fechar">
                 <X className="h-4 w-4" />
@@ -370,19 +370,19 @@ export default function AiActionsCenterClient({ schoolId }: { schoolId: string }
                   risco {selected.risk_level}
                 </span>
                 {selected.requires_approval ? (
-                  <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-bold text-slate-700">
+                  <span className="rounded-md border border-border bg-muted px-2 py-1 text-xs font-bold text-foreground">
                     requer aprovação
                   </span>
                 ) : null}
               </div>
-              <pre className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-800">
+              <pre className="whitespace-pre-wrap rounded-lg border border-border bg-muted p-4 text-sm leading-6 text-foreground">
                 {selected.content}
               </pre>
               {selected.last_error ? (
                 <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{selected.last_error}</p>
               ) : null}
             </div>
-            <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 p-4">
+            <div className="flex flex-wrap justify-between gap-2 border-t border-border p-4">
               <Button type="button" variant="outline" tone="slate" onClick={() => copyContent(selected)}>
                 <Copy className="h-4 w-4" />
                 {copiedId === selected.id ? "Copiado" : "Copiar conteúdo"}

@@ -45,10 +45,10 @@ export function DossierHeader({
   const statusLabel = status.replace(/_/g, " ");
   const statusClasses =
     status === "ativo"
-      ? "bg-[#1F6B3B]/10 text-[#1F6B3B]"
+      ? "bg-klasse-green/10 text-klasse-green dark:text-emerald-300"
       : status === "arquivado" || status === "inativo"
-      ? "bg-slate-100 text-slate-500"
-      : "bg-[#E3B23C]/10 text-[#E3B23C]";
+      ? "bg-muted text-muted-foreground"
+      : "bg-klasse-gold/10 text-klasse-gold-900 dark:text-klasse-gold-300";
 
   const isInadimplente = ["inadimplente", "em_atraso", "atrasado"].includes(
     (aluno.financeiro.situacao ?? "").toLowerCase()
@@ -57,9 +57,9 @@ export function DossierHeader({
 
   const renderMetaValue = (value?: string | null) =>
     value ? (
-      <span className="font-medium text-slate-700">{value}</span>
+      <span className="font-medium text-foreground">{value}</span>
     ) : (
-      <span className="text-slate-400 italic text-[11px]">Não preenchido</span>
+      <span className="text-muted-foreground italic text-[11px]">Não preenchido</span>
     );
 
   const birthValue = (() => {
@@ -83,25 +83,25 @@ export function DossierHeader({
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
       <div className="px-6 py-5 md:px-8 md:py-6 space-y-4">
 
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-1 rounded-xl bg-slate-50/70 px-3 py-2 text-xs text-slate-400">
+        <nav className="flex items-center gap-1 rounded-xl bg-muted/70 px-3 py-2 text-xs text-muted-foreground">
           <Link
             href={buildContextualPortalHref(
               escolaParam,
               breadcrumbPath,
               pathname
             )}
-            className="hover:text-slate-600 transition-colors"
+            className="hover:text-muted-foreground transition-colors"
           >
             {breadcrumbLabel}
           </Link>
-          <ChevronRight size={12} className="text-slate-400 flex-shrink-0" />
-          <span className="text-slate-400">Alunos</span>
-          <ChevronRight size={12} className="text-slate-400 flex-shrink-0" />
-          <span className="text-slate-600 font-medium truncate max-w-[180px]">
+          <ChevronRight size={12} className="text-muted-foreground flex-shrink-0" />
+          <span className="text-muted-foreground">Alunos</span>
+          <ChevronRight size={12} className="text-muted-foreground flex-shrink-0" />
+          <span className="text-muted-foreground font-medium truncate max-w-[180px]">
             {perfil.nome}
           </span>
         </nav>
@@ -114,7 +114,7 @@ export function DossierHeader({
 
             {/* Nome + badges — hierarquia clara: nome domina */}
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-semibold text-slate-900 leading-tight">
+              <h1 className="text-2xl font-semibold text-foreground leading-tight">
                 {perfil.nome}
               </h1>
               {/* Status (ativo/arquivado) — peso leve */}
@@ -137,9 +137,9 @@ export function DossierHeader({
               {/* Grupo 1: identificação */}
               <div className="flex flex-wrap gap-4">
                 {metaIdentificacao.map(({ icon, label, value }) => (
-                  <span key={label} className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <span className="text-slate-400">{icon}</span>
-                    <span className="text-slate-400">{label}:</span>
+                  <span key={label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="text-muted-foreground">{icon}</span>
+                    <span className="text-muted-foreground">{label}:</span>
                     {renderMetaValue(value)}
                   </span>
                 ))}
@@ -147,9 +147,9 @@ export function DossierHeader({
               {/* Grupo 2: académico */}
               <div className="flex flex-wrap gap-4">
                 {metaAcademico.map(({ icon, label, value }) => (
-                  <span key={label} className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <span className="text-slate-400">{icon}</span>
-                    <span className="text-slate-400">{label}:</span>
+                  <span key={label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="text-muted-foreground">{icon}</span>
+                    <span className="text-muted-foreground">{label}:</span>
                     {renderMetaValue(value)}
                   </span>
                 ))}

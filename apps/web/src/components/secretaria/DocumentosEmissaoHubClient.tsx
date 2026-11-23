@@ -441,18 +441,18 @@ export default function DocumentosEmissaoHubClient({
   return (
     <main className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-slate-900">Balcão de Emissão Rápida</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">Balcão de Emissão Rápida</h1>
+        <p className="text-sm text-muted-foreground">
           Selecione o aluno, escolha o tipo de declaração e imprima na hora.
         </p>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Quem precisa do documento?
         </label>
         <div className="relative mt-3">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
             onChange={(event) => {
@@ -460,7 +460,7 @@ export default function DocumentosEmissaoHubClient({
               setSelectedAluno(null);
             }}
             placeholder="Buscar aluno por nome, processo ou BI..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-10 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/10"
+            className="w-full rounded-xl border border-border bg-muted px-10 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/10"
           />
           {loading && (
             <RefreshCw className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-emerald" />
@@ -468,20 +468,20 @@ export default function DocumentosEmissaoHubClient({
         </div>
 
         {query && normalizedResults.length > 0 && (
-          <div className="mt-3 rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="mt-3 rounded-xl border border-border bg-card shadow-sm">
             {normalizedResults.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => handleSelectAluno(item.id, item.label)}
-                className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left text-sm hover:bg-slate-50"
+                className="flex w-full items-center gap-3 border-b border-border px-4 py-3 text-left text-sm hover:bg-muted"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-                  <User className="h-4 w-4 text-slate-400" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                  <User className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-900">{item.label}</div>
-                  <div className="text-xs text-slate-500">{item.highlight || "Aluno"}</div>
+                  <div className="font-semibold text-foreground">{item.label}</div>
+                  <div className="text-xs text-muted-foreground">{item.highlight || "Aluno"}</div>
                 </div>
               </button>
             ))}
@@ -509,16 +509,16 @@ export default function DocumentosEmissaoHubClient({
               className={`rounded-2xl border px-5 py-6 text-left transition-all ${
                 isActive
                   ? "border-amber bg-amber-50 shadow-sm"
-                  : "border-slate-200 bg-white hover:border-amber/60"
+                  : "border-border bg-card hover:border-amber/60"
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`rounded-xl p-2 ${isActive ? "bg-amber/20 text-amber" : "bg-slate-100 text-slate-500"}`}>
+                <div className={`rounded-xl p-2 ${isActive ? "bg-amber/20 text-amber" : "bg-muted text-muted-foreground"}`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-slate-900">{doc.title}</h2>
-                  <p className="mt-1 text-sm text-slate-500">{doc.description}</p>
+                  <h2 className="text-base font-semibold text-foreground">{doc.title}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{doc.description}</p>
                   {priceLabel !== null && (
                     <p className={`mt-2 text-xs font-semibold ${priceLabel > 0 ? "text-amber-700" : "text-emerald-700"}`}>
                       {priceLabel > 0 ? `Documento pago · ${priceLabel} Kz` : "Documento grátis"}
@@ -532,14 +532,14 @@ export default function DocumentosEmissaoHubClient({
       </section>
 
       {tipo === "boletim_trimestral" && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Ano letivo
           </label>
           <select
             value={anoLetivoSelecionado ?? ""}
             onChange={(event) => setAnoLetivoSelecionado(Number(event.target.value))}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
             disabled={loadingAnoLetivo || anoLetivoOptions.length === 0}
           >
             <option value="" disabled>
@@ -560,10 +560,10 @@ export default function DocumentosEmissaoHubClient({
         }`}
       >
         {isPago && selectedServico && (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm space-y-4">
+          <div className="rounded-2xl border border-border bg-muted p-5 shadow-sm space-y-4">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">Checkout rápido</h3>
-              <p className="text-sm font-semibold text-slate-900">Total a pagar: {valorBase} Kz</p>
+              <h3 className="text-sm font-semibold text-foreground">Checkout rápido</h3>
+              <p className="text-sm font-semibold text-foreground">Total a pagar: {valorBase} Kz</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {[
@@ -578,7 +578,7 @@ export default function DocumentosEmissaoHubClient({
                   className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
                     metodo === item.id
                       ? "border-amber bg-amber-50 text-amber"
-                      : "border-slate-200 bg-white text-slate-600"
+                      : "border-border bg-card text-muted-foreground"
                   }`}
                 >
                   {item.label}
@@ -587,22 +587,22 @@ export default function DocumentosEmissaoHubClient({
             </div>
             {metodo === "tpa" && (
               <div>
-                <label className="text-xs font-semibold text-slate-600">Referência do Pagamento</label>
+                <label className="text-xs font-semibold text-muted-foreground">Referência do Pagamento</label>
                 <input
                   ref={referenceInputRef}
                   value={reference}
                   onChange={(event) => setReference(event.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
                 />
               </div>
             )}
             {metodo === "transfer" && (
               <div>
-                <label className="text-xs font-semibold text-slate-600">Comprovativo (URL)</label>
+                <label className="text-xs font-semibold text-muted-foreground">Comprovativo (URL)</label>
                 <input
                   value={evidenceUrl}
                   onChange={(event) => setEvidenceUrl(event.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
                 />
               </div>
             )}
@@ -616,8 +616,8 @@ export default function DocumentosEmissaoHubClient({
         </p>
       )}
       {selectedAluno && tipo && (
-        <section aria-label="Rever emissão" className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-          <h3 className="font-bold text-slate-900">Rever antes de confirmar</h3>
+        <section aria-label="Rever emissão" className="rounded-xl border border-border bg-card p-4 text-sm text-foreground">
+          <h3 className="font-bold text-foreground">Rever antes de confirmar</h3>
           <p className="mt-1">Aluno: <strong>{selectedAluno.label}</strong></p>
           <p>Documento: <strong>{TIPOS.find((item) => item.id === tipo)?.title}</strong></p>
           <p>Taxa: <strong>{isPago ? `${valorBase} Kz` : "Gratuito"}</strong></p>
@@ -639,7 +639,7 @@ export default function DocumentosEmissaoHubClient({
                 key={`${doc.url}-${index}`}
                 type="button"
                 onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
-                className="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-left text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                className="w-full rounded-lg border border-emerald-200 bg-card px-3 py-2 text-left text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
               >
                 Abrir documento
               </button>

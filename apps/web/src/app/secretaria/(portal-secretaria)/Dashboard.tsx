@@ -343,7 +343,7 @@ export function Dashboard({
   };
 
   return (
-    <div className="flex flex-col min-h-full bg-slate-50 font-sans text-slate-900">
+    <div className="flex flex-col min-h-full bg-muted font-sans text-foreground">
       <div className="flex-1 flex">
         <div className="min-w-0 flex-1 pb-32">
           <div className={`${PORTAL_PAGE_INSET} space-y-8`}>
@@ -364,11 +364,11 @@ export function Dashboard({
                   />
                   
                   {publicLandingUrl && (
-                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+                    <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 shadow-sm">
                       <button 
                         onClick={copyPublicUrl}
                         title="Copiar Link de Admissão"
-                        className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                        className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                       >
                         <Share2 size={14} />
                         LINK PÚBLICO
@@ -376,7 +376,7 @@ export function Dashboard({
                       <button 
                         onClick={sharePublicUrl}
                         title="Partilhar no WhatsApp"
-                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                        className="p-1.5 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                       >
                         <MessageCircle size={14} />
                       </button>
@@ -406,7 +406,7 @@ export function Dashboard({
               {escolaId && showOperationalPanels ? (
                 <ResumoCaixaSecretaria escolaId={escolaId} />
               ) : (
-                <div className="h-20 rounded-xl border border-slate-100 bg-white animate-pulse" />
+                <div className="h-20 rounded-xl border border-border bg-card animate-pulse" />
               )}
             </div>
 
@@ -443,7 +443,7 @@ export function Dashboard({
                 <button
                   type="button"
                   onClick={() => setFilaOpen(true)}
-                  className="rounded-lg border border-slate-200 px-3 py-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="rounded-lg border border-border px-3 py-3 text-xs font-semibold text-foreground hover:bg-muted"
                 >
                   Abrir fila de atendimento
                 </button>
@@ -593,14 +593,14 @@ export function Dashboard({
             {!selectedCandidaturaId && (
               <Link
                 href={buildPortalHref(escolaParam, "/secretaria/admissoes")}
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted"
               >
                 Abrir admissões completas
               </Link>
             )}
           </div>
         ) : (
-          <div className="text-sm text-slate-500">Escola não identificada.</div>
+          <div className="text-sm text-muted-foreground">Escola não identificada.</div>
         )}
       </ModalShell>
 
@@ -633,7 +633,7 @@ export function Dashboard({
       >
         <div className="space-y-3">
           <BuscaBalcaoRapido escolaId={escolaId} initialAction="payment" />
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Localize o aluno; o pagamento será concluído no mesmo Balcão de Atendimento.
           </p>
         </div>

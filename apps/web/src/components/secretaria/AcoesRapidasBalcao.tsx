@@ -90,8 +90,8 @@ function QuickCard(props: {
       onClick={action.onClick}
       disabled={action.disabled}
       className={cx(
-        "relative w-full rounded-2xl border border-slate-200 bg-white p-4 text-left",
-        "hover:border-[#1F6B3B]/30 hover:shadow-sm transition-all",
+        "relative w-full rounded-2xl border border-border bg-card p-4 text-left",
+        "hover:border-klasse-green/30 hover:shadow-sm transition-all",
         "disabled:opacity-60 disabled:cursor-not-allowed",
         isPagamentoCritico && "border-rose-200"
       )}
@@ -103,16 +103,16 @@ function QuickCard(props: {
       <div className="flex items-start gap-3">
         <div
           className={cx(
-            "rounded-xl border border-slate-200 p-2 flex items-center justify-center shrink-0",
-            isPagamentoCritico ? "bg-rose-100 text-rose-600 border-rose-200" : "bg-slate-100 text-slate-500"
+            "rounded-xl border border-border p-2 flex items-center justify-center shrink-0",
+            isPagamentoCritico ? "bg-rose-100 text-rose-600 border-rose-200" : "bg-muted text-muted-foreground"
           )}
         >
           <Icon className="h-5 w-5" />
         </div>
 
         <div className="min-w-0">
-          <div className="text-sm font-bold text-slate-900">{action.title}</div>
-          <div className="text-xs text-slate-400">{action.subtitle}</div>
+          <div className="text-sm font-bold text-foreground">{action.title}</div>
+          <div className="text-xs text-muted-foreground">{action.subtitle}</div>
         </div>
       </div>
     </button>
@@ -264,8 +264,8 @@ export function AcoesRapidasBalcao({
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Balcão rápido</span>
-            <span className="text-sm font-bold text-slate-900 truncate">{alunoNome}</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Balcão rápido</span>
+            <span className="text-sm font-bold text-foreground truncate">{alunoNome}</span>
           </div>
         </div>
 
@@ -273,44 +273,44 @@ export function AcoesRapidasBalcao({
           className={cx(
             "rounded-2xl border px-4 py-3 shadow-sm flex flex-col gap-1",
             totalPendente > 0
-              ? "bg-[#E3B23C]/10 border-[#E3B23C]/25"
-              : "bg-[#1F6B3B]/5 border-[#1F6B3B]/20"
+              ? "bg-klasse-gold/10 border-klasse-gold/25"
+              : "bg-klasse-green/5 border-klasse-green/20"
           )}
         >
           <div className="flex items-center justify-between gap-3">
             <span
               className={cx(
                 "text-[10px] font-bold uppercase tracking-widest",
-                totalPendente > 0 ? "text-[#E3B23C]" : "text-[#1F6B3B]/70"
+                totalPendente > 0 ? "text-klasse-gold-700 dark:text-klasse-gold-300" : "text-klasse-green/70 dark:text-klasse-green-300/70"
               )}
             >
               {totalPendente > 0 ? "Total pendente" : "Situação financeira"}
             </span>
-            <span className="text-[10px] font-semibold text-slate-400">Resumo</span>
+            <span className="text-[10px] font-semibold text-muted-foreground">Resumo</span>
           </div>
           <div className="flex items-end justify-between gap-3">
             <div
               className={cx(
                 "text-2xl font-bold",
-                totalPendente > 0 ? "text-[#E3B23C]" : "text-[#1F6B3B]"
+                totalPendente > 0 ? "text-klasse-gold-700 dark:text-klasse-gold-300" : "text-klasse-green dark:text-klasse-green-300"
               )}
             >
               {moneyAOA.format(totalPendente)}
             </div>
-            <span className="text-xs text-slate-400">Kz</span>
+            <span className="text-xs text-muted-foreground">Kz</span>
           </div>
         </div>
 
         {pendentes.length > 0 && mensalidadeSugerida ? (
-          <div className="rounded-2xl border border-[#E3B23C]/20 bg-[#E3B23C]/10 px-4 py-3 text-xs text-slate-500">
+          <div className="rounded-2xl border border-klasse-gold/20 bg-klasse-gold/10 px-4 py-3 text-xs text-muted-foreground">
             Mês em aberto:{" "}
-            <span className="text-sm font-bold text-[#E3B23C]">
+            <span className="text-sm font-bold text-klasse-gold-700 dark:text-klasse-gold-300">
               {mensalidadeSugerida.mes}/{mensalidadeSugerida.ano} — {moneyAOA.format(mensalidadeSugerida.valor)}
             </span>{" "}
             <button
               type="button"
               onClick={openPagamento}
-              className="ml-2 text-xs font-bold text-[#1F6B3B] underline"
+              className="ml-2 text-xs font-bold text-klasse-green dark:text-klasse-green-300 underline"
             >
               Pagar agora
             </button>

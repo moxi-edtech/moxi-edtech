@@ -70,7 +70,7 @@ export default function SanidadeFechamentoPage() {
         <input value={turmaIds} onChange={(e) => setTurmaIds(e.target.value)} placeholder="turma_ids separados por vírgula" className="rounded border p-2" />
       </div>
       <div className="flex gap-2">
-        <button onClick={run} disabled={loading || !anoLetivoId} className="rounded bg-slate-900 px-3 py-2 text-white">{loading ? "Validando..." : "Validar"}</button>
+        <button onClick={run} disabled={loading || !anoLetivoId} className="rounded-xl bg-klasse-gold px-3 py-2 text-sm font-semibold text-klasse-gold-900 hover:brightness-95 disabled:opacity-60">{loading ? "Validando..." : "Validar"}</button>
         <button onClick={downloadCsv} disabled={!anoLetivoId} className="rounded border px-3 py-2">Exportar pendências (CSV)</button>
       </div>
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
@@ -79,7 +79,7 @@ export default function SanidadeFechamentoPage() {
           <div key={p.id} className="rounded border p-3 text-sm">
             <p className="font-semibold">[{p.severidade}] {p.regra}</p>
             <p>{p.mensagem}</p>
-            <p className="text-xs text-slate-500">Turma: {p.turma_id ?? "-"} · Matrícula: {p.matricula_id ?? "-"}</p>
+            <p className="text-xs text-muted-foreground">Turma: {p.turma_id ?? "-"} · Matrícula: {p.matricula_id ?? "-"}</p>
           </div>
         ))}
       </div>

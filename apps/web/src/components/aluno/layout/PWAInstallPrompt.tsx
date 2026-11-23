@@ -109,7 +109,7 @@ export function PWAInstallPrompt() {
               ) : (
                 <button
                   onClick={handleInstall}
-                  className="w-full bg-white text-slate-900 py-3 rounded-2xl text-xs font-black hover:bg-slate-100 transition active:scale-95 shadow-lg shadow-white/5"
+                  className="w-full bg-card text-foreground py-3 rounded-2xl text-xs font-black hover:bg-muted transition active:scale-95 shadow-lg shadow-white/5"
                 >
                   Instalar Agora
                 </button>

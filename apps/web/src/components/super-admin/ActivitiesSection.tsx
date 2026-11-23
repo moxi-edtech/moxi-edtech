@@ -28,13 +28,13 @@ export default function ActivitiesSection({ activities, isLoading = false }: { a
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-950">Atividade Recente</h2>
-          <p className="mt-1 text-sm text-slate-500">Eventos registados nas últimas horas.</p>
+          <h2 className="text-xl font-bold text-foreground">Atividade Recente</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Eventos registados nas últimas horas.</p>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
+        <span className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground">
           <Clock3 className="h-4 w-4" />
           Tempo real
         </span>
@@ -51,20 +51,20 @@ export default function ActivitiesSection({ activities, isLoading = false }: { a
           activities.map((act) => (
             <article
               key={act.id}
-              className="flex items-start justify-between gap-4 rounded-xl border border-transparent p-3 transition hover:border-slate-200 hover:ring-1 hover:ring-amber/25"
+              className="flex items-start justify-between gap-4 rounded-xl border border-transparent p-3 transition hover:border-border hover:ring-1 hover:ring-amber/25"
             >
               <div>
-                <p className="text-sm font-semibold text-slate-950">{act.titulo}</p>
-                <p className="text-sm text-slate-500">{act.resumo}</p>
+                <p className="text-sm font-semibold text-foreground">{act.titulo}</p>
+                <p className="text-sm text-muted-foreground">{act.resumo}</p>
               </div>
-              <time className="shrink-0 text-sm font-medium text-slate-500">{formatTime(act.data)}</time>
+              <time className="shrink-0 text-sm font-medium text-muted-foreground">{formatTime(act.data)}</time>
             </article>
           ))
         )}
       </div>
 
       {activities.length > 0 && (
-        <button className="mt-4 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:ring-1 hover:ring-amber/25">
+        <button className="mt-4 rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:ring-1 hover:ring-amber/25">
           Ver histórico completo
         </button>
       )}

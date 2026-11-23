@@ -360,15 +360,15 @@ function resolveActionColor(action?: string | null) {
     return { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" };
   }
   if (a.includes("create") || a.includes("insert") || a.includes("matricul")) {
-    return { bg: "bg-[#1F6B3B]/8", text: "text-[#1F6B3B]", border: "border-[#1F6B3B]/20" };
+    return { bg: "bg-klasse-green/8", text: "text-klasse-green dark:text-klasse-green-300", border: "border-klasse-green/20" };
   }
   if (a.includes("update") || a.includes("edit") || a.includes("alter")) {
-    return { bg: "bg-[#E3B23C]/8", text: "text-[#9a7010]", border: "border-[#E3B23C]/30" };
+    return { bg: "bg-klasse-gold/8", text: "text-klasse-gold-700 dark:text-klasse-gold-300", border: "border-klasse-gold/30" };
   }
   if (a.includes("pay") || a.includes("pagamento") || a.includes("checkout")) {
     return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" };
   }
-  return { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" };
+  return { bg: "bg-muted", text: "text-muted-foreground", border: "border-border" };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -388,13 +388,13 @@ function ActionBadge({ action }: { action?: string | null }) {
 
 function EmptyState({ q }: { q: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
-        <ShieldCheck size={24} className="text-slate-300" />
+    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-muted">
+        <ShieldCheck size={24} className="text-muted-foreground" />
       </div>
-      <p className="text-sm font-bold text-slate-500">Sem eventos neste período</p>
+      <p className="text-sm font-bold text-muted-foreground">Sem eventos neste período</p>
       {q && (
-        <p className="mt-1 text-xs text-slate-400">
+        <p className="mt-1 text-xs text-muted-foreground">
           Nenhum resultado para <span className="font-semibold">“{q}”</span>
         </p>
       )}
@@ -475,36 +475,36 @@ export default async function Page(props: {
     <>
       <AuditPageView portal="admin_escola" acao="PAGE_VIEW" entity="relatorios" />
 
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-muted">
         <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
           <nav>
-            <ol className="flex items-center gap-1 text-xs font-semibold text-slate-400">
+            <ol className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
               <li>
                 <Link
                   href={adminHref}
-                  className="hover:text-[#1F6B3B] transition-colors"
+                  className="hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors"
                 >
                   Admin
                 </Link>
               </li>
               <li>
-                <Slash size={10} className="text-slate-300" />
+                <Slash size={10} className="text-muted-foreground" />
               </li>
-              <li className="text-slate-600">Relatórios da Secretaria</li>
+              <li className="text-muted-foreground">Relatórios da Secretaria</li>
             </ol>
           </nav>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-5">
+          <div className="bg-card rounded-xl border border-border shadow-sm px-6 py-5">
             <div className="flex flex-col md:flex-row md:items-start gap-5">
               <div className="flex items-start gap-4 flex-1 min-w-0">
-                <div className="flex-shrink-0 h-11 w-11 rounded-xl bg-[#1F6B3B]/8 border border-[#1F6B3B]/15 flex items-center justify-center">
-                  <FileText size={18} className="text-[#1F6B3B]" />
+                <div className="flex-shrink-0 h-11 w-11 rounded-xl bg-klasse-green/8 border border-klasse-green/15 flex items-center justify-center">
+                  <FileText size={18} className="text-klasse-green dark:text-klasse-green-300" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-black text-[#1F6B3B] tracking-tight">
+                  <h1 className="text-lg font-black text-klasse-green dark:text-klasse-green-300 tracking-tight">
                     Relatórios da Secretaria
                   </h1>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Audit trail de todas as acções do portal {portalLabel.toLowerCase()} · últimos {days}{" "}
                     {days === 1 ? "dia" : "dias"}
                   </p>
@@ -516,7 +516,7 @@ export default async function Page(props: {
                   href={`${basePath}/export?format=csv&days=${days}&q=${encodeURIComponent(q)}&portal=${portal}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors"
+                  className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:border-klasse-green hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors"
                 >
                   <Download size={12} />
                   CSV
@@ -525,7 +525,7 @@ export default async function Page(props: {
                   href={`${basePath}/export?format=json&days=${days}&q=${encodeURIComponent(q)}&portal=${portal}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors"
+                  className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:border-klasse-green hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors"
                 >
                   <Download size={12} />
                   JSON
@@ -534,29 +534,29 @@ export default async function Page(props: {
             </div>
 
             <div className="mt-5 grid grid-cols-3 gap-3">
-              <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <div className="rounded-xl border border-border bg-muted px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   Eventos
                 </p>
-                <p className="text-2xl font-black text-slate-900 mt-0.5">{totalEventos}</p>
+                <p className="text-2xl font-black text-foreground mt-0.5">{totalEventos}</p>
               </div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <div className="rounded-xl border border-border bg-muted px-4 py-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   Tipos únicos
                 </p>
-                <p className="text-2xl font-black text-slate-900 mt-0.5">{tiposUnicos}</p>
+                <p className="text-2xl font-black text-foreground mt-0.5">{tiposUnicos}</p>
               </div>
               <div
                 className={`rounded-xl border px-4 py-3 ${
-                  comErro > 0 ? "border-rose-200 bg-rose-50" : "border-slate-100 bg-slate-50"
+                  comErro > 0 ? "border-rose-200 bg-rose-50" : "border-border bg-muted"
                 }`}
               >
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   Erros
                 </p>
                 <p
                   className={`text-2xl font-black mt-0.5 ${
-                    comErro > 0 ? "text-rose-700" : "text-slate-900"
+                    comErro > 0 ? "text-rose-700" : "text-foreground"
                   }`}
                 >
                   {comErro}
@@ -565,11 +565,11 @@ export default async function Page(props: {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-4">
+          <div className="bg-card rounded-xl border border-border shadow-sm px-6 py-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex items-center gap-1.5">
-                <Clock size={13} className="text-slate-400 flex-shrink-0" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mr-1">
+                <Clock size={13} className="text-muted-foreground flex-shrink-0" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-1">
                   Período
                 </span>
                 <div className="flex items-center gap-1">
@@ -579,8 +579,8 @@ export default async function Page(props: {
                       href={`${basePath}?days=${p.value}&q=${encodeURIComponent(q)}&portal=${portal}`}
                       className={`rounded-lg px-3 py-1.5 text-xs font-bold border transition-colors ${
                         String(days) === p.value
-                          ? "bg-[#1F6B3B] text-white border-[#1F6B3B]"
-                          : "border-slate-200 text-slate-600 hover:border-[#1F6B3B]/40 hover:text-[#1F6B3B]"
+                          ? "bg-klasse-green text-white border-klasse-green"
+                          : "border-border text-muted-foreground hover:border-klasse-green/40 hover:text-klasse-green dark:hover:text-klasse-green-300"
                       }`}
                     >
                       {p.label}
@@ -589,23 +589,23 @@ export default async function Page(props: {
                 </div>
               </div>
 
-              <div className="hidden sm:block h-5 w-px bg-slate-200" />
+              <div className="hidden sm:block h-5 w-px bg-muted-foreground/15" />
 
               <form method="GET" action={basePath} className="flex items-center gap-2 flex-1">
                 <input type="hidden" name="days" value={days} />
                 <div className="relative flex-1 max-w-sm">
-                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <input
                     type="text"
                     name="q"
                     defaultValue={q}
                     placeholder="Buscar acção ou entidade..."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-8 pr-3 text-xs font-medium text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#1F6B3B] focus:ring-1 focus:ring-[#1F6B3B]/20 transition-colors"
+                    className="w-full rounded-xl border border-border bg-muted py-2 pl-8 pr-3 text-xs font-medium text-foreground placeholder:text-muted-foreground outline-none focus:border-klasse-green focus:ring-1 focus:ring-klasse-green/20 transition-colors"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 rounded-xl bg-[#1F6B3B] px-4 py-2 text-xs font-bold text-white hover:bg-[#185830] transition-colors"
+                  className="flex items-center gap-1.5 rounded-xl bg-klasse-green px-4 py-2 text-xs font-bold text-white hover:brightness-95 transition-colors"
                 >
                   <Filter size={11} />
                   Filtrar
@@ -613,7 +613,7 @@ export default async function Page(props: {
                 <select
                   name="portal"
                   defaultValue={portal}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600"
+                  className="rounded-xl border border-border bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground"
                 >
                   {PORTAIS.map((p) => (
                     <option key={p.value} value={p.value}>
@@ -624,7 +624,7 @@ export default async function Page(props: {
                 {(q || portal !== "secretaria") && (
                   <Link
                     href={`${basePath}?days=${days}`}
-                    className="text-xs font-semibold text-slate-400 hover:text-slate-600"
+                    className="text-xs font-semibold text-muted-foreground hover:text-foreground"
                   >
                     Limpar
                   </Link>
@@ -633,7 +633,7 @@ export default async function Page(props: {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
             {error && (
               <div className="flex items-center gap-2 border-b border-rose-200 bg-rose-50 px-6 py-3 text-xs font-semibold text-rose-700">
                 <AlertTriangle size={13} />
@@ -647,20 +647,20 @@ export default async function Page(props: {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/70">
-                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap">
+                    <tr className="border-b border-border bg-muted/70">
+                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
                         Quando
                       </th>
-                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                         Acção
                       </th>
-                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                         Entidade
                       </th>
-                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                         ID
                       </th>
-                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                         Detalhes
                       </th>
                     </tr>
@@ -671,13 +671,13 @@ export default async function Page(props: {
                       return (
                         <tr
                           key={l.id}
-                          className={`border-b border-slate-100 last:border-0 transition-colors hover:bg-[#1F6B3B]/[0.02] ${
-                            idx % 2 === 0 ? "" : "bg-slate-50/30"
+                          className={`border-b border-border last:border-0 transition-colors hover:bg-klasse-green/[0.02] ${
+                            idx % 2 === 0 ? "" : "bg-muted/30"
                           }`}
                         >
                           <td className="px-5 py-3.5 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                              <Clock size={11} className="text-slate-300 flex-shrink-0" />
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Clock size={11} className="text-muted-foreground flex-shrink-0" />
                               {l.created_at ? formatDateTime(l.created_at) : "—"}
                             </div>
                           </td>
@@ -687,7 +687,7 @@ export default async function Page(props: {
                           </td>
 
                           <td className="px-5 py-3.5">
-                            <span className="text-xs font-semibold text-slate-700">
+                            <span className="text-xs font-semibold text-foreground">
                               {l.entity ?? "—"}
                             </span>
                           </td>
@@ -696,34 +696,34 @@ export default async function Page(props: {
                             {l.entity_id ? (
                               <span
                                 title={l.entity_id}
-                                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-0.5 text-[10px] font-mono text-slate-500 border border-slate-200 cursor-default"
+                                className="inline-flex items-center gap-1 rounded-lg bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground border border-border cursor-default"
                               >
                                 {l.entity_id.slice(0, 8)}…
                               </span>
                             ) : (
-                              <span className="text-slate-300 text-xs">—</span>
+                              <span className="text-muted-foreground text-xs">—</span>
                             )}
                           </td>
 
                           <td className="px-5 py-3.5 max-w-xs">
                             <div className="space-y-2">
                               <div>
-                                <p className="text-xs font-semibold text-slate-700">{summary.title}</p>
+                                <p className="text-xs font-semibold text-foreground">{summary.title}</p>
                                 {summary.body ? (
-                                  <p className="text-[11px] text-slate-500">{summary.body}</p>
+                                  <p className="text-[11px] text-muted-foreground">{summary.body}</p>
                                 ) : null}
                               </div>
                               {l.details && typeof l.details === "object" &&
                               Object.keys(l.details).length > 0 ? (
                                 <details className="group">
-                                  <summary className="flex cursor-pointer items-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-[#1F6B3B] transition-colors select-none">
+                                  <summary className="flex cursor-pointer items-center gap-1.5 text-[10px] font-bold text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors select-none">
                                     <ArrowUpRight
                                       size={11}
                                       className="group-open:rotate-90 transition-transform"
                                     />
                                     Ver detalhes
                                   </summary>
-                                  <pre className="mt-2 rounded-lg bg-slate-50 border border-slate-200 p-2.5 text-[10px] text-slate-600 overflow-auto max-h-40 leading-relaxed">
+                                  <pre className="mt-2 rounded-lg bg-muted border border-border p-2.5 text-[10px] text-muted-foreground overflow-auto max-h-40 leading-relaxed">
                                     {formatDetails(l.details)}
                                   </pre>
                                 </details>
@@ -736,8 +736,8 @@ export default async function Page(props: {
                   </tbody>
                 </table>
 
-                <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-3">
-                  <p className="text-[11px] text-slate-400">
+                <div className="border-t border-border bg-muted/50 px-5 py-3">
+                  <p className="text-[11px] text-muted-foreground">
                     {logs.length === 200
                       ? "Mostrando os 200 eventos mais recentes — refina a pesquisa para ver mais"
                       : `${logs.length} ${logs.length === 1 ? "evento" : "eventos"} encontrados`}
