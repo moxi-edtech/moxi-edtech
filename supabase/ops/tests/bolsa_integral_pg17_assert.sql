@@ -14,10 +14,12 @@ DECLARE
   v_aluno2 uuid := 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
   v_aluno3 uuid := '33333333-3333-4333-8333-333333333333';
   v_aluno4 uuid := '34343434-3434-4434-8434-343434343434';
+  v_aluno5 uuid := '56565656-5656-4656-8656-565656565656';
   v_mat1 uuid := '55555555-5555-4555-8555-555555555555';
   v_mat2 uuid := '66666666-6666-4666-8666-666666666666';
   v_mat3 uuid := '77777777-7777-4777-8777-777777777777';
   v_mat4 uuid := '45454545-4545-4454-8454-454545454545';
+  v_mat5 uuid := '67676767-6767-4676-8676-676767676767';
   v_turma1 uuid := '88888888-8888-4888-8888-888888888888';
   v_turma2 uuid := '99999999-9999-4999-8999-999999999999';
   v_parcial uuid := '12121212-1212-4212-8212-121212121212';
@@ -206,6 +208,35 @@ BEGIN
   IF (SELECT count(*) FROM public.audit_logs
       WHERE action='BOLSA_INTEGRAL_ATUALIZADA' AND escola_id=v_escola1) <> 2 THEN
     RAISE EXCEPTION 'FAIL: faltam eventos auditados de ativação/retirada';
+  END IF;
+
+  -- Candidatura ainda grava bolsa legada como desconto 100%.
+  -- O trigger deve normalizar para SSOT e a retirada deve funcionar também.
+  INSERT INTO public.matriculas(id,escola_id,aluno_id,turma_id,ano_letivo,status,
+    percentagem_desconto,motivo_desconto)
+  VALUES(v_mat5,v_escola1,v_aluno5,v_turma1,y,'ativa',100,'Bolsa aprovada na candidatura');
+  IF NOT EXISTS(SELECT 1 FROM public.matriculas
+    WHERE id=v_mat5 AND bolsa_integral AND bolsa_integral_inicio IS NOT NULL) THEN
+    RAISE EXCEPTION 'FAIL: desconto legado de candidatura não foi normalizado em bolsa SSOT';
+  END IF;
+  INSERT INTO public.mensalidades(escola_id,aluno_id,matricula_id,turma_id,ano_letivo,
+    mes_referencia,ano_referencia,data_vencimento,valor,valor_previsto,valor_original,status)
+  VALUES(v_escola1,v_aluno5,v_mat5,v_turma1,y::text,
+    extract(month from d0)::int,extract(year from d0)::int,d0+9,
+    10000,10000,10000,'pendente');
+  IF EXISTS (SELECT 1 FROM public.mensalidades WHERE matricula_id=v_mat5) THEN
+    RAISE EXCEPTION 'FAIL: candidatura criou cobrança apesar da bolsa';
+  END IF;
+  PERFORM public.klasse_definir_bolsa_integral(v_escola1,v_aluno5,v_mat5,false,NULL,d1);
+  IF NOT EXISTS(SELECT 1 FROM public.matriculas WHERE id=v_mat5
+        AND NOT bolsa_integral AND percentagem_desconto=0 AND motivo_desconto IS NULL) THEN
+    RAISE EXCEPTION 'FAIL: retirada da bolsa originada na candidatura não persistiu';
+  END IF;
+  v_extra:=public.gerar_mensalidades_lote(v_escola1,y,extract(month from d1)::int,10,v_turma1);
+  IF v_extra->>'ok'<>'true' OR NOT EXISTS(SELECT 1 FROM public.mensalidades
+      WHERE matricula_id=v_mat5 AND date_trunc('month',data_vencimento)::date=d1
+      AND status='pendente' AND valor=10000) THEN
+    RAISE EXCEPTION 'FAIL: propinas não regressaram após retirada da bolsa de candidatura: %',v_extra;
   END IF;
 
   -- Renovação: uma nova matrícula nunca herda a bolsa do ano precedente.
