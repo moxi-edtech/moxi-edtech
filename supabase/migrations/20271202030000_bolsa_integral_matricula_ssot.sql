@@ -546,6 +546,7 @@ BEGIN
     SELECT
       m.id AS matricula_id,
       COALESCE(m.bolsa_integral, false) AS bolsa_integral,
+      m.bolsa_integral_inicio,
       COALESCE(m.percentagem_desconto, 0) AS percentagem_desconto,
       m.aluno_id,
       m.turma_id,
@@ -680,7 +681,11 @@ BEGIN
       p.tabela_id
     FROM precos p
     WHERE coalesce(p.valor_mensalidade, 0) > 0
-      AND NOT p.bolsa_integral
+      -- Bolsa com início em novembro não apaga a obrigação de setembro:
+      -- geramos os meses ANTERIORES à sua vigência e bloqueamos só os elegíveis.
+      AND NOT (p.bolsa_integral
+         AND make_date(v_ano,v_mes,1) >= coalesce(
+           p.bolsa_integral_inicio, make_date(p_ano_letivo,1,1)))
       AND p.percentagem_desconto < 100
       AND NOT EXISTS (
       SELECT 1 FROM public.mensalidades m2
