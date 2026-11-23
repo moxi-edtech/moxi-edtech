@@ -445,6 +445,21 @@ jobs:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_documentos_emissao_idempotency.sql
 
+      - name: Bootstrap individual document payment contract (PostgreSQL 17)
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/bootstrap_documentos_individuais.sql
+
+      - name: Apply individual document payment migration in isolated database
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271203002000_documentos_individuais_pagamento_ssot.sql
+
+      - name: Individual payment, tenant and reprint regression
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_documentos_individuais_pagamento.sql
+
       - name: Create isolated grade-writer database
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
