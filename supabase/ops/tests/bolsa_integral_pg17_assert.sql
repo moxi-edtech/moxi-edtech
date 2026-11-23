@@ -20,6 +20,7 @@ DECLARE
   v_turma2 uuid := '99999999-9999-4999-8999-999999999999';
   v_parcial uuid := '12121212-1212-4212-8212-121212121212';
   v_fiscal uuid := '13131313-1313-4313-8313-131313131313';
+  v_inconsistente uuid := '24242424-2424-4424-8424-242424242424';
   v_actor1 uuid := 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
   v_denied uuid := 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   v_result jsonb;
@@ -65,6 +66,17 @@ BEGIN
       fiscal_documento_id,status_fiscal)
   VALUES(v_escola1,v_aluno1,v_fiscal,3500,'settled',
         '19191919-1919-4919-8919-191919191919','ok');
+  -- Inconsistência pré-existente: não tomar 5.000 Kz de saldo como liquidados
+  -- quando os pagamentos efetivamente registados somam só 2.500 Kz.
+  INSERT INTO public.mensalidades(id,escola_id,aluno_id,matricula_id,turma_id,ano_letivo,
+      mes_referencia,ano_referencia,data_vencimento,valor,valor_previsto,valor_original,
+      valor_pago_total,status)
+  SELECT v_inconsistente,v_escola1,v_aluno1,v_mat1,v_turma1,y::text,
+         extract(month from d)::int,extract(year from d)::int,d+9,
+         10000,10000,10000,5000,'pago_parcial'
+  FROM (SELECT (d3+interval '2 months')::date AS d) q;
+  INSERT INTO public.pagamentos(escola_id,aluno_id,mensalidade_id,valor_pago,status)
+  VALUES(v_escola1,v_aluno1,v_inconsistente,2500,'settled');
   INSERT INTO public.mensalidades(escola_id,aluno_id,matricula_id,turma_id,ano_letivo,
       mes_referencia,ano_referencia,data_vencimento,valor,valor_previsto,valor_original,status)
   VALUES (v_escola2,v_aluno2,v_mat2,v_turma2,y::text,
@@ -126,6 +138,12 @@ BEGIN
     WHERE id=v_fiscal AND status='pago_parcial' AND valor=10000 AND valor_pago_total=3500)
     OR v_result->>'pendentes_revisao_fiscal' <> '1' THEN
     RAISE EXCEPTION 'FAIL: título fiscalizado foi alterado ou não foi sinalizado';
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.mensalidades
+    WHERE id=v_inconsistente AND status='pago_parcial' AND valor_pago_total=5000
+      AND valor=10000)
+    OR v_result->>'pendentes_revisao_pagamento' <> '1' THEN
+    RAISE EXCEPTION 'FAIL: parcial inconsistente foi liquidado indevidamente';
   END IF;
   IF NOT EXISTS(SELECT 1 FROM public.mensalidades
     WHERE escola_id=v_escola2 AND status='pendente' AND valor=10000) THEN
