@@ -179,6 +179,7 @@ SET search_path TO 'pg_catalog','public'
 AS $$
 DECLARE
   v_inicio date;
+  v_ano_fim date;
 BEGIN
   IF NOT (NEW.bolsa_integral OR coalesce(NEW.percentagem_desconto, 0) >= 100) THEN
     RETURN NEW;
@@ -188,10 +189,10 @@ BEGIN
     NEW.bolsa_integral_inicio,
     date_trunc('month', a.data_inicio)::date,
     make_date(NEW.ano_letivo, 1, 1)
-  ) INTO v_inicio
+  ), a.data_fim INTO v_inicio,v_ano_fim
   FROM (SELECT 1) anchor
   LEFT JOIN LATERAL (
-    SELECT al.data_inicio FROM public.anos_letivos al
+    SELECT al.data_inicio,al.data_fim FROM public.anos_letivos al
     WHERE al.escola_id=NEW.escola_id AND al.ano=NEW.ano_letivo
     ORDER BY al.ativo DESC, al.created_at DESC LIMIT 1
   ) a ON true;
@@ -244,6 +245,11 @@ BEGIN
              AND me.turma_id=NEW.turma_id AND me.ano_letivo=NEW.ano_letivo::text))
        AND date_trunc('month',me.data_vencimento)::date >= v_inicio
        AND me.status='pago_parcial'
+       -- O trigger académico existente zera valores no mês final não-exame:
+       -- nunca processar automaticamente um título com pagamentos nessa competência.
+       AND (v_ano_fim IS NULL
+            OR date_trunc('month',me.data_vencimento)::date < date_trunc('month',v_ano_fim)::date
+            OR public.is_turma_classe_exame(NEW.turma_id))
        AND me.valor_pago_total > 0
        AND me.valor_pago_total < greatest(coalesce(me.valor_previsto,0),me.valor)
        AND me.fiscal_documento_id IS NULL
