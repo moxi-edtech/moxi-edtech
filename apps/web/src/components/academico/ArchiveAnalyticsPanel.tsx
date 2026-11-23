@@ -178,7 +178,7 @@ export default function ArchiveAnalyticsPanel({
         </p>
         {!showFinance ? (
           <button type="button" onClick={() => setShowFinance(true)}
-            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95">
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-klasse-gold-900 hover:brightness-95">
             Consultar resumo financeiro
           </button>
         ) : (
