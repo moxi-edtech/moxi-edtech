@@ -33,7 +33,7 @@ INSERT INTO public.escola_users VALUES
 ('11111111-1111-1111-1111-111111111111','55555555-5555-5555-5555-555555555555','admin','admin');
 INSERT INTO public.teachers VALUES ('33333333-3333-3333-3333-333333333333','11111111-1111-1111-1111-111111111111','44444444-4444-4444-4444-444444444444',NULL,NULL,24);
 INSERT INTO public.profiles(user_id,role,escola_id,email,global_role) VALUES ('44444444-4444-4444-4444-444444444444','professor','11111111-1111-1111-1111-111111111111','professor@example.com','professor');
-\ir ../migrations/20271202010000_teacher_self_profile_and_teacher_write_guards.sql
+\ir ../migrations/20271202020000_teacher_self_profile_and_teacher_write_guards.sql
 SET LOCAL ROLE authenticated;
 SELECT set_config('test.auth_uid','44444444-4444-4444-4444-444444444444',true);
 SELECT set_config('test.school_id','11111111-1111-1111-1111-111111111111',true);
