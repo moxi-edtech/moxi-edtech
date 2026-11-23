@@ -13,6 +13,8 @@ type MatriculaBolsa = {
   bolsa_integral: boolean;
   isencao_outra_politica: boolean;
   motivo: string | null;
+  vigencia_inicio: string | null;
+  bolsa_ano_anterior: number | null;
 };
 
 export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
@@ -24,6 +26,9 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
   const { success, error: notifyError } = useToast();
   const [matricula, setMatricula] = useState<MatriculaBolsa | null>(null);
   const [motivo, setMotivo] = useState("Bolsa integral");
+  const [mesVigencia, setMesVigencia] = useState("");
+  const [confirmando, setConfirmando] = useState(false);
+  const [avisoFiscal, setAvisoFiscal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -34,6 +39,8 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
     const controller = new AbortController();
     setLoading(true);
     setFailed(false);
+    setConfirmando(false);
+    setAvisoFiscal(0);
     fetch(endpoint, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json();
@@ -52,20 +59,32 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
 
   async function toggleBolsa() {
     if (!matricula || saving) return;
+    if (!confirmando) return;
     const next = !matricula.bolseiro;
     setSaving(true);
     try {
       const response = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matricula_id: matricula.id, bolseiro: next, motivo: next ? motivo.trim() || "Bolsa integral" : null }),
+        body: JSON.stringify({
+          matricula_id: matricula.id, bolseiro: next,
+          motivo: next ? motivo.trim() || "Bolsa integral" : null,
+          vigencia_inicio: mesVigencia ? `${mesVigencia}-01` : null,
+        }),
       });
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.error || "Falha ao atualizar");
-      setMatricula((current) => current ? { ...current, bolseiro: next, bolsa_integral: next, motivo: next ? motivo : null } : null);
+      const result = payload.bolsa;
+      setMatricula((current) => current ? { ...current,
+        bolseiro: next, bolsa_integral: next, motivo: next ? motivo : null,
+        vigencia_inicio: next ? result.vigencia_inicio : null,
+      } : null);
+      setAvisoFiscal(Number(result.pendentes_revisao_fiscal ?? 0));
+      setConfirmando(false);
+      setMesVigencia("");
       success("Bolsa atualizada", next
-        ? "Cobranças abertas sem pagamento foram isentadas; novas propinas ficam bloqueadas para esta matrícula."
-        : "A bolsa foi retirada. Cobranças já isentadas e pagamentos históricos foram preservados.");
+        ? `Isenções: ${result.isentas ?? 0}. Saldos parciais quitados: ${result.quitadas_parciais ?? 0}.`
+        : `Cobranças futuras reabertas: ${result.reabertas ?? 0}. Histórico preservado.`);
       router.refresh();
     } catch (e) {
       notifyError("Erro ao atualizar bolsa", e instanceof Error ? e.message : "Tente novamente.");
