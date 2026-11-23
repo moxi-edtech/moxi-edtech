@@ -5,6 +5,7 @@ type AdminAction =
   | "createUser"
   | "inviteUserByEmail"
   | "updateUserById"
+  | "updateTeacherEmail"
   | "upsertProfile"
   | "upsertEscolaUser"
   | "upsertEscolaAdministrador"

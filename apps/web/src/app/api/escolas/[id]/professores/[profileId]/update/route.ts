@@ -3,9 +3,13 @@ import { z } from 'zod'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTeacherManage } from '@/lib/escola/disciplinas'
+import { callAuthAdminJob } from '@/lib/auth-admin-job'
+import { recordAuditServer } from '@/lib/audit'
 
 const UUID = z.string().uuid()
 const BodySchema = z.object({
+  email: z.string().trim().email().max(254).optional(),
+  email_atual: z.string().trim().email().max(254).optional(),
   nome_completo: z.string().trim().min(3, 'Informe o nome completo').max(160),
   genero: z.enum(['M', 'F']),
   data_nascimento: z.string().trim().nullable().optional(),
@@ -46,13 +50,52 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const permission = await authorizeTeacherManage(supabase as any, escolaId, actorId)
     if (!permission.allowed) return NextResponse.json({ ok: false, error: 'Sem permissão para editar professores' }, { status: 403 })
 
-    // A RPC atualiza dados pessoais, perfil e competências na mesma transação.
-    // Nunca remover competências antes de confirmar as novas.
+    // Reject missing targets and invalid school skills before the non-transactional
+    // Auth email step. The final RPC revalidates all relations under its DB lock.
+    const { data: target, error: targetError } = await supabase.from('teachers')
+      .select('id').eq('escola_id', escolaId).eq('profile_id', profileId).maybeSingle()
+    if (targetError) return NextResponse.json({ ok: false, error: 'Não foi possível validar o professor' }, { status: 500 })
+    if (!target) return NextResponse.json({ ok: false, error: 'Professor não encontrado nesta escola' }, { status: 404 })
+    if (uniqueSkills.length) {
+      const { data: validSkills, error: skillsError } = await supabase.from('disciplinas_catalogo')
+        .select('id').eq('escola_id', escolaId).in('id', uniqueSkills)
+      if (skillsError) return NextResponse.json({ ok: false, error: 'Não foi possível validar as disciplinas' }, { status: 500 })
+      if (validSkills?.length !== uniqueSkills.length) {
+        return NextResponse.json({ ok: false, error: 'Uma das disciplinas selecionadas não pertence à escola.' }, { status: 409 })
+      }
+    }
+
+    // E-mail de acesso pertence ao Auth, não à tabela operacional.
+    // Atualizar Auth + espelho do perfil antes da RPC, com compensação em caso de falha.
+    const newEmail = body.email?.toLowerCase()
+    const previousEmail = body.email_atual?.toLowerCase()
+    const needsEmailChange = Boolean(newEmail && newEmail !== previousEmail)
+    if (needsEmailChange && !previousEmail) {
+      return NextResponse.json({ ok: false, error: 'Recarregue o professor antes de alterar o e-mail.' }, { status: 409 })
+    }
+    if (needsEmailChange) {
+      try {
+        await callAuthAdminJob(req, 'updateTeacherEmail', {
+          actorId, escolaId, userId: profileId, email: newEmail, expectedEmail: previousEmail,
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Falha ao alterar e-mail'
+        const friendly = message.includes('EMAIL_SHARED_IDENTITY')
+          ? 'Este professor pertence a mais de uma escola. O e-mail de acesso não pode ser alterado por uma escola isolada.'
+          : message.includes('EMAIL_STALE') ? 'O e-mail foi alterado. Atualize a lista e tente novamente.'
+          : message.includes('EMAIL_IN_USE') ? 'Este e-mail já pertence a outro utilizador.' : message
+        return NextResponse.json({ ok: false, error: friendly, code: message.includes('EMAIL_RECONCILIATION_REQUIRED') ? 'EMAIL_RECONCILIATION_REQUIRED' : undefined }, { status: message.includes('EMAIL_RECONCILIATION_REQUIRED') ? 500 : 409 })
+      }
+    }
+
+    // A RPC atualiza dados pessoais e competências numa única transação.
     const { error } = await (supabase as any).rpc('update_teacher_details_atomic', {
       p_escola_id: escolaId,
       p_profile_id: profileId,
       p_details: {
         ...body,
+        email: undefined,
+        email_atual: undefined,
         data_nascimento: body.data_nascimento || null,
         numero_bi: body.numero_bi || null,
         disciplinas_habilitadas: undefined,
@@ -61,6 +104,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     })
 
     if (error) {
+      if (needsEmailChange) {
+        try {
+          await callAuthAdminJob(req, 'updateTeacherEmail', {
+            actorId, escolaId, userId: profileId, email: previousEmail, expectedEmail: newEmail,
+          })
+        } catch {
+          return NextResponse.json({ ok: false, error: 'O e-mail foi alterado, mas os restantes dados não foram guardados. É necessária reconciliação administrativa.', code: 'EMAIL_RECONCILIATION_REQUIRED' }, { status: 500 })
+        }
+      }
       const msg = String(error.message || '')
       const status = msg.includes('FORBIDDEN') ? 403
         : msg.includes('NOT_FOUND') ? 404
@@ -73,6 +125,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       }, { status })
     }
 
+    await recordAuditServer({
+      escolaId, portal: 'admin_escola', acao: 'PROFESSOR_ATUALIZADO',
+      entity: 'teachers', entityId: profileId,
+      details: { email_alterado: needsEmailChange, actor_id: actorId },
+    })
     return NextResponse.json({ ok: true })
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : 'Erro ao atualizar professor' }, { status: 500 })

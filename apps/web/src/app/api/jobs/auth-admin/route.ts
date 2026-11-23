@@ -11,6 +11,7 @@ type AdminAction =
   | "createUser"
   | "inviteUserByEmail"
   | "updateUserById"
+  | "updateTeacherEmail"
   | "upsertProfile"
   | "upsertEscolaUser"
   | "upsertEscolaAdministrador"
@@ -223,6 +224,83 @@ export async function POST(req: Request) {
         const { data, error } = await admin.auth.admin.updateUserById(userId, attributes);
         if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
         return NextResponse.json({ ok: true, data });
+      }
+      case "updateTeacherEmail": {
+        // Only the authenticated, school-authorized teacher-edit endpoint may request
+        // this action. Recheck actor and target with service role before touching Auth.
+        const { actorId, escolaId, userId, email, expectedEmail } = payload as Record<string, unknown>;
+        const isUuid = (v: unknown) => typeof v === "string" && /^[a-f0-9-]{36}$/i.test(v);
+        const newEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+        if (!isUuid(actorId) || !isUuid(escolaId) || !isUuid(userId) ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail) || newEmail.length > 254 ||
+            typeof expectedEmail !== "string") {
+          return NextResponse.json({ ok: false, error: "Invalid teacher email payload" }, { status: 400 });
+        }
+        const { data: actorLinks, error: actorError } = await admin.from("escola_users")
+          .select("papel,role").eq("escola_id", escolaId as string).eq("user_id", actorId as string).limit(1);
+        if (actorError || !actorLinks?.some((row) =>
+          ["admin", "admin_escola", "admin_secretaria", "admin_secretario", "admin_financeiro", "diretor", "staff_admin", "secretaria", "secretaria_financeiro"].includes(row.papel || row.role || ""))) {
+          return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+        }
+        const { data: teacherLinks, error: teacherError } = await admin.from("teachers")
+          .select("escola_id").eq("profile_id", userId as string);
+        const { data: legacyLinks, error: legacyError } = await admin.from("professores")
+          .select("escola_id").eq("profile_id", userId as string);
+        const { data: schoolLinks, error: schoolError } = await admin.from("escola_users")
+          .select("escola_id").eq("user_id", userId as string);
+        if (teacherError || legacyError || schoolError) {
+          return NextResponse.json({ ok: false, error: "Cannot check teacher memberships" }, { status: 500 });
+        }
+        const schoolIds = new Set([...(teacherLinks || []), ...(legacyLinks || []), ...(schoolLinks || [])].map((r) => r.escola_id));
+        if (!teacherLinks?.some((row) => row.escola_id === escolaId) ||
+            schoolIds.size !== 1 || !schoolIds.has(escolaId as string)) {
+          return NextResponse.json({ ok: false, error: "EMAIL_SHARED_IDENTITY" }, { status: 409 });
+        }
+        const { data: authResult, error: authErr } = await admin.auth.admin.getUserById(userId as string);
+        if (authErr || !authResult?.user?.email) {
+          return NextResponse.json({ ok: false, error: "Teacher auth identity not found" }, { status: 404 });
+        }
+        const oldEmail = authResult.user.email.toLowerCase();
+        if (oldEmail !== expectedEmail.trim().toLowerCase()) {
+          return NextResponse.json({ ok: false, error: "EMAIL_STALE" }, { status: 409 });
+        }
+        if (newEmail === oldEmail) return NextResponse.json({ ok: true, data: { email: newEmail } });
+        const { data: profileBefore, error: profileBeforeError } = await admin.from("profiles")
+          .select("user_id,email,email_auth,email_real")
+          .eq("user_id", userId as string).maybeSingle();
+        if (profileBeforeError || !profileBefore || profileBefore.email?.toLowerCase() !== oldEmail) {
+          return NextResponse.json({ ok: false, error: "EMAIL_STALE" }, { status: 409 });
+        }
+        for (const field of ["email", "email_auth", "email_real"] as const) {
+          const { data: duplicate, error: duplicateErr } = await admin.from("profiles")
+            .select("user_id").eq(field, newEmail).neq("user_id", userId as string).limit(1);
+          if (duplicateErr) return NextResponse.json({ ok: false, error: "Cannot check email uniqueness" }, { status: 500 });
+          if (duplicate?.length) return NextResponse.json({ ok: false, error: "EMAIL_IN_USE" }, { status: 409 });
+        }
+        // Auth Admin is the login authority; profile fields mirror that identity.
+        // Compensation is necessary because the Auth HTTP API and PostgREST are not one transaction.
+        const { error: changeErr } = await admin.auth.admin.updateUserById(userId as string, {
+          email: newEmail, email_confirm: true,
+        });
+        if (changeErr) return NextResponse.json({ ok: false, error: changeErr.message }, { status: 409 });
+        // Only synchronize existing aliases that actually followed Auth.
+        // email_real can be a separate contact address; never erase unrelated data.
+        const mirrorFields: { email: string; email_auth?: string; email_real?: string } = { email: newEmail };
+        if (profileBefore.email_auth?.toLowerCase() === oldEmail) mirrorFields.email_auth = newEmail;
+        if (profileBefore.email_real?.toLowerCase() === oldEmail) mirrorFields.email_real = newEmail;
+        const { data: mirrored, error: mirrorErr } = await admin.from("profiles")
+          .update(mirrorFields)
+          .eq("user_id", userId as string).eq("email", oldEmail)
+          .select("user_id,email").maybeSingle();
+        if (mirrorErr || mirrored?.email?.toLowerCase() !== newEmail) {
+          const { error: rollbackErr } = await admin.auth.admin.updateUserById(userId as string, {
+            email: oldEmail, email_confirm: true,
+          });
+          return NextResponse.json({
+            ok: false, error: rollbackErr ? "EMAIL_RECONCILIATION_REQUIRED" : "EMAIL_MIRROR_FAILED",
+          }, { status: 500 });
+        }
+        return NextResponse.json({ ok: true, data: { email: newEmail } });
       }
       case "upsertProfile": {
         const { profile, onConflict } = payload as {

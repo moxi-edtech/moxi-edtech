@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
@@ -8,6 +9,10 @@ type DisciplinaItem = { id: string; nome: string };
 
 type ProfilePayload = {
   nome_completo: string | null;
+  email: string | null;
+  bio: string | null;
+  naturalidade: string | null;
+  provincia: string | null;
   genero: string | null;
   data_nascimento: string | null;
   numero_bi: string | null;
@@ -21,11 +26,21 @@ type ProfilePayload = {
 };
 
 export default function ProfessorPerfilPage() {
+  const routeParams = useParams<{ id?: string }>();
+  const schoolParam = typeof routeParams?.id === "string" ? routeParams.id : null;
+  const endpoint = schoolParam
+    ? `/api/professor/profile?escola_id=${encodeURIComponent(schoolParam)}`
+    : "/api/professor/profile";
   const [loading, setLoading] = useState(true);
   const [disciplinas, setDisciplinas] = useState<DisciplinaItem[]>([]);
-  const { error } = useToast();
+  const { success, error } = useToast();
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<ProfilePayload>({
     nome_completo: null,
+    email: null,
+    bio: null,
+    naturalidade: null,
+    provincia: null,
     genero: null,
     data_nascimento: null,
     numero_bi: null,
@@ -42,7 +57,7 @@ export default function ProfessorPerfilPage() {
     let active = true;
     const load = async () => {
       setLoading(true);
-      const res = await fetch("/api/professor/profile", { cache: "no-store" });
+      const res = await fetch(endpoint, { cache: "no-store" });
       const json = await res.json().catch(() => null);
       if (!active) return;
       if (res.ok && json?.ok) {
@@ -57,7 +72,34 @@ export default function ProfessorPerfilPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [endpoint]);
+
+  const savePersonal = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          telefone_principal: form.telefone_principal || null,
+          bio: form.bio || null,
+          naturalidade: form.naturalidade || null,
+          provincia: form.provincia || null,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) throw new Error(data?.error || "Falha ao guardar os dados");
+      setForm((previous) => ({ ...previous, ...data.profile }));
+      success("Dados pessoais guardados.");
+    } catch (cause) {
+      error(cause instanceof Error ? cause.message : "Falha ao guardar os dados");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputClass = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -65,7 +107,7 @@ export default function ProfessorPerfilPage() {
         <div>
           <DashboardHeader
             title="Perfil do Professor"
-            description="Consulte seus dados e disponibilidade cadastrados."
+            description="Consulte o cadastro e atualize os seus contactos pessoais."
             breadcrumbs={[
               { label: "Início", href: "/" },
               { label: "Professor", href: "/professor" },
@@ -102,9 +144,35 @@ export default function ProfessorPerfilPage() {
                   <div className="text-sm font-semibold text-foreground">{form.data_nascimento || "—"}</div>
                 </div>
               </div>
-              <div>
-                <div className="text-xs text-muted-foreground">Telefone</div>
-                <div className="text-sm font-semibold text-foreground">{form.telefone_principal || "—"}</div>
+              <div className="space-y-3 border-t border-border pt-4">
+                <p className="text-sm font-semibold text-foreground">Pode atualizar</p>
+                <label className="block space-y-1">
+                  <span className="text-xs text-muted-foreground">Telefone</span>
+                  <input className={inputClass} type="tel" maxLength={40} value={form.telefone_principal || ""}
+                    onChange={(event) => setForm((previous) => ({ ...previous, telefone_principal: event.target.value }))} />
+                </label>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="block space-y-1">
+                    <span className="text-xs text-muted-foreground">Naturalidade</span>
+                    <input className={inputClass} maxLength={120} value={form.naturalidade || ""}
+                      onChange={(event) => setForm((previous) => ({ ...previous, naturalidade: event.target.value }))} />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs text-muted-foreground">Província</span>
+                    <input className={inputClass} maxLength={120} value={form.provincia || ""}
+                      onChange={(event) => setForm((previous) => ({ ...previous, provincia: event.target.value }))} />
+                  </label>
+                </div>
+                <label className="block space-y-1">
+                  <span className="text-xs text-muted-foreground">Apresentação pessoal</span>
+                  <textarea className={inputClass} rows={3} maxLength={1000} value={form.bio || ""}
+                    onChange={(event) => setForm((previous) => ({ ...previous, bio: event.target.value }))} />
+                </label>
+                <div className="text-xs text-muted-foreground">E-mail de acesso: {form.email || "—"}. Para alterá-lo, contacte a gestão da escola. Nome, BI e vínculo são validados pela escola.</div>
+                <button type="button" disabled={saving} onClick={savePersonal}
+                  className="min-h-11 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60">
+                  {saving ? "A guardar…" : "Guardar os meus dados"}
+                </button>
               </div>
             </section>
 
