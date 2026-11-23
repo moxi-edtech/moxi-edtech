@@ -275,7 +275,7 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
     const anoLetivo = String(anoLetivoNum);
 
     const [{ data: matriculas }] = await Promise.all([
-      client.from('matriculas').select('id, aluno_id, data_inicio_financeiro, data_matricula, created_at')
+      client.from('matriculas').select('id, aluno_id, data_inicio_financeiro, data_matricula, created_at, percentagem_desconto, bolsa_integral')
         .eq('escola_id', escolaId).eq('turma_id', turmaId).eq('ano_letivo', anoLetivoNum)
         .in('aluno_id', alunoIds).in('status', ['ativo', 'ativa', 'active']),
 
@@ -311,6 +311,10 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
     const today = new Date();
     const rows: any[] = [];
     for (const matricula of matriculas as any[]) {
+      // SSOT financeiro: o benefício pertence à matrícula do ano, não à turma.
+      const descontoPercentual = Math.max(0, Math.min(100, Number(matricula.percentagem_desconto ?? 0)));
+      if (matricula.bolsa_integral === true || descontoPercentual === 100) continue;
+
       const enrollmentDate = new Date(matricula.data_inicio_financeiro || matricula.data_matricula || matricula.created_at || dataInicioSess);
       const baseStart = new Date(Math.max(mesInicio.getTime(), enrollmentDate.getTime()));
       const startMonth = gerarTodas ? new Date(baseStart.getFullYear(), baseStart.getMonth(), 1) : new Date(Math.max(baseStart.getTime(), new Date(today.getFullYear(), today.getMonth(), 1).getTime()));
@@ -330,6 +334,8 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
           const remainingDays = Math.max(0, daysInMonth - today.getDate() + 1);
           valorMes = Math.max(0, Math.round(((valorMes * remainingDays) / daysInMonth) * 100) / 100);
         }
+        const valorFinal = Math.max(0, Math.round(valorMes * (100 - descontoPercentual)) / 100);
+        const descontoAplicado = Math.max(0, Math.round((valorMes - valorFinal) * 100) / 100);
         rows.push({
           escola_id: escolaId,
           aluno_id: matricula.aluno_id,
@@ -338,7 +344,10 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
           ano_letivo: anoLetivo,
           mes_referencia: mes,
           ano_referencia: ano,
-          valor_previsto: valorMes,
+          valor_original: valorMes,
+          desconto_aplicado: descontoAplicado,
+          valor: valorFinal,
+          valor_previsto: valorFinal,
           data_vencimento: venc.toISOString().slice(0, 10),
           status: 'pendente',
           tabela_id: tabelaId,
