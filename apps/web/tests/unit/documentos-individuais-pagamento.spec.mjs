@@ -14,9 +14,9 @@ test("emissão individual exige pagamento no backend e não confia no frontend",
 });
 
 test("estado financeiro vincula matrícula, ano, serviço e autorização", () => {
-  const route = src("app/api/secretaria/documentos/individual/route.ts");
-  assert.match(route, /action: z\.enum\(\["status", "solicitar"\]\)/);
-  assert.match(route, /\.eq\("session_id", academicContext\.anoLetivoId\)/);
+  const route = src("app/api/secretaria/documentos/emitir/route.ts");
+  assert.match(route, /action: z\\.enum\\(\\["status", "solicitar", "emitir"\\]\\)/);
+  assert.match(route, /\.eq\("session_id", academicContext!\.anoLetivoId\)/);
   assert.match(route, /documento_individual_acesso/);
   assert.match(migration, /pg\.status = 'settled'/);
   assert.match(migration, /pg\.meta->>'pagamento_intent_id' = v_intent\.id::text/);
@@ -33,7 +33,7 @@ test("registro de TPA/transferência não auto-liquida por origem do cliente", (
 
 test("impressão falhada e reimpressão não passam pelo pagamento", () => {
   const hub = src("components/secretaria/DocumentosEmissaoHubClient.tsx");
-  const api = src("app/api/secretaria/documentos/individual/route.ts");
+  const api = src("app/api/secretaria/documentos/emitir/route.ts");
   assert.match(hub, /Imprimir novamente/);
   assert.match(hub, /setDocumentState\(\{\s*\.\.\.documentState, status: "issued"/);
   assert.match(api, /status: "issued", granted: true/);
