@@ -14,7 +14,8 @@ type Item = {
   id: string;
   competencia: string;
   valor: number;
-  status: "pago" | "pendente" | "atrasado" | "em_verificacao";
+  status: "pago" | "pendente" | "atrasado" | "em_verificacao" | "isento" | "cancelado" | "pago_parcial";
+  bolsa_isencao_integral?: boolean;
   recibo_id?: string | null;
 };
 type Movimento = {
@@ -39,6 +40,7 @@ type DadosPagamento = {
 type ApiResponse = {
   ok: boolean;
   mensalidades: Array<Omit<Item, "status"> & { status: string }>;
+  bolsas?: Array<{ ano_letivo: number; vigencia_inicio: string | null }>;
   servicos?: AlunoServicoFinanceiro[];
   movimentos: Movimento[];
   resumo: {
@@ -52,6 +54,7 @@ type ApiResponse = {
 };
 type ParsedFinanceiroPayload = {
   rows: Item[];
+  bolsas: Array<{ ano_letivo: number; vigencia_inicio: string | null }>;
   movimentos: Movimento[];
   resumo: ApiResponse["resumo"];
   comprovativoStatus: ComprovativoStatus | null;
@@ -63,6 +66,9 @@ const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA
 
 function normalizeStatus(value: string): Item["status"] {
   if (value === "pago") return "pago";
+  if (value === "isento") return "isento";
+  if (value === "cancelado") return "cancelado";
+  if (value === "pago_parcial") return "pago_parcial";
   if (value === "em_verificacao") return "em_verificacao";
   if (value === "atrasado") return "atrasado";
   return "pendente";
@@ -81,6 +87,7 @@ export function TabFinanceiro() {
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Item[]>([]);
+  const [bolsas, setBolsas] = useState<Array<{ ano_letivo: number; vigencia_inicio: string | null }>>([]);
   const [movimentos, setMovimentos] = useState<Movimento[]>([]);
   const [resumo, setResumo] = useState<ApiResponse["resumo"] | null>(null);
   const [comprovativoStatus, setComprovativoStatus] = useState<ComprovativoStatus | null>(null);
@@ -115,6 +122,7 @@ export function TabFinanceiro() {
       const mapped = (json.mensalidades ?? []).map((m) => ({ ...m, status: normalizeStatus(m.status) }));
       return {
         rows: mapped,
+        bolsas: json.bolsas ?? [],
         movimentos: json.movimentos ?? [],
         resumo: json.resumo,
         comprovativoStatus: json.comprovativo_status ?? null,
@@ -124,6 +132,11 @@ export function TabFinanceiro() {
     },
     onData: (data) => {
       setRows(data.rows);
+      setBolsas(data.bolsas);
+      setSelectedIds(ids => ids.filter(id => data.rows.some(row =>
+        row.id === id && row.valor > 0 &&
+        ["pendente", "atrasado", "pago_parcial"].includes(row.status)
+      )));
       setMovimentos(data.movimentos);
       setResumo(data.resumo);
       setComprovativoStatus(data.comprovativoStatus);
@@ -134,7 +147,8 @@ export function TabFinanceiro() {
   });
 
   const sortedMensalidades = useMemo(() => [...rows].sort((a, b) => b.competencia.localeCompare(a.competencia)), [rows]);
-  const selectedMensalidades = useMemo(() => rows.filter((item) => selectedIds.includes(item.id)), [rows, selectedIds]);
+  const selectedMensalidades = useMemo(() => rows.filter((item) => selectedIds.includes(item.id)
+    && item.valor > 0 && ["pendente", "atrasado", "pago_parcial"].includes(item.status)), [rows, selectedIds]);
   const selectedTotal = useMemo(() => selectedMensalidades.reduce((sum, item) => sum + item.valor, 0), [selectedMensalidades]);
 
   const refresh = async () => {
@@ -159,6 +173,24 @@ export function TabFinanceiro() {
           {refreshing ? "A atualizar..." : "Atualizar"}
         </button>
       </div>
+
+      {bolsas.length > 0 && (
+        <section aria-label="Situação da bolsa de estudo" className="flex items-start gap-3 rounded-xl border border-border bg-card p-4">
+          <Check className="mt-0.5 h-5 w-5 shrink-0 text-klasse-green" aria-hidden="true" />
+          <div>
+            <p className="text-sm font-semibold text-klasse-green">Bolsa integral de estudo</p>
+            {bolsas.map(bolsa => (
+              <p key={bolsa.ano_letivo} className="mt-1 text-sm text-foreground">
+                Ano letivo {bolsa.ano_letivo}/{bolsa.ano_letivo + 1}
+                {bolsa.vigencia_inicio ? ` · Desde ${bolsa.vigencia_inicio.slice(0, 7)}` : ""}
+              </p>
+            ))}
+            <p className="mt-1 text-xs text-muted-foreground">
+              As propinas cobertas pela bolsa são isentas. Valores anteriores à vigência ou outros serviços podem continuar devidos.
+            </p>
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
