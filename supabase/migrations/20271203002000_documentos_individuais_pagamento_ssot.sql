@@ -258,4 +258,83 @@ GRANT EXECUTE ON FUNCTION public.emitir_documento_final_individual(uuid,uuid,int
 REVOKE ALL ON FUNCTION public.emitir_documento_final_idempotente(uuid,uuid,integer,text,text) FROM PUBLIC, authenticated;
 GRANT EXECUTE ON FUNCTION public.emitir_documento_final_idempotente(uuid,uuid,integer,text,text) TO service_role;
 
+
+-- Duas sessões não devem liquidar a mesma intenção duas vezes.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_pagamento_documento_individual_intent
+ON public.pagamentos (escola_id, (meta->>'pagamento_intent_id'))
+WHERE meta->>'origem' = 'documentos_emissao_individual'
+  AND status <> 'voided'
+  AND meta->>'pagamento_intent_id' IS NOT NULL;
+
+-- O ledger financeiro é a fonte de verdade: uma conciliação posterior de TPA
+-- ou transferência desbloqueia exatamente o pedido associado, sem novo checkout.
+CREATE OR REPLACE FUNCTION public.documento_individual_sync_pagamento()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $
+DECLARE
+  v_pedido public.servico_pedidos%ROWTYPE;
+  v_intent public.pagamento_intents%ROWTYPE;
+  v_intent_id uuid;
+BEGIN
+  IF NEW.meta->>'origem' IS DISTINCT FROM 'documentos_emissao_individual'
+     OR NEW.meta->>'pagamento_intent_id' IS NULL
+     OR NEW.meta->>'pedido_id' IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  BEGIN
+    v_intent_id := (NEW.meta->>'pagamento_intent_id')::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN
+    RAISE EXCEPTION 'DOCUMENT_PAYMENT_INVALID_INTENT: referência inválida';
+  END;
+
+  SELECT * INTO v_intent FROM public.pagamento_intents
+  WHERE id = v_intent_id AND escola_id = NEW.escola_id
+    AND aluno_id = NEW.aluno_id FOR UPDATE;
+  IF v_intent.id IS NULL OR v_intent.servico_pedido_id::text IS DISTINCT FROM NEW.meta->>'pedido_id' THEN
+    RAISE EXCEPTION 'DOCUMENT_PAYMENT_INVALID_INTENT: intenção fora da solicitação';
+  END IF;
+
+  SELECT * INTO v_pedido FROM public.servico_pedidos
+  WHERE id = v_intent.servico_pedido_id AND escola_id = NEW.escola_id
+    AND aluno_id = NEW.aluno_id FOR UPDATE;
+  IF v_pedido.id IS NULL
+     OR v_pedido.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual'
+     OR v_pedido.status NOT IN ('pending_payment','granted')
+     OR v_pedido.servico_codigo IS DISTINCT FROM NEW.meta->>'servico_codigo'
+     OR v_intent.amount <> v_pedido.valor_cobrado
+     OR NEW.valor_pago <> v_intent.amount
+     OR NEW.mensalidade_id IS NOT NULL THEN
+    RAISE EXCEPTION 'DOCUMENT_PAYMENT_INVALID_AMOUNT: serviço, valor ou pedido inválido';
+  END IF;
+
+  -- O guard do boletim exige draft -> pending -> settled.
+  IF v_intent.status = 'draft' THEN
+    UPDATE public.pagamento_intents
+    SET status = 'pending', method = NEW.metodo, reference = NEW.reference,
+        evidence_url = NEW.evidence_url
+    WHERE id = v_intent.id;
+  END IF;
+
+  IF NEW.status = 'settled' THEN
+    UPDATE public.pagamento_intents
+    SET status = 'settled', settled_at = coalesce(NEW.settled_at, now())
+    WHERE id = v_intent.id AND status = 'pending';
+
+    UPDATE public.servico_pedidos
+    SET status = 'granted'
+    WHERE id = v_pedido.id AND status = 'pending_payment';
+  END IF;
+  RETURN NEW;
+END;
+$;
+
+DROP TRIGGER IF EXISTS trg_documento_individual_payment_sync ON public.pagamentos;
+CREATE TRIGGER trg_documento_individual_payment_sync
+AFTER INSERT OR UPDATE OF status ON public.pagamentos
+FOR EACH ROW EXECUTE FUNCTION public.documento_individual_sync_pagamento();
+
 COMMIT;
