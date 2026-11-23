@@ -50,3 +50,36 @@ test("RPC do aluno não faz fallback para ano diferente", () => {
   assert.doesNotMatch(migration, /ORDER BY ano_letivo DESC, id DESC LIMIT 1/);
   assert.match(migration, /AND ano_letivo = p_ano_letivo/);
 });
+
+test("certificado não cobra nem emite quando histórico fechado não tem notas", () => {
+  const eligibility = src("lib/documentos/certificadoElegibilidade.ts");
+  const api = src("app/api/secretaria/documentos/emitir/route.ts");
+  const client = src("components/secretaria/DocumentosEmissaoHubClient.tsx");
+  assert.match(eligibility, /snapshot_status !== "fechado"/);
+  assert.match(eligibility, /disciplinas.length === 0/);
+  assert.match(eligibility, /raw == null \|\| raw === ""/);
+  assert.match(eligibility, /nota < 0 \|\| nota > 20/);
+  assert.match(api, /verificarCertificadoElegivel/);
+  assert.match(api, /Abrir Reconciliação Histórica/);
+  assert.match(client, /errorAction\.href/);
+});
+
+test("impressão nunca exibe diploma oficial com notas ocultas por erro de leitura", () => {
+  const print = src("app/aluno/documentos/[docId]/_final/FinalDocumentPrint.tsx");
+  const builder = src("lib/documentos/certificadoSnapshot.ts");
+  const portal = src("app/api/aluno/documentos/emitir/route.ts");
+  assert.match(print, /if \(certificadoPendente\)/);
+  assert.match(print, /certificado\.disciplinas\.length === 0/);
+  assert.match(builder, /throw new Error\("Não foi possível carregar as fontes oficiais do certificado/);
+  assert.match(builder, /source\.year === targetYear/);
+  assert.match(portal, /verificarCertificadoElegivel/);
+});
+
+test("RPCs impedem emissão e cobrança sem notas antes da impressão", () => {
+  const fs = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271203002000_documentos_individuais_pagamento_ssot.sql"), "utf8");
+  const student = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271203001000_exact_year_aluno_documento_final.sql"), "utf8");
+  assert.match(fs, /IF p_tipo = 'certificado' THEN/);
+  assert.match(fs, /NOTAS_INEXISTENTES/);
+  assert.match(fs, /NOTAS_INCOMPLETAS/);
+  assert.match(student, /CERTIFICADO_NOTAS_INCOMPLETAS/);
+});
