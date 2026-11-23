@@ -72,8 +72,8 @@ export function StepCargas({ escolaId, turmaId, onComplete }: StepCargasProps) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
-        <h3 className="text-lg font-black text-slate-900">Turma não selecionada</h3>
-        <p className="text-sm text-slate-500 max-w-xs mx-auto mt-2">
+        <h3 className="text-lg font-black text-foreground">Turma não selecionada</h3>
+        <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-2">
           Selecione uma turma no quadro de horários para configurar as cargas horárias.
         </p>
       </div>
@@ -85,38 +85,38 @@ export function StepCargas({ escolaId, turmaId, onComplete }: StepCargasProps) {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center gap-4 mb-8">
-        <div className="p-4 rounded-2xl bg-white shadow-sm border border-slate-100">
+        <div className="p-4 rounded-2xl bg-card shadow-sm border border-border">
           <BookOpen className="h-8 w-8 text-amber" />
         </div>
         <div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">Cargas Horárias</h2>
-          <p className="text-sm text-slate-500">Confirme quantas aulas por semana cada disciplina deve ter.</p>
+          <h2 className="text-xl font-black text-foreground tracking-tight">Cargas Horárias</h2>
+          <p className="text-sm text-muted-foreground">Confirme quantas aulas por semana cada disciplina deve ter.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-2">Matriz Curricular da Turma</h3>
+          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-2">Matriz Curricular da Turma</h3>
           
           {loading ? (
             <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-16 w-full rounded-2xl bg-slate-50 animate-pulse" />)}
+              {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-16 w-full rounded-2xl bg-muted animate-pulse" />)}
             </div>
           ) : disciplinas.length === 0 ? (
-            <div className="p-10 rounded-3xl border border-dashed border-slate-200 text-center text-slate-400 italic">
+            <div className="p-10 rounded-3xl border border-dashed border-border text-center text-muted-foreground italic">
               Nenhuma disciplina encontrada para esta turma.
             </div>
           ) : (
             <div className="space-y-3">
               {disciplinas.map(disc => (
-                <div key={disc.id} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                <div key={disc.id} className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center">
-                      <BookOpen className="h-5 w-5 text-slate-400" />
+                    <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center">
+                      <BookOpen className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">{disc.nome}</p>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <p className="text-sm font-bold text-foreground">{disc.nome}</p>
+                      <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                         {disc.carga_horaria_semanal || 0} aulas por semana
                       </p>
                     </div>
@@ -141,7 +141,7 @@ export function StepCargas({ escolaId, turmaId, onComplete }: StepCargasProps) {
                         setEditingId(disc.id);
                         setEditValue(String(disc.carga_horaria_semanal || 0));
                       }}
-                      className="p-2 text-slate-300 hover:text-amber hover:bg-amber/5 rounded-lg transition-all"
+                      className="p-2 text-muted-foreground hover:text-amber hover:bg-amber/5 rounded-lg transition-all"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -154,7 +154,7 @@ export function StepCargas({ escolaId, turmaId, onComplete }: StepCargasProps) {
 
         {/* Resumo */}
         <div className="space-y-6">
-          <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl">
+          <div className="bg-klasse-dark rounded-xl p-6 text-white shadow-xl">
             <h3 className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-4">Resumo da Matriz</h3>
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-4xl font-black">{totalAulas}</span>

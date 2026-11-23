@@ -200,7 +200,7 @@ export default function RotinasPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 p-6 space-y-6">
+    <div className="min-h-screen bg-muted text-foreground p-6 space-y-6">
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -208,14 +208,14 @@ export default function RotinasPage() {
             <SvgIcons.calendar />
           </div>
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900">Rotinas (Horários)</h2>
-            <p className="text-sm text-gray-600">Gerencie os horários das turmas</p>
+            <h2 className="text-2xl font-semibold text-foreground">Rotinas (Horários)</h2>
+            <p className="text-sm text-muted-foreground">Gerencie os horários das turmas</p>
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground hover:bg-muted transition-all duration-200 shadow-sm"
           >
             <SvgIcons.back />
             <span>Voltar</span>
@@ -223,7 +223,7 @@ export default function RotinasPage() {
           <select
             value={classeFiltro}
             onChange={(e) => setClasseFiltro(e.target.value)}
-            className="px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200 shadow-sm"
+            className="px-4 py-2.5 rounded-xl bg-card border border-border text-foreground focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200 shadow-sm"
           >
             <option value="1A">Classe 1 • Seção A</option>
             <option value="1B">Classe 1 • Seção B</option>
@@ -231,7 +231,7 @@ export default function RotinasPage() {
           </select>
           <button
             onClick={exportar}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground hover:bg-muted transition-all duration-200 shadow-sm"
           >
             <SvgIcons.download />
             <span>Exportar</span>
@@ -254,16 +254,16 @@ export default function RotinasPage() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Formulário */}
-        <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-3 border-b border-gray-200">Criar novo horário</h3>
+        <section className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-foreground mb-6 pb-3 border-b border-border">Criar novo horário</h3>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Classe</label>
+                <label className="text-sm font-medium text-foreground">Classe</label>
                 <select
                   value={classe}
                   onChange={(e) => setClasse(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-300 text-gray-800 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
+                  className="w-full px-4 py-2.5 rounded-xl bg-muted border border-border text-foreground focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
                 >
                   <option value="1">Classe 1</option>
                   <option value="2">Classe 2</option>
@@ -271,11 +271,11 @@ export default function RotinasPage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Seção</label>
+                <label className="text-sm font-medium text-foreground">Seção</label>
                 <select
                   value={secao}
                   onChange={(e) => setSecao(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-300 text-gray-800 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
+                  className="w-full px-4 py-2.5 rounded-xl bg-muted border border-border text-foreground focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
                 >
                   <option value="A">Seção A</option>
                   <option value="B">Seção B</option>
@@ -285,22 +285,22 @@ export default function RotinasPage() {
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Disciplina/Curso</label>
+              <label className="text-sm font-medium text-foreground">Disciplina/Curso</label>
               <input
                 value={curso}
                 onChange={(e) => setCurso(e.target.value)}
                 placeholder="Ex.: English 1st paper"
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-300 text-gray-800 placeholder-gray-500 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
+                className="w-full px-4 py-2.5 rounded-xl bg-muted border border-border text-foreground placeholder-gray-500 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Dia da semana</label>
+              <label className="text-sm font-medium text-foreground">Dia da semana</label>
               <select
                 value={dia}
                 onChange={(e) => setDia(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-300 text-gray-800 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
+                className="w-full px-4 py-2.5 rounded-xl bg-muted border border-border text-foreground focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
               >
                 {dias.map((d) => (
                   <option key={d} value={d}>{d}</option>
@@ -310,32 +310,32 @@ export default function RotinasPage() {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Início</label>
+                <label className="text-sm font-medium text-foreground">Início</label>
                 <input
                   type="time"
                   value={inicio}
                   onChange={(e) => setInicio(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-300 text-gray-800 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
+                  className="w-full px-4 py-2.5 rounded-xl bg-muted border border-border text-foreground focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Fim</label>
+                <label className="text-sm font-medium text-foreground">Fim</label>
                 <input
                   type="time"
                   value={fim}
                   onChange={(e) => setFim(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-300 text-gray-800 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
+                  className="w-full px-4 py-2.5 rounded-xl bg-muted border border-border text-foreground focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
                 />
               </div>
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Professor (opcional)</label>
+              <label className="text-sm font-medium text-foreground">Professor (opcional)</label>
               <input
                 value={prof}
                 onChange={(e) => setProf(e.target.value)}
                 placeholder="Ex.: Prof. Domingos Xpragata"
-                className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-300 text-gray-800 placeholder-gray-500 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
+                className="w-full px-4 py-2.5 rounded-xl bg-muted border border-border text-foreground placeholder-gray-500 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all duration-200"
               />
             </div>
             
@@ -343,7 +343,7 @@ export default function RotinasPage() {
               <button
                 type="submit"
                 disabled={isSubmitting || !curso.trim()}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-slate-600 hover:from-sky-700 hover:to-slate-700 text-white font-medium disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-slate-600 hover:from-sky-700 hover:to-slate-700 text-white font-medium disabled:from-muted disabled:to-muted disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
               >
                 {isSubmitting ? (
                   <>
@@ -360,7 +360,7 @@ export default function RotinasPage() {
               <button
                 type="button"
                 onClick={clearForm}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground hover:bg-muted transition-all duration-200 shadow-sm"
               >
                 <SvgIcons.clear />
                 <span>Limpar</span>
@@ -370,31 +370,31 @@ export default function RotinasPage() {
         </section>
 
         {/* Quadro da turma */}
-        <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-6 pb-3 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Quadro de Horários - {classeFiltro}</h3>
-            <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+        <section className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6 pb-3 border-b border-border">
+            <h3 className="text-lg font-semibold text-foreground">Quadro de Horários - {classeFiltro}</h3>
+            <span className="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full">
               {Object.values(store[classeFiltro] || {}).flat().length} horários
             </span>
           </div>
           
           <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
             {dias.map((d) => (
-              <div key={d} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                <div className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              <div key={d} className="bg-muted rounded-xl p-4 border border-border">
+                <div className="font-semibold text-foreground mb-3 flex items-center gap-2">
                   <div className="w-2 h-2 bg-sky-500 rounded-full"></div>
                   {d}
                 </div>
                 <div className="space-y-2">
                   {(store[classeFiltro]?.[d] || []).length === 0 ? (
-                    <div className="text-center py-4 text-gray-500 text-sm">
+                    <div className="text-center py-4 text-muted-foreground text-sm">
                       Nenhum horário cadastrado para este dia
                     </div>
                   ) : (
                     (store[classeFiltro]?.[d] || []).map((slot) => (
                       <div
                         key={slot.id}
-                        className="group relative bg-gradient-to-r from-sky-50 to-slate-50 rounded-lg border border-sky-200 p-3 hover:from-sky-100 hover:to-slate-100 transition-all duration-200"
+                        className="group relative bg-gradient-to-r from-sky-50 to-muted rounded-lg border border-sky-200 p-3 hover:from-sky-100 hover:to-muted transition-all duration-200"
                       >
                         <button
                           onClick={() => handleDeleteSlot(d, slot.id)}
@@ -404,13 +404,13 @@ export default function RotinasPage() {
                           <SvgIcons.trash />
                         </button>
                         
-                        <div className="font-semibold text-gray-900 pr-8">{slot.name}</div>
+                        <div className="font-semibold text-foreground pr-8">{slot.name}</div>
                         <div className="flex items-center gap-4 mt-1">
                           <span className="text-xs text-sky-700 bg-sky-100 px-2 py-1 rounded-full">
                             {slot.start} – {slot.end}
                           </span>
                           {slot.teacher && slot.teacher !== "—" && (
-                            <span className="text-xs text-gray-600">{slot.teacher}</span>
+                            <span className="text-xs text-muted-foreground">{slot.teacher}</span>
                           )}
                         </div>
                       </div>

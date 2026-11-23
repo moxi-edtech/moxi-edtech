@@ -9,7 +9,7 @@ export default function ViradaWizardPage() {
       <AuditPageView portal="admin_escola" acao="PAGE_VIEW" entity="virada_ano_wizard" />
       
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">
           Fechamento & Virada de Ano
         </h1>
       </div>

@@ -383,7 +383,7 @@ export function GradeEntryGrid({
         header: "Nº",
         size: 40,
         cell: (info) => (
-          <span className="font-mono text-slate-400 text-xs font-bold">{info.getValue()}</span>
+          <span className="font-mono text-muted-foreground text-xs font-bold">{info.getValue()}</span>
         ),
       }),
       columnHelper.accessor("nome", {
@@ -394,7 +394,7 @@ export function GradeEntryGrid({
             <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black flex items-center justify-center shrink-0">
               {info.getValue().charAt(0)}
             </div>
-            <span className="font-bold text-slate-900 text-xs truncate max-w-[200px]">{info.getValue()}</span>
+            <span className="font-bold text-foreground text-xs truncate max-w-[200px]">{info.getValue()}</span>
           </div>
         ),
       }),
@@ -409,7 +409,7 @@ export function GradeEntryGrid({
                 checked={!!info.getValue()}
                 disabled={readOnly}
                 onChange={(e) => updateIsento(info.row.index, e.target.checked)}
-                className="rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded border-border text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
                 title="Marcar como isento neste trimestre"
               />
             </div>
@@ -461,9 +461,9 @@ export function GradeEntryGrid({
             size: 80,
             cell: (info) => {
               const val = info.getValue()
-              if (val === null) return <span className="text-slate-300 font-bold">—</span>
+              if (val === null) return <span className="text-muted-foreground/60 font-bold">—</span>
 
-              let style = "text-slate-700 bg-slate-100"
+              let style = "text-foreground bg-muted"
               if (val >= notaMaxima * 0.7) style = "text-emerald-700 bg-emerald-50 border border-emerald-200/80"
               else if (val >= notaCorte) style = "text-amber-800 bg-amber-50 border border-amber-200/80"
               else if (val >= notaCorte * 0.8) style = "text-orange-800 bg-orange-50 border border-orange-200/80"
@@ -499,11 +499,11 @@ export function GradeEntryGrid({
   if (studentMode && data[0]) {
     const row = data[0]
     return (
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
           <div>
-            <h3 className="text-sm font-black text-slate-900">{title}</h3>
-            {subtitle ? <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p> : null}
+            <h3 className="text-sm font-black text-foreground">{title}</h3>
+            {subtitle ? <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p> : null}
           </div>
           <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${savingIndicator.tone}`}>
             {savingIndicator.icon}
@@ -513,10 +513,10 @@ export function GradeEntryGrid({
 
         <div className="space-y-4 p-4">
           {showIsento ? (
-            <label className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
+            <label className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted px-3.5 py-3">
               <div>
-                <p className="text-sm font-bold text-slate-900">Isento neste trimestre</p>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="text-sm font-bold text-foreground">Isento neste trimestre</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   Use apenas quando o aluno estiver formalmente isento da avaliação.
                 </p>
               </div>
@@ -525,15 +525,15 @@ export function GradeEntryGrid({
                 checked={!!row.is_isento}
                 disabled={readOnly}
                 onChange={(event) => updateIsento(0, event.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-4 w-4 rounded border-border text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
           ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {gradeInputs.map((item) => (
-              <div key={item.key} className="rounded-xl border border-slate-200 bg-white p-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+              <div key={item.key} className="rounded-xl border border-border bg-card p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
                   {item.label}
                 </p>
                 <div className="mt-2">
@@ -552,18 +552,18 @@ export function GradeEntryGrid({
               </div>
             ))}
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+            <div className="rounded-xl border border-border bg-muted p-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
                 Média
               </p>
-              <p className="mt-2 text-xl font-black text-slate-900">
+              <p className="mt-2 text-xl font-black text-foreground">
                 {row.mt1 ?? "—"}
-                {row.mt1 !== null ? <span className="ml-1 text-xs font-bold text-slate-400">/ {notaMaxima}</span> : null}
+                {row.mt1 !== null ? <span className="ml-1 text-xs font-bold text-muted-foreground">/ {notaMaxima}</span> : null}
               </p>
             </div>
           </div>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             {readOnly
               ? "Ano letivo anterior: consulta apenas."
               : "As alterações são guardadas automaticamente."}
@@ -577,29 +577,29 @@ export function GradeEntryGrid({
     <div className="space-y-4">
       {/* BARRA DE ESTATÍSTICAS EM TEMPO REAL DA TURMA */}
       {!studentMode ? <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-400">
+        <div className="rounded-xl border border-border bg-card p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-black uppercase tracking-wider">Média da Turma</span>
             <TrendingUp size={16} className="text-emerald-600" />
           </div>
-          <p className="text-xl font-black text-slate-900 mt-1">
+          <p className="text-xl font-black text-foreground mt-1">
             {stats.mediaTurma !== null ? `${stats.mediaTurma} / ${notaMaxima}` : "—"}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-400">
+        <div className="rounded-xl border border-border bg-card p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-black uppercase tracking-wider">{`Aprovados (≥${notaCorte})`}</span>
             <CheckCircle size={16} className="text-emerald-600" />
           </div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-xl font-black text-emerald-700">{stats.aprovados}</span>
-            <span className="text-xs font-bold text-slate-400">({stats.percAprovados}%)</span>
+            <span className="text-xs font-bold text-muted-foreground">({stats.percAprovados}%)</span>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-400">
+        <div className="rounded-xl border border-border bg-card p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-black uppercase tracking-wider">{`Em risco (<${notaCorte})`}</span>
             <AlertCircle size={16} className="text-rose-500" />
           </div>
@@ -608,31 +608,31 @@ export function GradeEntryGrid({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-400">
+        <div className="rounded-xl border border-border bg-card p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-black uppercase tracking-wider">Lançamentos</span>
-            <Users size={16} className="text-slate-400" />
+            <Users size={16} className="text-muted-foreground" />
           </div>
-          <p className="text-xl font-black text-slate-900 mt-1">
-            {stats.lancados} <span className="text-xs font-bold text-slate-400">/ {stats.total}</span>
+          <p className="text-xl font-black text-foreground mt-1">
+            {stats.lancados} <span className="text-xs font-bold text-muted-foreground">/ {stats.total}</span>
           </p>
         </div>
       </div> : null}
 
       {/* CONTAINER DA GRELHA PRINCIPAL */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         {/* HEADER DA GRELHA */}
-        <div className="p-4 border-b border-slate-200 bg-slate-50/80 flex flex-wrap justify-between items-center gap-3">
+        <div className="p-4 border-b border-border bg-muted/80 flex flex-wrap justify-between items-center gap-3">
           <div>
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">{title}</h3>
-            {subtitle ? <p className="text-xs font-medium text-slate-500">{subtitle}</p> : null}
+            <h3 className="text-sm font-black text-foreground uppercase tracking-tight">{title}</h3>
+            {subtitle ? <p className="text-xs font-medium text-muted-foreground">{subtitle}</p> : null}
           </div>
 
           <div className="flex items-center gap-2">
             {!studentMode && !readOnly ? <button
               type="button"
               onClick={() => setShowPasteModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
             >
               <Clipboard size={14} className="text-emerald-600" />
               <span>Colar Coluna do Excel</span>
@@ -647,16 +647,16 @@ export function GradeEntryGrid({
 
         {/* MODAL DE COLAR DO EXCEL */}
         {showPasteModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/60 backdrop-blur-xs p-4">
+            <div className="w-full max-w-lg rounded-2xl bg-card p-6 shadow-2xl space-y-4 border border-border animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between border-b border-border pb-3">
                 <div className="flex items-center gap-2">
                   <Clipboard className="text-emerald-600" size={20} />
-                  <h3 className="text-base font-black text-slate-900">Colar Coluna do Excel / Sheets</h3>
+                  <h3 className="text-base font-black text-foreground">Colar Coluna do Excel / Sheets</h3>
                 </div>
                 <button
                   onClick={() => setShowPasteModal(false)}
-                  className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                  className="text-muted-foreground hover:text-muted-foreground text-sm font-bold"
                 >
                   ✕
                 </button>
@@ -664,11 +664,11 @@ export function GradeEntryGrid({
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-400 mb-1">Selecione o Componente</label>
+                  <label className="block text-xs font-black uppercase text-muted-foreground mb-1">Selecione o Componente</label>
                   <select
                     value={pasteColumn}
                     onChange={(e) => setPasteColumn(e.target.value as any)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-800"
+                    className="w-full rounded-xl border border-border px-3 py-2 text-xs font-bold text-foreground"
                   >
                     {gradeInputs.map((item) => (
                       <option key={item.key} value={item.key}>{item.label}</option>
@@ -677,15 +677,15 @@ export function GradeEntryGrid({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-400 mb-1">Cole aqui os valores (1 por linha)</label>
+                  <label className="block text-xs font-black uppercase text-muted-foreground mb-1">Cole aqui os valores (1 por linha)</label>
                   <textarea
                     rows={6}
                     value={pasteText}
                     onChange={(e) => setPasteText(e.target.value)}
                     placeholder="Cole as notas copiadas do Excel (ex: 14.5, 12, 16.0)..."
-                    className="w-full rounded-xl border border-slate-200 p-3 text-xs font-mono text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    className="w-full rounded-xl border border-border p-3 text-xs font-mono text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     Valores como "145" serão corrigidos automaticamente para 14.5 (Escala 0 a 20).
                   </p>
                 </div>
@@ -695,7 +695,7 @@ export function GradeEntryGrid({
                 <button
                   type="button"
                   onClick={() => setShowPasteModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground bg-muted hover:bg-muted-foreground/20"
                 >
                   Cancelar
                 </button>
@@ -714,18 +714,18 @@ export function GradeEntryGrid({
 
         {/* VISÃO MOBILE DE CARDS */}
         <div className="block md:hidden">
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-border">
             {table.getRowModel().rows.map((row) => {
               const isHighlighted = highlightId && row.original.id === highlightId
               return (
                 <div
                   key={row.id}
-                  className={`p-4 ${isHighlighted ? "bg-emerald-50/60" : "bg-white"}`}
+                  className={`p-4 ${isHighlighted ? "bg-emerald-50/60" : "bg-card"}`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-slate-400 text-xs font-bold">Nº {row.original.numero}</span>
-                      <p className="text-sm font-bold text-slate-900">{row.original.nome}</p>
+                      <span className="font-mono text-muted-foreground text-xs font-bold">Nº {row.original.numero}</span>
+                      <p className="text-sm font-bold text-foreground">{row.original.nome}</p>
                     </div>
                     <SyncIndicator
                       status={row.original._status === "pending" ? "syncing" : row.original._status}
@@ -734,13 +734,13 @@ export function GradeEntryGrid({
                   </div>
 
                   {showIsento && (
-                    <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-slate-500">
+                    <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
                       <input
                         type="checkbox"
                         checked={!!row.original.is_isento}
                         disabled={readOnly}
                         onChange={(e) => updateIsento(row.index, e.target.checked)}
-                        className="rounded border-slate-300 text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded border-border text-klasse-gold focus:ring-klasse-gold disabled:cursor-not-allowed disabled:opacity-50"
                       />
                       Isento neste trimestre
                     </label>
@@ -748,8 +748,8 @@ export function GradeEntryGrid({
 
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     {gradeInputs.map((item) => (
-                      <div key={item.label} className="rounded-xl border border-slate-200/80 bg-slate-50 p-2.5">
-                        <p className="text-[10px] font-black uppercase text-slate-400">{item.label}</p>
+                      <div key={item.label} className="rounded-xl border border-border bg-muted p-2.5">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground">{item.label}</p>
                         <div className="mt-1.5">
                           <GradeInput
                             inputRef={() => null}
@@ -766,9 +766,9 @@ export function GradeEntryGrid({
                         </div>
                       </div>
                     ))}
-                    <div className="rounded-xl border border-slate-200 bg-white p-2.5 text-center">
-                      <p className="text-[10px] font-black uppercase text-slate-400">MT1</p>
-                      <div className="mt-1.5 text-base font-black text-slate-900">
+                    <div className="rounded-xl border border-border bg-card p-2.5 text-center">
+                      <p className="text-[10px] font-black uppercase text-muted-foreground">MT1</p>
+                      <div className="mt-1.5 text-base font-black text-foreground">
                         {row.original.mt1 ?? "—"}
                       </div>
                     </div>
@@ -782,14 +782,14 @@ export function GradeEntryGrid({
         {/* TABELA DESKTOP COM NAVEGAÇÃO E CORES VIVAS */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm text-left border-collapse">
-            <thead className="bg-slate-50/80 text-slate-600 font-black uppercase text-[11px] tracking-wider border-b border-slate-200">
+            <thead className="bg-muted/80 text-muted-foreground font-black uppercase text-[11px] tracking-wider border-b border-border">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
                       colSpan={header.colSpan}
-                      className="px-3 py-3 border-r border-slate-200/70 last:border-r-0 text-center"
+                      className="px-3 py-3 border-r border-border last:border-r-0 text-center"
                       style={{ width: header.getSize() }}
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
@@ -798,16 +798,16 @@ export function GradeEntryGrid({
                 </tr>
               ))}
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className={`hover:bg-slate-50/80 transition-colors ${
+                  className={`hover:bg-muted/80 transition-colors ${
                     highlightId && row.original.id === highlightId ? "bg-emerald-50/60" : ""
                   }`}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-2 border-r border-slate-100 last:border-r-0 text-center">
+                    <td key={cell.id} className="px-3 py-2 border-r border-border last:border-r-0 text-center">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -861,11 +861,11 @@ const GradeInput = ({
   }
 
   // Estilização por faixa de nota pedagógica (0 a 20)
-  let gradeStyle = "bg-slate-50 text-slate-700 border-slate-200"
+  let gradeStyle = "bg-muted text-foreground border-border"
   if (disabled) {
-    gradeStyle = "bg-slate-100 text-slate-400 border-dashed text-[10px]"
+    gradeStyle = "bg-muted text-muted-foreground border-dashed text-[10px]"
   } else if (readOnly) {
-    gradeStyle = "bg-slate-50 text-slate-700 border-slate-200"
+    gradeStyle = "bg-muted text-foreground border-border"
   } else if (value !== null) {
     if (value >= notaMaxima * 0.7) gradeStyle = "bg-emerald-50 text-emerald-800 border-emerald-300 font-black"
     else if (value >= notaCorte) gradeStyle = "bg-amber-50 text-amber-800 border-amber-300 font-extrabold"

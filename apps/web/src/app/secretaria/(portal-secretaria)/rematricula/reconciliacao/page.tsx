@@ -88,29 +88,29 @@ export default function RematriculaReconciliacaoPage() {
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald">
               <WalletCards className="h-4 w-4" /> Rematrícula · Secretaria
             </div>
-            <h1 className="text-2xl font-bold text-slate-950">Pendências de reconciliação</h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
+            <h1 className="text-2xl font-bold text-foreground">Pendências de reconciliação</h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               Pagamentos já recebidos que precisam de uma conclusão académica. Abra o Balcão para resolver — não cobre novamente.
             </p>
           </div>
-          <button type="button" onClick={() => setReloadKey((value) => value + 1)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-emerald hover:text-emerald">
+          <button type="button" onClick={() => setReloadKey((value) => value + 1)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm hover:border-emerald hover:text-emerald">
             <RefreshCw className="h-4 w-4" /> Actualizar fila
           </button>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><div className="text-xs font-semibold uppercase tracking-wide text-amber-800">Pendências abertas</div><div className="mt-1 text-2xl font-bold text-amber-950">{total}</div></div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4"><div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Mais antiga nesta página</div><div className="mt-1 text-lg font-bold text-slate-900">{oldest ?? "—"}</div></div>
+          <div className="rounded-xl border border-border bg-card p-4"><div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mais antiga nesta página</div><div className="mt-1 text-lg font-bold text-foreground">{oldest ?? "—"}</div></div>
           <div className="rounded-xl border border-emerald/20 bg-emerald/5 p-4"><div className="text-xs font-semibold uppercase tracking-wide text-emerald">Regra operacional</div><div className="mt-1 text-sm font-semibold text-emerald-900">Sem nova cobrança</div></div>
         </div>
 
-        <form onSubmit={submitSearch} className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row">
+        <form onSubmit={submitSearch} className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-sm sm:flex-row">
           <label className="sr-only" htmlFor="reconciliation-search">Pesquisar aluno ou processo</label>
-          <div className="flex flex-1 items-center gap-2 rounded-lg border border-slate-200 px-3 focus-within:border-amber focus-within:ring-4 focus-within:ring-amber/20">
-            <Search className="h-4 w-4 text-slate-400" />
-            <input id="reconciliation-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Pesquisar por nome ou número de processo" className="w-full py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400" />
+          <div className="flex flex-1 items-center gap-2 rounded-lg border border-border px-3 focus-within:border-amber focus-within:ring-4 focus-within:ring-amber/20">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input id="reconciliation-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Pesquisar por nome ou número de processo" className="w-full py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground" />
           </div>
-          <select aria-label="Filtrar por ano letivo" value={yearId} onChange={(event) => { setYearId(event.target.value); setReloadKey((value) => value + 1); }} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/20">
+          <select aria-label="Filtrar por ano letivo" value={yearId} onChange={(event) => { setYearId(event.target.value); setReloadKey((value) => value + 1); }} className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-amber focus:outline-none focus:ring-4 focus:ring-amber/20">
             <option value="">Todos os anos</option>
             {years.map((year) => <option key={year.id} value={year.id}>{year.ano}{year.ativo ? " · activo" : ""}</option>)}
           </select>
@@ -118,26 +118,26 @@ export default function RematriculaReconciliacaoPage() {
         </form>
 
         {error && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</div>}
-        {loading && <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600">A carregar pendências…</div>}
+        {loading && <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">A carregar pendências…</div>}
 
         {!loading && !error && (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <thead className="border-b border-border bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <tr><th className="px-4 py-3">Aluno</th><th className="px-4 py-3">Pendência</th><th className="px-4 py-3">Destino</th><th className="px-4 py-3">Pagamento</th><th className="px-4 py-3 text-right">Acção</th></tr>
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70">
-                      <td className="px-4 py-4"><div className="font-semibold text-slate-900">{item.aluno_nome}</div><div className="mt-0.5 text-xs text-slate-500">Proc. {item.numero_processo ?? "—"}</div></td>
-                      <td className="px-4 py-4"><div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900"><AlertTriangle className="h-3.5 w-3.5" /> {reasonLabel[item.reason_code] ?? "Revisão necessária"}</div><div className="mt-1 max-w-xs text-xs text-slate-500">{item.reason_detail ?? "Pagamento registado; falta concluir a operação."}</div></td>
-                      <td className="px-4 py-4 text-slate-700">{item.turma_nome ?? "Turma por confirmar"}{item.turno ? <span className="block text-xs text-slate-500">{item.turno}</span> : null}</td>
-                      <td className="px-4 py-4"><div className="font-semibold text-slate-900">{money.format(item.pagamento?.valor ?? item.valor_cobrado)}</div><div className="mt-0.5 flex items-center gap-1 text-xs text-emerald"><CheckCircle2 className="h-3.5 w-3.5" /> Recebido</div></td>
+                    <tr key={item.id} className="border-b border-border last:border-0 hover:bg-muted/70">
+                      <td className="px-4 py-4"><div className="font-semibold text-foreground">{item.aluno_nome}</div><div className="mt-0.5 text-xs text-muted-foreground">Proc. {item.numero_processo ?? "—"}</div></td>
+                      <td className="px-4 py-4"><div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900"><AlertTriangle className="h-3.5 w-3.5" /> {reasonLabel[item.reason_code] ?? "Revisão necessária"}</div><div className="mt-1 max-w-xs text-xs text-muted-foreground">{item.reason_detail ?? "Pagamento registado; falta concluir a operação."}</div></td>
+                      <td className="px-4 py-4 text-foreground">{item.turma_nome ?? "Turma por confirmar"}{item.turno ? <span className="block text-xs text-muted-foreground">{item.turno}</span> : null}</td>
+                      <td className="px-4 py-4"><div className="font-semibold text-foreground">{money.format(item.pagamento?.valor ?? item.valor_cobrado)}</div><div className="mt-0.5 flex items-center gap-1 text-xs text-emerald"><CheckCircle2 className="h-3.5 w-3.5" /> Recebido</div></td>
                       <td className="px-4 py-4 text-right"><Link href={`/escola/${escolaId}/secretaria/balcao?alunoId=${encodeURIComponent(item.aluno_id)}${item.ano_letivo_id ? `&ano_letivo_id=${encodeURIComponent(item.ano_letivo_id)}` : ""}`} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">Abrir Balcão <ArrowRight className="h-3.5 w-3.5" /></Link></td>
                     </tr>
                   ))}
-                  {!items.length && <tr><td colSpan={5} className="px-4 py-12 text-center"><Clock3 className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 font-semibold text-slate-700">Nenhuma pendência aberta</p><p className="mt-1 text-sm text-slate-500">Os pagamentos de rematrícula estão sincronizados com as matrículas.</p></td></tr>}
+                  {!items.length && <tr><td colSpan={5} className="px-4 py-12 text-center"><Clock3 className="mx-auto h-8 w-8 text-muted-foreground" /><p className="mt-3 font-semibold text-foreground">Nenhuma pendência aberta</p><p className="mt-1 text-sm text-muted-foreground">Os pagamentos de rematrícula estão sincronizados com as matrículas.</p></td></tr>}
                 </tbody>
               </table>
             </div>

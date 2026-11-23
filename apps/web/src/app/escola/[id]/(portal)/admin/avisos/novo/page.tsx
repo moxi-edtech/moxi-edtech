@@ -61,29 +61,29 @@ export default function AvisosNovoPage() {
     <div className="min-h-full bg-background">
       <div className="${PORTAL_PAGE_INSET} space-y-6">
         <header className="max-w-3xl">
-          <h1 className="text-2xl font-bold text-slate-900">Criar aviso</h1>
-          <p className="text-sm text-slate-500">Comunique algo importante para a comunidade escolar.</p>
+          <h1 className="text-2xl font-bold text-foreground">Criar aviso</h1>
+          <p className="text-sm text-muted-foreground">Comunique algo importante para a comunidade escolar.</p>
         </header>
 
         <form onSubmit={onSubmit} className="max-w-3xl rounded-xl border border-border bg-card p-6 space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700">Título</label>
+            <label className="text-sm font-semibold text-foreground">Título</label>
             <input
               name="titulo"
               value={form.titulo}
               onChange={onChange}
               placeholder="Ex: Reunião geral sexta-feira"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700">Público-alvo</label>
+            <label className="text-sm font-semibold text-foreground">Público-alvo</label>
             <select
               name="publico_alvo"
               value={form.publico_alvo}
               onChange={onChange}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
             >
               {PUBLICOS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -94,14 +94,14 @@ export default function AvisosNovoPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700">Mensagem</label>
+            <label className="text-sm font-semibold text-foreground">Mensagem</label>
             <textarea
               name="conteudo"
               value={form.conteudo}
               onChange={onChange}
               placeholder="Descreva o aviso com detalhes."
               rows={6}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-amber/20 focus:border-amber"
             />
           </div>
 

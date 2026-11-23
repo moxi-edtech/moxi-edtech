@@ -114,7 +114,7 @@ export default function SecretariaDashboardPage({ initialCounts = null, initialR
           <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-3"/>
           <h3 className="text-red-900 font-bold">Erro de Conexão</h3>
           <p className="text-red-700 text-sm mb-4">{error}</p>
-          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-white border border-red-200 rounded-lg text-sm font-bold text-red-700 hover:bg-red-50">
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-card border border-red-200 rounded-lg text-sm font-bold text-red-700 hover:bg-red-50">
             Tentar Novamente
           </button>
         </div>

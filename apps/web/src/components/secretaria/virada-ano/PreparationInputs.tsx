@@ -158,15 +158,15 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
   };
 
   return (
-    <section className="w-full space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="w-full space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
             <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Resultados 2025/2026
           </h3>
-          <p className="mt-1 text-xs text-slate-500">Carregue Excel/CSV ou adicione linhas manualmente. Esta etapa apenas valida.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Carregue Excel/CSV ou adicione linhas manualmente. Esta etapa apenas valida.</p>
         </div>
-        <label className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100">
+        <label className="cursor-pointer rounded-xl border border-border bg-muted px-4 py-2 text-xs font-bold text-foreground hover:bg-muted">
           Carregar planilha
           <input
             type="file"
@@ -184,13 +184,13 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
             value={manual[field]}
             onChange={(event) => setManual((current) => ({ ...current, [field]: event.target.value }))}
             placeholder={field.replace(/_/g, " ")}
-            className="h-10 rounded-lg border border-slate-200 px-3 text-xs outline-none focus:ring-2 focus:ring-amber/20"
+            className="h-10 rounded-lg border border-border px-3 text-xs outline-none focus:ring-2 focus:ring-amber/20"
           />
         ))}
         <select
           value={manual.resultado_final}
           onChange={(event) => setManual((current) => ({ ...current, resultado_final: event.target.value }))}
-          className="h-10 rounded-lg border border-slate-200 px-3 text-xs outline-none"
+          className="h-10 rounded-lg border border-border px-3 text-xs outline-none"
         >
           <option value="">Resultado final</option>
           <option value="TRANSITADO">Transitado</option>
@@ -205,7 +205,7 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
           <Plus className="h-4 w-4" /> Adicionar linha
         </Button>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-slate-500">{rows.length} linhas carregadas</span>
+          <span className="text-xs font-semibold text-muted-foreground">{rows.length} linhas carregadas</span>
           <Button tone="gold" size="sm" onClick={runPreview} disabled={rows.length === 0 || loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
             Validar sem importar
@@ -216,9 +216,9 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
       <RetroactiveGradeGrid anoLetivo={anoLetivo} onAddRows={addGridRows} />
 
       {rows.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-border">
           <table className="min-w-full text-left text-xs">
-            <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
+            <thead className="bg-muted text-[10px] uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-3 py-2">Processo</th>
                 <th className="px-3 py-2">Avaliação</th>
@@ -227,7 +227,7 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
                 <th className="px-3 py-2 text-right">Ação</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
+            <tbody className="divide-y divide-border bg-card">
               {rows.map((row, index) => (
                 <tr key={`${index}-${String(row.numero_processo ?? "")}`}>
                   {(["numero_processo", "avaliacao_id", "nota"] as const).map((field) => (
@@ -235,7 +235,7 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
                       <input
                         value={String(row[field] ?? "")}
                         onChange={(event) => updateRow(index, field, event.target.value)}
-                        className="h-8 w-full min-w-36 rounded border border-slate-200 px-2 outline-none focus:border-amber"
+                        className="h-8 w-full min-w-36 rounded border border-border px-2 outline-none focus:border-amber"
                       />
                     </td>
                   ))}
@@ -243,7 +243,7 @@ export function PreparationInputs({ anoLetivo = 2025 }: { anoLetivo?: number }) 
                     <select
                       value={String(row.resultado_final ?? "")}
                       onChange={(event) => updateRow(index, "resultado_final", event.target.value)}
-                      className="h-8 min-w-32 rounded border border-slate-200 px-2"
+                      className="h-8 min-w-32 rounded border border-border px-2"
                     >
                       <option value="">—</option>
                       <option value="TRANSITADO">Transitado</option>

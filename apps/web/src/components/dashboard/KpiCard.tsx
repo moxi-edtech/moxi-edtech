@@ -41,7 +41,7 @@ export function KpiCard({
       box: "bg-card border-border",
       icon: "bg-muted text-muted-foreground",
       value: "text-foreground",
-      chart: "#94a3b8", // slate-400
+      chart: "var(--muted-foreground)",
     },
     brand: {
       box: "bg-card border-border",
@@ -53,13 +53,13 @@ export function KpiCard({
       box: "bg-amber/5 border-amber/30",
       icon: "bg-amber/15 text-amber ring-1 ring-amber/25",
       value: "text-amber",
-      chart: "#D4AF37", // amber
+      chart: klasseColors.gold.DEFAULT,
     },
     success: {
       box: "bg-card border-border",
-      icon: "bg-emerald-100 text-emerald-700",
-      value: "text-emerald-700",
-      chart: "#15803d", // green-700
+      icon: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+      value: "text-emerald-700 dark:text-emerald-300",
+      chart: "var(--chart-2)",
     },
   }[variant];
 

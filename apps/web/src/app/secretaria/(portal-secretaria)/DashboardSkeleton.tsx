@@ -31,7 +31,7 @@ export default function DashboardSkeleton() {
             ) : (
               <span className="text-xs font-bold text-muted-foreground">{item.label}</span>
             )}
-            {i < arr.length - 1 && <span className="text-slate-200">/</span>}
+            {i < arr.length - 1 && <span className="text-muted-foreground/30">/</span>}
           </div>
         ))}
       </nav>

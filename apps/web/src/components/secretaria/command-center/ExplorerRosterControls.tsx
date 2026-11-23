@@ -24,11 +24,11 @@ export function ExplorerRosterControls({
       <legend className="sr-only">Pesquisar e filtrar alunos</legend>
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
         <div className="min-w-0">
-          <label className="mb-1 block text-xs font-semibold text-slate-700" htmlFor="cc-roster-search">
+          <label className="mb-1 block text-xs font-semibold text-foreground" htmlFor="cc-roster-search">
             Nome ou processo
           </label>
-          <div className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 focus-within:ring-2 focus-within:ring-emerald-700">
-            <Search className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+          <div className="flex items-center gap-2 rounded-lg border border-border px-3 focus-within:ring-2 focus-within:ring-emerald-700">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <input id="cc-roster-search" type="search" value={value}
               onChange={(event) => onChange(event.target.value)} maxLength={90}
               placeholder="Pesquisar" autoComplete="off"
@@ -37,12 +37,12 @@ export function ExplorerRosterControls({
           </div>
         </div>
         <div>
-          <label htmlFor="cc-roster-filter" className="mb-1 block text-xs font-semibold text-slate-700">
+          <label htmlFor="cc-roster-filter" className="mb-1 block text-xs font-semibold text-foreground">
             Situação verificada
           </label>
           <select id="cc-roster-filter" value={filter}
             onChange={(event) => onFilterChange(event.target.value as RosterFilter)}
-            className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-2 focus-visible:outline-emerald-700">
+            className="min-h-10 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-emerald-700">
             <option value="todos">Todos os activos</option>
             <option value="documentos_sinalizados">Documentos sinalizados</option>
             <option value="propinas_vencidas">Propinas vencidas</option>
@@ -50,12 +50,12 @@ export function ExplorerRosterControls({
           </select>
         </div>
         <div>
-          <label htmlFor="cc-roster-sort" className="mb-1 block text-xs font-semibold text-slate-700">
+          <label htmlFor="cc-roster-sort" className="mb-1 block text-xs font-semibold text-foreground">
             Ordenar alunos
           </label>
           <select id="cc-roster-sort" value={sort}
             onChange={(event) => onSortChange(event.target.value as RosterSort)}
-            className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-2 focus-visible:outline-emerald-700">
+            className="min-h-10 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-emerald-700">
             <option value="nome_asc">Nome A–Z</option>
             <option value="nome_desc">Nome Z–A</option>
             <option value="pendencias_primeiro">Situações sinalizadas primeiro</option>

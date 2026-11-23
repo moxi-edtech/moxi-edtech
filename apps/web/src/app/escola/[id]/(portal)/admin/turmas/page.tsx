@@ -21,7 +21,7 @@ export default async function Page({
   const escolaId = user ? await resolveEscolaIdForUser(supabase as any, user.id, escolaIdParam) : null;
 
   if (!escolaId) {
-    return <div className="p-8 text-center text-slate-500">Escola não identificada.</div>;
+    return <div className="p-8 text-center text-muted-foreground">Escola não identificada.</div>;
   }
 
   // A sessão é resolvida no servidor: nenhuma consulta de turmas sem ano.

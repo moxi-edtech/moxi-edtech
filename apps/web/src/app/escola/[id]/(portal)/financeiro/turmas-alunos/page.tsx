@@ -60,7 +60,7 @@ interface MensalidadeAluno {
 const StatusBadge = ({ status, diasAtraso }: { status: string, diasAtraso?: number }) => {
   // Enterprise Palette
   const config = {
-    paga: { bg: 'bg-[#1F6B3B]/10', text: 'text-[#1F6B3B]', border: 'border-[#1F6B3B]/20', icon: CheckCircle, label: 'Regular' },
+    paga: { bg: 'bg-klasse-green/10', text: 'text-klasse-green dark:text-klasse-green-300', border: 'border-klasse-green/20', icon: CheckCircle, label: 'Regular' },
     pendente: { bg: 'bg-muted', text: 'text-foreground/80', border: 'border-border', icon: Clock, label: 'A vencer' },
     atrasada: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: AlertCircle, label: `${diasAtraso || 0}d Atraso` },
     cancelada: { bg: 'bg-muted', text: 'text-muted-foreground', border: 'border-border', icon: Ban, label: 'Inativo' },
@@ -352,13 +352,13 @@ const TurmasAlunosFinanceiro: React.FC = () => {
           )}
           {whatsappStatus === 'checking' && (
             <span className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-bold border border-border shadow-sm print:hidden">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> WAHA status...
+              <span className="h-1.5 w-1.5 rounded-full bg-muted" /> WAHA status...
             </span>
           )}
 
           <button 
             onClick={() => setModalCobranca(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all text-sm font-bold shadow-sm print:hidden"
+            className="flex items-center gap-2 px-4 py-2.5 bg-klasse-gold text-klasse-gold-900 rounded-xl hover:brightness-95 transition-all text-sm font-bold shadow-sm print:hidden"
           >
             <Mail className="w-4 h-4" /> Disparar Cobranças
           </button>
@@ -390,7 +390,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm print:border-slate-300">
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Taxa de Arrecadação</span>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-xl font-black text-[#1F6B3B]">{resumoGeral.taxaArrecadacao.toFixed(1)}%</span>
+            <span className="text-xl font-black text-klasse-green dark:text-klasse-green-300">{resumoGeral.taxaArrecadacao.toFixed(1)}%</span>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 print:hidden">Meta: 90%</span>
           </div>
         </div>
@@ -525,13 +525,13 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                     <div className="w-full max-w-sm">
                       <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-1.5">
                         <span className="text-muted-foreground">Arrecadação</span>
-                        <span className={stats.arrecadacao < 80 ? 'text-amber-600' : 'text-[#1F6B3B]'}>
+                        <span className={stats.arrecadacao < 80 ? 'text-amber-600' : 'text-klasse-green dark:text-klasse-green-300'}>
                           {stats.arrecadacao.toFixed(0)}%
                         </span>
                       </div>
                       <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                         <div 
-                          className={`h-full transition-all duration-1000 ease-out ${stats.arrecadacao < 50 ? 'bg-rose-500' : stats.arrecadacao < 80 ? 'bg-amber-400' : 'bg-[#1F6B3B]'}`}
+                          className={`h-full transition-all duration-1000 ease-out ${stats.arrecadacao < 50 ? 'bg-rose-500' : stats.arrecadacao < 80 ? 'bg-amber-400' : 'bg-klasse-green'}`}
                           style={{ width: `${stats.arrecadacao}%` }}
                         />
                       </div>
@@ -620,7 +620,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                   <button 
                                     title="Ver Extrato"
                                     onClick={(e) => { e.stopPropagation(); void openExtrato(aluno); }}
-                                    className="p-1.5 text-[#E3B23C] bg-[#E3B23C]/10 hover:bg-[#E3B23C] hover:text-white rounded-lg transition-colors"
+                                    className="p-1.5 text-klasse-gold-700 dark:text-klasse-gold-300 bg-klasse-gold/10 hover:bg-klasse-gold hover:text-klasse-gold-900 rounded-lg transition-colors"
                                   >
                                     <Eye className="w-4 h-4" />
                                   </button>
@@ -776,7 +776,7 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-klasse-dark/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card text-card-foreground shadow-2xl flex flex-col">
         <div className="p-6 border-b border-border flex justify-between items-center bg-muted">
           <div>
@@ -889,7 +889,7 @@ const ModalBulkCobranca: React.FC<ModalBulkCobrancaProps> = ({ escolaParam, turm
             type="button"
             disabled={sending || targetAlunos.length === 0}
             onClick={handleSend}
-            className="px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 text-xs font-bold flex items-center gap-2 transition disabled:opacity-50"
+            className="px-4 py-2 bg-klasse-gold text-klasse-gold-900 rounded-xl hover:brightness-95 text-xs font-bold flex items-center gap-2 transition disabled:opacity-50"
           >
             {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
             Enviar Lote

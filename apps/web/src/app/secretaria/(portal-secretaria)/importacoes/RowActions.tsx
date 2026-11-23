@@ -72,7 +72,7 @@ export default function RowActions({ id, escolaId, currentName, onChanged }: { i
       <button
         onClick={onRename}
         disabled={loading !== null}
-        className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+        className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground hover:bg-muted"
         title="Renomear"
       >
         <Pencil size={14} /> Renomear
@@ -80,7 +80,7 @@ export default function RowActions({ id, escolaId, currentName, onChanged }: { i
       <button
         onClick={onDelete}
         disabled={loading !== null}
-        className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-white px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+        className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-card px-2 py-1 text-xs text-red-700 hover:bg-red-50"
         title="Excluir"
       >
         <Trash2 size={14} /> Excluir

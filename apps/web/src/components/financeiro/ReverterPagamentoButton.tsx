@@ -69,7 +69,7 @@ export function ReverterPagamentoButton({
       type="button"
       onClick={handleReverter}
       disabled={loading}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white font-semibold text-rose-700 shadow-sm transition hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-600/10 disabled:opacity-60 ${
+      className={`inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900 bg-card font-semibold text-rose-700 dark:text-rose-300 shadow-sm transition hover:bg-rose-50 dark:hover:bg-rose-950/40 focus:outline-none focus:ring-4 focus:ring-rose-600/10 disabled:opacity-60 ${
         compact ? "px-2.5 py-1.5 text-[11px]" : "px-3 py-1.5 text-sm"
       } ${className}`}
       title="Reverter pagamento realizado"

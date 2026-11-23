@@ -51,17 +51,17 @@ export default function Page() {
       <h1 className="text-2xl font-bold">Fluxo de Caixa (diário)</h1>
 
       {loading && (
-        <div className="p-4 bg-white rounded-xl shadow border text-gray-600">Carregando…</div>
+        <div className="p-4 bg-card rounded-xl shadow border text-muted-foreground">Carregando…</div>
       )}
       {error && (
         <div className="p-4 bg-rose-50 border border-rose-200 rounded text-rose-700 text-sm">{error}</div>
       )}
 
       {!loading && !error && (
-        <div className="bg-white rounded-xl shadow border p-4 overflow-x-auto">
+        <div className="bg-card rounded-xl shadow border p-4 overflow-x-auto">
           <table className="min-w-full text-sm align-middle">
             <thead>
-              <tr className="text-left text-gray-500 border-b">
+              <tr className="text-left text-muted-foreground border-b">
                 <th className="py-2 pr-4">Dia</th>
                 <th className="py-2 pr-4 text-right">Pagos</th>
                 <th className="py-2 pr-4 text-right">Total</th>
@@ -76,7 +76,7 @@ export default function Page() {
                   <td className="py-2 pr-4 text-right">{r.qtdTotal}</td>
                   <td className="py-2 pr-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-2 w-40 bg-gray-100 rounded">
+                      <div className="h-2 w-40 bg-muted rounded">
                         <div className="h-2 bg-green-500 rounded" style={{ width: `${Math.min(100, Math.max(0, r.pctPago))}%` }} />
                       </div>
                       <span className="tabular-nums">{r.pctPago.toFixed(1)}%</span>
@@ -85,7 +85,7 @@ export default function Page() {
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td className="py-4 text-gray-500" colSpan={4}>Sem movimentação.</td></tr>
+                <tr><td className="py-4 text-muted-foreground" colSpan={4}>Sem movimentação.</td></tr>
               )}
             </tbody>
           </table>

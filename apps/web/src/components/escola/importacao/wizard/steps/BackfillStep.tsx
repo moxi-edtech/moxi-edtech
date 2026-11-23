@@ -127,7 +127,7 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
         <Loader2 className="w-10 h-10 text-teal-600 animate-spin" />
-        <p className="text-sm text-slate-500 font-medium">
+        <p className="text-sm text-muted-foreground font-medium">
           A analisar o ficheiro e a comparar com a escola...
         </p>
       </div>
@@ -156,12 +156,12 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 className="w-8 h-8 text-green-600" />
         </div>
-        <h3 className="text-xl font-bold text-slate-800">Tudo pronto!</h3>
-        <p className="text-slate-500 max-w-md mx-auto mt-2">
+        <h3 className="text-xl font-bold text-foreground">Tudo pronto!</h3>
+        <p className="text-muted-foreground max-w-md mx-auto mt-2">
           A estrutura acadêmica no ficheiro já existe na escola. Pode avançar diretamente para a matrícula.
         </p>
         <div className="mt-8">
-          <button onClick={onNext} className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg">
+          <button onClick={onNext} className="bg-klasse-gold text-klasse-gold-900 px-8 py-3 rounded-xl font-bold hover:brightness-95 transition shadow-lg">
             Avançar para Matrículas <ArrowRight className="inline w-4 h-4 ml-2" />
           </button>
         </div>
@@ -175,8 +175,8 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
         <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold mb-4 border border-indigo-100">
           <Wand2 className="w-3 h-3" /> Inteligência MoxiNexa
         </div>
-        <h2 className="text-2xl font-bold text-slate-900">Análise Estrutural</h2>
-        <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto">
+        <h2 className="text-2xl font-bold text-foreground">Análise Estrutural</h2>
+        <p className="text-muted-foreground text-sm mt-2 max-w-xl mx-auto">
           Detetámos elementos no seu ficheiro Excel que ainda não existem na escola. Podemos criá-los automaticamente para si antes de matricular os alunos.
         </p>
       </div>
@@ -188,12 +188,12 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
         <PreviewCard icon={School} label="Turmas" count={counts.turmas} items={normalized?.missing.turmas || []} color="teal" isSuccess={success} />
       </div>
 
-      <div className="flex flex-col items-center justify-center pt-6 border-t border-slate-100">
+      <div className="flex flex-col items-center justify-center pt-6 border-t border-border">
         {!success ? (
           <>
-            <p className="text-xs text-slate-400 mb-4">Ao confirmar, vamos criar estes registos no banco de dados.</p>
+            <p className="text-xs text-muted-foreground mb-4">Ao confirmar, vamos criar estes registos no banco de dados.</p>
             <div className="flex gap-4">
-              <button onClick={onBack} className="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition">
+              <button onClick={onBack} className="px-6 py-3 rounded-xl border border-border text-muted-foreground font-bold text-sm hover:bg-muted transition">
                 Voltar
               </button>
               <button onClick={handleExecute} disabled={processing} className="group bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
@@ -214,7 +214,7 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
             <div className="flex items-center gap-2 text-emerald-600 font-bold mb-6 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100">
               <CheckCircle2 className="w-5 h-5" /> Estrutura criada com sucesso!
             </div>
-            <button onClick={onNext} className="bg-slate-900 hover:bg-slate-800 text-white px-10 py-4 rounded-xl font-bold text-base shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2">
+            <button onClick={onNext} className="bg-klasse-gold hover:brightness-95 text-klasse-gold-900 px-10 py-4 rounded-xl font-bold text-base shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2">
               Prosseguir para Matrícula <ArrowRight className="w-5 h-5" />
             </button>
           </div>
@@ -227,41 +227,41 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
 function PreviewCard({ icon: Icon, label, count, items, color, isSuccess }: any) {
   const hasItems = count > 0;
   const colors: any = {
-    blue: "bg-slate-50 text-slate-600 border-slate-200",
-    purple: "bg-slate-50 text-slate-600 border-slate-200",
+    blue: "bg-muted text-muted-foreground border-border",
+    purple: "bg-muted text-muted-foreground border-border",
     orange: "bg-orange-50 text-orange-600 border-orange-200",
     teal: "bg-teal-50 text-teal-600 border-teal-200",
-    gray: "bg-slate-50 text-slate-400 border-slate-100",
+    gray: "bg-muted text-muted-foreground border-border",
   };
   const style = hasItems ? colors[color] : colors.gray;
   return (
-    <div className={`relative p-5 rounded-2xl border ${hasItems ? style.split(" ")[2] : "border-slate-100"} bg-white shadow-sm transition-all ${isSuccess && hasItems ? "ring-2 ring-emerald-500 border-transparent" : ""}`}>
+    <div className={`relative p-5 rounded-2xl border ${hasItems ? style.split(" ")[2] : "border-border"} bg-card shadow-sm transition-all ${isSuccess && hasItems ? "ring-2 ring-emerald-500 border-transparent" : ""}`}>
       {isSuccess && hasItems && (
         <div className="absolute -top-3 -right-3 bg-emerald-500 text-white rounded-full p-1 shadow-md animate-in zoom-in">
           <CheckCircle2 className="w-4 h-4" />
         </div>
       )}
       <div className="flex items-center gap-3 mb-3">
-        <div className={`p-2.5 rounded-xl ${hasItems ? style : "bg-slate-100 text-slate-300"}`}>
+        <div className={`p-2.5 rounded-xl ${hasItems ? style : "bg-muted text-muted-foreground"}`}>
           <Icon className="w-5 h-5" />
         </div>
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
-          <p className={`text-xl font-black ${hasItems ? "text-slate-800" : "text-slate-300"}`}>{count}</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+          <p className={`text-xl font-black ${hasItems ? "text-foreground" : "text-muted-foreground"}`}>{count}</p>
         </div>
       </div>
       <div className="space-y-1">
         {hasItems ? (
           (items || []).slice(0, 3).map((item: string, i: number) => (
-            <div key={i} className="text-xs font-medium text-slate-600 truncate bg-slate-50 px-2 py-1 rounded border border-slate-100">
+            <div key={i} className="text-xs font-medium text-muted-foreground truncate bg-muted px-2 py-1 rounded border border-border">
               {item}
             </div>
           ))
         ) : (
-          <p className="text-xs text-slate-300 italic">Nada a criar</p>
+          <p className="text-xs text-muted-foreground italic">Nada a criar</p>
         )}
         {hasItems && (items?.length || 0) > 3 && (
-          <p className="text-[10px] text-slate-400 font-bold pl-1">+ {(items.length - 3)} outros...</p>
+          <p className="text-[10px] text-muted-foreground font-bold pl-1">+ {(items.length - 3)} outros...</p>
         )}
       </div>
     </div>

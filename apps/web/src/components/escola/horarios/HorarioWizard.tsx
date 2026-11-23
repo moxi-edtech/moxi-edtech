@@ -56,12 +56,12 @@ export function HorarioWizard({ escolaId, onFinish, initialStep = 0 }: HorarioWi
   };
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm">
+    <div className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm">
       {/* Header */}
       <div className="mb-10 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Configurar base do horário</h1>
-          <p className="mt-1 text-sm font-medium text-slate-500">Defina apenas a estrutura-base. Cargas, professores e sala da turma ficam no próprio quadro.</p>
+          <h1 className="text-2xl font-black text-foreground tracking-tight">Configurar base do horário</h1>
+          <p className="mt-1 text-sm font-medium text-muted-foreground">Defina apenas a estrutura-base. Cargas, professores e sala da turma ficam no próprio quadro.</p>
         </div>
         <div className="h-12 w-12 rounded-2xl bg-amber/10 border border-amber/20 flex items-center justify-center">
             <Zap className="h-6 w-6 text-amber" />
@@ -76,24 +76,24 @@ export function HorarioWizard({ escolaId, onFinish, initialStep = 0 }: HorarioWi
               <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border-2 transition-all duration-300 ${
                 currentStep > index ? "border-emerald-500 bg-emerald-50 text-emerald-600 shadow-sm" :
                 currentStep === index ? "border-amber bg-amber/10 text-amber shadow-md ring-4 ring-amber/10" :
-                "border-slate-100 text-slate-300"
+                "border-border text-muted-foreground"
               }`}>
                 {currentStep > index ? <CheckCircle2 className="h-6 w-6" /> : <step.icon className="h-5 w-5" />}
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-widest text-center ${currentStep === index ? "text-slate-900" : "text-slate-400"}`}>
+              <span className={`text-[10px] font-black uppercase tracking-widest text-center ${currentStep === index ? "text-foreground" : "text-muted-foreground"}`}>
                 {step.title}
               </span>
             </div>
             {index < STEPS.length - 1 && (
-              <div className={`mx-4 h-[2px] flex-1 rounded-full ${currentStep > index ? "bg-emerald-500" : "bg-slate-50"}`} />
+              <div className={`mx-4 h-[2px] flex-1 rounded-full ${currentStep > index ? "bg-emerald-500" : "bg-muted"}`} />
             )}
           </div>
         ))}
       </div>
 
       {/* Conteúdo do Passo */}
-      <div className="mb-10 min-h-[400px] rounded-3xl border border-slate-100 bg-slate-50/40 p-6 md:p-10 relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-white/40 blur-3xl pointer-events-none" />
+      <div className="mb-10 min-h-[400px] rounded-3xl border border-border bg-muted/40 p-6 md:p-10 relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-card/40 blur-3xl pointer-events-none" />
         
         <div className="w-full relative z-10">
           {currentStep === 0 && (
@@ -107,8 +107,8 @@ export function HorarioWizard({ escolaId, onFinish, initialStep = 0 }: HorarioWi
               <div className="h-20 w-20 rounded-full bg-emerald-50 flex items-center justify-center mb-6">
                 <LayoutDashboard className="h-10 w-10 text-emerald-500" />
               </div>
-              <h3 className="mb-2 text-xl font-black text-slate-900">Base pronta</h3>
-              <p className="mb-8 max-w-md mx-auto text-sm text-slate-500">
+              <h3 className="mb-2 text-xl font-black text-foreground">Base pronta</h3>
+              <p className="mb-8 max-w-md mx-auto text-sm text-muted-foreground">
                 Ambientes e slots estão configurados. Continue no quadro para distribuir aulas, ajustar cargas, atribuir professores, definir sala e publicar.
               </p>
               <Button tone="gold" size="lg" onClick={onFinish} className="font-black gap-2">
@@ -120,7 +120,7 @@ export function HorarioWizard({ escolaId, onFinish, initialStep = 0 }: HorarioWi
       </div>
 
       {/* Footer Actions */}
-      <div className="flex justify-between border-t border-slate-100 pt-8">
+      <div className="flex justify-between border-t border-border pt-8">
         <Button 
           tone="gray" 
           variant="ghost" 
@@ -145,9 +145,9 @@ export function HorarioWizard({ escolaId, onFinish, initialStep = 0 }: HorarioWi
       </div>
 
       {/* Footer Guard */}
-      <div className="mt-8 flex items-center justify-center gap-2.5 py-3 px-6 rounded-2xl bg-slate-50/50 border border-slate-100 w-fit mx-auto">
-        <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Ambiente de Operação Segura • Klasse Timetable v2</span>
+      <div className="mt-8 flex items-center justify-center gap-2.5 py-3 px-6 rounded-2xl bg-muted/50 border border-border w-fit mx-auto">
+        <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ambiente de Operação Segura • Klasse Timetable v2</span>
       </div>
     </div>
   );

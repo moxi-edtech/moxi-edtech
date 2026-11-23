@@ -204,7 +204,7 @@ export function NotificacoesDropdown() {
                   Marcar todas
                 </button>
               )}
-              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-muted-foreground">
+              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={14} />
               </button>
             </div>
@@ -250,7 +250,7 @@ export function NotificacoesDropdown() {
             <button
               type="button"
               onClick={() => setModalNotificacao(null)}
-              className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted"
+              className="rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted"
             >
               Fechar
             </button>
@@ -258,7 +258,7 @@ export function NotificacoesDropdown() {
               <button
                 type="button"
                 onClick={handleModalAction}
-                className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                className="rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold"
               >
                 {modalNotificacao?.action_label || "Abrir"}
               </button>

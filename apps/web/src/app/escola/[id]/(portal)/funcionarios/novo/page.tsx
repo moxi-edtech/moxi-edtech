@@ -91,10 +91,10 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
   };
 
   return (
-    <div className={`${embedded ? "" : "min-h-screen bg-gray-50"}`}>
+    <div className={`${embedded ? "" : "min-h-screen bg-muted"}`}>
       <div className={`${embedded ? "" : "max-w-2xl mx-auto px-4 py-8"}`}>
         {!embedded && (
-          <div className="flex border-b border-slate-200 mb-6">
+          <div className="flex border-b border-border mb-6">
             {["novo", "funcionarios"].map((tab) => (
               <Link
                 key={tab}
@@ -102,7 +102,7 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
                   tab === "funcionarios" ? buildPortalHref(escolaParam, "/funcionarios") : buildPortalHref(escolaParam, "/funcionarios/novo")
                 }
                 className={`px-6 py-3 font-medium relative ${
-                  tab === "novo" ? "text-amber" : "text-slate-500 hover:text-slate-900"
+                  tab === "novo" ? "text-amber" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {tab === "novo" ? "Cadastrar" : "Funcionários"}
@@ -118,7 +118,7 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
             <button
               type="button"
               onClick={() => router.back()}
-              className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-emerald transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-emerald transition-colors"
             >
               <ArrowLeftIcon className="w-4 h-4" />
               Voltar
@@ -130,31 +130,31 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
           <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald rounded-full mb-3">
             <UserPlusIcon className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Cadastrar Funcionário</h1>
-          <p className="text-slate-500 mt-1">Crie secretaria, financeiro ou administradores da escola</p>
+          <h1 className="text-2xl font-bold text-foreground">Cadastrar Funcionário</h1>
+          <p className="text-muted-foreground mt-1">Crie secretaria, financeiro ou administradores da escola</p>
         </div>
 
-        <form onSubmit={onSubmit} className="bg-white rounded-2xl shadow p-6 border border-slate-200 space-y-6">
+        <form onSubmit={onSubmit} className="bg-card rounded-2xl shadow p-6 border border-border space-y-6">
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo *</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Nome Completo *</label>
               <input
                 value={form.nome}
                 onChange={e => handleChange("nome", e.target.value)}
                 placeholder="Ex: Maria Souza"
-                className="w-full border border-slate-200 rounded-xl p-3 focus:ring-4 focus:ring-amber/20 focus:border-amber"
+                className="w-full border border-border rounded-xl p-3 focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 disabled={submitting}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Email *</label>
               <input
                 type="email"
                 value={form.email}
                 onChange={e => handleChange("email", e.target.value)}
                 placeholder="Ex: maria@escola.com"
-                className="w-full border border-slate-200 rounded-xl p-3 focus:ring-4 focus:ring-amber/20 focus:border-amber"
+                className="w-full border border-border rounded-xl p-3 focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 disabled={submitting}
                 required
               />
@@ -163,22 +163,22 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
 
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Telefone</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Telefone</label>
               <input
                 value={form.telefone}
                 onChange={e => handleChange("telefone", formatPhone(e.target.value))}
                 placeholder="Ex: (11) 99999-9999"
-                className="w-full border border-slate-200 rounded-xl p-3 focus:ring-4 focus:ring-amber/20 focus:border-amber"
+                className="w-full border border-border rounded-xl p-3 focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 disabled={submitting}
                 inputMode="tel"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Papel *</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Papel *</label>
               <select
                 value={form.papel}
                 onChange={e => handleChange("papel", e.target.value)}
-                className="w-full border border-slate-200 rounded-xl p-3 focus:ring-4 focus:ring-amber/20 focus:border-amber"
+                className="w-full border border-border rounded-xl p-3 focus:ring-4 focus:ring-amber/20 focus:border-amber"
                 disabled={submitting}
               >
                 <option value="secretaria">Secretaria</option>
@@ -188,7 +188,7 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
                 <option value="staff_admin">Staff Admin</option>
                 <option value="admin">Administrador</option>
               </select>
-              <p className="text-xs text-slate-500 mt-1">Para Secretaria, será gerado um número de login automático.</p>
+              <p className="text-xs text-muted-foreground mt-1">Para Secretaria, será gerado um número de login automático.</p>
             </div>
           </div>
 
@@ -214,7 +214,7 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
               </div>
               <button
                 type="button"
-                className="mt-3 rounded-lg border border-emerald/30 bg-white px-3 py-1 text-xs font-semibold text-emerald"
+                className="mt-3 rounded-lg border border-emerald/30 bg-card px-3 py-1 text-xs font-semibold text-emerald"
                 onClick={async () => {
                   const payload = `Email: ${credentials.email}\nSenha temporária: ${credentials.senha || ""}`.trim();
                   try {

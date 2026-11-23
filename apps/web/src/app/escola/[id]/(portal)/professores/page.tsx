@@ -71,7 +71,7 @@ type Tab        = "adicionar" | "atribuir" | "gerenciar"
 // ─── Input / Select primitives ────────────────────────────────────────────────
 // Single source for consistent focus ring across all form fields.
 
-const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 transition-all placeholder:text-slate-400"
+const inputCls = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-klasse-gold focus:ring-2 focus:ring-klasse-gold/20 transition-all placeholder:text-muted-foreground"
 const selectCls = `${inputCls} cursor-pointer`
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void 
     <div className={`
       fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl
       text-sm font-semibold animate-in slide-in-from-bottom-2 duration-200
-      ${toast.type === "success" ? "bg-[#1F6B3B] text-white" : "bg-rose-600 text-white"}
+      ${toast.type === "success" ? "bg-klasse-green text-white" : "bg-rose-600 text-white"}
     `}>
       {toast.message}
       <button onClick={onDismiss} className="opacity-70 hover:opacity-100"><X size={14} /></button>
@@ -104,15 +104,15 @@ function ConfirmDialog({ open, message, loading, onConfirm, onCancel }: {
 }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-klasse-dark/60 backdrop-blur-sm p-4">
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
         <div className="flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-          <p className="text-sm font-medium text-slate-700">{message}</p>
+          <p className="text-sm font-medium text-foreground">{message}</p>
         </div>
         <div className="flex justify-end gap-3">
           <button onClick={onCancel} disabled={loading}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+            className="px-4 py-2 rounded-xl border border-border text-sm font-semibold text-muted-foreground hover:bg-muted disabled:opacity-50">
             Cancelar
           </button>
           <button onClick={onConfirm} disabled={loading}
@@ -134,12 +134,12 @@ function PillTabs({ active, onChange }: { active: Tab; onChange: (t: Tab) => voi
     { id: "gerenciar", label: "Gerenciar",  icon: Cog6ToothIcon },
   ]
   return (
-    <div className="inline-flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+    <div className="inline-flex items-center gap-1 bg-muted rounded-xl p-1">
       {tabs.map(({ id, label, icon: Icon }) => (
         <button key={id} onClick={() => onChange(id)}
           className={`
             flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200
-            ${active === id ? "bg-slate-900 text-white shadow-sm" : "text-slate-500 hover:text-slate-800"}
+            ${active === id ? "bg-foreground text-background shadow-sm" : "text-muted-foreground hover:text-foreground"}
           `}>
           <Icon className="w-4 h-4" />
           {label}
@@ -160,21 +160,21 @@ function StepIndicator({ step, labels }: { step: number; labels: string[] }) {
             <span className={`
               flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold border transition-all
               ${step === idx
-                ? "border-[#E3B23C] bg-[#E3B23C] text-white"
+                ? "border-klasse-gold bg-klasse-gold text-klasse-gold-900"
                 : step > idx
-                ? "border-[#1F6B3B] bg-[#1F6B3B]/10 text-[#1F6B3B]"
-                : "border-slate-200 text-slate-400"}
+                ? "border-klasse-green bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300"
+                : "border-border text-muted-foreground"}
             `}>
               {step > idx ? <CheckCircle2 size={12} /> : idx + 1}
             </span>
             <span className={`text-xs font-semibold hidden sm:block ${
-              step === idx ? "text-[#E3B23C]" : step > idx ? "text-[#1F6B3B]" : "text-slate-400"
+              step === idx ? "text-klasse-gold-700 dark:text-klasse-gold-300" : step > idx ? "text-klasse-green dark:text-klasse-green-300" : "text-muted-foreground"
             }`}>
               {label}
             </span>
           </div>
           {idx < labels.length - 1 && (
-            <div className={`h-px flex-1 transition-colors ${step > idx ? "bg-[#1F6B3B]/30" : "bg-slate-200"}`} />
+            <div className={`h-px flex-1 transition-colors ${step > idx ? "bg-klasse-green/30" : "bg-muted-foreground/15"}`} />
           )}
         </React.Fragment>
       ))}
@@ -190,7 +190,7 @@ function ComplianceBadge({ status }: { status: string }) {
     ? { label: "Crítico",  dot: "bg-rose-500",     text: "text-rose-600",    ring: "ring-rose-200" }
     : s === "PENDING_MAC"
     ? { label: "Pendente", dot: "bg-amber-400",    text: "text-amber-600",   ring: "ring-amber-200" }
-    : { label: "OK",       dot: "bg-[#1F6B3B]",   text: "text-[#1F6B3B]",  ring: "ring-[#1F6B3B]/20" }
+    : { label: "OK",       dot: "bg-klasse-green",   text: "text-klasse-green dark:text-klasse-green-300",  ring: "ring-klasse-green/20" }
 
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ring-1 ${cfg.ring} ${cfg.text}`}>
@@ -204,7 +204,7 @@ function PendenciasResumoBadge({ total }: { total: number }) {
   const hasPendencias = total > 0
   const cfg = hasPendencias
     ? { label: `Pendências: ${total}`, dot: "bg-amber-400", text: "text-amber-600", ring: "ring-amber-200" }
-    : { label: "Sem pendências", dot: "bg-[#1F6B3B]", text: "text-[#1F6B3B]", ring: "ring-[#1F6B3B]/20" }
+    : { label: "Sem pendências", dot: "bg-klasse-green", text: "text-klasse-green dark:text-klasse-green-300", ring: "ring-klasse-green/20" }
 
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ring-1 ${cfg.ring} ${cfg.text}`}>
@@ -220,12 +220,12 @@ function PendenciaBadge({ status, label, count, total }: {
   status: PendenciaTipo["status"]; label: string; count: number; total: number
 }) {
   const cfg = status === "ok"
-    ? { dot: "bg-[#1F6B3B]",  text: "text-[#1F6B3B]",  ring: "ring-[#1F6B3B]/20" }
+    ? { dot: "bg-klasse-green",  text: "text-klasse-green dark:text-klasse-green-300",  ring: "ring-klasse-green/20" }
     : status === "pendente"
     ? { dot: "bg-amber-400",   text: "text-amber-600",   ring: "ring-amber-200" }
     : status === "sem_avaliacao"
     ? { dot: "bg-rose-500",    text: "text-rose-600",    ring: "ring-rose-200" }
-    : { dot: "bg-slate-400",   text: "text-slate-500",   ring: "ring-slate-200" }
+    : { dot: "bg-muted",   text: "text-muted-foreground",   ring: "ring-ring" }
 
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ring-1 ${cfg.ring} ${cfg.text}`}>
@@ -243,19 +243,19 @@ function CredentialsBanner({ creds, onCopy, onDismiss }: {
   onDismiss: () => void
 }) {
   return (
-    <div className="rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/8 p-4 text-sm">
+    <div className="rounded-xl border border-klasse-green/20 bg-klasse-green/8 p-4 text-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <p className="font-bold text-[#1F6B3B] text-xs uppercase tracking-wide">Credenciais geradas</p>
-          <p className="text-slate-700">Email: <span className="font-mono font-semibold">{creds.email}</span></p>
-          <p className="text-slate-700">Senha: <span className="font-mono font-semibold">{creds.senha}</span></p>
+          <p className="font-bold text-klasse-green dark:text-klasse-green-300 text-xs uppercase tracking-wide">Credenciais geradas</p>
+          <p className="text-foreground">Email: <span className="font-mono font-semibold">{creds.email}</span></p>
+          <p className="text-foreground">Senha: <span className="font-mono font-semibold">{creds.senha}</span></p>
         </div>
-        <button onClick={onDismiss} className="text-slate-400 hover:text-slate-600 flex-shrink-0">
+        <button onClick={onDismiss} className="text-muted-foreground hover:text-foreground flex-shrink-0">
           <X size={14} />
         </button>
       </div>
       <button onClick={onCopy}
-        className="mt-3 rounded-lg border border-[#1F6B3B]/30 bg-white px-3 py-1.5 text-xs font-bold text-[#1F6B3B] hover:bg-[#1F6B3B]/5 transition-colors">
+        className="mt-3 rounded-lg border border-klasse-green/30 bg-card px-3 py-1.5 text-xs font-bold text-klasse-green dark:text-klasse-green-300 hover:bg-klasse-green/5 transition-colors">
         Copiar credenciais
       </button>
     </div>
@@ -278,7 +278,7 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
   const cargaPct    = cargaMax > 0 ? Math.min(Math.round((cargaReal / cargaMax) * 100), 100) : 0
   const cargaColor  = cargaReal > cargaMax ? "bg-rose-500"
     : cargaReal >= cargaMax * 0.8 ? "bg-amber-400"
-    : "bg-[#1F6B3B]"
+    : "bg-klasse-green"
 
   const infoRows: Array<{ label: string; value: string | null | undefined }> = [
     { label: "BI",          value: prof.numero_bi },
@@ -292,14 +292,14 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
   ]
 
   return (
-    <div className="fixed inset-0 z-[70] flex justify-end bg-slate-950/60 backdrop-blur-sm"
+    <div className="fixed inset-0 z-[70] flex justify-end bg-klasse-dark/60 backdrop-blur-sm"
       onClick={onClose}>
       <div
-        className="h-full w-full max-w-lg bg-white shadow-2xl overflow-y-auto animate-in slide-in-from-right-4 duration-200 flex flex-col"
+        className="h-full w-full max-w-lg bg-card shadow-2xl overflow-y-auto animate-in slide-in-from-right-4 duration-200 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Drawer header — green identity ──────────────────────────────── */}
-        <div className="bg-[#1F6B3B] px-6 pt-6 pb-5 flex-shrink-0">
+        <div className="bg-klasse-green px-6 pt-6 pb-5 flex-shrink-0">
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="flex items-center gap-4">
               <img
@@ -352,41 +352,41 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
 
           {/* Dados pessoais + formação */}
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
               Dados pessoais e formação
             </h3>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 divide-y divide-slate-100">
+            <div className="rounded-xl border border-border bg-muted divide-y divide-border">
               {infoRows.filter((r) => r.value).map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between px-4 py-2.5">
-                  <span className="text-xs text-slate-400 font-medium">{label}</span>
-                  <span className="text-xs font-semibold text-slate-700">{value}</span>
+                  <span className="text-xs text-muted-foreground font-medium">{label}</span>
+                  <span className="text-xs font-semibold text-foreground">{value}</span>
                 </div>
               ))}
               {infoRows.every((r) => !r.value) && (
-                <p className="px-4 py-3 text-xs text-slate-400">Sem dados registados.</p>
+                <p className="px-4 py-3 text-xs text-muted-foreground">Sem dados registados.</p>
               )}
             </div>
           </section>
 
           {/* Turmas atribuídas */}
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
               Turmas e disciplinas ({atribuicoes.length})
             </h3>
             {atribuicoes.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400">
+              <div className="rounded-xl border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
                 Sem turmas atribuídas.
               </div>
             ) : (
               <div className="space-y-2">
                 {atribuicoes.map((a, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
+                  <div key={i} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-800 truncate">{a.turma_nome ?? "Turma"}</p>
-                      <p className="text-[10px] text-slate-400 truncate">{a.disciplina_nome ?? "Disciplina"}</p>
+                      <p className="text-xs font-bold text-foreground truncate">{a.turma_nome ?? "Turma"}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{a.disciplina_nome ?? "Disciplina"}</p>
                     </div>
                     {a.carga_horaria_semanal != null && (
-                      <span className="text-[10px] font-bold text-slate-500 flex-shrink-0 ml-3">
+                      <span className="text-[10px] font-bold text-muted-foreground flex-shrink-0 ml-3">
                         {a.carga_horaria_semanal}t/sem
                       </span>
                     )}
@@ -398,11 +398,11 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
 
           {/* Pendências de pauta */}
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
               Pendências de pauta
             </h3>
             {!pendenciasState || pendenciasState.loading ? (
-              <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
                 <RefreshCw size={13} className="animate-spin" /> A carregar…
               </div>
             ) : pendenciasState.error ? (
@@ -410,35 +410,35 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
                 {pendenciasState.error}
               </div>
             ) : !pendenciasState.data || pendenciasState.data.items.length === 0 ? (
-              <div className="flex items-center gap-2 rounded-xl bg-[#1F6B3B]/8 border border-[#1F6B3B]/20 px-4 py-3">
-                <CheckCircle2 size={15} className="text-[#1F6B3B] flex-shrink-0" />
-                <p className="text-xs font-semibold text-[#1F6B3B]">Sem pendências no momento.</p>
+              <div className="flex items-center gap-2 rounded-xl bg-klasse-green/8 border border-klasse-green/20 px-4 py-3">
+                <CheckCircle2 size={15} className="text-klasse-green dark:text-klasse-green-300 flex-shrink-0" />
+                <p className="text-xs font-semibold text-klasse-green dark:text-klasse-green-300">Sem pendências no momento.</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {/* Summary strip */}
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { label: "Pendências",      value: pendenciasState.data.resumo.total_pendencias, color: "text-[#E3B23C]" },
-                    { label: "Turmas afetadas", value: pendenciasState.data.resumo.turmas_afetadas,   color: "text-slate-700" },
+                    { label: "Pendências",      value: pendenciasState.data.resumo.total_pendencias, color: "text-klasse-gold-700 dark:text-klasse-gold-300" },
+                    { label: "Turmas afetadas", value: pendenciasState.data.resumo.turmas_afetadas,   color: "text-foreground" },
                   ].map(({ label, value, color }) => (
-                    <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                      <p className="text-[9px] uppercase font-bold text-slate-400 mb-0.5">{label}</p>
+                    <div key={label} className="rounded-xl border border-border bg-muted px-3 py-2.5">
+                      <p className="text-[9px] uppercase font-bold text-muted-foreground mb-0.5">{label}</p>
                       <p className={`text-base font-black ${color}`}>{value}</p>
                     </div>
                   ))}
                 </div>
                 {/* Items */}
                 {pendenciasState.data.items.map((item) => (
-                  <div key={item.turma_disciplina_id} className="rounded-xl border border-slate-200 bg-white p-4">
-                    <p className="text-xs font-bold text-slate-900 mb-1">
+                  <div key={item.turma_disciplina_id} className="rounded-xl border border-border bg-card p-4">
+                    <p className="text-xs font-bold text-foreground mb-1">
                       {item.turma_nome ?? "Turma"} · {item.disciplina_nome ?? "Disciplina"}
                     </p>
                     <div className="flex items-center gap-1.5 mb-2.5">
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-semibold text-slate-500">
+                      <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
                         Trim. {item.trimestre ?? "—"}
                       </span>
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-semibold text-slate-500">
+                      <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
                         {item.total_alunos} alunos
                       </span>
                     </div>
@@ -457,13 +457,13 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
         </div>
 
         {/* ── Footer actions ───────────────────────────────────────────────── */}
-        <div className="flex-shrink-0 border-t border-slate-100 px-6 py-4 bg-slate-50 flex justify-between items-center">
+        <div className="flex-shrink-0 border-t border-border px-6 py-4 bg-muted flex justify-between items-center">
           <button onClick={onClose}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">
+            className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors">
             Fechar
           </button>
           <button onClick={() => { onClose(); onEdit() }}
-            className="rounded-xl bg-[#E3B23C] px-5 py-2 text-sm font-bold text-white hover:brightness-95 transition-all active:scale-95">
+            className="rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-klasse-gold-900 hover:brightness-95 transition-all active:scale-95">
             Editar professor
           </button>
         </div>
@@ -495,29 +495,29 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
   const cargaLabel = cargaMax > 0 ? `${cargaReal} / ${cargaMax} tempos` : `${cargaReal} tempos`
   const avatarInitial = (prof.nome || prof.email || "?").trim().charAt(0).toUpperCase()
   const cargaBarCls = cargaPct === null
-    ? "bg-slate-200"
+    ? "bg-muted-foreground/15"
     : cargaReal > cargaMax  ? "bg-rose-500"
     : cargaReal >= cargaMax * 0.8 ? "bg-amber-400"
-    : "bg-[#1F6B3B]"
+    : "bg-klasse-green"
   const cargaPctCls = cargaPct === null
-    ? "text-slate-400"
+    ? "text-muted-foreground"
     : cargaReal > cargaMax  ? "text-rose-600"
     : cargaReal >= cargaMax * 0.8 ? "text-amber-600"
-    : "text-[#1F6B3B]"
+    : "text-klasse-green dark:text-klasse-green-300"
 
   return (
-    <div className="group rounded-xl border bg-white p-4 transition-all hover:shadow-md hover:border-slate-300">
+    <div className="group rounded-xl border bg-card p-4 transition-all hover:shadow-md hover:border-border">
       {/* Card header */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <button onClick={onView} className="flex items-center gap-3 min-w-0 text-left hover:opacity-80 transition-opacity">
-          <div className="h-8 w-8 rounded-lg bg-[#1F6B3B]/10 flex items-center justify-center flex-shrink-0 text-[11px] font-black text-[#1F6B3B]">
+          <div className="h-8 w-8 rounded-lg bg-klasse-green/10 flex items-center justify-center flex-shrink-0 text-[11px] font-black text-klasse-green dark:text-klasse-green-300">
             {avatarInitial}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-900 truncate group-hover:text-[#1F6B3B] transition-colors">
+            <p className="text-sm font-bold text-foreground truncate group-hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors">
               {prof.nome || "Sem nome"}
             </p>
-            <p className="text-xs text-slate-400 truncate">{prof.email}</p>
+            <p className="text-xs text-muted-foreground truncate">{prof.email}</p>
           </div>
         </button>
         <ComplianceBadge status={prof.compliance_status ?? "OK"} />
@@ -526,27 +526,27 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
       {/* Carga horária */}
       <div className="mb-3">
         <div className="flex justify-between text-[10px] font-bold mb-1">
-          <span className="text-slate-500">Carga horária</span>
+          <span className="text-muted-foreground">Carga horária</span>
           <span className={cargaPctCls}>{cargaPct === null ? "—" : `${cargaPct}%`}</span>
         </div>
-        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${cargaBarCls}`}
             style={{ width: `${cargaPct ?? 100}%` }}
           />
         </div>
-        <p className="mt-1 text-[10px] font-semibold text-slate-500">{cargaLabel}</p>
+        <p className="mt-1 text-[10px] font-semibold text-muted-foreground">{cargaLabel}</p>
       </div>
 
       {/* Status + pendências */}
       <div className="flex items-center justify-between text-xs mb-3">
         <div className="flex items-center gap-1.5">
           {prof.last_login
-            ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="text-[#1F6B3B] font-semibold">Ativo</span></>
+            ? <><UserCheck size={12} className="text-klasse-green dark:text-klasse-green-300" /><span className="text-klasse-green dark:text-klasse-green-300 font-semibold">Ativo</span></>
             : <><UserX size={12} className="text-amber-500" /><span className="text-amber-600 font-semibold">Pendente</span></>
           }
-          <span className="text-slate-300">·</span>
-          <span className="text-slate-500">
+          <span className="text-muted-foreground">·</span>
+          <span className="text-muted-foreground">
             {totalTurmas > 0 ? `${totalTurmas} turma(s)` : "Sem turmas neste ano"}
           </span>
         </div>
@@ -557,38 +557,38 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
       {visible.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {visible.map((l) => (
-            <span key={l} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-600">
+            <span key={l} className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
               {l}
             </span>
           ))}
           {remaining > 0 && (
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500">
+            <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
               +{remaining}
             </span>
           )}
         </div>
       ) : (
-        <p className="text-xs text-slate-400 mb-3">Sem turmas atribuídas.</p>
+        <p className="text-xs text-muted-foreground mb-3">Sem turmas atribuídas.</p>
       )}
 
       {/* Actions — visible on hover */}
-      <div className="flex items-center gap-1 pt-3 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 pt-3 border-t border-border opacity-0 group-hover:opacity-100 transition-opacity">
         <button onClick={onView} title="Ver detalhes"
-          className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-green-50 rounded-lg transition-colors">
+          className="p-1.5 text-muted-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 hover:bg-green-50 rounded-lg transition-colors">
           <Eye size={14} />
         </button>
         <button onClick={onEdit} title="Editar"
-          className="p-1.5 text-slate-400 hover:text-[#E3B23C] hover:bg-amber-50 rounded-lg transition-colors">
+          className="p-1.5 text-muted-foreground hover:text-klasse-gold-700 dark:hover:text-klasse-gold-300 hover:bg-amber-50 rounded-lg transition-colors">
           <Pencil size={14} />
         </button>
         {!prof.last_login && (
           <button onClick={onResend} title="Reenviar convite"
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
             <RefreshCw size={14} />
           </button>
         )}
         <button onClick={onReset} title="Nova senha"
-          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
           <KeyRound size={14} />
         </button>
       </div>
@@ -1222,18 +1222,18 @@ export default function ProfessoresPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button onClick={() => router.back()}
-            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors">
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-border transition-colors">
             <ArrowLeftIcon className="w-4 h-4" /> Voltar
           </button>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Professores</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Gestão docente da escola</p>
+            <h1 className="text-2xl font-black text-foreground tracking-tight">Professores</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Gestão docente da escola</p>
           </div>
         </div>
-        <div className="text-xs text-slate-400 flex items-center gap-1.5">
+        <div className="text-xs text-muted-foreground flex items-center gap-1.5">
           <span>Início</span>
           <span>/</span>
-          <span className="font-semibold text-[#1F6B3B]">Professores</span>
+          <span className="font-semibold text-klasse-green dark:text-klasse-green-300">Professores</span>
         </div>
       </div>
 
@@ -1247,21 +1247,21 @@ export default function ProfessoresPage() {
         ].map(({ label, value, icon: Icon, dark, green, amber }) => (
           <div key={label} className={`
             flex items-center gap-4 p-5 rounded-2xl border shadow-sm transition-all
-            ${dark ? "bg-slate-900 border-slate-900" : "bg-white border-slate-200"}
+            ${dark ? "bg-foreground border-foreground" : "bg-card border-border"}
           `}>
             <div className={`p-2.5 rounded-xl ${
-              dark  ? "bg-white/10 text-[#E3B23C]"
-              : green ? "bg-[#1F6B3B]/10 text-[#1F6B3B]"
+              dark  ? "bg-background/10 text-klasse-gold-400"
+              : green ? "bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300"
               : amber ? "bg-amber-50 text-amber-600"
-              : "bg-slate-50 text-slate-400"
+              : "bg-muted text-muted-foreground"
             }`}>
               <Icon className="w-5 h-5" />
             </div>
             <div>
-              <p className={`text-2xl font-black ${dark ? "text-white" : "text-slate-900"}`}>
+              <p className={`text-2xl font-black ${dark ? "text-background" : "text-foreground"}`}>
                 {loading ? "—" : value}
               </p>
-              <p className={`text-xs font-medium ${dark ? "text-slate-400" : "text-slate-500"}`}>{label}</p>
+              <p className={`text-xs font-medium ${dark ? "text-background/75" : "text-muted-foreground"}`}>{label}</p>
             </div>
           </div>
         ))}
@@ -1272,14 +1272,14 @@ export default function ProfessoresPage() {
 
       {/* ── Tab: Adicionar ─────────────────────────────────────────────────── */}
       {tab === "adicionar" && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-            <div className="p-2 rounded-xl bg-[#E3B23C]/10">
-              <UserPlusIcon className="w-5 h-5 text-[#E3B23C]" />
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
+            <div className="p-2 rounded-xl bg-klasse-gold/10">
+              <UserPlusIcon className="w-5 h-5 text-klasse-gold-700 dark:text-klasse-gold-300" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Novo Professor</h2>
-              <p className="text-xs text-slate-400">Preencha os dados em 3 passos.</p>
+              <h2 className="text-sm font-bold text-foreground">Novo Professor</h2>
+              <p className="text-xs text-muted-foreground">Preencha os dados em 3 passos.</p>
             </div>
           </div>
 
@@ -1299,7 +1299,7 @@ export default function ProfessoresPage() {
               <div>
                 <input className={inputCls} placeholder="Número do BI (14 caracteres)" value={teacherForm.numero_bi}
                   maxLength={14} onChange={(e) => updateTeacher("numero_bi", e.target.value)} />
-                <p className="text-[10px] text-slate-400 mt-1 ml-1">14 caracteres alfanuméricos.</p>
+                <p className="text-[10px] text-muted-foreground mt-1 ml-1">14 caracteres alfanuméricos.</p>
               </div>
               <input className={inputCls} type="email" placeholder="Email institucional" value={teacherForm.email}
                 onChange={(e) => updateTeacher("email", e.target.value)} />
@@ -1332,10 +1332,10 @@ export default function ProfessoresPage() {
                   placeholder="Carga horária máxima (tempos/semana)"
                   value={teacherForm.carga_horaria_maxima}
                   onChange={(e) => updateTeacher("carga_horaria_maxima", Number(e.target.value))} />
-                <div className="flex flex-wrap gap-4 items-center rounded-xl border border-slate-200 px-3 py-2.5 bg-white">
+                <div className="flex flex-wrap gap-4 items-center rounded-xl border border-border px-3 py-2.5 bg-card">
                   {(["Manhã","Tarde","Noite"] as const).map((turno) => (
                     <label key={turno} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input type="checkbox" className="accent-[#E3B23C]"
+                      <input type="checkbox" className="accent-klasse-gold"
                         checked={teacherForm.turnos_disponiveis.includes(turno)}
                         onChange={(e) => {
                           const next = new Set(teacherForm.turnos_disponiveis)
@@ -1347,15 +1347,15 @@ export default function ProfessoresPage() {
                   ))}
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-1">Disciplinas recomendadas</p>
-                <p className="mb-3 text-xs text-slate-500">Opcional. Use para melhorar as recomendações automáticas de atribuição.</p>
+              <div className="rounded-xl border border-border bg-muted p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Disciplinas recomendadas</p>
+                <p className="mb-3 text-xs text-muted-foreground">Opcional. Use para melhorar as recomendações automáticas de atribuição.</p>
                 {disciplinasCatalogo.length === 0
-                  ? <p className="text-xs text-slate-400">Nenhuma disciplina disponível.</p>
+                  ? <p className="text-xs text-muted-foreground">Nenhuma disciplina disponível.</p>
                   : <div className="grid gap-2 md:grid-cols-2">
                       {disciplinasCatalogo.map((d) => (
                         <label key={d.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                          <input type="checkbox" className="accent-[#E3B23C]"
+                          <input type="checkbox" className="accent-klasse-gold"
                             checked={teacherForm.disciplinas_habilitadas.includes(d.id)}
                             onChange={(e) => {
                               const next = new Set(teacherForm.disciplinas_habilitadas)
@@ -1369,7 +1369,7 @@ export default function ProfessoresPage() {
                 }
               </div>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" className="accent-[#E3B23C]"
+                <input type="checkbox" className="accent-klasse-gold"
                   checked={teacherForm.is_diretor_turma}
                   onChange={(e) => updateTeacher("is_diretor_turma", e.target.checked)} />
                 Professor pode ser Diretor de Turma
@@ -1381,7 +1381,7 @@ export default function ProfessoresPage() {
           <div className="mt-8 flex items-center justify-between">
             <button onClick={() => setTeacherStep((s) => Math.max(0, s - 1))}
               disabled={teacherStep === 0}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition-colors">
+              className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground disabled:opacity-40 hover:bg-muted transition-colors">
               Voltar
             </button>
             {teacherStep < 2 ? (
@@ -1390,7 +1390,7 @@ export default function ProfessoresPage() {
                 if (err) return showToast(err, "error")
                 setTeacherStep((s) => s + 1)
               }}
-                className="rounded-xl bg-[#E3B23C] px-5 py-2 text-sm font-bold text-white hover:brightness-95 transition-all active:scale-95">
+                className="rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-klasse-gold-900 hover:brightness-95 transition-all active:scale-95">
                 Próximo
               </button>
             ) : (
@@ -1399,7 +1399,7 @@ export default function ProfessoresPage() {
                 if (err) return showToast(err, "error")
                 handleCreateProfessor()
               }} disabled={teacherSubmitting}
-                className="rounded-xl bg-[#E3B23C] px-5 py-2 text-sm font-bold text-white hover:brightness-95 transition-all active:scale-95 disabled:opacity-60">
+                className="rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-klasse-gold-900 hover:brightness-95 transition-all active:scale-95 disabled:opacity-60">
                 {teacherSubmitting ? "A guardar…" : "Guardar Professor"}
               </button>
             )}
@@ -1416,14 +1416,14 @@ export default function ProfessoresPage() {
 
       {/* ── Tab: Atribuir ──────────────────────────────────────────────────── */}
       {tab === "atribuir" && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-            <div className="p-2 rounded-xl bg-[#E3B23C]/10">
-              <ClipboardDocumentListIcon className="w-5 h-5 text-[#E3B23C]" />
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border">
+            <div className="p-2 rounded-xl bg-klasse-gold/10">
+              <ClipboardDocumentListIcon className="w-5 h-5 text-klasse-gold-700 dark:text-klasse-gold-300" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Atribuir Professor</h2>
-              <p className="text-xs text-slate-400">Vincule professores a turmas e disciplinas.</p>
+              <h2 className="text-sm font-bold text-foreground">Atribuir Professor</h2>
+              <p className="text-xs text-muted-foreground">Vincule professores a turmas e disciplinas.</p>
             </div>
           </div>
 
@@ -1481,7 +1481,7 @@ export default function ProfessoresPage() {
                 ) : bulkCandidates.length === 0 ? (
                   <p className="p-4 text-xs text-muted-foreground">Nenhuma turma oferece esta disciplina no ano letivo ativo.</p>
                 ) : (
-                  <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                  <div className="max-h-64 overflow-y-auto divide-y divide-border">
                     {bulkCandidates.filter((t) => t.nome.toLowerCase().includes(bulkSearch.toLowerCase())).map((t) => (
                       <label key={t.turma_id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted cursor-pointer">
                         <span className="flex items-center gap-3 min-w-0">
@@ -1506,21 +1506,21 @@ export default function ProfessoresPage() {
             <div className="flex justify-end">
               <button type="button" onClick={handleBulkAssign}
                 disabled={!atribProfessorUserId || !bulkDisciplinaId || !bulkSelected.length || bulkSubmitting || bulkLoading}
-                className="rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-white hover:brightness-95 disabled:opacity-50">
+                className="rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-klasse-gold-900 hover:brightness-95 disabled:opacity-50">
                 {bulkSubmitting ? "A guardar…" : `Atribuir a ${bulkSelected.length} turma(s)`}
               </button>
             </div>
           </div>
 
-          <div className="mb-6 rounded-xl border border-[#1F6B3B]/15 bg-[#1F6B3B]/[0.04] p-4">
+          <div className="mb-6 rounded-xl border border-klasse-green/15 bg-klasse-green/[0.04] p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-bold text-slate-900">Atribuição rápida por turma</p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="text-sm font-bold text-foreground">Atribuição rápida por turma</p>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Distribua todas as disciplinas de uma turma num único lugar, com os vínculos e horários preservados.
                 </p>
               </div>
-              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#1F6B3B]">
+              <span className="rounded-full bg-card px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-klasse-green dark:text-klasse-green-300">
                 Recomendado
               </span>
             </div>
@@ -1539,7 +1539,7 @@ export default function ProfessoresPage() {
                 type="button"
                 disabled={!quickAssignSelection}
                 onClick={() => setQuickAssignTurmaId(quickAssignSelection)}
-                className="rounded-xl bg-[#1F6B3B] px-4 py-2.5 text-sm font-bold text-white transition-all hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-klasse-green px-4 py-2.5 text-sm font-bold text-white transition-all hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Abrir atribuição por turma
               </button>
@@ -1602,12 +1602,12 @@ export default function ProfessoresPage() {
               </p>
             ) : null}
             {atribTurmaId && disciplinasAtribuidas.length > 0 && disciplinasDisponiveis.length > 0 ? (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {disciplinasAtribuidas.length} disciplina(s) já atribuída(s) foram bloqueadas no selector.
               </p>
             ) : null}
             <button type="submit" disabled={atribuindo}
-              className="rounded-xl bg-[#E3B23C] px-5 py-2.5 text-sm font-bold text-white hover:brightness-95 disabled:opacity-60 transition-all active:scale-95">
+              className="rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-klasse-gold-900 hover:brightness-95 disabled:opacity-60 transition-all active:scale-95">
               {atribuindo ? "A guardar…" : replaceAssignment ? "Confirmar Troca" : "Confirmar Atribuição"}
             </button>
           </form>
@@ -1615,33 +1615,33 @@ export default function ProfessoresPage() {
           {/* Atribuições da turma */}
           {atribTurmaId && (
             <div className="mt-8">
-              <h3 className="text-sm font-bold text-slate-900 mb-3">Atribuições desta turma</h3>
+              <h3 className="text-sm font-bold text-foreground mb-3">Atribuições desta turma</h3>
               {turmaAssignments === null
-                ? <p className="text-sm text-slate-400">Selecione uma turma para visualizar.</p>
+                ? <p className="text-sm text-muted-foreground">Selecione uma turma para visualizar.</p>
                 : turmaAssignments.length === 0
-                ? <p className="text-sm text-slate-400">Nenhuma atribuição encontrada.</p>
+                ? <p className="text-sm text-muted-foreground">Nenhuma atribuição encontrada.</p>
                 : (
-                  <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <div className="overflow-x-auto rounded-xl border border-border">
                     <table className="min-w-full text-sm">
-                      <thead className="bg-slate-50">
+                      <thead className="bg-muted">
                         <tr>
                           {["Disciplina", "Professor", "Vínculos", ""].map((h) => (
-                            <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">{h}</th>
+                            <th key={h} className="px-4 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{h}</th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-border">
                         {turmaAssignments.map((a: any) => (
-                          <tr key={a.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-4 py-3 text-slate-700 font-medium">{a.disciplina?.nome || "—"}</td>
-                            <td className="px-4 py-3 text-slate-600">{a.professor?.nome || a.professor?.email || "—"}</td>
+                          <tr key={a.id} className="hover:bg-muted transition-colors">
+                            <td className="px-4 py-3 text-foreground font-medium">{a.disciplina?.nome || "—"}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{a.professor?.nome || a.professor?.email || "—"}</td>
                             <td className="px-4 py-3">
                               <div className="flex flex-wrap gap-1">
                                 {["horarios","notas","presencas","planejamento"].map((v) => (
                                   <span key={v} className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${
                                     a.vinculos?.[v]
-                                      ? "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20"
-                                      : "bg-slate-100 text-slate-500 border-slate-200"
+                                      ? "bg-klasse-green/10 text-klasse-green dark:text-klasse-green-300 border-klasse-green/20"
+                                      : "bg-muted text-muted-foreground border-border"
                                   }`}>
                                     {v.charAt(0).toUpperCase() + v.slice(1)}
                                   </span>
@@ -1684,9 +1684,9 @@ export default function ProfessoresPage() {
 
       {/* ── Tab: Gerenciar ─────────────────────────────────────────────────── */}
       {tab === "gerenciar" && (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="rounded-2xl border border-border bg-card shadow-sm">
           {/* Toolbar */}
-          <div className="p-5 border-b border-slate-100">
+          <div className="p-5 border-b border-border">
             <div className="flex flex-wrap items-center gap-2">
               <input type="text" placeholder="Buscar professor…" value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -1704,7 +1704,7 @@ export default function ProfessoresPage() {
                 ]},
               ].map(({ value, onChange, options }, i) => (
                 <select key={i} value={value} onChange={(e) => onChange(e.target.value)}
-                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer">
+                  className="px-3 py-2 bg-card border border-border rounded-xl text-sm text-foreground outline-none focus:border-klasse-gold cursor-pointer">
                   {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
               ))}
@@ -1716,16 +1716,16 @@ export default function ProfessoresPage() {
                 </button>
               )}
 
-              <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 ml-auto">
+              <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 ml-auto">
                 <button onClick={() => setViewMode("grid")}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                    viewMode === "grid" ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-800"
+                    viewMode === "grid" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
                   }`}>
                   <LayoutGrid size={12} /> Grid
                 </button>
                 <button onClick={() => setViewMode("list")}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                    viewMode === "list" ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-800"
+                    viewMode === "list" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
                   }`}>
                   <List size={12} /> Lista
                 </button>
@@ -1733,7 +1733,7 @@ export default function ProfessoresPage() {
             </div>
 
             <div className="flex items-center justify-between mt-3">
-              <p className="text-xs text-slate-400">{filteredProfessores.length} de {professores.length} professores</p>
+              <p className="text-xs text-muted-foreground">{filteredProfessores.length} de {professores.length} professores</p>
             </div>
           </div>
 
@@ -1755,22 +1755,22 @@ export default function ProfessoresPage() {
                     onReset={() => handleResetPassword(p)} />
                 ))}
                 {filteredProfessores.length === 0 && (
-                  <div className="col-span-full py-12 text-center text-slate-400 text-sm">
+                  <div className="col-span-full py-12 text-center text-muted-foreground text-sm">
                     Nenhum professor encontrado. Ajuste os filtros.
                   </div>
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <div className="overflow-x-auto rounded-xl border border-border">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50">
+                  <thead className="bg-muted">
                     <tr>
                     {["Professor","Status","Atribuições","Pendências","Compliance","Ações"].map((h) => (
-                      <th key={h} className="px-5 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">{h}</th>
+                      <th key={h} className="px-5 py-3 text-left text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{h}</th>
                     ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-border">
                     {filteredProfessores.map((p) => {
                       const atribuicoes = p.atribuicoes ?? []
                       const labels = Array.from(new Set(
@@ -1780,29 +1780,29 @@ export default function ProfessoresPage() {
                       const remaining = labels.length - visible.length
                       const avatarInitial = (p.nome || p.email || "?").trim().charAt(0).toUpperCase()
                       return (
-                        <tr key={p.user_id} className="hover:bg-slate-50 transition-colors">
+                        <tr key={p.user_id} className="hover:bg-muted transition-colors">
                           <td className="px-5 py-4">
                             <button onClick={() => openDetail(p)} className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left">
-                              <div className="h-8 w-8 rounded-lg bg-[#1F6B3B]/10 flex items-center justify-center flex-shrink-0 text-[11px] font-black text-[#1F6B3B]">
+                              <div className="h-8 w-8 rounded-lg bg-klasse-green/10 flex items-center justify-center flex-shrink-0 text-[11px] font-black text-klasse-green dark:text-klasse-green-300">
                                 {avatarInitial}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-sm font-bold text-slate-900 hover:text-[#1F6B3B] truncate transition-colors">{p.nome || "Sem nome"}</p>
-                                <p className="text-xs text-slate-400 truncate">{p.email}</p>
+                                <p className="text-sm font-bold text-foreground hover:text-klasse-green dark:hover:text-klasse-green-300 truncate transition-colors">{p.nome || "Sem nome"}</p>
+                                <p className="text-xs text-muted-foreground truncate">{p.email}</p>
                               </div>
                             </button>
                           </td>
                           <td className="px-5 py-4">
                             <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ring-1 ${
-                              p.last_login ? "ring-[#1F6B3B]/20 text-[#1F6B3B]" : "ring-amber-200 text-amber-600"
+                              p.last_login ? "ring-klasse-green/20 text-klasse-green dark:text-klasse-green-300" : "ring-amber-200 text-amber-600"
                             }`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${p.last_login ? "bg-[#1F6B3B]" : "bg-amber-400"}`} />
+                              <span className={`h-1.5 w-1.5 rounded-full ${p.last_login ? "bg-klasse-green" : "bg-amber-400"}`} />
                               {p.last_login ? "Ativo" : "Pendente"}
                             </span>
                           </td>
-                          <td className="px-5 py-4 text-xs text-slate-600">
+                          <td className="px-5 py-4 text-xs text-muted-foreground">
                             {visible.join(" · ")}{remaining > 0 ? ` +${remaining}` : ""}
-                            {visible.length === 0 && <span className="text-slate-400">Sem turmas</span>}
+                            {visible.length === 0 && <span className="text-muted-foreground">Sem turmas</span>}
                           </td>
                           <td className="px-5 py-4">
                             <PendenciasResumoBadge total={p.pendencias_total ?? 0} />
@@ -1813,21 +1813,21 @@ export default function ProfessoresPage() {
                           <td className="px-5 py-4 text-right">
                             <div className="flex flex-wrap justify-end gap-1.5">
                               <button onClick={() => openDetail(p)}
-                                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:border-[#1F6B3B]/30 hover:text-[#1F6B3B] transition-colors">
+                                className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:border-klasse-green/30 hover:text-klasse-green dark:hover:text-klasse-green-300 transition-colors">
                                 Ver
                               </button>
                               <button onClick={() => openEdit(p)}
-                                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:border-slate-300 hover:text-slate-900 transition-colors">
+                                className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:border-border hover:text-foreground transition-colors">
                                 Editar
                               </button>
                               {!p.last_login && (
                                 <button onClick={() => handleResendInvite(p.email)}
-                                  className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:border-slate-300 hover:text-slate-900 transition-colors">
+                                  className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:border-border hover:text-foreground transition-colors">
                                   Reenviar
                                 </button>
                               )}
                               <button onClick={() => handleResetPassword(p)}
-                                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:border-slate-300 hover:text-slate-900 transition-colors">
+                                className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:border-border hover:text-foreground transition-colors">
                                 Nova senha
                               </button>
                             </div>
@@ -1837,7 +1837,7 @@ export default function ProfessoresPage() {
                     })}
                     {filteredProfessores.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-slate-400 text-sm">
+                        <td colSpan={6} className="py-12 text-center text-muted-foreground text-sm">
                           Nenhum professor encontrado. Ajuste os filtros.
                         </td>
                       </tr>
@@ -1862,15 +1862,15 @@ export default function ProfessoresPage() {
 
       {/* ── Modal: editar professor ─────────────────────────────────────────── */}
       {editOpen && editTarget && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-klasse-dark/60 backdrop-blur-sm p-4">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted">
               <div>
-                <h3 className="font-bold text-slate-900">Editar Professor</h3>
-                <p className="text-xs text-slate-400 mt-0.5">{editTarget.nome || editTarget.email}</p>
+                <h3 className="font-bold text-foreground">Editar Professor</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{editTarget.nome || editTarget.email}</p>
               </div>
               <button onClick={() => setEditOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Fechar">
+                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors" aria-label="Fechar">
                 <X size={18} />
               </button>
             </div>
@@ -1910,10 +1910,10 @@ export default function ProfessoresPage() {
                   onChange={(e) => setEditForm((p) => ({ ...p, carga_horaria_maxima: Number(e.target.value) }))} />
               </div>
 
-              <div className="flex flex-wrap gap-4 rounded-xl border border-slate-200 px-3 py-2.5">
+              <div className="flex flex-wrap gap-4 rounded-xl border border-border px-3 py-2.5">
                 {(["Manhã","Tarde","Noite"] as const).map((t) => (
                   <label key={t} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="checkbox" className="accent-[#E3B23C]"
+                    <input type="checkbox" className="accent-klasse-gold"
                       checked={editForm.turnos_disponiveis.includes(t)}
                       onChange={(e) => {
                         const next = new Set(editForm.turnos_disponiveis)
@@ -1925,13 +1925,13 @@ export default function ProfessoresPage() {
                 ))}
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-1">Disciplinas recomendadas</p>
-                <p className="mb-3 text-xs text-slate-500">Opcional. Ajuste isto para melhorar sugestões futuras.</p>
+              <div className="rounded-xl border border-border bg-muted p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Disciplinas recomendadas</p>
+                <p className="mb-3 text-xs text-muted-foreground">Opcional. Ajuste isto para melhorar sugestões futuras.</p>
                 <div className="grid gap-2 md:grid-cols-2">
                   {disciplinasCatalogo.map((d) => (
                     <label key={d.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input type="checkbox" className="accent-[#E3B23C]"
+                      <input type="checkbox" className="accent-klasse-gold"
                         checked={editForm.disciplinas_habilitadas.includes(d.id)}
                         onChange={(e) => {
                           const next = new Set(editForm.disciplinas_habilitadas)
@@ -1945,20 +1945,20 @@ export default function ProfessoresPage() {
               </div>
 
               <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" className="accent-[#E3B23C]"
+                <input type="checkbox" className="accent-klasse-gold"
                   checked={editForm.is_diretor_turma}
                   onChange={(e) => setEditForm((p) => ({ ...p, is_diretor_turma: e.target.checked }))} />
                 Professor pode ser Diretor de Turma
               </label>
             </div>
 
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-border bg-muted">
               <button onClick={() => setEditOpen(false)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">
+                className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors">
                 Cancelar
               </button>
               <button onClick={handleUpdateProfessor}
-                className="rounded-xl bg-[#E3B23C] px-5 py-2 text-sm font-bold text-white hover:brightness-95 transition-all active:scale-95">
+                className="rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-klasse-gold-900 hover:brightness-95 transition-all active:scale-95">
                 Guardar alterações
               </button>
             </div>

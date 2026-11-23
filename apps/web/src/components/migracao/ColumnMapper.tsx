@@ -75,7 +75,7 @@ export function ColumnMapper({ headers, mapping, onChange }: ColumnMapperProps) 
       </Select>
 
       {field.hint && (
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-muted-foreground">
           {field.hint}
         </p>
       )}
@@ -85,8 +85,8 @@ export function ColumnMapper({ headers, mapping, onChange }: ColumnMapperProps) 
   return (
     <div className="space-y-5">
       {/* Bloco explicativo */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-[11px] text-slate-600">
-        <p className="font-medium text-slate-800 mb-1">
+      <div className="rounded-xl border border-border bg-muted/70 px-3 py-2.5 text-[11px] text-muted-foreground">
+        <p className="font-medium text-foreground mb-1">
           Como usar o mapeamento (Template v2.0):
         </p>
         <ul className="list-disc list-inside space-y-0.5">
@@ -111,10 +111,10 @@ export function ColumnMapper({ headers, mapping, onChange }: ColumnMapperProps) 
       {/* Grupo: Dados pessoais */}
       <div className="space-y-3">
         <div>
-          <h3 className="text-xs font-semibold text-slate-800">
+          <h3 className="text-xs font-semibold text-foreground">
             Mapeamento (Excel → Banco)
           </h3>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-muted-foreground">
             Alinhe cada coluna do Excel à coluna correspondente no Supabase.
           </p>
         </div>
@@ -131,9 +131,9 @@ export function ColumnMapper({ headers, mapping, onChange }: ColumnMapperProps) 
           label="Colunas detectadas"
           readOnly
           value={options.join(", ")}
-          className="text-xs sm:text-sm bg-slate-50"
+          className="text-xs sm:text-sm bg-muted"
         />
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-muted-foreground">
           Confirme se todos os campos importantes do seu modelo (curso/classe/turno/turma/ano)
           aparecem aqui com nomes reconhecíveis.
         </p>

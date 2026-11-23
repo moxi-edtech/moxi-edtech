@@ -206,27 +206,27 @@ function NotesModal({ turmaId, academicYearId, alunoId, alunoNome, onClose, onSa
 
   const focusedRows = pauta.filter((row) => row.id === alunoId);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true">
-      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/50 p-4" role="dialog" aria-modal="true">
+      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Resolver notas incompletas</p>
-            <h2 className="text-lg font-bold text-slate-950">{alunoNome}</h2>
+            <h2 className="text-lg font-bold text-foreground">{alunoNome}</h2>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Fechar"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="Fechar"><X className="h-5 w-5" /></button>
         </div>
-        <div className="grid gap-3 border-b border-slate-100 bg-slate-50 p-4 sm:grid-cols-2">
-          <select value={disciplinaId} onChange={(event) => setDisciplinaId(event.target.value)} className="rounded-lg border-slate-200 text-sm">
+        <div className="grid gap-3 border-b border-border bg-muted p-4 sm:grid-cols-2">
+          <select value={disciplinaId} onChange={(event) => setDisciplinaId(event.target.value)} className="rounded-lg border-border text-sm">
             <option value="">Selecione a disciplina</option>
             {disciplinas.map((item) => <option key={item.id} value={item.disciplina?.id ?? ""}>{item.disciplina?.nome ?? "Disciplina"}</option>)}
           </select>
-          <select value={periodo} onChange={(event) => setPeriodo(Number(event.target.value))} className="rounded-lg border-slate-200 text-sm" disabled={!periodos.length}>
+          <select value={periodo} onChange={(event) => setPeriodo(Number(event.target.value))} className="rounded-lg border-border text-sm" disabled={!periodos.length}>
             {periodos.length ? periodos.map((item) => <option key={item.id} value={item.numero}>Trimestre {item.numero}</option>) : <option value={1}>Sem períodos disponíveis</option>}
           </select>
         </div>
         <div className="min-h-0 flex-1 overflow-auto p-4">
-          {loading ? <div className="flex items-center gap-2 p-6 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />A carregar a pauta...</div> : !disciplinaId ? <p className="p-6 text-sm text-slate-500">Escolha a disciplina para lançar a nota.</p> : focusedRows.length === 0 ? <p className="p-6 text-sm text-slate-500">Não há pauta disponível para este aluno.</p> : <GradeEntryGrid initialData={focusedRows} title="Notas do aluno" subtitle={`Trimestre ${periodo}`} onSave={saveNotes} showIsento={true} />}
-          {saving && <p className="mt-3 text-xs text-slate-500">A guardar notas...</p>}
+          {loading ? <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />A carregar a pauta...</div> : !disciplinaId ? <p className="p-6 text-sm text-muted-foreground">Escolha a disciplina para lançar a nota.</p> : focusedRows.length === 0 ? <p className="p-6 text-sm text-muted-foreground">Não há pauta disponível para este aluno.</p> : <GradeEntryGrid initialData={focusedRows} title="Notas do aluno" subtitle={`Trimestre ${periodo}`} onSave={saveNotes} showIsento={true} />}
+          {saving && <p className="mt-3 text-xs text-muted-foreground">A guardar notas...</p>}
           {message && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">{message}</p>}
         </div>
       </div>
@@ -242,15 +242,15 @@ type BalcaoTriagemModalProps = {
 
 function BalcaoTriagemModal({ escolaId, aluno, onClose }: BalcaoTriagemModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-label={`Atendimento de ${aluno.nome}`}>
-      <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/50 p-4" role="dialog" aria-modal="true" aria-label={`Atendimento de ${aluno.nome}`}>
+      <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-border bg-muted px-6 py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Triagem · atendimento contextual</p>
-            <h2 className="text-lg font-bold text-slate-950">{aluno.nome}</h2>
-            <p className="mt-1 text-sm text-slate-600">Resolva a pendência, registe o pagamento e defina a rematrícula sem sair deste atendimento.</p>
+            <h2 className="text-lg font-bold text-foreground">{aluno.nome}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Resolva a pendência, registe o pagamento e defina a rematrícula sem sair deste atendimento.</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-500 hover:bg-slate-200" aria-label="Fechar atendimento"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-muted-foreground hover:bg-muted-foreground/15" aria-label="Fechar atendimento"><X className="h-5 w-5" /></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-0">
           <BalcaoAtendimento escolaId={escolaId} selectedAlunoId={aluno.id} showSearch={false} embedded />
@@ -556,7 +556,7 @@ export default function RematriculaPage() {
     <div className="${PORTAL_PAGE_INSET} rounded-xl border border-border bg-card shadow-sm font-sans">
       
       {/* HEADER DA PÁGINA */}
-      <div className="mb-8 border-b border-slate-100 pb-4">
+      <div className="mb-8 border-b border-border pb-4">
         <DashboardHeader
           title="Promoção em Massa"
           description="A secretaria promove alunos aprovados do ano anterior para o ano letivo ativo, com resolução inline das pendências."
@@ -567,9 +567,9 @@ export default function RematriculaPage() {
           ]}
         />
         <div className="mt-4 grid gap-3 rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-sm sm:grid-cols-3">
-          <div><span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Origem sugerida</span><strong>{originYear ? `${originYear}/${originYear + 1}` : "A carregar..."}</strong></div>
-          <div><span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Destino sugerido</span><strong>{destinationYear ? `${destinationYear}/${destinationYear + 1}` : "A carregar..."}</strong></div>
-          <div><span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Critério</span><span className="text-slate-700">Notas completas e situação financeira regular</span></div>
+          <div><span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Origem sugerida</span><strong>{originYear ? `${originYear}/${originYear + 1}` : "A carregar..."}</strong></div>
+          <div><span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Destino sugerido</span><strong>{destinationYear ? `${destinationYear}/${destinationYear + 1}` : "A carregar..."}</strong></div>
+          <div><span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Critério</span><span className="text-foreground">Notas completas e situação financeira regular</span></div>
         </div>
         <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
           <strong>Nota financeira:</strong> esta operação faz apenas a transição académica em massa. A taxa de rematrícula é calculada e cobrada no Balcão pela classe da turma destino.
@@ -589,11 +589,11 @@ export default function RematriculaPage() {
       <div className="relative mb-6 rounded-xl border border-sky-200 bg-sky-50/60 p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-bold text-slate-900">Localizar aluno na escola</p>
-            <p className="text-xs text-slate-600">Pesquise por nome, processo ou BI. A fila e a turma selecionada não serão alteradas.</p>
+            <p className="text-sm font-bold text-foreground">Localizar aluno na escola</p>
+            <p className="text-xs text-muted-foreground">Pesquise por nome, processo ou BI. A fila e a turma selecionada não serão alteradas.</p>
           </div>
           <div className="relative w-full sm:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
               value={globalSearchTerm}
               onChange={(event) => setGlobalSearchTerm(event.target.value)}
@@ -601,21 +601,21 @@ export default function RematriculaPage() {
                 if (event.key === "Enter") event.preventDefault();
               }}
               placeholder="Nome, processo ou BI..."
-              className="w-full rounded-xl border-slate-200 bg-white py-2 pl-9 pr-9 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+              className="w-full rounded-xl border-border bg-card py-2 pl-9 pr-9 text-sm focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               aria-label="Localizar aluno na escola"
             />
-            {globalSearching && <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-slate-400" />}
+            {globalSearching && <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />}
           </div>
         </div>
         {globalSearchTerm.trim().length >= 2 && !globalSearching && (
-          <div className="mt-3 rounded-lg border border-sky-100 bg-white">
+          <div className="mt-3 rounded-lg border border-sky-100 bg-card">
             {globalResults.length > 0 ? (
-              <ul className="divide-y divide-slate-100" aria-label="Resultados da busca global">
+              <ul className="divide-y divide-border" aria-label="Resultados da busca global">
                 {globalResults.map((aluno) => (
                   <li key={aluno.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">{aluno.nome}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-sm font-semibold text-foreground">{aluno.nome}</p>
+                      <p className="text-xs text-muted-foreground">
                         Proc. {aluno.numero_processo || "—"} · {aluno.turma_contexto || "Sem histórico de turma"}: {aluno.turma || "—"}{aluno.ano_letivo ? ` · ${aluno.ano_letivo}` : ""}
                       </p>
                     </div>
@@ -634,7 +634,7 @@ export default function RematriculaPage() {
                 ))}
               </ul>
             ) : (
-              <p className="px-3 py-3 text-sm text-slate-500">Nenhum aluno encontrado para esta pesquisa.</p>
+              <p className="px-3 py-3 text-sm text-muted-foreground">Nenhum aluno encontrado para esta pesquisa.</p>
             )}
           </div>
         )}
@@ -642,15 +642,15 @@ export default function RematriculaPage() {
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* ZONA 1: ORIGEM E DESTINO */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-100">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-muted p-6 rounded-xl border border-border">
           <div>
-            <label className="block text-sm font-semibold text-slate-950 mb-2">
+            <label className="block text-sm font-semibold text-foreground mb-2">
               Turma de Origem
             </label>
             <select
               value={originTurmaId}
               onChange={(e) => setOriginTurmaId(e.target.value)}
-              className="w-full rounded-xl border-slate-200 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20 transition-all"
+              className="w-full rounded-xl border-border text-sm focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20 transition-all"
               required
             >
               <option value="">Selecione a turma do ano anterior...</option>
@@ -662,18 +662,18 @@ export default function RematriculaPage() {
 
           <div className="relative">
             {/* Ícone decorativo apontando a direção no Desktop */}
-            <div className="absolute -left-6 top-9 hidden md:block text-slate-300">
+            <div className="absolute -left-6 top-9 hidden md:block text-muted-foreground">
               <ArrowRight className="w-5 h-5" />
             </div>
             
-            <label className="block text-sm font-semibold text-slate-950 mb-2">
+            <label className="block text-sm font-semibold text-foreground mb-2">
               Turma de Destino
             </label>
             <select
               value={destinationTurmaId}
               onChange={(e) => setDestinationTurmaId(e.target.value)}
               disabled={!originTurmaId}
-              className="w-full rounded-xl border-slate-200 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20 disabled:bg-slate-100 disabled:text-slate-400 transition-all"
+              className="w-full rounded-xl border-border text-sm focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20 disabled:bg-muted disabled:text-muted-foreground transition-all"
               required
             >
               <option value="">Selecione a turma de destino...</option>
@@ -681,7 +681,7 @@ export default function RematriculaPage() {
                 <option key={t.id} value={t.id}>{t.nome}{t.ano_letivo ? ` · ${t.ano_letivo}` : ""}</option>
               ))}
             </select>
-            <p className={`mt-2 text-xs ${destinationOptions.length > 0 ? "text-slate-500" : "text-amber-700"}`}>
+            <p className={`mt-2 text-xs ${destinationOptions.length > 0 ? "text-muted-foreground" : "text-amber-700"}`}>
               {destinationHint}
             </p>
           </div>
@@ -691,12 +691,12 @@ export default function RematriculaPage() {
         {originTurmaId && alunos.length > 0 && (
           <div className="space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h2 className="text-lg font-bold text-slate-950 font-sora">Triagem de Alunos</h2>
+              <h2 className="text-lg font-bold text-foreground font-sora">Triagem de Alunos</h2>
               <div className="flex flex-wrap gap-2 text-xs">
                 <button
                   type="button"
                   onClick={() => { setStatusFilter("todos"); setMotivoFilter("todos"); }}
-                  className="rounded-full border border-slate-200 px-3 py-1 text-slate-600 hover:bg-slate-50"
+                  className="rounded-full border border-border px-3 py-1 text-muted-foreground hover:bg-muted"
                 >
                   Total {totals.total}
                 </button>
@@ -731,7 +731,7 @@ export default function RematriculaPage() {
                 <button
                   type="button"
                   onClick={() => { setStatusFilter("pendentes"); setMotivoFilter("notas_incompletas"); }}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700"
+                  className="rounded-full border border-border bg-muted px-3 py-1 text-foreground"
                 >
                   Notas incompletas {totals.notas_incompletas}
                 </button>
@@ -740,20 +740,20 @@ export default function RematriculaPage() {
               {/* Filtros */}
               <div className="flex gap-2">
                 <div className="relative">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-2.5" />
                   <input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Filtrar alunos desta turma..."
-                    className="pl-9 w-48 rounded-xl border-slate-200 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+                    className="pl-9 w-48 rounded-xl border-border text-sm focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   />
                 </div>
                 <div className="relative">
-                  <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <Filter className="w-4 h-4 text-muted-foreground absolute left-3 top-2.5" />
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="pl-9 rounded-xl border-slate-200 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+                    className="pl-9 rounded-xl border-border text-sm focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   >
                     <option value="todos">Todos</option>
                     <option value="aptos">Aptos a Transitar</option>
@@ -761,11 +761,11 @@ export default function RematriculaPage() {
                   </select>
                 </div>
                 <div className="relative">
-                  <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <Filter className="w-4 h-4 text-muted-foreground absolute left-3 top-2.5" />
                   <select
                     value={motivoFilter}
                     onChange={(e) => setMotivoFilter(e.target.value)}
-                    className="pl-9 rounded-xl border-slate-200 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+                    className="pl-9 rounded-xl border-border text-sm focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   >
                     <option value="todos">Todos os motivos</option>
                     <option value="inadimplencia">Inadimplência</option>
@@ -776,14 +776,14 @@ export default function RematriculaPage() {
               </div>
             </div>
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+            <div className="border border-border rounded-xl overflow-hidden bg-card">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold">
+                <thead className="bg-muted border-b border-border text-muted-foreground font-semibold">
                   <tr>
                     <th className="py-3 px-4 text-left w-12">
                       <input 
                         type="checkbox" 
-                        className="rounded text-[#1F6B3B] focus:ring-[#E3B23C]"
+                        className="rounded text-klasse-green dark:text-klasse-green-300 focus:ring-klasse-gold"
                         onChange={(e) => {
                           if (e.target.checked) {
                             setSelectedAlunos(filteredAlunos.filter(a => a.pode_transitar).map(a => a.id));
@@ -799,7 +799,7 @@ export default function RematriculaPage() {
                     <th className="py-3 px-4 text-right">Ação</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {filteredAlunos.map((aluno) => {
                     const isSelected = selectedAlunos.includes(aluno.id);
                     const bloqueioMotivo = aluno.motivos_bloqueio.length > 0
@@ -810,14 +810,14 @@ export default function RematriculaPage() {
                         ? "Notas incompletas"
                         : ""
                     return (
-                      <tr key={aluno.id} className={`hover:bg-slate-50 transition-colors ${!aluno.pode_transitar ? 'opacity-75 bg-slate-50/50' : ''}`}>
+                      <tr key={aluno.id} className={`hover:bg-muted transition-colors ${!aluno.pode_transitar ? 'opacity-75 bg-muted/50' : ''}`}>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
                             <input
                               type="checkbox"
                               disabled={!aluno.pode_transitar}
                               checked={isSelected}
-                              className="rounded text-[#1F6B3B] focus:ring-[#E3B23C] disabled:opacity-50"
+                              className="rounded text-klasse-green dark:text-klasse-green-300 focus:ring-klasse-gold disabled:opacity-50"
                               onChange={(e) => {
                                 if (e.target.checked) setSelectedAlunos([...selectedAlunos, aluno.id]);
                                 else setSelectedAlunos(selectedAlunos.filter((id) => id !== aluno.id));
@@ -830,7 +830,7 @@ export default function RematriculaPage() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-medium text-slate-900">
+                        <td className="py-3 px-4 font-medium text-foreground">
                           <div>{aluno.nome}</div>
                           {!aluno.pode_transitar && bloqueioMotivo && (
                             <div className="text-xs text-red-600 mt-1">{bloqueioMotivo}</div>
@@ -890,7 +890,7 @@ export default function RematriculaPage() {
                               <button
                                 type="button"
                                 onClick={() => setBalcaoStudent(aluno)}
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
                               >
                                 Balcão
                               </button>
@@ -907,7 +907,7 @@ export default function RematriculaPage() {
                             <button
                               type="button"
                               onClick={() => setBalcaoStudent(aluno)}
-                              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                              className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
                             >
                               Abrir no Balcão
                             </button>
@@ -919,7 +919,7 @@ export default function RematriculaPage() {
                 </tbody>
               </table>
               {filteredAlunos.length === 0 && (
-                <div className="py-8 text-center text-slate-500">
+                <div className="py-8 text-center text-muted-foreground">
                   Nenhum aluno encontrado.
                 </div>
               )}
@@ -942,14 +942,14 @@ export default function RematriculaPage() {
         )}
 
         {/* ZONA 3: BARRA DE AÇÃO FLUTUANTE / FIXA */}
-        <div className="flex items-center justify-between pt-6 border-t border-slate-200">
-          <div className="text-sm text-slate-500">
-            <span className="font-bold text-slate-950">{selectedAlunos.length}</span> alunos prontos para transitar
+        <div className="flex items-center justify-between pt-6 border-t border-border">
+          <div className="text-sm text-muted-foreground">
+            <span className="font-bold text-foreground">{selectedAlunos.length}</span> alunos prontos para transitar
           </div>
           <button
             type="submit"
              disabled={loading || selectedAlunos.length === 0 || !destinationTurmaId}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20 disabled:opacity-50 transition-all"
+            className="inline-flex items-center gap-2 rounded-xl bg-klasse-green px-6 py-3 text-sm font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 disabled:opacity-50 transition-all"
           >
             {loading ? "A Processar..." : "Confirmar Transição"}
             {!loading && <Save className="w-4 h-4" />}

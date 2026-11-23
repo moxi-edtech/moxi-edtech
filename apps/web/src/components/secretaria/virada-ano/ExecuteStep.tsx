@@ -57,16 +57,16 @@ export function ExecuteStep({ onComplete, fromSession, toSession, retroactivePen
                 <CheckCircle2 className="h-12 w-12" />
             </div>
             <h3 className="text-2xl font-black text-emerald-900">Operação Bem Sucedida!</h3>
-            <p className="text-slate-600 mt-2 font-medium">O ciclo académico foi encerrado e o novo ano está 100% operacional.</p>
+            <p className="text-muted-foreground mt-2 font-medium">O ciclo académico foi encerrado e o novo ano está 100% operacional.</p>
             
             <div className="mt-10 flex flex-col gap-3 max-w-sm mx-auto">
-                <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-emerald-100 shadow-sm">
-                    <span className="text-xs font-bold text-slate-400 uppercase">Snapshot Histórico</span>
+                <div className="flex items-center justify-between p-4 bg-card rounded-2xl border border-emerald-100 shadow-sm">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Snapshot Histórico</span>
                     <span className="text-xs font-black text-emerald-600 uppercase">LOCKED</span>
                 </div>
-                <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-emerald-100 shadow-sm">
-                    <span className="text-xs font-bold text-slate-400 uppercase">Alunos Promovidos</span>
-                    <span className="text-xs font-black text-slate-800">Ver Relatório</span>
+                <div className="flex items-center justify-between p-4 bg-card rounded-2xl border border-emerald-100 shadow-sm">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Alunos Promovidos</span>
+                    <span className="text-xs font-black text-foreground">Ver Relatório</span>
                 </div>
             </div>
 
@@ -83,7 +83,7 @@ export function ExecuteStep({ onComplete, fromSession, toSession, retroactivePen
       <div className="rounded-2xl border-2 border-rose-100 bg-rose-50/30 p-8 text-center">
           <ShieldAlert className="h-12 w-12 text-rose-500 mx-auto mb-4" />
           <h3 className="text-xl font-black text-rose-900 uppercase tracking-tighter">Ponto de Não Retorno</h3>
-          <p className="text-sm text-slate-600 mt-2 max-w-md mx-auto">
+          <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
             Ao clicar em confirmar, o sistema realizará a virada atômica. Esta operação é <strong>auditada</strong> e <strong>irreversível</strong> em produção.
           </p>
       </div>
@@ -101,15 +101,15 @@ export function ExecuteStep({ onComplete, fromSession, toSession, retroactivePen
       </label>
 
       <div className="grid gap-4 sm:grid-cols-2">
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 flex flex-col items-center justify-center gap-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Estado Atual</span>
+          <div className="p-6 rounded-2xl bg-card border border-border flex flex-col items-center justify-center gap-2">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">Estado Atual</span>
               <div className="flex items-center gap-3">
                   <Lock className="h-5 w-5 text-rose-500" />
-                  <span className="text-lg font-black text-slate-800 uppercase tracking-tight">Congelado</span>
+                  <span className="text-lg font-black text-foreground uppercase tracking-tight">Congelado</span>
               </div>
           </div>
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center gap-2">
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Novo Estado</span>
+          <div className="p-6 rounded-xl bg-klasse-dark border border-border flex flex-col items-center justify-center gap-2">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">Novo Estado</span>
               <div className="flex items-center gap-3">
                   <Rocket className="h-5 w-5 text-emerald-400 animate-bounce" />
                   <span className="text-lg font-black text-white uppercase tracking-tight">Ativo</span>
@@ -129,7 +129,7 @@ export function ExecuteStep({ onComplete, fromSession, toSession, retroactivePen
           </div>
       ) : (
           <div className="pt-6 space-y-4 text-center animate-in fade-in zoom-in-95">
-              <p className="text-sm font-bold text-slate-700">Deseja realmente prosseguir com a promoção em massa?</p>
+              <p className="text-sm font-bold text-foreground">Deseja realmente prosseguir com a promoção em massa?</p>
               <div className="flex justify-center gap-3">
                   <Button tone="gray" variant="ghost" className="h-12 px-8 font-bold" onClick={() => setConfirming(false)} disabled={executing}>
                       Cancelar

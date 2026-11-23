@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createEntityContext } from "../../src/lib/command-center/entity-context";
@@ -49,4 +50,12 @@ test("chaves de cache são isoladas por escola, curso e ano letivo", () => {
   assert.notDeepEqual(courseContextQueryKey(first), courseContextQueryKey({ ...first, escolaId: "escola-B" }));
   assert.notDeepEqual(courseContextQueryKey(first), courseContextQueryKey({ ...first, id: "curso-2" }));
   assert.notDeepEqual(courseContextQueryKey(first), courseContextQueryKey({ ...first, academicYearId: "ano-2025" }));
+});
+
+test("separadores inativos de Turmas permanecem legíveis nos temas claro e escuro", () => {
+  const view = readFileSync(new URL("../../src/components/secretaria/command-center/TurmaContextView.tsx", import.meta.url), "utf8");
+  // O texto secundário sobre bg-muted não atinge 4.5:1 na fixture light.
+  // O estado ativo deve continuar evidente pela superfície do cartão.
+  assert.match(view, /activeTab === id \? "bg-card text-foreground shadow-sm" : "text-foreground hover:bg-card\/70"/);
+  assert.doesNotMatch(view, /activeTab === id \? [^\n]*text-muted-foreground/);
 });

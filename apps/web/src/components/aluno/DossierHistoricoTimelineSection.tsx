@@ -73,7 +73,7 @@ function Pill({ label, risk = false }: { label: string; risk?: boolean }) {
       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
         risk
           ? "border-red-200 bg-red-50 text-red-700"
-          : "border-slate-200 bg-slate-50 text-slate-600"
+          : "border-border bg-muted text-muted-foreground"
       }`}
     >
       {label}
@@ -145,16 +145,16 @@ export function DossierHistoricoTimelineSection({
 
   if (loading || loadedScopeKey !== scopeKey) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Percurso académico 360º</p>
+      <div className="rounded-xl border border-border bg-card p-3 sm:p-4 shadow-sm">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Percurso académico 360º</p>
         <div className="space-y-3">
           {[1, 2, 3].map((item) => (
-            <div key={item} className="animate-pulse rounded-xl border border-slate-200 p-3 sm:p-4">
-              <div className="mb-3 h-4 w-32 rounded-full bg-slate-200" />
+            <div key={item} className="animate-pulse rounded-xl border border-border p-3 sm:p-4">
+              <div className="mb-3 h-4 w-32 rounded-full bg-muted-foreground/20" />
               <div className="grid gap-2 md:grid-cols-3">
-                <div className="h-12 sm:h-16 rounded-xl bg-slate-100" />
-                <div className="h-12 sm:h-16 rounded-xl bg-slate-100" />
-                <div className="h-12 sm:h-16 rounded-xl bg-slate-100" />
+                <div className="h-12 sm:h-16 rounded-xl bg-muted" />
+                <div className="h-12 sm:h-16 rounded-xl bg-muted" />
+                <div className="h-12 sm:h-16 rounded-xl bg-muted" />
               </div>
             </div>
           ))}
@@ -176,8 +176,8 @@ export function DossierHistoricoTimelineSection({
 
   if (!cards.length) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 shadow-sm">
-        <BookOpen className="mx-auto mb-2 text-slate-400" size={18} />
+      <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
+        <BookOpen className="mx-auto mb-2 text-muted-foreground" size={18} />
         {selectedYearNumber
           ? `Nenhum registo encontrado para ${formatAcademicYear(selectedYearNumber)}.`
           : "Sem dados anuais para este aluno."}
@@ -191,22 +191,22 @@ export function DossierHistoricoTimelineSection({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Percurso académico 360º</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Percurso académico 360º</p>
           {selectedYearNumber ? (
             <Link
               href={role === "admin" && escolaId
                 ? `/escola/${escolaId}/admin/alunos/${alunoId}?tab=historico`
                 : `/secretaria/alunos/${alunoId}?tab=historico`}
-              className="text-xs font-semibold text-[#1F6B3B] hover:underline"
+              className="text-xs font-semibold text-klasse-green dark:text-emerald-300 hover:underline"
             >
               Ver todos os anos
             </Link>
           ) : null}
         </div>
         {selectedYearNumber ? (
-          <div className="mb-3 rounded-lg border border-[#E3B23C]/30 bg-[#E3B23C]/10 px-3 py-2 text-xs font-semibold text-slate-700">
+          <div className="mb-3 rounded-lg border border-klasse-gold/30 bg-klasse-gold/10 px-3 py-2 text-xs font-semibold text-foreground">
             Matrícula de {formatAcademicYear(selectedYearNumber)} · Consulta contextual
           </div>
         ) : null}
@@ -221,11 +221,11 @@ export function DossierHistoricoTimelineSection({
             const top = disciplinas.filter((d) => !d.em_risco).slice(0, 3);
 
             return (
-              <article key={ano.ano_letivo} className="rounded-xl border border-slate-200 p-4">
+              <article key={ano.ano_letivo} className="rounded-xl border border-border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-klasse-green">Ano letivo {formatAcademicYear(ano.ano_letivo)}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm font-semibold text-klasse-green dark:text-emerald-300">Ano letivo {formatAcademicYear(ano.ano_letivo)}</p>
+                    <p className="text-xs text-muted-foreground">
                       Matrícula {ano.matricula.numero_matricula ?? "—"} · {formatDate(ano.matricula.data_matricula)}
                     </p>
                   </div>
@@ -234,7 +234,7 @@ export function DossierHistoricoTimelineSection({
                     <Link
                       aria-current={selectedYearNumber === ano.ano_letivo ? "page" : undefined}
                       href={detalheAnoHref(role, alunoId, ano.ano_letivo, escolaId)}
-                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-[#E3B23C] hover:text-[#E3B23C]"
+                      className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-klasse-gold hover:text-klasse-gold-900 dark:hover:text-klasse-gold-300"
                     >
                       <Eye size={16} /> Ver detalhe do ano
                     </Link>
@@ -242,10 +242,10 @@ export function DossierHistoricoTimelineSection({
                 </div>
 
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
-                  <section className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Resumo académico</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-800">Média: {ano.academico.media_geral ?? "—"}</p>
-                    <p className="text-xs text-slate-500">Resultado final: {ano.academico.estado_final ?? "—"}</p>
+                  <section className="rounded-xl border border-border bg-muted p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Resumo académico</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">Média: {ano.academico.media_geral ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground">Resultado final: {ano.academico.estado_final ?? "—"}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {top.map((d) => (
                         <Pill key={`${ano.ano_letivo}-${d.disciplina_id ?? d.disciplina_nome}`} label={d.disciplina_nome ?? "Disciplina"} />
@@ -256,33 +256,33 @@ export function DossierHistoricoTimelineSection({
                     </div>
                   </section>
 
-                  <section className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Resumo de presença</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-800">
+                  <section className="rounded-xl border border-border bg-muted p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Resumo de presença</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
                       {ano.presenca.faltas} falta(s) · {presencaAtual == null ? "—" : `${presencaAtual}%`}
                     </p>
                     <p className="mt-1 text-xs">
-                      <span className={presencaOk == null ? "text-slate-500" : presencaOk ? "text-[#1F6B3B]" : "text-red-600"}>
+                      <span className={presencaOk == null ? "text-muted-foreground" : presencaOk ? "text-klasse-green dark:text-emerald-300" : "text-red-600"}>
                         {presencaOk == null ? "Sem base para comparação" : presencaOk ? "Acima do mínimo" : "Abaixo do mínimo"}
                       </span>
-                      <span className="text-slate-500"> · mínimo {minimo}%</span>
+                      <span className="text-muted-foreground"> · mínimo {minimo}%</span>
                     </p>
-                    <p className="mt-1 text-xs text-slate-500 flex items-center gap-1"><CalendarCheck size={14} /> Fonte: {formatPresencaFonteLabel(ano.presenca.fonte)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1"><CalendarCheck size={14} /> Fonte: {formatPresencaFonteLabel(ano.presenca.fonte)}</p>
                   </section>
 
-                  <section className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Resumo financeiro</p>
-                    <p className="mt-1 text-xs text-slate-600">Previsto: <span className="font-semibold text-slate-900">{formatKwanza(ano.financeiro.total_previsto)}</span></p>
-                    <p className="text-xs text-slate-600">Pago: <span className="font-semibold text-[#1F6B3B]">{formatKwanza(ano.financeiro.total_pago)}</span></p>
-                    <p className="text-xs text-slate-600">Atraso: <span className={saldoAtraso > 0 ? "font-semibold text-red-600" : "font-semibold text-slate-900"}>{formatKwanza(saldoAtraso)}</span></p>
-                    <p className="mt-1 text-xs text-slate-500 flex items-center gap-1"><Wallet size={14} /> Últimos pagamentos</p>
+                  <section className="rounded-xl border border-border bg-muted p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Resumo financeiro</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Previsto: <span className="font-semibold text-foreground">{formatKwanza(ano.financeiro.total_previsto)}</span></p>
+                    <p className="text-xs text-muted-foreground">Pago: <span className="font-semibold text-klasse-green dark:text-emerald-300">{formatKwanza(ano.financeiro.total_pago)}</span></p>
+                    <p className="text-xs text-muted-foreground">Atraso: <span className={saldoAtraso > 0 ? "font-semibold text-red-600" : "font-semibold text-foreground"}>{formatKwanza(saldoAtraso)}</span></p>
+                    <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1"><Wallet size={14} /> Últimos pagamentos</p>
                     <ul className="mt-1 space-y-1">
                       {(ano.financeiro.ultimos_pagamentos ?? []).slice(0, 2).map((pag) => (
-                        <li key={pag.pagamento_id} className="text-xs text-slate-600">
+                        <li key={pag.pagamento_id} className="text-xs text-muted-foreground">
                           {formatDate(pag.data_pagamento)} · {formatKwanza(pag.valor_pago ?? 0)}
                         </li>
                       ))}
-                      {!(ano.financeiro.ultimos_pagamentos ?? []).length ? <li className="text-xs text-slate-400">Sem pagamentos registados.</li> : null}
+                      {!(ano.financeiro.ultimos_pagamentos ?? []).length ? <li className="text-xs text-muted-foreground">Sem pagamentos registados.</li> : null}
                     </ul>
                   </section>
                 </div>

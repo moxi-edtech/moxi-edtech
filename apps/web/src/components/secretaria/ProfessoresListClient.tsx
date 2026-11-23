@@ -202,7 +202,7 @@ export default function ProfessoresListClient() {
         <div className="flex items-center gap-3">
           <Link
             href="professores/novo"
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-klasse-gold px-5 py-3 text-sm font-bold text-white hover:brightness-95 transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-klasse-gold px-5 py-3 text-sm font-bold text-klasse-gold-900 hover:brightness-95 transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
           >
             <UserPlus className="h-4 w-4" />
             Novo Professor

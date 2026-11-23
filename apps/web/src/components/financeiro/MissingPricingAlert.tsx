@@ -67,29 +67,29 @@ export function MissingPricingAlert({
   if (!items || items.length === 0) return null;
 
   return (
-    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm animate-in slide-in-from-top-2">
+    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40 p-4 shadow-sm animate-in slide-in-from-top-2">
       <div className="flex items-start gap-4">
-        <div className="p-2 bg-amber-100 rounded-full text-amber-600">
+        <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-full text-amber-600 dark:text-amber-300">
           <AlertTriangle className="w-5 h-5" />
         </div>
 
         <div className="flex-1">
-          <h3 className="text-sm font-bold text-amber-900 mb-1">Atenção: Configuração de Preços Incompleta</h3>
-          <p className="text-xs text-amber-700 mb-3">
+          <h3 className="text-sm font-bold text-amber-900 dark:text-amber-100 mb-1">Atenção: Configuração de Preços Incompleta</h3>
+          <p className="text-xs text-amber-700 dark:text-amber-200 mb-3">
             Detectamos cursos ativos sem preços definidos para o ano {anoLetivo}. Isso impedirá a cobrança correta das matrículas e mensalidades.
           </p>
 
-          <div className="bg-white/60 rounded-lg p-3 border border-amber-100 mb-3 max-h-40 overflow-y-auto custom-scrollbar">
+          <div className="bg-card/60 rounded-lg p-3 border border-amber-100 dark:border-amber-900/60 mb-3 max-h-40 overflow-y-auto custom-scrollbar">
             <ul className="space-y-2">
               {items.map((item, idx) => (
                 <li
                   key={`${item.curso_nome}-${item.classe_nome}-${idx}`}
-                  className="text-xs flex justify-between items-center text-amber-800 border-b border-amber-100 last:border-0 pb-1 last:pb-0"
+                  className="text-xs flex justify-between items-center text-amber-800 dark:text-amber-200 border-b border-amber-100 dark:border-amber-900/60 last:border-0 pb-1 last:pb-0"
                 >
                   <span className="font-medium">
                     {item.curso_nome} <span className="text-amber-500">•</span> {item.classe_nome}
                   </span>
-                  <span className="px-2 py-0.5 bg-amber-100 rounded text-[10px] font-bold uppercase tracking-wide">
+                  <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/50 rounded text-[10px] font-bold uppercase tracking-wide">
                     {item.missing_type.replace("_", " ")}
                   </span>
                 </li>
@@ -100,20 +100,20 @@ export function MissingPricingAlert({
           <div className="flex gap-3">
             <Link
               href={buildPortalHref(escolaId, "/financeiro/configuracoes/precos")}
-              className="inline-flex items-center gap-1 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg transition-colors shadow-sm"
+              className="inline-flex items-center gap-1 text-xs font-bold text-klasse-gold-900 bg-klasse-gold hover:brightness-95 px-4 py-2 rounded-lg transition-colors shadow-sm"
             >
               Resolver Agora <ChevronRight className="w-3 h-3" />
             </Link>
             <button
               onClick={() => setIsVisible(false)}
-              className="text-xs font-bold text-amber-600 hover:text-amber-800 px-2 py-2"
+              className="text-xs font-bold text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 px-2 py-2"
             >
               Lembrar depois
             </button>
           </div>
         </div>
 
-        <button onClick={() => setIsVisible(false)} className="text-amber-400 hover:text-amber-600">
+        <button onClick={() => setIsVisible(false)} className="text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100">
           <X className="w-4 h-4" />
         </button>
       </div>

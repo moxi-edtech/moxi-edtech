@@ -275,8 +275,8 @@ export function DossierHistoricoTransitadoSection({
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+      <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Carregando histórico transitado...
         </div>
@@ -286,19 +286,19 @@ export function DossierHistoricoTransitadoSection({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Histórico transitado</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Histórico transitado</p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold text-slate-900">Notas de anos anteriores lançadas manualmente</h3>
+              <h3 className="text-sm font-semibold text-foreground">Notas de anos anteriores lançadas manualmente</h3>
               {!canEdit ? (
                 <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
                   Documento transitado e bloqueado
                 </span>
               ) : null}
             </div>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               {canEdit
                 ? "Use esta grelha para preservar classes passadas sem poluir o motor de avaliações do ano corrente."
                 : "Este histórico está visível apenas para consulta. A edição fica reservada à secretaria e ao admin."}
@@ -309,7 +309,7 @@ export function DossierHistoricoTransitadoSection({
             <button
               type="button"
               onClick={handleStartBlank}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 px-3 py-2 text-xs font-semibold text-[#1F6B3B] transition hover:bg-[#1F6B3B]/10"
+              className="inline-flex items-center gap-2 rounded-xl border border-klasse-green/20 bg-klasse-green/5 px-3 py-2 text-xs font-semibold text-klasse-green dark:text-emerald-300 transition hover:bg-klasse-green/10"
             >
               <PlusCircle className="h-4 w-4" />
               Adicionar ano passado
@@ -325,21 +325,21 @@ export function DossierHistoricoTransitadoSection({
 
         <div className="mt-4 space-y-3">
           {records.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-              <BookOpen className="mx-auto mb-2 h-5 w-5 text-slate-400" />
+            <div className="rounded-xl border border-dashed border-border bg-muted px-4 py-6 text-center text-sm text-muted-foreground">
+              <BookOpen className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
               Sem anos transitados para este aluno.
             </div>
           ) : (
             records.map((record) => (
               <div
                 key={record.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border px-4 py-3"
               >
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-semibold text-foreground">
                     {record.classe_nome} · {record.ano_letivo_label}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {record.notas.length} disciplinas · Atualizado em {formatTimestamp(record.updated_at)}
                   </p>
                 </div>
@@ -348,7 +348,7 @@ export function DossierHistoricoTransitadoSection({
                   <button
                     type="button"
                     onClick={() => handleEditRecord(record)}
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-[#E3B23C] hover:text-[#E3B23C]"
+                    className="rounded-xl border border-border px-3 py-2 text-xs font-semibold text-foreground transition hover:border-klasse-gold hover:text-klasse-gold-900 dark:hover:text-klasse-gold-300"
                   >
                     Editar grelha
                   </button>
@@ -360,14 +360,14 @@ export function DossierHistoricoTransitadoSection({
       </div>
 
       {editorOpen && canEdit ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_auto] md:items-end">
-            <label className="space-y-1 text-sm text-slate-700">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Classe</span>
+            <label className="space-y-1 text-sm text-foreground">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Classe</span>
               <select
                 value={classeId}
                 onChange={(event) => setClasseId(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#1F6B3B]"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition focus:border-klasse-gold"
               >
                 <option value="">Selecione a classe</option>
                 {classes.map((classe) => (
@@ -378,12 +378,12 @@ export function DossierHistoricoTransitadoSection({
               </select>
             </label>
 
-            <label className="space-y-1 text-sm text-slate-700">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Ano letivo</span>
+            <label className="space-y-1 text-sm text-foreground">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ano letivo</span>
               <select
                 value={anoLetivoId}
                 onChange={(event) => setAnoLetivoId(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#1F6B3B]"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition focus:border-klasse-gold"
               >
                 <option value="">Selecione o ano letivo</option>
                 {academicYears.map((year) => (
@@ -401,51 +401,51 @@ export function DossierHistoricoTransitadoSection({
                 setDisciplinas([]);
                 setFeedback(null);
               }}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+              className="rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:border-ring hover:text-foreground"
             >
               Fechar editor
             </button>
           </div>
 
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Modo DataGrid</p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">
+          <div className="mt-4 rounded-xl border border-border bg-muted px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Modo DataGrid</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
               {classeNome
                 ? `${classeNome} · ${academicYears.find((item) => item.id === anoLetivoId)?.label ?? "Ano letivo"}`
                 : "Escolha a classe e o ano letivo para gerar a grelha"}
             </p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Digite a nota e use <strong>Enter</strong> para avançar verticalmente. Faixa aceite: 0 a 20 valores.
             </p>
           </div>
 
           <div className="mt-4">
             {gridLoading ? (
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-6 text-sm text-slate-500">
+              <div className="flex items-center gap-2 rounded-xl border border-border px-4 py-6 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 A montar a grelha de disciplinas...
               </div>
             ) : disciplinas.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+              <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
                 Nenhuma disciplina obrigatória encontrada para esta classe. Verifique o currículo publicado.
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="min-w-full divide-y divide-slate-200 text-sm">
-                  <thead className="bg-slate-50">
+              <div className="overflow-x-auto rounded-xl border border-border">
+                <table className="min-w-full divide-y divide-border text-sm">
+                  <thead className="bg-muted">
                     <tr>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                         Disciplina
                       </th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                         Nota final
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
+                  <tbody className="divide-y divide-border bg-card">
                     {disciplinas.map((disciplina, index) => (
                       <tr key={disciplina.disciplina_id}>
-                        <td className="px-4 py-3 text-slate-700">{disciplina.disciplina_nome}</td>
+                        <td className="px-4 py-3 text-foreground">{disciplina.disciplina_nome}</td>
                         <td className="px-4 py-2">
                           <input
                             ref={(node) => {
@@ -464,7 +464,7 @@ export function DossierHistoricoTransitadoSection({
                               inputRefs.current[index + 1]?.focus();
                               inputRefs.current[index + 1]?.select();
                             }}
-                            className="w-28 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#1F6B3B]"
+                            className="w-28 rounded-lg border border-border px-3 py-2 text-sm text-foreground outline-none transition focus:border-klasse-gold"
                           />
                         </td>
                       </tr>
@@ -476,7 +476,7 @@ export function DossierHistoricoTransitadoSection({
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {disciplinas.length > 0
                 ? `${disciplinas.length} disciplina(s) obrigatória(s) carregada(s).`
                 : "A grelha será montada a partir do currículo da classe selecionada."}
@@ -486,7 +486,7 @@ export function DossierHistoricoTransitadoSection({
               type="button"
               onClick={() => void handleSave()}
               disabled={!canSave}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#185830] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-klasse-gold-900 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Salvar histórico

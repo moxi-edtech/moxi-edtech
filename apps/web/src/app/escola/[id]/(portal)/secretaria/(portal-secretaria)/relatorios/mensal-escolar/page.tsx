@@ -27,7 +27,7 @@ export default async function MensalEscolarSecretariaPage() {
         ]}
       />
       
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+      <div className="bg-card rounded-xl shadow-sm border border-border">
         <RelatorioMensalidadesClient />
       </div>
     </div>

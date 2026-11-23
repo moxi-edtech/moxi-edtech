@@ -45,7 +45,7 @@ export default function ProfessoresStep({ escolaId, cursos, professores, onCurso
   return (
     <div className="space-y-8">
       <StepHeader icone={<span className="text-3xl">👨‍🏫</span>} titulo="Atribuir Professores" descricao="Associe cada curso a um professor responsável." />
-      {cursos.length === 0 ? <p className="text-center text-gray-600 py-10">Crie cursos para poder atribuir professores.</p> : professores.length === 0 ? <p className="text-center text-gray-600 py-10">Cadastre professores para poder fazer as atribuições.</p> : (
+      {cursos.length === 0 ? <p className="text-center text-muted-foreground py-10">Crie cursos para poder atribuir professores.</p> : professores.length === 0 ? <p className="text-center text-muted-foreground py-10">Cadastre professores para poder fazer as atribuições.</p> : (
         <div className="space-y-6">
           <div className="p-4 bg-teal-50 border border-teal-200 rounded-lg text-center">
             <p className="text-2xl font-bold text-teal-600">{cursosSemProfessor}</p>
@@ -55,10 +55,10 @@ export default function ProfessoresStep({ escolaId, cursos, professores, onCurso
             {cursos.map(curso => (
               <div key={curso.id} className="flex flex-col sm:flex-row items-center justify-between p-4 border rounded-lg">
                 <div className="flex-1 mb-3 sm:mb-0">
-                  <p className="font-medium text-gray-800">{curso.nome}</p>
-                  <p className="text-sm text-gray-500">{professores.find(p => p.id === atribuicoes[curso.id])?.nome || 'Sem professor'}</p>
+                  <p className="font-medium text-foreground">{curso.nome}</p>
+                  <p className="text-sm text-muted-foreground">{professores.find(p => p.id === atribuicoes[curso.id])?.nome || 'Sem professor'}</p>
                 </div>
-                <select value={atribuicoes[curso.id] || ""} onChange={(e) => handleAtribuir(curso.id, e.target.value)} className="w-full sm:w-auto p-2 border border-gray-300 rounded-lg min-w-48">
+                <select value={atribuicoes[curso.id] || ""} onChange={(e) => handleAtribuir(curso.id, e.target.value)} className="w-full sm:w-auto p-2 border border-border rounded-lg min-w-48">
                   <option value="">-- Remover Professor --</option>
                   {professores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>

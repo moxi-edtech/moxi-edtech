@@ -119,9 +119,9 @@ export function QuickEditField({
   return (
     <div className="group flex items-center justify-between gap-2 min-h-[24px]">
       {value ? (
-        <span className="text-sm font-medium text-slate-700 truncate">{value}</span>
+        <span className="text-sm font-medium text-foreground truncate">{value}</span>
       ) : (
-        <span className="text-xs text-slate-400 italic">Não preenchido</span>
+        <span className="text-xs text-muted-foreground italic">Não preenchido</span>
       )}
       <button
         type="button"

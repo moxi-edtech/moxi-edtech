@@ -93,16 +93,31 @@ try {
   for(let round=0;round<iterations;round++){
     for(const tab of tabs) {
       const before = await page.evaluate(() => ({commits:window.__balcaoPerf?.commits||0,duration:window.__balcaoPerf?.duration||0}));
-      const requestsBefore=requests, queryBefore=queryRequests, pathsBefore=requestedPaths.length, start=Date.now();
+      const requestsBefore=requests, queryBefore=queryRequests, pathsBefore=requestedPaths.length;
+      const driverStarted=Date.now();
       const button=page.getByRole("button",{name:tab,exact:true});
+      // Measure the time from the actual browser click to two animation frames.
+      // Date.now() around Playwright's click + waitForFunction also counts IPC,
+      // locator polling and runner scheduling, which is not application paint.
+      // Keep automation overhead separately for diagnosis, never as paint budget.
+      await button.evaluate((element) => {
+        window.__balcaoPaint = new Promise((resolve) => {
+          element.addEventListener("click", () => {
+            const started=performance.now();
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              resolve(Number((performance.now()-started).toFixed(2)));
+            }));
+          }, {once:true,capture:true});
+        });
+      });
       await button.click({timeout:20000});
       await button.waitFor({state:"visible",timeout:10000});
       await page.waitForFunction(label => [...document.querySelectorAll('button[aria-pressed="true"]')].some(button => button.textContent?.trim() === label),tab,{timeout:10000});
-      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      const paintedMs = Date.now() - start;
+      const paintedMs = await page.evaluate(() => window.__balcaoPaint);
+      const driverRoundtripMs = Date.now() - driverStarted;
       await page.waitForTimeout(250);
       const after = await page.evaluate(() => ({commits:window.__balcaoPerf?.commits||0,duration:window.__balcaoPerf?.duration||0}));
-      raw.push({tab,round,timeMs:paintedMs,requests:requests-requestsBefore,queries:queryRequests-queryBefore,requestPaths:requestedPaths.slice(pathsBefore),commits:after.commits-before.commits,reactDurationMs:Number((after.duration-before.duration).toFixed(2))});
+      raw.push({tab,round,timeMs:paintedMs,driverRoundtripMs,requests:requests-requestsBefore,queries:queryRequests-queryBefore,requestPaths:requestedPaths.slice(pathsBefore),commits:after.commits-before.commits,reactDurationMs:Number((after.duration-before.duration).toFixed(2))});
     }
   }
   const beforeIdle=requests, queriesBeforeIdle=queryRequests;

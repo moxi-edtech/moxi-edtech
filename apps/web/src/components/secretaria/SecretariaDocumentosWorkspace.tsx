@@ -26,7 +26,7 @@ export default function SecretariaDocumentosWorkspace({ escolaId }: { escolaId: 
             Se a taxa do boletim não aparecer ao aluno, configure-a em Administração → Configurações → Emolumentos &amp; Serviços.
           </p>
         </div>
-        <Link href={recebimentosHref} className="inline-flex min-h-11 items-center rounded-xl bg-klasse-gold px-4 text-sm font-bold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20">
+        <Link href={recebimentosHref} className="inline-flex min-h-11 items-center rounded-xl bg-klasse-gold px-4 text-sm font-bold text-klasse-gold-900 hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20">
           Validar comprovativos
         </Link>
       </div>

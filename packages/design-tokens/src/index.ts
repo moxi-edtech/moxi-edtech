@@ -1,4 +1,5 @@
 export const klasseColors = {
+  dark: "#020617",
   green: {
     DEFAULT: "#1F6B3B",
     50: "#ECF5EF",

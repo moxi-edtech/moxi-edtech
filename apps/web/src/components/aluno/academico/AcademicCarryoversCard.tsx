@@ -49,7 +49,7 @@ const TONE = {
   sky: "border-sky-200 bg-sky-50 text-sky-950",
   emerald: "border-emerald-200 bg-emerald-50 text-emerald-950",
   rose: "border-rose-200 bg-rose-50 text-rose-950",
-  slate: "border-slate-200 bg-slate-50 text-slate-800",
+  slate: "border-border bg-muted text-foreground",
 } as const;
 
 function StatusIcon({ status }: { status: CarryoverStatus }) {
@@ -100,7 +100,7 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
   }, [endpoint]);
 
   if (loading) {
-    return <div className="h-28 animate-pulse rounded-3xl border border-slate-200 bg-white" aria-label="A carregar dependências académicas" />;
+    return <div className="h-28 animate-pulse rounded-3xl border border-border bg-card" aria-label="A carregar dependências académicas" />;
   }
 
   if (error) {
@@ -111,7 +111,7 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
         <button
           type="button"
           onClick={() => void load()}
-          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-rose-800 shadow-sm"
+          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-bold text-rose-800 shadow-sm"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Tentar novamente
@@ -125,16 +125,16 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
   const abertas = items.filter((item) => !item.presentation.terminal).length;
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <section className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Anos anteriores</p>
-          <h3 className="mt-1 text-base font-black text-slate-950">Dependências académicas</h3>
-          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-slate-600">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-muted-foreground">Anos anteriores</p>
+          <h3 className="mt-1 text-base font-black text-foreground">Dependências académicas</h3>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
             Acompanha as disciplinas de anos anteriores que ainda precisam de atenção.
           </p>
         </div>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700">
+        <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-bold text-foreground">
           {abertas > 0 ? `${abertas} em aberto` : "Tudo resolvido"}
         </span>
       </div>
@@ -148,12 +148,12 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-black">{item.disciplina.nome}</p>
                   {item.origem.ano_letivo ? (
-                    <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-bold">
+                    <span className="rounded-full bg-card/70 px-2 py-0.5 text-[10px] font-bold">
                       Origem {item.origem.ano_letivo}
                     </span>
                   ) : null}
                   {item.destino?.ano_letivo ? (
-                    <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-bold">
+                    <span className="rounded-full bg-card/70 px-2 py-0.5 text-[10px] font-bold">
                       Atual {item.destino.ano_letivo}
                     </span>
                   ) : null}
@@ -164,13 +164,13 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
 
                 <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold">
                   {fonteLabel(item.resultado.fonte) ? (
-                    <span className="rounded-lg bg-white/70 px-2 py-1">{fonteLabel(item.resultado.fonte)}</span>
+                    <span className="rounded-lg bg-card/70 px-2 py-1">{fonteLabel(item.resultado.fonte)}</span>
                   ) : null}
                   {typeof item.resultado.nota === "number" ? (
-                    <span className="rounded-lg bg-white/70 px-2 py-1">Nota: {item.resultado.nota.toFixed(1)}</span>
+                    <span className="rounded-lg bg-card/70 px-2 py-1">Nota: {item.resultado.nota.toFixed(1)}</span>
                   ) : null}
                   {item.resultado.resolvido_em ? (
-                    <span className="rounded-lg bg-white/70 px-2 py-1">
+                    <span className="rounded-lg bg-card/70 px-2 py-1">
                       Resolvida em {new Intl.DateTimeFormat("pt-AO", { dateStyle: "medium" }).format(new Date(item.resultado.resolvido_em))}
                     </span>
                   ) : null}

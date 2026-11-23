@@ -75,7 +75,7 @@ function formatSlotSaveError(json: any) {
 export default function QuadroHorariosPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">
+      <div className="min-h-screen bg-muted flex items-center justify-center text-muted-foreground">
         <Spinner className="text-amber" size={24} />
         <span className="ml-3 text-sm">A carregar quadro...</span>
       </div>
@@ -1519,7 +1519,7 @@ function QuadroHorariosContent() {
 
   if (isLoading && !turmaId) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">
+      <div className="min-h-screen bg-muted flex items-center justify-center text-muted-foreground">
         <Spinner className="text-amber" size={24} />
         <span className="ml-3 text-sm">Carregando quadro...</span>
       </div>
@@ -1528,13 +1528,13 @@ function QuadroHorariosContent() {
 
   if (showWizard) {
     return (
-      <div className="min-h-screen bg-slate-50 py-12 px-4 flex flex-col items-center">
+      <div className="min-h-screen bg-muted py-12 px-4 flex flex-col items-center">
         <div className="w-full max-w-6xl">
           <div className="mb-8 flex justify-between items-center">
-            <Link href={dashboardHref} className="text-sm font-bold text-slate-400 hover:text-slate-900 transition-all">
+            <Link href={dashboardHref} className="text-sm font-bold text-muted-foreground hover:text-foreground transition-all">
               ← Voltar ao Dashboard
             </Link>
-            <Button variant="ghost" onClick={handleSkipWizard} className="text-slate-500 font-bold">
+            <Button variant="ghost" onClick={handleSkipWizard} className="text-muted-foreground font-bold">
               Fechar
             </Button>
           </div>
@@ -1553,20 +1553,20 @@ function QuadroHorariosContent() {
 
   return (
     <>
-      <div className="min-h-screen bg-slate-50 text-slate-950 font-sans">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <div className="min-h-screen bg-muted text-foreground font-sans">
+      <header className="sticky top-0 z-10 border-b border-border bg-card/90 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-4 p-6 max-w-7xl mx-auto">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1">
+            <div className="flex items-center gap-2 rounded-full bg-muted p-1">
               <Link
                 href={slotsHref}
-                className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950"
+                className="rounded-full px-4 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
               >
                 Slots
               </Link>
               <Link
                 href={quadroHref}
-                className="rounded-full bg-slate-950 px-4 py-1.5 text-xs font-semibold text-white"
+                className="rounded-full bg-klasse-gold px-4 py-1.5 text-xs font-semibold text-klasse-gold-900 hover:brightness-95"
               >
                 Quadro
               </Link>
@@ -1575,7 +1575,7 @@ function QuadroHorariosContent() {
               variant="outline" 
               size="sm" 
               onClick={() => setShowWizard(true)} 
-              className="rounded-full gap-2 text-[10px] font-black uppercase tracking-widest border-2 border-slate-200 h-9"
+              className="rounded-full gap-2 text-[10px] font-black uppercase tracking-widest border-2 border-border h-9"
             >
               <Wand2 className="w-3.5 h-3.5" /> Configurar base
             </Button>
@@ -1595,9 +1595,9 @@ function QuadroHorariosContent() {
                 }
                 setTurmaId(nextTurmaId);
               }}
-              className="max-w-xs rounded-xl border-slate-200 focus:border-amber focus:ring-amber text-slate-900"
+              className="max-w-xs rounded-xl border-border focus:border-amber focus:ring-amber text-foreground"
             />            {selectedTurma?.sala ? (
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+              <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">
                 Sala {selectedTurma.sala}
               </span>
             ) : null}
@@ -1607,7 +1607,7 @@ function QuadroHorariosContent() {
               type="button"
               onClick={handleDownloadPdf}
               disabled={downloadingPdf}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50"
             >
               <FileDown className="h-3 w-3" />
               {downloadingPdf ? "Gerando PDF..." : "Baixar PDF"}
@@ -1615,13 +1615,13 @@ function QuadroHorariosContent() {
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted"
             >
               <Printer className="h-3 w-3" />
               Imprimir
             </button>
             {isLoading ? (
-              <div className="flex items-center gap-2 text-xs text-slate-500">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Spinner size={14} className="text-amber" />
                 Sincronizando dados...
               </div>
@@ -1640,8 +1640,8 @@ function QuadroHorariosContent() {
               </span>
             )}
             {saveError ? <span className="text-xs text-rose-600">{saveError}</span> : null}
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Save className={`h-4 w-4 ${saving ? "text-amber" : "text-slate-300"}`} />
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Save className={`h-4 w-4 ${saving ? "text-amber" : "text-muted-foreground"}`} />
               <span>
                 {saving ? "Salvando..." : autoDraftDirty ? "Proposta não salva" : "Alterações prontas"}
               </span>
@@ -1720,44 +1720,44 @@ function QuadroHorariosContent() {
         )}
         {turmaId && (
           <div className="mb-6 grid gap-4 md:grid-cols-5">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 uppercase">Slots preenchidos</p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Slots preenchidos</p>
+              <p className="text-2xl font-bold text-foreground mt-2">
                 {filledSlots}/{totalSlots || 0}
               </p>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {totalDias} dia(s) • {temposAulaCount} tempos/dia
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 uppercase">Disciplinas completas</p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Disciplinas completas</p>
+              <p className="text-2xl font-bold text-foreground mt-2">
                 {disciplinasCompletas}/{aulas.length}
               </p>
-              <p className="text-xs text-slate-500 mt-1">Meta semanal por disciplina</p>
+              <p className="text-xs text-muted-foreground mt-1">Meta semanal por disciplina</p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 uppercase">Pendências de carga</p>
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Pendências de carga</p>
               <p className="text-2xl font-bold text-amber-600 mt-2">{missingLoadCount}</p>
-              <p className="text-xs text-slate-500 mt-1">Sem carga definida</p>
+              <p className="text-xs text-muted-foreground mt-1">Sem carga definida</p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 uppercase">Conflitos detectados</p>
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Conflitos detectados</p>
               <p className="text-2xl font-bold text-rose-600 mt-2">{conflitosCount}</p>
-              <p className="text-xs text-slate-500 mt-1">Professor/Sala</p>
+              <p className="text-xs text-muted-foreground mt-1">Professor/Sala</p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 uppercase">Sobrecarga</p>
-              <p className="text-2xl font-bold text-slate-900 mt-2">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Sobrecarga</p>
+              <p className="text-2xl font-bold text-foreground mt-2">
                 {overloadProfessores.length + overloadSalas.length}
               </p>
-              <p className="text-xs text-slate-500 mt-1">Professores + salas</p>
+              <p className="text-xs text-muted-foreground mt-1">Professores + salas</p>
             </div>
           </div>
         )}
         {turmaId && disciplinasPendentes.length > 0 && (
-          <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm font-semibold text-slate-800">Disciplinas pendentes</p>
+          <div className="mb-6 rounded-xl border border-border bg-card p-4 shadow-sm">
+            <p className="text-sm font-semibold text-foreground">Disciplinas pendentes</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {disciplinasPendentes.slice(0, 6).map((disc) => (
                 <span
@@ -1768,7 +1768,7 @@ function QuadroHorariosContent() {
                 </span>
               ))}
               {disciplinasPendentes.length > 6 && (
-                <span className="text-xs text-slate-500">+{disciplinasPendentes.length - 6} mais</span>
+                <span className="text-xs text-muted-foreground">+{disciplinasPendentes.length - 6} mais</span>
               )}
             </div>
           </div>
@@ -1780,7 +1780,7 @@ function QuadroHorariosContent() {
               {overloadProfessores.map((prof) => (
                 <span
                   key={`prof-${prof.id}`}
-                  className="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700"
+                  className="rounded-full border border-rose-200 bg-card px-3 py-1 text-xs font-semibold text-rose-700"
                 >
                   {prof.nome}: {prof.count} tempos
                 </span>
@@ -1788,7 +1788,7 @@ function QuadroHorariosContent() {
               {overloadSalas.map((sala) => (
                 <span
                   key={`sala-${sala.id}`}
-                  className="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700"
+                  className="rounded-full border border-rose-200 bg-card px-3 py-1 text-xs font-semibold text-rose-700"
                 >
                   {sala.nome}: {sala.count} tempos
                 </span>
@@ -1814,11 +1814,11 @@ function QuadroHorariosContent() {
               {missingLoadSuggestions.slice(0, 6).map((disc) => (
                 <div
                   key={disc.id}
-                  className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-white/80 p-3 md:flex-row md:items-center md:justify-between"
+                  className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-card/80 p-3 md:flex-row md:items-center md:justify-between"
                 >
                   <div>
-                    <div className="font-semibold text-slate-900">{disc.disciplina}</div>
-                    <div className="text-xs text-slate-600">
+                    <div className="font-semibold text-foreground">{disc.disciplina}</div>
+                    <div className="text-xs text-muted-foreground">
                       {disc.suggestedHours && disc.suggestedHours > 0
                         ? `Sugestão MED: ${disc.suggestedHours} aula(s)/semana`
                         : "Sem MED encontrada. Ajuste manualmente."}
@@ -1839,7 +1839,7 @@ function QuadroHorariosContent() {
                     <button
                       type="button"
                       onClick={() => openCurriculoForDisciplina(disc.id)}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+                      className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold text-foreground"
                     >
                       Editar
                     </button>
@@ -1847,7 +1847,7 @@ function QuadroHorariosContent() {
                 </div>
               ))}
               {missingLoadSuggestions.length > 6 && (
-                <div className="text-xs text-slate-600">
+                <div className="text-xs text-muted-foreground">
                   +{missingLoadSuggestions.length - 6} disciplina(s) com pendência. Use o modal para revisar o restante.
                 </div>
               )}
@@ -1895,9 +1895,9 @@ function QuadroHorariosContent() {
           </div>
         )}
         {!turmaId ? (
-          <div className="flex h-[60vh] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white">
-            <AlertCircle className="h-10 w-10 text-slate-300" />
-            <p className="mt-4 text-sm text-slate-500">Selecione uma turma para montar o quadro.</p>
+          <div className="flex h-[60vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card">
+            <AlertCircle className="h-10 w-10 text-muted-foreground" />
+            <p className="mt-4 text-sm text-muted-foreground">Selecione uma turma para montar o quadro.</p>
           </div>
         ) : (
           <SchedulerBoard
@@ -1940,7 +1940,7 @@ function QuadroHorariosContent() {
                 handleAddSala(novaSala);
                 setNovaSala("");
               }}
-              className="h-10 w-52 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-amber focus:ring-1 focus:ring-amber"
+              className="h-10 w-52 rounded-xl border border-border bg-card px-3 text-sm text-foreground focus:border-amber focus:ring-1 focus:ring-amber"
             />
             <button
               type="button"
@@ -1949,7 +1949,7 @@ function QuadroHorariosContent() {
                 handleAddSala(novaSala);
                 setNovaSala("");
               }}
-              className="h-10 rounded-xl bg-amber px-4 text-sm font-semibold text-slate-950 shadow-sm"
+              className="h-10 rounded-xl bg-amber px-4 text-sm font-semibold text-foreground shadow-sm"
             >
               Adicionar sala
             </button>
@@ -1957,7 +1957,7 @@ function QuadroHorariosContent() {
               type="button"
               onClick={handleClearQuadro}
               disabled={clearingQuadro}
-              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="h-10 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
             >
               {clearingQuadro ? "Limpando..." : "Limpar quadro"}
             </button>

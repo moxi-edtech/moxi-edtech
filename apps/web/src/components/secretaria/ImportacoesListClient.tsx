@@ -110,7 +110,7 @@ export default function ImportacoesListClient() {
         <div className="flex items-center gap-3">
           <Link
             href={buildContextualPortalHref(escolaParam, "/secretaria/migracao/alunos", pathname)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-klasse-gold-900 hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
           >
             <Upload size={18} />
             Nova importação

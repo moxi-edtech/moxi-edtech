@@ -284,15 +284,15 @@ export default async function OperacoesAcademicasPage({
               href={buildPortalHref(escolaParam, "/operacoes/academico/reclassificacao-finalistas")}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold hover:bg-amber-100 transition shadow-2xs"
             >
-              <GraduationCap className="h-4 w-4 text-[#9a7010]" />
+              <GraduationCap className="h-4 w-4 text-klasse-gold-700 dark:text-klasse-gold-300" />
               <span>Reclassificação de Finalistas</span>
-              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[#E3B23C] text-slate-950 text-[10px] font-black">
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-klasse-gold text-foreground text-[10px] font-black">
                 Entrada rápida
               </span>
             </Link>
             <Link
               href={buildPortalHref(escolaParam, "/operacoes/academico/pendencias-pos-virada")}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-800 transition hover:bg-slate-100"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-muted px-3 py-1.5 text-xs font-bold text-foreground transition hover:bg-muted"
             >
               Pendências pós-virada
             </Link>
@@ -325,11 +325,11 @@ export default async function OperacoesAcademicasPage({
 
         <form className="grid gap-4 md:grid-cols-[1.2fr_1fr_1fr_auto_auto_auto] items-end" method="get">
           <div>
-            <label className="text-[10px] font-semibold uppercase text-slate-400">Período</label>
+            <label className="text-[10px] font-semibold uppercase text-muted-foreground">Período</label>
             <select
               name="periodo"
               defaultValue={selectedPeriod}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
+              className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground"
             >
               {PERIOD_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -337,11 +337,11 @@ export default async function OperacoesAcademicasPage({
             </select>
           </div>
           <div>
-            <label className="text-[10px] font-semibold uppercase text-slate-400">Status</label>
+            <label className="text-[10px] font-semibold uppercase text-muted-foreground">Status</label>
             <select
               name="status"
               defaultValue={selectedStatus}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
+              className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground"
             >
               <option value="all">Todos</option>
               <option value="success">Sucesso</option>
@@ -350,11 +350,11 @@ export default async function OperacoesAcademicasPage({
             </select>
           </div>
           <div>
-            <label className="text-[10px] font-semibold uppercase text-slate-400">Tipo</label>
+            <label className="text-[10px] font-semibold uppercase text-muted-foreground">Tipo</label>
             <select
               name="tipo"
               defaultValue={selectedTipo}
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
+              className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground"
             >
               <option value="all">Todos</option>
               <option value="fechamento">Fechamento</option>
@@ -363,103 +363,103 @@ export default async function OperacoesAcademicasPage({
           </div>
           <button
             type="submit"
-            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
           >
             Aplicar filtros
           </button>
           <a
             href={exportJsonHref}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
           >
             Exportar JSON
           </a>
           <a
             href={exportCsvHref}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
           >
             Exportar CSV
           </a>
         </form>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-            <p className="text-xs text-slate-400 uppercase font-semibold">SSOT virada</p>
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md">
+            <p className="text-xs text-muted-foreground uppercase font-semibold">SSOT virada</p>
             <div className="mt-2 flex items-center gap-2">
               <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${cutoverStatusClass}`}>
                 {cutoverHealth.status}
               </span>
-              <span className="text-xs text-slate-600">
+              <span className="text-xs text-muted-foreground">
                 {cutoverHealth.active_year ? `ano ativo ${cutoverHealth.active_year.ano}` : "sem ano ativo"}
               </span>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-            <p className="text-xs text-slate-400 uppercase font-semibold">Fechamentos em aberto</p>
-            <p className="text-2xl font-bold text-slate-900 mt-2">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md">
+            <p className="text-xs text-muted-foreground uppercase font-semibold">Fechamentos em aberto</p>
+            <p className="text-2xl font-bold text-foreground mt-2">
               {filteredFechamento.filter((j) => !["DONE", "FAILED"].includes(String(j.estado || "").toUpperCase())).length}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-            <p className="text-xs text-slate-400 uppercase font-semibold">Lotes em aberto</p>
-            <p className="text-2xl font-bold text-slate-900 mt-2">
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md">
+            <p className="text-xs text-muted-foreground uppercase font-semibold">Lotes em aberto</p>
+            <p className="text-2xl font-bold text-foreground mt-2">
               {filteredLotes.filter((j) => !["SUCCESS", "FAILED"].includes(String(j.status || "").toUpperCase())).length}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-            <p className="text-xs text-slate-400 uppercase font-semibold">Falhas recentes</p>
-            <p className="text-2xl font-bold text-slate-900 mt-2">{fechamentoFalhas + loteFalhas}</p>
+          <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md">
+            <p className="text-xs text-muted-foreground uppercase font-semibold">Falhas recentes</p>
+            <p className="text-2xl font-bold text-foreground mt-2">{fechamentoFalhas + loteFalhas}</p>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md space-y-3">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-800">Saúde da Virada de Ano (SSOT)</h2>
+            <h2 className="text-sm font-semibold text-foreground">Saúde da Virada de Ano (SSOT)</h2>
             <form action="/api/secretaria/operacoes-academicas/virada/dry-run" method="post">
-              <button type="submit" className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+              <button type="submit" className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted">
                 Executar dry-run
               </button>
             </form>
           </div>
           <div className="grid gap-3 md:grid-cols-5">
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <p className="text-[10px] uppercase text-slate-400 font-semibold">Turmas sem sessão</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.turmas_session_id_null}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Turmas sem sessão</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{cutoverHealth.metrics.turmas_session_id_null}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <p className="text-[10px] uppercase text-slate-400 font-semibold">Matrículas sem sessão</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.matriculas_session_id_null}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Matrículas sem sessão</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{cutoverHealth.metrics.matriculas_session_id_null}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <p className="text-[10px] uppercase text-slate-400 font-semibold">Histórico anual</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.historico_anos_total}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Histórico anual</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{cutoverHealth.metrics.historico_anos_total}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <p className="text-[10px] uppercase text-slate-400 font-semibold">Snapshot locks</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.snapshot_locks_total}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Snapshot locks</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{cutoverHealth.metrics.snapshot_locks_total}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <p className="text-[10px] uppercase text-slate-400 font-semibold">Mensalidades fora janela</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.mensalidades_competencia_fora_janela}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Mensalidades fora janela</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{cutoverHealth.metrics.mensalidades_competencia_fora_janela}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <p className="text-[10px] uppercase text-slate-400 font-semibold">Mensalidades sem matrícula</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.mensalidades_sem_matricula_id}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Mensalidades sem matrícula</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{cutoverHealth.metrics.mensalidades_sem_matricula_id}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <p className="text-[10px] uppercase text-slate-400 font-semibold">Currículos pendentes</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.curriculos_classes_pendentes}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Currículos pendentes</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{cutoverHealth.metrics.curriculos_classes_pendentes}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <p className="text-[10px] uppercase text-slate-400 font-semibold">Pautas anuais pendentes</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.pautas_anuais_pendentes}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Pautas anuais pendentes</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{cutoverHealth.metrics.pautas_anuais_pendentes}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <p className="text-[10px] uppercase text-slate-400 font-semibold">Matrículas sem final</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.matriculas_status_final_pendente}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Matrículas sem final</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{cutoverHealth.metrics.matriculas_status_final_pendente}</p>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-              <p className="text-[10px] uppercase text-slate-400 font-semibold">Snapshots pendentes</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">{cutoverHealth.metrics.snapshot_locks_pendentes}</p>
+            <div className="rounded-lg border border-border bg-muted/50 p-3">
+              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Snapshots pendentes</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{cutoverHealth.metrics.snapshot_locks_pendentes}</p>
             </div>
           </div>
           {cutoverHealth.blockers.length > 0 && (
@@ -491,9 +491,9 @@ export default async function OperacoesAcademicasPage({
 
         <div className="grid gap-6 lg:grid-cols-2">
           {selectedTipo !== "documentos" && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <GraduationCap className="h-4 w-4" /> Fechamento Académico
               </h2>
               <Link href={buildPortalHref(escolaParam, `/operacoes/academico/fechamento-academico?${monitorQuery}`)} className="text-xs font-semibold text-emerald hover:underline">
@@ -509,14 +509,14 @@ export default async function OperacoesAcademicasPage({
                     ? "bg-amber/20 text-amber"
                     : ["DONE"].includes(estado)
                       ? "bg-emerald/10 text-emerald"
-                      : "bg-slate-100 text-slate-600";
+                      : "bg-muted text-muted-foreground";
                   return (
-                    <div key={job.run_id} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 text-xs">
+                    <div key={job.run_id} className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs">
                       <div>
-                        <p className="font-semibold text-slate-700">{job.fechamento_tipo || "fechamento"}</p>
-                        <p className="text-slate-400">{job.run_id.slice(0, 8)} · {formatDate(job.created_at)}</p>
+                        <p className="font-semibold text-foreground">{job.fechamento_tipo || "fechamento"}</p>
+                        <p className="text-muted-foreground">{job.run_id.slice(0, 8)} · {formatDate(job.created_at)}</p>
                         {step ? (
-                          <p className="text-[10px] text-slate-400">Última etapa: {step.etapa}</p>
+                          <p className="text-[10px] text-muted-foreground">Última etapa: {step.etapa}</p>
                         ) : null}
                       </div>
                       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusClass}`}>
@@ -526,7 +526,7 @@ export default async function OperacoesAcademicasPage({
                   );
                 })
               ) : (
-                <p className="text-xs text-slate-400">Nenhum fechamento recente.</p>
+                <p className="text-xs text-muted-foreground">Nenhum fechamento recente.</p>
               )}
             </div>
             {fechamentoStuck.length > 0 && (
@@ -538,9 +538,9 @@ export default async function OperacoesAcademicasPage({
           )}
 
           {selectedTipo !== "fechamento" && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+            <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <FileText className="h-4 w-4" /> Documentos Oficiais (Lote)
               </h2>
               <Link href={buildPortalHref(escolaParam, `/operacoes/documentos-oficiais?${monitorQuery}`)} className="text-xs font-semibold text-emerald hover:underline">
@@ -555,14 +555,14 @@ export default async function OperacoesAcademicasPage({
                     ? "bg-amber/20 text-amber"
                     : ["SUCCESS"].includes(status)
                       ? "bg-emerald/10 text-emerald"
-                      : "bg-slate-100 text-slate-600";
+                      : "bg-muted text-muted-foreground";
                   return (
-                    <div key={job.id} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 text-xs">
+                    <div key={job.id} className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs">
                       <div>
-                        <p className="font-semibold text-slate-700">{job.documento_tipo || job.tipo || "lote"}</p>
-                        <p className="text-slate-400">{job.id.slice(0, 8)} · {formatDate(job.created_at)}</p>
+                        <p className="font-semibold text-foreground">{job.documento_tipo || job.tipo || "lote"}</p>
+                        <p className="text-muted-foreground">{job.id.slice(0, 8)} · {formatDate(job.created_at)}</p>
                         {job.total_turmas ? (
-                          <p className="text-[10px] text-slate-400">
+                          <p className="text-[10px] text-muted-foreground">
                             {job.processed ?? 0}/{job.total_turmas} turmas processadas
                           </p>
                         ) : null}
@@ -574,7 +574,7 @@ export default async function OperacoesAcademicasPage({
                   );
                 })
               ) : (
-                <p className="text-xs text-slate-400">Nenhum lote recente.</p>
+                <p className="text-xs text-muted-foreground">Nenhum lote recente.</p>
               )}
             </div>
             {loteStuck.length > 0 && (
@@ -586,7 +586,7 @@ export default async function OperacoesAcademicasPage({
           )}
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
+        <div className="rounded-xl border border-border bg-muted p-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             {fechamentoFalhas + loteFalhas > 0 ? <AlertTriangle className="h-4 w-4 text-amber" /> : <CheckCircle2 className="h-4 w-4 text-emerald" />}
             {fechamentoFalhas + loteFalhas > 0
@@ -595,44 +595,44 @@ export default async function OperacoesAcademicasPage({
           </div>
         </div>
 
-        <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
           <div>
-            <h2 className="text-sm font-semibold text-slate-800">Receitas de reprocessamento</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="text-sm font-semibold text-foreground">Receitas de reprocessamento</h2>
+            <p className="text-xs text-muted-foreground">
               Guia rápido por classe de erro para execução assistida.
             </p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-4">
-              <p className="text-xs font-semibold text-slate-700">Dados faltantes (notas/frequências)</p>
-              <p className="text-xs text-slate-500 mt-1">
+            <div className="rounded-lg border border-border bg-muted/50 p-4">
+              <p className="text-xs font-semibold text-foreground">Dados faltantes (notas/frequências)</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 Corrigir pendências e reexecutar o fechamento a partir do monitor.
               </p>
               <Link href={buildPortalHref(escolaParam, "/admin/notas")} className="text-[10px] font-semibold text-emerald hover:underline">
                 Abrir notas
               </Link>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-4">
-              <p className="text-xs font-semibold text-slate-700">Snapshot legal bloqueado</p>
-              <p className="text-xs text-slate-500 mt-1">
+            <div className="rounded-lg border border-border bg-muted/50 p-4">
+              <p className="text-xs font-semibold text-foreground">Snapshot legal bloqueado</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 Solicitar reabertura auditada e repetir fechamento com justificativa.
               </p>
               <Link href={buildPortalHref(escolaParam, "/operacoes/academico/fechamento-academico")} className="text-[10px] font-semibold text-emerald hover:underline">
                 Abrir fechamento
               </Link>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-4">
-              <p className="text-xs font-semibold text-slate-700">Permissões insuficientes</p>
-              <p className="text-xs text-slate-500 mt-1">
+            <div className="rounded-lg border border-border bg-muted/50 p-4">
+              <p className="text-xs font-semibold text-foreground">Permissões insuficientes</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 Revalidar roles do operador antes de reprocessar.
               </p>
               <Link href={buildPortalHref(escolaParam, "/admin/configuracoes/seguranca")} className="text-[10px] font-semibold text-emerald hover:underline">
                 Ver acessos
               </Link>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-4">
-              <p className="text-xs font-semibold text-slate-700">Falha de storage (ZIP/manifest)</p>
-              <p className="text-xs text-slate-500 mt-1">
+            <div className="rounded-lg border border-border bg-muted/50 p-4">
+              <p className="text-xs font-semibold text-foreground">Falha de storage (ZIP/manifest)</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 Reprocessar o lote com falha e verificar o download.
               </p>
               <Link href={buildPortalHref(escolaParam, "/operacoes/documentos-oficiais")} className="text-[10px] font-semibold text-emerald hover:underline">

@@ -42,7 +42,7 @@ export default async function ReclassificacaoFinalistasPage({
   if (!escolaId) {
     return (
       <div className={PORTAL_PAGE_INSET}>
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500">
+        <div className="bg-card rounded-xl border border-border p-12 text-center text-muted-foreground">
           Escola não identificada para este utilizador.
         </div>
       </div>

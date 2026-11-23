@@ -240,21 +240,21 @@ export function SchedulerBoard({
     if (!aula) return null;
 
     return (
-      <div className="w-40 h-24 rounded-xl shadow-xl p-3 rotate-3 cursor-grabbing bg-slate-900 text-white border border-amber/50 flex flex-col justify-center items-center">
+      <div className="w-40 h-24 rounded-xl shadow-xl p-3 rotate-3 cursor-grabbing bg-klasse-dark text-white border border-klasse-gold/50 flex flex-col justify-center items-center">
         <span className="font-sora font-bold text-lg">{aula.sigla}</span>
-        <span className="text-xs text-slate-400">Alocando...</span>
+        <span className="text-xs text-muted-foreground">Alocando...</span>
       </div>
     );
   }, [activeId, estoque]);
 
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex h-full min-h-[600px] bg-slate-50 font-sora">
+      <div className="flex h-full min-h-[600px] bg-muted font-sora">
         {/* SIDEBAR */}
-        <div className="w-80 bg-white border-r border-slate-200 p-5 flex flex-col shadow-sm z-10">
+        <div className="w-80 bg-card border-r border-border p-5 flex flex-col shadow-sm z-10">
           <div className="mb-6">
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">Disciplinas</h2>
-            <p className="text-xs text-slate-400">Arraste para o quadro</p>
+            <h2 className="text-lg font-bold text-foreground tracking-tight">Disciplinas</h2>
+            <p className="text-xs text-muted-foreground">Arraste para o quadro</p>
           </div>
 
           <StatusAlerts
@@ -287,8 +287,8 @@ export function SchedulerBoard({
         </div>
 
         {/* GRID */}
-        <div className="flex-1 p-6 overflow-auto bg-slate-50/50">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-w-[800px]">
+        <div className="flex-1 p-6 overflow-auto bg-muted/50">
+          <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden min-w-[800px]">
             <GridHeader diasSemana={diasSemana} />
             {tempos?.map((tempo) => (
               <GridRow
@@ -396,7 +396,7 @@ const ActionButtons = React.memo(({
   publishing,
   grid
 }: any) => (
-  <div className="mt-6 pt-6 border-t border-slate-100 space-y-3">
+  <div className="mt-6 pt-6 border-t border-border space-y-3">
     <button
       type="button"
       onClick={onAutoCompletar}
@@ -409,7 +409,7 @@ const ActionButtons = React.memo(({
     <button
       type="button"
       onClick={onSalvar}
-      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-bold hover:bg-slate-50 active:scale-[0.98] transition-all"
+      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-border bg-card text-foreground text-sm font-bold hover:bg-muted active:scale-[0.98] transition-all"
     >
       <Save className="w-4 h-4" />
       Salvar Alterações
@@ -420,7 +420,7 @@ const ActionButtons = React.memo(({
         onClick={() => onPublicar(grid)}
         disabled={!canPublicar || publishing}
         title={!canPublicar ? publishDisabledReason : undefined}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-klasse-gold text-klasse-gold-900 text-sm font-bold shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
       >
         <Check className="w-4 h-4" />
         {publishing ? "Publicando..." : "Publicar"}
@@ -431,12 +431,12 @@ const ActionButtons = React.memo(({
 ActionButtons.displayName = "ActionButtons";
 
 const GridHeader = React.memo(({ diasSemana }: { diasSemana: string[] }) => (
-  <div className="grid grid-cols-6 border-b border-slate-200 bg-slate-50">
-    <div className="p-3 border-r border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center flex items-center justify-center">
+  <div className="grid grid-cols-6 border-b border-border bg-muted">
+    <div className="p-3 border-r border-border text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center flex items-center justify-center">
       Horário
     </div>
     {diasSemana.map((dia) => (
-      <div key={dia} className="p-3 text-sm font-bold text-slate-700 text-center border-r border-slate-200 last:border-r-0">
+      <div key={dia} className="p-3 text-sm font-bold text-foreground text-center border-r border-border last:border-r-0">
         {dia}
       </div>
     ))}
@@ -462,10 +462,10 @@ const GridRow = React.memo(({
   const hasDifferentTimes = uniqueRanges.length > 1;
 
   return (
-    <div className="grid grid-cols-6 border-b border-slate-200 last:border-b-0 min-h-[110px]">
-      <div className="p-2 border-r border-slate-200 bg-slate-50/30 flex flex-col justify-center items-center text-xs">
-        <span className="font-bold text-slate-900 mb-1">{defaultRange[0] || "—"}</span>
-        <span className="text-slate-400 text-[10px]">{defaultRange[1] || ""}</span>
+    <div className="grid grid-cols-6 border-b border-border last:border-b-0 min-h-[110px]">
+      <div className="p-2 border-r border-border bg-muted/30 flex flex-col justify-center items-center text-xs">
+        <span className="font-bold text-foreground mb-1">{defaultRange[0] || "—"}</span>
+        <span className="text-muted-foreground text-[10px]">{defaultRange[1] || ""}</span>
         {hasDifferentTimes && (
           <span className="mt-1 text-[9px] font-semibold text-amber-600">Horário varia</span>
         )}
@@ -478,7 +478,7 @@ const GridRow = React.memo(({
 
       {tempo.tipo === "intervalo" ? (
         <div className="col-span-5 bg-stripes-gray flex items-center justify-center">
-          <span className="text-slate-200 font-black text-4xl tracking-[1.5em] opacity-40 select-none uppercase">
+          <span className="text-muted-foreground/50 font-black text-4xl tracking-[1.5em] opacity-40 select-none uppercase">
             Recreio
           </span>
         </div>
@@ -571,7 +571,7 @@ const AulaCard = React.memo(({
         )}
       </div>
       <div className="space-y-1">
-        <div className="text-[10px] text-slate-500">{horarioDia}</div>
+        <div className="text-[10px] text-muted-foreground">{horarioDia}</div>
         {aula.professorId ? (
           <div className="text-[10px] font-medium opacity-80 truncate leading-tight">
             {aula.professor.split(" ")[0]}
@@ -595,7 +595,7 @@ const AulaCard = React.memo(({
           </button>
         ) : null}
         {effectiveTurmaSala ? (
-          <div className="inline-block px-1.5 py-0.5 bg-white/50 rounded text-[9px] font-bold">
+          <div className="inline-block px-1.5 py-0.5 bg-card/50 rounded text-[9px] font-bold">
             {getSalaLabel()}
           </div>
         ) : null}
@@ -630,14 +630,14 @@ const DraggableSource = React.memo(({ aula }: { aula: SchedulerAula }) => {
             ? "bg-emerald-50/50 border-emerald-100" 
             : isOverbooked
             ? "bg-rose-50/50 border-rose-100"
-            : "bg-white border-slate-200 hover:border-amber/50 hover:shadow-sm cursor-grab active:cursor-grabbing"
+            : "bg-card border-border hover:border-amber/50 hover:shadow-sm cursor-grab active:cursor-grabbing"
         }
       `}
     >
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2">
-          <div className={`w-2.5 h-2.5 rounded-full ring-2 ring-white shadow-sm ${aula.cor.split(" ")[0]}`} />
-          <span className={`font-bold text-sm ${isComplete ? "text-emerald-700" : isOverbooked ? "text-rose-700" : "text-slate-700"}`}>
+          <div className={`w-2.5 h-2.5 rounded-full ring-2 ring-ring shadow-sm ${aula.cor.split(" ")[0]}`} />
+          <span className={`font-bold text-sm ${isComplete ? "text-emerald-700" : isOverbooked ? "text-rose-700" : "text-foreground"}`}>
             {aula.disciplina}
           </span>
         </div>
@@ -646,18 +646,18 @@ const DraggableSource = React.memo(({ aula }: { aula: SchedulerAula }) => {
         ) : isOverbooked ? (
           <AlertOctagon className="w-4 h-4 text-rose-600 animate-pulse" />
         ) : (
-          <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-amber transition-colors" />
+          <GripVertical className="w-4 h-4 text-muted-foreground group-hover:text-amber transition-colors" />
         )}
       </div>
 
       <div className="flex items-center justify-between mt-3">
          <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Carga Horária</span>
-            <span className={`text-xs font-mono font-bold ${isComplete ? "text-emerald-600" : isOverbooked ? "text-rose-600" : "text-slate-600"}`}>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Carga Horária</span>
+            <span className={`text-xs font-mono font-bold ${isComplete ? "text-emerald-600" : isOverbooked ? "text-rose-600" : "text-muted-foreground"}`}>
                {aula.temposAlocados} de {totalLabel} tempos
             </span>
          </div>
-         <div className="h-2 w-20 bg-slate-100 rounded-full overflow-hidden ring-1 ring-slate-200/50">
+         <div className="h-2 w-20 bg-muted rounded-full overflow-hidden ring-1 ring-ring/50">
             <div
               className={`h-full transition-all duration-500 ${
                 isComplete ? "bg-emerald-500" : isOverbooked ? "bg-rose-500" : "bg-amber"
@@ -702,19 +702,19 @@ const DroppableSlot = ({ id, children, hasConflict, isFilled }: any) => {
     <div
       ref={setNodeRef}
       className={`
-        p-1 border-r border-slate-200 transition-all h-full min-h-[110px] flex flex-col
+        p-1 border-r border-border transition-all h-full min-h-[110px] flex flex-col
         ${isOver && !isFilled ? "bg-amber/5 ring-2 ring-inset ring-amber/30" : ""}
         ${hasConflict ? "bg-rose-50 ring-2 ring-inset ring-rose-200" : ""}
-        ${!children && !isOver ? "hover:bg-slate-50" : ""}
+        ${!children && !isOver ? "hover:bg-muted" : ""}
       `}
     >
       {children || (
         <div className={`
             h-full w-full rounded-lg border-2 border-dashed flex items-center justify-center transition-all
-            ${isOver ? "border-amber/40 bg-white" : "border-transparent opacity-0 hover:opacity-100 hover:border-slate-200"}
+            ${isOver ? "border-amber/40 bg-card" : "border-transparent opacity-0 hover:opacity-100 hover:border-border"}
         `}>
           {isOver && <span className="text-[10px] font-bold text-amber uppercase">Soltar</span>}
-          {!isOver && <span className="text-[10px] font-bold text-slate-300 uppercase">Vazio</span>}
+          {!isOver && <span className="text-[10px] font-bold text-muted-foreground uppercase">Vazio</span>}
         </div>
       )}
     </div>
@@ -731,7 +731,7 @@ const TrashDropzone = ({ active }: { active: boolean }) => {
       className={`mt-4 rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-wide text-center transition-all ${
         highlight
           ? "border-rose-400 bg-rose-50 text-rose-700"
-          : "border-slate-200 bg-white text-slate-400"
+          : "border-border bg-card text-muted-foreground"
       }`}
     >
       Arraste aqui para remover
@@ -756,22 +756,22 @@ const AssignProfessorModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-2xl bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900">Atribuir professor</h3>
+          <h3 className="text-sm font-bold text-foreground">Atribuir professor</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500"
+            className="rounded-lg border border-border px-2 py-1 text-xs font-semibold text-muted-foreground"
           >
             Fechar
           </button>
         </div>
-        <p className="mt-2 text-xs text-slate-500">{aula.disciplina}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{aula.disciplina}</p>
         <select
           value={selected}
           onChange={(event) => setSelected(event.target.value)}
-          className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          className="mt-4 w-full rounded-lg border border-border px-3 py-2 text-sm"
         >
           <option value="">Selecione um professor</option>
           {professores.map((prof) => (
@@ -784,7 +784,7 @@ const AssignProfessorModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600"
+            className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground"
           >
             Cancelar
           </button>
@@ -822,13 +822,13 @@ const AssignTurmaSalaModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-2xl bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900">Definir sala da turma</h3>
+          <h3 className="text-sm font-bold text-foreground">Definir sala da turma</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500"
+            className="rounded-lg border border-border px-2 py-1 text-xs font-semibold text-muted-foreground"
           >
             Fechar
           </button>
@@ -836,7 +836,7 @@ const AssignTurmaSalaModal = ({
         <select
           value={selected}
           onChange={(event) => setSelected(event.target.value)}
-          className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          className="mt-4 w-full rounded-lg border border-border px-3 py-2 text-sm"
         >
           <option value="">Selecione uma sala</option>
           {salas.map((sala) => (
@@ -849,7 +849,7 @@ const AssignTurmaSalaModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600"
+            className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground"
           >
             Cancelar
           </button>

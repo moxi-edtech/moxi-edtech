@@ -25,24 +25,24 @@ export function ExplorerHorarioSemanal({
   const visibleDays = activeDay == null ? days : days.filter((item) => item.diaSemana === activeDay);
 
   if (!aulas.length) return (
-    <p className="rounded-xl border border-slate-200 px-3 py-4 text-xs text-slate-600">
+    <p className="rounded-xl border border-border px-3 py-4 text-xs text-muted-foreground">
       {parcial ? "Sem aulas nesta lista · Dados parciais." : "Sem aulas no horário publicado."}
     </p>
   );
 
   return (
     <div className="space-y-3">
-      <div role="group" aria-label="Filtrar horário por dia" className="flex flex-wrap gap-1.5 border-b border-slate-100 pb-3">
+      <div role="group" aria-label="Filtrar horário por dia" className="flex flex-wrap gap-1.5 border-b border-border pb-3">
         <button type="button" onClick={() => setDia(null)} aria-pressed={activeDay === null}
           className={"rounded-lg border px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 " +
-            (activeDay === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>
+            (activeDay === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-border bg-card text-muted-foreground hover:bg-muted")}>
           Semana
         </button>
         {weekdays.map((day) => (
           <button type="button" key={day} onClick={() => setDia(day)}
             aria-label={WEEKDAY_LABELS[day]} aria-pressed={activeDay === day}
             className={"min-w-10 rounded-lg border px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 " +
-              (activeDay === day ? "border-emerald-700 bg-emerald-700 text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>
+              (activeDay === day ? "border-emerald-700 bg-emerald-700 text-white" : "border-border bg-card text-muted-foreground hover:bg-muted")}>
             {WEEKDAY_LABELS[day].slice(0, 3)}
           </button>
         ))}
@@ -50,21 +50,21 @@ export function ExplorerHorarioSemanal({
 
       <div className={activeDay === null ? "grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2" : "space-y-3"}>
         {visibleDays.map((day) => (
-          <section key={day.diaSemana} aria-label={day.nome} className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <h4 className="border-b border-slate-100 bg-slate-50/70 px-3 py-2 text-xs font-semibold text-slate-800">
+          <section key={day.diaSemana} aria-label={day.nome} className="min-w-0 overflow-hidden rounded-xl border border-border bg-card">
+            <h4 className="border-b border-border bg-muted/70 px-3 py-2 text-xs font-semibold text-foreground">
               {day.nome}
             </h4>
-            <ol className="divide-y divide-slate-100">
+            <ol className="divide-y divide-border">
               {day.aulas.map((aula) => (
                 <li key={aula.id} className="flex min-w-0 items-start gap-3 px-3 py-3">
-                  <span className="w-[82px] shrink-0 pt-0.5 text-[11px] font-medium tabular-nums text-slate-500">
+                  <span className="w-[82px] shrink-0 pt-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
                     {aula.inicio.slice(0, 5)}–{aula.fim.slice(0, 5)}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="break-words font-semibold text-slate-900">{aula.disciplinaNome}</p>
-                    {showTurma && aula.turmaNome && <p className="mt-0.5 text-xs text-slate-700">{aula.turmaNome}</p>}
+                    <p className="break-words font-semibold text-foreground">{aula.disciplinaNome}</p>
+                    {showTurma && aula.turmaNome && <p className="mt-0.5 text-xs text-foreground">{aula.turmaNome}</p>}
                     {!showTurma && (
-                      <p className="mt-0.5 text-xs text-slate-600">
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         {aula.professorNome ??
                           (aula.professorVinculoRegistrado
                             ? "Professor por identificar"
@@ -74,7 +74,7 @@ export function ExplorerHorarioSemanal({
                     {!showTurma && aula.salaNome && <p className="mt-0.5 text-[11px] text-muted-foreground">
                       Sala {aula.salaNome}
                     </p>}
-                    {showTurma && aula.salaNome && <p className="mt-0.5 text-[11px] text-slate-500">
+                    {showTurma && aula.salaNome && <p className="mt-0.5 text-[11px] text-muted-foreground">
                       Sala {aula.salaNome}
                     </p>}
                   </div>
@@ -132,7 +132,7 @@ function HorarioResultado({
   disciplinaId?: string;
 }) {
   if (query.isPending) return (
-    <p role="status" className="flex items-center gap-2 text-xs text-slate-600">
+    <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
       <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> A carregar horário publicado…
     </p>
   );
@@ -146,8 +146,8 @@ function HorarioResultado({
     </p>
   );
   if (query.data?.estado === "sem-publicacao") return (
-    <div className="rounded-xl border border-slate-200 px-3 py-4">
-      <span className="inline-flex rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+    <div className="rounded-xl border border-border px-3 py-4">
+      <span className="inline-flex rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
         Horário por publicar
       </span>
     </div>
@@ -225,9 +225,9 @@ export function ExplorerHorarioTurma({
     turmaId ? "Horário semanal" : "Horários das turmas";
 
   return (
-    <section aria-label={title} className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+    <section aria-label={title} className="min-w-0 rounded-xl border border-border bg-card p-3 sm:p-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <CalendarDays className="h-4 w-4 text-emerald-700" aria-hidden /> {title}
         </h3>
         {!initiallyExpanded && (
@@ -242,19 +242,19 @@ export function ExplorerHorarioTurma({
         <div className="mt-3 space-y-3">
           {!turmaId && (
             <div className={allowCompare ? "grid grid-cols-1 gap-2 sm:grid-cols-2" : "space-y-2"}>
-              <label className="block space-y-1 text-xs font-medium text-slate-600">
+              <label className="block space-y-1 text-xs font-medium text-muted-foreground">
                 <span>{allowCompare ? "Primeira turma" : "Escolher turma"}</span>
                 <select value={effectiveTurma} onChange={(event) => setSelected(event.target.value)}
-                  className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-2 focus-visible:outline-emerald-600">
+                  className="block w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-emerald-600">
                   <option value="">Selecione uma turma</option>
                   {(turmas ?? []).map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
                 </select>
               </label>
               {allowCompare && (
-                <label className="block space-y-1 text-xs font-medium text-slate-600">
+                <label className="block space-y-1 text-xs font-medium text-muted-foreground">
                   <span>Comparar com (opcional)</span>
                   <select value={effectiveCompare} onChange={(event) => setCompare(event.target.value)}
-                    className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-2 focus-visible:outline-emerald-600">
+                    className="block w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-emerald-600">
                     <option value="">Sem comparação</option>
                     {(turmas ?? []).filter((item) => item.id !== effectiveTurma)
                       .map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
@@ -275,7 +275,7 @@ export function ExplorerHorarioTurma({
             <div className={effectiveCompare ? "grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2" : "min-w-0"}>
               <div className="min-w-0 space-y-2">
                 {effectiveCompare && (
-                  <p className="text-xs font-semibold text-slate-700">
+                  <p className="text-xs font-semibold text-foreground">
                     {turmas?.find((item) => item.id === effectiveTurma)?.nome ?? "Primeira turma"}
                   </p>
                 )}
@@ -283,7 +283,7 @@ export function ExplorerHorarioTurma({
               </div>
               {effectiveCompare && (
                 <div className="min-w-0 space-y-2">
-                  <p className="text-xs font-semibold text-slate-700">
+                  <p className="text-xs font-semibold text-foreground">
                     {turmas?.find((item) => item.id === effectiveCompare)?.nome ?? "Segunda turma"}
                   </p>
                   <HorarioResultado query={otherQuery} disciplinaId={disciplinaId} />

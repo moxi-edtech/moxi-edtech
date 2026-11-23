@@ -165,9 +165,9 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Vendas e Caixa</h1>
-          <p className="text-sm text-gray-500">Registre itens avulsos, controle estoque e lançamentos.</p>
+          <p className="text-sm text-muted-foreground">Registre itens avulsos, controle estoque e lançamentos.</p>
         </div>
-        <div className="text-xs text-gray-500">Escola: {escolaId}</div>
+        <div className="text-xs text-muted-foreground">Escola: {escolaId}</div>
       </div>
 
       {(errorMessage || message) && (
@@ -181,9 +181,9 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
       )}
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white border rounded-xl shadow-sm p-4">
+        <div className="bg-card border rounded-xl shadow-sm p-4">
           <h2 className="font-semibold mb-2">Itens do catálogo</h2>
-          <p className="text-xs text-gray-500 mb-4">Gerencie preços e estoque dos produtos vendidos avulsamente.</p>
+          <p className="text-xs text-muted-foreground mb-4">Gerencie preços e estoque dos produtos vendidos avulsamente.</p>
 
           <form onSubmit={handleItemSubmit} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -251,7 +251,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
                 {editingId ? "Atualizar" : "Adicionar"}
               </button>
               {editingId && (
-                <button type="button" onClick={resetForm} className="text-sm text-gray-600">
+                <button type="button" onClick={resetForm} className="text-sm text-muted-foreground">
                   Cancelar edição
                 </button>
               )}
@@ -261,16 +261,16 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
           <div className="mt-6">
             <h3 className="font-medium text-sm mb-2">Itens cadastrados</h3>
             {loading ? (
-              <div className="text-sm text-gray-500">Carregando itens...</div>
+              <div className="text-sm text-muted-foreground">Carregando itens...</div>
             ) : items.length === 0 ? (
-              <div className="text-sm text-gray-500">Nenhum item cadastrado ainda.</div>
+              <div className="text-sm text-muted-foreground">Nenhum item cadastrado ainda.</div>
             ) : (
               <div className="space-y-2 max-h-80 overflow-auto pr-1">
                 {items.map((item) => (
                   <div key={item.id} className="border rounded-lg px-3 py-2 flex justify-between items-center">
                     <div>
                       <div className="font-medium">{item.nome}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         {item.categoria} · Preço: AOA {Number(item.preco).toFixed(2)} · Estoque:{" "}
                         {item.controla_estoque ? item.estoque_atual : "N/A"}
                       </div>
@@ -288,7 +288,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
                             ativo: item.ativo,
                           })
                         }}
-                        className="text-slate-600"
+                        className="text-muted-foreground"
                       >
                         Editar
                       </button>
@@ -303,9 +303,9 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
           </div>
         </div>
 
-        <div className="bg-white border rounded-xl shadow-sm p-4">
+        <div className="bg-card border rounded-xl shadow-sm p-4">
           <h2 className="font-semibold mb-2">Registrar venda avulsa</h2>
-          <p className="text-xs text-gray-500 mb-4">
+          <p className="text-xs text-muted-foreground mb-4">
             A venda gera um lançamento financeiro e baixa de estoque em um único passo.
           </p>
 

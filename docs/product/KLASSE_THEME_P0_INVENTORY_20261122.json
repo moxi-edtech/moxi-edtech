@@ -1,0 +1,1134 @@
+{
+  "groups": {
+    "app/escola": {
+      "files": 68,
+      "changed_tokens": 2491,
+      "eligible": 70,
+      "dark_exceptions": 141
+    },
+    "components/secretaria": {
+      "eligible": 89,
+      "dark_exceptions": 65,
+      "files": 67,
+      "changed_tokens": 1727
+    },
+    "components/escola": {
+      "eligible": 23,
+      "dark_exceptions": 114,
+      "files": 19,
+      "changed_tokens": 978
+    },
+    "app/secretaria": {
+      "files": 30,
+      "changed_tokens": 827,
+      "eligible": 33,
+      "dark_exceptions": 7
+    }
+  },
+  "files": [
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/ai/KlasseAiCockpitClient.tsx",
+      "neutral_matches": 62,
+      "brand_matches": 0,
+      "preserved_dark": 5
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/ai/actions/AiActionsCenterClient.tsx",
+      "neutral_matches": 56,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/avisos/novo/page.tsx",
+      "neutral_matches": 12,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/comunicacao/whatsapp/page.tsx",
+      "neutral_matches": 114,
+      "brand_matches": 0,
+      "preserved_dark": 2
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/_components/SistemaStatusModal.tsx",
+      "neutral_matches": 26,
+      "brand_matches": 14,
+      "preserved_dark": 5
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/academico-completo/components/ProfessoresStep.tsx",
+      "neutral_matches": 5,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/academico-completo/components/StepHeader.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/academico-completo/components/TipoPresencaStep.tsx",
+      "neutral_matches": 32,
+      "brand_matches": 1,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/academico-completo/components/ui/Badge.tsx",
+      "neutral_matches": 5,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/academico-completo/components/ui/Button.tsx",
+      "neutral_matches": 13,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/academico-completo/components/ui/Card.tsx",
+      "neutral_matches": 4,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/academico-completo/components/ui/Input.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/academico-completo/components/ui/Select.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/academico-completo/components/ui/Textarea.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/avaliacao/page.tsx",
+      "neutral_matches": 74,
+      "brand_matches": 13,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/avancado/page.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/calendario/page.tsx",
+      "neutral_matches": 71,
+      "brand_matches": 2,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/comunicacao/page.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/estrutura/page.tsx",
+      "neutral_matches": 7,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/identidade/page.tsx",
+      "neutral_matches": 90,
+      "brand_matches": 0,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/mensalidades/page.tsx",
+      "neutral_matches": 121,
+      "brand_matches": 0,
+      "preserved_dark": 19
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/sandbox/page.tsx",
+      "neutral_matches": 31,
+      "brand_matches": 1,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/seguranca/page.tsx",
+      "neutral_matches": 5,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/sistema/page.tsx",
+      "neutral_matches": 26,
+      "brand_matches": 14,
+      "preserved_dark": 5
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/configuracoes/turmas/page.tsx",
+      "neutral_matches": 135,
+      "brand_matches": 0,
+      "preserved_dark": 15
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/funcionarios/page.tsx",
+      "neutral_matches": 5,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/notas/page.tsx",
+      "neutral_matches": 66,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/operacoes-academicas/wizard/page.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/relatorios/page.tsx",
+      "neutral_matches": 78,
+      "brand_matches": 25,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/admin/turmas/page.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/avaliacoes/page.tsx",
+      "neutral_matches": 48,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/eventos/page.tsx",
+      "neutral_matches": 15,
+      "brand_matches": 2,
+      "preserved_dark": 1
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/cobrancas/CarteiraCobrancasClient.tsx",
+      "neutral_matches": 68,
+      "brand_matches": 0,
+      "preserved_dark": 5
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/configuracoes/precos/PrecosClient.tsx",
+      "neutral_matches": 167,
+      "brand_matches": 0,
+      "preserved_dark": 18
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/configuracoes/precos/page.tsx",
+      "neutral_matches": 14,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/controle-caixa/page.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/fecho/page.tsx",
+      "neutral_matches": 82,
+      "brand_matches": 13,
+      "preserved_dark": 5
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/pagamentos/page.tsx",
+      "neutral_matches": 19,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/page.tsx",
+      "neutral_matches": 101,
+      "brand_matches": 14,
+      "preserved_dark": 1
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/radar/page.tsx",
+      "neutral_matches": 43,
+      "brand_matches": 0,
+      "preserved_dark": 2
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/recebimentos/page.tsx",
+      "neutral_matches": 15,
+      "brand_matches": 0,
+      "preserved_dark": 2
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/detalhados/page.tsx",
+      "neutral_matches": 17,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/extratos-alunos/page.tsx",
+      "neutral_matches": 6,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/fluxo-caixa/page.tsx",
+      "neutral_matches": 6,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/mensal-escolar/page.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/pagamentos-status/page.tsx",
+      "neutral_matches": 8,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/page.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/propinas/page.tsx",
+      "neutral_matches": 11,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/relatorios/reconciliacao-mensalidades/page.tsx",
+      "neutral_matches": 30,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/turmas-alunos/ModalRegistrarPagamento.tsx",
+      "neutral_matches": 54,
+      "brand_matches": 0,
+      "preserved_dark": 1
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/turmas-alunos/modal-extrato-aluno.tsx",
+      "neutral_matches": 24,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/turmas-alunos/page.tsx",
+      "neutral_matches": 9,
+      "brand_matches": 9,
+      "preserved_dark": 6
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/financeiro/vendas/VendaCaixaClient.tsx",
+      "neutral_matches": 13,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/funcionarios/novo/page.tsx",
+      "neutral_matches": 20,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/funcionarios/page.tsx",
+      "neutral_matches": 22,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/horarios/quadro/page.tsx",
+      "neutral_matches": 86,
+      "brand_matches": 0,
+      "preserved_dark": 2
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/horarios/slots/page.tsx",
+      "neutral_matches": 15,
+      "brand_matches": 0,
+      "preserved_dark": 4
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/operacoes/aulas/[aulaId]/page.tsx",
+      "neutral_matches": 35,
+      "brand_matches": 0,
+      "preserved_dark": 6
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/professores/page.tsx",
+      "neutral_matches": 208,
+      "brand_matches": 76,
+      "preserved_dark": 25
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/rotina/page.tsx",
+      "neutral_matches": 74,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/secretaria/(portal-secretaria)/documentos/page.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/secretaria/(portal-secretaria)/migracao/historico/page.tsx",
+      "neutral_matches": 4,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/secretaria/(portal-secretaria)/relatorios/mensal-escolar/page.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/(portal)/secretaria/(portal-secretaria)/relatorios/propinas/page.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/admin/configuracoes/academico-completo/components/StepHeader.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/admin/configuracoes/academico-completo/components/TipoPresencaStep.tsx",
+      "neutral_matches": 9,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/[id]/configuracoes/onboarding/page.tsx",
+      "neutral_matches": 5,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/escola/suspensa/page.tsx",
+      "neutral_matches": 12,
+      "brand_matches": 4,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/AdmissaoWizardClient.tsx",
+      "neutral_matches": 6,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/AdmissoesRadarClient.tsx",
+      "neutral_matches": 27,
+      "brand_matches": 0,
+      "preserved_dark": 7
+    },
+    {
+      "name": "apps/web/src/components/secretaria/AlunoProfilePanel.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/AlunosListClient.tsx",
+      "neutral_matches": 5,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/AtribuirProfessorForm.tsx",
+      "neutral_matches": 14,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/BoardExecutivePanel.tsx",
+      "neutral_matches": 8,
+      "brand_matches": 0,
+      "preserved_dark": 2
+    },
+    {
+      "name": "apps/web/src/components/secretaria/BoardPressurePanel.tsx",
+      "neutral_matches": 11,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/ClasseDetailClient.tsx",
+      "neutral_matches": 15,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/DiretorForm.tsx",
+      "neutral_matches": 7,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/DocumentosAprovacoesQueue.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/DocumentosEmissaoHub.tsx",
+      "neutral_matches": 23,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx",
+      "neutral_matches": 46,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/DocumentosOficiaisBatchClient.tsx",
+      "neutral_matches": 75,
+      "brand_matches": 17,
+      "preserved_dark": 7
+    },
+    {
+      "name": "apps/web/src/components/secretaria/FaltasJustificacoesQueue.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/FinanceInsightsPanel.tsx",
+      "neutral_matches": 9,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/FinancialHealthInsightsPanel.tsx",
+      "neutral_matches": 8,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/ImportacoesListClient.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/JustificarFaltaModal.tsx",
+      "neutral_matches": 12,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/KlasseSecretariaUnificada.tsx",
+      "neutral_matches": 9,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/LiberarAcessoAlunos.tsx",
+      "neutral_matches": 36,
+      "brand_matches": 11,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/MatriculasListClient.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 2
+    },
+    {
+      "name": "apps/web/src/components/secretaria/MetricasAcessoAlunos.tsx",
+      "neutral_matches": 5,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/MigracaoPautasPage.tsx",
+      "neutral_matches": 91,
+      "brand_matches": 0,
+      "preserved_dark": 6
+    },
+    {
+      "name": "apps/web/src/components/secretaria/MotivoBloqueioModal.tsx",
+      "neutral_matches": 12,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/OmniSearchInput.tsx",
+      "neutral_matches": 16,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/PagamentoDividaModal.tsx",
+      "neutral_matches": 36,
+      "brand_matches": 0,
+      "preserved_dark": 8
+    },
+    {
+      "name": "apps/web/src/components/secretaria/PagamentosPendentesWindow.tsx",
+      "neutral_matches": 79,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/PautaRapidaModal.tsx",
+      "neutral_matches": 39,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/ProfessoresListClient.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/QuickDocHub.tsx",
+      "neutral_matches": 114,
+      "brand_matches": 1,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/RelatorioMensalidadesClient.tsx",
+      "neutral_matches": 3,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/ResumoCaixaSecretaria.tsx",
+      "neutral_matches": 9,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/SecretariaDocumentosWorkspace.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/TransferForm.tsx",
+      "neutral_matches": 15,
+      "brand_matches": 2,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/TurmaAtribuirProfessoresModal.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 1
+    },
+    {
+      "name": "apps/web/src/components/secretaria/TurmaCurriculoModal.tsx",
+      "neutral_matches": 49,
+      "brand_matches": 11,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/TurmaForm.tsx",
+      "neutral_matches": 37,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/ClasseContextView.tsx",
+      "neutral_matches": 47,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/CommandCenterStudentDossier.tsx",
+      "neutral_matches": 4,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/CommandCenterStudentPicker.tsx",
+      "neutral_matches": 8,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/CourseContextView.tsx",
+      "neutral_matches": 50,
+      "brand_matches": 2,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/DisciplinaContextView.tsx",
+      "neutral_matches": 36,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/DisciplinaSearchResults.tsx",
+      "neutral_matches": 10,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/ExplorerHorario.tsx",
+      "neutral_matches": 41,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/ExplorerRosterControls.tsx",
+      "neutral_matches": 11,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/ExplorerRosterExportButton.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/ExplorerStudentActions.tsx",
+      "neutral_matches": 6,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/FuncionarioContextView.tsx",
+      "neutral_matches": 18,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/ProfessorContextView.tsx",
+      "neutral_matches": 37,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/command-center/TurmaContextView.tsx",
+      "neutral_matches": 38,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/operacoes/CentroPendenciasPosViradaClient.tsx",
+      "neutral_matches": 82,
+      "brand_matches": 12,
+      "preserved_dark": 2
+    },
+    {
+      "name": "apps/web/src/components/secretaria/operacoes/NextYearFlowCard.tsx",
+      "neutral_matches": 7,
+      "brand_matches": 3,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/components/secretaria/relatorio-financeiro/FinancialDetailDrawer.tsx",
+      "neutral_matches": 28,
+      "brand_matches": 0,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/components/secretaria/relatorio-financeiro/RecoveryCalculator.tsx",
+      "neutral_matches": 4,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/relatorio-financeiro/RelatorioHeader.tsx",
+      "neutral_matches": 23,
+      "brand_matches": 0,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/components/secretaria/relatorio-financeiro/TabPropinas.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/relatorio-financeiro/TabResumo.tsx",
+      "neutral_matches": 22,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/relatorio-financeiro/utils.tsx",
+      "neutral_matches": 4,
+      "brand_matches": 0,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/components/secretaria/virada-ano/CutoverResolveActions.tsx",
+      "neutral_matches": 52,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/virada-ano/ExecuteStep.tsx",
+      "neutral_matches": 15,
+      "brand_matches": 0,
+      "preserved_dark": 2
+    },
+    {
+      "name": "apps/web/src/components/secretaria/virada-ano/FreezeStep.tsx",
+      "neutral_matches": 23,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/virada-ano/PreparationInputs.tsx",
+      "neutral_matches": 18,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/virada-ano/PromotionStep.tsx",
+      "neutral_matches": 53,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/virada-ano/ReclassificacaoFinalistasClient.tsx",
+      "neutral_matches": 106,
+      "brand_matches": 30,
+      "preserved_dark": 5
+    },
+    {
+      "name": "apps/web/src/components/secretaria/virada-ano/RetroactiveGradeGrid.tsx",
+      "neutral_matches": 9,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/virada-ano/RetroactivePendingPanel.tsx",
+      "neutral_matches": 8,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/secretaria/virada-ano/ViradaWizard.tsx",
+      "neutral_matches": 48,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/escola/configuracoes/AssinaturaKlasseClient.tsx",
+      "neutral_matches": 78,
+      "brand_matches": 16,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/components/escola/configuracoes/CurriculumPresetSelector.tsx",
+      "neutral_matches": 25,
+      "brand_matches": 0,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/components/escola/horarios/SchedulerBoard.tsx",
+      "neutral_matches": 65,
+      "brand_matches": 0,
+      "preserved_dark": 6
+    },
+    {
+      "name": "apps/web/src/components/escola/horarios/SlotsConfig.tsx",
+      "neutral_matches": 70,
+      "brand_matches": 0,
+      "preserved_dark": 25
+    },
+    {
+      "name": "apps/web/src/components/escola/horarios/wizard/StepCargas.tsx",
+      "neutral_matches": 17,
+      "brand_matches": 0,
+      "preserved_dark": 2
+    },
+    {
+      "name": "apps/web/src/components/escola/horarios/wizard/StepProfessores.tsx",
+      "neutral_matches": 43,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/escola/horarios/wizard/StepSalas.tsx",
+      "neutral_matches": 25,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/escola/importacao/wizard/steps/BackfillStep.tsx",
+      "neutral_matches": 33,
+      "brand_matches": 0,
+      "preserved_dark": 6
+    },
+    {
+      "name": "apps/web/src/components/escola/importacao/wizard/steps/ConfigurationStep.tsx",
+      "neutral_matches": 31,
+      "brand_matches": 0,
+      "preserved_dark": 5
+    },
+    {
+      "name": "apps/web/src/components/escola/onboarding/AcademicStep1.tsx",
+      "neutral_matches": 62,
+      "brand_matches": 16,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/escola/onboarding/AcademicStep2.tsx",
+      "neutral_matches": 74,
+      "brand_matches": 13,
+      "preserved_dark": 8
+    },
+    {
+      "name": "apps/web/src/components/escola/onboarding/AcademicStep2Config.tsx",
+      "neutral_matches": 27,
+      "brand_matches": 0,
+      "preserved_dark": 5
+    },
+    {
+      "name": "apps/web/src/components/escola/onboarding/AcademicStepFinancial.tsx",
+      "neutral_matches": 45,
+      "brand_matches": 2,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/escola/onboarding/CurriculumPresetSelector.tsx",
+      "neutral_matches": 25,
+      "brand_matches": 0,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/components/escola/settings/CourseCreateModal.tsx",
+      "neutral_matches": 68,
+      "brand_matches": 0,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/components/escola/settings/ExcecoesPautaPanel.tsx",
+      "neutral_matches": 37,
+      "brand_matches": 2,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/escola/settings/SettingsHubSkeleton.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/components/escola/settings/StructureMarketplace.tsx",
+      "neutral_matches": 63,
+      "brand_matches": 0,
+      "preserved_dark": 5
+    },
+    {
+      "name": "apps/web/src/components/escola/settings/_components/DisciplinaModal.tsx",
+      "neutral_matches": 107,
+      "brand_matches": 33,
+      "preserved_dark": 36
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/Dashboard.tsx",
+      "neutral_matches": 17,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/admissoes/page.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/alertas/page.tsx",
+      "neutral_matches": 18,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/alunos/[id]/editar/page.tsx",
+      "neutral_matches": 23,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/alunos/novo/page.tsx",
+      "neutral_matches": 86,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/candidaturas/[id]/editar/page.tsx",
+      "neutral_matches": 15,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/exportacoes/page.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/fechamento-academico/cockpit/page.tsx",
+      "neutral_matches": 101,
+      "brand_matches": 9,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/fechamento-academico/page.tsx",
+      "neutral_matches": 39,
+      "brand_matches": 18,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/fechamento-academico/sanidade/page.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 2
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/fluxo-academico/page.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/importacoes/RowActions.tsx",
+      "neutral_matches": 5,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/importacoes/[id]/page.tsx",
+      "neutral_matches": 32,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/migracao/historico/page.tsx",
+      "neutral_matches": 4,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/notas/page.tsx",
+      "neutral_matches": 8,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/operacoes-academicas/page.tsx",
+      "neutral_matches": 134,
+      "brand_matches": 2,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/operacoes-academicas/reclassificacao-finalistas/page.tsx",
+      "neutral_matches": 3,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/page.tsx",
+      "neutral_matches": 1,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/ponto-professores/page.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/raa/dependencias/page.tsx",
+      "neutral_matches": 26,
+      "brand_matches": 0,
+      "preserved_dark": 3
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/raa/indisciplina/page.tsx",
+      "neutral_matches": 15,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/raa/reapreciacoes/page.tsx",
+      "neutral_matches": 35,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/relatorios/mapa-aproveitamento/ui.tsx",
+      "neutral_matches": 18,
+      "brand_matches": 1,
+      "preserved_dark": 2
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/relatorios/page.tsx",
+      "neutral_matches": 26,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/rematricula/confirmar/page.tsx",
+      "neutral_matches": 8,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/rematricula/janelas/page.tsx",
+      "neutral_matches": 31,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/rematricula/page.tsx",
+      "neutral_matches": 84,
+      "brand_matches": 18,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/(portal-secretaria)/rematricula/reconciliacao/page.tsx",
+      "neutral_matches": 39,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/acesso/page.tsx",
+      "neutral_matches": 2,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    },
+    {
+      "name": "apps/web/src/app/secretaria/balcao/BalcaoPageClient.tsx",
+      "neutral_matches": 3,
+      "brand_matches": 0,
+      "preserved_dark": 0
+    }
+  ]
+}

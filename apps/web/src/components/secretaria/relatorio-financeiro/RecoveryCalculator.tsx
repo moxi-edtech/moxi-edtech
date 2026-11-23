@@ -49,9 +49,9 @@ export function RecoveryCalculator({ totalAtraso }: RecoveryCalculatorProps) {
         </div>
 
         <div className="grid grid-cols-2 gap-4 pt-2">
-          <div className="rounded-xl bg-white p-3 border border-indigo-100">
+          <div className="rounded-xl bg-card p-3 border border-indigo-100">
             <p className="text-[9px] uppercase tracking-wider text-indigo-400 font-bold">Total em Atraso</p>
-            <p className="text-sm font-bold text-slate-900 mt-1">{kwanza.format(totalAtraso)}</p>
+            <p className="text-sm font-bold text-foreground mt-1">{kwanza.format(totalAtraso)}</p>
           </div>
           <div className="rounded-xl bg-indigo-600 p-3 shadow-md shadow-indigo-200">
             <p className="text-[9px] uppercase tracking-wider text-indigo-100 font-bold flex items-center gap-1">

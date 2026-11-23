@@ -1419,7 +1419,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
           <Link
             href={`${secretariaBase}/admissoes/nova`}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-white transition-colors hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-bold text-klasse-gold-900 transition-colors hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
           >
             <Plus size={14} />
             Nova Admissão
@@ -1543,7 +1543,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
               )}
               {isInitialLoading && (
                 <span className="inline-flex items-center gap-2">
-                  <span className="h-3 w-20 animate-pulse rounded bg-slate-200" />
+                  <span className="h-3 w-20 animate-pulse rounded bg-muted-foreground/15" />
                 </span>
               )}
 
@@ -1613,7 +1613,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-border">
                 {loading ? (
                   Array.from({ length: isInitialLoading ? 8 : 5 }).map((_, index) => <SkeletonRow key={index} />)
                 ) : fetchError ? null : items.length === 0 ? (
@@ -1728,7 +1728,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
       {selected.size > 0 && (
         <div className="fixed bottom-6 left-1/2 z-30 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-foreground shadow-sm animate-in slide-in-from-bottom-3 duration-200">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-klasse-gold text-xs font-black text-foreground">
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-klasse-gold text-xs font-black text-klasse-gold-900">
               {selected.size}
             </div>
             <span className="text-sm font-semibold text-foreground">

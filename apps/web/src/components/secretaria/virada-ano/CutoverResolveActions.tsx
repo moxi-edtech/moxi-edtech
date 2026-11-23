@@ -94,67 +94,67 @@ export function CutoverResolveActions({ activeYearId, metrics }: Props) {
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-      <p className="text-xs font-semibold text-slate-700">Ações diretas de resolução</p>
-      <p className="mt-1 text-[11px] text-slate-500">Cada bloqueador tem ação no mesmo painel. Use simulação antes de executar.</p>
+    <div className="rounded-lg border border-border bg-muted p-3">
+      <p className="text-xs font-semibold text-foreground">Ações diretas de resolução</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">Cada bloqueador tem ação no mesmo painel. Use simulação antes de executar.</p>
 
       <div className="mt-3 grid gap-2 md:grid-cols-2">
-        <div className="rounded-md border border-slate-200 bg-white p-2">
-          <p className="text-[11px] font-semibold text-slate-700">Sessões nulas</p>
-          <p className="text-[11px] text-slate-500">Turmas+Matrículas: {metrics.turmas_session_id_null + metrics.matriculas_session_id_null}</p>
+        <div className="rounded-md border border-border bg-card p-2">
+          <p className="text-[11px] font-semibold text-foreground">Sessões nulas</p>
+          <p className="text-[11px] text-muted-foreground">Turmas+Matrículas: {metrics.turmas_session_id_null + metrics.matriculas_session_id_null}</p>
           <div className="mt-2 flex gap-2">
-            <button onClick={() => runAction("fix_sessions", false)} disabled={loading !== null} className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Resolver agora</button>
+            <button onClick={() => runAction("fix_sessions", false)} disabled={loading !== null} className="rounded border border-border px-2 py-1 text-[11px] font-semibold text-foreground disabled:opacity-50">Resolver agora</button>
           </div>
         </div>
 
-        <div className="rounded-md border border-slate-200 bg-white p-2">
-          <p className="text-[11px] font-semibold text-slate-700">Mensalidades órfãs</p>
-          <p className="text-[11px] text-slate-500">Total: {metrics.mensalidades_sem_matricula_id}</p>
+        <div className="rounded-md border border-border bg-card p-2">
+          <p className="text-[11px] font-semibold text-foreground">Mensalidades órfãs</p>
+          <p className="text-[11px] text-muted-foreground">Total: {metrics.mensalidades_sem_matricula_id}</p>
           <div className="mt-2 flex gap-2">
-            <button onClick={() => runAction("fix_orphan_mensalidades", true)} disabled={loading !== null} className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Simular</button>
-            <button onClick={() => runAction("fix_orphan_mensalidades", false)} disabled={loading !== null || metrics.mensalidades_sem_matricula_id === 0} className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Resolver agora</button>
+            <button onClick={() => runAction("fix_orphan_mensalidades", true)} disabled={loading !== null} className="rounded border border-border px-2 py-1 text-[11px] font-semibold text-foreground disabled:opacity-50">Simular</button>
+            <button onClick={() => runAction("fix_orphan_mensalidades", false)} disabled={loading !== null || metrics.mensalidades_sem_matricula_id === 0} className="rounded border border-border px-2 py-1 text-[11px] font-semibold text-foreground disabled:opacity-50">Resolver agora</button>
           </div>
         </div>
 
-        <div className="rounded-md border border-slate-200 bg-white p-2">
-          <p className="text-[11px] font-semibold text-slate-700">Competência fora da janela</p>
-          <p className="text-[11px] text-slate-500">Total: {metrics.mensalidades_competencia_fora_janela}</p>
+        <div className="rounded-md border border-border bg-card p-2">
+          <p className="text-[11px] font-semibold text-foreground">Competência fora da janela</p>
+          <p className="text-[11px] text-muted-foreground">Total: {metrics.mensalidades_competencia_fora_janela}</p>
           <div className="mt-2 flex gap-2">
-            <button onClick={() => runAction("fix_competencia_mensalidades", true)} disabled={loading !== null} className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Simular</button>
-            <button onClick={() => runAction("fix_competencia_mensalidades", false)} disabled={loading !== null || metrics.mensalidades_competencia_fora_janela === 0} className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Resolver agora</button>
+            <button onClick={() => runAction("fix_competencia_mensalidades", true)} disabled={loading !== null} className="rounded border border-border px-2 py-1 text-[11px] font-semibold text-foreground disabled:opacity-50">Simular</button>
+            <button onClick={() => runAction("fix_competencia_mensalidades", false)} disabled={loading !== null || metrics.mensalidades_competencia_fora_janela === 0} className="rounded border border-border px-2 py-1 text-[11px] font-semibold text-foreground disabled:opacity-50">Resolver agora</button>
           </div>
         </div>
 
-        <div className="rounded-md border border-slate-200 bg-white p-2">
-          <p className="text-[11px] font-semibold text-slate-700">Currículo pendente por classe</p>
-          <p className="text-[11px] text-slate-500">Total: {metrics.curriculos_classes_pendentes}</p>
+        <div className="rounded-md border border-border bg-card p-2">
+          <p className="text-[11px] font-semibold text-foreground">Currículo pendente por classe</p>
+          <p className="text-[11px] text-muted-foreground">Total: {metrics.curriculos_classes_pendentes}</p>
           <div className="mt-2 flex gap-2">
-            <button onClick={() => runAction("publish_pending_curriculos", true)} disabled={loading !== null} className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Simular</button>
-            <button onClick={() => runAction("publish_pending_curriculos", false)} disabled={loading !== null || metrics.curriculos_classes_pendentes === 0} className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Resolver agora</button>
+            <button onClick={() => runAction("publish_pending_curriculos", true)} disabled={loading !== null} className="rounded border border-border px-2 py-1 text-[11px] font-semibold text-foreground disabled:opacity-50">Simular</button>
+            <button onClick={() => runAction("publish_pending_curriculos", false)} disabled={loading !== null || metrics.curriculos_classes_pendentes === 0} className="rounded border border-border px-2 py-1 text-[11px] font-semibold text-foreground disabled:opacity-50">Resolver agora</button>
           </div>
         </div>
 
-        <div className="rounded-md border border-slate-200 bg-white p-2">
-          <p className="text-[11px] font-semibold text-slate-700">Pautas anuais oficiais</p>
-          <p className="text-[11px] text-slate-500">Pendentes: {metrics.pautas_anuais_pendentes}</p>
+        <div className="rounded-md border border-border bg-card p-2">
+          <p className="text-[11px] font-semibold text-foreground">Pautas anuais oficiais</p>
+          <p className="text-[11px] text-muted-foreground">Pendentes: {metrics.pautas_anuais_pendentes}</p>
           <div className="mt-2 flex gap-2">
-            <button onClick={() => runAction("generate_pautas_anuais", true)} disabled={loading !== null} className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Simular</button>
-            <button onClick={() => runAction("generate_pautas_anuais", false)} disabled={loading !== null || metrics.pautas_anuais_pendentes === 0} className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Gerar lote</button>
+            <button onClick={() => runAction("generate_pautas_anuais", true)} disabled={loading !== null} className="rounded border border-border px-2 py-1 text-[11px] font-semibold text-foreground disabled:opacity-50">Simular</button>
+            <button onClick={() => runAction("generate_pautas_anuais", false)} disabled={loading !== null || metrics.pautas_anuais_pendentes === 0} className="rounded border border-border px-2 py-1 text-[11px] font-semibold text-foreground disabled:opacity-50">Gerar lote</button>
           </div>
         </div>
 
-        <div className="rounded-md border border-slate-200 bg-white p-2">
-          <p className="text-[11px] font-semibold text-slate-700">Fechamento anual e snapshots</p>
-          <p className="text-[11px] text-slate-500">Matrículas sem final: {metrics.matriculas_status_final_pendente} · Snapshots: {metrics.snapshot_locks_pendentes}</p>
+        <div className="rounded-md border border-border bg-card p-2">
+          <p className="text-[11px] font-semibold text-foreground">Fechamento anual e snapshots</p>
+          <p className="text-[11px] text-muted-foreground">Matrículas sem final: {metrics.matriculas_status_final_pendente} · Snapshots: {metrics.snapshot_locks_pendentes}</p>
           <div className="mt-2 flex gap-2">
-            <button onClick={() => runAction("close_year_snapshots", true)} disabled={loading !== null || !activeYearId} className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Simular</button>
-            <button onClick={() => runAction("close_year_snapshots", false)} disabled={loading !== null || !activeYearId || (metrics.matriculas_status_final_pendente === 0 && metrics.snapshot_locks_pendentes === 0)} className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 disabled:opacity-50">Fechar ano</button>
+            <button onClick={() => runAction("close_year_snapshots", true)} disabled={loading !== null || !activeYearId} className="rounded border border-border px-2 py-1 text-[11px] font-semibold text-foreground disabled:opacity-50">Simular</button>
+            <button onClick={() => runAction("close_year_snapshots", false)} disabled={loading !== null || !activeYearId || (metrics.matriculas_status_final_pendente === 0 && metrics.snapshot_locks_pendentes === 0)} className="rounded border border-border px-2 py-1 text-[11px] font-semibold text-foreground disabled:opacity-50">Fechar ano</button>
           </div>
         </div>
       </div>
 
-      {loading && <p className="mt-2 text-[11px] text-slate-500">Executando: {labels[loading]}...</p>}
-      {result && <p className="mt-2 text-[11px] text-slate-700">{result}</p>}
+      {loading && <p className="mt-2 text-[11px] text-muted-foreground">Executando: {labels[loading]}...</p>}
+      {result && <p className="mt-2 text-[11px] text-foreground">{result}</p>}
     </div>
   );
 }

@@ -143,7 +143,7 @@ export default function EditarCandidaturaPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-moxinexa-teal transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-moxinexa-teal transition-colors"
           >
             <ArrowLeftIcon className="w-4 h-4" />
             Voltar
@@ -166,7 +166,7 @@ export default function EditarCandidaturaPage() {
           />
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+        <div className="bg-card rounded-xl shadow-xl p-6 border border-border">
           {loading ? (
             <div>Carregando…</div>
           ) : error ? (
@@ -189,7 +189,7 @@ export default function EditarCandidaturaPage() {
                   <label className="block text-sm font-medium text-moxinexa-dark">Nome completo</label>
                   <input
                     type="text"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.nome}
                     onChange={(e) => updateField("nome", e.target.value)}
                     required
@@ -199,7 +199,7 @@ export default function EditarCandidaturaPage() {
                   <label className="block text-sm font-medium text-moxinexa-dark">Email</label>
                   <input
                     type="email"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.email}
                     onChange={(e) => updateField("email", e.target.value)}
                   />
@@ -211,7 +211,7 @@ export default function EditarCandidaturaPage() {
                   <label className="block text-sm font-medium text-moxinexa-dark">Telefone</label>
                   <input
                     type="tel"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.telefone}
                     onChange={(e) => updateField("telefone", e.target.value)}
                   />
@@ -220,7 +220,7 @@ export default function EditarCandidaturaPage() {
                   <label className="block text-sm font-medium text-moxinexa-dark">BI</label>
                   <input
                     type="text"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.bi_numero}
                     onChange={(e) => updateField("bi_numero", e.target.value)}
                   />
@@ -229,7 +229,7 @@ export default function EditarCandidaturaPage() {
                   <label className="block text-sm font-medium text-moxinexa-dark">NIF</label>
                   <input
                     type="text"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.nif}
                     onChange={(e) => updateField("nif", e.target.value)}
                   />
@@ -241,7 +241,7 @@ export default function EditarCandidaturaPage() {
                   <label className="block text-sm font-medium text-moxinexa-dark">Responsável</label>
                   <input
                     type="text"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.responsavel_nome}
                     onChange={(e) => updateField("responsavel_nome", e.target.value)}
                   />
@@ -250,7 +250,7 @@ export default function EditarCandidaturaPage() {
                   <label className="block text-sm font-medium text-moxinexa-dark">Contacto do responsável</label>
                   <input
                     type="text"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.responsavel_contato}
                     onChange={(e) => updateField("responsavel_contato", e.target.value)}
                   />
@@ -262,7 +262,7 @@ export default function EditarCandidaturaPage() {
                   <label className="block text-sm font-medium text-moxinexa-dark">Email do responsável</label>
                   <input
                     type="email"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.encarregado_email}
                     onChange={(e) => updateField("encarregado_email", e.target.value)}
                   />
@@ -271,7 +271,7 @@ export default function EditarCandidaturaPage() {
                   <label className="block text-sm font-medium text-moxinexa-dark">Endereço</label>
                   <input
                     type="text"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.endereco}
                     onChange={(e) => updateField("endereco", e.target.value)}
                   />
@@ -283,7 +283,7 @@ export default function EditarCandidaturaPage() {
                   <label className="block text-sm font-medium text-moxinexa-dark">Data de nascimento</label>
                   <input
                     type="date"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.data_nascimento}
                     onChange={(e) => updateField("data_nascimento", e.target.value)}
                   />
@@ -291,7 +291,7 @@ export default function EditarCandidaturaPage() {
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-moxinexa-dark">Sexo</label>
                   <select
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                    className="w-full border border-border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
                     value={form.sexo}
                     onChange={(e) => updateField("sexo", e.target.value)}
                   >
