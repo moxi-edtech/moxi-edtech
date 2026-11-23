@@ -336,8 +336,8 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
         "CREATE OR REPLACE FUNCTION public.gerar_mensalidades_lote(",
         "REVOKE ALL ON FUNCTION public.klasse_definir_bolsa_integral",
         "WHERE eu.escola_id = p_escola_id",
-        "WHERE id = p_matricula_id AND escola_id = p_escola_id",
-        "coalesce(me.valor_pago_total, 0) = 0",
+        "WHERE id=p_matricula_id AND escola_id=p_escola_id",
+        "coalesce(me.valor_pago_total,0)=0",
         "me.fiscal_documento_id IS NULL",
       ]) {
         if (!content.includes(token)) {
