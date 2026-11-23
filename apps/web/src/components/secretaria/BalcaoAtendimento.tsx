@@ -681,6 +681,15 @@ function useCheckout({
 
   const checkout = useCallback(async (): Promise<boolean> => {
     if (!aluno || !carrinho.prontoParaPagar) return false;
+    // Um rascunho antigo ainda pode conter serviços documentais no carrinho.
+    // Não permitir um segundo checkout para o mesmo serviço. O operador
+    // remove o item e processa-o na Central, preservando os restantes itens.
+    if (carrinho.itens.some((item) =>
+      item.tipo === "servico" && isTipoDocumentoEmitivel(getDocTipo(item))
+    )) {
+      error("Documentos são cobrados e emitidos na Central de Documentos. Remova-os do carrinho para continuar com os demais pagamentos.");
+      return false;
+    }
     setIsSubmitting(true);
 
     try {
