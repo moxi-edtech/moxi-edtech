@@ -674,7 +674,9 @@ export default function ProfessoresPage() {
   const [viewMode,          setViewMode]          = useState<"grid" | "list">("grid")
   const [editOpen,          setEditOpen]          = useState(false)
   const [editTarget,        setEditTarget]        = useState<Professor | null>(null)
+  const [editSaving,        setEditSaving]        = useState(false)
   const [editForm,          setEditForm]          = useState({
+    email: "",
     nome_completo: "",
     genero: "M" as "M" | "F", data_nascimento: "", numero_bi: "",
     telefone_principal: "",
@@ -1112,6 +1114,7 @@ export default function ProfessoresPage() {
   const openEdit = useCallback((prof: Professor) => {
     setEditTarget(prof)
     setEditForm({
+      email: prof.email || "",
       nome_completo: prof.nome || "",
       genero: (prof.genero as any) || "M",
       data_nascimento: prof.data_nascimento || "",
@@ -1143,11 +1146,12 @@ export default function ProfessoresPage() {
   }, [professores, openEdit])
 
   const handleUpdateProfessor = async () => {
-    if (!editTarget) return
+    if (!editTarget || editSaving) return
+    setEditSaving(true)
     try {
       const res  = await fetch(`/api/escolas/${escolaId}/professores/${editTarget.user_id}/update`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...editForm, carga_horaria_maxima: Number(editForm.carga_horaria_maxima) }),
+        body: JSON.stringify({ ...editForm, email_atual: editTarget.email, carga_horaria_maxima: Number(editForm.carga_horaria_maxima) }),
       })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao atualizar professor")
@@ -1156,6 +1160,7 @@ export default function ProfessoresPage() {
       setEditOpen(false)
       setEditTarget(null)
     } catch (e) { showToast(e instanceof Error ? e.message : "Falha ao atualizar professor", "error") }
+    finally { setEditSaving(false) }
   }
 
   const handleResendInvite = async (email: string) => {
@@ -1881,6 +1886,13 @@ export default function ProfessoresPage() {
                 <input className={inputCls} maxLength={160} value={editForm.nome_completo}
                   onChange={(e) => setEditForm((p) => ({ ...p, nome_completo: e.target.value }))} />
               </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">E-mail de acesso</span>
+                <input className={inputCls} type="email" autoComplete="email" required maxLength={254}
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} />
+                <span className="block text-xs text-muted-foreground">Alterar o e-mail também altera o acesso do professor. Apenas contas exclusivas desta escola podem ter o acesso alterado aqui.</span>
+              </label>
               <div className="grid gap-4 md:grid-cols-2">
                 <select className={selectCls} value={editForm.genero}
                   onChange={(e) => setEditForm((p) => ({ ...p, genero: e.target.value as any }))}>
@@ -1957,9 +1969,9 @@ export default function ProfessoresPage() {
                 className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted transition-colors">
                 Cancelar
               </button>
-              <button onClick={handleUpdateProfessor}
+              <button onClick={handleUpdateProfessor} disabled={editSaving || !editForm.email.trim()}
                 className="rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-klasse-gold-900 hover:brightness-95 transition-all active:scale-95">
-                Guardar alterações
+                {editSaving ? "A guardar…" : "Guardar alterações"}
               </button>
             </div>
           </div>
