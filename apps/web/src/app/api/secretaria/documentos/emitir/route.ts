@@ -109,7 +109,9 @@ export async function POST(request: Request) {
     if (authError) return authError;
 
     const requiresAcademicContext =
-      FINAL_DOCUMENT_TYPES.includes(tipoDocumento) || tipoDocumento === "boletim_trimestral";
+      FINAL_DOCUMENT_TYPES.includes(tipoDocumento) ||
+      tipoDocumento === "boletim_trimestral" ||
+      tipoDocumento === "declaracao_frequencia";
     let academicContext: Awaited<ReturnType<typeof resolveAcademicYearContext>> | null = null;
     if (requiresAcademicContext && !ano_letivo_id) {
       return NextResponse.json(
