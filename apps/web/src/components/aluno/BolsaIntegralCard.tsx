@@ -158,6 +158,15 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
               {matricula.bolseiro ? "Retirar bolsa" : "Marcar como bolseiro"}
             </button>}
           </div>
+          {!confirmando && matricula.bolseiro && possibilidadeRegularizacao.length > 0 && (
+            <button type="button" onClick={() => {
+              setRegularizacao(true);
+              setMesVigencia(possibilidadeRegularizacao[0]);
+              setConfirmando(true);
+            }} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground hover:bg-muted">
+              Regularizar propinas anteriores ({possibilidadeRegularizacao.length})
+            </button>
+          )}
           {!matricula.bolseiro && matricula.bolsa_ano_anterior !== null && !matricula.isencao_outra_politica && (
             <p className="text-xs text-muted-foreground">
               Bolsa do ano {matricula.bolsa_ano_anterior}: a renovação não é automática. A escola deve confirmar a nova atribuição.
@@ -168,9 +177,11 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
           )}
           {confirmando && (
             <p className="text-xs text-muted-foreground">
-              {matricula.bolseiro
+              {regularizacao
+                ? "A escola pode antecipar o início da bolsa e isentar propinas anteriores sem pagamento nem documento fiscal."
+                : matricula.bolseiro
                 ? "A retirada vale desde o próximo mês, por padrão. Preserva os meses já isentos e os pagamentos."
-                : "A atribuição vale desde o mês atual, por padrão. Meses anteriores continuam cobrados."}
+                : "A atribuição vale desde o mês atual, por padrão. Escolha um mês anterior para regularizar propinas não pagas."}
             </p>
           )}
           {confirmando && !matricula.bolseiro && !matricula.isencao_outra_politica && (
@@ -185,19 +196,47 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
           {confirmando && (
             <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
               <label htmlFor="bolsa-vigencia" className="block text-xs font-medium text-foreground">
-                Mês de vigência (opcional)
+                {regularizacao ? "Início retroativo da bolsa" : "Mês de início (opcional)"}
               </label>
               <input id="bolsa-vigencia" type="month" value={mesVigencia}
+                min={matricula.ano_inicio?.slice(0,7) ?? undefined}
                 onChange={(event) => setMesVigencia(event.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20" />
-              <p className="text-xs text-muted-foreground">Sem escolha: este mês para atribuição, próximo mês para retirada. Não permite retroativos.</p>
+              <p className="text-xs text-muted-foreground">
+                {matricula.bolseiro && !regularizacao
+                  ? "Sem escolha: a retirada começa no próximo mês."
+                  : "Sem escolha: começa neste mês. Selecione um mês anterior para regularizar propinas não pagas."}
+              </p>
+              {possibilidadeRegularizacao.length > 0 && !matricula.bolseiro && (
+                <button type="button" onClick={() => setMesVigencia(possibilidadeRegularizacao[0])}
+                  className="text-left text-xs font-medium text-klasse-green underline underline-offset-2">
+                  Desde {possibilidadeRegularizacao[0]} · {possibilidadeRegularizacao.length} propina(s) antiga(s) potencialmente elegível(is)
+                </button>
+              )}
+              {retroativa && (
+                <div className="space-y-2 rounded-xl border border-border bg-background p-3">
+                  <p className="text-xs font-semibold text-foreground">Regularização de meses anteriores</p>
+                  <p className="text-xs text-muted-foreground">
+                    Apenas mensalidades abertas e nunca pagas serão isentadas.
+                    Pagamentos parciais antigos, documentos fiscais e outras matrículas são preservados.
+                  </p>
+                  <label htmlFor="bolsa-justificativa" className="block text-xs font-medium text-foreground">
+                    Justificação da regularização (obrigatória)
+                  </label>
+                  <textarea id="bolsa-justificativa" rows={2} required minLength={10} maxLength={500}
+                    value={justificativa} onChange={(event) => setJustificativa(event.target.value)}
+                    placeholder="Ex.: Bolsa aprovada na matrícula e não registada inicialmente"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20" />
+                  <p className="text-xs text-muted-foreground">A decisão e a justificação ficam registadas na auditoria da escola.</p>
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={toggleBolsa} disabled={saving}
                   className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
                   {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                  {saving ? "A guardar…" : matricula.bolseiro ? "Confirmar retirada" : "Confirmar bolsa"}
+                  {saving ? "A guardar…" : regularizacao ? "Confirmar regularização" : matricula.bolseiro ? "Confirmar retirada" : retroativa ? "Atribuir e regularizar" : "Confirmar bolsa"}
                 </button>
-                <button type="button" disabled={saving} onClick={() => { setConfirmando(false); setMesVigencia(""); }}
+                <button type="button" disabled={saving} onClick={() => { setConfirmando(false); setRegularizacao(false); setMesVigencia(""); setJustificativa(""); }}
                   className="rounded-xl border border-border bg-background px-4 py-2 text-sm text-foreground disabled:opacity-50">
                   Cancelar
                 </button>
