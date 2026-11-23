@@ -48,7 +48,7 @@ export async function GET(req: Request) {
       const allItems = await listAllAlunos(supabase, escolaId, filters, {
         includeFinanceiro: true,
         includeResumo,
-        academicYearId: context.anoLetivoId,
+        academicYearId: filters.ano ? undefined : context.anoLetivoId,
       });
       const sorted = [...allItems].sort((a, b) => {
         const nomeA = (a.nome ?? "").toLocaleLowerCase("pt-AO");
@@ -84,7 +84,7 @@ export async function GET(req: Request) {
     const { items, page } = await listAlunos(supabase, escolaId, filters, {
       includeFinanceiro: true,
       includeResumo,
-      academicYearId: context.anoLetivoId,
+      academicYearId: filters.ano ? undefined : context.anoLetivoId,
     });
 
     return NextResponse.json({
