@@ -3,7 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { K12_ADMIN_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
-import { listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
+import { InvalidAlunoFiltersError, listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
 import {
   parseAlunoExportFormat,
   renderAlunosExport,
@@ -74,6 +74,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     return buildDownloadResponse(rendered, `alunos-${segmento}-${Date.now()}`);
   } catch (error) {
+    if (error instanceof InvalidAlunoFiltersError) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
     const message = error instanceof Error ? error.message : String(error);
     console.error("[admin alunos export error]", error);
     return NextResponse.json({ ok: false, error: message || "Erro desconhecido" }, { status: 500 });
