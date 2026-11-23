@@ -181,12 +181,14 @@ BEGIN
       || p_aluno_id::text || ':' || p_session_id::text || ':' || v_serv.codigo, 0)
   );
 
+  -- Pedidos antigos pendentes não pertencem ao novo checkout documental.
+  -- Um pagamento legado já liquidado continua válido via a consulta de acesso.
   SELECT * INTO v_pedido FROM public.servico_pedidos
   WHERE escola_id=p_escola_id AND aluno_id=p_aluno_id AND matricula_id=v_matricula
     AND servico_codigo=v_serv.codigo
     AND status IN ('pending_payment','granted','blocked')
-  ORDER BY CASE WHEN contexto->>'origem' = 'documentos_emissao_individual' THEN 0 ELSE 1 END,
-           created_at DESC, id DESC LIMIT 1;
+    AND contexto->>'origem' = 'documentos_emissao_individual'
+  ORDER BY created_at DESC, id DESC LIMIT 1;
 
   IF v_pedido.id IS NULL THEN
     INSERT INTO public.servico_pedidos (
