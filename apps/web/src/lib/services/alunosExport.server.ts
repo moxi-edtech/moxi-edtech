@@ -9,6 +9,9 @@ const EXPORT_HEADERS = [
   { key: "telefone_responsavel", label: "Telefone" },
   { key: "status", label: "Status" },
   { key: "turma_nome", label: "Turma" },
+  { key: "classe_nome", label: "Classe" },
+  { key: "turno", label: "Turno" },
+  { key: "bolsa_integral", label: "Bolseiro" },
   { key: "total_em_atraso", label: "Total em atraso" },
   { key: "numero_processo_login", label: "Login" },
   { key: "numero_processo", label: "Processo" },
@@ -38,6 +41,13 @@ function valueFor(row: AlunoListItem, key: (typeof EXPORT_HEADERS)[number]["key"
   const value = (row as Record<string, unknown>)[key];
   if (value === null || value === undefined) return "";
   if (key === "created_at" && typeof value === "string") return value.slice(0, 10);
+  if (key === "bolsa_integral") return value === true ? "Sim" : value === false ? "Não" : "";
+  if (key === "turno" && typeof value === "string") {
+    const normalized = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (normalized === "m" || normalized.startsWith("manha")) return "Manhã";
+    if (normalized === "t" || normalized.startsWith("tarde")) return "Tarde";
+    if (normalized === "n" || normalized.startsWith("noite")) return "Noite";
+  }
   return String(value);
 }
 
@@ -78,12 +88,15 @@ export async function renderAlunosPdf(items: AlunoListItem[], title = "Lista de 
   const margin = 32;
   const rowHeight = 18;
   const columns = [
-    { label: "Nome", key: "nome", x: 32, width: 200 },
-    { label: "Responsavel", key: "responsavel", x: 238, width: 150 },
-    { label: "Telefone", key: "telefone_responsavel", x: 394, width: 95 },
-    { label: "Status", key: "status", x: 495, width: 70 },
-    { label: "Turma", key: "turma_nome", x: 570, width: 115 },
-    { label: "Login", key: "numero_processo_login", x: 690, width: 105 },
+    { label: "Nome", key: "nome", x: 32, width: 135 },
+    { label: "Responsavel", key: "responsavel", x: 172, width: 110 },
+    { label: "Telefone", key: "telefone_responsavel", x: 287, width: 83 },
+    { label: "Status", key: "status", x: 375, width: 63 },
+    { label: "Turma", key: "turma_nome", x: 443, width: 96 },
+    { label: "Classe", key: "classe_nome", x: 544, width: 63 },
+    { label: "Turno", key: "turno", x: 612, width: 55 },
+    { label: "Bolsa", key: "bolsa_integral", x: 672, width: 55 },
+    { label: "Login", key: "numero_processo_login", x: 732, width: 76 },
   ] as const;
 
   const drawHeader = () => {
