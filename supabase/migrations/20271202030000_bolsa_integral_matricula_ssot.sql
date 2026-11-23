@@ -15,9 +15,8 @@ UPDATE public.matriculas
    AND motivo_desconto ILIKE '%bolsa%'
    AND bolsa_integral IS DISTINCT FROM true;
 
-CREATE INDEX IF NOT EXISTS idx_matriculas_bolsa_integral_scope
-  ON public.matriculas(escola_id, aluno_id, ano_letivo, turma_id)
-  WHERE bolsa_integral = true OR percentagem_desconto = 100;
+-- Já existe índice UNIQUE (escola_id, aluno_id, ano_letivo) em produção.
+-- Evita índice parcial redundante e WAL adicional nas escritas de matrículas.
 
 -- Impede que utilizadores sem papel financeiro/secretaria contornem a API com
 -- atualizações diretas da coluna de bolsa (ou desconto integral) via Data API.
