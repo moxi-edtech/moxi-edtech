@@ -15,7 +15,7 @@ test("emissão individual exige pagamento no backend e não confia no frontend",
 
 test("estado financeiro vincula matrícula, ano, serviço e autorização", () => {
   const route = src("app/api/secretaria/documentos/emitir/route.ts");
-  assert.match(route, /action: z\\.enum\\(\\["status", "solicitar", "emitir"\\]\\)/);
+  assert.match(route, /action: z\.enum\(\["status", "solicitar", "emitir"\]\)/);
   assert.match(route, /\.eq\("session_id", academicContext!\.anoLetivoId\)/);
   assert.match(route, /documento_individual_acesso/);
   assert.match(migration, /pg\.status = 'settled'/);
