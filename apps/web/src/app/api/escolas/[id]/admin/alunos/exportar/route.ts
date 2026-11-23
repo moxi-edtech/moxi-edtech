@@ -4,6 +4,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { K12_ADMIN_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
 import { InvalidAlunoFiltersError, listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
+import { loadAlunosPdfInstitutionalContext } from "@/lib/services/alunosExportPdfContext.server";
 import {
   parseAlunoExportFormat,
   renderAlunosExport,
@@ -68,7 +69,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         includeResumo: true,
       })
     );
-    const rendered = await renderAlunosExport(rows, format);
+    const pdfContext = format === "pdf"
+      ? await loadAlunosPdfInstitutionalContext(context.supabase, context.escolaId, filters)
+      : undefined;
+    const rendered = await renderAlunosExport(rows, format, pdfContext);
     const status = filters.status ?? "ativo";
     const segmento = filters.situacaoFinanceira === "em_atraso" ? "inadimplentes" : status;
 
@@ -126,7 +130,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     );
 
     const format = parseAlunoExportFormat(payload?.tipo ?? "excel");
-    const rendered = await renderAlunosExport(rows, format);
+    const pdfContext = format === "pdf"
+      ? await loadAlunosPdfInstitutionalContext(context.supabase, context.escolaId, {})
+      : undefined;
+    const rendered = await renderAlunosExport(rows, format, pdfContext);
 
     return buildDownloadResponse(rendered, `alunos-seleccionados-${Date.now()}`);
   } catch (error) {
