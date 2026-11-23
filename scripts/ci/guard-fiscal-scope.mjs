@@ -138,6 +138,9 @@ export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
   // SEC-ACADEMIC-360: one reviewed read-only RPC authorization hardening only.
   // No fiscal, academic-grade, enrollment, or historical data writes allowed.
   "20271202000000_guard_timeline_360_school_role.sql",
+  // PR #455: bolsa integral SSOT por matrícula e proteção de mensalidades.
+  // Ficheiro exato, sujeito aos mesmos bloqueios AGT/SAF-T/fiscal.
+  "20271202030000_bolsa_integral_matricula_ssot.sql",
   // PR #379: migração de rematrícula entre ciclos sem mudanças fiscais.
   "20271119121000_balcao_rematricula_transicoes_idempotentes.sql",
   // PR #378: calendário escolar operacional; RLS e auditoria append-only, sem notas ou fiscal.
@@ -318,7 +321,33 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
       }
     }
 
-    if (FISCAL_SQL.test(executableSql)) {
+    // PR #455: a consulta da coluna histórica fiscal_documento_id IS NULL
+    // impede que a isenção altere um título já fiscalizado. Essa leitura
+    // defensiva NÃO é ativação do módulo fiscal; qualquer outra referência
+    // a fiscal/AGT/SAF-T continua proibida.
+    let sqlForFiscalScan = executableSql;
+    if (name === "20271202030000_bolsa_integral_matricula_ssot.sql") {
+      for (const token of [
+        "ADD COLUMN IF NOT EXISTS bolsa_integral boolean NOT NULL DEFAULT false",
+        "CREATE OR REPLACE FUNCTION public.klasse_guard_bolsa_mensalidade()",
+        "CREATE OR REPLACE FUNCTION public.klasse_reconciliar_bolsa_matricula()",
+        "CREATE OR REPLACE FUNCTION public.klasse_autorizar_escrita_bolsa_matricula()",
+        "CREATE OR REPLACE FUNCTION public.klasse_definir_bolsa_integral(",
+        "CREATE OR REPLACE FUNCTION public.gerar_mensalidades_lote(",
+        "REVOKE ALL ON FUNCTION public.klasse_definir_bolsa_integral",
+        "WHERE eu.escola_id = p_escola_id",
+        "WHERE id = p_matricula_id AND escola_id = p_escola_id",
+        "coalesce(me.valor_pago_total, 0) = 0",
+        "me.fiscal_documento_id IS NULL",
+      ]) {
+        if (!content.includes(token)) {
+          violations.push("Bolsa SSOT reviewed migration missing guard: " + token);
+        }
+      }
+      sqlForFiscalScan = executableSql.replace(
+        /\b(?:NEW|me)\.fiscal_documento_id\s+IS\s+(?:NOT\s+)?NULL\b/gi, "");
+    }
+    if (FISCAL_SQL.test(sqlForFiscalScan)) {
       violations.push(`Fiscal/AGT activation marker in lifecycle migration: ${path}`);
     }
   }
