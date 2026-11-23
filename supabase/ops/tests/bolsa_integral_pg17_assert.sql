@@ -1,7 +1,7 @@
 -- PR #455 · PostgreSQL 17 real engine / controlled fixture.
 \set ON_ERROR_STOP on
 
-DO $
+DO $$
 BEGIN
  IF pg_get_function_arguments('public.gerar_mensalidades_lote(uuid,integer,integer,integer,uuid)'::regprocedure)
     NOT LIKE '%p_dia_vencimento_default integer DEFAULT 10%'
@@ -10,7 +10,7 @@ BEGIN
    RAISE EXCEPTION 'FAIL: a migração alterou os defaults instalados da RPC de propinas';
  END IF;
 END;
-$;
+$$;
 DO $$
 DECLARE
   y integer := extract(year from current_date - interval '2 months')::int;
