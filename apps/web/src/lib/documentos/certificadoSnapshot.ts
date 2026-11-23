@@ -164,7 +164,7 @@ async function fetchOfficialHistoryRows(
     .eq("aluno_id", alunoId)
     .order("ano_letivo", { ascending: true });
 
-  if (error || !Array.isArray(data)) return [];
+  if (error || !Array.isArray(data)) throw new Error("Não foi possível carregar as fontes oficiais do certificado.");
 
   return (data as HistoricalClassRow[])
     .map((row) => {
@@ -197,7 +197,7 @@ async function fetchTransitedHistoryRows(
     .eq("aluno_id", alunoId)
     .order("ano_letivo", { ascending: true });
 
-  if (error || !Array.isArray(data)) return [];
+  if (error || !Array.isArray(data)) throw new Error("Não foi possível carregar as fontes oficiais do certificado.");
 
   return (data as TransitedClassRow[])
     .map((row) => ({
@@ -218,7 +218,7 @@ async function fetchOfficialHistoryNotes(supabase: SupabaseLike, sourceIds: stri
     .select("historico_ano_id, disciplina_id, disciplina_nome, nota_final, media_final")
     .in("historico_ano_id", sourceIds);
 
-  if (error || !Array.isArray(data)) return [];
+  if (error || !Array.isArray(data)) throw new Error("Não foi possível carregar as fontes oficiais do certificado.");
 
   return (data as HistoricalNoteRow[])
     .map((row) => {
@@ -245,7 +245,7 @@ async function fetchTransitedHistoryNotes(supabase: SupabaseLike, sourceIds: str
     .order("ordem", { ascending: true })
     .order("disciplina_nome", { ascending: true });
 
-  if (error || !Array.isArray(data)) return [];
+  if (error || !Array.isArray(data)) throw new Error("Não foi possível carregar as fontes oficiais do certificado.");
 
   return (data as TransitedNoteRow[])
     .map((row) => {
@@ -306,6 +306,14 @@ export async function buildCertificadoSnapshot(params: {
     .map((value) => sourceByClassNumber.get(value))
     .filter((value): value is HistoryClassSource => Boolean(value));
 
+  // Não substituir notas da classe/ano solicitado por resultados mais antigos.
+  if (selectedSources.length === 0 ||
+      !selectedSources.some((source) =>
+        source.year === targetYear &&
+        (currentClassNumber == null || source.classNumber === currentClassNumber))) {
+    throw new Error("O histórico oficial do ano/classe selecionado não contém resultados verificáveis.");
+  }
+
   const officialSourceIds = selectedSources
     .filter((item) => item.source === "historico")
     .map((item) => item.sourceId);
@@ -323,6 +331,17 @@ export async function buildCertificadoSnapshot(params: {
     const current = notesBySourceId.get(row.sourceId) ?? [];
     current.push(row);
     notesBySourceId.set(row.sourceId, current);
+  }
+
+  // Mesmo com histórico fechado, a impressão nunca pode omitir silenciosamente
+  // uma coluna de classe ou usar uma fonte inacessível como uma pauta vazia.
+  for (const source of selectedSources) {
+    const rows = notesBySourceId.get(source.sourceId) ?? [];
+    if (rows.length === 0 || rows.some((item) =>
+      !item.disciplineName.trim() || item.score == null ||
+      !Number.isFinite(item.score) || item.score < 0 || item.score > 20)) {
+      throw new Error("Existem disciplinas sem notas oficiais verificáveis no certificado.");
+    }
   }
 
   const disciplineMap = new Map<
@@ -369,6 +388,9 @@ export async function buildCertificadoSnapshot(params: {
       };
     });
 
+  if (disciplinas.length === 0) {
+    throw new Error("O certificado não contém classificações oficiais.");
+  }
   const mediaFinal = normalizeOverallMedia(baseSnapshot.media_final);
 
   return {
