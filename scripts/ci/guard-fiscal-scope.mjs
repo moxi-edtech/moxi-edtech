@@ -345,7 +345,7 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
         }
       }
       sqlForFiscalScan = executableSql.replace(
-        /\b(?:NEW|me)\.fiscal_documento_id\s+IS\s+(?:NOT\s+)?NULL\b/gi, "");
+        /\b(?:NEW|me|pg)\.fiscal_documento_id\s+IS\s+(?:NOT\s+)?NULL\b/gi, "");
     }
     if (FISCAL_SQL.test(sqlForFiscalScan)) {
       violations.push(`Fiscal/AGT activation marker in lifecycle migration: ${path}`);
