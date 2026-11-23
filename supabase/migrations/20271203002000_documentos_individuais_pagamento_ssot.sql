@@ -312,7 +312,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO ''
-AS $
+AS $$
 DECLARE
   v_pedido public.servico_pedidos%ROWTYPE;
   v_intent public.pagamento_intents%ROWTYPE;
@@ -369,7 +369,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
 DROP TRIGGER IF EXISTS trg_documento_individual_payment_sync ON public.pagamentos;
 CREATE TRIGGER trg_documento_individual_payment_sync
