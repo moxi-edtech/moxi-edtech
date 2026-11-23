@@ -2,6 +2,10 @@ BEGIN;
 
 -- Emissão individual: uma solicitação por aluno / matrícula / serviço.
 -- A liquidação é aferida no ledger financeiro, nunca no JSON do cliente.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_documento_individual_emitido_por_matricula
+ON public.documentos_emitidos (escola_id, aluno_id, tipo, (dados_snapshot->>'matricula_id'))
+WHERE dados_snapshot->>'origem_emissao' = 'documentos_emissao_individual';
+
 CREATE UNIQUE INDEX IF NOT EXISTS ux_documento_individual_pedido_aberto
 ON public.servico_pedidos (escola_id, aluno_id, matricula_id, servico_codigo)
 WHERE contexto->>'origem' = 'documentos_emissao_individual'
@@ -231,6 +235,8 @@ AS $$
 DECLARE
   v_access jsonb;
   v_ano integer;
+  v_doc public.documentos_emitidos%ROWTYPE;
+  v_result jsonb;
 BEGIN
   SELECT ano INTO v_ano FROM public.anos_letivos
   WHERE id = p_session_id AND escola_id = p_escola_id LIMIT 1;
@@ -242,13 +248,46 @@ BEGIN
   v_access := public.documento_individual_acesso(
     p_escola_id,p_aluno_id,p_session_id,p_tipo_documento
   );
+  IF coalesce((v_access->>'ok')::boolean,false) IS NOT TRUE THEN
+    RAISE EXCEPTION 'DOCUMENT_ACCESS_DENIED: matrícula ou serviço inválido'
+      USING ERRCODE = '42501';
+  END IF;
+
+  -- Serializa a emissão por aluno/ano/tipo, mesmo com chaves HTTP diferentes.
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('documento:emitido:' || p_escola_id::text || ':'
+      || p_aluno_id::text || ':' || p_session_id::text || ':' || p_tipo_documento,0)
+  );
+
+  SELECT * INTO v_doc FROM public.documentos_emitidos
+  WHERE escola_id = p_escola_id AND aluno_id = p_aluno_id
+    AND tipo::text = p_tipo_documento
+    AND dados_snapshot->>'matricula_id' = v_access->>'matricula_id'
+  ORDER BY created_at DESC, id DESC LIMIT 1;
+
+  IF v_doc.id IS NOT NULL THEN
+    RETURN jsonb_build_object(
+      'ok',true,'docId',v_doc.id,'publicId',v_doc.public_id,
+      'hash',v_doc.hash_validacao,'tipo',v_doc.tipo,'idempotent',true
+    );
+  END IF;
+
   IF coalesce((v_access->>'granted')::boolean,false) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'DOCUMENT_PAYMENT_REQUIRED: pagamento ou aprovação pendente'
       USING ERRCODE = '42501';
   END IF;
-  RETURN public.emitir_documento_final_idempotente(
+
+  v_result := public.emitir_documento_final_idempotente(
     p_escola_id,p_aluno_id,p_ano_letivo,p_tipo_documento,p_idempotency_key
   );
+  UPDATE public.documentos_emitidos SET
+    dados_snapshot = dados_snapshot || jsonb_build_object(
+      'origem_emissao','documentos_emissao_individual',
+      'servico_pedido_id',v_access->>'pedido_id',
+      'pagamento_intent_id',v_access->>'pagamento_intent_id'
+    )
+  WHERE id = (v_result->>'docId')::uuid AND escola_id = p_escola_id;
+  RETURN v_result;
 END;
 $$;
 
@@ -314,7 +353,7 @@ BEGIN
   -- O guard do boletim exige draft -> pending -> settled.
   IF v_intent.status = 'draft' THEN
     UPDATE public.pagamento_intents
-    SET status = 'pending', method = NEW.metodo, reference = NEW.reference,
+    SET status = 'pending', method = NEW.metodo::text, reference = NEW.reference,
         evidence_url = NEW.evidence_url
     WHERE id = v_intent.id;
   END IF;
