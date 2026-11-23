@@ -116,6 +116,12 @@ const RECENT_SCOPE_LIMIT = 12;
 const searchCache = new Map<string, CacheEntry>();
 const SEARCH_CACHE_LIMIT = 50;
 function storeCachedSearch(key: string, entry: CacheEntry) {
+  // A candidatura pode converter-se em matrícula durante a sessão.
+  // Não guardar resultados candidatos para que a pesquisa seguinte leia o estado atual.
+  if (entry.data.some((item) => item.type === "candidatura")) {
+    searchCache.delete(key);
+    return;
+  }
   searchCache.delete(key);
   searchCache.set(key, entry);
   while (searchCache.size > SEARCH_CACHE_LIMIT) {
@@ -148,7 +154,9 @@ function scrubLegacyLocalStorage(escolaId: string | null | undefined, portal: Po
 function readRecentEntries(escolaId: string | null | undefined, portal: PortalKey | undefined): RecentEntry[] {
   if (!escolaId) return [];
   scrubLegacyLocalStorage(escolaId, portal);
-  const list = recentSessionStore.get(recentKey(escolaId, portal)) ?? [];
+  // Recentes não devem reabrir uma candidatura já convertida em aluno.
+  const list = (recentSessionStore.get(recentKey(escolaId, portal)) ?? [])
+    .filter((item) => item.type !== "candidatura");
   return [...list].sort((a, b) => b.lastUsedAt - a.lastUsedAt).slice(0, RECENT_RESULTS_LIMIT);
 }
 
@@ -157,7 +165,7 @@ function writeRecentEntry(
   portal: PortalKey | undefined,
   result: MinimalSearchResult,
 ) {
-  if (!escolaId) return;
+  if (!escolaId || result.type === "candidatura") return;
   scrubLegacyLocalStorage(escolaId, portal);
   const entry: RecentEntry = {
     id: result.id,
@@ -549,12 +557,14 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       setHasMore(false);
       setError(null);
 
-      storeCachedSearch(debouncedCacheKey, {
-        ts: now,
-        data: payload,
-        cursor: null,
-        hasMore: false,
-      });
+      if (!resolvedTypes.includes("candidatura")) {
+        storeCachedSearch(debouncedCacheKey, {
+          ts: now,
+          data: payload,
+          cursor: null,
+          hasMore: false,
+        });
+      }
     };
 
     const fetchPage = async (pageCursor: Cursor | null, append: boolean) => {
@@ -587,7 +597,8 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
       setHasMore(Boolean(nextCursor));
       setError(null);
 
-      if (!append) {
+      // Índice de candidatos é volátil após confirmar matrícula.
+      if (!append && !resolvedTypes.includes("candidatura")) {
         storeCachedSearch(debouncedCacheKey, {
           ts: now,
           data: payload,

@@ -90,7 +90,7 @@ function SearchResultRow({ item, onSelect, portal }: { item: MinimalSearchResult
       <div className="min-w-0 flex-1">
         <div className="break-words font-semibold leading-5 text-foreground">{item.label?.trim() || "Nome não informado"}</div>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-          <span>{student ? "Aluno" : employee ? "Funcionário" : item.type}</span>
+          <span>{student ? "Aluno" : employee ? "Funcionário" : item.type === "candidatura" ? "Candidato" : item.type}</span>
           {showSecondary && <span className="break-all text-muted-foreground">{student ? "Processo/BI: " : "· "}{secondary}</span>}
         </div>
       </div>

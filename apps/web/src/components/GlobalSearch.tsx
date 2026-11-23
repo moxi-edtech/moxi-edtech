@@ -45,7 +45,9 @@ export function GlobalSearch({ escolaId, placeholder, disabledText, portal, onAc
           placeholder={
             isDisabled
               ? disabledText || "Associe-se a uma escola para pesquisar"
-              : placeholder || "Buscar aluno (nome, processo, BI)..."
+              : placeholder || ((portal === "secretaria" || portal === "operacoes")
+                ? "Pesquisar aluno ou candidato..."
+                : "Buscar aluno (nome, processo, BI)...")
           }
           className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-xl text-sm text-foreground focus:bg-background focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60"
         />
@@ -57,7 +59,7 @@ export function GlobalSearch({ escolaId, placeholder, disabledText, portal, onAc
       {isOpen && results.length > 0 && (
         <div className="absolute top-full mt-2 w-full bg-card rounded-lg shadow-xl border border-border overflow-hidden z-50">
           <div className="p-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Alunos encontrados
+            Resultados encontrados
           </div>
           {results.map((item) => (
             <div
@@ -78,7 +80,7 @@ export function GlobalSearch({ escolaId, placeholder, disabledText, portal, onAc
                   <div className="text-[12px] text-muted-foreground">{item.highlight || item.type}</div>
                 </div>
                 <div className="rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground">
-                  {item.type}
+                  {item.type === "candidatura" ? "Candidato" : item.type === "aluno" ? "Aluno" : item.type}
                 </div>
               </button>
 
