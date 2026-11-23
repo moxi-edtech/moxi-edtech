@@ -1,0 +1,62 @@
+name: Bolsa Integral SSOT · PostgreSQL 17
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20271202030000_bolsa_integral_matricula_ssot.sql'
+      - 'supabase/ops/tests/bolsa_integral_pg17_*'
+      - '.github/workflows/bolsa-integral-pg17.yml'
+      - 'apps/web/tests/unit/alunos-filtros-bolsa-ssot.spec.mjs'
+      - 'apps/web/src/lib/services/alunos.service.ts'
+      - 'apps/web/src/lib/services/alunosExport.server.ts'
+      - 'apps/web/src/components/escola-admin/AlunosListClient.tsx'
+      - 'apps/web/src/components/secretaria/AlunosSecretariaPage.tsx'
+      - 'apps/web/src/app/api/secretaria/alunos/**'
+      - 'apps/web/src/app/api/escolas/**/admin/alunos/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  filtros_alunos:
+    name: Filtros bolsa / classe / turma / turno · contratos
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testar filtros e exportação (sem dependências externas)
+        run: node --test apps/web/tests/unit/alunos-filtros-bolsa-ssot.spec.mjs
+
+  postgres17:
+    name: PostgreSQL 17 · migração e contratos financeiros
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: klasse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d klasse_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: klasse_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Executar migração e regressões num PostgreSQL 17 real
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/bolsa_integral_pg17_fixture.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271202030000_bolsa_integral_matricula_ssot.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/bolsa_integral_pg17_assert.sql

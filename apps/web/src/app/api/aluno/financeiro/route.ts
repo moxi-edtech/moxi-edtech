@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     // 1. Buscar Mensalidades (Legado, para compatibilidade de UI e botões de pagar)
     const { data: mensalidades, error: mensError } = await supabase
       .from("mensalidades")
-      .select("id, ano_referencia, mes_referencia, valor_previsto, valor, valor_pago_total, data_vencimento, status, data_pagamento_efetiva")
+      .select("id, ano_referencia, mes_referencia, valor_previsto, valor, valor_pago_total, data_vencimento, status, data_pagamento_efetiva, bolsa_isencao_integral")
       .eq("aluno_id", alunoId)
       .eq("escola_id", ctx.escolaId)
       .gte("ano_referencia", fromAno)
@@ -55,6 +55,24 @@ export async function GET(request: Request) {
       .order("mes_referencia", { ascending: false }).order("id", { ascending: false });
 
     if (mensError) throw mensError;
+
+    // O estado da bolsa é por matrícula/ano; nunca inferir bolsa a partir do saldo 0.
+    const { data: matriculasBolsa, error: bolsaError } = await supabase
+      .from("matriculas")
+      .select("id, ano_letivo, bolsa_integral, bolsa_integral_inicio")
+      .eq("escola_id", ctx.escolaId)
+      .eq("aluno_id", alunoId)
+      .eq("bolsa_integral", true)
+      .gte("ano_letivo", fromAno)
+      .lte("ano_letivo", toAno)
+      .order("ano_letivo", { ascending: false });
+    if (bolsaError) throw bolsaError;
+
+    // A bolsa histórica nunca deve aparecer como uma concessão do ano vigente.
+    const { data: anoAtivo, error: anoAtivoError } = await supabase.from("anos_letivos")
+      .select("ano").eq("escola_id", ctx.escolaId).eq("ativo", true)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (anoAtivoError) throw anoAtivoError;
 
     const mensalidadeIds = (mensalidades ?? []).map((m) => m.id);
     const reciboByMensalidadeId = new Map<string, string>();
@@ -140,6 +158,7 @@ export async function GET(request: Request) {
         status, 
         pago_em: m.data_pagamento_efetiva,
         recibo_id: reciboByMensalidadeId.get(m.id) ?? null,
+        bolsa_isencao_integral: Boolean(m.bolsa_isencao_integral),
       };
     });
 
@@ -147,16 +166,26 @@ export async function GET(request: Request) {
     const ledgerMovimentos = (movimentos ?? []) as FinanceiroLedgerMovimento[];
     const totalDebitos = ledgerMovimentos.filter((m) => m.tipo === "debito").reduce((a, b) => a + Number(b.valor), 0) || 0;
     const totalCreditos = ledgerMovimentos.filter((m) => m.tipo === "credito").reduce((a, b) => a + Number(b.valor), 0) || 0;
+    // Créditos de isenção não são dinheiro recebido. Apenas lançamentos
+    // liquidados e referenciados na tabela pagamentos contam como "Total pago".
+    const totalPagoReal = ledgerMovimentos
+      .filter((m) => m.tipo === "credito" && m.referencia_tabela === "pagamentos" && m.tipo_evento === "liquidado")
+      .reduce((total, m) => total + Number(m.valor), 0);
     const saldoConsolidado = totalDebitos - totalCreditos;
 
     return NextResponse.json({
       ok: true,
       mensalidades: rows,
+      ano_letivo_atual: anoAtivo?.ano ?? null,
+      bolsas: (matriculasBolsa ?? []).map(m => ({
+        ano_letivo: m.ano_letivo,
+        vigencia_inicio: m.bolsa_integral_inicio,
+      })),
       servicos,
       movimentos: ledgerMovimentos,
       resumo: {
         saldo_consolidado: saldoConsolidado,
-        total_pago: totalCreditos,
+        total_pago: totalPagoReal,
         total_pendente: saldoConsolidado > 0 ? saldoConsolidado : 0,
         em_dia: saldoConsolidado <= 0
       },

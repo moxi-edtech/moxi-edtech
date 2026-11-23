@@ -169,6 +169,9 @@ export async function POST(req: Request) {
           p_turma_id: eligibleTurmaId,
         });
         if (error) throw error;
+        if (data && typeof data === "object" && "ok" in data && data.ok === false) {
+          throw new Error(String(data.erro ?? "Falha na geração de propinas da turma."));
+        }
 
         // A RPC legada não preenchia matricula_id. Reassociamos apenas cobranças
         // pendentes do mesmo aluno/turma/competência, sem tocar em pagamentos existentes.

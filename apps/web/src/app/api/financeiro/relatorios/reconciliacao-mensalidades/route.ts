@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { resolveAnoLetivoScope } from "@/lib/financeiro/resolveAnoLetivoScope";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
@@ -22,6 +23,11 @@ export async function GET(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase, userRes.user.id, requestedEscolaId);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
+    }
+
+    const alunoId = searchParams.get("alunoId");
+    if (alunoId && !z.string().uuid().safeParse(alunoId).success) {
+      return NextResponse.json({ ok: false, error: "Aluno inválido" }, { status: 400 });
     }
 
     const allYears = searchParams.get("todos") === "1";
@@ -49,13 +55,16 @@ export async function GET(req: Request) {
     if (anoScope?.id) {
       itemsQuery = itemsQuery.eq("ano_letivo_id", anoScope.id);
     }
+    if (alunoId) itemsQuery = itemsQuery.eq("aluno_id", alunoId);
 
     const [{ data: items, count, error: itemsError }, summaryRes] = await Promise.all([
       itemsQuery,
-      supabase.rpc("get_financeiro_mensalidades_reconciliacao_resumo", {
-        p_escola_id: escolaId,
-        p_ano_letivo_id: anoScope?.id ?? null,
-      } as never),
+      alunoId
+        ? Promise.resolve({ data: [], error: null })
+        : supabase.rpc("get_financeiro_mensalidades_reconciliacao_resumo", {
+            p_escola_id: escolaId,
+            p_ano_letivo_id: anoScope?.id ?? null,
+          } as never),
     ]);
 
     if (itemsError) {
@@ -74,6 +83,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: true,
       escolaId,
+      alunoId: alunoId ?? null,
       anoLetivoId: anoScope?.id ?? null,
       anoLetivo: anoScope?.ano ?? null,
       todosAnos: allYears,

@@ -1,4 +1,5 @@
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { renderNominalA4, type NominalA4Row } from "@/lib/documentos/nominalA4";
+import type { AlunosPdfInstitutionalContext } from "@/lib/services/alunosExportPdfContext.server";
 import * as XLSX from "xlsx";
 import type { AlunoListItem } from "@/lib/schemas/aluno.schema";
 
@@ -9,6 +10,9 @@ const EXPORT_HEADERS = [
   { key: "telefone_responsavel", label: "Telefone" },
   { key: "status", label: "Status" },
   { key: "turma_nome", label: "Turma" },
+  { key: "classe_nome", label: "Classe" },
+  { key: "turno", label: "Turno" },
+  { key: "bolsa_integral", label: "Bolseiro" },
   { key: "total_em_atraso", label: "Total em atraso" },
   { key: "numero_processo_login", label: "Login" },
   { key: "numero_processo", label: "Processo" },
@@ -38,6 +42,13 @@ function valueFor(row: AlunoListItem, key: (typeof EXPORT_HEADERS)[number]["key"
   const value = (row as Record<string, unknown>)[key];
   if (value === null || value === undefined) return "";
   if (key === "created_at" && typeof value === "string") return value.slice(0, 10);
+  if (key === "bolsa_integral") return value === true ? "Sim" : value === false ? "Não" : "";
+  if (key === "turno" && typeof value === "string") {
+    const normalized = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (normalized === "m" || normalized.startsWith("manha")) return "Manhã";
+    if (normalized === "t" || normalized.startsWith("tarde")) return "Tarde";
+    if (normalized === "n" || normalized.startsWith("noite")) return "Noite";
+  }
   return String(value);
 }
 
@@ -66,61 +77,67 @@ export function renderAlunosXlsx(items: AlunoListItem[]) {
   return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
 }
 
-function pdfText(value: string) {
-  return value.replace(/[^\x09\x0A\x0D\x20-\xFF]/g, "?");
-}
-
-export async function renderAlunosPdf(items: AlunoListItem[], title = "Lista de alunos") {
-  const pdfDoc = await PDFDocument.create();
-  let page = pdfDoc.addPage([842, 595]);
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const margin = 32;
-  const rowHeight = 18;
+/** Uma única base PDF para a lista nominal de turmas e a lista filtrada de alunos. */
+export async function renderAlunosPdf(
+  items: AlunoListItem[],
+  context: AlunosPdfInstitutionalContext
+): Promise<Buffer> {
+  // As colunas específicas do relatório de Alunos cabem no A4 horizontal
+  // (área útil: 841,89 - 64 = 777,89 pt). Nunca truncar nomes.
   const columns = [
-    { label: "Nome", key: "nome", x: 32, width: 200 },
-    { label: "Responsavel", key: "responsavel", x: 238, width: 150 },
-    { label: "Telefone", key: "telefone_responsavel", x: 394, width: 95 },
-    { label: "Status", key: "status", x: 495, width: 70 },
-    { label: "Turma", key: "turma_nome", x: 570, width: 115 },
-    { label: "Login", key: "numero_processo_login", x: 690, width: 105 },
+    { key: "numero", label: "Nº", width: 26 },
+    { key: "processo", label: "Login/Proc.", width: 80 },
+    { key: "nome", label: "Nome completo", width: 166 },
+    { key: "responsavel", label: "Responsável", width: 118 },
+    { key: "telefone", label: "Telefone", width: 78 },
+    { key: "estado", label: "Estado", width: 62 },
+    { key: "turma", label: "Turma", width: 88 },
+    { key: "classe", label: "Classe", width: 70 },
+    { key: "turno", label: "Turno", width: 52 },
+    { key: "bolsa", label: "Bolsa", width: 36 },
   ] as const;
 
-  const drawHeader = () => {
-    page.drawText(pdfText(title), { x: margin, y: 560, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
-    page.drawText(`Total: ${items.length}`, { x: 720, y: 562, size: 9, font, color: rgb(0.25, 0.25, 0.25) });
-    for (const column of columns) {
-      page.drawText(column.label, { x: column.x, y: 532, size: 8, font: bold, color: rgb(0.15, 0.15, 0.15) });
-    }
-    page.drawLine({ start: { x: margin, y: 524 }, end: { x: 810, y: 524 }, thickness: 0.8, color: rgb(0.75, 0.75, 0.75) });
-  };
+  const rows: NominalA4Row[] = items.map((row) => ({
+    numero: "",
+    processo: row.numero_processo_login || row.numero_processo || "—",
+    nome: row.nome || "—",
+    responsavel: row.responsavel || "—",
+    telefone: row.telefone_responsavel || "—",
+    estado: row.status_matricula || row.status || "—",
+    turma: row.turma_nome || "—",
+    classe: row.classe_nome || "—",
+    turno: valueFor(row, "turno") || "—",
+    bolsa: valueFor(row, "bolsa_integral") || "—",
+  }));
 
-  drawHeader();
-  let y = 506;
+  const pdf = await renderNominalA4({
+    escola: context.escola,
+    turma: "Todas",
+    anoLetivo: context.anoLetivo,
+    modo: "Listagem filtrada",
+    titulo: "LISTA DE ALUNOS",
+    contexto: context.filtros,
+    alunos: rows,
+    colunas: columns,
+    excluidos: "0",
+    emissor: context.emissor,
+    logoBytes: context.logoBytes,
+    camposSensiveis: true,
+    vazio: "Nenhum aluno corresponde aos filtros selecionados",
+  });
 
-  for (const row of items) {
-    if (y < 40) {
-      page = pdfDoc.addPage([842, 595]);
-      drawHeader();
-      y = 506;
-    }
-
-    for (const column of columns) {
-      const raw = valueFor(row, column.key);
-      const maxChars = Math.max(8, Math.floor(column.width / 4.5));
-      const text = raw.length > maxChars ? `${raw.slice(0, maxChars - 1)}...` : raw;
-      page.drawText(pdfText(text), { x: column.x, y, size: 7.5, font, color: rgb(0.08, 0.08, 0.08) });
-    }
-    y -= rowHeight;
-  }
-
-  return Buffer.from(await pdfDoc.save());
+  return Buffer.from(pdf);
 }
 
-export async function renderAlunosExport(items: AlunoListItem[], format: ExportFormat) {
+export async function renderAlunosExport(
+  items: AlunoListItem[],
+  format: ExportFormat,
+  pdfContext?: AlunosPdfInstitutionalContext
+) {
   if (format === "pdf") {
+    if (!pdfContext) throw new Error("A identificação institucional é obrigatória no PDF de alunos.");
     return {
-      body: await renderAlunosPdf(items),
+      body: await renderAlunosPdf(items, pdfContext),
       contentType: "application/pdf",
       extension: "pdf",
     };

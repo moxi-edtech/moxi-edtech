@@ -3,7 +3,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
-import { listAllAlunos, listAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
+import { InvalidAlunoFiltersError, listAllAlunos, listAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
 import { NextResponse } from "next/server";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
       const allItems = await listAllAlunos(supabase, escolaId, filters, {
         includeFinanceiro: true,
         includeResumo,
-        academicYearId: context.anoLetivoId,
+        academicYearId: filters.ano ? undefined : context.anoLetivoId,
       });
       const sorted = [...allItems].sort((a, b) => {
         const nomeA = (a.nome ?? "").toLocaleLowerCase("pt-AO");
@@ -84,7 +84,7 @@ export async function GET(req: Request) {
     const { items, page } = await listAlunos(supabase, escolaId, filters, {
       includeFinanceiro: true,
       includeResumo,
-      academicYearId: context.anoLetivoId,
+      academicYearId: filters.ano ? undefined : context.anoLetivoId,
     });
 
     return NextResponse.json({
@@ -99,6 +99,9 @@ export async function GET(req: Request) {
       context,
     });
   } catch (e: any) {
+    if (e instanceof InvalidAlunoFiltersError) {
+      return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
+    }
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
     }

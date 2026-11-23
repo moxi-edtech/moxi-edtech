@@ -4,6 +4,7 @@ import { AcoesRapidasBalcao } from "@/components/secretaria/AcoesRapidasBalcao";
 import { CurrentYearEnrollmentPanel } from "@/components/aluno/CurrentYearEnrollmentPanel";
 import { canConfirmarDesistencia } from "@/lib/matriculas/desistencia-permissions";
 import { DossierHeader } from "@/components/aluno/DossierHeader";
+import { BolsaIntegralCard } from "@/components/aluno/BolsaIntegralCard";
 import { DossierTabs } from "@/components/aluno/DossierTabs";
 import {
   DossierDocumentosSection,
@@ -44,6 +45,9 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
   const canEditNome = canCorrigirNomeAluno(member?.papel) && aluno.perfil.escola_id === resolvedEscolaId;
   const canManageDesistencia = canConfirmarDesistencia(member?.papel)
     && aluno.perfil.escola_id === resolvedEscolaId;
+  const canManageBolsa = ["admin", "admin_escola", "admin_financeiro", "admin_secretaria",
+    "admin_secretario", "secretaria", "financeiro", "diretor", "staff_admin"]
+    .includes(member?.papel ?? "") && aluno.perfil.escola_id === resolvedEscolaId;
 
   return (
     <div className={workspace ? "min-w-0" : embedded ? "bg-muted" : "min-h-screen bg-muted"}>
@@ -55,13 +59,21 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
           slotPerfil={(
             <div className="space-y-5">
               <DossierPerfilSection aluno={aluno} canEditNome={canEditNome} />
+              {canManageBolsa && <BolsaIntegralCard alunoId={alunoId} escolaId={resolvedEscolaId}
+                anoLetivo={selectedYear ?? undefined} />}
               <CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId}
                 alunoNome={aluno.perfil.nome} canManageDesistencia={canManageDesistencia} />
             </div>
           )}
           slotMatricula={<CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId}
             alunoNome={aluno.perfil.nome} canManageDesistencia={canManageDesistencia} />}
-          slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role={role} escolaId={resolvedEscolaId} servicos={servicos} />}
+          slotFinanceiro={(
+            <div className="space-y-5">
+              {canManageBolsa && <BolsaIntegralCard alunoId={alunoId} escolaId={resolvedEscolaId}
+                anoLetivo={selectedYear ?? undefined} />}
+              <DossierFinanceiroSection aluno={aluno} role={role} escolaId={resolvedEscolaId} servicos={servicos} />
+            </div>
+          )}
           slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role={role} escolaId={resolvedEscolaId} />}
           slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit={canEditHistoricoTransitado} />}
           slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}

@@ -14494,6 +14494,9 @@ export type Database = {
           aluno_id: string
           ano_letivo: number | null
           ativo: boolean | null
+          bolsa_integral: boolean
+          bolsa_integral_inicio: string | null
+          bolsa_integral_motivo: string | null
           created_at: string | null
           data_fecho: string | null
           data_inicio_financeiro: string | null
@@ -14520,6 +14523,9 @@ export type Database = {
           aluno_id: string
           ano_letivo?: number | null
           ativo?: boolean | null
+          bolsa_integral?: boolean
+          bolsa_integral_inicio?: string | null
+          bolsa_integral_motivo?: string | null
           created_at?: string | null
           data_fecho?: string | null
           data_inicio_financeiro?: string | null
@@ -14546,6 +14552,9 @@ export type Database = {
           aluno_id?: string
           ano_letivo?: number | null
           ativo?: boolean | null
+          bolsa_integral?: boolean
+          bolsa_integral_inicio?: string | null
+          bolsa_integral_motivo?: string | null
           created_at?: string | null
           data_fecho?: string | null
           data_inicio_financeiro?: string | null
@@ -14905,6 +14914,7 @@ export type Database = {
           aluno_id: string
           ano_letivo: string | null
           ano_referencia: number | null
+          bolsa_isencao_integral: boolean
           created_at: string
           data_pagamento_efetiva: string | null
           data_vencimento: string
@@ -14933,6 +14943,7 @@ export type Database = {
           aluno_id: string
           ano_letivo?: string | null
           ano_referencia?: number | null
+          bolsa_isencao_integral?: boolean
           created_at?: string
           data_pagamento_efetiva?: string | null
           data_vencimento: string
@@ -14961,6 +14972,7 @@ export type Database = {
           aluno_id?: string
           ano_letivo?: string | null
           ano_referencia?: number | null
+          bolsa_isencao_integral?: boolean
           created_at?: string
           data_pagamento_efetiva?: string | null
           data_vencimento?: string

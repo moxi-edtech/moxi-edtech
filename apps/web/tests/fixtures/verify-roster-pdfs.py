@@ -111,4 +111,67 @@ for file in all_files:
         str(directory / file.stem)
     ], stdout=subprocess.DEVNULL)
 
-print(f"PDFs sintéticos validados: {large_pages} páginas para 55 alunos; limites e margens OK")
+
+# O relatório geral tem o MESMO cabeçalho, rodapé, assinatura e paginação.
+# As colunas próprias devem ser preservadas, com acentuação e situação da bolsa.
+geral = directory / "lista_alunos_geral_sintetica_55.pdf"
+geral_vazio = directory / "lista_alunos_geral_sintetica_vazia.pdf"
+for file in (geral, geral_vazio):
+    assert file.exists() and file.stat().st_size > 1000, file.name
+    info = output("pdfinfo", str(file))
+    assert re.search(r"^Pages:\s+[1-9]", info, re.M), file.name
+    assert "Page size:       841" in info or "841.89" in info, (file.name, "A4 horizontal")
+    text = output("pdftotext", "-layout", str(file), "-")
+    for fragment in [
+        "LISTA DE ALUNOS",
+        "IDENTIDADE ESCOLAR FICTICIA",
+        "Ano letivo: 2025/2026",
+        "Bolsa: Todos",
+        "Classe: Todas",
+        "Turno: Todos",
+        "Nome completo",
+        "Responsável",
+        "Telefone",
+        "Turma",
+        "Classe",
+        "Bolsa",
+        "Assinatura da Direcção",
+        "Gerado pelo KLASSE | Sistema de Gestão Escolar Inteligente | www.klasse.ao",
+        "Página 1 de",
+    ]:
+        assert fragment in text, (file.name, fragment)
+    for page_no in range(1, pages(file) + 1):
+        page_text = output("pdftotext", "-f", str(page_no), "-l", str(page_no), str(file), "-")
+        assert "IDENTIDADE ESCOLAR FICTICIA" in page_text, (file.name, "header", page_no)
+        assert "Gerado pelo KLASSE" in page_text, (file.name, "footer", page_no)
+        assert "Página " + str(page_no) + " de " in page_text, (file.name, "pagination", page_no)
+
+    # Verificar as margens reais de cada palavra no PDF gerado.
+    root = ET.fromstring(output("pdftotext", "-bbox", str(file), "-"))
+    ns = {"x": "http://www.w3.org/1999/xhtml"}
+    for page_el in root.findall(".//x:page", ns):
+        w, h = float(page_el.attrib["width"]), float(page_el.attrib["height"])
+        for word in page_el.findall(".//x:word", ns):
+            x1, x2 = float(word.attrib["xMin"]), float(word.attrib["xMax"])
+            y1, y2 = float(word.attrib["yMin"]), float(word.attrib["yMax"])
+            assert x1 >= 16 and x2 <= w - 16, (file.name, word.text, "x", x1, x2, w)
+            assert y1 >= 14 and y2 <= h - 14, (file.name, word.text, "y", y1, y2, h)
+
+    if file == geral:
+        assert pages(file) >= 2
+        assert "Total de alunos: 55" in text
+        assert "Pessoa Simulada de Nome Repetido" in text
+        assert "Conceição" in text
+        assert re.search(r"(?m)^\s*55\s+P-0055\b", text), "Último aluno deve ser 55"
+        assert re.search(r"\bSim\b", text) and re.search(r"\bNão\b", text)
+    else:
+        assert "Nenhum aluno corresponde aos filtros selecionados" in text
+        assert "Total de alunos: 0" in text
+
+    subprocess.check_call([
+        "pdftoppm", "-f", "1", "-l", str(min(3, pages(file))),
+        "-png", "-scale-to", "1024", str(file),
+        str(directory / file.stem)
+    ], stdout=subprocess.DEVNULL)
+
+print(f"PDFs sintéticos validados: {large_pages} páginas para 55 alunos; lista geral institucional e margens OK")

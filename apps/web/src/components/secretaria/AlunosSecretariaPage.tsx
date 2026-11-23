@@ -100,8 +100,16 @@ type AlunoDetail = {
 };
 
 type OfflineMeta = { fromCache: boolean; updatedAt: string | null };
-type Filters = { ano: string; turmaId: string };
-type TurmaOption = { id: string; nome: string; ano_letivo?: number | null };
+type Filters = { ano: string; turmaId: string; classeId: string; turno: "" | "manha" | "tarde" | "noite"; bolsa: "" | "sim" | "nao" };
+type TurmaOption = { id: string; nome: string; ano_letivo?: number | null; classe_id?: string | null; classe_nome?: string | null; turno?: string | null };
+
+const TURNO_CANONICO = (turno?: string | null) => {
+  const t = (turno ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (t === "m" || t.startsWith("manha")) return "manha";
+  if (t === "t" || t.startsWith("tarde")) return "tarde";
+  if (t === "n" || t.startsWith("noite")) return "noite";
+  return "";
+};
 
 function useDebounce<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -1082,7 +1090,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
   const requestSequence = useRef(0);
   const PAGE_SIZE = 20;
 
-  const [filters, setFilters] = useState<Filters>({ ano: "", turmaId: "" });
+  const [filters, setFilters] = useState<Filters>({ ano: "", turmaId: "", classeId: "", turno: "", bolsa: "" });
   const [showFilters, setShowFilters] = useState(false);
   const [turmas, setTurmas] = useState<TurmaOption[]>([]);
   const [turmasLoading, setTurmasLoading] = useState(false);
@@ -1134,9 +1142,10 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
       if (currentFilters.ano) {
         params.set("ano", currentFilters.ano);
       }
-      if (currentFilters.turmaId) {
-        params.set("turma_id", currentFilters.turmaId);
-      }
+      if (currentFilters.turmaId) params.set("turma_id", currentFilters.turmaId);
+      if (currentFilters.classeId) params.set("classe_id", currentFilters.classeId);
+      if (currentFilters.turno) params.set("turno", currentFilters.turno);
+      if (currentFilters.bolsa) params.set("bolsa", currentFilters.bolsa);
       if (isInadimplentesTab(currentTab)) {
         params.set("situacao_financeira", "em_atraso");
       }
@@ -1169,7 +1178,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
   // Reset the page and cursor *before* running a query with new filters.
   // Requests from old tabs / pages are aborted and cannot overwrite newer results.
-  const filterKey = JSON.stringify([tab, debouncedQ, filters.ano, filters.turmaId, academicYearId, escolaId]);
+  const filterKey = JSON.stringify([tab, debouncedQ, filters.ano, filters.turmaId, filters.classeId, filters.turno, filters.bolsa, academicYearId, escolaId]);
   const previousFilterKey = useRef(filterKey);
   useEffect(() => {
     if (q !== debouncedQ) return;
@@ -1196,7 +1205,8 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     setTurmasLoading(true);
     setTurmasError(null);
     try {
-      const params = new URLSearchParams({ limit: "50" });
+      const params = new URLSearchParams({ limit: "200" });
+      if (academicYearId) params.set("ano_letivo_id", academicYearId);
       if (escolaId) params.set("escolaId", escolaId);
       const res = await fetch(`/api/secretaria/turmas?${params.toString()}`, { cache: "no-store" });
       const json = await res.json().catch(() => ({ ok: false, items: [] }));
@@ -1205,6 +1215,9 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
         id: row.id,
         nome: row.nome || row.turma_nome || "Sem nome",
         ano_letivo: row.ano_letivo ?? null,
+        classe_id: row.classe_id ?? null,
+        classe_nome: row.classe_nome ?? null,
+        turno: row.turno ?? null,
       }));
       setTurmas(items);
     } catch (err: any) {
@@ -1212,7 +1225,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     } finally {
       setTurmasLoading(false);
     }
-  }, [turmasLoading, turmas.length, escolaId]);
+  }, [turmasLoading, turmas.length, escolaId, academicYearId]);
 
   useEffect(() => {
     if (showFilters) {
@@ -1292,7 +1305,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     URL.revokeObjectURL(url);
   };
 
-  const handleExport = (mode: "page" | "all") => {
+  const handleExport = (tipo: "excel" | "pdf") => {
     const params = new URLSearchParams({
       q: debouncedQ,
       status: TAB_TO_STATUS[tab],
@@ -1301,15 +1314,16 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     if (escolaId) params.set("escolaId", escolaId);
     if (filters.ano) params.set("ano", filters.ano);
     if (filters.turmaId) params.set("turma_id", filters.turmaId);
+    if (filters.classeId) params.set("classe_id", filters.classeId);
+    if (filters.turno) params.set("turno", filters.turno);
+    if (filters.bolsa) params.set("bolsa", filters.bolsa);
+    if (academicYearId) params.set("ano_letivo_id", academicYearId);
     if (isInadimplentesTab(tab)) {
       params.set("situacao_financeira", "em_atraso");
     }
     params.set("order_by", "nome_asc");
-    if (mode === "page") {
-      params.set("page", String(page));
-    } else {
-      params.set("all", "1");
-    }
+    params.set("all", "1");
+    params.set("tipo", tipo);
     setShowExport(false);
     window.open(`/api/secretaria/alunos/exportar?${params.toString()}`, "_blank");
   };
@@ -1350,7 +1364,8 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     else setPage(1);
   };
 
-  const activeFilters = Number(Boolean(filters.ano)) + Number(Boolean(filters.turmaId));
+  const activeFilters = Object.values(filters).filter(Boolean).length;
+  const classesDisponiveis = Array.from(new Map(turmas.filter(t => t.classe_id).map(t => [t.classe_id!, t.classe_nome || "Classe"] as const)), ([id, nome]) => ({id, nome}));
   const yearOptions = [
     new Date().getFullYear() + 1,
     new Date().getFullYear(),
@@ -1486,7 +1501,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Filtros</p>
                     <button
-                      onClick={() => setFilters({ ano: "", turmaId: "" })}
+                      onClick={() => setFilters({ ano: "", turmaId: "", classeId: "", turno: "", bolsa: "" })}
                       className="text-[11px] font-semibold text-muted-foreground hover:text-muted-foreground"
                     >
                       Limpar
@@ -1509,6 +1524,24 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                       </select>
                     </div>
                     <div>
+                      <label htmlFor="sec-alunos-bolsa" className="block text-xs font-bold text-muted-foreground mb-1.5">Bolsa integral</label>
+                      <select id="sec-alunos-bolsa" value={filters.bolsa} onChange={event => setFilters(prev => ({...prev, bolsa:event.target.value as Filters["bolsa"]}))} className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
+                        <option value="">Todos</option><option value="sim">Bolseiros</option><option value="nao">Não bolseiros</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="sec-alunos-classe" className="block text-xs font-bold text-muted-foreground mb-1.5">Classe</label>
+                      <select id="sec-alunos-classe" value={filters.classeId} onChange={event => setFilters(prev => ({...prev, classeId:event.target.value, turmaId:""}))} className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
+                        <option value="">Todas as classes</option>{classesDisponiveis.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="sec-alunos-turno" className="block text-xs font-bold text-muted-foreground mb-1.5">Turno</label>
+                      <select id="sec-alunos-turno" value={filters.turno} onChange={event => setFilters(prev => ({...prev, turno:event.target.value as Filters["turno"], turmaId:""}))} className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
+                        <option value="">Todos os turnos</option><option value="manha">Manhã</option><option value="tarde">Tarde</option><option value="noite">Noite</option>
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-xs font-bold text-muted-foreground mb-1.5">Turma</label>
                       <select
                         value={filters.turmaId}
@@ -1516,7 +1549,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                         className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-klasse-gold/20 focus:border-klasse-green"
                       >
                         <option value="">Todas</option>
-                        {turmas.map((turma) => (
+                        {turmas.filter(t => (!filters.classeId || t.classe_id === filters.classeId) && (!filters.turno || TURNO_CANONICO(t.turno) === filters.turno)).map((turma) => (
                           <option key={turma.id} value={turma.id}>
                             {formatTurmaDisplayName(turma)}
                           </option>
@@ -1551,23 +1584,23 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                 <button
                   onClick={() => setShowExport((prev) => !prev)}
                   className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted/50 transition-colors"
-                  title="Exportar CSV"
+                  title="Exportar lista filtrada"
                 >
                   <Download size={12} /> Exportar
                 </button>
                 {showExport && (
                   <div className="absolute right-0 mt-2 w-40 rounded-xl border border-border bg-card shadow-xl p-2 z-20">
                     <button
-                      onClick={() => handleExport("page")}
+                      onClick={() => handleExport("excel")}
                       className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted/50"
                     >
-                      Página atual
+                      Excel · todos os filtrados
                     </button>
                     <button
-                      onClick={() => handleExport("all")}
+                      onClick={() => handleExport("pdf")}
                       className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted/50"
                     >
-                      Tudo
+                      PDF · todos os filtrados
                     </button>
                   </div>
                 )}
@@ -1621,7 +1654,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                     <td colSpan={6}>
                       <OperationalTableEmptyState
                         title="Nenhum aluno encontrado"
-                        description={q || filters.ano || filters.turmaId ? "Ajuste a pesquisa ou os filtros." : "Não existem registos para este estado."}
+                        description={q || activeFilters ? "Ajuste a pesquisa ou os filtros." : "Não existem registos para este estado."}
                       />
                     </td>
                   </tr>

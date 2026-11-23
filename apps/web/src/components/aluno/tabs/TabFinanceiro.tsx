@@ -14,7 +14,8 @@ type Item = {
   id: string;
   competencia: string;
   valor: number;
-  status: "pago" | "pendente" | "atrasado" | "em_verificacao";
+  status: "pago" | "pendente" | "atrasado" | "em_verificacao" | "isento" | "cancelado" | "pago_parcial";
+  bolsa_isencao_integral?: boolean;
   recibo_id?: string | null;
 };
 type Movimento = {
@@ -39,6 +40,8 @@ type DadosPagamento = {
 type ApiResponse = {
   ok: boolean;
   mensalidades: Array<Omit<Item, "status"> & { status: string }>;
+  bolsas?: Array<{ ano_letivo: number; vigencia_inicio: string | null }>;
+  ano_letivo_atual?: number | null;
   servicos?: AlunoServicoFinanceiro[];
   movimentos: Movimento[];
   resumo: {
@@ -52,6 +55,8 @@ type ApiResponse = {
 };
 type ParsedFinanceiroPayload = {
   rows: Item[];
+  bolsas: Array<{ ano_letivo: number; vigencia_inicio: string | null }>;
+  anoLetivoAtual: number | null;
   movimentos: Movimento[];
   resumo: ApiResponse["resumo"];
   comprovativoStatus: ComprovativoStatus | null;
@@ -63,6 +68,9 @@ const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA
 
 function normalizeStatus(value: string): Item["status"] {
   if (value === "pago") return "pago";
+  if (value === "isento") return "isento";
+  if (value === "cancelado") return "cancelado";
+  if (value === "pago_parcial") return "pago_parcial";
   if (value === "em_verificacao") return "em_verificacao";
   if (value === "atrasado") return "atrasado";
   return "pendente";
@@ -81,6 +89,10 @@ export function TabFinanceiro() {
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Item[]>([]);
+  const [bolsas, setBolsas] = useState<Array<{ ano_letivo: number; vigencia_inicio: string | null }>>([]);
+  const [anoLetivoAtual, setAnoLetivoAtual] = useState<number | null>(null);
+  const bolsaVigente = bolsas.find(bolsa => bolsa.ano_letivo === anoLetivoAtual);
+  const bolsasAnteriores = bolsas.filter(bolsa => bolsa.ano_letivo !== anoLetivoAtual);
   const [movimentos, setMovimentos] = useState<Movimento[]>([]);
   const [resumo, setResumo] = useState<ApiResponse["resumo"] | null>(null);
   const [comprovativoStatus, setComprovativoStatus] = useState<ComprovativoStatus | null>(null);
@@ -115,6 +127,8 @@ export function TabFinanceiro() {
       const mapped = (json.mensalidades ?? []).map((m) => ({ ...m, status: normalizeStatus(m.status) }));
       return {
         rows: mapped,
+        bolsas: json.bolsas ?? [],
+        anoLetivoAtual: json.ano_letivo_atual ?? null,
         movimentos: json.movimentos ?? [],
         resumo: json.resumo,
         comprovativoStatus: json.comprovativo_status ?? null,
@@ -124,6 +138,12 @@ export function TabFinanceiro() {
     },
     onData: (data) => {
       setRows(data.rows);
+      setBolsas(data.bolsas);
+      setAnoLetivoAtual(data.anoLetivoAtual);
+      setSelectedIds(ids => ids.filter(id => data.rows.some(row =>
+        row.id === id && row.valor > 0 &&
+        ["pendente", "atrasado", "pago_parcial"].includes(row.status)
+      )));
       setMovimentos(data.movimentos);
       setResumo(data.resumo);
       setComprovativoStatus(data.comprovativoStatus);
@@ -134,7 +154,8 @@ export function TabFinanceiro() {
   });
 
   const sortedMensalidades = useMemo(() => [...rows].sort((a, b) => b.competencia.localeCompare(a.competencia)), [rows]);
-  const selectedMensalidades = useMemo(() => rows.filter((item) => selectedIds.includes(item.id)), [rows, selectedIds]);
+  const selectedMensalidades = useMemo(() => rows.filter((item) => selectedIds.includes(item.id)
+    && item.valor > 0 && ["pendente", "atrasado", "pago_parcial"].includes(item.status)), [rows, selectedIds]);
   const selectedTotal = useMemo(() => selectedMensalidades.reduce((sum, item) => sum + item.valor, 0), [selectedMensalidades]);
 
   const refresh = async () => {
@@ -159,6 +180,27 @@ export function TabFinanceiro() {
           {refreshing ? "A atualizar..." : "Atualizar"}
         </button>
       </div>
+
+      {bolsaVigente && (
+        <section aria-label="Bolsa de estudo do ano letivo atual" className="flex items-start gap-3 rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-4">
+          <Check className="mt-0.5 h-5 w-5 shrink-0 text-klasse-green" aria-hidden="true" />
+          <div>
+            <p className="text-sm font-semibold text-klasse-green">Bolsa integral de estudo · Ano atual</p>
+            <p className="mt-1 text-sm text-foreground">Ano letivo {bolsaVigente.ano_letivo}/{bolsaVigente.ano_letivo + 1}
+              {bolsaVigente.vigencia_inicio ? ` · Desde ${bolsaVigente.vigencia_inicio.slice(0, 7)}` : ""}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">As propinas cobertas estão isentas. Outros serviços ou meses anteriores ao início da bolsa podem continuar devidos.</p>
+          </div>
+        </section>
+      )}
+      {bolsasAnteriores.length > 0 && (
+        <details className="rounded-xl border border-border bg-card p-4">
+          <summary className="cursor-pointer text-sm font-medium text-foreground">Histórico de bolsas ({bolsasAnteriores.length})</summary>
+          <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+            {bolsasAnteriores.map(bolsa => <li key={bolsa.ano_letivo}>Ano {bolsa.ano_letivo}/{bolsa.ano_letivo + 1} · benefício histórico, não renovado automaticamente</li>)}
+          </ul>
+        </details>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -253,12 +295,20 @@ export function TabFinanceiro() {
                 <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">{item.competencia}</p>
-                    <p className="text-xs text-muted-foreground">{money.format(item.valor)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.status === "isento" ? "Propina dispensada" : money.format(item.valor)}
+                    </p>
                   </div>
-                  {item.status === "pago" ? (
+                  {item.status === "isento" ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-klasse-green">
+                      <Check className="h-4 w-4" aria-hidden="true" /> Isento{item.bolsa_isencao_integral ? " · Bolsa" : ""}
+                    </span>
+                  ) : item.status === "cancelado" ? (
+                    <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">Cancelado</span>
+                  ) : item.status === "pago" ? (
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                        <Check className="h-4 w-4" /> Pago
+                        <Check className="h-4 w-4" /> {item.bolsa_isencao_integral ? "Pago parcialmente · saldo isento" : "Pago"}
                       </span>
                       {item.recibo_id ? (
                         <button
@@ -270,10 +320,12 @@ export function TabFinanceiro() {
                           <Printer className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-amber" />
                           Ver Recibo
                         </button>
+                      ) : item.bolsa_isencao_integral ? (
+                        <span className="text-xs text-muted-foreground">Sem novo recibo de pagamento</span>
                       ) : (
                         <span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 text-xs font-semibold text-muted-foreground cursor-not-allowed">
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          Gerando Recibo...
+                          A consultar recibo…
                         </span>
                       )}
                     </div>
@@ -281,18 +333,27 @@ export function TabFinanceiro() {
                     <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
                       Em Verificação
                     </span>
-                  ) : (
+                  ) : item.valor > 0 ? (
                     <div className="flex flex-wrap items-center gap-2">
+                    {item.status === "pago_parcial" && (
+                      <span className="text-xs text-muted-foreground">Pago parcialmente · saldo pendente</span>
+                    )}
                     <StudentAppyPayButton targetId={item.id} kind="monthly" studentId={studentId} descricao={`Propina ${item.competencia}`} onPaid={() => { setSelectedIds(prev => prev.filter(id => id !== item.id)); void refresh(); }} />
                     <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-amber-200 px-3 text-xs font-semibold text-amber-800">
                       <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={(event) => setSelectedIds((prev) => event.target.checked ? [...prev, item.id] : prev.filter((id) => id !== item.id))} />
                       <Wallet className="h-4 w-4" /> Seleccionar
                     </label>
                     </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Sem valor a pagar</span>
                   )}
                 </li>
               ))}
-              {!sortedMensalidades.length ? <li className="rounded-xl border border-border p-4 text-sm text-muted-foreground">Sem mensalidades no intervalo selecionado.</li> : null}
+              {!sortedMensalidades.length ? (
+                <li className="rounded-xl border border-border p-4 text-sm text-muted-foreground">
+                  {bolsaVigente ? "Nenhuma propina lançada neste intervalo. A bolsa do ano atual está registada." : "Sem mensalidades no intervalo selecionado."}
+                </li>
+              ) : null}
             </ul>
           )}
         </section>

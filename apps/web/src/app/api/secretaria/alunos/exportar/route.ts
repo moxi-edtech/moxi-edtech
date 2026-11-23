@@ -3,7 +3,9 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
-import { listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
+import { InvalidAlunoFiltersError, listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
+import { loadAlunosPdfInstitutionalContext } from "@/lib/services/alunosExportPdfContext.server";
 import {
   parseAlunoExportFormat,
   renderAlunosExport,
@@ -37,12 +39,26 @@ export async function GET(req: Request) {
       return authz.error;
     }
 
+    const context = await resolveAcademicYearContext(supabase as any, {
+      userId: userRes.user.id,
+      requestedAcademicYearId: url.searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
     const filters = parseAlunoListFilters(url);
     const format = parseAlunoExportFormat(url.searchParams.get("tipo"));
     const sorted = sortAlunoExportRows(
-      await listAllAlunos(supabase, escolaId, filters, { includeFinanceiro: true, includeResumo: true })
+      await listAllAlunos(supabase, escolaId, filters, {
+        includeFinanceiro: true,
+        includeResumo: true,
+        academicYearId: filters.ano ? undefined : context.anoLetivoId,
+      })
     );
-    const rendered = await renderAlunosExport(sorted, format);
+    const pdfContext = format === "pdf"
+      ? await loadAlunosPdfInstitutionalContext(supabase, escolaId, filters, {
+          academicYearId: filters.ano ? undefined : context.anoLetivoId,
+        })
+      : undefined;
+    const rendered = await renderAlunosExport(sorted, format, pdfContext);
     const status = filters.status ?? "ativo";
     const segmento = filters.situacaoFinanceira === "em_atraso" ? "inadimplentes" : status;
     const filename = `alunos-${segmento}-${Date.now()}.${rendered.extension}`;
@@ -55,6 +71,12 @@ export async function GET(req: Request) {
       },
     });
   } catch (e: any) {
+    if (e instanceof InvalidAlunoFiltersError) {
+      return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
+    }
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
     console.error("[alunos export error]", e);
     return NextResponse.json({ ok: false, error: e.message || "Erro desconhecido" }, { status: 500 });
   }

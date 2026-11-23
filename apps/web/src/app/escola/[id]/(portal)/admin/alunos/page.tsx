@@ -26,18 +26,32 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   });
 
   // Fetch initial turmas for the filter dropdown
-  const { data: turmasData } = await s
-    .from('turmas')
-    .select('id, nome, turma_codigo, ano_letivo, curso_id')
-    .eq('escola_id', escolaId)
-    .order('nome', { ascending: true })
-    .limit(100);
+  const { data: anoAtivo } = await s
+    .from("anos_letivos")
+    .select("ano")
+    .eq("escola_id", escolaId)
+    .eq("ativo", true)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let turmasQuery = s
+    .from("turmas")
+    .select("id, nome, turma_codigo, ano_letivo, curso_id, classe_id, turno, classes ( nome )")
+    .eq("escola_id", escolaId)
+    .order("nome", { ascending: true })
+    .limit(200);
+  if (anoAtivo?.ano) turmasQuery = turmasQuery.eq("ano_letivo", Number(anoAtivo.ano));
+  const { data: turmasData } = await turmasQuery;
 
   const initialTurmas = (turmasData || []).map((t: any) => ({
     id: t.id,
     nome: t.nome,
     turma_codigo: t.turma_codigo,
     ano_letivo: t.ano_letivo,
+    classe_id: t.classe_id ?? null,
+    classe_nome: (Array.isArray(t.classes) ? t.classes[0] : t.classes)?.nome ?? null,
+    turno: t.turno ?? null,
   }));
 
   const initialCursor = page.nextCursor ? `${page.nextCursor.created_at},${page.nextCursor.id}` : null;
@@ -47,6 +61,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       escolaId={escolaId} 
       initialAlunos={initialAlunos as any} 
       initialTurmas={initialTurmas}
+      initialAno={anoAtivo?.ano ?? null}
       initialCursor={initialCursor}
     />
   );

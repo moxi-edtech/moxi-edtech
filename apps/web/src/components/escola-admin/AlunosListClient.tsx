@@ -53,6 +53,9 @@ export type Turma = {
   turma_codigo?: string | null;
   ano_letivo?: number | null;
   curso?: string | null;
+  classe_id?: string | null;
+  classe_nome?: string | null;
+  turno?: string | null;
 };
 
 type Filtros = {
@@ -60,6 +63,9 @@ type Filtros = {
   turma_id:            string;
   status_matricula:    StatusMatricula | "";
   ano_letivo_id:       string;
+  bolsa:               "" | "sim" | "nao";
+  classe_id:           string;
+  turno:               "" | "manha" | "tarde" | "noite";
 };
 
 type AlunosResponse = {
@@ -501,6 +507,9 @@ const FILTROS_VAZIOS: Filtros = {
   turma_id:            "",
   status_matricula:    "",
   ano_letivo_id:       "",
+  bolsa:               "",
+  classe_id:           "",
+  turno:               "",
 };
 
 function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
@@ -511,6 +520,14 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
   activeCount: number;
 }) {
   const [local, setLocal] = useState(filtros);
+  const classes = Array.from(new Map(turmas.filter(t => t.classe_id).map(t => [t.classe_id!, t.classe_nome || "Classe"] as const)), ([id, nome]) => ({id, nome}));
+  const turnoNormalizado = (value?: string | null) => {
+    const t = (value ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (t === "m" || t.startsWith("manha")) return "manha";
+    if (t === "t" || t.startsWith("tarde")) return "tarde";
+    if (t === "n" || t.startsWith("noite")) return "noite";
+    return "";
+  };
 
   const apply = () => { onChange(local); onClose(); };
   const reset = () => { setLocal(FILTROS_VAZIOS); onChange(FILTROS_VAZIOS); onClose(); };
@@ -555,6 +572,24 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
           </div>
         </div>
 
+        <div>
+          <label htmlFor="filtro-bolsa" className="mb-2 block text-xs font-semibold text-muted-foreground">Bolsa integral</label>
+          <select id="filtro-bolsa" value={local.bolsa} onChange={e => setLocal(f => ({...f, bolsa:e.target.value as Filtros["bolsa"]}))} className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
+            <option value="">Todos</option><option value="sim">Bolseiros</option><option value="nao">Não bolseiros</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="filtro-classe" className="mb-2 block text-xs font-semibold text-muted-foreground">Classe</label>
+          <select id="filtro-classe" value={local.classe_id} onChange={e => setLocal(f => ({...f, classe_id:e.target.value, turma_id:""}))} className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
+            <option value="">Todas as classes</option>{classes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="filtro-turno" className="mb-2 block text-xs font-semibold text-muted-foreground">Turno</label>
+          <select id="filtro-turno" value={local.turno} onChange={e => setLocal(f => ({...f, turno:e.target.value as Filtros["turno"], turma_id:""}))} className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
+            <option value="">Todos os turnos</option><option value="manha">Manhã</option><option value="tarde">Tarde</option><option value="noite">Noite</option>
+          </select>
+        </div>
         {/* Turma */}
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
@@ -567,7 +602,7 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
               focus:outline-none focus:ring-2 focus:ring-klasse-gold/20"
           >
             <option value="">Todas as turmas</option>
-            {turmas.map(t => (
+            {turmas.filter(t => (!local.classe_id || t.classe_id === local.classe_id) && (!local.turno || turnoNormalizado(t.turno) === local.turno)).map(t => (
               <option key={t.id} value={t.id}>
                 {t.turma_codigo || t.nome}
               </option>
@@ -703,11 +738,13 @@ export default function AlunosListClient({
   escolaId, 
   initialAlunos = [],
   initialTurmas = [],
+  initialAno = null,
   initialCursor = null
 }: { 
   escolaId: string;
   initialAlunos?: Aluno[];
   initialTurmas?: Turma[];
+  initialAno?: number | null;
   initialCursor?: string | null;
 }) {
   const pathname = usePathname();
@@ -793,6 +830,9 @@ export default function AlunosListClient({
       if (debouncedQ.trim())               url.searchParams.set("q", debouncedQ.trim());
       if (filtros.situacao_financeira)     url.searchParams.set("situacao_financeira", filtros.situacao_financeira);
       if (filtros.turma_id)                url.searchParams.set("turma_id", filtros.turma_id);
+      if (filtros.classe_id) url.searchParams.set("classe_id", filtros.classe_id);
+      if (filtros.turno) url.searchParams.set("turno", filtros.turno);
+      if (filtros.bolsa) url.searchParams.set("bolsa", filtros.bolsa);
       if (filtros.status_matricula)        url.searchParams.set("status_matricula", filtros.status_matricula);
       if (orderBy)                         url.searchParams.set("order_by", orderBy);
       url.searchParams.set("limit", "30");
@@ -839,11 +879,11 @@ export default function AlunosListClient({
 
   useEffect(() => {
     if (initialTurmas.length > 0) return;
-    fetch(`/api/escolas/${escolaId}/admin/turmas?limit=100`)
+    fetch(`/api/escolas/${escolaId}/admin/turmas?limit=200${initialAno ? `&ano=${initialAno}` : ""}`)
       .then(r => r.json())
       .then(j => setTurmas(j.items ?? []))
       .catch(() => {});
-  }, [escolaId, initialTurmas.length]);
+  }, [escolaId, initialAno, initialTurmas.length]);
 
   // ── Selecção ────────────────────────────────────────────────────────────────
 
@@ -955,6 +995,9 @@ export default function AlunosListClient({
       if (q.trim())                    url.searchParams.set("q", q.trim());
       if (filtros.situacao_financeira) url.searchParams.set("situacao_financeira", filtros.situacao_financeira);
       if (filtros.turma_id)            url.searchParams.set("turma_id", filtros.turma_id);
+      if (filtros.classe_id) url.searchParams.set("classe_id", filtros.classe_id);
+      if (filtros.turno) url.searchParams.set("turno", filtros.turno);
+      if (filtros.bolsa) url.searchParams.set("bolsa", filtros.bolsa);
       if (filtros.status_matricula)    url.searchParams.set("status_matricula", filtros.status_matricula);
 
       const res = await fetch(url.toString());
@@ -1298,6 +1341,15 @@ export default function AlunosListClient({
                   : "Sem registo"}
                 <X size={10} />
               </button>
+            )}
+            {filtros.bolsa && (
+              <button onClick={() => setFiltros(f => ({...f, bolsa:""}))} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground">{filtros.bolsa === "sim" ? "Bolseiros" : "Não bolseiros"} <X size={11}/></button>
+            )}
+            {filtros.classe_id && (
+              <button onClick={() => setFiltros(f => ({...f, classe_id:"", turma_id:""}))} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground">{turmas.find(t => t.classe_id === filtros.classe_id)?.classe_nome || "Classe"} <X size={11}/></button>
+            )}
+            {filtros.turno && (
+              <button onClick={() => setFiltros(f => ({...f, turno:"", turma_id:""}))} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground">{filtros.turno === "manha" ? "Manhã" : filtros.turno === "tarde" ? "Tarde" : "Noite"} <X size={11}/></button>
             )}
             {filtros.turma_id && (
               <button onClick={() => setFiltros(f => ({ ...f, turma_id: "" }))}

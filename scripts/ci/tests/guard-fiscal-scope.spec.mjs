@@ -19,7 +19,7 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 80);
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 81);
   const reativacao = "20271119093000_matricula_desistencia_reativacao_v2.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(reativacao));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + reativacao]), []);
@@ -503,4 +503,50 @@ test("timeline 360 security migration is the only newly reviewed RPC authorizati
   assert.match(checkFiscalAndSchemaScope([path], () =>
     reviewed.replace("COMMIT;", "UPDATE public.notas SET valor = 20;\nCOMMIT;")
   )[0] ?? "", /Timeline RPC migration cannot modify/);
+});
+
+test("PR #455: bolsa integral SSOT is the sole audited tuition migration without fiscal activation", () => {
+  const name = "20271202030000_bolsa_integral_matricula_ssot.sql";
+  const path = "supabase/migrations/" + name;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  assert.match(
+    checkFiscalAndSchemaScope(["supabase/migrations/20271202030001_unreviewed_bolsa.sql"])[0] ?? "",
+    /Unapproved database migration/,
+  );
+  for (const unsafe of [
+    "CREATE TABLE public.fiscal_config (enabled boolean);",
+    "CREATE OR REPLACE FUNCTION public.agt_activate() RETURNS void LANGUAGE sql AS $$ SELECT 1 $$;",
+    "ALTER TABLE public.mensalidades ADD COLUMN fiscal_enabled boolean;",
+    "UPDATE public.mensalidades SET fiscal_documento_id = NULL;",
+  ]) {
+    assert.ok(checkFiscalAndSchemaScope([path], () =>
+      readFileSync(path, "utf8") + "\n" + unsafe
+    ).some((issue) => issue.includes("Fiscal/AGT activation")), unsafe);
+  }
+  assert.ok(checkFiscalAndSchemaScope([path], () =>
+    readFileSync(path, "utf8").replace(
+      "CREATE OR REPLACE FUNCTION public.klasse_definir_bolsa_integral(",
+      "-- removed audited RPC\n",
+    )
+  ).some((issue) => issue.includes("Bolsa SSOT reviewed migration missing guard")));
+});
+
+test("PR #455: autorização da bolsa usa bloco PL/pgSQL com delimitadores válidos", () => {
+  const name = "supabase/migrations/20271202030000_bolsa_integral_matricula_ssot.sql";
+  const migration = readFileSync(name, "utf8");
+  const fnStart = migration.indexOf(
+    "CREATE OR REPLACE FUNCTION public.klasse_autorizar_escrita_bolsa_matricula()",
+  );
+  const fnEnd = migration.indexOf(
+    "DROP TRIGGER IF EXISTS trg_03_autorizar_bolsa_matricula",
+    fnStart,
+  );
+  assert.ok(fnStart > 0 && fnEnd > fnStart, "function boundaries must exist");
+  const sql = migration.slice(fnStart, fnEnd);
+  assert.match(sql, /AS \$\$\s+DECLARE/, "PL/pgSQL must open with $$");
+  assert.match(sql, /END;\s*\$\$;/, "PL/pgSQL must close with $$;");
+  assert.match(migration, /p\.percentagem_desconto < 100/);
+  assert.match(migration, /AND NOT \(p\.bolsa_integral/);
+  assert.match(migration, /NOT EXISTS \(\s*SELECT 1 FROM public\.pagamentos pg/);
 });
