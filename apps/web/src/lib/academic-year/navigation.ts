@@ -36,6 +36,8 @@ function routePath(path: string) {
 export function supportsAcademicContext(path: string | null | undefined) {
   if (!path) return false;
   const normalized = routePath(path);
+  // O arquivo escolhe seu próprio ano; nunca preencher a URL com o ano ativo.
+  if (normalized.endsWith("/arquivo")) return false;
   return academicContextRoutes.some(
     (route) => normalized === route || normalized.startsWith(`${route}/`),
   );

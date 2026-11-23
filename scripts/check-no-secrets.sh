@@ -8,10 +8,9 @@ tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
 commits_file="$tmpdir/commits.txt"
-files_file="$tmpdir/files.txt"
 matches_file="$tmpdir/matches.txt"
 
-touch "$commits_file" "$files_file" "$matches_file"
+touch "$commits_file" "$matches_file"
 
 mode="${1:-push}"
 
@@ -55,15 +54,10 @@ SECRET_REGEX='(postgresql://[^[:space:]'"'"'"<>]+:[^[:space:]'"'"'"<>@]+@|sb_sec
 # base64/JWT e nunca traz `|` nem `=` a seguir ao nome. Ver agents/exceptions/EXC-SECRET-001.md
 ALLOWLIST_REGEX='(<PASSWORD>|<project-ref>|<region>|postgresql://postgres\.<project-ref>:<PASSWORD>@aws-1-<region>\.pooler\.supabase\.com:6543/postgres(\?sslmode=require)?|postgresql://postgres\.<project-ref>:<PASSWORD>@aws-1-<region>\.pooler\.supabase\.com:5432/postgres(\?sslmode=require)?|sb-project-ref-auth-token|SUPABASE_SERVICE_ROLE_KEY|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_ANON_KEY|WAHA_API_KEY|OPENAI_API_KEY|GEMINI_API_KEY|SUPABASE_PROJECT_REF|PROJECT_REF|service_role(\|[A-Z,]+|=[A-Za-z/,]+))'
 
+# Same matching/allowlist rules; scan each changed blob exactly once per commit.
+# -m includes all parent diffs for merge commits, covering manual resolutions.
 while read -r commit; do
-  git diff-tree --no-commit-id --name-only -r "$commit" >>"$files_file"
-done <"$commits_file"
-
-sort -u "$files_file" -o "$files_file"
-
-while read -r commit; do
-  while read -r path; do
-    [[ -n "$path" ]] || continue
+  while IFS= read -r path; do
     # O scanner nao se varre a si proprio: a linha que define o SECRET_REGEX contem os
     # padroes a letra e dispararia sobre si mesma em todos os commits.
     [[ "$path" == "scripts/check-no-secrets.sh" ]] && continue
@@ -77,13 +71,17 @@ while read -r commit; do
     fixture_allowlist='^$'
     if [[ "$path" == ".github/workflows/balcao-academic-operations.yml" ]]; then
       fixture_allowlist='^[0-9]+:[[:space:]]*PGURL: postgresql://postgres:postgres@127\.0\.0\.1:5432/balcao_(academic|actions)_test[[:space:]]*$'
+    elif [[ "$path" == ".github/workflows/command-center-contextual.yml" ]]; then
+      # Already-committed CI-only local Postgres fixture. Do not permit
+      # any other host, database, password, key or non-fixture file.
+      fixture_allowlist='^[0-9]+:[[:space:]]*PGURL: postgresql://postgres:postgres@127\.0\.0\.1:5432/postgres[[:space:]]*$'
     fi
     if git show "${commit}:${path}" | LC_ALL=C grep -nE "$SECRET_REGEX" | LC_ALL=C grep -Ev "$ALLOWLIST_REGEX" | LC_ALL=C grep -Ev "$fixture_allowlist" >"$tmpdir/current.txt"; then
       while read -r line; do
         printf '%s:%s:%s\n' "$commit" "$path" "$line" >>"$matches_file"
       done <"$tmpdir/current.txt"
     fi
-  done <"$files_file"
+  done < <(git diff-tree --root -m --no-commit-id --name-only -r "$commit" | sort -u)
 done <"$commits_file"
 
 if [[ -s "$matches_file" ]]; then

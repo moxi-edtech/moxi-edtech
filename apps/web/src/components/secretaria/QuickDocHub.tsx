@@ -297,11 +297,16 @@ export default function QuickDocHub({
   const historyStorageKey = escolaId ? `quick-doc-hub:history:${escolaId}` : null;
   const [anosLetivos, setAnosLetivos] = useState<AnoLetivoItem[]>([]);
   const [anoLetivo, setAnoLetivo] = useState<number | null>(null);
+  // A fonte do pedido é o ano selecionado neste documento, nunca o estado global da URL.
+  const matchingYears = anosLetivos.filter((item) => item.ano_letivo === anoLetivo);
+  const selectedYearId = matchingYears.length === 1 ? matchingYears[0].id : null;
+  const ambiguousYear = matchingYears.length > 1;
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
   const [loadingTurmas, setLoadingTurmas] = useState(false);
   const [loadingPeriodos, setLoadingPeriodos] = useState(false);
   const [loadingAnos, setLoadingAnos] = useState(false);
+  const [yearContextError, setYearContextError] = useState<string | null>(null);
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [turmaId, setTurmaId] = useState("");
@@ -336,7 +341,10 @@ export default function QuickDocHub({
         const params = new URLSearchParams({ escola_id: escolaId });
         const res = await fetch(`/api/secretaria/school-sessions?${params.toString()}`, { cache: "no-store" });
         const json = await res.json().catch(() => ({}));
-        if (!active || !res.ok || !json.ok || !Array.isArray(json.data)) return;
+        if (!active) return;
+        if (!res.ok || !json.ok || !Array.isArray(json.data)) {
+          throw new Error(json.error || "Não foi possível carregar os anos letivos.");
+        }
 
         const fetched = (json.data as AnoLetivoItem[])
           .filter((item) => typeof item.ano_letivo === "number")
@@ -344,8 +352,24 @@ export default function QuickDocHub({
 
         setAnosLetivos(fetched);
         const activeAno = fetched.find((item) => item.status === "ativa")?.ano_letivo ?? fetched[0]?.ano_letivo ?? null;
-        setAnoLetivo((current) => current ?? activeAno);
+        const requested = fetched.find((item) => item.id === academicYearIdFromUrl)?.ano_letivo;
+        if (academicYearIdFromUrl && requested == null) {
+          setYearContextError("Ano letivo indisponível para esta escola. Selecione um ano válido para emitir.");
+          setAnoLetivo(null);
+          setTurmaId("");
+          setTurmas([]);
+          return;
+        }
+        setYearContextError(null);
+        setAnoLetivo((current) => requested ?? current ?? activeAno);
       } catch (error) {
+        if (active) {
+          setYearContextError(error instanceof Error ? error.message : "Falha ao consultar anos letivos.");
+          setAnosLetivos([]);
+          setAnoLetivo(null);
+          setTurmaId("");
+          setTurmas([]);
+        }
         console.error("Erro ao carregar anos letivos:", error);
       } finally {
         if (active) setLoadingAnos(false);
@@ -356,15 +380,21 @@ export default function QuickDocHub({
     return () => {
       active = false;
     };
-  }, [escolaId]);
+  }, [escolaId, academicYearIdFromUrl]);
 
   useEffect(() => {
-    if (!escolaId) return;
+    if (!escolaId || !selectedYearId) {
+      setPeriodos([]);
+      setPeriodoId("");
+      return;
+    }
     let active = true;
+    setPeriodos([]);
+    setPeriodoId("");
     const loadPeriodos = async () => {
       setLoadingPeriodos(true);
       try {
-        const params = new URLSearchParams({ escola_id: escolaId });
+        const params = new URLSearchParams({ escola_id: escolaId, ano_letivo_id: selectedYearId });
         const res = await fetch(`/api/secretaria/relatorios/mapa-aproveitamento?${params.toString()}`, {
           cache: "no-store",
         });
@@ -373,7 +403,7 @@ export default function QuickDocHub({
         if (res.ok && json.ok) {
           const fetched = Array.isArray(json.filtros?.periodos) ? (json.filtros.periodos as PeriodoItem[]) : [];
           setPeriodos(fetched);
-          setPeriodoId((current) => current || fetched[0]?.id || "");
+          setPeriodoId((current) => fetched.some((item) => item.id === current) ? current : (fetched[0]?.id || ""));
         }
       } catch (error) {
         console.error("Erro ao carregar períodos:", error);
@@ -386,7 +416,7 @@ export default function QuickDocHub({
     return () => {
       active = false;
     };
-  }, [escolaId]);
+  }, [escolaId, selectedYearId]);
 
   useEffect(() => {
     if (!escolaId || !anoLetivo) return;
@@ -424,7 +454,8 @@ export default function QuickDocHub({
   const loadJobs = useCallback(async () => {
     setLoadingJobs(true);
     try {
-      const res = await fetch("/api/secretaria/documentos-oficiais/lote", { cache: "no-store" });
+      const scope = escolaId ? `?escola_id=${encodeURIComponent(escolaId)}` : "";
+      const res = await fetch(`/api/secretaria/documentos-oficiais/lote${scope}`, { cache: "no-store" });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.ok && Array.isArray(json.items)) {
         setJobs(json.items as JobItem[]);
@@ -434,7 +465,7 @@ export default function QuickDocHub({
     } finally {
       setLoadingJobs(false);
     }
-  }, []);
+  }, [escolaId]);
 
   const reprocessarFalhas = useCallback(async (jobId: string) => {
     if (retryingJobId) return;
@@ -743,7 +774,7 @@ export default function QuickDocHub({
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, ...(escolaId ? { escola_id: escolaId } : {}) }),
       });
       const result: { ok?: boolean; error?: string } = await response.json().catch(() => ({}));
       if (!response.ok || !result.ok) {
@@ -751,8 +782,8 @@ export default function QuickDocHub({
       }
     };
 
-    const anoSelecionado = academicYearIdFromUrl ??
-      anosLetivos.find(item => item.ano_letivo === anoLetivo)?.id;
+    const anoSelecionado = selectedYearId;
+    if (!anoSelecionado) throw new Error("Selecione o ano letivo deste documento.");
 
     for (const doc of selectedDocDefs) {
       if (!queueDocKeys.has(doc.key)) continue;
@@ -779,9 +810,13 @@ export default function QuickDocHub({
         ...(tipo === "trimestral" ? { periodo_letivo_id: periodoId } : {}),
       });
     }
-  }, [academicYearIdFromUrl, anoLetivo, anosLetivos, escolaId, includeAllStatus, isAlbum, modoLista, nominalOrder, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, turmasFiltradas]);
+  }, [anoLetivo, escolaId, includeAllStatus, isAlbum, modoLista, nominalOrder, month, periodoId, processAllTurmas, scope, selectedClasseTurmas, selectedDocDefs, selectedTurma, selectedYearId, turmasFiltradas]);
 
   const canSubmit =
+    Boolean(selectedYearId) &&
+    !ambiguousYear &&
+    !yearContextError &&
+    !loadingAnos &&
     selectedDocs.length > 0 &&
     selectedDocDefs.every((doc) => docDisabledReason(doc.key) === null) &&
     !submitting;
@@ -827,11 +862,26 @@ export default function QuickDocHub({
         )}
       </div>
 
+      {(yearContextError || ambiguousYear) && (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-card px-3 py-2 text-sm text-destructive">
+          {yearContextError ?? "Existem anos letivos duplicados. Peça à direção para corrigir a configuração antes de emitir."}
+        </p>
+      )}
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Field label="Ano letivo">
           <select
             value={anoLetivo ?? ""}
-            onChange={(event) => { setAnoLetivo(event.target.value ? Number(event.target.value) : null); setModeOverride(null); }}
+            onChange={(event) => {
+              setAnoLetivo(event.target.value ? Number(event.target.value) : null);
+              setYearContextError(null);
+              setTurmaId("");
+              setTurmas([]);
+              setPeriodoId("");
+              setPeriodos([]);
+              setClasseFiltro("");
+              setModeOverride(null);
+            }}
             className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground outline-none transition focus:border-amber focus:ring-4 focus:ring-amber/10"
           >
             <option value="">{loadingAnos ? "A carregar..." : "Selecione"}</option>

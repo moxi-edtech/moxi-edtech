@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { timetablePublicationState } from "@/lib/horarios/timetable-publication-state";
+import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -32,18 +33,41 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
     }
 
-    const { data: versoes } = await supabase
+    const { data: turma, error: turmaError } = await supabase
+      .from("turmas")
+      .select("id, session_id")
+      .eq("id", turmaId)
+      .eq("escola_id", escolaId)
+      .maybeSingle();
+    if (turmaError) throw turmaError;
+    if (!turma) {
+      return NextResponse.json({ ok: false, error: "Turma não encontrada na escola." }, { status: 404 });
+    }
+    if (!turma.session_id) {
+      return NextResponse.json({ ok: false, error: "Turma sem ano letivo canónico." }, { status: 409 });
+    }
+    const year = await resolveAcademicYearScope(supabase, {
+      escolaId, requestedAcademicYearId: turma.session_id, operation: "READ",
+    });
+    const requestedYearId = searchParams.get("ano_letivo_id");
+    if (requestedYearId && requestedYearId !== year.id) {
+      return NextResponse.json({ ok: false, code: "CROSS_YEAR_ENTITY_MISMATCH", error: "A turma não pertence ao ano solicitado." }, { status: 409 });
+    }
+
+    const { data: versoes, error: versoesError } = await supabase
       .from("horario_versoes")
       .select("id, status, publicado_em, created_at")
       .eq("escola_id", escolaId)
       .eq("turma_id", turmaId)
       .order("created_at", { ascending: false });
+    if (versoesError) throw versoesError;
 
     const versoesRows = (versoes || []) as HorarioVersaoRow[];
     const publicada = versoesRows.find((row) => row.status === "publicada") ?? null;
     let draft = versoesRows.find((row) => row.status === "draft") ?? null;
 
-    if (!draft) {
+    // Histórico e anos planeados: apenas consultar. Nunca criar draft no GET.
+    if (!draft && year.status === "ACTIVE") {
       const { data: createdDraft, error: createDraftError } = await supabase
         .from("horario_versoes")
         .insert({ escola_id: escolaId, turma_id: turmaId, status: "draft" })
@@ -59,12 +83,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     return NextResponse.json({
       ok: true,
-      versao_id: draft?.id ?? null,
+      versao_id: year.status === "ACTIVE" ? (draft?.id ?? null) : null,
       versao_publicada_id: publicada?.id ?? null,
+      modo: year.status === "ACTIVE" ? "CURRENT" : "HISTORICAL_READ",
+      ano_letivo_id: year.id,
       versoes: versoesRows,
       horario_status: timetablePublicationState(versoesRows),
     });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Erro desconhecido" }, { status: 500 });
+  } catch (err: unknown) {
+    if (err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+    }
+    return NextResponse.json({ ok: false, error: "Não foi possível consultar as versões de horário." }, { status: 500 });
   }
 }

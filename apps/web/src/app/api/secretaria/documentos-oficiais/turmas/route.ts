@@ -4,19 +4,22 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
 import { applyKf2ListInvariants } from "@/lib/kf2"
 import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status"
+import { AcademicYearContextError, resolveAcademicYearScope } from "@/lib/academic-year/context"
+import { loadHistoricalRosterCounts } from "@/lib/documentos/historicalRosterCount"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 export const fetchCache = "force-no-store"
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<any>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
+    const requestedEscolaId = new URL(req.url).searchParams.get("escola_id")
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId)
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 })
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
@@ -24,24 +27,20 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 })
     }
 
-    let anoLetivoQuery = supabase
-      .from("anos_letivos")
-      .select("ano")
-      .eq("escola_id", escolaId)
-      .eq("ativo", true)
-
-    anoLetivoQuery = applyKf2ListInvariants(anoLetivoQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
-
-    const { data: anoLetivo } = await anoLetivoQuery.maybeSingle()
+    // O pedido de emissão é local ao documento; ano de outro tenant não tem acesso.
+    const requestedAcademicYearId = new URL(req.url).searchParams.get("ano_letivo_id")
+    const year = await resolveAcademicYearScope(supabase, {
+      escolaId,
+      requestedAcademicYearId,
+      operation: "READ",
+    })
 
     let turmasQuery = supabase
       .from("turmas")
       .select("id, nome, turma_codigo, turma_code, ano_letivo, turno, status_validacao, status_fecho, classe_id, classes(nome), cursos(nome)")
       .eq("escola_id", escolaId)
 
-    if (anoLetivo?.ano) {
-      turmasQuery = turmasQuery.eq("ano_letivo", anoLetivo.ano)
-    }
+    turmasQuery = turmasQuery.eq("session_id", year.id)
 
     turmasQuery = applyKf2ListInvariants(turmasQuery, {
       defaultLimit: 50,
@@ -58,6 +57,12 @@ export async function GET() {
     const alunosMap = new Map<string, number>()
 
     if (turmaIds.length > 0) {
+      if (year.status === "CLOSED") {
+        const counts = await loadHistoricalRosterCounts(supabase, {
+          escolaId, yearBase: year.ano, turmaIds,
+        })
+        for (const [turmaId, count] of counts) alunosMap.set(turmaId, count)
+      } else {
       const pendenciasQuery = applyKf2ListInvariants(
         supabase
           .from("vw_professor_pendencias")
@@ -105,6 +110,7 @@ export async function GET() {
       for (const row of (alunosRes.data || []) as Array<{ turma_id: string }>) {
         alunosMap.set(row.turma_id, (alunosMap.get(row.turma_id) ?? 0) + 1)
       }
+      }
     }
 
     const items = (turmas || []).map((t: any) => ({
@@ -121,8 +127,11 @@ export async function GET() {
       alunos: alunosMap.get(t.id) ?? 0,
     }))
 
-    return NextResponse.json({ ok: true, items })
+    return NextResponse.json({ ok: true, items, context: { anoLetivoId: year.id, mode: year.status } })
   } catch (e) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status })
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

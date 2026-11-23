@@ -8,12 +8,13 @@ import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle"
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 const ParamsSchema = z.object({
   id: z.string().uuid("alunoId inválido"),
 });
 
-export async function GET(_req: Request, context: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const params = ParamsSchema.safeParse(await context.params);
     if (!params.success) {
@@ -27,7 +28,8 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
 
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    const requestedEscolaId = new URL(req.url).searchParams.get("escola_id");
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
 
     const roleCheck = await requireRoleInSchool({
@@ -37,13 +39,28 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
     });
     if (roleCheck.error) return roleCheck.error;
 
+    // A RPC é SECURITY DEFINER: confirmar a identidade do aluno na escola autorizada
+    // antes de a invocar, mesmo quando o operador pertence a várias escolas.
+    const { data: aluno, error: alunoError } = await supabase
+      .from("alunos")
+      .select("id")
+      .eq("id", params.data.id)
+      .eq("escola_id", escolaId)
+      .maybeSingle();
+    if (alunoError) return NextResponse.json({ ok: false, error: "Falha ao confirmar a escola do aluno." }, { status: 500 });
+    if (!aluno) return NextResponse.json({ ok: false, error: "Aluno não encontrado nesta escola." }, { status: 404 });
+
     const { data, error } = await supabase.rpc("get_aluno_timeline_360", {
       p_escola_id: escolaId,
       p_aluno_id: params.data.id,
     });
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      const forbidden = error.code === "42501";
+      return NextResponse.json(
+        { ok: false, error: forbidden ? "Sem permissão para consultar o dossier desta escola." : "Falha ao consultar a timeline anual." },
+        { status: forbidden ? 403 : 500, headers: { "Cache-Control": "private, no-store" } },
+      );
     }
 
     const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, params.data.id).catch(() => null);
@@ -53,7 +70,7 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
       cicloVidaIndisponivel: cicloVida === null,
       aluno_id: params.data.id,
       timeline: Array.isArray(data) ? data : [],
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

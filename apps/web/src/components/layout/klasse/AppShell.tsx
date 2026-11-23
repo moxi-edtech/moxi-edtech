@@ -17,9 +17,8 @@ import { useSearchParams } from "next/navigation";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { createClient } from "@/lib/supabaseClient";
 import { fetchEscolaInfo } from "@/lib/escolaInfoClient";
-import AcademicYearSelector from "@/components/academic/AcademicYearSelector";
 import AcademicContextBanner from "@/components/academic/AcademicContextBanner";
-import { preserveAcademicContextHref, supportsAcademicContext } from "@/lib/academic-year/navigation";
+import { supportsAcademicContext } from "@/lib/academic-year/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
 function AcademicContextSync({
@@ -57,14 +56,6 @@ function AcademicContextSync({
   return null;
 }
 
-function AcademicContextChrome({ escolaId }: { escolaId?: string | null }) {
-  return (
-    <>
-      <AcademicYearSelector escolaId={escolaId} />
-      <AcademicContextBanner />
-    </>
-  );
-}
 
 const TOPBAR_LABELS: Record<SidebarRole, { title: string; subtitle: string }> = {
   superadmin: { title: "Super Admin", subtitle: "Painel central" },
@@ -212,15 +203,10 @@ export default function AppShell({
       });
     }
     
-    return items.map((item) => ({
-      ...item,
-      href: preserveAcademicContextHref(item.href, currentSearch),
-      children: item.children?.map((child) => ({
-        ...child,
-        href: preserveAcademicContextHref(child.href, currentSearch),
-      })),
-    }));
-  }, [navRole, navEscolaId, financeBadges, currentSearch]);
+    // A sidebar muda de módulo, não o contexto histórico da operação.
+    // Links de arquivo/documentos transportam o ano explicitamente no destino.
+    return items;
+  }, [navRole, navEscolaId, financeBadges]);
 
   useEffect(() => {
     if (!navEscolaId) return;
@@ -407,11 +393,7 @@ export default function AppShell({
             portal={navRole ?? undefined}
           />
           <Suspense fallback={null}>
-            <div className="border-b border-border/70 bg-muted px-4 py-2">
-              <div className={`mx-auto flex w-full items-center justify-end ${isWidePage ? "max-w-7xl" : "max-w-6xl"}`}>
-                <AcademicContextChrome escolaId={escolaIdFromSession} />
-              </div>
-            </div>
+            <AcademicContextBanner />
           </Suspense>
           <MaintenanceBanner />
           <main className={mobileNav ? "p-4 md:p-6 pb-24" : "p-4 md:p-6"}>

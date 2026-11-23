@@ -50,11 +50,21 @@ export async function GET(req: Request) {
       searchParams.get("sessionId") ||
       null;
     const anoParam = searchParams.get("ano");
+    if (anoParam !== null && !/^\d{4}$/.test(anoParam)) {
+      return NextResponse.json({ ok: false, code: "ACADEMIC_YEAR_INVALID", error: "Ano letivo inválido." }, { status: 400 });
+    }
     const anoScope = await resolveAnoLetivoScope(supabase, escolaId, {
       anoLetivoId,
-      ano: anoParam ? parseInt(anoParam, 10) : null,
+      ano: anoParam === null ? null : Number(anoParam),
     });
-    const anoLetivo = anoScope?.ano ?? new Date().getFullYear();
+    // Nunca trocar um filtro inexistente pelo ano civil atual em silêncio.
+    if (!anoScope) {
+      return NextResponse.json({ ok: false, code: "ACADEMIC_YEAR_NOT_FOUND", error: "Ano letivo não encontrado nesta escola." }, { status: 404 });
+    }
+    if (anoParam !== null && Number(anoParam) !== anoScope.ano) {
+      return NextResponse.json({ ok: false, code: "CROSS_YEAR_FILTER_MISMATCH", error: "Os filtros de ano não correspondem." }, { status: 409 });
+    }
+    const anoLetivo = anoScope.ano;
 
     let propinasRows: Array<{
       qtd_mensalidades: number | null;
