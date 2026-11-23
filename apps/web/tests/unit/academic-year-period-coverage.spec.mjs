@@ -51,3 +51,11 @@ test("professor and secretariat year-specific period readers retain canonical va
   assert.match(relatorio, /readVerifiedAcademicTrimesters/);
   assert.match(relatorio, /requireVerifiedTrimester/);
 });
+
+test("historical attendance supports local trimester selection without changing other modules", () => {
+  const panel = src("components/academico/ArchiveTurmaRecordsPanel.tsx");
+  assert.match(panel, /id=\{"archive-attendance-period-" \+ turmaId\}/);
+  assert.match(panel, /periodo\.id === periodFilter|f\.periodo_letivo_id === periodFilter/);
+  assert.match(panel, /setPeriodFilter\(event\.target\.value\)/);
+  assert.match(panel, /<option value="">Todos os trimestres<\/option>/);
+});
