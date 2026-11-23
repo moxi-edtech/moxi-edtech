@@ -12,6 +12,7 @@ import { HttpError } from "@/lib/errors";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import { docPrintUrl } from "@/lib/documentos/printUrl";
+import { verificarCertificadoElegivel } from "@/lib/documentos/certificadoElegibilidade";
 
 const payloadSchema = z.object({
   alunoId: z.string().uuid(),
@@ -140,6 +141,30 @@ export async function POST(request: Request) {
       .eq("session_id", academicContext!.anoLetivoId)
       .order("created_at", { ascending: false }).order("id", { ascending: false })
       .limit(1).maybeSingle();
+    // Validar notas ANTES de apresentar checkout, cobrar ou reutilizar um
+    // certificado anterior. Falha fechada: nunca imprimir um diploma sem pauta.
+    if (tipoDocumento === "certificado") {
+      const anoDoDocumento = Number(academicContext!.anoLetivoLabel.slice(0, 4));
+      const elegibilidade = await verificarCertificadoElegivel({
+        supabase, escolaId, alunoId, anoLetivo: anoDoDocumento,
+      });
+      if (!elegibilidade.ok) {
+        const reconciliation = new URLSearchParams({
+          tipo: "historicos", ano: String(anoDoDocumento),
+        });
+        if (enrollmentForDoc?.id) reconciliation.set("matricula_id", enrollmentForDoc.id);
+        return NextResponse.json({
+          ok: false, code: elegibilidade.code, error: elegibilidade.error,
+          ...(elegibilidade.code === "CONSULTA_INDISPONIVEL" ? {} : {
+            next_action: {
+              type: "regularizar_historico",
+              label: "Abrir Reconciliação Histórica",
+              href: `/escola/${encodeURIComponent(escolaId)}/operacoes/academico/reconciliacao-historica?${reconciliation.toString()}`,
+            },
+          }),
+        }, { status: elegibilidade.code === "CONSULTA_INDISPONIVEL" ? 503 : 409 });
+      }
+    }
     if (enrollmentForDoc?.id) {
       const { data: alreadyIssued, error: existingError } = await (supabase as any)
         .from("documentos_emitidos")
