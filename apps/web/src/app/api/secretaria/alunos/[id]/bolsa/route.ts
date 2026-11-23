@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { BOLSA_GESTAO_PAPEIS } from "@/lib/aluno/bolsa-permissions";
 import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const roles = [
-  "admin", "admin_escola", "admin_financeiro", "admin_secretaria",
-  "admin_secretario", "secretaria", "financeiro", "diretor", "staff_admin",
-] as const;
 
 const updateSchema = z.object({
   matricula_id: z.string().uuid(),
@@ -37,7 +33,7 @@ async function contexto(req: Request, id: string) {
   if (!escolaId) return { error: NextResponse.json({ ok: false, error: "Escola não autorizada" }, { status: 403 }) };
 
   const authz = await requireRoleInSchool({
-    supabase, escolaId, roles: [...roles], productContext: "k12",
+    supabase, escolaId, roles: [...BOLSA_GESTAO_PAPEIS], productContext: "k12",
   });
   if (authz.error) return { error: authz.error };
 
