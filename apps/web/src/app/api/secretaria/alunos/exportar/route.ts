@@ -4,7 +4,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
-import { listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
+import { InvalidAlunoFiltersError, listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
 import {
   parseAlunoExportFormat,
   renderAlunosExport,
@@ -65,6 +65,9 @@ export async function GET(req: Request) {
       },
     });
   } catch (e: any) {
+    if (e instanceof InvalidAlunoFiltersError) {
+      return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
+    }
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
     }
