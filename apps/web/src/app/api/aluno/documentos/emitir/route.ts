@@ -5,6 +5,7 @@ import { getAlunoContext } from '@/lib/alunoContext'
 import { resolveBoletimMatricula } from '@/lib/aluno/resolveBoletimMatricula'
 import { AcademicYearContextError } from '@/lib/academic-year/context'
 import { resolveSelectedStudentId } from '@/lib/portalAlunoAuth'
+import { verificarCertificadoElegivel } from '@/lib/documentos/certificadoElegibilidade'
 
 export const dynamic = 'force-dynamic'
 
@@ -149,6 +150,17 @@ export async function POST(req: Request) {
       if (yearHistoryError) return NextResponse.json({ ok: false, error: 'Não foi possível consultar o histórico do ano.' }, { status: 503 });
       if (!yearHistory || yearHistory.snapshot_status !== 'fechado') {
         return NextResponse.json({ ok: false, error: 'Conclua o histórico do ano letivo selecionado antes de emitir.' }, { status: 409 });
+      }
+      if (resolvedServiceCode === 'DOC_CERTIFICADO_HABILITACOES') {
+        const elegibilidade = await verificarCertificadoElegivel({
+          supabase, escolaId, alunoId, anoLetivo,
+        });
+        if (!elegibilidade.ok) {
+          return NextResponse.json({
+            ok: false, code: elegibilidade.code, error: elegibilidade.error,
+            next_action: { type: 'contact_secretaria', label: 'Regularizar histórico na secretaria', href: '/aluno/avisos' },
+          }, { status: elegibilidade.code === 'CONSULTA_INDISPONIVEL' ? 503 : 409 });
+        }
       }
       const { data: finalDoc, error: finalError } = await (supabase as any).rpc('aluno_emitir_documento_final', {
         p_escola_id: escolaId,
