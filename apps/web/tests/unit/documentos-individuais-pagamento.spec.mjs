@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -50,4 +50,18 @@ test("pagamento de boletim não é fungível com declaração com notas", () => 
 test("migração revoga wrapper anterior de emission e não permite acesso anónimo", () => {
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.emitir_documento_final_idempotente[^\n]+FROM PUBLIC, authenticated/);
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.emitir_documento_final_individual[^\n]+FROM PUBLIC, anon/);
+});
+
+test("a Central é a única interface e API de emissão individual", () => {
+  const endpointRedundante = resolve(process.cwd(), "src/app/api/secretaria/documentos/individual/route.ts");
+  assert.equal(existsSync(endpointRedundante), false);
+  const central = src("components/secretaria/SecretariaDocumentosWorkspace.tsx");
+  assert.match(central, /DocumentosEmissaoHubClient/);
+  const legado = src("components/secretaria/DocumentosEmissaoHub.tsx");
+  assert.match(legado, /export \{ default \} from "\.\/DocumentosEmissaoHubClient"/);
+  const hub = src("components/secretaria/DocumentosEmissaoHubClient.tsx");
+  assert.doesNotMatch(hub, /api\/secretaria\/documentos\/individual/);
+  assert.match(hub, /api\/secretaria\/documentos\/emitir/);
+  const balcao = src("components/secretaria/BalcaoAtendimento.tsx");
+  assert.match(balcao, /window\.location\.assign\(\`\/secretaria\/documentos\?/);
 });
