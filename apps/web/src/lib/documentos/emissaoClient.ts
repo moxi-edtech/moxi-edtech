@@ -25,6 +25,35 @@ export type EmitirDocumentoInput = {
   anoLetivo?: number | null;
 };
 
+/** Consultas e pedidos financeiros da Central: sem gerar documento nem nova taxa
+ * pela impressão. Chamadores não devem construir requests diretos ao endpoint. */
+export type ConsultarDocumentoInput = {
+  escolaId: string;
+  alunoId: string;
+  tipoDocumento: TipoDocumentoEmitivel;
+  anoLetivoId: string;
+  action: "status" | "solicitar";
+};
+
+export async function consultarDocumentoIndividual(input: ConsultarDocumentoInput): Promise<Record<string, unknown>> {
+  const response = await fetch("/api/secretaria/documentos/emitir", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      escolaId: input.escolaId,
+      alunoId: input.alunoId,
+      tipoDocumento: input.tipoDocumento,
+      ano_letivo_id: input.anoLetivoId,
+      action: input.action,
+    }),
+  });
+  const json = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok || json.ok !== true) {
+    throw new Error(mensagemDeErro(json.error));
+  }
+  return json;
+}
+
 export type EmitirDocumentoResult =
   | { ok: true; docId: string; printUrl: string }
   | { ok: false; error: string };
