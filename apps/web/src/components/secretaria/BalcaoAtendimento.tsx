@@ -1820,9 +1820,8 @@ function Catalogo({
                       <button type="button" disabled={busy || (paid && selected)}
                         onClick={() => { if (paid) void onAdicionarServico(servico); else void onEmitirDocumento(servico); }}
                         className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground disabled:opacity-60">
-                        {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> A emitir...</> :
-                          paid ? selected ? "Adicionado à cobrança" : "Adicionar à cobrança" :
-                          <><Printer className="h-4 w-4" /> Emitir agora</>}
+                        {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> A abrir...</> :
+                          <><FileText className="h-4 w-4" /> Abrir emissão</>}
                       </button>
                     </div>
                   );
@@ -1839,7 +1838,7 @@ function Catalogo({
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Documentos</p>
                 <h2 className="mt-1 text-base font-black text-foreground">O que precisa emitir?</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Documentos gratuitos são emitidos imediatamente. Os pagos seguem para cobrança antes da emissão.
+                  Selecione o documento para abrir o fluxo individual. O KLASSE valida o pagamento e permite reimpressão sem nova cobrança.
                 </p>
                 {selectedCount > 0 ? (
                   <a
@@ -1872,7 +1871,7 @@ function Catalogo({
                       <div className="mt-2 flex items-center justify-between gap-1">
                         <span className="text-[11px] font-semibold text-muted-foreground font-sora">{kwanza.format(servico.preco)}</span>
                         <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${paid ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald"}`}>
-                          {busy ? "..." : paid ? "Cobrar" : "Adicionar"}
+                          {busy ? "..." : "Abrir emissão"}
                         </span>
                       </div>
                     </button>
@@ -1921,11 +1920,9 @@ function Catalogo({
                       ].join(" ")}
                     >
                       {busy ? (
-                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> A emitir...</>
-                      ) : paid ? (
-                        selected ? "Adicionado" : "Adicionar para cobrança"
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> A abrir...</>
                       ) : (
-                        <><Printer className="h-3.5 w-3.5" /> Emitir agora</>
+                        <><FileText className="h-3.5 w-3.5" /> Abrir emissão</>
                       )}
                     </button>
                   </div>
@@ -2892,31 +2889,42 @@ export default function BalcaoAtendimento({
     [carrinho]
   );
 
+  const abrirEmissaoIndividual = useCallback(
+    (servico: Servico) => {
+      const alunoId = dossier.aluno?.id;
+      if (!alunoId) {
+        error("Selecione um aluno primeiro.");
+        return false;
+      }
+      const tipo = getDocTipo(servico);
+      if (!isTipoDocumentoEmitivel(tipo)) return false;
+      const params = new URLSearchParams({ alunoId, tipo });
+      if (effectiveAcademicYearId) params.set("ano_letivo_id", effectiveAcademicYearId);
+      // A navegação mantém o contexto e não inicia qualquer cobrança.
+      window.location.assign(`/secretaria/documentos?${params.toString()}`);
+      return true;
+    },
+    [dossier.aluno?.id, effectiveAcademicYearId, error],
+  );
+
   const handleAdicionarServico = useCallback(
     async (s: Servico) => {
       if (!dossier.aluno?.id) {
         error("Selecione um aluno primeiro.");
         return;
       }
+      if (abrirEmissaoIndividual(s)) return;
       carrinho.adicionar(s);
     },
-    [dossier.aluno, carrinho, error]
+    [dossier.aluno?.id, abrirEmissaoIndividual, carrinho, error],
   );
 
   const handleEmitirDocumento = useCallback(
     async (servico: Servico) => {
-      const url = await checkout.emitirDocumento(servico);
-      if (!url) return;
-
-      const impressao = abrirParaImpressao(url);
-      if (!impressao.ok) {
-        checkout.setPrintQueue((previous) => [
-          { label: servico.nome, url: impressao.url },
-          ...previous,
-        ]);
-      }
+      if (abrirEmissaoIndividual(servico)) return;
+      error("Este serviço é emitido pelo fluxo de pagamento, não pela emissão documental.");
     },
-    [checkout],
+    [abrirEmissaoIndividual, error],
   );
 
   useEffect(() => {
