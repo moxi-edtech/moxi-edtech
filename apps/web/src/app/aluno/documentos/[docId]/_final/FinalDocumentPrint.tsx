@@ -4,6 +4,7 @@ import { PrintLetterhead } from "@/app/secretaria/documentos/_print/PrintLetterh
 import { formatDocumentoIdentificacao } from "@/lib/documentos/identificacao";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { buildCertificadoSnapshot, type CertificadoSnapshot } from "@/lib/documentos/certificadoSnapshot";
+import { verificarCertificadoElegivel } from "@/lib/documentos/certificadoElegibilidade";
 
 function nota(value: number | string | null | undefined) {
   if (value == null || value === "") return "—";
@@ -21,12 +22,30 @@ export default async function FinalDocumentPrint({ docId, expectedType, title, r
     return <div className="p-8">O documento não possui ano letivo válido.</div>;
   }
   let certificado: CertificadoSnapshot | null = null;
+  let certificadoPendente: string | null = null;
   let historicoNotas: Array<{ disciplina_nome?: string | null; nota_final?: number | string | null; media_final?: number | string | null }> = [];
   if (expectedType === "certificado") {
-    try {
-      certificado = await buildCertificadoSnapshot({ supabase: (await supabaseServerTyped()) as any, escolaId: result.doc.escola_id, alunoId: result.doc.aluno_id ?? "", baseSnapshot: snapshot, hashValidacao: result.doc.hash_validacao ?? null });
-    } catch (error) {
-      console.error("[FINAL_DOCUMENT_PRINT_CERTIFICATE]", error);
+    const supabase = await supabaseServerTyped();
+    const elegibilidade = await verificarCertificadoElegivel({
+      supabase, escolaId: result.doc.escola_id, alunoId: result.doc.aluno_id ?? "",
+      anoLetivo: targetYear,
+    });
+    if (!elegibilidade.ok) {
+      certificadoPendente = elegibilidade.error;
+    } else {
+      try {
+        certificado = await buildCertificadoSnapshot({
+          supabase, escolaId: result.doc.escola_id, alunoId: result.doc.aluno_id ?? "",
+          baseSnapshot: snapshot, hashValidacao: result.doc.hash_validacao ?? null,
+        });
+        if (certificado.disciplinas.length === 0 ||
+            certificado.colunas.length === 0) {
+          certificadoPendente = "O certificado não contém notas oficiais para apresentar.";
+        }
+      } catch (error) {
+        console.error("[FINAL_DOCUMENT_PRINT_CERTIFICATE]", error);
+        certificadoPendente = "Não foi possível validar as notas do certificado. Atualize a situação académica antes de imprimir.";
+      }
     }
   } else {
     const supabase = await supabaseServerTyped<any>();
@@ -35,6 +54,25 @@ export default async function FinalDocumentPrint({ docId, expectedType, title, r
       const { data: notes } = await supabase.from("historico_disciplinas").select("disciplina_nome, nota_final, media_final").eq("historico_ano_id", history.id).order("disciplina_nome", { ascending: true }).limit(100);
       historicoNotas = notes ?? [];
     }
+  }
+  // Falha fechada: não montar PrintTrigger, timbre nem selo oficial quando
+  // o certificado não contém notas verificáveis. Não cobrar outra impressão.
+  if (certificadoPendente) {
+    const href = requireStudentOwnership
+      ? "/aluno/avisos"
+      : `/escola/${encodeURIComponent(result.doc.escola_id)}/operacoes/academico/reconciliacao-historica?tipo=historicos&ano=${targetYear}`;
+    return (
+      <main className="mx-auto max-w-2xl p-8 text-sm text-foreground">
+        <section role="alert" className="space-y-3 rounded-xl border border-border bg-card p-6">
+          <h1 className="text-base font-semibold">Certificado ainda não disponível para impressão</h1>
+          <p>{certificadoPendente}</p>
+          <p className="text-muted-foreground">O documento não foi impresso. Se a taxa já estiver paga, a regularização não cria nova cobrança.</p>
+          <a href={href} className="inline-flex rounded-xl border border-border px-4 py-2 font-semibold text-foreground hover:bg-muted">
+            {requireStudentOwnership ? "Contactar secretaria" : "Abrir Reconciliação Histórica"}
+          </a>
+        </section>
+      </main>
+    );
   }
   return (
     <main className="min-h-screen bg-slate-100 p-4 font-serif text-slate-900 print:bg-white md:p-10">
