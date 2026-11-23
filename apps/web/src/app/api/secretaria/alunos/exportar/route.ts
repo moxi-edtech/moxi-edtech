@@ -3,6 +3,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import { listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
 import {
   parseAlunoExportFormat,
@@ -37,10 +38,19 @@ export async function GET(req: Request) {
       return authz.error;
     }
 
+    const context = await resolveAcademicYearContext(supabase as any, {
+      userId: userRes.user.id,
+      requestedAcademicYearId: url.searchParams.get("ano_letivo_id"),
+      operation: "READ",
+    });
     const filters = parseAlunoListFilters(url);
     const format = parseAlunoExportFormat(url.searchParams.get("tipo"));
     const sorted = sortAlunoExportRows(
-      await listAllAlunos(supabase, escolaId, filters, { includeFinanceiro: true, includeResumo: true })
+      await listAllAlunos(supabase, escolaId, filters, {
+        includeFinanceiro: true,
+        includeResumo: true,
+        academicYearId: filters.ano ? undefined : context.anoLetivoId,
+      })
     );
     const rendered = await renderAlunosExport(sorted, format);
     const status = filters.status ?? "ativo";
@@ -55,6 +65,9 @@ export async function GET(req: Request) {
       },
     });
   } catch (e: any) {
+    if (e instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
+    }
     console.error("[alunos export error]", e);
     return NextResponse.json({ ok: false, error: e.message || "Erro desconhecido" }, { status: 500 });
   }
