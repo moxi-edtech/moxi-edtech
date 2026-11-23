@@ -45,7 +45,7 @@ export function DossierHeader({
   const statusLabel = status.replace(/_/g, " ");
   const statusClasses =
     status === "ativo"
-      ? "bg-[#1F6B3B]/10 text-klasse-green dark:text-emerald-300"
+      ? "bg-klasse-green/10 text-klasse-green dark:text-emerald-300"
       : status === "arquivado" || status === "inativo"
       ? "bg-muted text-muted-foreground"
       : "bg-klasse-gold/10 text-klasse-gold-900 dark:text-klasse-gold-300";

@@ -130,13 +130,13 @@ export default function Sidebar({
   return (
     <aside
       className={cn(
-        "h-screen sticky top-0 z-40 border-r border-slate-800/80 bg-klasse-dark text-slate-100 flex flex-col",
+        "h-screen sticky top-0 z-40 border-r border-klasse-gold/15 bg-klasse-dark text-slate-100 flex flex-col",
         "transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] overflow-x-hidden"
       )}
       style={{ width: collapsed ? "80px" : "clamp(208px, 16vw, 256px)" }}
     >
       {/* Header / Brand */}
-      <div className="flex items-center justify-between border-b border-slate-800/80 px-3 py-4 min-[1700px]:px-4">
+      <div className="flex items-center justify-between border-b border-klasse-gold/15 px-3 py-4 min-[1700px]:px-4">
         <Link href={homeHref} className="flex items-center gap-3 min-w-0" aria-label="Ir para a home do portal">
           <div className="h-10 w-10 rounded-xl bg-amber/15 ring-1 ring-amber/30 flex items-center justify-center">
             <Image
@@ -193,7 +193,7 @@ export default function Sidebar({
                       "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
                       "transition-all duration-200",
                       it.active
-                        ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25"
+                        ? "bg-klasse-gold/10 text-klasse-gold ring-1 ring-klasse-gold/25"
                         : "text-slate-300 hover:bg-slate-900/70 hover:text-white"
                     )}
                     title={collapsed ? it.label : undefined}
@@ -202,7 +202,7 @@ export default function Sidebar({
                     <Icon
                       className={cn(
                         "h-5 w-5 shrink-0 transition-colors",
-                        it.active ? "text-klasse-gold" : "text-slate-500 group-hover:text-klasse-gold"
+                        it.active ? "text-klasse-gold" : "text-white/55 group-hover:text-klasse-gold"
                       )}
                     />
                     {!collapsed && <span className="truncate font-medium">{it.label}</span>}
@@ -225,7 +225,7 @@ export default function Sidebar({
                         "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
                         "transition-all duration-200",
                         it.active
-                          ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25"
+                          ? "bg-klasse-gold/10 text-klasse-gold ring-1 ring-klasse-gold/25"
                           : "text-slate-300 hover:bg-slate-900/70 hover:text-white"
                       )}
                       title={collapsed ? it.label : undefined}
@@ -233,7 +233,7 @@ export default function Sidebar({
                       <Icon
                         className={cn(
                           "h-5 w-5 shrink-0 transition-colors",
-                          it.active ? "text-klasse-gold" : "text-slate-500 group-hover:text-klasse-gold"
+                          it.active ? "text-klasse-gold" : "text-white/55 group-hover:text-klasse-gold"
                         )}
                       />
                       {!collapsed && <span className="truncate font-medium">{it.label}</span>}
@@ -258,13 +258,13 @@ export default function Sidebar({
                             className={cn(
                               "flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs transition-colors",
                               childActive
-                                ? "bg-slate-900 text-klasse-gold font-bold"
+                                ? "bg-klasse-gold/10 text-klasse-gold font-bold"
                                 : "text-slate-400 hover:bg-slate-900/60 hover:text-white"
                             )}
                           >
                             <span className={cn(
                               "h-1 w-1 rounded-full transition-colors",
-                              childActive ? "bg-klasse-gold" : "bg-slate-700"
+                              childActive ? "bg-klasse-gold" : "bg-klasse-gold/20"
                             )} />
                             <span className="truncate">{child.label}</span>
                             {child.badge && (
@@ -285,7 +285,7 @@ export default function Sidebar({
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto p-3 border-t border-slate-800/80">
+      <div className="mt-auto p-3 border-t border-klasse-gold/15">
         <div className={cn("flex items-center gap-3 rounded-xl px-3 py-2", "bg-slate-900/40 border border-white/5")}>
           <div className="h-9 w-9 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-[10px] font-black text-slate-400">
             AO

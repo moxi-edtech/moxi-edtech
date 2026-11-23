@@ -309,7 +309,7 @@ export function DossierHistoricoTransitadoSection({
             <button
               type="button"
               onClick={handleStartBlank}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 px-3 py-2 text-xs font-semibold text-klasse-green dark:text-emerald-300 transition hover:bg-[#1F6B3B]/10"
+              className="inline-flex items-center gap-2 rounded-xl border border-klasse-green/20 bg-klasse-green/5 px-3 py-2 text-xs font-semibold text-klasse-green dark:text-emerald-300 transition hover:bg-klasse-green/10"
             >
               <PlusCircle className="h-4 w-4" />
               Adicionar ano passado
@@ -367,7 +367,7 @@ export function DossierHistoricoTransitadoSection({
               <select
                 value={classeId}
                 onChange={(event) => setClasseId(event.target.value)}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition focus:border-[#1F6B3B]"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition focus:border-klasse-gold"
               >
                 <option value="">Selecione a classe</option>
                 {classes.map((classe) => (
@@ -383,7 +383,7 @@ export function DossierHistoricoTransitadoSection({
               <select
                 value={anoLetivoId}
                 onChange={(event) => setAnoLetivoId(event.target.value)}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition focus:border-[#1F6B3B]"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition focus:border-klasse-gold"
               >
                 <option value="">Selecione o ano letivo</option>
                 {academicYears.map((year) => (
@@ -464,7 +464,7 @@ export function DossierHistoricoTransitadoSection({
                               inputRefs.current[index + 1]?.focus();
                               inputRefs.current[index + 1]?.select();
                             }}
-                            className="w-28 rounded-lg border border-border px-3 py-2 text-sm text-foreground outline-none transition focus:border-[#1F6B3B]"
+                            className="w-28 rounded-lg border border-border px-3 py-2 text-sm text-foreground outline-none transition focus:border-klasse-gold"
                           />
                         </td>
                       </tr>
@@ -486,7 +486,7 @@ export function DossierHistoricoTransitadoSection({
               type="button"
               onClick={() => void handleSave()}
               disabled={!canSave}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#185830] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-klasse-gold-900 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Salvar histórico

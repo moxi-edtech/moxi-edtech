@@ -237,10 +237,10 @@ export function DossierFinanceiroSection({ aluno, role, escolaId, servicos = [] 
             </p>
             <p className="text-xs text-muted-foreground mt-1">Valores com cobrança pendente.</p>
           </div>
-          <div className="rounded-2xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-4 shadow-sm">
+          <div className="rounded-2xl border border-klasse-green/20 bg-klasse-green/5 p-4 shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total pago</p>
             <p className="mt-1 text-2xl font-bold text-klasse-green dark:text-emerald-300">{formatKwanza(f.total_pago)}</p>
-            <p className="text-xs text-[#1F6B3B]/70 mt-1">Resumo de pagamentos.</p>
+            <p className="text-xs text-klasse-green/80 dark:text-emerald-300 mt-1">Resumo de pagamentos.</p>
           </div>
         </div>
       </div>
@@ -281,7 +281,7 @@ export function DossierFinanceiroSection({ aluno, role, escolaId, servicos = [] 
 
         <div className="rounded-2xl border border-border bg-card p-4">
         {f.situacao === "em_dia" ? (
-          <div className="rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-3 text-xs text-klasse-green dark:text-emerald-300">
+          <div className="rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-3 text-xs text-klasse-green dark:text-emerald-300">
             <CheckCircle2 size={14} className="inline mr-1" /> Situação regular
           </div>
         ) : (
@@ -373,7 +373,7 @@ export function DossierDocumentosSection({ alunoId }: { alunoId: string }) {
                 `/secretaria/documentos?alunoId=${alunoId}&tipo=${item.tipo}`,
                 pathname
               )}
-              className="rounded-2xl border border-border bg-card p-4 text-left transition-all hover:border-[#1F6B3B]/30 hover:shadow-sm"
+              className="rounded-2xl border border-border bg-card p-4 text-left transition-all hover:border-klasse-green/30 hover:shadow-sm"
             >
               <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
                 <FileText size={18} />

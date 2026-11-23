@@ -31,7 +31,7 @@ export default function ConfirmacaoContextual({ acaoId, contexto, onClose }: Con
       className="fixed bottom-6 right-6 z-[999] flex w-[calc(100vw-3rem)] max-w-[340px] items-center gap-3 rounded-xl border border-klasse-green/30 bg-klasse-green p-4 text-white shadow-sm transition-[opacity,transform] duration-300"
       style={{ opacity: saindo ? 0 : 1, transform: saindo ? "translateY(8px)" : "translateY(0)" }}
     >
-      <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-sm">✓</span>
+      <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted-foreground/20 text-sm">✓</span>
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 text-sm font-bold">{config.titulo}</div>
         <div className="truncate text-xs text-emerald-100">{config.subtitulo(contexto)}</div>
@@ -40,7 +40,7 @@ export default function ConfirmacaoContextual({ acaoId, contexto, onClose }: Con
         type="button"
         onClick={() => { setSaindo(true); setTimeout(onClose, 300); }}
         aria-label="Fechar confirmação"
-        className="shrink-0 rounded-xl p-1 text-emerald-100 transition hover:bg-white/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold"
+        className="shrink-0 rounded-xl p-1 text-emerald-100 transition hover:bg-muted-foreground/20 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold"
       >
         ×
       </button>

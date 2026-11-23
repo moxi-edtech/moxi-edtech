@@ -24,7 +24,7 @@ Scanner: scripts/audit-klasse-theme-transitive.mjs. Executar com a opção --che
 | Propriedades de estilo inline auditadas inicialmente | 175 |
 | Cores inline literais inicialmente | 30 |
 | Cores inline literais após correção | 4, exclusivamente PDF de pautas |
-| Exceções de classes neutras documentadas | 42 ocorrências, 8 ficheiros |
+| Exceções de classes neutras documentadas | 31 ocorrências, 7 ficheiros |
 
 A contagem de módulos representa dependências alcançáveis estaticamente, não necessariamente componentes renderizados num único ecrã. Os imports do tipo TypeScript podem levar a ficheiros que nunca são montados; não são uma afirmação de utilização visual simultânea.
 
@@ -59,12 +59,11 @@ As alterações restringem-se a classes, aparência e foco. Nenhum contrato de n
 
 ## Exceções justificadas e limitadas
 
-scripts/klasse-theme-transitive-exceptions.json documenta por ficheiro, motivo, classe e quantidade máxima as 42 exceções permitidas:
+scripts/klasse-theme-transitive-exceptions.json documenta por ficheiro, motivo, classe e quantidade máxima as 31 exceções permitidas:
 
 - Sidebar institucional sempre escuro e SidebarNav;
 - cartão de estudante oficial com apresentação estável;
 - aviso PWA deliberadamente escuro e indicador de conectividade;
-- transparências sobre o fundo verde da confirmação;
 - ramificação exclusiva de impressão em AppShell;
 - regra com prefixo print: no relatório financeiro.
 
