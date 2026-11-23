@@ -167,51 +167,98 @@ CREATE TRIGGER trg_05_bolsa_integral_mensalidades
 CREATE OR REPLACE FUNCTION public.klasse_reconciliar_bolsa_matricula()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog', 'public'
+SET search_path TO 'pg_catalog','public'
 AS $$
+DECLARE
+  v_inicio date;
 BEGIN
   IF NOT (NEW.bolsa_integral OR coalesce(NEW.percentagem_desconto, 0) >= 100) THEN
     RETURN NEW;
   END IF;
 
+  SELECT coalesce(
+    NEW.bolsa_integral_inicio,
+    date_trunc('month', a.data_inicio)::date,
+    make_date(NEW.ano_letivo, 1, 1)
+  ) INTO v_inicio
+  FROM (SELECT 1) anchor
+  LEFT JOIN LATERAL (
+    SELECT al.data_inicio FROM public.anos_letivos al
+    WHERE al.escola_id=NEW.escola_id AND al.ano=NEW.ano_letivo
+    ORDER BY al.ativo DESC, al.created_at DESC LIMIT 1
+  ) a ON true;
+
+  -- Meses anteriores à vigência não podem ser perdoados retroativamente.
+  -- Nunca altera recebimentos, documentos fiscais ou cobrança cancelada.
   UPDATE public.mensalidades me
-     SET valor_original = greatest(
-           coalesce(me.valor_original, 0),
-           coalesce(me.valor_previsto, 0),
-           coalesce(me.valor, 0)
-         ),
-         desconto_aplicado = greatest(
-           coalesce(me.valor_original, 0),
-           coalesce(me.valor_previsto, 0),
-           coalesce(me.valor, 0)
-         ),
+     SET valor_original = greatest(coalesce(me.valor_original,0),
+                                  coalesce(me.valor_previsto,0), me.valor),
+         desconto_aplicado = greatest(coalesce(me.valor_original,0),
+                                     coalesce(me.valor_previsto,0),me.valor),
          valor = 0,
          valor_previsto = 0,
          status = 'isento',
-         observacoes = concat_ws(' | ', nullif(me.observacoes, ''), 'Bolsa integral')
-   WHERE me.escola_id = NEW.escola_id
-     AND me.aluno_id = NEW.aluno_id
-     AND (
-       me.matricula_id = NEW.id
-       OR (me.matricula_id IS NULL
-           AND me.turma_id = NEW.turma_id
-           AND me.ano_letivo = NEW.ano_letivo::text)
-     )
-     AND me.status = 'pendente'
-     AND coalesce(me.valor_pago_total, 0) = 0
+         bolsa_isencao_integral = NEW.bolsa_integral,
+         observacoes = concat_ws(' | ', nullif(me.observacoes, ''),
+                                  CASE WHEN NEW.bolsa_integral THEN 'Bolsa integral'
+                                       ELSE 'Isenção integral' END)
+   WHERE me.escola_id=NEW.escola_id AND me.aluno_id=NEW.aluno_id
+     AND (me.matricula_id=NEW.id OR (me.matricula_id IS NULL
+           AND me.turma_id=NEW.turma_id AND me.ano_letivo=NEW.ano_letivo::text))
+     AND date_trunc('month',me.data_vencimento)::date >= v_inicio
+     AND me.status='pendente'
+     AND coalesce(me.valor_pago_total,0)=0
      AND me.fiscal_documento_id IS NULL
-     AND coalesce(me.status_fiscal, 'pending') <> 'ok'
+     AND coalesce(me.status_fiscal,'pending')='pending'
      AND NOT EXISTS (
-       SELECT 1 FROM public.pagamentos pg WHERE pg.mensalidade_id = me.id
+       SELECT 1 FROM public.pagamentos pg WHERE pg.mensalidade_id=me.id
      );
 
+  -- Abate apenas o SALDO de mensalidades parcialmente pagas.
+  -- O preço final passa a igualar o valor realmente liquidado: o pagamento
+  -- continua intacto, a ledger insere um crédito pela diferença e o título
+  -- fica quitado. Documentos fiscais nunca são recalculados automaticamente.
+  IF NEW.bolsa_integral THEN
+    UPDATE public.mensalidades me
+       SET valor_original = greatest(coalesce(me.valor_original,0),
+                                    coalesce(me.valor_previsto,0), me.valor),
+           desconto_aplicado = greatest(coalesce(me.valor_original,0),
+                                       coalesce(me.valor_previsto,0),me.valor)
+                               - me.valor_pago_total,
+           valor = me.valor_pago_total,
+           valor_previsto = me.valor_pago_total,
+           status = 'pago',
+           bolsa_isencao_integral = true,
+           observacoes = concat_ws(' | ', nullif(me.observacoes,''),
+                                    'Bolsa integral · saldo remanescente isento')
+     WHERE me.escola_id=NEW.escola_id AND me.aluno_id=NEW.aluno_id
+       AND (me.matricula_id=NEW.id OR (me.matricula_id IS NULL
+             AND me.turma_id=NEW.turma_id AND me.ano_letivo=NEW.ano_letivo::text))
+       AND date_trunc('month',me.data_vencimento)::date >= v_inicio
+       AND me.status='pago_parcial'
+       AND me.valor_pago_total > 0
+       AND me.valor_pago_total < greatest(coalesce(me.valor_previsto,0),me.valor)
+       AND me.fiscal_documento_id IS NULL
+       AND coalesce(me.status_fiscal,'pending')='pending'
+       AND EXISTS (
+         SELECT 1 FROM public.pagamentos pg
+         WHERE pg.mensalidade_id=me.id
+           AND pg.status IN ('settled','concluido','pago')
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM public.pagamentos pg
+         WHERE pg.mensalidade_id=me.id
+           AND (pg.fiscal_documento_id IS NOT NULL
+                OR coalesce(pg.status_fiscal,'pending') <> 'pending')
+       );
+  END IF;
   RETURN NEW;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_10_bolsa_matricula ON public.matriculas;
 CREATE TRIGGER trg_10_bolsa_matricula
-  AFTER INSERT OR UPDATE OF bolsa_integral, percentagem_desconto
+  AFTER INSERT OR UPDATE OF bolsa_integral, bolsa_integral_inicio, percentagem_desconto
   ON public.matriculas FOR EACH ROW
   EXECUTE FUNCTION public.klasse_reconciliar_bolsa_matricula();
 
