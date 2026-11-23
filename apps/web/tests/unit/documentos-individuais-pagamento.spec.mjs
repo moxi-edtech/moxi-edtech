@@ -67,3 +67,11 @@ test("a Central é a única interface e API de emissão individual", () => {
   assert.match(balcao, /hrefEmissaoIndividual\(alunoId: string \| null, servico: Servico/);
   assert.doesNotMatch(balcao, /checkout\.emitirDocumento|emitirDocumentoViaApi/);
 });
+
+test("o pós-matrícula não emite documentos fora da Central", () => {
+  const wizard = src("components/secretaria/AdmissaoWizardClient.tsx");
+  assert.doesNotMatch(wizard, /import \{ emitirDocumento \} from/);
+  assert.doesNotMatch(wizard, /postActionDocumentRequestRef/);
+  assert.match(wizard, /params\.set\("alunoId", result\.aluno_id\)/);
+  assert.match(wizard, /router\.push\(/);
+});
