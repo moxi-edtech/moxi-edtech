@@ -215,9 +215,10 @@ BEGIN
     RAISE EXCEPTION 'CROSS_YEAR_OR_EMPTY_HISTORICAL_CERTIFICATE_ACCEPTED: %',v_other;
   END IF;
 
-  IF has_function_privilege(
+  -- EXPAND: old application versions keep working until contract migration.
+  IF NOT has_function_privilege(
     'authenticated','public.emitir_documento_final_idempotente(uuid,uuid,integer,text,text)','EXECUTE'
-  ) THEN RAISE EXCEPTION 'OLD_WRAPPER_REMAINS_PUBLIC'; END IF;
+  ) THEN RAISE EXCEPTION 'LEGACY_WRAPPER_REVOKED_BEFORE_DEPLOY'; END IF;
 END;
 $$;
 
