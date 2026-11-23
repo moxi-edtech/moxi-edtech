@@ -531,3 +531,22 @@ test("PR #455: bolsa integral SSOT is the sole audited tuition migration without
     )
   ).some((issue) => issue.includes("Bolsa SSOT reviewed migration missing guard")));
 });
+
+test("PR #455: autorização da bolsa usa bloco PL/pgSQL com delimitadores válidos", () => {
+  const name = "supabase/migrations/20271202030000_bolsa_integral_matricula_ssot.sql";
+  const migration = readFileSync(name, "utf8");
+  const fnStart = migration.indexOf(
+    "CREATE OR REPLACE FUNCTION public.klasse_autorizar_escrita_bolsa_matricula()",
+  );
+  const fnEnd = migration.indexOf(
+    "DROP TRIGGER IF EXISTS trg_03_autorizar_bolsa_matricula",
+    fnStart,
+  );
+  assert.ok(fnStart > 0 && fnEnd > fnStart, "function boundaries must exist");
+  const sql = migration.slice(fnStart, fnEnd);
+  assert.match(sql, /AS \\$\\$\\s+DECLARE/, "PL/pgSQL must open with $$");
+  assert.match(sql, /END;\\s*\\$\\$;/, "PL/pgSQL must close with $$;");
+  assert.match(migration, /p\\.percentagem_desconto < 100/);
+  assert.match(migration, /AND NOT p\\.bolsa_integral/);
+  assert.match(migration, /NOT EXISTS \\(\\s*SELECT 1 FROM public\\.pagamentos pg/);
+});
