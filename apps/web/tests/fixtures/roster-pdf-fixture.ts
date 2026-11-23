@@ -1,5 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { renderNominalA4, type NominalA4Row } from "../../src/lib/documentos/nominalA4";
+import { renderAlunosPdf } from "../../src/lib/services/alunosExport.server";
+import type { AlunoListItem } from "../../src/lib/schemas/aluno.schema";
 
 /** Identidades inteiramente simuladas; não consultar nenhuma escola real. */
 async function main() {
@@ -68,6 +70,39 @@ for (const [filename, rows, sensitive, logoBytes, escolaNome] of [
     camposSensiveis: sensitive,
     logoBytes,
   });
+  await writeFile(output + "/" + filename, bytes);
+  console.log(filename, bytes.length, "bytes gerados");
+}
+
+
+const alunosGerais: AlunoListItem[] = sample.map((row, index) => ({
+  id: "aluno-sintetico-" + String(index + 1),
+  aluno_id: "aluno-sintetico-" + String(index + 1),
+  nome: row.nome,
+  numero_processo_login: row.processo,
+  responsavel: "Encarregado de Educação Sintético com Nome Extenso",
+  telefone_responsavel: "+244 900 000 000",
+  status_matricula: "matriculado",
+  turma_nome: row.turma,
+  classe_nome: "7ª Classe",
+  turno: index % 2 ? "M" : "Manhã",
+  bolsa_integral: index % 2 === 0,
+}));
+const contextoGeral = {
+  escola: escolaLonga,
+  anoLetivo: "2025/2026",
+  emissor: "conta-de-teste",
+  filtros: [
+    "Ano letivo: 2025/2026",
+    "Bolsa: Todos  |  Classe: Todas  |  Turma: Todas  |  Turno: Todos",
+  ],
+  logoBytes: logoHorizontal,
+};
+for (const [filename, rows] of [
+  ["lista_alunos_geral_sintetica_55.pdf", alunosGerais],
+  ["lista_alunos_geral_sintetica_vazia.pdf", []],
+] as const) {
+  const bytes = await renderAlunosPdf(rows, contextoGeral);
   await writeFile(output + "/" + filename, bytes);
   console.log(filename, bytes.length, "bytes gerados");
 }
