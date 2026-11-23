@@ -547,6 +547,6 @@ test("PR #455: autorização da bolsa usa bloco PL/pgSQL com delimitadores váli
   assert.match(sql, /AS \$\$\s+DECLARE/, "PL/pgSQL must open with $$");
   assert.match(sql, /END;\s*\$\$;/, "PL/pgSQL must close with $$;");
   assert.match(migration, /p\.percentagem_desconto < 100/);
-  assert.match(migration, /AND NOT p\.bolsa_integral/);
+  assert.match(migration, /AND NOT \(p\.bolsa_integral/);
   assert.match(migration, /NOT EXISTS \(\s*SELECT 1 FROM public\.pagamentos pg/);
 });
