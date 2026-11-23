@@ -152,9 +152,10 @@ export async function POST(request: Request) {
       if (pedidoError || intentError) {
         return NextResponse.json({ ok: false, error: "Não foi possível validar a solicitação." }, { status: 503 });
       }
+      const contextoPedido = asRecord(pedido?.contexto);
       if (!pedido || !intent || !pedido.matricula_id ||
-          pedido.contexto?.origem !== "documentos_emissao_individual" ||
-          pedido.contexto?.ano_letivo_id !== payload.ano_letivo_id ||
+          contextoPedido.origem !== "documentos_emissao_individual" ||
+          contextoPedido.ano_letivo_id !== payload.ano_letivo_id ||
           pedido.servico_codigo !== codigo || intent.servico_pedido_id !== pedido.id ||
           Number(pedido.valor_cobrado) <= 0 ||
           Number(pedido.valor_cobrado) !== payload.valor ||
