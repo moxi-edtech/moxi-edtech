@@ -19,6 +19,55 @@ CREATE INDEX IF NOT EXISTS idx_matriculas_bolsa_integral_scope
   ON public.matriculas(escola_id, aluno_id, ano_letivo, turma_id)
   WHERE bolsa_integral = true OR percentagem_desconto = 100;
 
+-- Impede que utilizadores sem papel financeiro/secretaria contornem a API com
+-- atualizações diretas da coluna de bolsa (ou desconto integral) via Data API.
+CREATE OR REPLACE FUNCTION public.klasse_autorizar_escrita_bolsa_matricula()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public'
+AS $
+DECLARE
+  v_requer_autorizacao boolean := false;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    v_requer_autorizacao := NEW.bolsa_integral OR coalesce(NEW.percentagem_desconto,0) >= 100;
+  ELSE
+    v_requer_autorizacao :=
+      NEW.bolsa_integral IS DISTINCT FROM OLD.bolsa_integral
+      OR NEW.bolsa_integral_motivo IS DISTINCT FROM OLD.bolsa_integral_motivo
+      OR (
+        NEW.percentagem_desconto IS DISTINCT FROM OLD.percentagem_desconto
+        AND (coalesce(NEW.percentagem_desconto,0) >= 100
+             OR coalesce(OLD.percentagem_desconto,0) >= 100)
+      );
+  END IF;
+
+  IF NOT v_requer_autorizacao OR current_user IN ('postgres','service_role') THEN
+    RETURN NEW;
+  END IF;
+
+  IF auth.uid() IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.escola_users eu
+    WHERE eu.user_id = auth.uid()
+      AND eu.escola_id = NEW.escola_id
+      AND eu.papel IN ('admin','admin_escola','admin_financeiro',
+        'admin_secretaria','admin_secretario','secretaria','financeiro','diretor','staff_admin')
+  ) THEN
+    RAISE EXCEPTION 'FORBIDDEN: sem permissão para alterar bolsa integral' USING ERRCODE='42501';
+  END IF;
+  RETURN NEW;
+END;
+$;
+
+DROP TRIGGER IF EXISTS trg_03_autorizar_bolsa_matricula ON public.matriculas;
+CREATE TRIGGER trg_03_autorizar_bolsa_matricula
+  BEFORE INSERT OR UPDATE OF bolsa_integral, bolsa_integral_motivo, percentagem_desconto
+  ON public.matriculas FOR EACH ROW
+  EXECUTE FUNCTION public.klasse_autorizar_escrita_bolsa_matricula();
+
+REVOKE ALL ON FUNCTION public.klasse_autorizar_escrita_bolsa_matricula()
+FROM PUBLIC, anon, authenticated;
+
 -- Defesa de última linha em todas as inserções de mensalidades, inclusive rotas
 -- novas, scripts SQL, gatilho de matrícula e gerações em lote.
 CREATE OR REPLACE FUNCTION public.klasse_guard_bolsa_mensalidade()
@@ -166,9 +215,22 @@ BEGIN
 
   IF v_matricula.bolsa_integral IS DISTINCT FROM p_bolseiro
      OR v_matricula.bolsa_integral_motivo IS DISTINCT FROM v_motivo THEN
+    IF NOT p_bolseiro AND coalesce(v_matricula.percentagem_desconto,0) >= 100
+       AND coalesce(v_matricula.motivo_desconto,'') NOT ILIKE '%bolsa%' THEN
+      RAISE EXCEPTION 'DESCONTO_INTEGRAL_DISTINTO_DE_BOLSA' USING ERRCODE='23514';
+    END IF;
+
     UPDATE public.matriculas
       SET bolsa_integral = p_bolseiro,
           bolsa_integral_motivo = v_motivo,
+          percentagem_desconto = CASE WHEN NOT p_bolseiro
+              AND coalesce(v_matricula.percentagem_desconto,0) >= 100
+              AND coalesce(v_matricula.motivo_desconto,'') ILIKE '%bolsa%'
+            THEN 0 ELSE percentagem_desconto END,
+          motivo_desconto = CASE WHEN NOT p_bolseiro
+              AND coalesce(v_matricula.percentagem_desconto,0) >= 100
+              AND coalesce(v_matricula.motivo_desconto,'') ILIKE '%bolsa%'
+            THEN NULL ELSE motivo_desconto END,
           updated_at = now()
       WHERE id = v_matricula.id AND escola_id = p_escola_id;
 
