@@ -491,7 +491,7 @@ export default function DocumentosEmissaoHubClient({
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold text-foreground">Balcão de Emissão Rápida</h1>
         <p className="text-sm text-muted-foreground">
-          Selecione o aluno, escolha o tipo de declaração e imprima na hora.
+          Selecione o aluno e o ano letivo. Valide o pagamento antes de emitir; reimpressões não geram cobrança.
         </p>
       </div>
 
@@ -604,14 +604,15 @@ export default function DocumentosEmissaoHubClient({
 
       <section
         className={`overflow-hidden transition-all duration-300 ease-out ${
-          isPago && selectedServico ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
+          isPago && documentState?.status === "pending_payment" ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        {isPago && selectedServico && (
+        {isPago && documentState?.status === "pending_payment" && (
           <div className="rounded-2xl border border-border bg-muted p-5 shadow-sm space-y-4">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Checkout rápido</h3>
-              <p className="text-sm font-semibold text-foreground">Total a pagar: {valorBase} Kz</p>
+              <h3 className="text-sm font-semibold text-foreground">Registar pagamento do serviço</h3>
+              <p className="text-sm font-semibold text-foreground">Taxa configurada: {valorBase.toLocaleString("pt-AO")} Kz</p>
+              <p className="text-xs text-muted-foreground">Numerário validado no balcão. TPA e transferência requerem confirmação financeira.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {[
@@ -669,8 +670,20 @@ export default function DocumentosEmissaoHubClient({
           <p className="mt-1">Aluno: <strong>{selectedAluno.label}</strong></p>
           <p>Documento: <strong>{TIPOS.find((item) => item.id === tipo)?.title}</strong></p>
           <p>Taxa: <strong>{isPago ? `${valorBase} Kz` : "Gratuito"}</strong></p>
-          {requiresPaidNotes && <p className="mt-2 text-amber-800">A emissão só será permitida depois de este serviço estar concedido e o pagamento efectivamente liquidado. Confirmar o pedido não substitui validar o pagamento.</p>}
+          <p className="mt-2 text-muted-foreground">
+            {statusLoading ? "A verificar a situação do documento..." :
+              documentState?.status === "issued" ? "Documento emitido. Reimpressões não geram cobrança." :
+              documentState?.status === "paid" ? "Pagamento confirmado. Pronto para emitir." :
+              documentState?.status === "free" ? "Sem taxa pendente. Pronto para emitir." :
+              documentState?.status === "verification" ? "Pagamento em validação. Aguarde a confirmação financeira." :
+              documentState?.status === "approval" ? "Aguarda aprovação da secretaria." :
+              documentState?.status === "pending_payment" ? "Emissão bloqueada até ao registo e validação do pagamento." :
+              "A consultar a situação atual."}
+          </p>
         </section>
+      )}
+      {success && (
+        <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{success}</p>
       )}
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -683,29 +696,59 @@ export default function DocumentosEmissaoHubClient({
           <div className="font-semibold mb-2">Documentos prontos para impressão</div>
           <div className="space-y-2">
             {printQueue.map((doc, index) => (
-              <button
+              <a
                 key={`${doc.url}-${index}`}
-                type="button"
-                onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
-                className="w-full rounded-lg border border-emerald-200 bg-card px-3 py-2 text-left text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                href={doc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full rounded-xl border border-emerald-200 bg-card px-3 py-2 text-left text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
               >
                 Abrir documento
-              </button>
+              </a>
             ))}
           </div>
         </div>
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={handleEmitir}
-          disabled={!canSubmit}
-          className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
-          {isPago ? "Pagar e Emitir Documento" : "Emitir e Imprimir"}
-        </button>
+        {documentState?.status === "issued" && documentState.printUrl ? (
+          <>
+            <button type="button" onClick={handleEmitir} disabled={!canSubmit}
+              className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              <Printer className="h-4 w-4" /> Imprimir novamente
+            </button>
+            <a href={documentState.printUrl} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground">
+              Abrir documento
+            </a>
+          </>
+        ) : documentState?.granted ? (
+          <button type="button" onClick={handleEmitir} disabled={!canSubmit}
+            className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+            {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            Emitir documento
+          </button>
+        ) : documentState?.status === "pending_payment" ? (
+          <button type="button" onClick={handlePagamento} disabled={!canSubmit}
+            className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+            {paymentBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
+            Registar pagamento
+          </button>
+        ) : documentState?.status === "approval" ? (
+          <p className="text-sm text-muted-foreground">O pedido aguarda aprovação. Nenhuma cobrança adicional é necessária.</p>
+        ) : !statusLoading && !error && selectedAluno && tipo ? (
+          <button type="button" onClick={handleSolicitar} disabled={!canSubmit}
+            className="rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground disabled:opacity-60">
+            Verificar serviço
+          </button>
+        ) : null}
+        {selectedAluno && tipo && selectedAnoLetivoId && (
+          <button type="button" onClick={handleRefresh} disabled={submitting || paymentBusy || statusLoading}
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-60">
+            <RefreshCw className={`h-4 w-4 ${statusLoading ? "animate-spin" : ""}`} />
+            Atualizar estado
+          </button>
+        )}
       </div>
     </main>
   );
