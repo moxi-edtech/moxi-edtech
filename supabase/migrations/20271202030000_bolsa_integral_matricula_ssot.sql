@@ -215,7 +215,9 @@ BEGIN
     ELSE NULL END;
 
   IF v_matricula.bolsa_integral IS DISTINCT FROM p_bolseiro
-     OR v_matricula.bolsa_integral_motivo IS DISTINCT FROM v_motivo THEN
+     OR v_matricula.bolsa_integral_motivo IS DISTINCT FROM v_motivo
+     OR (NOT p_bolseiro AND coalesce(v_matricula.percentagem_desconto,0) >= 100
+         AND coalesce(v_matricula.motivo_desconto,'') ILIKE '%bolsa%') THEN
     IF NOT p_bolseiro AND coalesce(v_matricula.percentagem_desconto,0) >= 100
        AND coalesce(v_matricula.motivo_desconto,'') NOT ILIKE '%bolsa%' THEN
       RAISE EXCEPTION 'DESCONTO_INTEGRAL_DISTINTO_DE_BOLSA' USING ERRCODE='23514';
