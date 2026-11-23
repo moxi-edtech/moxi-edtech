@@ -18,6 +18,23 @@ BEGIN
   SELECT * INTO v_hist FROM public.historico_anos WHERE escola_id = p_escola_id AND aluno_id = p_aluno_id AND ano_letivo = p_ano_letivo LIMIT 1;
   IF v_hist.id IS NULL THEN RAISE EXCEPTION 'LEGAL_LOCK: histórico anual ainda não foi fechado.'; END IF;
   IF coalesce(v_hist.snapshot_status, 'aberto') <> 'fechado' THEN RAISE EXCEPTION 'LEGAL_LOCK: histórico anual ainda não foi fechado.'; END IF;
+  -- Mesmo que exista uma emissão anterior, não devolver certificado vazio.
+  -- 0 é uma nota válida; NULL e nota fora da escala não são.
+  IF p_tipo_documento = 'certificado' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.historico_disciplinas d
+      WHERE d.historico_ano_id = v_hist.id
+    ) OR EXISTS (
+      SELECT 1 FROM public.historico_disciplinas d
+      WHERE d.historico_ano_id = v_hist.id
+        AND ((d.nota_final IS NULL AND d.media_final IS NULL)
+          OR coalesce(d.nota_final,d.media_final) NOT BETWEEN 0 AND 20
+          OR nullif(btrim(d.disciplina_nome),'') IS NULL)
+    ) THEN
+      RAISE EXCEPTION 'CERTIFICADO_NOTAS_INCOMPLETAS: regularize classificações oficiais antes de emitir.'
+        USING ERRCODE = '22023';
+    END IF;
+  END IF;
   SELECT id, public_id, hash_validacao INTO v_doc FROM public.documentos_emitidos WHERE escola_id = p_escola_id AND aluno_id = p_aluno_id AND tipo = p_tipo_documento::public.tipo_documento AND dados_snapshot->>'ano_letivo' = p_ano_letivo::text ORDER BY created_at DESC LIMIT 1;
   IF v_doc.id IS NOT NULL THEN RETURN jsonb_build_object('ok', true, 'docId', v_doc.id, 'publicId', v_doc.public_id, 'hash', v_doc.hash_validacao, 'reused', true); END IF;
   SELECT nome, nome_completo, bi_numero, numero_processo, data_nascimento INTO v_aluno FROM public.alunos WHERE id = p_aluno_id AND escola_id = p_escola_id;
