@@ -86,7 +86,7 @@ export default async function FinalDocumentPrint({ docId, expectedType, title, r
                   </tr>
                 ))}</tbody>
               </table></div>
-            )
+            )}
           </section>
         ) : null}
         <p className="text-sm leading-7">Este documento foi emitido a partir do histórico anual fechado da escola e pode ser validado pelo identificador oficial associado.</p>
