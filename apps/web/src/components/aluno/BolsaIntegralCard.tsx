@@ -29,6 +29,7 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
   const [mesVigencia, setMesVigencia] = useState("");
   const [confirmando, setConfirmando] = useState(false);
   const [avisoFiscal, setAvisoFiscal] = useState(0);
+  const [avisoPagamento, setAvisoPagamento] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -41,6 +42,7 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
     setFailed(false);
     setConfirmando(false);
     setAvisoFiscal(0);
+    setAvisoPagamento(0);
     fetch(endpoint, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json();
@@ -80,6 +82,7 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
         vigencia_inicio: next ? result.vigencia_inicio : null,
       } : null);
       setAvisoFiscal(Number(result.pendentes_revisao_fiscal ?? 0));
+      setAvisoPagamento(Number(result.pendentes_revisao_pagamento ?? 0));
       setConfirmando(false);
       setMesVigencia("");
       success("Bolsa atualizada", next
@@ -173,6 +176,11 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
                 </button>
               </div>
             </div>
+          )}
+          {avisoPagamento > 0 && (
+            <p role="alert" className="text-sm text-foreground">
+              {avisoPagamento} cobrança(s) têm pagamentos inconsistentes. Verifique a conciliação antes de isentar o saldo.
+            </p>
           )}
           {avisoFiscal > 0 && (
             <p role="alert" className="text-sm text-foreground">
