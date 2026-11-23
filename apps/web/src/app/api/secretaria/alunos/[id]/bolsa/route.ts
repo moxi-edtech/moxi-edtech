@@ -17,6 +17,8 @@ const updateSchema = z.object({
   bolseiro: z.boolean(),
   motivo: z.string().trim().max(160).nullable().optional(),
   vigencia_inicio: z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])-01$/).nullable().optional(),
+  regularizacao_retroativa: z.boolean().optional(),
+  justificativa: z.string().trim().max(500).nullable().optional(),
 });
 
 async function contexto(req: Request, id: string) {
@@ -58,7 +60,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   let query = ctx.supabase!
     .from("matriculas")
-    .select("id, ano_letivo, status, bolsa_integral, bolsa_integral_motivo, bolsa_integral_inicio, percentagem_desconto, motivo_desconto")
+    .select("id, turma_id, ano_letivo, status, bolsa_integral, bolsa_integral_motivo, bolsa_integral_inicio, percentagem_desconto, motivo_desconto")
     .eq("escola_id", ctx.escolaId)
     .eq("aluno_id", id)
     .order("ano_letivo", { ascending: false })
@@ -84,6 +86,26 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const bolsaAnterior = (anteriores ?? []).find((m: any) => Boolean(m.bolsa_integral ||
     (Number(m.percentagem_desconto ?? 0) === 100 && /bolsa/i.test(m.motivo_desconto ?? ""))));
 
+  const { data: ano, error: anoError } = await ctx.supabase!
+    .from("anos_letivos").select("data_inicio")
+    .eq("escola_id",ctx.escolaId).eq("ano",atual.ano_letivo)
+    .order("ativo",{ascending:false}).order("created_at",{ascending:false}).limit(1).maybeSingle();
+  if (anoError) return NextResponse.json({ok:false,error:"Não foi possível consultar o ano letivo"},{status:500});
+  const { data: cobrancas, error: cobrancasError } = await ctx.supabase!
+    .from("mensalidades")
+    .select("id,matricula_id,turma_id,ano_referencia,mes_referencia,valor_pago_total,status,fiscal_documento_id,status_fiscal")
+    .eq("escola_id",ctx.escolaId).eq("aluno_id",id)
+    .eq("ano_letivo",String(atual.ano_letivo)).limit(300);
+  if (cobrancasError) return NextResponse.json({ok:false,error:"Não foi possível consultar propinas"},{status:500});
+  const mesAtual = new Date().toISOString().slice(0,7);
+  const mensalidadesPendentes = (cobrancas ?? [])
+    .filter((me: any) => me.matricula_id === atual.id || (!me.matricula_id && me.turma_id === atual.turma_id))
+    .filter((me: any) => me.status === "pendente" && Number(me.valor_pago_total ?? 0) === 0
+      && !me.fiscal_documento_id && (!me.status_fiscal || me.status_fiscal === "pending"))
+    .map((me: any) => `${me.ano_referencia}-${String(me.mes_referencia).padStart(2,"0")}`)
+    .filter((mes: string) => mes < mesAtual)
+    .sort();
+
   return NextResponse.json({
     ok: true,
     matricula: {
@@ -100,6 +122,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       motivo: atual.bolsa_integral_motivo ?? atual.motivo_desconto ?? null,
       vigencia_inicio: atual.bolsa_integral_inicio ?? null,
       bolsa_ano_anterior: bolsaAnterior ? Number(bolsaAnterior.ano_letivo) : null,
+      ano_inicio: ano?.data_inicio ?? null,
+      propinas_antigas_potenciais: mensalidadesPendentes,
     },
   }, { headers: { "Cache-Control": "no-store" } });
 }
@@ -119,11 +143,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     p_bolseiro: parsed.data.bolseiro,
     p_motivo: parsed.data.motivo ?? null,
     p_vigencia_inicio: parsed.data.vigencia_inicio ?? null,
+    p_regularizacao_retroativa: parsed.data.regularizacao_retroativa ?? false,
+    p_justificativa: parsed.data.justificativa ?? null,
   });
   if (error || !data?.ok) {
     const code = error?.code;
     return NextResponse.json(
-      { ok: false, error: code === "42501" ? "Sem permissão para gerir bolsas" : code === "P0002" ? "Matrícula não encontrada" : code === "23514" ? "Vigência inválida ou benefício incompatível com a matrícula" : "Não foi possível atualizar a bolsa" },
+      { ok: false, error: code === "42501" ? "Sem permissão para gerir bolsas" : code === "P0002" ? "Matrícula não encontrada" : code === "23514" ? "Vigência ou justificação inválida. Confirme o início da bolsa e a regularização." : "Não foi possível atualizar a bolsa" },
       { status: code === "42501" ? 403 : code === "P0002" ? 404 : 409 },
     );
   }
