@@ -160,6 +160,11 @@ export async function GET(request: Request) {
     const ledgerMovimentos = (movimentos ?? []) as FinanceiroLedgerMovimento[];
     const totalDebitos = ledgerMovimentos.filter((m) => m.tipo === "debito").reduce((a, b) => a + Number(b.valor), 0) || 0;
     const totalCreditos = ledgerMovimentos.filter((m) => m.tipo === "credito").reduce((a, b) => a + Number(b.valor), 0) || 0;
+    // Créditos de isenção não são dinheiro recebido. Apenas lançamentos
+    // liquidados e referenciados na tabela pagamentos contam como "Total pago".
+    const totalPagoReal = ledgerMovimentos
+      .filter((m) => m.tipo === "credito" && m.referencia_tabela === "pagamentos" && m.tipo_evento === "liquidado")
+      .reduce((total, m) => total + Number(m.valor), 0);
     const saldoConsolidado = totalDebitos - totalCreditos;
 
     return NextResponse.json({
@@ -173,7 +178,7 @@ export async function GET(request: Request) {
       movimentos: ledgerMovimentos,
       resumo: {
         saldo_consolidado: saldoConsolidado,
-        total_pago: totalCreditos,
+        total_pago: totalPagoReal,
         total_pendente: saldoConsolidado > 0 ? saldoConsolidado : 0,
         em_dia: saldoConsolidado <= 0
       },
