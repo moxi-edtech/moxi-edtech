@@ -63,5 +63,7 @@ test("a Central é a única interface e API de emissão individual", () => {
   assert.doesNotMatch(hub, /api\/secretaria\/documentos\/individual/);
   assert.match(hub, /api\/secretaria\/documentos\/emitir/);
   const balcao = src("components/secretaria/BalcaoAtendimento.tsx");
-  assert.match(balcao, /window\.location\.assign\(\`\/secretaria\/documentos\?/);
+  assert.match(balcao, /window\.location\.assign\(href\)/);
+  assert.match(balcao, /hrefEmissaoIndividual\(alunoId: string \| null, servico: Servico/);
+  assert.doesNotMatch(balcao, /checkout\.emitirDocumento|emitirDocumentoViaApi/);
 });
