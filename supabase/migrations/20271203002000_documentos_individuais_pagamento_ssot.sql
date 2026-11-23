@@ -88,10 +88,10 @@ BEGIN
     WHERE escola_id = p_escola_id AND aluno_id = p_aluno_id AND ano_letivo = v_ano
     LIMIT 1;
     IF v_historico IS NULL THEN
-      RETURN jsonb_build_object('ok',false,'status','blocked','reason','HISTORICO_INEXISTENTE');
+      RETURN jsonb_build_object('ok',false,'granted',false,'status','blocked','reason','HISTORICO_INEXISTENTE');
     END IF;
     IF v_status_historico IS DISTINCT FROM 'fechado' THEN
-      RETURN jsonb_build_object('ok',false,'status','blocked','reason','HISTORICO_ABERTO');
+      RETURN jsonb_build_object('ok',false,'granted',false,'status','blocked','reason','HISTORICO_ABERTO');
     END IF;
     SELECT count(*), count(*) FILTER (WHERE
       (nota_final IS NULL AND media_final IS NULL)
@@ -100,10 +100,10 @@ BEGIN
     ) INTO v_total_notas, v_invalidas
     FROM public.historico_disciplinas WHERE historico_ano_id = v_historico;
     IF v_total_notas = 0 THEN
-      RETURN jsonb_build_object('ok',false,'status','blocked','reason','NOTAS_INEXISTENTES');
+      RETURN jsonb_build_object('ok',false,'granted',false,'status','blocked','reason','NOTAS_INEXISTENTES');
     END IF;
     IF v_invalidas > 0 THEN
-      RETURN jsonb_build_object('ok',false,'status','blocked','reason','NOTAS_INCOMPLETAS');
+      RETURN jsonb_build_object('ok',false,'granted',false,'status','blocked','reason','NOTAS_INCOMPLETAS');
     END IF;
   END IF;
 
