@@ -2108,9 +2108,6 @@ function Step3Pagamento(props: {
               anoLetivo: anoLetivo || "2025/2026",
             }}
             onEscolher={async (passo: Passo) => {
-              const targetAlunoId = result.aluno_id || candidaturaId;
-              const targetEscolaId = escolaId;
-
               if (passo.id === "emitir_boletim") {
                 setPostActionDocumentError(null);
                 if (result.comprovante?.printUrl) {
