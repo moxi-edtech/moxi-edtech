@@ -10,6 +10,8 @@ export type NominalA4Row = {
   nascimento?: string;
   naturalidade?: string;
   bi?: string;
+  // Permite colunas adicionais na lista geral sem replicar o layout institucional.
+  [campo: string]: string | undefined;
 };
 export type NominalA4Options = {
   escola: string;
@@ -23,6 +25,11 @@ export type NominalA4Options = {
   camposSensiveis?: boolean;
   logoBytes?: Uint8Array;
   qrImageBytes?: Uint8Array;
+  /** O relatório geral de alunos reutiliza o mesmo template com outras colunas. */
+  titulo?: string;
+  colunas?: readonly { key: keyof NominalA4Row; label: string; width: number }[];
+  contexto?: readonly string[];
+  vazio?: string;
 };
 
 type CellColumn = { key: keyof NominalA4Row; label: string; width: number };
@@ -100,10 +107,11 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
   const {
     escola, turma, anoLetivo, modo, alunos, excluidos, emissor,
     emitidoEm = new Date(), camposSensiveis = false, logoBytes, qrImageBytes,
+    titulo = "LISTA NOMINAL DE ALUNOS", colunas, contexto, vazio,
   } = options;
 
   const doc = await PDFDocument.create();
-  doc.setTitle("Lista nominal de alunos");
+  doc.setTitle(titulo === "LISTA NOMINAL DE ALUNOS" ? "Lista nominal de alunos" : titulo);
   doc.setAuthor("KLASSE");
   doc.setProducer("KLASSE");
   doc.setSubject("Lista académica de alunos");
@@ -113,7 +121,7 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const [pageW, pageH] = camposSensiveis ? A4_LANDSCAPE : A4_PORTRAIT;
   const available = pageW - 2 * MARGIN;
-  const cols: CellColumn[] = camposSensiveis
+  const cols: readonly CellColumn[] = colunas ?? (camposSensiveis
     ? [
         { key: "numero", label: "Nº", width: 26 },
         { key: "processo", label: "Processo", width: 70 },
@@ -130,7 +138,7 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
         { key: "nome", label: "Nome completo", width: 254 },
         { key: "turma", label: "Turma", width: 103 },
         { key: "estado", label: "Situação", width: 69 },
-      ];
+      ]);
   const used = cols.reduce((sum, col) => sum + col.width, 0);
   if (used > available) throw new Error("Largura da pauta ultrapassa a área útil do A4");
 
@@ -183,11 +191,18 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
     let y = headerTop - headerHeight - 9;
     page.drawLine({ start: { x: MARGIN, y }, end: { x: pageW - MARGIN, y }, thickness: 0.9, color: rgb(0.84, 0.86, 0.89) });
     y -= 22;
-    page.drawText("LISTA NOMINAL DE ALUNOS", { x: MARGIN, y, font: bold, size: 13, color: rgb(0.13, 0.17, 0.23) });
+    page.drawText(printable(titulo, bold), { x: MARGIN, y, font: bold, size: 13, color: rgb(0.13, 0.17, 0.23) });
     y -= 19;
-    y -= drawFit(page, "Turma: " + turma + "  |  Ano letivo: " + anoLetivo, MARGIN, y, available, bold, 9, 12) * 12;
-    y -= drawFit(page, "Modo: " + modo, MARGIN, y, available, font, 9, 12) * 12;
-    y -= drawFit(page, "Alunos: " + alunos.length + "  |  Excluídos: " + excluidos, MARGIN, y, available, font, 8, 11) * 11;
+    if (contexto) {
+      for (const linha of contexto) {
+        y -= drawFit(page, linha, MARGIN, y, available, font, 9, 12) * 12;
+      }
+      y -= drawFit(page, "Alunos: " + alunos.length, MARGIN, y, available, font, 8, 11) * 11;
+    } else {
+      y -= drawFit(page, "Turma: " + turma + "  |  Ano letivo: " + anoLetivo, MARGIN, y, available, bold, 9, 12) * 12;
+      y -= drawFit(page, "Modo: " + modo, MARGIN, y, available, font, 9, 12) * 12;
+      y -= drawFit(page, "Alunos: " + alunos.length + "  |  Excluídos: " + excluidos, MARGIN, y, available, font, 8, 11) * 11;
+    }
     if (camposSensiveis) {
       page.drawText("INFORMAÇÃO SENSÍVEL - USO AUTORIZADO", { x: MARGIN, y, font: bold, size: 8, color: rgb(0.62, 0.25, 0.17) });
       y -= 12;
@@ -196,7 +211,7 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
     page.drawRectangle({ x: MARGIN, y: y - 19, width: used, height: 19, color: rgb(0.12, 0.17, 0.24) });
     let x = MARGIN;
     for (const col of cols) {
-      page.drawText(col.label, { x: x + 4, y: y - 12, size: 7.7, font: bold, color: rgb(1, 1, 1) });
+      page.drawText(printable(col.label, bold), { x: x + 4, y: y - 12, size: 7.7, font: bold, color: rgb(1, 1, 1) });
       x += col.width;
     }
     y -= 21;
@@ -215,7 +230,7 @@ export async function renderNominalA4(options: NominalA4Options): Promise<Uint8A
 
   if (prepared.length === 0) {
     y -= 25;
-    page.drawText("Sem alunos matriculados neste período", { x: MARGIN + 8, y, font: bold, size: 11 });
+    page.drawText(printable(vazio ?? "Sem alunos matriculados neste período", bold), { x: MARGIN + 8, y, font: bold, size: 11 });
   }
 
   for (let rowIdx = 0; rowIdx < prepared.length; rowIdx++) {
