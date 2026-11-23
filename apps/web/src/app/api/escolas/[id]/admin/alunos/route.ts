@@ -3,7 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { K12_ADMIN_SECRETARIA_ROLE_GROUP } from "@/lib/roles";
-import { listAllAlunos, listAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
+import { InvalidAlunoFiltersError, listAllAlunos, listAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
 import type { Database } from "~types/supabase";
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -71,6 +71,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
     return NextResponse.json({ ok: true, items, next_cursor: page.nextCursor ? `${page.nextCursor.created_at},${page.nextCursor.id}` : null });
   } catch (e) {
+    if (e instanceof InvalidAlunoFiltersError) {
+      return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
+    }
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
