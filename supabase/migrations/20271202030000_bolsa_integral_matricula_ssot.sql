@@ -60,6 +60,20 @@ BEGIN
     RAISE EXCEPTION 'BOLSA_VIGENCIA_MES_INVALIDA' USING ERRCODE='23514';
   END IF;
 
+  -- Retificação de vigência histórica exige RPC auditada e não atualização livre.
+  IF TG_OP='UPDATE'
+     AND NEW.bolsa_integral
+     AND NEW.bolsa_integral_inicio < date_trunc('month',CURRENT_DATE)::date
+     AND (NEW.bolsa_integral IS DISTINCT FROM OLD.bolsa_integral
+          OR NEW.bolsa_integral_inicio IS DISTINCT FROM OLD.bolsa_integral_inicio)
+     AND current_setting('klasse.bolsa_retroativa_matricula_id',true)
+         IS DISTINCT FROM NEW.id::text
+     AND session_user <> 'postgres'
+     AND coalesce(auth.jwt()->>'role','') <> 'service_role'
+  THEN
+    RAISE EXCEPTION 'BOLSA_RETROATIVA_EXIGE_RPC' USING ERRCODE='42501';
+  END IF;
+
   IF TG_OP='INSERT' THEN
     v_requer_autorizacao := NEW.bolsa_integral OR coalesce(NEW.percentagem_desconto,0)>=100;
   ELSE
@@ -244,6 +258,8 @@ BEGIN
        AND (me.matricula_id=NEW.id OR (me.matricula_id IS NULL
              AND me.turma_id=NEW.turma_id AND me.ano_letivo=NEW.ano_letivo::text))
        AND date_trunc('month',me.data_vencimento)::date >= v_inicio
+       -- Parcelas com pagamento parcial antigo não entram numa regularização retroativa.
+       AND date_trunc('month',me.data_vencimento)::date >= date_trunc('month',CURRENT_DATE)::date
        AND me.status='pago_parcial'
        -- O trigger académico existente zera valores no mês final não-exame:
        -- nunca processar automaticamente um título com pagamentos nessa competência.
@@ -284,7 +300,9 @@ CREATE OR REPLACE FUNCTION public.klasse_definir_bolsa_integral(
   p_matricula_id uuid,
   p_bolseiro boolean,
   p_motivo text DEFAULT NULL,
-  p_vigencia_inicio date DEFAULT NULL
+  p_vigencia_inicio date DEFAULT NULL,
+  p_regularizacao_retroativa boolean DEFAULT false,
+  p_justificativa text DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER
@@ -301,6 +319,8 @@ DECLARE
   v_reabertas integer := 0;
   v_pendentes_revisao integer := 0;
   v_revisao_pagamento integer := 0;
+  v_retroativa boolean := false;
+  v_mes_atual date := date_trunc('month', CURRENT_DATE)::date;
 BEGIN
   IF auth.uid() IS NULL OR NOT EXISTS (
     SELECT 1 FROM public.escola_users eu
@@ -331,10 +351,18 @@ BEGIN
     date_trunc('month',CURRENT_DATE +
       CASE WHEN p_bolseiro THEN interval '0 months' ELSE interval '1 month' END)::date);
   IF v_inicio <> date_trunc('month',v_inicio)::date
-     OR v_inicio < date_trunc('month',CURRENT_DATE)::date
      OR v_inicio < date_trunc('month',v_ano_inicio)::date
-     OR v_inicio > date_trunc('month',v_ano_fim)::date THEN
+     OR v_inicio > date_trunc('month',v_ano_fim)::date
+     OR (NOT p_bolseiro AND v_inicio < v_mes_atual) THEN
     RAISE EXCEPTION 'BOLSA_VIGENCIA_FORA_DA_JANELA' USING ERRCODE='23514';
+  END IF;
+  v_retroativa := p_bolseiro AND v_inicio < v_mes_atual;
+  IF v_retroativa AND (
+       NOT coalesce(p_regularizacao_retroativa,false)
+       OR char_length(btrim(coalesce(p_justificativa,''))) < 10
+       OR char_length(btrim(coalesce(p_justificativa,''))) > 500
+     ) THEN
+    RAISE EXCEPTION 'BOLSA_RETROATIVA_EXIGE_JUSTIFICATIVA' USING ERRCODE='23514';
   END IF;
 
   IF NOT p_bolseiro AND NOT v_matricula.bolsa_integral
@@ -348,9 +376,11 @@ BEGIN
     RAISE EXCEPTION 'DESCONTO_INTEGRAL_DISTINTO_DE_BOLSA' USING ERRCODE='23514';
   END IF;
 
+  -- Permite antecipar a vigência sem recriar cobranças já dispensadas.
   IF p_bolseiro AND v_matricula.bolsa_integral
-     AND v_matricula.bolsa_integral_inicio IS DISTINCT FROM v_inicio THEN
-    RAISE EXCEPTION 'BOLSA_JA_ATIVA_VIGENCIA_IMUTAVEL' USING ERRCODE='23514';
+     AND v_matricula.bolsa_integral_inicio IS NOT NULL
+     AND v_inicio > v_matricula.bolsa_integral_inicio THEN
+    RAISE EXCEPTION 'BOLSA_VIGENCIA_EXISTENTE_NAO_PODE_AVANCAR' USING ERRCODE='23514';
   END IF;
 
   v_motivo := CASE WHEN p_bolseiro
@@ -358,6 +388,9 @@ BEGIN
     ELSE NULL END;
 
   IF p_bolseiro THEN
+    IF v_retroativa THEN
+      PERFORM set_config('klasse.bolsa_retroativa_matricula_id',v_matricula.id::text,true);
+    END IF;
     UPDATE public.matriculas
       SET bolsa_integral=true,
           bolsa_integral_inicio=v_inicio,
@@ -451,6 +484,8 @@ BEGIN
      jsonb_build_object('aluno_id',p_aluno_id,'ano_letivo',v_matricula.ano_letivo,
        'anterior',v_matricula.bolsa_integral,'atual',p_bolseiro,
        'vigencia_inicio',v_inicio,'motivo',v_motivo,
+       'regularizacao_retroativa',v_retroativa,
+       'justificativa_retroativa',CASE WHEN v_retroativa THEN btrim(p_justificativa) ELSE NULL END,
        'isentas',v_isentas,'quitadas_parciais',v_quitadas_parciais,
        'reabertas',v_reabertas,'pendentes_revisao_fiscal',v_pendentes_revisao,
        'pendentes_revisao_pagamento',v_revisao_pagamento));
@@ -458,14 +493,15 @@ BEGIN
   RETURN jsonb_build_object('ok',true,'matricula_id',v_matricula.id,
        'ano_letivo',v_matricula.ano_letivo,'bolseiro',p_bolseiro,
        'vigencia_inicio',v_inicio,'motivo',v_motivo,
+       'regularizacao_retroativa',v_retroativa,
        'isentas',v_isentas,'quitadas_parciais',v_quitadas_parciais,
        'reabertas',v_reabertas,'pendentes_revisao_fiscal',v_pendentes_revisao,
        'pendentes_revisao_pagamento',v_revisao_pagamento);
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.klasse_definir_bolsa_integral(uuid,uuid,uuid,boolean,text,date) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.klasse_definir_bolsa_integral(uuid,uuid,uuid,boolean,text,date) TO authenticated;
+REVOKE ALL ON FUNCTION public.klasse_definir_bolsa_integral(uuid,uuid,uuid,boolean,text,date,boolean,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.klasse_definir_bolsa_integral(uuid,uuid,uuid,boolean,text,date,boolean,text) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.klasse_guard_bolsa_mensalidade() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.klasse_reconciliar_bolsa_matricula() FROM PUBLIC, anon, authenticated;
