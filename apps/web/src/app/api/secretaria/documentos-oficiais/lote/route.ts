@@ -10,6 +10,8 @@ import { HttpError } from "@/lib/errors"
 import type { Database } from "~types/supabase"
 
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context"
+import { readVerifiedAcademicTrimesters, requireVerifiedTrimester } from "@/lib/academico/read-verified-academic-trimesters"
+import { CanonicalPeriodReadError } from "@/lib/academico/verify-canonical-periods-read"
 import { recordAuditServer } from "@/lib/audit"
 import { MAX_TURMAS_POR_LOTE, MAX_LOTES_NOMINAIS_POR_HORA, uniqueTurmaIds, makeNominalBatchKey } from "@/lib/documentos/rosterBatchPolicy"
 import { canExportSensitiveRosterFields } from "@/lib/documentos/rosterSensitivePermission"
@@ -209,6 +211,32 @@ export async function POST(req: Request) {
       effectivePeriodoLetivoId = periodoFinal.id
     }
 
+    // Um UUID válido não prova que o trimestre pertence à escola, ao ano
+    // ou ao calendário oficial da turma. Validar antes de criar o job.
+    if (effectivePeriodoLetivoId) {
+      if (parsed.data.tipo === "trimestral" || parsed.data.tipo === "boletim_trimestral") {
+        const verified = await readVerifiedAcademicTrimesters(supabase, {
+          escolaId,
+          anoLetivoId: academicContext.anoLetivoId,
+          yearBase: Number(academicContext.anoLetivoLabel.split("/")[0]),
+        });
+        requireVerifiedTrimester(verified, { id: effectivePeriodoLetivoId });
+      } else {
+        const { data: origin, error: periodError } = await supabase
+          .from("periodos_letivos")
+          .select("id")
+          .eq("id", effectivePeriodoLetivoId)
+          .eq("escola_id", escolaId)
+          .eq("ano_letivo_id", academicContext.anoLetivoId)
+          .maybeSingle();
+        if (periodError) {
+          return NextResponse.json({ ok: false, error: "Falha ao validar o período do documento." }, { status: 500 });
+        }
+        if (!origin) {
+          return NextResponse.json({ ok: false, code: "CROSS_YEAR_PERIOD_MISMATCH", error: "O período não pertence ao ano letivo selecionado." }, { status: 409 });
+        }
+      }
+    }
 
     const sortedTurmas = [...parsed.data.turma_ids].sort()
     const documentoTipo = resolveDocumentoTipo(parsed.data.tipo)
@@ -354,6 +382,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, job_id: job.id }, { status: 202 })
   } catch (e) {
+    if (e instanceof CanonicalPeriodReadError) {
+      return NextResponse.json({ ok: false, code: e.code, error: e.message }, { status: e.status });
+    }
     if (e instanceof HttpError) {
       return NextResponse.json(
         {
