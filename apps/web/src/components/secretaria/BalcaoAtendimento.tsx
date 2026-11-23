@@ -2075,8 +2075,8 @@ function CarrinhoPanel({
                 {mode === "payment"
                   ? "Rever e confirmar"
                   : itens.length > 1
-                    ? "Documentos para emitir"
-                    : "Documento para emitir"}
+                    ? "Documentos selecionados"
+                    : "Documento selecionado"}
               </h3>
               {itens.length > 0 ? (
                 <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
