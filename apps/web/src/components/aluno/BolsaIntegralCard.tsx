@@ -99,13 +99,13 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
         <GraduationCap className="h-5 w-5 text-klasse-green" aria-hidden="true" />
         <div>
           <h3 className="text-sm font-semibold text-klasse-green">Bolsa de estudo</h3>
-          <p className="text-xs text-muted-foreground">Isenção integral de propinas por ano letivo.</p>
+          <p className="text-xs text-muted-foreground">Isenção integral de propinas por matrícula e ano letivo.</p>
         </div>
       </div>
       {loading ? (
         <p className="text-sm text-muted-foreground" role="status">A consultar a matrícula…</p>
       ) : failed ? (
-        <p role="alert" className="text-sm text-red-600">Não foi possível consultar a bolsa. Atualize a página.</p>
+        <p role="alert" className="text-sm text-destructive">Não foi possível consultar a bolsa. Atualize a página.</p>
       ) : !matricula ? (
         <p className="text-sm text-muted-foreground">Não existe matrícula neste ano letivo para atribuir uma bolsa.</p>
       ) : (
@@ -115,21 +115,35 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
               <span className="block text-sm font-medium text-foreground">
                 {matricula.bolseiro ? "Bolseiro · Isento de propinas" : matricula.isencao_outra_politica ? "Isento por outra política" : "Sem bolsa integral"}
               </span>
-              <span className="text-xs text-muted-foreground">Ano letivo {matricula.ano_letivo} · {matricula.status}</span>
+              <span className="text-xs text-muted-foreground">
+                Ano letivo {matricula.ano_letivo} · {matricula.status}
+                {matricula.bolseiro && matricula.vigencia_inicio ? ` · Desde ${matricula.vigencia_inicio.slice(0,7)}` : ""}
+              </span>
             </div>
-            <button type="button" onClick={toggleBolsa} disabled={saving || matricula.isencao_outra_politica}
+            {!confirmando && <button type="button" onClick={() => setConfirmando(true)} disabled={saving || matricula.isencao_outra_politica}
               className={matricula.bolseiro
                 ? "inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
                 : "inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"}
             >
-              {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              {saving ? "A guardar…" : matricula.bolseiro ? "Retirar bolsa" : "Marcar como bolseiro"}
-            </button>
+              {matricula.bolseiro ? "Retirar bolsa" : "Marcar como bolseiro"}
+            </button>}
           </div>
+          {!matricula.bolseiro && matricula.bolsa_ano_anterior !== null && !matricula.isencao_outra_politica && (
+            <p className="text-xs text-muted-foreground">
+              Bolsa do ano {matricula.bolsa_ano_anterior}: a renovação não é automática. A escola deve confirmar a nova atribuição.
+            </p>
+          )}
           {matricula.isencao_outra_politica && (
             <p className="text-xs text-muted-foreground">Existe outra isenção de 100% nesta matrícula. Ajuste a política financeira existente antes de atribuir uma bolsa.</p>
           )}
-          {!matricula.bolseiro && !matricula.isencao_outra_politica && (
+          {confirmando && (
+            <p className="text-xs text-muted-foreground">
+              {matricula.bolseiro
+                ? "A retirada vale desde o próximo mês, por padrão. Preserva os meses já isentos e os pagamentos."
+                : "A atribuição vale desde o mês atual, por padrão. Meses anteriores continuam cobrados."}
+            </p>
+          )}
+          {confirmando && !matricula.bolseiro && !matricula.isencao_outra_politica && (
             <div>
               <label htmlFor="bolsa-motivo" className="mb-1 block text-xs font-medium text-foreground">Motivo (opcional)</label>
               <input id="bolsa-motivo" value={motivo} maxLength={160}
@@ -138,9 +152,35 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
               />
             </div>
           )}
+          {confirmando && (
+            <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+              <label htmlFor="bolsa-vigencia" className="block text-xs font-medium text-foreground">
+                Mês de vigência (opcional)
+              </label>
+              <input id="bolsa-vigencia" type="month" value={mesVigencia}
+                onChange={(event) => setMesVigencia(event.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20" />
+              <p className="text-xs text-muted-foreground">Sem escolha: este mês para atribuição, próximo mês para retirada. Não permite retroativos.</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={toggleBolsa} disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                  {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                  {saving ? "A guardar…" : matricula.bolseiro ? "Confirmar retirada" : "Confirmar bolsa"}
+                </button>
+                <button type="button" disabled={saving} onClick={() => { setConfirmando(false); setMesVigencia(""); }}
+                  className="rounded-xl border border-border bg-background px-4 py-2 text-sm text-foreground disabled:opacity-50">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+          {avisoFiscal > 0 && (
+            <p role="alert" className="text-sm text-foreground">
+              {avisoFiscal} cobrança(s) fiscalizada(s) requerem reconciliação financeira. Nenhum pagamento foi modificado.
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">
-            Abrange a matrícula selecionada. Cobranças não pagas são isentadas;
-            recibos e pagamentos anteriores não são alterados.
+            Regra por matrícula e ano letivo, com auditoria. Recibos e pagamentos emitidos permanecem intactos.
           </p>
         </div>
       )}
