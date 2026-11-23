@@ -82,7 +82,14 @@ DECLARE
 BEGIN
   IF NEW.status NOT IN ('pendente', 'isento')
      OR coalesce(NEW.valor_pago_total, 0) <> 0
-     OR NEW.fiscal_documento_id IS NOT NULL THEN
+     OR NEW.fiscal_documento_id IS NOT NULL
+     OR NEW.status_fiscal = 'ok' THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'UPDATE' AND EXISTS (
+    SELECT 1 FROM public.pagamentos pg WHERE pg.mensalidade_id = NEW.id
+  ) THEN
     RETURN NEW;
   END IF;
 
@@ -163,7 +170,11 @@ BEGIN
      )
      AND me.status = 'pendente'
      AND coalesce(me.valor_pago_total, 0) = 0
-     AND me.fiscal_documento_id IS NULL;
+     AND me.fiscal_documento_id IS NULL
+     AND coalesce(me.status_fiscal, 'pending') <> 'ok'
+     AND NOT EXISTS (
+       SELECT 1 FROM public.pagamentos pg WHERE pg.mensalidade_id = me.id
+     );
 
   RETURN NEW;
 END;
