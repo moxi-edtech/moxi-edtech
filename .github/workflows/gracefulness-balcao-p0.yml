@@ -247,6 +247,11 @@ jobs:
             tests/unit/historico-transitado-permissions.spec.ts \
             tests/unit/student-lifecycle-ssot.spec.ts
 
+      - name: Individual document payment contracts
+        run: |
+          cd apps/web
+          node --test tests/unit/documentos-individuais-pagamento.spec.mjs tests/unit/documentos-historicos-transversal.spec.mjs
+
       - name: Web typecheck
         run: pnpm -C apps/web typecheck
         env:
