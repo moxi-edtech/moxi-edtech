@@ -78,8 +78,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       id: atual.id,
       ano_letivo: atual.ano_letivo,
       status: atual.status,
-      bolseiro: Boolean(atual.bolsa_integral || Number(atual.percentagem_desconto ?? 0) >= 100),
+      bolseiro: Boolean(atual.bolsa_integral ||
+        (Number(atual.percentagem_desconto ?? 0) >= 100 &&
+         /bolsa/i.test(atual.motivo_desconto ?? ""))),
       bolsa_integral: Boolean(atual.bolsa_integral),
+      isencao_outra_politica: Boolean(!atual.bolsa_integral &&
+        Number(atual.percentagem_desconto ?? 0) >= 100 &&
+        !/bolsa/i.test(atual.motivo_desconto ?? "")),
       motivo: atual.bolsa_integral_motivo ?? atual.motivo_desconto ?? null,
     },
   }, { headers: { "Cache-Control": "no-store" } });
