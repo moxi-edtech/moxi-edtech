@@ -275,7 +275,7 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
     const anoLetivo = String(anoLetivoNum);
 
     const [{ data: matriculas }] = await Promise.all([
-      client.from('matriculas').select('id, aluno_id, data_inicio_financeiro, data_matricula, created_at, percentagem_desconto, bolsa_integral')
+      client.from('matriculas').select('id, aluno_id, data_inicio_financeiro, data_matricula, created_at, percentagem_desconto, bolsa_integral, bolsa_integral_inicio')
         .eq('escola_id', escolaId).eq('turma_id', turmaId).eq('ano_letivo', anoLetivoNum)
         .in('aluno_id', alunoIds).in('status', ['ativo', 'ativa', 'active']),
 
@@ -313,7 +313,7 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
     for (const matricula of matriculas as any[]) {
       // SSOT financeiro: o benefício pertence à matrícula do ano, não à turma.
       const descontoPercentual = Math.max(0, Math.min(100, Number(matricula.percentagem_desconto ?? 0)));
-      if (matricula.bolsa_integral === true || descontoPercentual === 100) continue;
+      if (descontoPercentual === 100) continue;
 
       const enrollmentDate = new Date(matricula.data_inicio_financeiro || matricula.data_matricula || matricula.created_at || dataInicioSess);
       const baseStart = new Date(Math.max(mesInicio.getTime(), enrollmentDate.getTime()));
@@ -325,6 +325,13 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
         const mesIndex = cursor.getMonth();
         const mes = mesIndex + 1;
         if (!isBillingCompetencyAllowed(billingWindow, { ano, mes })) break;
+        const competencia = `${ano}-${String(mes).padStart(2, "0")}`;
+        const bolsaInicio = String(matricula.bolsa_integral_inicio ?? billingWindow.dataInicio).slice(0,7);
+        if (matricula.bolsa_integral === true && competencia >= bolsaInicio) {
+          firstLoop = false;
+          cursor.setMonth(cursor.getMonth() + 1);
+          continue;
+        }
         const lastDay = new Date(ano, mesIndex + 1, 0).getDate();
         const dd = Math.min(dia, lastDay);
         const venc = new Date(ano, mesIndex, dd);
