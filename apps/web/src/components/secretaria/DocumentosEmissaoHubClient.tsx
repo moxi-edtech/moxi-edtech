@@ -489,7 +489,7 @@ export default function DocumentosEmissaoHubClient({
   return (
     <main className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-foreground">Balcão de Emissão Rápida</h1>
+        <h2 className="text-lg font-semibold text-foreground">Emissão individual</h2>
         <p className="text-sm text-muted-foreground">
           Selecione o aluno e o ano letivo. Valide o pagamento antes de emitir; reimpressões não geram cobrança.
         </p>
