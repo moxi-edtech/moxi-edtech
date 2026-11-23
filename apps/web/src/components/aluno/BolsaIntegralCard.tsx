@@ -11,6 +11,7 @@ type MatriculaBolsa = {
   status: string;
   bolseiro: boolean;
   bolsa_integral: boolean;
+  isencao_outra_politica: boolean;
   motivo: string | null;
 };
 
@@ -93,11 +94,11 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <span className="block text-sm font-medium text-foreground">
-                {matricula.bolseiro ? "Bolseiro · Isento de propinas" : "Sem bolsa integral"}
+                {matricula.bolseiro ? "Bolseiro · Isento de propinas" : matricula.isencao_outra_politica ? "Isento por outra política" : "Sem bolsa integral"}
               </span>
               <span className="text-xs text-muted-foreground">Ano letivo {matricula.ano_letivo} · {matricula.status}</span>
             </div>
-            <button type="button" onClick={toggleBolsa} disabled={saving}
+            <button type="button" onClick={toggleBolsa} disabled={saving || matricula.isencao_outra_politica}
               className={matricula.bolseiro
                 ? "inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
                 : "inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"}
@@ -106,7 +107,10 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
               {saving ? "A guardar…" : matricula.bolseiro ? "Retirar bolsa" : "Marcar como bolseiro"}
             </button>
           </div>
-          {!matricula.bolseiro && (
+          {matricula.isencao_outra_politica && (
+            <p className="text-xs text-muted-foreground">Existe outra isenção de 100% nesta matrícula. Ajuste a política financeira existente antes de atribuir uma bolsa.</p>
+          )}
+          {!matricula.bolseiro && !matricula.isencao_outra_politica && (
             <div>
               <label htmlFor="bolsa-motivo" className="mb-1 block text-xs font-medium text-foreground">Motivo (opcional)</label>
               <input id="bolsa-motivo" value={motivo} maxLength={160}
