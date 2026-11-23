@@ -62,13 +62,13 @@ export default async function FinalDocumentPrint({ docId, expectedType, title, r
             <h2 className="border-b pb-2 text-sm font-bold uppercase tracking-wide">Disciplinas e resultados</h2>
             {certificado ? (
               <div className="overflow-x-auto"><table className="w-full text-left text-sm">
-                <thead><tr className="border-b text-xs text-slate-500">
+                <thead><tr className="border-b text-xs text-muted-foreground">
                   <th className="py-2">Disciplina</th>
                   {certificado.colunas.map((coluna) => <th key={coluna.key} className="px-2 py-2 text-center">{coluna.label} classe</th>)}
                   <th className="py-2 text-center">Média</th>
                 </tr></thead>
                 <tbody>{certificado.disciplinas.map((item, index) => (
-                  <tr key={`${item.nome}-${index}`} className="border-b border-slate-100">
+                  <tr key={`${item.nome}-${index}`} className="border-b border-border">
                     <td className="py-2">{item.nome}</td>
                     {certificado!.colunas.map((coluna) => <td key={coluna.key} className="px-2 py-2 text-center">{nota(item.notas[coluna.key])}</td>)}
                     <td className="py-2 text-center">{nota(item.media_final)}</td>
@@ -77,9 +77,9 @@ export default async function FinalDocumentPrint({ docId, expectedType, title, r
               </table></div>
             ) : (
               <div className="overflow-x-auto"><table className="w-full text-left text-sm">
-                <thead><tr className="border-b text-xs text-slate-500"><th className="py-2">Disciplina</th><th className="py-2">Nota final</th><th className="py-2">Média</th></tr></thead>
+                <thead><tr className="border-b text-xs text-muted-foreground"><th className="py-2">Disciplina</th><th className="py-2">Nota final</th><th className="py-2">Média</th></tr></thead>
                 <tbody>{historicoNotas.map((item, index) => (
-                  <tr key={`${item.disciplina_nome}-${index}`} className="border-b border-slate-100">
+                  <tr key={`${item.disciplina_nome}-${index}`} className="border-b border-border">
                     <td className="py-2">{item.disciplina_nome ?? "—"}</td>
                     <td className="py-2">{nota(item.nota_final)}</td>
                     <td className="py-2">{nota(item.media_final)}</td>
