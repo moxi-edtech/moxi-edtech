@@ -170,7 +170,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         : { data: [], error: null };
       if (turmasError) throw turmasError;
 
-      const turmaPorId = new Map((turmas ?? []).map((turma: any) => [turma.id, turma]));
+      const turmaPorId = new Map<string, any>(
+        (turmas ?? []).map((turma: any): [string, any] => [turma.id, turma])
+      );
       for (let i = 0; i < rows.length; i++) {
         const matricula = matriculaPorAluno.get(rows[i].aluno_id ?? rows[i].id);
         if (!matricula) continue;
