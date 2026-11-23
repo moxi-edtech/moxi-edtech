@@ -11,6 +11,7 @@ import { requireFeature } from "@/lib/plan/requireFeature";
 import { HttpError } from "@/lib/errors";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
+import { docPrintUrl } from "@/lib/documentos/printUrl";
 
 const payloadSchema = z.object({
   alunoId: z.string().uuid(),
@@ -27,6 +28,9 @@ const payloadSchema = z.object({
   ]),
   ano_letivo: z.number().int().optional(), // Ano letivo para documentos finais
   ano_letivo_id: z.string().uuid().optional(),
+  // O mesmo contrato da Central também consulta e solicita o serviço.
+  // A ausência de action mantém os clientes legados em modo de emissão.
+  action: z.enum(["status", "solicitar", "emitir"]).optional(),
 });
 
 type TipoDocumento = z.infer<typeof payloadSchema>["tipoDocumento"];
@@ -68,12 +72,6 @@ export async function POST(request: Request) {
       ?? request.headers.get("idempotency-key")
       ?? ""
     ).trim();
-    if (idempotencyKey.length < 8 || idempotencyKey.length > 200) {
-      return NextResponse.json(
-        { ok: false, error: "Idempotency-Key header é obrigatório e deve ter entre 8 e 200 caracteres.", code: "IDEMPOTENCY_KEY_REQUIRED" },
-        { status: 400 },
-      );
-    }
     const supabase = await supabaseServerTyped<Database>();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
@@ -89,6 +87,13 @@ export async function POST(request: Request) {
     }
 
     const { alunoId, escolaId, tipoDocumento, ano_letivo, ano_letivo_id } = parsed.data;
+    const action = parsed.data.action ?? "emitir";
+    if (action === "emitir" && (idempotencyKey.length < 8 || idempotencyKey.length > 200)) {
+      return NextResponse.json({
+        ok: false, error: "Idempotency-Key header é obrigatório e deve ter entre 8 e 200 caracteres.",
+        code: "IDEMPOTENCY_KEY_REQUIRED",
+      }, { status: 400 });
+    }
 
     if (tipoDocumento === "certificado") {
       await requireFeature("doc_qr_code");
@@ -107,12 +112,10 @@ export async function POST(request: Request) {
     });
     if (authError) return authError;
 
-    const requiresAcademicContext =
-      FINAL_DOCUMENT_TYPES.includes(tipoDocumento) ||
-      tipoDocumento === "boletim_trimestral" ||
-      tipoDocumento === "declaracao_frequencia";
+    // A Central é sempre contextual ao ano letivo selecionado (incluindo
+    // ficha e cartão), para não emitir documentos no ano errado.
     let academicContext: Awaited<ReturnType<typeof resolveAcademicYearContext>> | null = null;
-    if (requiresAcademicContext && !ano_letivo_id) {
+    if (!ano_letivo_id) {
       return NextResponse.json(
         { ok: false, error: "ano_letivo_id é obrigatório para este documento.", code: "ACADEMIC_YEAR_REQUIRED" },
         { status: 400 },
@@ -147,11 +150,59 @@ export async function POST(request: Request) {
         .order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (existingError) return NextResponse.json({ ok: false, error: "Falha ao consultar emissões existentes." }, { status: 503 });
       if (alreadyIssued?.id) {
-        return NextResponse.json({
+        // Ler/imprimir um documento existente não cria outro pedido financeiro.
+        return NextResponse.json(action === "emitir" ? {
           ok: true, docId: alreadyIssued.id, publicId: alreadyIssued.public_id,
           hash: alreadyIssued.hash_validacao, tipo: alreadyIssued.tipo, idempotent: true,
+        } : {
+          ok: true, status: "issued", granted: true, docId: alreadyIssued.id,
+          publicId: alreadyIssued.public_id, printUrl: docPrintUrl(alreadyIssued.id, tipoDocumento),
+          message: "Documento já emitido. Pode imprimir novamente sem pagar.",
         });
       }
+    }
+
+    if (action !== "emitir") {
+      if (!enrollmentForDoc?.id) {
+        return NextResponse.json({
+          ok: false, code: "MATRICULA_NAO_ENCONTRADA",
+          error: "O aluno não possui matrícula no ano letivo escolhido.",
+        }, { status: 409 });
+      }
+      // Uma consulta é somente leitura; a solicitação pode criar uma intenção,
+      // mas apenas a RPC transacional realiza essa operação.
+      const { data: access, error: accessError } = await (supabase as any).rpc(
+        action === "solicitar" ? "documento_individual_solicitar" : "documento_individual_acesso",
+        {
+          p_escola_id: escolaId, p_aluno_id: alunoId,
+          p_session_id: academicContext!.anoLetivoId, p_tipo: tipoDocumento,
+        },
+      );
+      if (accessError) {
+        return NextResponse.json({
+          ok: false, error: "Não foi possível consultar o serviço documental.",
+        }, { status: 503 });
+      }
+      if (!access?.ok) {
+        const motivos: Record<string,string> = {
+          SERVICO_NAO_CONFIGURADO: "Configure o serviço em Emolumentos & Serviços.",
+          TAXA_NAO_CONFIGURADA: "Configure uma taxa positiva antes de emitir.",
+          MATRICULA_NAO_ENCONTRADA: "A matrícula do ano escolhido não foi encontrada.",
+        };
+        return NextResponse.json({
+          ok: false, code: access?.reason ?? "DOCUMENTO_INDISPONIVEL",
+          error: motivos[access?.reason] ?? "Documento indisponível.",
+        }, { status: 409 });
+      }
+      return NextResponse.json({
+        ok: true, status: access.status, granted: access.granted === true,
+        valor: Number(access.valor ?? 0),
+        matriculaId: access.matricula_id,
+        pedidoId: access.pedido_id ?? null,
+        pagamentoIntentId: access.pagamento_intent_id ?? null,
+        servicoCodigo: access.servico_codigo,
+        pagamentoObrigatorio: access.pagamento_obrigatorio === true,
+      });
     }
 
     // O servidor valida o serviço exato, matrícula/ano e liquidação no ledger.
