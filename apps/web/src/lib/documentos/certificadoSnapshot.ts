@@ -271,6 +271,11 @@ export async function buildCertificadoSnapshot(params: {
 }) {
   const { supabase, escolaId, alunoId, baseSnapshot, hashValidacao } = params;
   const client = supabase as SupabaseLike;
+  // O ano é o do snapshot oficial, nunca o histórico mais recente do aluno.
+  const targetYear = toNumber(baseSnapshot.ano_letivo);
+  if (targetYear == null || !Number.isInteger(targetYear) || targetYear < 1900 || targetYear > 3000) {
+    throw new Error("Certificado sem ano letivo válido no snapshot oficial.");
+  }
 
   const [officialRows, transitedRows] = await Promise.all([
     fetchOfficialHistoryRows(client, escolaId, alunoId),
@@ -279,11 +284,14 @@ export async function buildCertificadoSnapshot(params: {
 
   const sourceByClassNumber = new Map<number, HistoryClassSource>();
   for (const row of [...transitedRows, ...officialRows]) {
-    if (row.classNumber == null) continue;
+    // Exclui qualquer nota posterior ou fonte sem ano verificável.
+    if (row.classNumber == null || row.year == null || row.year > targetYear) continue;
     sourceByClassNumber.set(row.classNumber, selectPreferredSource(sourceByClassNumber.get(row.classNumber), row));
   }
 
-  const currentClassNumber = extractClassNumber(clean(stringOrNull(baseSnapshot.classe_concluida)));
+  const currentClassNumber = extractClassNumber(
+    clean(stringOrNull(baseSnapshot.classe_concluida)) ?? clean(stringOrNull(baseSnapshot.classe_nome))
+  );
   const columnNumbers = buildCycleColumns(
     currentClassNumber,
     Array.from(sourceByClassNumber.keys())

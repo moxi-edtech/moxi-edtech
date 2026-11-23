@@ -90,6 +90,7 @@ export default function DocumentosOficiaisBatchClient() {
   const [yearsError, setYearsError] = useState<string | null>(null);
   const [yearsLoading, setYearsLoading] = useState(true);
   const isHistoricalYear = yearOptions.some((year) => year.id === academicYearId && year.status !== "ativa");
+  const historicalGenerationBlocked = isHistoricalYear && tipo !== "certificado";
   const escolaParam = escolaSlug || escolaId;
   const portalScope = pathname.includes("/operacoes/") ? "operacoes" : "secretaria";
   const turmaHref = (id: string) => {
@@ -359,8 +360,8 @@ export default function DocumentosOficiaisBatchClient() {
 
   const handleGenerate = async () => {
     if (selected.size === 0) return;
-    if (isHistoricalYear) {
-      setToast({ message: "Este ano está encerrado. Consulte os documentos já emitidos; a emissão oficial em lote exige ano ativo.", type: "error" });
+    if (historicalGenerationBlocked) {
+      setToast({ message: "O documento operacional exige ano ativo. Para históricos, utilize certificados ou declarações individuais.", type: "error" });
       return;
     }
     if (!academicYearId || yearsLoading || loading) {
@@ -983,7 +984,7 @@ export default function DocumentosOficiaisBatchClient() {
 
           <button
             onClick={handleGenerate}
-            disabled={submitting || !academicYearId || loading || isHistoricalYear}
+            disabled={submitting || !academicYearId || loading || historicalGenerationBlocked}
             className="flex items-center gap-2 bg-klasse-gold text-foreground px-6 py-2.5 rounded-full text-sm font-bold hover:brightness-105 transition-all disabled:opacity-70"
           >
             {submitting ? (

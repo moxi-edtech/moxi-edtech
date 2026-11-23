@@ -121,7 +121,8 @@ export async function POST(request: Request) {
       academicContext = await resolveAcademicYearContext(supabase, {
         userId: user.id,
         requestedAcademicYearId: ano_letivo_id,
-        operation: "WRITE",
+        // Emissão histórica não altera notas, períodos ou matrículas.
+        operation: tipoDocumento === "boletim_trimestral" ? "WRITE" : "READ",
       });
       if (academicContext.escolaId !== escolaId) {
         return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
@@ -246,6 +247,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "O ano letivo é obrigatório para este tipo de documento." }, { status: 400 });
     }
 
+    const estadosHistoricos = academicContext?.mode === "HISTORICAL_READ" && tipoDocumento === "declaracao_frequencia";
     let matriculaQuery = supabase
       .from("matriculas")
       .select(`
@@ -264,7 +266,9 @@ export async function POST(request: Request) {
       `)
       .eq("escola_id", escolaId)
       .eq("aluno_id", alunoId)
-      .in("status", ["ativa", "ativo", "matriculado"])
+      .in("status", estadosHistoricos
+        ? ["ativa", "ativo", "matriculado", "concluido", "reprovado", "transferido", "trancado"]
+        : ["ativa", "ativo", "matriculado"])
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -277,7 +281,7 @@ export async function POST(request: Request) {
     const { data: matricula, error: matriculaError } = await matriculaQuery.maybeSingle();
 
     if (matriculaError || !matricula) {
-      return NextResponse.json({ ok: false, error: "Matrícula ativa não encontrada" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: "Matrícula não encontrada no ano letivo selecionado" }, { status: 404 });
     }
 
     const aluno = (matricula as any).alunos || {};

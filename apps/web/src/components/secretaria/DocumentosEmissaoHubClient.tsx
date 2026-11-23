@@ -107,12 +107,13 @@ export default function DocumentosEmissaoHubClient({
   const referenceInputRef = useRef<HTMLInputElement | null>(null);
   const documentRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const [anoLetivoOptions, setAnoLetivoOptions] = useState<Array<{ id: string; nome: string; ano_letivo: number; status: string }>>([]);
-  const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<number | null>(null);
+  const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<string>("");
   const [loadingAnoLetivo, setLoadingAnoLetivo] = useState(false);
   const selectedAnoLetivoId = useMemo(
-    () => anoLetivoOptions.find((item) => item.ano_letivo === anoLetivoSelecionado)?.id ?? academicYearId ?? null,
-    [anoLetivoOptions, anoLetivoSelecionado, academicYearId],
+    () => anoLetivoOptions.some((item) => item.id === anoLetivoSelecionado) ? anoLetivoSelecionado : null,
+    [anoLetivoOptions, anoLetivoSelecionado],
   );
+  const selectedAnoLetivo = anoLetivoOptions.find((item) => item.id === selectedAnoLetivoId) ?? null;
   const alunoIdParam = alunoId ?? searchParams?.get("alunoId");
   const tipoParam = (defaultTipo ?? (searchParams?.get("tipo") as DocumentoTipo | null)) ?? null;
 
@@ -265,10 +266,11 @@ export default function DocumentosEmissaoHubClient({
           }));
         if (active) {
           setAnoLetivoOptions(mapped);
-          if (!anoLetivoSelecionado && mapped.length > 0) {
-            const ativo = mapped.find((item) => item.status === "ativa") ?? mapped[0];
-            setAnoLetivoSelecionado(ativo.ano_letivo);
-          }
+          setAnoLetivoSelecionado((previous) => {
+            if (mapped.some((item) => item.id === previous)) return previous;
+            if (academicYearId && mapped.some((item) => item.id === academicYearId)) return academicYearId;
+            return (mapped.find((item) => item.status === "ativa") ?? mapped[0])?.id ?? "";
+          });
         }
       } catch {
         if (active) setAnoLetivoOptions([]);
@@ -281,7 +283,7 @@ export default function DocumentosEmissaoHubClient({
     return () => {
       active = false;
     };
-  }, [escolaParam, anoLetivoSelecionado]);
+  }, [escolaParam, academicYearId]);
 
   const normalizedResults = useMemo(() => results.slice(0, 6), [results]);
 
@@ -314,6 +316,10 @@ export default function DocumentosEmissaoHubClient({
 
   const handleEmitir = async () => {
     if (!selectedAluno?.id || !tipo) return;
+    if (!selectedAnoLetivoId) {
+      setError("Selecione o ano letivo do documento antes de continuar.");
+      return;
+    }
     if (missingNotesFee) {
       setError("A escola precisa configurar uma taxa positiva para este documento antes de o emitir.");
       return;
@@ -333,7 +339,7 @@ export default function DocumentosEmissaoHubClient({
         throw new Error("Comprovativo obrigatório para Transferência.");
       }
 
-      if (tipo === "boletim_trimestral" && !anoLetivoSelecionado) {
+      if (tipo === "boletim_trimestral" && !selectedAnoLetivo?.ano_letivo) {
         throw new Error("Selecione o ano letivo para emitir o boletim.");
       }
 
@@ -345,7 +351,7 @@ export default function DocumentosEmissaoHubClient({
         const { data, error: intentError } = await supabase.rpc("balcao_criar_pedido_e_decidir", {
           p_servico_codigo: selectedServico.codigo,
           p_aluno_id: selectedAluno.id,
-          p_contexto: {},
+          p_contexto: { ano_letivo_id: selectedAnoLetivoId },
         });
 
         if (intentError || !data) {
@@ -374,7 +380,7 @@ export default function DocumentosEmissaoHubClient({
           },
           body: JSON.stringify({
             aluno_id: selectedAluno.id,
-            ano_letivo_id: academicYearId,
+            ano_letivo_id: selectedAnoLetivoId,
             mensalidade_id: null,
             valor: valorBase,
             metodo,
@@ -404,7 +410,7 @@ export default function DocumentosEmissaoHubClient({
         alunoId: selectedAluno.id,
         tipoDocumento: tipo,
         anoLetivoId: selectedAnoLetivoId ?? null,
-        anoLetivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : null,
+        anoLetivo: tipo === "boletim_trimestral" ? selectedAnoLetivo?.ano_letivo ?? null : null,
       });
       if (!documentRequestRef.current || documentRequestRef.current.fingerprint !== documentFingerprint) {
         documentRequestRef.current = {
@@ -419,7 +425,7 @@ export default function DocumentosEmissaoHubClient({
         tipoDocumento: tipo,
         idempotencyKey: documentRequestRef.current.key,
         anoLetivoId: selectedAnoLetivoId,
-        anoLetivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : null,
+        anoLetivo: tipo === "boletim_trimestral" ? selectedAnoLetivo?.ano_letivo ?? null : null,
       });
       if (!emissao.ok) {
         // Mantém a chave para que a próxima tentativa seja um replay seguro.
@@ -531,14 +537,14 @@ export default function DocumentosEmissaoHubClient({
         })}
       </section>
 
-      {tipo === "boletim_trimestral" && (
+      {tipo && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Ano letivo
           </label>
           <select
-            value={anoLetivoSelecionado ?? ""}
-            onChange={(event) => setAnoLetivoSelecionado(Number(event.target.value))}
+            value={anoLetivoSelecionado}
+            onChange={(event) => setAnoLetivoSelecionado(event.target.value)}
             className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
             disabled={loadingAnoLetivo || anoLetivoOptions.length === 0}
           >
@@ -546,7 +552,7 @@ export default function DocumentosEmissaoHubClient({
               {loadingAnoLetivo ? "A carregar..." : "Selecione o ano letivo"}
             </option>
             {anoLetivoOptions.map((item) => (
-              <option key={item.id} value={item.ano_letivo}>
+              <option key={item.id} value={item.id}>
                 {item.nome}
               </option>
             ))}

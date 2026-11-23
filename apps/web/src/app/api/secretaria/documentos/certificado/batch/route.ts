@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     const academicContext = await resolveAcademicYearContext(supabase, {
       userId: user.id,
       requestedAcademicYearId: parsed.data.ano_letivo_id,
-      operation: "WRITE",
+      operation: "READ",
     })
     if (academicContext.escolaId !== escolaId) {
       return NextResponse.json({ ok: false, error: 'Escola inválida' }, { status: 403 })
