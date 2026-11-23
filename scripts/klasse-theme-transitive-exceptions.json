@@ -1,0 +1,67 @@
+{
+  "apps/web/src/components/layout/shared/SidebarNav.tsx": {
+    "reason": "Padrões de navegação intencionalmente escuros e realce de interações",
+    "tokens": {
+      "bg-white/5": 1,
+      "text-slate-400": 1
+    }
+  },
+  "apps/web/src/components/harmonia/ConfirmacaoContextual.tsx": {
+    "reason": "Transparências brancas somente sobre o verde institucional da confirmação",
+    "tokens": {
+      "bg-white/15": 2
+    }
+  },
+  "apps/web/src/components/layout/klasse/Sidebar.tsx": {
+    "reason": "Sidebar institucional deliberadamente escuro: cinzas e fundo acompanham o contraste próprio da navegação",
+    "tokens": {
+      "bg-slate-700": 1,
+      "bg-slate-800": 1,
+      "bg-slate-900": 3,
+      "bg-slate-900/40": 1,
+      "border-slate-800/80": 3,
+      "hover:bg-slate-900": 1,
+      "hover:bg-slate-900/60": 1,
+      "hover:bg-slate-900/70": 2,
+      "text-slate-100": 1,
+      "text-slate-200": 1,
+      "text-slate-300": 2,
+      "text-slate-400": 3,
+      "text-slate-50": 3
+    }
+  },
+  "apps/web/src/components/layout/klasse/AppShell.tsx": {
+    "reason": "Única superfície branca restante fica dentro da ramificação de impressão",
+    "tokens": {
+      "bg-white": 1
+    }
+  },
+  "apps/web/src/components/aluno/layout/PWAInstallPrompt.tsx": {
+    "reason": "Aviso de instalação PWA permanentemente escuro, independente do tema",
+    "tokens": {
+      "bg-slate-900": 1,
+      "bg-white/10": 2,
+      "bg-white/5": 2
+    }
+  },
+  "apps/web/src/components/aluno/layout/NetworkStatus.tsx": {
+    "reason": "Estado de rede apresentado sobre uma faixa de contraste própria",
+    "tokens": {
+      "bg-slate-700": 1
+    }
+  },
+  "apps/web/src/components/aluno/tabs/CartaoEstudante.tsx": {
+    "reason": "Cartão de estudante oficial com imagem e superfície de identidade estável",
+    "tokens": {
+      "bg-slate-800": 2,
+      "bg-white/10": 2,
+      "text-slate-400": 3
+    }
+  },
+  "apps/web/src/components/secretaria/relatorio-financeiro/RelatorioHeader.tsx": {
+    "reason": "Cor literal exclusivamente com prefixo print: destinada a documento impresso",
+    "tokens": {
+      "text-slate-600": 1
+    }
+  }
+}

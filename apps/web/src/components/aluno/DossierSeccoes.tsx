@@ -27,9 +27,9 @@ export function DossierPerfilSection({ aluno, canEditNome = false, onNomeChanged
 
   const renderValue = (value?: string | null) =>
     value ? (
-      <span className="text-sm font-medium text-slate-700">{value}</span>
+      <span className="text-sm font-medium text-foreground">{value}</span>
     ) : (
-      <span className="text-xs text-slate-400 italic">Não preenchido</span>
+      <span className="text-xs text-muted-foreground italic">Não preenchido</span>
     );
 
   const nascimento = formatDate(p.data_nascimento);
@@ -42,8 +42,8 @@ export function DossierPerfilSection({ aluno, canEditNome = false, onNomeChanged
     <div className="space-y-4">
       <PushSettings escolaId={aluno.perfil.escola_id} />
       
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
           Identificação
         </p>
         <div className="mb-4">
@@ -61,27 +61,27 @@ export function DossierPerfilSection({ aluno, canEditNome = false, onNomeChanged
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">BI</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">BI</p>
             {renderValue(p.bi_numero)}
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Processo</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Processo</p>
             {renderValue(p.numero_processo)}
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Nascimento</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Nascimento</p>
             {renderValue(nascimentoValue)}
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
           Contacto
         </p>
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Responsável</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Responsável</p>
             <QuickEditField
               label="Nome do Responsável"
               value={p.responsavel_nome}
@@ -90,7 +90,7 @@ export function DossierPerfilSection({ aluno, canEditNome = false, onNomeChanged
             />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Contacto</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Contacto</p>
             <QuickEditField
               label="Telefone do Responsável"
               value={p.responsavel_tel}
@@ -100,7 +100,7 @@ export function DossierPerfilSection({ aluno, canEditNome = false, onNomeChanged
             />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Endereço</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Endereço</p>
             <QuickEditField
               label="Endereço"
               value={p.endereco}
@@ -111,21 +111,21 @@ export function DossierPerfilSection({ aluno, canEditNome = false, onNomeChanged
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
           Académico
         </p>
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Turma</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Turma</p>
             {renderValue(turmaValue)}
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Ano lectivo</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Ano lectivo</p>
             {renderValue(anoLetivoValue)}
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Estado matrícula</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Estado matrícula</p>
             {renderValue(estadoMatricula)}
           </div>
         </div>
@@ -159,17 +159,17 @@ function MensalidadeRow({
     : null;
 
   return (
-      <div className="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto_auto] md:items-center">
+      <div className="grid gap-3 rounded-xl border border-border p-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto_auto] md:items-center">
       <div>
-        <p className="font-semibold text-slate-900 capitalize">
+        <p className="font-semibold text-foreground capitalize">
           {monthName(m.mes)} {m.ano}
         </p>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           {m.vencimento ? `Venc. ${vencimentoLabel}` : "Sem vencimento"}
         </p>
       </div>
       <div className="text-right">
-        <p className="font-bold text-slate-900">{formatKwanza(m.valor)}</p>
+        <p className="font-bold text-foreground">{formatKwanza(m.valor)}</p>
         {m.saldo > 0 && (
           <p className="text-xs text-rose-600">Saldo pendente: {formatKwanza(m.saldo)}</p>
         )}
@@ -177,7 +177,7 @@ function MensalidadeRow({
       <div className="md:justify-self-end text-right">
         <StatusPill status={m.status} variant="financeiro" size="xs" />
         {vencimentoInfo && (
-          <p className={`mt-1 text-[10px] font-semibold ${isOverdue ? "text-rose-600" : "text-slate-400"}`}>
+          <p className={`mt-1 text-[10px] font-semibold ${isOverdue ? "text-rose-600" : "text-muted-foreground"}`}>
             {vencimentoInfo}
           </p>
         )}
@@ -199,9 +199,9 @@ function MensalidadeRow({
               if (!m.recibo_id) return onMissingRecibo();
               window.open(`/secretaria/documentos/${m.recibo_id}/recibo/print`, "_blank", "noopener,noreferrer");
             }}
-            className="group inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition-colors hover:text-amber disabled:cursor-not-allowed disabled:opacity-50"
+            className="group inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-muted-foreground shadow-sm transition-colors hover:text-amber disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Printer className="h-4 w-4 text-slate-400 transition-colors group-hover:text-amber" />
+            <Printer className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-amber" />
             Reimprimir
           </button>
         ) : null}
@@ -225,63 +225,63 @@ export function DossierFinanceiroSection({ aluno, role, escolaId, servicos = [] 
   const atrasado = f.situacao === "inadimplente";
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
           Resumo financeiro
         </p>
         <div className="grid gap-3 md:grid-cols-2">
-          <div className={`rounded-2xl border p-4 shadow-sm ${atrasado ? "bg-rose-50 border-rose-100" : "bg-slate-50 border-slate-200"}`}>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Em atraso</p>
-            <p className={`mt-1 text-2xl font-bold ${atrasado ? "text-rose-600" : "text-slate-900"}`}>
+          <div className={`rounded-2xl border p-4 shadow-sm ${atrasado ? "bg-rose-50 border-rose-100" : "bg-muted border-border"}`}>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Em atraso</p>
+            <p className={`mt-1 text-2xl font-bold ${atrasado ? "text-rose-600" : "text-foreground"}`}>
               {formatKwanza(f.total_em_atraso)}
             </p>
-            <p className="text-xs text-slate-500 mt-1">Valores com cobrança pendente.</p>
+            <p className="text-xs text-muted-foreground mt-1">Valores com cobrança pendente.</p>
           </div>
           <div className="rounded-2xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-4 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total pago</p>
-            <p className="mt-1 text-2xl font-bold text-[#1F6B3B]">{formatKwanza(f.total_pago)}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total pago</p>
+            <p className="mt-1 text-2xl font-bold text-klasse-green dark:text-emerald-300">{formatKwanza(f.total_pago)}</p>
             <p className="text-xs text-[#1F6B3B]/70 mt-1">Resumo de pagamentos.</p>
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           Serviços e emolumentos
         </p>
         {servicos.length ? (
           <div className="space-y-2">
             {servicos.map((servico) => (
               <div key={servico.id}>
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">{servico.nome}</p>
-                  <p className="text-[10px] text-slate-400">{formatDate(servico.data)}</p>
-                  <p className="mt-1 text-[10px] text-slate-500">Protocolo: {servico.protocolo}</p>
+                  <p className="text-sm font-semibold text-foreground">{servico.nome}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatDate(servico.data)}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">Protocolo: {servico.protocolo}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-slate-900">{formatKwanza(servico.valor)}</p>
+                  <p className="text-sm font-bold text-foreground">{formatKwanza(servico.valor)}</p>
                   <StatusPill status={servico.estado_label} variant="financeiro" size="xs" />
                 </div>
                 </div>
-                <div className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
-                <p className="font-semibold text-slate-700">{servico.estado_label}</p>
+                <div className="rounded-xl bg-muted px-3 py-2 text-[11px] text-muted-foreground">
+                <p className="font-semibold text-foreground">{servico.estado_label}</p>
                 <p>{servico.mensagem_estado}</p>
-                <p className="mt-1 font-medium text-slate-700">Próximo passo: {servico.proximo_passo}</p>
+                <p className="mt-1 font-medium text-foreground">Próximo passo: {servico.proximo_passo}</p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-5 text-center text-sm text-slate-500">
+          <p className="rounded-xl border border-border bg-muted px-4 py-5 text-center text-sm text-muted-foreground">
             Nenhum serviço registado.
           </p>
         )}
       </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="rounded-2xl border border-border bg-card p-4">
         {f.situacao === "em_dia" ? (
-          <div className="rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-3 text-xs text-[#1F6B3B]">
+          <div className="rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-3 text-xs text-klasse-green dark:text-emerald-300">
             <CheckCircle2 size={14} className="inline mr-1" /> Situação regular
           </div>
         ) : (
@@ -291,13 +291,13 @@ export function DossierFinanceiroSection({ aluno, role, escolaId, servicos = [] 
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
           Mensalidades
         </p>
         {f.mensalidades.length ? (
           <div className="space-y-2">
-            <div className="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto_auto] text-[10px] font-bold uppercase tracking-widest text-slate-400 px-3">
+            <div className="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto_auto] text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-3">
               <span>Mês</span>
               <span className="text-right">Valor</span>
               <span className="text-right">Estado</span>
@@ -316,7 +316,7 @@ export function DossierFinanceiroSection({ aluno, role, escolaId, servicos = [] 
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+          <div className="rounded-xl border border-border bg-muted px-4 py-6 text-center text-sm text-muted-foreground">
             <Wallet className="mx-auto mb-2" />Sem cobranças.
           </div>
         )}
@@ -362,8 +362,8 @@ export function DossierDocumentosSection({ alunoId }: { alunoId: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Documentos</p>
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Documentos</p>
         <div className="grid gap-3 md:grid-cols-3">
           {actions.map((item) => (
             <Link
@@ -373,14 +373,14 @@ export function DossierDocumentosSection({ alunoId }: { alunoId: string }) {
                 `/secretaria/documentos?alunoId=${alunoId}&tipo=${item.tipo}`,
                 pathname
               )}
-              className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-[#1F6B3B]/30 hover:shadow-sm"
+              className="rounded-2xl border border-border bg-card p-4 text-left transition-all hover:border-[#1F6B3B]/30 hover:shadow-sm"
             >
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-500">
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
                 <FileText size={18} />
               </div>
-              <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-              <p className="text-xs text-slate-500">{item.subtitle}</p>
-              <span className="mt-3 inline-block text-xs font-semibold text-[#1F6B3B] underline">
+              <p className="text-sm font-semibold text-foreground">{item.title}</p>
+              <p className="text-xs text-muted-foreground">{item.subtitle}</p>
+              <span className="mt-3 inline-block text-xs font-semibold text-klasse-green dark:text-emerald-300 underline">
                 Solicitar
               </span>
             </Link>

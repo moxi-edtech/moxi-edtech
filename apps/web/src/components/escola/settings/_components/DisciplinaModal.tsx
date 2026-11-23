@@ -428,7 +428,7 @@ export function DisciplinaModal({
                     setForm((prev) => ({ ...prev, nome: event.target.value }))
                   }
                   placeholder="Nome da disciplina"
-                  className="w-full rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-lg font-semibold text-white placeholder:text-white/60 outline-none focus:ring-2 focus:ring-white/40"
+                  className="w-full rounded-lg border border-border bg-muted-foreground/20 px-3 py-2 text-lg font-semibold text-white placeholder:text-white/60 outline-none focus:ring-2 focus:ring-klasse-gold/30"
                 />
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input
@@ -437,7 +437,7 @@ export function DisciplinaModal({
                       setForm((prev) => ({ ...prev, codigo: event.target.value }))
                     }
                     placeholder="Sigla"
-                    className="w-full sm:w-32 rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm font-mono text-white placeholder:text-white/60 outline-none focus:ring-2 focus:ring-white/40"
+                    className="w-full sm:w-32 rounded-lg border border-border bg-muted-foreground/20 px-3 py-2 text-sm font-mono text-white placeholder:text-white/60 outline-none focus:ring-2 focus:ring-klasse-gold/30"
                   />
                   <input
                     value={form.area ?? ""}
@@ -445,7 +445,7 @@ export function DisciplinaModal({
                       setForm((prev) => ({ ...prev, area: event.target.value }))
                     }
                     placeholder="Área/Departamento"
-                    className="flex-1 rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/60 outline-none focus:ring-2 focus:ring-white/40"
+                    className="flex-1 rounded-lg border border-border bg-muted-foreground/20 px-3 py-2 text-sm text-white placeholder:text-white/60 outline-none focus:ring-2 focus:ring-klasse-gold/30"
                   />
                 </div>
                 {(errors.nome || errors.codigo) && (
@@ -458,7 +458,7 @@ export function DisciplinaModal({
               <>
                 <h2 className="text-2xl font-bold flex items-center gap-2">
                   {form.nome || "Disciplina"}
-                  <span className="px-2 py-0.5 rounded text-sm bg-white/15 text-white font-mono">
+                  <span className="px-2 py-0.5 rounded text-sm bg-muted-foreground/25 text-white font-mono">
                     {form.codigo || "---"}
                   </span>
                 </h2>
@@ -469,7 +469,7 @@ export function DisciplinaModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-white/20 px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10"
+            className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:bg-muted-foreground/20"
             aria-label="Fechar"
           >
             <X className="w-4 h-4" />

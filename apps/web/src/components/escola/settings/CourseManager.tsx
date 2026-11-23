@@ -398,15 +398,15 @@ export default function CourseManager({
                   </CardHeader>
                   <CardContent className="relative z-10">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                      <div className="bg-muted-foreground/15 rounded-xl p-3 border border-border">
                         <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Versão Atual</p>
                         <p className="text-sm font-mono font-bold text-white">{latestVersion || "—"}</p>
                       </div>
-                      <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                      <div className="bg-muted-foreground/15 rounded-xl p-3 border border-border">
                         <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Ciclo</p>
                         <p className="text-sm font-bold text-white">{curriculoAnoLetivo?.ano ?? "—"}</p>
                       </div>
-                      <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                      <div className="bg-muted-foreground/15 rounded-xl p-3 border border-border">
                         <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Ref Interna</p>
                         <p className="text-sm font-mono text-[10px] text-white opacity-60 truncate">{selectedCourse?.id}</p>
                       </div>

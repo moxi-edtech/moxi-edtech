@@ -13,6 +13,10 @@ on:
       - "apps/web/tests/unit/theme-color-coverage.spec.mjs"
       - "scripts/check-klasse-operational-theme-scope.mjs"
       - "scripts/check-klasse-operational-theme-scope.test.mjs"
+      - "scripts/audit-klasse-theme-transitive.mjs"
+      - "scripts/audit-klasse-theme-transitive.test.mjs"
+      - "scripts/klasse-theme-transitive-exceptions.json"
+      - "apps/web/src/app/globals.css"
       - "apps/web/tests/unit/operational-theme-coverage.spec.mjs"
       - "apps/web/src/app/layout.tsx"
       - "apps/web/src/app/theme-print.css"
@@ -63,6 +67,8 @@ jobs:
       - run: node --test apps/web/tests/unit/operational-theme-coverage.spec.mjs
       - run: node --test scripts/check-klasse-operational-theme-scope.test.mjs
       - run: node scripts/check-klasse-operational-theme-scope.mjs
+      - run: node --test scripts/audit-klasse-theme-transitive.test.mjs
+      - run: node scripts/audit-klasse-theme-transitive.mjs --check
       - run: node --test scripts/check-theme-switcher-colors.test.mjs
       - name: Guard new hardcoded UI colors
         env:

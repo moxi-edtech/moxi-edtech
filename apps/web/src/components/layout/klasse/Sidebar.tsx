@@ -130,7 +130,7 @@ export default function Sidebar({
   return (
     <aside
       className={cn(
-        "h-screen sticky top-0 z-40 border-r border-slate-800/80 bg-slate-950 text-slate-100 flex flex-col",
+        "h-screen sticky top-0 z-40 border-r border-slate-800/80 bg-klasse-dark text-slate-100 flex flex-col",
         "transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] overflow-x-hidden"
       )}
       style={{ width: collapsed ? "80px" : "clamp(208px, 16vw, 256px)" }}
@@ -193,7 +193,7 @@ export default function Sidebar({
                       "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
                       "transition-all duration-200",
                       it.active
-                        ? "bg-[#1F6B3B]/10 text-white ring-1 ring-[#1F6B3B]/30"
+                        ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25"
                         : "text-slate-300 hover:bg-slate-900/70 hover:text-white"
                     )}
                     title={collapsed ? it.label : undefined}
@@ -202,7 +202,7 @@ export default function Sidebar({
                     <Icon
                       className={cn(
                         "h-5 w-5 shrink-0 transition-colors",
-                        it.active ? "text-[#E3B23C]" : "text-slate-500 group-hover:text-[#E3B23C]"
+                        it.active ? "text-klasse-gold" : "text-slate-500 group-hover:text-klasse-gold"
                       )}
                     />
                     {!collapsed && <span className="truncate font-medium">{it.label}</span>}
@@ -225,7 +225,7 @@ export default function Sidebar({
                         "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
                         "transition-all duration-200",
                         it.active
-                          ? "bg-[#1F6B3B]/10 text-white ring-1 ring-[#1F6B3B]/30"
+                          ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25"
                           : "text-slate-300 hover:bg-slate-900/70 hover:text-white"
                       )}
                       title={collapsed ? it.label : undefined}
@@ -233,7 +233,7 @@ export default function Sidebar({
                       <Icon
                         className={cn(
                           "h-5 w-5 shrink-0 transition-colors",
-                          it.active ? "text-[#E3B23C]" : "text-slate-500 group-hover:text-[#E3B23C]"
+                          it.active ? "text-klasse-gold" : "text-slate-500 group-hover:text-klasse-gold"
                         )}
                       />
                       {!collapsed && <span className="truncate font-medium">{it.label}</span>}
@@ -256,15 +256,15 @@ export default function Sidebar({
                           <Link
                             href={child.href}
                             className={cn(
-                              "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors",
+                              "flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs transition-colors",
                               childActive
-                                ? "bg-slate-900 text-white font-bold"
+                                ? "bg-slate-900 text-klasse-gold font-bold"
                                 : "text-slate-400 hover:bg-slate-900/60 hover:text-white"
                             )}
                           >
                             <span className={cn(
                               "h-1 w-1 rounded-full transition-colors",
-                              childActive ? "bg-[#E3B23C]" : "bg-slate-700"
+                              childActive ? "bg-klasse-gold" : "bg-slate-700"
                             )} />
                             <span className="truncate">{child.label}</span>
                             {child.badge && (

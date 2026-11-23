@@ -935,7 +935,7 @@ export function BoletimAluno({
           </div>
         </div>
 
-        <div className="flex items-center gap-1 mt-4 bg-white/10 rounded-xl p-1">
+        <div className="flex items-center gap-1 mt-4 bg-muted-foreground/20 rounded-xl p-1">
           {tabs.map((t) => (
             <button
               key={t.id}

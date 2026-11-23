@@ -2004,7 +2004,7 @@ export default function TurmasListClient({
             {selectedIds.size === 1 && (
               <button
                 onClick={handleTransferSelectedTurma}
-                className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-xl transition-colors text-sm font-bold group"
+                className="flex items-center gap-2 px-4 py-2 hover:bg-muted-foreground/20 rounded-xl transition-colors text-sm font-bold group"
               >
                 <ArrowUpDown size={16} className="text-muted-foreground group-hover:text-white transition-colors" />
                 Mover alunos
@@ -2036,7 +2036,7 @@ export default function TurmasListClient({
             </button>}
             <button
               onClick={handleBulkClose}
-              className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-xl transition-colors text-sm font-bold group"
+              className="flex items-center gap-2 px-4 py-2 hover:bg-muted-foreground/20 rounded-xl transition-colors text-sm font-bold group"
             >
               <Lock size={16} className="text-muted-foreground group-hover:text-white transition-colors" />
               Fechamento em Bloco

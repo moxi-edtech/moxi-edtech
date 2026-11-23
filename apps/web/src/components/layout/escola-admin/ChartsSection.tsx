@@ -172,7 +172,7 @@ export default function ChartsSection({ meses, alunosPorMes, pagamentos, pagamen
                   name="Alunos matriculados"
                   stroke={KLASSE_GREEN}
                   strokeWidth={2.5}
-                  dot={{ r: 3, fill: KLASSE_GREEN, stroke: "#ffffff", strokeWidth: 2 }}
+                  dot={{ r: 3, fill: KLASSE_GREEN, stroke: "var(--card)", strokeWidth: 2 }}
                   activeDot={{ r: 5 }}
                 />
               </LineChart>

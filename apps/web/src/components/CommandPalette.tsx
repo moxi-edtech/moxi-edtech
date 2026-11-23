@@ -323,13 +323,13 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
       )}
       <QueryClientProvider client={queryClient}>
         <Command.Dialog open={open} onOpenChange={handleOpenChange} label="Menu de comandos KLASSE" shouldFilter={false} className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]">
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => handleOpenChange(false)} />
+          <div className="fixed inset-0 bg-klasse-dark/60 backdrop-blur-[2px]" onClick={() => handleOpenChange(false)} />
           <motion.div layout={!reduceMotion} transition={{ layout: { duration: 0.18, ease: "easeOut" } }} className={`relative mx-2 w-full ${entityContext ? "max-w-4xl" : "max-w-2xl"} overflow-hidden rounded-2xl border border-border bg-card shadow-2xl sm:mx-0`}>
             <DialogTitle className="sr-only">Pesquisar ou digitar acção</DialogTitle>
             <DialogDescription className="sr-only">Pesquisar alunos, turmas e operações disponíveis neste portal.</DialogDescription>
             {entityContext && (
               <div className="flex items-start gap-2 border-b border-border px-4 py-3">
-                <button type="button" onClick={() => { setEntityContext(contextTrail[contextTrail.length - 1] ?? null); setContextTrail((t) => t.slice(0, -1)); }} className="mt-0.5 flex shrink-0 items-center gap-2 rounded-xl px-2 py-2 text-sm text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-emerald-600">
+                <button type="button" onClick={() => { setEntityContext(contextTrail[contextTrail.length - 1] ?? null); setContextTrail((t) => t.slice(0, -1)); }} className="mt-0.5 flex shrink-0 items-center gap-2 rounded-xl px-2 py-2 text-sm text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-klasse-gold">
                   <ArrowLeft className="h-4 w-4" aria-hidden />
                   <span className="sr-only sm:not-sr-only sm:inline">{contextTrail.length ? BACK_LABELS[contextTrail[contextTrail.length - 1].type] : "Voltar à pesquisa"}</span>
                 </button>
@@ -382,7 +382,7 @@ export function CommandPalette({ escolaId, portal, onStudentSelect, open: openPr
                         )}
                         <Command.Group heading="Acções frequentes" className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                           {staticActions.map((action) => (
-                            <Command.Item key={action.id} onSelect={() => runCommand(action.onSelect)} className="group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-foreground hover:bg-muted aria-selected:bg-muted aria-selected:text-emerald">
+                            <Command.Item key={action.id} onSelect={() => runCommand(action.onSelect)} className="group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-foreground hover:bg-muted aria-selected:bg-muted aria-selected:text-klasse-green dark:aria-selected:text-emerald-300">
                               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted group-aria-selected:bg-emerald/10"><action.icon className="h-4 w-4" /></div>
                               <span>{action.label}</span>
                             </Command.Item>

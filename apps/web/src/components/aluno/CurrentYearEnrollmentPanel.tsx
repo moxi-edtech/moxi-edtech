@@ -144,23 +144,23 @@ export function CurrentYearEnrollmentPanel({
   const registroAno = state?.cicloVida?.matriculas.find((item) => item.anoLetivo === state.anoLetivo?.ano);
 
   return (
-    <section aria-label="Matrícula do ano letivo corrente" className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+    <section aria-label="Matrícula do ano letivo corrente" className="space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Matrícula do ano letivo corrente</h3>
-          <p className="mt-1 text-xs text-slate-500">
+          <h3 className="text-sm font-semibold text-foreground">Matrícula do ano letivo corrente</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
             {state?.anoLetivo ? state.anoLetivo.label : "A verificar o ano ativo da escola"}
           </p>
         </div>
         <button
           type="button" onClick={refresh} disabled={loading || saving}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-50"
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground disabled:opacity-50"
         >
           <RefreshCw size={14} aria-hidden /> Atualizar
         </button>
       </div>
 
-      {loading && <p role="status" className="flex items-center gap-2 text-sm text-slate-500">
+      {loading && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> A confirmar matrícula…
       </p>}
       {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">{error}</p>}
@@ -183,7 +183,7 @@ export function CurrentYearEnrollmentPanel({
           <p className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-800">
             <CheckCircle2 size={16} aria-hidden /> Matrícula confirmada
           </p>
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-foreground">
             <strong>Classe:</strong> {state.matricula.classeNome ?? "Não indicada"}
             {" · "}<strong>Turma:</strong> {state.matricula.turmaNome}
           </p>
@@ -202,8 +202,8 @@ export function CurrentYearEnrollmentPanel({
             </div>
           )}
           {state.canRectifyClass && (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-              <p className="max-w-md text-xs text-slate-500">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+              <p className="max-w-md text-xs text-muted-foreground">
                 Classe incorreta? Corrija a matrícula deste ano sem criar aprovações ou novas cobranças.
               </p>
               <RetificarMatriculaAction
@@ -222,16 +222,16 @@ export function CurrentYearEnrollmentPanel({
       {!loading && state?.estado === "pendente" && state.matricula && (
         <div className="space-y-3">
           <p className="text-sm font-semibold text-amber-800">Matrícula preparada — ainda não confirmada</p>
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-foreground">
             {state.matricula.classeNome ?? "Classe por verificar"} · {state.matricula.turmaNome}
           </p>
           {state.canConfirm && state.pedidoId ? (
             <>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-muted-foreground">
                 Existe um pedido associado. A confirmação só será concluída se o servidor
                 verificar o pagamento, o recibo, as dívidas vencidas e a decisão académica.
               </p>
-              <label className="flex items-start gap-2 text-sm text-slate-700">
+              <label className="flex items-start gap-2 text-sm text-foreground">
                 <input type="checkbox" checked={review} disabled={saving}
                   onChange={(event) => setReview(event.target.checked)} className="mt-1" />
                 <span>Revisei a turma e confirmo que devo concluir esta matrícula no ano letivo corrente.</span>
@@ -307,7 +307,7 @@ export function CurrentYearEnrollmentPanel({
           actionId: state.estado === "sem_matricula" ? "enrollment" : "reenrollment",
           alunoId,
         })}
-          className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-700">
+          className="inline-flex min-h-10 items-center rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:border-emerald-700">
           {state.estado === "sem_matricula" ? "Iniciar matrícula no Balcão" : "Abrir rematrícula no Balcão"}
         </Link>
       )}
