@@ -132,7 +132,7 @@ BEGIN
     )
   ORDER BY m.created_at DESC
   LIMIT 1
-  FOR SHARE;
+  FOR SHARE OF m;
 
   IF coalesce(v_isento,false)
      AND (NOT coalesce(v_bolsa,false)
@@ -441,7 +441,7 @@ REVOKE ALL ON FUNCTION public.klasse_reconciliar_bolsa_matricula() FROM PUBLIC, 
 
 -- Corrige as duas sobrecargas de geração de propinas (4 e 5 argumentos).
 
-CREATE OR REPLACE FUNCTION public.gerar_mensalidades_lote(p_escola_id uuid, p_ano_letivo integer, p_mes_referencia integer, p_dia_vencimento_default integer DEFAULT 10, p_turma_id uuid DEFAULT NULL::uuid)
+CREATE OR REPLACE FUNCTION public.gerar_mensalidades_lote(p_escola_id uuid, p_ano_letivo integer, p_mes_referencia integer, p_dia_vencimento_default integer, p_turma_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
