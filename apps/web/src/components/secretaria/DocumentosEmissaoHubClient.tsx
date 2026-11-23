@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { BookOpen, FileText, Printer, RefreshCw, Search, User } from "lucide-react";
-import { emitirDocumento, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
+import { emitirDocumento, abrirParaImpressao, consultarDocumentoIndividual } from "@/lib/documentos/emissaoClient";
 import type { TipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 
 // Mesmo union que a rota de emissão aceita. Estava aqui duplicado (e uma
@@ -329,17 +329,13 @@ export default function DocumentosEmissaoHubClient({
     if (!selectedAluno?.id || !tipo || !selectedAnoLetivoId) {
       throw new Error("Selecione aluno, documento e ano letivo.");
     }
-    const res = await fetch("/api/secretaria/documentos/emitir", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        escolaId, alunoId: selectedAluno.id, tipoDocumento: tipo,
-        ano_letivo_id: selectedAnoLetivoId, action,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.ok) throw new Error(data?.error || "Falha ao consultar o documento.");
-    return data as EmissaoIndividualEstado;
+    return await consultarDocumentoIndividual({
+      escolaId,
+      alunoId: selectedAluno.id,
+      tipoDocumento: tipo,
+      anoLetivoId: selectedAnoLetivoId,
+      action,
+    }) as EmissaoIndividualEstado;
   }
 
   useEffect(() => {
@@ -351,16 +347,13 @@ export default function DocumentosEmissaoHubClient({
     documentRequestRef.current = null;
     if (!selectedAluno?.id || !tipo || !selectedAnoLetivoId) return;
     setStatusLoading(true);
-    fetch("/api/secretaria/documentos/emitir", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        escolaId, alunoId: selectedAluno.id, tipoDocumento: tipo,
-        ano_letivo_id: selectedAnoLetivoId, action: "status",
-      }),
-    }).then(async (response) => {
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data?.ok) throw new Error(data.error || "Falha ao consultar documento.");
+    consultarDocumentoIndividual({
+      escolaId,
+      alunoId: selectedAluno.id,
+      tipoDocumento: tipo,
+      anoLetivoId: selectedAnoLetivoId,
+      action: "status",
+    }).then((data) => {
       if (active) setDocumentState(data as EmissaoIndividualEstado);
     }).catch((err: unknown) => {
       if (active) setError(err instanceof Error ? err.message : "Falha ao consultar documento.");
