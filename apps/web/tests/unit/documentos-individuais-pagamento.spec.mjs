@@ -47,9 +47,13 @@ test("pagamento de boletim não é fungível com declaração com notas", () => 
   assert.match(migration, /AND servico_codigo = v_codigo/);
 });
 
-test("migração revoga wrapper anterior de emission e não permite acesso anónimo", () => {
-  assert.match(migration, /REVOKE ALL ON FUNCTION public\.emitir_documento_final_idempotente[^\n]+FROM PUBLIC, authenticated/);
+test("expand preserva emissão legada até deploy; contract revoga bypass depois", () => {
+  const contract = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271203003000_documentos_individuais_cutover_rpc_legacy.sql"), "utf8");
+  assert.doesNotMatch(migration, /REVOKE ALL ON FUNCTION public\.emitir_documento_final_idempotente/);
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.emitir_documento_final_individual[^\n]+FROM PUBLIC, anon/);
+  assert.match(contract, /REVOKE ALL ON FUNCTION public\.emitir_documento_final_idempotente/);
+  assert.match(contract, /FROM PUBLIC, anon, authenticated/);
+  assert.match(contract, /TO service_role/);
 });
 
 test("a Central é a única interface e API de emissão individual", () => {
