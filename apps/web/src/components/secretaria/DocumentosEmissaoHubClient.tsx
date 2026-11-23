@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { BookOpen, FileText, Printer, RefreshCw, Search, User } from "lucide-react";
@@ -97,10 +97,10 @@ export default function DocumentosEmissaoHubClient({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorAction, setErrorAction] = useState<DocumentoNextAction | null>(null);
-  const reportError = (err: unknown, fallback: string) => {
+  const reportError = useCallback((err: unknown, fallback: string) => {
     setError(err instanceof Error ? err.message : fallback);
     setErrorAction(err instanceof DocumentoOperacaoErro ? err.nextAction : null);
-  };
+  }, []);
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [servicos, setServicos] = useState<ServicoItem[]>([]);
   const [loadingServicos, setLoadingServicos] = useState(false);
@@ -365,7 +365,7 @@ export default function DocumentosEmissaoHubClient({
       if (active) reportError(err, "Falha ao consultar documento.");
     }).finally(() => { if (active) setStatusLoading(false); });
     return () => { active = false; };
-  }, [escolaId, selectedAluno?.id, tipo, selectedAnoLetivoId]);
+  }, [escolaId, selectedAluno?.id, tipo, selectedAnoLetivoId, reportError]);
 
   const handleRefresh = async () => {
     setStatusLoading(true);
