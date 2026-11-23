@@ -66,5 +66,24 @@ test("Excel e PDF incluem classe, turno e status real da bolsa", () => {
   assert.match(exportRenderer, /key: "turno", label: "Turno"/);
   assert.match(exportRenderer, /key: "bolsa_integral", label: "Bolseiro"/);
   assert.match(exportRenderer, /value === true \? "Sim" : value === false \? "Não"/);
-  assert.match(exportRenderer, /key: "bolsa_integral", x:/);
+  assert.match(exportRenderer, /renderNominalA4\(/);
+  assert.match(exportRenderer, /key: "bolsa", label: "Bolsa"/);
+  assert.match(exportRenderer, /camposSensiveis: true/);
+  assert.match(exportRenderer, /logoBytes: context\.logoBytes/);
+});
+
+test("PDF geral partilha template institucional da lista nominal e recebe dados da escola", () => {
+  const nominal = src("lib/documentos/nominalA4.ts");
+  const meta = src("lib/services/alunosExportPdfContext.server.ts");
+  assert.match(nominal, /titulo\?: string/);
+  assert.match(nominal, /colunas\?: readonly/);
+  assert.match(nominal, /contexto\?: readonly string\[\]/);
+  assert.match(nominal, /Gerado pelo KLASSE/);
+  assert.match(nominal, /Assinatura da Direcção/);
+  assert.match(nominal, /Página /);
+  assert.match(meta, /\.from\("escolas"\)/);
+  assert.match(meta, /\.eq\("id", escolaId\)/);
+  assert.match(meta, /\.from\("anos_letivos"\)/);
+  assert.match(exportAdmin, /loadAlunosPdfInstitutionalContext/);
+  assert.match(exportSecretaria, /loadAlunosPdfInstitutionalContext/);
 });
