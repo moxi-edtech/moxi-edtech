@@ -67,6 +67,25 @@ CREATE TABLE IF NOT EXISTS public.pagamentos (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A emissão certificada exige histórico/disciplinas oficiais no mesmo ano.
+-- Tabelas mínimas apenas para esta base de CI descartável.
+CREATE TABLE IF NOT EXISTS public.historico_anos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  escola_id uuid NOT NULL,
+  aluno_id uuid NOT NULL,
+  ano_letivo integer NOT NULL,
+  matricula_id uuid,
+  snapshot_status text
+);
+
+CREATE TABLE IF NOT EXISTS public.historico_disciplinas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  historico_ano_id uuid NOT NULL REFERENCES public.historico_anos(id),
+  disciplina_nome text,
+  nota_final numeric,
+  media_final numeric
+);
+
 -- Original direct RPC is stubbed only inside the disposable CI database.
 CREATE OR REPLACE FUNCTION public.emitir_documento_final(
   p_escola_id uuid, p_aluno_id uuid, p_ano_letivo integer, p_tipo_documento text
