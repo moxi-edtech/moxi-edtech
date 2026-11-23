@@ -15,6 +15,8 @@ type MatriculaBolsa = {
   motivo: string | null;
   vigencia_inicio: string | null;
   bolsa_ano_anterior: number | null;
+  ano_inicio: string | null;
+  propinas_antigas_potenciais: string[];
 };
 
 export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
@@ -27,6 +29,8 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
   const [matricula, setMatricula] = useState<MatriculaBolsa | null>(null);
   const [motivo, setMotivo] = useState("Bolsa integral");
   const [mesVigencia, setMesVigencia] = useState("");
+  const [justificativa, setJustificativa] = useState("");
+  const [regularizacao, setRegularizacao] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [avisoFiscal, setAvisoFiscal] = useState(0);
   const [avisoPagamento, setAvisoPagamento] = useState(0);
@@ -41,6 +45,8 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
     setLoading(true);
     setFailed(false);
     setConfirmando(false);
+    setRegularizacao(false);
+    setJustificativa("");
     setAvisoFiscal(0);
     setAvisoPagamento(0);
     fetch(endpoint, { cache: "no-store", signal: controller.signal })
@@ -59,10 +65,24 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
     return () => controller.abort();
   }, [endpoint]);
 
+  const mesAtual = new Date().toISOString().slice(0,7);
+  const retroativa = Boolean(mesVigencia) && mesVigencia < mesAtual
+    && (regularizacao || !matricula?.bolseiro);
+  const possibilidadeRegularizacao = (matricula?.propinas_antigas_potenciais ?? [])
+    .filter(mes => !matricula?.bolseiro ||
+      (matricula.vigencia_inicio && mes < matricula.vigencia_inicio.slice(0,7)));
+
   async function toggleBolsa() {
-    if (!matricula || saving) return;
-    if (!confirmando) return;
-    const next = !matricula.bolseiro;
+    if (!matricula || saving || !confirmando) return;
+    const next = regularizacao ? true : !matricula.bolseiro;
+    if (regularizacao && (!mesVigencia || !retroativa)) {
+      notifyError("Vigência inválida", "Escolha um mês anterior para regularizar as propinas.");
+      return;
+    }
+    if (retroativa && justificativa.trim().length < 10) {
+      notifyError("Justificação obrigatória", "Explique a regularização em pelo menos 10 caracteres.");
+      return;
+    }
     setSaving(true);
     try {
       const response = await fetch(endpoint, {
@@ -72,6 +92,8 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
           matricula_id: matricula.id, bolseiro: next,
           motivo: next ? motivo.trim() || "Bolsa integral" : null,
           vigencia_inicio: mesVigencia ? `${mesVigencia}-01` : null,
+          regularizacao_retroativa: retroativa,
+          justificativa: retroativa ? justificativa.trim() : null,
         }),
       });
       const payload = await response.json();
@@ -80,13 +102,18 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
       setMatricula((current) => current ? { ...current,
         bolseiro: next, bolsa_integral: next, motivo: next ? motivo : null,
         vigencia_inicio: next ? result.vigencia_inicio : null,
+        propinas_antigas_potenciais: next
+          ? current.propinas_antigas_potenciais.filter(m => m < result.vigencia_inicio.slice(0,7))
+          : current.propinas_antigas_potenciais,
       } : null);
       setAvisoFiscal(Number(result.pendentes_revisao_fiscal ?? 0));
       setAvisoPagamento(Number(result.pendentes_revisao_pagamento ?? 0));
       setConfirmando(false);
+      setRegularizacao(false);
       setMesVigencia("");
+      setJustificativa("");
       success("Bolsa atualizada", next
-        ? `Isenções: ${result.isentas ?? 0}. Saldos parciais quitados: ${result.quitadas_parciais ?? 0}.`
+        ? `Mensalidades isentas: ${result.isentas ?? 0}. Saldos parciais atuais regularizados: ${result.quitadas_parciais ?? 0}.`
         : `Cobranças futuras reabertas: ${result.reabertas ?? 0}. Histórico preservado.`);
       router.refresh();
     } catch (e) {
@@ -123,7 +150,7 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
                 {matricula.bolseiro && matricula.vigencia_inicio ? ` · Desde ${matricula.vigencia_inicio.slice(0,7)}` : ""}
               </span>
             </div>
-            {!confirmando && <button type="button" onClick={() => setConfirmando(true)} disabled={saving || matricula.isencao_outra_politica}
+            {!confirmando && <button type="button" onClick={() => { setRegularizacao(false); setMesVigencia(""); setConfirmando(true); }} disabled={saving || matricula.isencao_outra_politica}
               className={matricula.bolseiro
                 ? "inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
                 : "inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"}
