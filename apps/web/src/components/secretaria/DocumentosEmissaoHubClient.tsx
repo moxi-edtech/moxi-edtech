@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { BookOpen, FileText, Printer, RefreshCw, Search, User } from "lucide-react";
-import { emitirDocumento, abrirParaImpressao, consultarDocumentoIndividual } from "@/lib/documentos/emissaoClient";
+import { emitirDocumento, abrirParaImpressao, consultarDocumentoIndividual, DocumentoOperacaoErro, type DocumentoNextAction } from "@/lib/documentos/emissaoClient";
 import type { TipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 
 // Mesmo union que a rota de emissão aceita. Estava aqui duplicado (e uma
@@ -96,6 +96,11 @@ export default function DocumentosEmissaoHubClient({
   const [tipo, setTipo] = useState<DocumentoTipo | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorAction, setErrorAction] = useState<DocumentoNextAction | null>(null);
+  const reportError = (err: unknown, fallback: string) => {
+    setError(err instanceof Error ? err.message : fallback);
+    setErrorAction(err instanceof DocumentoOperacaoErro ? err.nextAction : null);
+  };
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [servicos, setServicos] = useState<ServicoItem[]>([]);
   const [loadingServicos, setLoadingServicos] = useState(false);
@@ -343,6 +348,7 @@ export default function DocumentosEmissaoHubClient({
     setDocumentState(null);
     setSuccess(null);
     setError(null);
+    setErrorAction(null);
     paymentRequestRef.current = null;
     documentRequestRef.current = null;
     if (!selectedAluno?.id || !tipo || !selectedAnoLetivoId) return;
@@ -356,7 +362,7 @@ export default function DocumentosEmissaoHubClient({
     }).then((data) => {
       if (active) setDocumentState(data as EmissaoIndividualEstado);
     }).catch((err: unknown) => {
-      if (active) setError(err instanceof Error ? err.message : "Falha ao consultar documento.");
+      if (active) reportError(err, "Falha ao consultar documento.");
     }).finally(() => { if (active) setStatusLoading(false); });
     return () => { active = false; };
   }, [escolaId, selectedAluno?.id, tipo, selectedAnoLetivoId]);
@@ -364,10 +370,12 @@ export default function DocumentosEmissaoHubClient({
   const handleRefresh = async () => {
     setStatusLoading(true);
     setError(null);
+    setErrorAction(null);
     try {
       setDocumentState(await consultarEstado());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível atualizar o estado.");
+      setDocumentState(null);
+      reportError(err, "Não foi possível atualizar o estado.");
     } finally {
       setStatusLoading(false);
     }
@@ -377,20 +385,23 @@ export default function DocumentosEmissaoHubClient({
     if (!canSubmit) return;
     setStatusLoading(true);
     setError(null);
+    setErrorAction(null);
     try {
       setDocumentState(await consultarEstado("solicitar"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível solicitar o documento.");
+      setDocumentState(null);
+      reportError(err, "Não foi possível solicitar o documento.");
     } finally {
       setStatusLoading(false);
     }
   };
 
   const handlePagamento = async () => {
-    if (!canSubmit || !selectedAluno?.id || !selectedAnoLetivoId || !documentState) return;
+    if (!canSubmit || !selectedAluno?.id || !selectedAnoLetivoId || !documentState || error) return;
     if (documentState.status !== "pending_payment") return;
     setPaymentBusy(true);
     setError(null);
+    setErrorAction(null);
     try {
       let estado = documentState;
       if (!estado.pedidoId || !estado.pagamentoIntentId) {
@@ -434,7 +445,7 @@ export default function DocumentosEmissaoHubClient({
         ? "Pagamento confirmado. Agora pode emitir o documento."
         : "Pagamento registado. A emissão ficará disponível depois da validação financeira.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Pagamento não confirmado. Consulte o estado antes de repetir.");
+      reportError(err, "Pagamento não confirmado. Consulte o estado antes de repetir.");
     } finally {
       setPaymentBusy(false);
     }
@@ -449,6 +460,7 @@ export default function DocumentosEmissaoHubClient({
     }
     setSubmitting(true);
     setError(null);
+    setErrorAction(null);
     setSuccess(null);
     try {
       const fingerprint = JSON.stringify({
@@ -464,7 +476,10 @@ export default function DocumentosEmissaoHubClient({
         anoLetivoId: selectedAnoLetivoId,
         anoLetivo: tipo === "boletim_trimestral" ? selectedAnoLetivo?.ano_letivo ?? null : null,
       });
-      if (!emissao.ok) throw new Error(emissao.error);
+      if (!emissao.ok) {
+        setErrorAction(emissao.nextAction ?? null);
+        throw new Error(emissao.error);
+      }
       setDocumentState({
         ...documentState, status: "issued", granted: true,
         docId: emissao.docId, printUrl: emissao.printUrl,
@@ -679,8 +694,14 @@ export default function DocumentosEmissaoHubClient({
         <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{success}</p>
       )}
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+        <div role="alert" className="space-y-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p>{error}</p>
+          {errorAction && (
+            <a href={errorAction.href}
+              className="inline-flex items-center rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-800 hover:bg-red-100">
+              {errorAction.label}
+            </a>
+          )}
         </div>
       )}
 
