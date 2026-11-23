@@ -37,7 +37,7 @@ test("portal do aluno escolhe a matrícula do ano solicitado", () => {
 });
 
 test("RPC do aluno não faz fallback para ano diferente", () => {
-  const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271202020000_exact_year_aluno_documento_final.sql"), "utf8");
+  const migration = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271203001000_exact_year_aluno_documento_final.sql"), "utf8");
   assert.match(migration, /CREATE OR REPLACE FUNCTION public.aluno_emitir_documento_final/);
   assert.doesNotMatch(migration, /ORDER BY ano_letivo DESC, id DESC LIMIT 1/);
   assert.match(migration, /AND ano_letivo = p_ano_letivo/);
