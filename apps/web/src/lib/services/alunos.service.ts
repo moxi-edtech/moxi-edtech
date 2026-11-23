@@ -188,7 +188,7 @@ export async function listAlunos(
 
     lastCursorItem = mapped[mapped.length - 1];
 
-    let enriched = mapped;
+    let enriched: AlunoListItem[] = mapped;
     const alunoIds = mapped
       .filter((row) => row.origem === "aluno")
       .map((row) => row.aluno_id ?? row.id)
