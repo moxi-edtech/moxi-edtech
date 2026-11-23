@@ -33,6 +33,7 @@ type MatriculaResumo = {
   created_at: string | null;
   updated_at?: string | null;
   numero_chamada?: number | null;
+  bolsa_integral?: boolean | null;
 };
 
 type MensalidadeResumo = {
@@ -60,6 +61,9 @@ export function parseAlunoListFilters(url: URL): AlunoListFilters {
     status: url.searchParams.get("status") || undefined,
     ano: url.searchParams.get("ano") || url.searchParams.get("ano_letivo") || undefined,
     turmaId: url.searchParams.get("turma_id") || url.searchParams.get("turmaId") || undefined,
+    classeId: url.searchParams.get("classe_id") || undefined,
+    turno: url.searchParams.get("turno") || undefined,
+    bolsa: url.searchParams.get("bolsa") || undefined,
     limit: url.searchParams.get("limit") || url.searchParams.get("pageSize") || undefined,
     page: url.searchParams.get("page") || undefined,
     offset: url.searchParams.get("offset") || undefined,
@@ -78,6 +82,15 @@ export function parseAlunoListFilters(url: URL): AlunoListFilters {
   return parsed.data;
 }
 
+// Normaliza os valores antigos (M/T/N) e descritivos sem confundir turmas.
+function turnoCanonico(turno: string | null | undefined): "manha" | "tarde" | "noite" | null {
+  const normalizado = (turno ?? "").trim().toLocaleLowerCase("pt-AO").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (normalizado === "m" || normalizado.startsWith("manha")) return "manha";
+  if (normalizado === "t" || normalizado.startsWith("tarde")) return "tarde";
+  if (normalizado === "n" || normalizado.startsWith("noite")) return "noite";
+  return null;
+}
+
 export async function listAlunos(
   supabase: SupabaseClient,
   escolaId: string,
@@ -91,7 +104,7 @@ export async function listAlunos(
   const pageLimit = Math.min(limit, 50);
   const includeResumo = options.includeResumo || Boolean(filters.includeResumo) || Boolean(filters.turmaId);
   const includeFinanceiro = Boolean(
-    options.includeFinanceiro || filters.situacaoFinanceira || filters.statusMatricula || filters.turmaId
+    options.includeFinanceiro || filters.situacaoFinanceira || filters.statusMatricula || filters.turmaId || filters.classeId || filters.turno || filters.bolsa
   );
 
   if (!targetAno) {
@@ -138,7 +151,7 @@ export async function listAlunos(
   let offset = hasCursor ? 0 : from;
   let exhausted = false;
 
-  const needsPostFilter = Boolean(filters.turmaId || filters.situacaoFinanceira || filters.statusMatricula);
+  const needsPostFilter = Boolean(filters.turmaId || filters.classeId || filters.turno || filters.bolsa || filters.situacaoFinanceira || filters.statusMatricula);
 
   while (items.length < pageLimit) {
     const { data, error } = await supabase.rpc("secretaria_list_alunos_kf2", {
@@ -243,7 +256,7 @@ export async function listAlunos(
       let matriculasQuery = supabase
         .from("matriculas")
         .select(
-          "id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id"
+          "id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id, bolsa_integral"
         )
         .eq("escola_id", escolaId)
         .in("aluno_id", alunoIds)
@@ -273,23 +286,31 @@ export async function listAlunos(
           turma_codigo: string | null;
           ano_letivo: number | null;
           curso_nome: string | null;
+          classe_id: string | null;
+          classe_nome: string | null;
+          turno: string | null;
         }
       >();
 
       if (turmaIds.length > 0) {
-        const { data: turmas } = await supabase
+        const { data: turmas, error: turmasError } = await supabase
           .from("turmas")
-          .select("id, nome, turma_codigo, ano_letivo, cursos ( nome )")
+          .select("id, nome, turma_codigo, ano_letivo, classe_id, turno, classes ( nome ), cursos ( nome )")
           .eq("escola_id", escolaId)
           .in("id", turmaIds);
 
+        if (turmasError) throw turmasError;
         (turmas ?? []).forEach((row: any) => {
           const curso = Array.isArray(row.cursos) ? row.cursos[0] : row.cursos;
+          const classe = Array.isArray(row.classes) ? row.classes[0] : row.classes;
           turmaMap.set(row.id, {
             nome: row.nome ?? null,
             turma_codigo: row.turma_codigo ?? null,
             ano_letivo: row.ano_letivo ?? null,
             curso_nome: curso?.nome ?? null,
+            classe_id: row.classe_id ?? null,
+            classe_nome: classe?.nome ?? null,
+            turno: row.turno ?? null,
           });
         });
       }
@@ -303,6 +324,10 @@ export async function listAlunos(
           turma_codigo: string | null;
           turma_ano: number | null;
           turma_curso: string | null;
+          classe_id: string | null;
+          classe_nome: string | null;
+          turno: string | null;
+          bolsa_integral: boolean;
         }
       >();
 
@@ -316,6 +341,10 @@ export async function listAlunos(
           turma_codigo: turma?.turma_codigo ?? null,
           turma_ano: turma?.ano_letivo ?? null,
           turma_curso: turma?.curso_nome ?? null,
+          classe_id: turma?.classe_id ?? null,
+          classe_nome: turma?.classe_nome ?? null,
+          turno: turma?.turno ?? null,
+          bolsa_integral: row.bolsa_integral === true,
         });
       });
 
@@ -364,6 +393,10 @@ export async function listAlunos(
             turma_codigo: null,
             turma_ano: null,
             turma_curso: null,
+            classe_id: null,
+            classe_nome: null,
+            turno: null,
+            bolsa_integral: null,
             situacao_financeira: "sem_registo",
             meses_atraso: 0,
             valor_em_divida: 0,
@@ -393,6 +426,10 @@ export async function listAlunos(
           turma_codigo: matricula?.turma_codigo ?? null,
           turma_ano: matricula?.turma_ano ?? null,
           turma_curso: matricula?.turma_curso ?? null,
+          classe_id: matricula?.classe_id ?? null,
+          classe_nome: matricula?.classe_nome ?? null,
+          turno: matricula?.turno ?? null,
+          bolsa_integral: matricula?.bolsa_integral ?? null,
           situacao_financeira: financeiro.situacao,
           meses_atraso: financeiro.meses,
           valor_em_divida: financeiro.valor,
@@ -406,6 +443,19 @@ export async function listAlunos(
       enriched = enriched.filter((row) => row.turma_id === filters.turmaId);
     }
 
+    if (filters.classeId) {
+      enriched = enriched.filter((row) => row.classe_id === filters.classeId);
+    }
+
+    if (filters.turno) {
+      enriched = enriched.filter((row) => turnoCanonico(row.turno) === filters.turno);
+    }
+
+    // Apenas matrículas do ano selecionado: ausência de matrícula não é "não bolseiro".
+    if (filters.bolsa) {
+      enriched = enriched.filter((row) => row.bolsa_integral === (filters.bolsa === "sim"));
+    }
+
     if (filters.situacaoFinanceira) {
       enriched = enriched.filter((row) => row.situacao_financeira === filters.situacaoFinanceira);
     }
@@ -414,6 +464,16 @@ export async function listAlunos(
       enriched = enriched.filter((row) => row.status_matricula === filters.statusMatricula);
     }
 
+    // Cursor deve apontar para o último item efetivamente devolvido, caso
+    // uma página filtrada seja completada a meio do lote da RPC.
+    const remaining = pageLimit - items.length;
+    if (enriched.length >= remaining) {
+      const lastReturned = enriched[remaining - 1];
+      lastCursorItem = mapped.find((row: AlunoListItem) => row.id === lastReturned?.id) ?? lastReturned;
+      items = items.concat(enriched.slice(0, remaining));
+      exhausted = mapped.length < pageLimit && lastReturned?.id === mapped[mapped.length - 1]?.id;
+      break;
+    }
     items = items.concat(enriched);
 
     if (!needsPostFilter && mapped.length < pageLimit) {
@@ -430,7 +490,8 @@ export async function listAlunos(
     cursorKey = lastCursorItem?.id ?? undefined;
     offset = 0;
     batchCount += 1;
-    if (batchCount > 10) break;
+    // Não devolver listas incompletas silenciosamente para filtros esparsos.
+    if (batchCount > 220) throw new Error("Limite de leitura atingido ao filtrar alunos.");
   }
 
   if (items.length > pageLimit) {
@@ -488,7 +549,9 @@ export async function listAllAlunos(
     cursorId = page.nextCursor.id;
 
     iterations += 1;
-    if (iterations > 200 || all.length >= 10000) break;
+    if (iterations > 220 || all.length >= 10000) {
+      throw new Error("A exportação excede o limite seguro de registos; refine os filtros.");
+    }
   }
 
   return all;
