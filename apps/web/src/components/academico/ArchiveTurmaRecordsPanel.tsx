@@ -178,8 +178,14 @@ export default function ArchiveTurmaRecordsPanel({
       {!loading && !error && data && type === "frequencia" && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Resumo de snapshots de frequência do período. Não se presume presença quando não existem registos.</p>
-          {!frequencias.some((f) => f.registos > 0) && <p className="text-sm text-muted-foreground">Não existem mapas consolidados de frequência deste ano.</p>}
-          {frequencias.filter((f) => f.registos > 0).map((f) => (
+          <label htmlFor={"archive-attendance-period-" + turmaId} className="block text-xs font-medium text-foreground">Trimestre a consultar</label>
+          <select id={"archive-attendance-period-" + turmaId} value={periodFilter} onChange={(event) => setPeriodFilter(event.target.value)}
+            className="w-full max-w-sm rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground">
+            <option value="">Todos os trimestres</option>
+            {data.context?.periodos.map((periodo) => <option key={periodo.id} value={periodo.id}>{periodName(periodo.id)}</option>)}
+          </select>
+          {!frequencias.some((f) => f.registos > 0 && (!periodFilter || f.periodo_letivo_id === periodFilter)) && <p className="text-sm text-muted-foreground">Não existem mapas consolidados de frequência neste período.</p>}
+          {frequencias.filter((f) => f.registos > 0 && (!periodFilter || f.periodo_letivo_id === periodFilter)).map((f) => (
             <div key={f.periodo_letivo_id} className="rounded-xl border border-border bg-card p-3">
               <p className="text-sm font-semibold text-foreground">{periodName(f.periodo_letivo_id)}</p>
               <p className="mt-1 text-xs text-muted-foreground">
