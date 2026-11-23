@@ -34,8 +34,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
     let query = supabase
       .from("turmas")
-      .select("id, nome, turma_codigo, ano_letivo, cursos ( nome )")
+      .select("id, nome, turma_codigo, ano_letivo, classe_id, turno, classes ( nome ), cursos ( nome )")
       .eq("escola_id", resolvedEscolaId);
+
+    const ano = url.searchParams.get("ano");
+    if (ano && /^\d{4}$/.test(ano)) query = query.eq("ano_letivo", Number(ano));
 
     query = applyKf2ListInvariants(query, {
       limit,
@@ -49,12 +52,16 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
     const items = (data ?? []).map((row) => {
       const curso = Array.isArray((row as any).cursos) ? (row as any).cursos[0] : (row as any).cursos;
+      const classe = Array.isArray((row as any).classes) ? (row as any).classes[0] : (row as any).classes;
       return {
         id: (row as any).id,
         nome: (row as any).nome,
         turma_codigo: (row as any).turma_codigo ?? null,
         ano_letivo: (row as any).ano_letivo ?? null,
         curso: curso?.nome ?? null,
+        classe_id: (row as any).classe_id ?? null,
+        classe_nome: classe?.nome ?? null,
+        turno: (row as any).turno ?? null,
       };
     });
 
