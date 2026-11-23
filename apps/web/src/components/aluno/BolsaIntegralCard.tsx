@@ -99,7 +99,7 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
             </div>
             <button type="button" onClick={toggleBolsa} disabled={saving}
               className={matricula.bolseiro
-                ? "inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                ? "inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
                 : "inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-50"}
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
@@ -111,7 +111,7 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
               <label htmlFor="bolsa-motivo" className="mb-1 block text-xs font-medium text-foreground">Motivo (opcional)</label>
               <input id="bolsa-motivo" value={motivo} maxLength={160}
                 onChange={(event) => setMotivo(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
               />
             </div>
           )}
