@@ -16,6 +16,7 @@ const updateSchema = z.object({
   matricula_id: z.string().uuid(),
   bolseiro: z.boolean(),
   motivo: z.string().trim().max(160).nullable().optional(),
+  vigencia_inicio: z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])-01$/).nullable().optional(),
 });
 
 async function contexto(req: Request, id: string) {
@@ -57,7 +58,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   let query = ctx.supabase!
     .from("matriculas")
-    .select("id, ano_letivo, status, bolsa_integral, bolsa_integral_motivo, percentagem_desconto, motivo_desconto")
+    .select("id, ano_letivo, status, bolsa_integral, bolsa_integral_motivo, bolsa_integral_inicio, percentagem_desconto, motivo_desconto")
     .eq("escola_id", ctx.escolaId)
     .eq("aluno_id", id)
     .order("ano_letivo", { ascending: false })
@@ -71,6 +72,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const atual = matriculas.find((m: any) => ["ativo", "ativa", "matriculado", "active"].includes(m.status))
     ?? matriculas[0] ?? null;
   if (!atual) return NextResponse.json({ ok: true, matricula: null }, { headers: { "Cache-Control": "no-store" } });
+
+  // Renovação anual exige nova decisão: benefício anterior é apenas contexto.
+  const { data: anteriores, error: anterioresError } = await ctx.supabase!
+    .from("matriculas")
+    .select("ano_letivo,bolsa_integral,percentagem_desconto,motivo_desconto")
+    .eq("escola_id",ctx.escolaId).eq("aluno_id",id)
+    .lt("ano_letivo",atual.ano_letivo)
+    .order("ano_letivo",{ascending:false}).limit(20);
+  if (anterioresError) return NextResponse.json({ok:false,error:"Falha a consultar histórico da bolsa"},{status:500});
+  const bolsaAnterior = (anteriores ?? []).find((m: any) => Boolean(m.bolsa_integral ||
+    (Number(m.percentagem_desconto ?? 0) === 100 && /bolsa/i.test(m.motivo_desconto ?? ""))));
 
   return NextResponse.json({
     ok: true,
@@ -86,6 +98,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         Number(atual.percentagem_desconto ?? 0) >= 100 &&
         !/bolsa/i.test(atual.motivo_desconto ?? "")),
       motivo: atual.bolsa_integral_motivo ?? atual.motivo_desconto ?? null,
+      vigencia_inicio: atual.bolsa_integral_inicio ?? null,
+      bolsa_ano_anterior: bolsaAnterior ? Number(bolsaAnterior.ano_letivo) : null,
     },
   }, { headers: { "Cache-Control": "no-store" } });
 }
@@ -104,11 +118,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     p_matricula_id: parsed.data.matricula_id,
     p_bolseiro: parsed.data.bolseiro,
     p_motivo: parsed.data.motivo ?? null,
+    p_vigencia_inicio: parsed.data.vigencia_inicio ?? null,
   });
   if (error || !data?.ok) {
     const code = error?.code;
     return NextResponse.json(
-      { ok: false, error: code === "42501" ? "Sem permissão para gerir bolsas" : code === "P0002" ? "Matrícula não encontrada" : "Não foi possível atualizar a bolsa" },
+      { ok: false, error: code === "42501" ? "Sem permissão para gerir bolsas" : code === "P0002" ? "Matrícula não encontrada" : code === "23514" ? "Vigência inválida ou benefício incompatível com a matrícula" : "Não foi possível atualizar a bolsa" },
       { status: code === "42501" ? 403 : code === "P0002" ? 404 : 409 },
     );
   }
