@@ -130,6 +130,30 @@ export async function POST(request: Request) {
       }
     }
 
+    // Reemissão / retry de documento existente: nunca gerar nem cobrar outro.
+    // A própria impressão mantém autenticação e autorização por escola.
+    const { data: enrollmentForDoc } = await supabase.from("matriculas")
+      .select("id").eq("escola_id", escolaId).eq("aluno_id", alunoId)
+      .eq("session_id", academicContext!.anoLetivoId)
+      .order("created_at", { ascending: false }).order("id", { ascending: false })
+      .limit(1).maybeSingle();
+    if (enrollmentForDoc?.id) {
+      const { data: alreadyIssued, error: existingError } = await (supabase as any)
+        .from("documentos_emitidos")
+        .select("id, public_id, hash_validacao, tipo")
+        .eq("escola_id", escolaId).eq("aluno_id", alunoId)
+        .eq("tipo", tipoDocumento)
+        .contains("dados_snapshot", { matricula_id: enrollmentForDoc.id })
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (existingError) return NextResponse.json({ ok: false, error: "Falha ao consultar emissões existentes." }, { status: 503 });
+      if (alreadyIssued?.id) {
+        return NextResponse.json({
+          ok: true, docId: alreadyIssued.id, publicId: alreadyIssued.public_id,
+          hash: alreadyIssued.hash_validacao, tipo: alreadyIssued.tipo, idempotent: true,
+        });
+      }
+    }
+
     // O servidor valida o serviço exato, matrícula/ano e liquidação no ledger.
     // Nunca confiar em status ou valor enviados pelo cliente.
     const { data: access, error: accessError } = await (supabase as any)
@@ -307,6 +331,9 @@ export async function POST(request: Request) {
 
     const snapshot = {
       aluno_id: alunoId,
+      origem_emissao: "documentos_emissao_individual",
+      servico_pedido_id: access?.pedido_id ?? null,
+      pagamento_intent_id: access?.pagamento_intent_id ?? null,
       aluno_nome: aluno.nome_completo || aluno.nome || "",
       aluno_bi: aluno.bi_numero || null,
       aluno_pai: aluno.pai_nome || null,
@@ -360,6 +387,20 @@ export async function POST(request: Request) {
       // INSERT. O índice único deixa apenas uma vencer; a outra devolve o mesmo
       // documento em vez de fabricar uma segunda emissão.
       if (docError?.code === "23505") {
+        // Duas janelas, chaves diferentes, mesmo aluno/documento/ano.
+        const { data: issuedDoc } = await (supabase as any)
+          .from("documentos_emitidos")
+          .select("id, public_id, hash_validacao, tipo")
+          .eq("escola_id", escolaId).eq("aluno_id", alunoId)
+          .eq("tipo", tipoDocumento)
+          .contains("dados_snapshot", { matricula_id: matricula.id })
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (issuedDoc?.id) {
+          return NextResponse.json({
+            ok: true, docId: issuedDoc.id, publicId: issuedDoc.public_id,
+            hash: issuedDoc.hash_validacao, tipo: issuedDoc.tipo, idempotent: true,
+          });
+        }
         const { data: replayDoc } = await (supabase as any)
           .from("documentos_emitidos")
           .select("id, public_id, hash_validacao, tipo, idempotency_fingerprint")
