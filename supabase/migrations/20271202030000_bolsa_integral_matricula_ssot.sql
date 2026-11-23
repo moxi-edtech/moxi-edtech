@@ -240,8 +240,9 @@ BEGIN
        AND me.valor_pago_total < greatest(coalesce(me.valor_previsto,0),me.valor)
        AND me.fiscal_documento_id IS NULL
        AND coalesce(me.status_fiscal,'pending')='pending'
-       AND EXISTS (
-         SELECT 1 FROM public.pagamentos pg
+       AND me.valor_pago_total = (
+         SELECT coalesce(sum(pg.valor_pago),0)
+         FROM public.pagamentos pg
          WHERE pg.mensalidade_id=me.id
            AND pg.status IN ('settled','concluido','pago')
        )
@@ -285,6 +286,7 @@ DECLARE
   v_quitadas_parciais integer := 0;
   v_reabertas integer := 0;
   v_pendentes_revisao integer := 0;
+  v_revisao_pagamento integer := 0;
 BEGIN
   IF auth.uid() IS NULL OR NOT EXISTS (
     SELECT 1 FROM public.escola_users eu
@@ -372,6 +374,19 @@ BEGIN
                AND (pg.fiscal_documento_id IS NOT NULL
                     OR coalesce(pg.status_fiscal,'pending')<>'pending')
            ));
+    SELECT count(*) INTO v_revisao_pagamento
+    FROM public.mensalidades me
+    WHERE me.matricula_id=v_matricula.id AND me.escola_id=p_escola_id
+      AND date_trunc('month',me.data_vencimento)::date >= v_inicio
+      AND me.status='pago_parcial' AND me.valor_pago_total>0
+      AND me.fiscal_documento_id IS NULL
+      AND coalesce(me.status_fiscal,'pending')='pending'
+      AND me.valor_pago_total <> (
+        SELECT coalesce(sum(pg.valor_pago),0)
+        FROM public.pagamentos pg
+        WHERE pg.mensalidade_id=me.id
+          AND pg.status IN ('settled','concluido','pago')
+      );
   ELSE
     -- Guardamos o que já foi dispensado. Apenas as isenções futuras criadas
     -- POR ESTA bolsa regressam a pendente. Nunca toca em pagos/fiscalizados.
@@ -423,13 +438,15 @@ BEGIN
        'anterior',v_matricula.bolsa_integral,'atual',p_bolseiro,
        'vigencia_inicio',v_inicio,'motivo',v_motivo,
        'isentas',v_isentas,'quitadas_parciais',v_quitadas_parciais,
-       'reabertas',v_reabertas,'pendentes_revisao_fiscal',v_pendentes_revisao));
+       'reabertas',v_reabertas,'pendentes_revisao_fiscal',v_pendentes_revisao,
+       'pendentes_revisao_pagamento',v_revisao_pagamento));
 
   RETURN jsonb_build_object('ok',true,'matricula_id',v_matricula.id,
        'ano_letivo',v_matricula.ano_letivo,'bolseiro',p_bolseiro,
        'vigencia_inicio',v_inicio,'motivo',v_motivo,
        'isentas',v_isentas,'quitadas_parciais',v_quitadas_parciais,
-       'reabertas',v_reabertas,'pendentes_revisao_fiscal',v_pendentes_revisao);
+       'reabertas',v_reabertas,'pendentes_revisao_fiscal',v_pendentes_revisao,
+       'pendentes_revisao_pagamento',v_revisao_pagamento);
 END;
 $$;
 
