@@ -268,7 +268,8 @@ CREATE OR REPLACE FUNCTION public.klasse_definir_bolsa_integral(
   p_aluno_id uuid,
   p_matricula_id uuid,
   p_bolseiro boolean,
-  p_motivo text DEFAULT NULL
+  p_motivo text DEFAULT NULL,
+  p_vigencia_inicio date DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER
@@ -277,71 +278,163 @@ AS $$
 DECLARE
   v_matricula public.matriculas%ROWTYPE;
   v_motivo text;
+  v_inicio date;
+  v_ano_inicio date;
+  v_ano_fim date;
+  v_isentas integer := 0;
+  v_quitadas_parciais integer := 0;
+  v_reabertas integer := 0;
+  v_pendentes_revisao integer := 0;
 BEGIN
   IF auth.uid() IS NULL OR NOT EXISTS (
     SELECT 1 FROM public.escola_users eu
-    WHERE eu.escola_id = p_escola_id
-      AND eu.user_id = auth.uid()
+    WHERE eu.escola_id = p_escola_id AND eu.user_id = auth.uid()
       AND eu.papel IN ('admin','admin_escola','admin_financeiro','admin_secretaria',
                        'admin_secretario','secretaria','financeiro','diretor','staff_admin')
   ) THEN
-    RAISE EXCEPTION 'FORBIDDEN' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'FORBIDDEN' USING ERRCODE='42501';
   END IF;
 
-  SELECT * INTO v_matricula
-    FROM public.matriculas
-   WHERE id = p_matricula_id AND escola_id = p_escola_id
-     AND aluno_id = p_aluno_id
+  SELECT * INTO v_matricula FROM public.matriculas
+   WHERE id=p_matricula_id AND escola_id=p_escola_id AND aluno_id=p_aluno_id
    FOR UPDATE;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'MATRICULA_NAO_ENCONTRADA' USING ERRCODE = 'P0002';
+    RAISE EXCEPTION 'MATRICULA_NAO_ENCONTRADA' USING ERRCODE='P0002';
+  END IF;
+
+  SELECT data_inicio, data_fim INTO v_ano_inicio,v_ano_fim
+  FROM public.anos_letivos
+  WHERE escola_id=p_escola_id AND ano=v_matricula.ano_letivo
+  ORDER BY ativo DESC, created_at DESC LIMIT 1;
+  IF v_ano_inicio IS NULL OR v_ano_fim IS NULL THEN
+    RAISE EXCEPTION 'ANO_LETIVO_NAO_CONFIGURADO' USING ERRCODE='23514';
+  END IF;
+
+  -- Atribuição: mês corrente. Retirada: próximo mês, salvo escolha explícita.
+  v_inicio := COALESCE(p_vigencia_inicio,
+    date_trunc('month',CURRENT_DATE +
+      CASE WHEN p_bolseiro THEN interval '0 months' ELSE interval '1 month' END)::date);
+  IF v_inicio <> date_trunc('month',v_inicio)::date
+     OR v_inicio < date_trunc('month',CURRENT_DATE)::date
+     OR v_inicio < date_trunc('month',v_ano_inicio)::date
+     OR v_inicio > date_trunc('month',v_ano_fim)::date THEN
+    RAISE EXCEPTION 'BOLSA_VIGENCIA_FORA_DA_JANELA' USING ERRCODE='23514';
+  END IF;
+
+  IF NOT p_bolseiro AND NOT v_matricula.bolsa_integral
+     AND NOT (coalesce(v_matricula.percentagem_desconto,0)>=100
+              AND coalesce(v_matricula.motivo_desconto,'') ILIKE '%bolsa%') THEN
+    RETURN jsonb_build_object('ok',true,'bolseiro',false,'sem_alteracao',true);
+  END IF;
+
+  IF NOT p_bolseiro AND coalesce(v_matricula.percentagem_desconto,0)>=100
+     AND coalesce(v_matricula.motivo_desconto,'') NOT ILIKE '%bolsa%' THEN
+    RAISE EXCEPTION 'DESCONTO_INTEGRAL_DISTINTO_DE_BOLSA' USING ERRCODE='23514';
+  END IF;
+
+  IF p_bolseiro AND v_matricula.bolsa_integral
+     AND v_matricula.bolsa_integral_inicio IS DISTINCT FROM v_inicio THEN
+    RAISE EXCEPTION 'BOLSA_JA_ATIVA_VIGENCIA_IMUTAVEL' USING ERRCODE='23514';
   END IF;
 
   v_motivo := CASE WHEN p_bolseiro
-    THEN left(coalesce(nullif(btrim(p_motivo), ''), 'Bolsa integral'), 160)
+    THEN left(coalesce(nullif(btrim(p_motivo),''),'Bolsa integral'),160)
     ELSE NULL END;
 
-  IF v_matricula.bolsa_integral IS DISTINCT FROM p_bolseiro
-     OR v_matricula.bolsa_integral_motivo IS DISTINCT FROM v_motivo
-     OR (NOT p_bolseiro AND coalesce(v_matricula.percentagem_desconto,0) >= 100
-         AND coalesce(v_matricula.motivo_desconto,'') ILIKE '%bolsa%') THEN
-    IF NOT p_bolseiro AND coalesce(v_matricula.percentagem_desconto,0) >= 100
-       AND coalesce(v_matricula.motivo_desconto,'') NOT ILIKE '%bolsa%' THEN
-      RAISE EXCEPTION 'DESCONTO_INTEGRAL_DISTINTO_DE_BOLSA' USING ERRCODE='23514';
-    END IF;
-
+  IF p_bolseiro THEN
     UPDATE public.matriculas
-      SET bolsa_integral = p_bolseiro,
-          bolsa_integral_motivo = v_motivo,
-          percentagem_desconto = CASE WHEN NOT p_bolseiro
-              AND coalesce(v_matricula.percentagem_desconto,0) >= 100
-              AND coalesce(v_matricula.motivo_desconto,'') ILIKE '%bolsa%'
-            THEN 0 ELSE percentagem_desconto END,
-          motivo_desconto = CASE WHEN NOT p_bolseiro
-              AND coalesce(v_matricula.percentagem_desconto,0) >= 100
-              AND coalesce(v_matricula.motivo_desconto,'') ILIKE '%bolsa%'
-            THEN NULL ELSE motivo_desconto END,
-          updated_at = now()
-      WHERE id = v_matricula.id AND escola_id = p_escola_id;
+      SET bolsa_integral=true,
+          bolsa_integral_inicio=v_inicio,
+          bolsa_integral_motivo=v_motivo,
+          updated_at=now()
+     WHERE id=v_matricula.id AND escola_id=p_escola_id;
 
-    INSERT INTO public.audit_logs
-      (escola_id, actor_id, action, entity, entity_id, portal, details)
-    VALUES
-      (p_escola_id, auth.uid(), 'BOLSA_INTEGRAL_ATUALIZADA',
-       'matriculas', p_matricula_id::text, 'secretaria',
-       jsonb_build_object('aluno_id',p_aluno_id,'ano_letivo',v_matricula.ano_letivo,
-         'anterior',v_matricula.bolsa_integral,
-         'atual',p_bolseiro,'motivo',v_motivo));
+    SELECT count(*) FILTER (WHERE status='isento'),
+           count(*) FILTER (WHERE status='pago' AND valor_pago_total>0)
+      INTO v_isentas,v_quitadas_parciais
+    FROM public.mensalidades me
+    WHERE me.matricula_id=v_matricula.id
+      AND me.escola_id=p_escola_id
+      AND me.bolsa_isencao_integral
+      AND date_trunc('month',me.data_vencimento)::date >= v_inicio;
+
+    SELECT count(*) INTO v_pendentes_revisao
+    FROM public.mensalidades me
+    WHERE me.matricula_id=v_matricula.id
+      AND me.escola_id=p_escola_id
+      AND date_trunc('month',me.data_vencimento)::date >= v_inicio
+      AND me.status IN ('pago_parcial','pendente')
+      AND me.valor > coalesce(me.valor_pago_total,0)
+      AND (me.fiscal_documento_id IS NOT NULL
+           OR coalesce(me.status_fiscal,'pending')<>'pending'
+           OR EXISTS (
+             SELECT 1 FROM public.pagamentos pg WHERE pg.mensalidade_id=me.id
+               AND (pg.fiscal_documento_id IS NOT NULL
+                    OR coalesce(pg.status_fiscal,'pending')<>'pending')
+           ));
+  ELSE
+    -- Guardamos o que já foi dispensado. Apenas as isenções futuras criadas
+    -- POR ESTA bolsa regressam a pendente. Nunca toca em pagos/fiscalizados.
+    UPDATE public.matriculas
+      SET bolsa_integral=false, bolsa_integral_inicio=NULL,
+          bolsa_integral_motivo=NULL,
+          percentagem_desconto=CASE
+            WHEN coalesce(v_matricula.percentagem_desconto,0)>=100
+             AND coalesce(v_matricula.motivo_desconto,'') ILIKE '%bolsa%'
+            THEN 0 ELSE percentagem_desconto END,
+          motivo_desconto=CASE
+            WHEN coalesce(v_matricula.percentagem_desconto,0)>=100
+             AND coalesce(v_matricula.motivo_desconto,'') ILIKE '%bolsa%'
+            THEN NULL ELSE motivo_desconto END,
+          updated_at=now()
+    WHERE id=v_matricula.id AND escola_id=p_escola_id;
+
+    UPDATE public.mensalidades me
+       SET valor = round(greatest(coalesce(me.valor_original,0),0) *
+                         (1-coalesce(m.percentagem_desconto,0)/100),2),
+           valor_previsto = round(greatest(coalesce(me.valor_original,0),0) *
+                         (1-coalesce(m.percentagem_desconto,0)/100),2),
+           desconto_aplicado = round(greatest(coalesce(me.valor_original,0),0) *
+                                     coalesce(m.percentagem_desconto,0)/100,2),
+           status='pendente',
+           bolsa_isencao_integral=false,
+           observacoes=concat_ws(' | ',nullif(me.observacoes,''),'Bolsa retirada')
+      FROM public.matriculas m
+     WHERE m.id=v_matricula.id AND m.escola_id=p_escola_id
+       AND me.escola_id=p_escola_id AND me.matricula_id=m.id
+       AND me.bolsa_isencao_integral AND me.status='isento'
+       AND date_trunc('month',me.data_vencimento)::date >= v_inicio
+       AND coalesce(me.valor_original,0)>0
+       AND coalesce(me.valor_pago_total,0)=0
+       AND me.fiscal_documento_id IS NULL
+       AND coalesce(me.status_fiscal,'pending')='pending'
+       AND NOT EXISTS (
+         SELECT 1 FROM public.pagamentos pg WHERE pg.mensalidade_id=me.id
+       );
+    GET DIAGNOSTICS v_reabertas=ROW_COUNT;
   END IF;
 
-  RETURN jsonb_build_object('ok',true, 'matricula_id',v_matricula.id,
-      'ano_letivo',v_matricula.ano_letivo,'bolseiro',p_bolseiro,
-      'motivo',v_motivo);
+  INSERT INTO public.audit_logs
+    (escola_id,actor_id,action,entity,entity_id,portal,details)
+  VALUES
+    (p_escola_id,auth.uid(),'BOLSA_INTEGRAL_ATUALIZADA',
+     'matriculas',p_matricula_id::text,'secretaria',
+     jsonb_build_object('aluno_id',p_aluno_id,'ano_letivo',v_matricula.ano_letivo,
+       'anterior',v_matricula.bolsa_integral,'atual',p_bolseiro,
+       'vigencia_inicio',v_inicio,'motivo',v_motivo,
+       'isentas',v_isentas,'quitadas_parciais',v_quitadas_parciais,
+       'reabertas',v_reabertas,'pendentes_revisao_fiscal',v_pendentes_revisao));
+
+  RETURN jsonb_build_object('ok',true,'matricula_id',v_matricula.id,
+       'ano_letivo',v_matricula.ano_letivo,'bolseiro',p_bolseiro,
+       'vigencia_inicio',v_inicio,'motivo',v_motivo,
+       'isentas',v_isentas,'quitadas_parciais',v_quitadas_parciais,
+       'reabertas',v_reabertas,'pendentes_revisao_fiscal',v_pendentes_revisao);
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.klasse_definir_bolsa_integral(uuid,uuid,uuid,boolean,text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.klasse_definir_bolsa_integral(uuid,uuid,uuid,boolean,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.klasse_definir_bolsa_integral(uuid,uuid,uuid,boolean,text,date) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.klasse_definir_bolsa_integral(uuid,uuid,uuid,boolean,text,date) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.klasse_guard_bolsa_mensalidade() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.klasse_reconciliar_bolsa_matricula() FROM PUBLIC, anon, authenticated;
