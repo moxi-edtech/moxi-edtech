@@ -30,7 +30,9 @@ export default async function DeclaracaoNotasPrintPage({ params }: { params: Pro
   if (!Number.isInteger(ano) || ano < 1900 || ano > 3000 || !doc.aluno_id) {
     return <div className="p-8">Ano letivo inválido no documento emitido.</div>;
   }
-  const db = await supabaseServerTyped();
+  // A coluna disciplina_nome foi acrescentada por migração posterior às types geradas.
+  // Aplicar tipagem local ao resultado do SQL versionado até regenerar Database.
+  const db = await supabaseServerTyped<any>();
   const { data: historico, error: historicoError } = await db.from("historico_anos")
     .select("id, snapshot_status").eq("escola_id", doc.escola_id)
     .eq("aluno_id", doc.aluno_id).eq("ano_letivo", ano).maybeSingle();
