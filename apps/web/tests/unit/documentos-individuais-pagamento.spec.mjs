@@ -78,3 +78,12 @@ test("o pós-matrícula não emite documentos fora da Central", () => {
   assert.match(wizard, /params\.set\("alunoId", result\.aluno_id\)/);
   assert.match(wizard, /router\.push\(/);
 });
+
+test("checkout legado bloqueia serviços documentais antes da transação", () => {
+  const balcao = src("components/secretaria/BalcaoAtendimento.tsx");
+  const checkoutStart = balcao.indexOf('const checkout = useCallback(async (): Promise<boolean> => {');
+  const financialPost = balcao.indexOf('fetch("/api/secretaria/pagamentos/processar"', checkoutStart);
+  const guard = balcao.indexOf('carrinho.itens.some((item) =>', checkoutStart);
+  assert.ok(checkoutStart >= 0 && guard > checkoutStart && financialPost > guard);
+  assert.match(balcao.slice(guard, financialPost), /isTipoDocumentoEmitivel\(getDocTipo\(item\)\)/);
+});
