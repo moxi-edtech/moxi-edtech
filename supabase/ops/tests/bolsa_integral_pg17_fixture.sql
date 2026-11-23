@@ -61,14 +61,14 @@ CREATE TABLE public.financeiro_tabelas(
   dia_vencimento integer
 );
 CREATE OR REPLACE FUNCTION public.is_turma_classe_exame(uuid)
-RETURNS boolean LANGUAGE sql STABLE AS $ SELECT false $;
+RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT false $$;
 
 -- Reproduz a assinatura já instalada em produção, que tem DEFAULT no 4º e 5º parâmetro.
 -- CREATE OR REPLACE sem estes defaults falha com PostgreSQL 42P13.
 CREATE OR REPLACE FUNCTION public.gerar_mensalidades_lote(
   p_escola_id uuid, p_ano_letivo integer, p_mes_referencia integer,
   p_dia_vencimento_default integer DEFAULT 10, p_turma_id uuid DEFAULT NULL::uuid
-) RETURNS jsonb LANGUAGE sql AS $ SELECT '{}'::jsonb $;
+) RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
 
 CREATE TABLE public.mensalidades(
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
