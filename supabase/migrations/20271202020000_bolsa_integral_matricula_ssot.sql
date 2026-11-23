@@ -42,7 +42,9 @@ BEGIN
       );
   END IF;
 
-  IF NOT v_requer_autorizacao OR current_user IN ('postgres','service_role') THEN
+  IF NOT v_requer_autorizacao
+     OR session_user = 'postgres'
+     OR coalesce(auth.jwt()->>'role', '') = 'service_role' THEN
     RETURN NEW;
   END IF;
 
@@ -275,7 +277,9 @@ DECLARE
   v_mes_final date;
   v_competencia date;
 BEGIN
-  IF current_user NOT IN ('service_role', 'postgres') AND (
+  IF session_user <> 'postgres'
+     AND coalesce(auth.jwt()->>'role', '') <> 'service_role'
+     AND (
     auth.uid() IS NULL OR NOT EXISTS (
       SELECT 1 FROM public.escola_users eu
        WHERE eu.escola_id = p_escola_id
