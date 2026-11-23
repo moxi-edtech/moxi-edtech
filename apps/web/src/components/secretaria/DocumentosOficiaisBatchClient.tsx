@@ -90,7 +90,6 @@ export default function DocumentosOficiaisBatchClient() {
   const [yearsError, setYearsError] = useState<string | null>(null);
   const [yearsLoading, setYearsLoading] = useState(true);
   const isHistoricalYear = yearOptions.some((year) => year.id === academicYearId && year.status !== "ativa");
-  const historicalGenerationBlocked = isHistoricalYear && tipo !== "certificado";
   const escolaParam = escolaSlug || escolaId;
   const portalScope = pathname.includes("/operacoes/") ? "operacoes" : "secretaria";
   const turmaHref = (id: string) => {
@@ -101,6 +100,7 @@ export default function DocumentosOficiaisBatchClient() {
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
   const [periodoId, setPeriodoId] = useState<string>("");
   const [tipo, setTipo] = useState<"trimestral" | "anual" | "boletim_trimestral" | "certificado">("trimestral");
+  const historicalGenerationBlocked = isHistoricalYear && tipo !== "certificado";
   const [hidePendencias, setHidePendencias] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
