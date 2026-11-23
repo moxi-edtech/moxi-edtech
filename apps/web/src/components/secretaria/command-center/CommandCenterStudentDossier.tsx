@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
 
 import { DossierTabs } from "@/components/aluno/DossierTabs";
+import { BolsaIntegralCard } from "@/components/aluno/BolsaIntegralCard";
 import { CurrentYearEnrollmentPanel } from "@/components/aluno/CurrentYearEnrollmentPanel";
 import {
   DossierDocumentosSection,
@@ -22,6 +23,7 @@ type DossierResponse = {
   aluno?: AlunoNormalizado;
   servicos?: AlunoServicoFinanceiro[];
   canEditNome?: boolean;
+  canManageBolsa?: boolean;
 };
 
 export function CommandCenterStudentDossier({
@@ -38,6 +40,7 @@ export function CommandCenterStudentDossier({
     servicos: AlunoServicoFinanceiro[];
     schoolScope: string;
     canEditNome: boolean;
+    canManageBolsa: boolean;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +54,7 @@ export function CommandCenterStudentDossier({
     // Preserve the current student's snapshot while revalidating; never display
     // a different student's cached values after a context switch.
     setData(current => current?.aluno.id === alunoId && current.schoolScope === escolaId ? current : null);
-    void fetch("/api/secretaria/alunos/" + encodeURIComponent(alunoId) + "/dossier", {
+    void fetch("/api/secretaria/alunos/" + encodeURIComponent(alunoId) + "/dossier?escola_id=" + encodeURIComponent(escolaId), {
       cache: "no-store",
       signal: controller.signal,
     })
@@ -69,6 +72,7 @@ export function CommandCenterStudentDossier({
           aluno: body.aluno,
           servicos: Array.isArray(body.servicos) ? body.servicos : [],
           canEditNome: body.canEditNome === true,
+          canManageBolsa: body.canManageBolsa === true,
         });
         setLastConfirmedAt(new Date());
       })
@@ -145,6 +149,7 @@ export function CommandCenterStudentDossier({
               canEditNome={data.canEditNome}
               onNomeChanged={() => setRetry((current) => current + 1)}
             />
+            {data.canManageBolsa && <BolsaIntegralCard alunoId={alunoId} escolaId={escolaId} />}
             <CurrentYearEnrollmentPanel
               alunoId={alunoId}
               escolaId={escolaId}
@@ -153,7 +158,12 @@ export function CommandCenterStudentDossier({
           </div>
         )}
         slotMatricula={<CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={escolaId} onChanged={() => setRetry((current) => current + 1)} />}
-        slotFinanceiro={<DossierFinanceiroSection aluno={aluno} role="secretaria" escolaId={escolaId} servicos={servicos} />}
+        slotFinanceiro={(
+          <div className="space-y-4">
+            {data.canManageBolsa && <BolsaIntegralCard alunoId={alunoId} escolaId={escolaId} />}
+            <DossierFinanceiroSection aluno={aluno} role="secretaria" escolaId={escolaId} servicos={servicos} />
+          </div>
+        )}
         slotHistorico={<DossierHistoricoSection aluno={aluno} alunoId={alunoId} role="secretaria" escolaId={escolaId} />}
         slotHistoricoTransitado={<DossierHistoricoTransitadoSection alunoId={alunoId} canEdit />}
         slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}
