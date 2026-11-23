@@ -509,8 +509,7 @@ EXCEPTION
   WHEN OTHERS THEN
     RETURN jsonb_build_object('ok', false, 'erro', SQLERRM);
 END;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.gerar_mensalidades_lote(
   p_escola_id uuid, p_ano_letivo integer, p_mes_referencia integer,
