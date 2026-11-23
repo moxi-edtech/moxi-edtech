@@ -1305,7 +1305,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     URL.revokeObjectURL(url);
   };
 
-  const handleExport = (mode: "page" | "all") => {
+  const handleExport = (tipo: "excel" | "pdf") => {
     const params = new URLSearchParams({
       q: debouncedQ,
       status: TAB_TO_STATUS[tab],
@@ -1322,11 +1322,8 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
       params.set("situacao_financeira", "em_atraso");
     }
     params.set("order_by", "nome_asc");
-    if (mode === "page") {
-      params.set("page", String(page));
-    } else {
-      params.set("all", "1");
-    }
+    params.set("all", "1");
+    params.set("tipo", tipo);
     setShowExport(false);
     window.open(`/api/secretaria/alunos/exportar?${params.toString()}`, "_blank");
   };
@@ -1587,23 +1584,23 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                 <button
                   onClick={() => setShowExport((prev) => !prev)}
                   className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted/50 transition-colors"
-                  title="Exportar CSV"
+                  title="Exportar lista filtrada"
                 >
                   <Download size={12} /> Exportar
                 </button>
                 {showExport && (
                   <div className="absolute right-0 mt-2 w-40 rounded-xl border border-border bg-card shadow-xl p-2 z-20">
                     <button
-                      onClick={() => handleExport("page")}
+                      onClick={() => handleExport("excel")}
                       className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted/50"
                     >
-                      Página atual
+                      Excel · todos os filtrados
                     </button>
                     <button
-                      onClick={() => handleExport("all")}
+                      onClick={() => handleExport("pdf")}
                       className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted/50"
                     >
-                      Tudo
+                      PDF · todos os filtrados
                     </button>
                   </div>
                 )}
