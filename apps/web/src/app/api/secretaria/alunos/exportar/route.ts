@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import { InvalidAlunoFiltersError, listAllAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
+import { loadAlunosPdfInstitutionalContext } from "@/lib/services/alunosExportPdfContext.server";
 import {
   parseAlunoExportFormat,
   renderAlunosExport,
@@ -52,7 +53,12 @@ export async function GET(req: Request) {
         academicYearId: filters.ano ? undefined : context.anoLetivoId,
       })
     );
-    const rendered = await renderAlunosExport(sorted, format);
+    const pdfContext = format === "pdf"
+      ? await loadAlunosPdfInstitutionalContext(supabase, escolaId, filters, {
+          academicYearId: filters.ano ? undefined : context.anoLetivoId,
+        })
+      : undefined;
+    const rendered = await renderAlunosExport(sorted, format, pdfContext);
     const status = filters.status ?? "ativo";
     const segmento = filters.situacaoFinanceira === "em_atraso" ? "inadimplentes" : status;
     const filename = `alunos-${segmento}-${Date.now()}.${rendered.extension}`;
