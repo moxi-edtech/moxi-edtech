@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
-import { BookOpen, FileText, RefreshCw, Search, User } from "lucide-react";
+import { BookOpen, FileText, Printer, RefreshCw, Search, User } from "lucide-react";
 import { emitirDocumento, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
 import type { TipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 
@@ -87,7 +87,6 @@ export default function DocumentosEmissaoHubClient({
   defaultTipo?: DocumentoTipo | null;
 }) {
   const escolaParam = escolaId;
-  const router = useRouter();
   const searchParams = useSearchParams();
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
   const [query, setQuery] = useState("");
@@ -106,6 +105,23 @@ export default function DocumentosEmissaoHubClient({
   const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
   const referenceInputRef = useRef<HTMLInputElement | null>(null);
   const documentRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  const paymentRequestRef = useRef<{ intentId: string; key: string } | null>(null);
+  type EmissaoIndividualEstado = {
+    status: "issued" | "paid" | "free" | "pending_payment" | "verification" | "approval";
+    granted: boolean;
+    valor?: number;
+    pedidoId?: string | null;
+    pagamentoIntentId?: string | null;
+    servicoCodigo?: string;
+    docId?: string;
+    printUrl?: string;
+    pagamentoObrigatorio?: boolean;
+  };
+  const [documentState, setDocumentState] = useState<EmissaoIndividualEstado | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+
   const [anoLetivoOptions, setAnoLetivoOptions] = useState<Array<{ id: string; nome: string; ano_letivo: number; status: string }>>([]);
   const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<string>("");
   const [loadingAnoLetivo, setLoadingAnoLetivo] = useState(false);
@@ -117,12 +133,6 @@ export default function DocumentosEmissaoHubClient({
   const alunoIdParam = alunoId ?? searchParams?.get("alunoId");
   const tipoParam = (defaultTipo ?? (searchParams?.get("tipo") as DocumentoTipo | null)) ?? null;
 
-  type BalcaoDecision = {
-    decision: "GRANTED" | "BLOCKED" | "PENDING";
-    reason_detail?: string | null;
-    pedido_id?: string | null;
-    payment_intent_id?: string | null;
-  };
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -302,143 +312,175 @@ export default function DocumentosEmissaoHubClient({
     return servicos.find((servico) => servico.codigo === codeByType[tipo]) ?? null;
   }, [servicos, tipo]);
 
-  const isPago = Boolean(selectedServico && Number(selectedServico.valor_base ?? 0) > 0);
-  const valorBase = Number(selectedServico?.valor_base ?? 0);
+  const valorBase = Number(documentState?.valor ?? selectedServico?.valor_base ?? 0);
+  const isPago = Boolean(documentState?.pagamentoObrigatorio ?? (valorBase > 0));
   const requiresPaidNotes = tipo === "declaracao_notas" || tipo === "boletim_trimestral";
-  // A direção decide o preço no catálogo; nunca inventar um valor padrão.
-  const missingNotesFee = requiresPaidNotes && (!selectedServico || valorBase <= 0);
-  const canSubmit = Boolean(selectedAluno?.id && tipo && !submitting && !missingNotesFee);
+  const missingNotesFee = requiresPaidNotes && !loadingServicos && !documentState &&
+    (!selectedServico || valorBase <= 0);
+  const canSubmit = Boolean(selectedAluno?.id && tipo && selectedAnoLetivoId &&
+    !submitting && !paymentBusy && !statusLoading);
 
   const handleSelectAluno = (id: string, label: string) => {
     setSelectedAluno({ id, label });
     setQuery(label);
   };
 
-  const handleEmitir = async () => {
-    if (!selectedAluno?.id || !tipo) return;
-    if (!selectedAnoLetivoId) {
-      setError("Selecione o ano letivo do documento antes de continuar.");
-      return;
+  async function consultarEstado(action: "status" | "solicitar" = "status"): Promise<EmissaoIndividualEstado> {
+    if (!selectedAluno?.id || !tipo || !selectedAnoLetivoId) {
+      throw new Error("Selecione aluno, documento e ano letivo.");
     }
-    if (missingNotesFee) {
-      setError("A escola precisa configurar uma taxa positiva para este documento antes de o emitir.");
+    const res = await fetch("/api/secretaria/documentos/individual", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        escolaId, alunoId: selectedAluno.id, tipoDocumento: tipo,
+        ano_letivo_id: selectedAnoLetivoId, action,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) throw new Error(data?.error || "Falha ao consultar o documento.");
+    return data as EmissaoIndividualEstado;
+  }
+
+  useEffect(() => {
+    let active = true;
+    setDocumentState(null);
+    setSuccess(null);
+    setError(null);
+    paymentRequestRef.current = null;
+    documentRequestRef.current = null;
+    if (!selectedAluno?.id || !tipo || !selectedAnoLetivoId) return;
+    setStatusLoading(true);
+    fetch("/api/secretaria/documentos/individual", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        escolaId, alunoId: selectedAluno.id, tipoDocumento: tipo,
+        ano_letivo_id: selectedAnoLetivoId, action: "status",
+      }),
+    }).then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.ok) throw new Error(data.error || "Falha ao consultar documento.");
+      if (active) setDocumentState(data as EmissaoIndividualEstado);
+    }).catch((err: unknown) => {
+      if (active) setError(err instanceof Error ? err.message : "Falha ao consultar documento.");
+    }).finally(() => { if (active) setStatusLoading(false); });
+    return () => { active = false; };
+  }, [escolaId, selectedAluno?.id, tipo, selectedAnoLetivoId]);
+
+  const handleRefresh = async () => {
+    setStatusLoading(true);
+    setError(null);
+    try {
+      setDocumentState(await consultarEstado());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível atualizar o estado.");
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handleSolicitar = async () => {
+    if (!canSubmit) return;
+    setStatusLoading(true);
+    setError(null);
+    try {
+      setDocumentState(await consultarEstado("solicitar"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível solicitar o documento.");
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handlePagamento = async () => {
+    if (!canSubmit || !selectedAluno?.id || !selectedAnoLetivoId || !documentState) return;
+    if (documentState.status !== "pending_payment") return;
+    setPaymentBusy(true);
+    setError(null);
+    try {
+      let estado = documentState;
+      if (!estado.pedidoId || !estado.pagamentoIntentId) {
+        estado = await consultarEstado("solicitar");
+        setDocumentState(estado);
+      }
+      if (!estado.pedidoId || !estado.pagamentoIntentId || !estado.servicoCodigo ||
+          !(Number(estado.valor) > 0)) {
+        throw new Error("A intenção de pagamento ainda não está pronta.");
+      }
+      if (metodo === "tpa" && !reference.trim()) throw new Error("Introduza a referência do TPA.");
+      if (metodo === "transfer" && !evidenceUrl.trim()) throw new Error("Indique o comprovativo da transferência.");
+
+      if (!paymentRequestRef.current || paymentRequestRef.current.intentId !== estado.pagamentoIntentId) {
+        paymentRequestRef.current = { intentId: estado.pagamentoIntentId, key: crypto.randomUUID() };
+      }
+      const pagamentoRes = await fetch("/api/secretaria/balcao/pagamentos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": paymentRequestRef.current.key,
+        },
+        body: JSON.stringify({
+          aluno_id: selectedAluno.id, ano_letivo_id: selectedAnoLetivoId,
+          mensalidade_id: null, valor: Number(estado.valor), metodo,
+          reference: reference.trim() || null,
+          evidence_url: evidenceUrl.trim() || null, gateway_ref: null,
+          meta: {
+            origem: "documentos_emissao_individual",
+            pedido_id: estado.pedidoId,
+            pagamento_intent_id: estado.pagamentoIntentId,
+            servico_codigo: estado.servicoCodigo,
+          },
+        }),
+      });
+      const response = await pagamentoRes.json().catch(() => ({}));
+      if (!pagamentoRes.ok || !response?.ok) throw new Error(response?.error || "Não foi possível registar o pagamento.");
+      const next = await consultarEstado();
+      setDocumentState(next);
+      setSuccess(next.granted
+        ? "Pagamento confirmado. Agora pode emitir o documento."
+        : "Pagamento registado. A emissão ficará disponível depois da validação financeira.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Pagamento não confirmado. Consulte o estado antes de repetir.");
+    } finally {
+      setPaymentBusy(false);
+    }
+  };
+
+  const handleEmitir = async () => {
+    if (!canSubmit || !selectedAluno?.id || !tipo || !selectedAnoLetivoId || !documentState?.granted) return;
+    if (documentState.status === "issued" && documentState.printUrl) {
+      const impressao = abrirParaImpressao(documentState.printUrl);
+      if (!impressao.ok) setPrintQueue((prev) => [{ label: selectedAluno.label, url: impressao.url }, ...prev]);
       return;
     }
     setSubmitting(true);
     setError(null);
+    setSuccess(null);
     try {
-      if (isPago && !selectedServico) {
-        throw new Error("Serviço não encontrado no catálogo.");
-      }
-
-      if (isPago && metodo === "tpa" && !reference.trim()) {
-        throw new Error("Referência obrigatória para TPA.");
-      }
-
-      if (isPago && metodo === "transfer" && !evidenceUrl.trim()) {
-        throw new Error("Comprovativo obrigatório para Transferência.");
-      }
-
-      if (tipo === "boletim_trimestral" && !selectedAnoLetivo?.ano_letivo) {
-        throw new Error("Selecione o ano letivo para emitir o boletim.");
-      }
-
-      let pedidoId: string | null = null;
-      let intentId: string | null = null;
-
-      if (isPago && selectedServico) {
-        const supabase = (await import("@/lib/supabase/client")).createClient();
-        const { data, error: intentError } = await supabase.rpc("balcao_criar_pedido_e_decidir", {
-          p_servico_codigo: selectedServico.codigo,
-          p_aluno_id: selectedAluno.id,
-          p_contexto: { ano_letivo_id: selectedAnoLetivoId },
-        });
-
-        if (intentError || !data) {
-          throw new Error(intentError?.message || "Erro ao criar pedido.");
-        }
-
-        const decision = data as BalcaoDecision;
-        if (decision.decision === "BLOCKED") {
-          throw new Error(decision.reason_detail || "Serviço bloqueado.");
-        }
-
-        pedidoId = decision.pedido_id ?? null;
-        intentId = decision.payment_intent_id ?? null;
-      }
-
-      if (isPago && intentId) {
-        const idempotencyKey =
-          typeof crypto !== "undefined" && "randomUUID" in crypto
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-        const pagamentoRes = await fetch("/api/secretaria/balcao/pagamentos", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Idempotency-Key": idempotencyKey,
-          },
-          body: JSON.stringify({
-            aluno_id: selectedAluno.id,
-            ano_letivo_id: selectedAnoLetivoId,
-            mensalidade_id: null,
-            valor: valorBase,
-            metodo,
-            reference: reference || null,
-            evidence_url: evidenceUrl || null,
-            gateway_ref: null,
-            meta: {
-              origem: "documentos_emissao",
-              pedido_id: pedidoId,
-              pagamento_intent_id: intentId,
-              servico_codigo: selectedServico?.codigo ?? null,
-            },
-          }),
-        });
-        const pagamentoJson = await pagamentoRes.json().catch(() => ({}));
-        if (!pagamentoRes.ok || !pagamentoJson?.ok) {
-          throw new Error(pagamentoJson?.error || "Falha ao registrar pagamento.");
-        }
-      }
-
-      // `emitirDocumento` devolve sempre o URL de impressão junto com o docId,
-      // e omite `ano_letivo_id` quando é nulo (o zod da rota usa `.optional()`,
-      // não `.nullable()` — enviar `null` dava um erro ilegível). A abertura da
-      // aba mantém-se depois dos awaits, como estava.
-      const documentFingerprint = JSON.stringify({
-        escolaId,
-        alunoId: selectedAluno.id,
-        tipoDocumento: tipo,
-        anoLetivoId: selectedAnoLetivoId ?? null,
-        anoLetivo: tipo === "boletim_trimestral" ? selectedAnoLetivo?.ano_letivo ?? null : null,
+      const fingerprint = JSON.stringify({
+        escolaId, alunoId: selectedAluno.id, tipoDocumento: tipo,
+        anoLetivoId: selectedAnoLetivoId,
       });
-      if (!documentRequestRef.current || documentRequestRef.current.fingerprint !== documentFingerprint) {
-        documentRequestRef.current = {
-          fingerprint: documentFingerprint,
-          key: crypto.randomUUID(),
-        };
+      if (!documentRequestRef.current || documentRequestRef.current.fingerprint !== fingerprint) {
+        documentRequestRef.current = { fingerprint, key: crypto.randomUUID() };
       }
-
       const emissao = await emitirDocumento({
-        escolaId,
-        alunoId: selectedAluno.id,
-        tipoDocumento: tipo,
+        escolaId, alunoId: selectedAluno.id, tipoDocumento: tipo,
         idempotencyKey: documentRequestRef.current.key,
         anoLetivoId: selectedAnoLetivoId,
         anoLetivo: tipo === "boletim_trimestral" ? selectedAnoLetivo?.ano_letivo ?? null : null,
       });
-      if (!emissao.ok) {
-        // Mantém a chave para que a próxima tentativa seja um replay seguro.
-        throw new Error(emissao.error);
-      }
-      documentRequestRef.current = null;
-
+      if (!emissao.ok) throw new Error(emissao.error);
+      setDocumentState({
+        ...documentState, status: "issued", granted: true,
+        docId: emissao.docId, printUrl: emissao.printUrl,
+      });
+      setSuccess("Documento emitido. Pode imprimir novamente sem nova cobrança.");
       const impressao = abrirParaImpressao(emissao.printUrl);
-      if (!impressao.ok) {
-        setPrintQueue((prev) => [{ label: selectedAluno.label, url: impressao.url }, ...prev]);
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro ao emitir documento");
+      if (!impressao.ok) setPrintQueue((prev) => [{ label: selectedAluno.label, url: impressao.url }, ...prev]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro na emissão. Consulte o estado antes de repetir.");
     } finally {
       setSubmitting(false);
     }
