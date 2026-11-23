@@ -121,7 +121,10 @@ const stringOrNull = (value: unknown) => (typeof value === "string" ? value : nu
 
 const buildCycleColumns = (currentClassNumber: number | null, availableNumbers: number[]) => {
   if (currentClassNumber && currentClassNumber > 0) {
-    return [currentClassNumber - 2, currentClassNumber - 1, currentClassNumber].filter((item) => item > 0);
+    // Só imprimir colunas com uma fonte histórica real — nunca inventar uma
+    // coluna vazia para uma classe ainda não reconciliada.
+    return [currentClassNumber - 2, currentClassNumber - 1, currentClassNumber]
+      .filter((item) => item > 0 && availableNumbers.includes(item));
   }
 
   const uniqueSorted = Array.from(new Set(availableNumbers)).sort((a, b) => a - b);
@@ -162,9 +165,10 @@ async function fetchOfficialHistoryRows(
     `)
     .eq("escola_id", escolaId)
     .eq("aluno_id", alunoId)
+    .eq("snapshot_status", "fechado")
     .order("ano_letivo", { ascending: true });
 
-  if (error || !Array.isArray(data)) return [];
+  if (error || !Array.isArray(data)) throw new Error("Não foi possível carregar as fontes oficiais do certificado.");
 
   return (data as HistoricalClassRow[])
     .map((row) => {
@@ -197,7 +201,7 @@ async function fetchTransitedHistoryRows(
     .eq("aluno_id", alunoId)
     .order("ano_letivo", { ascending: true });
 
-  if (error || !Array.isArray(data)) return [];
+  if (error || !Array.isArray(data)) throw new Error("Não foi possível carregar as fontes oficiais do certificado.");
 
   return (data as TransitedClassRow[])
     .map((row) => ({
@@ -218,11 +222,12 @@ async function fetchOfficialHistoryNotes(supabase: SupabaseLike, sourceIds: stri
     .select("historico_ano_id, disciplina_id, disciplina_nome, nota_final, media_final")
     .in("historico_ano_id", sourceIds);
 
-  if (error || !Array.isArray(data)) return [];
+  if (error || !Array.isArray(data)) throw new Error("Não foi possível carregar as fontes oficiais do certificado.");
 
   return (data as HistoricalNoteRow[])
     .map((row) => {
-      const disciplineName = clean(row.disciplina_nome) ?? "Disciplina";
+      const disciplineName = clean(row.disciplina_nome);
+      if (!disciplineName) throw new Error("Disciplina sem identificação oficial no histórico.");
       const disciplineId = clean(row.disciplina_id);
       return {
         sourceId: String(row.historico_ano_id ?? ""),
@@ -245,11 +250,12 @@ async function fetchTransitedHistoryNotes(supabase: SupabaseLike, sourceIds: str
     .order("ordem", { ascending: true })
     .order("disciplina_nome", { ascending: true });
 
-  if (error || !Array.isArray(data)) return [];
+  if (error || !Array.isArray(data)) throw new Error("Não foi possível carregar as fontes oficiais do certificado.");
 
   return (data as TransitedNoteRow[])
     .map((row) => {
-      const disciplineName = clean(row.disciplina_nome) ?? "Disciplina";
+      const disciplineName = clean(row.disciplina_nome);
+      if (!disciplineName) throw new Error("Disciplina sem identificação oficial no histórico.");
       const disciplineId = clean(row.disciplina_id);
       return {
         sourceId: String(row.historico_transitado_ano_id ?? ""),
@@ -271,6 +277,11 @@ export async function buildCertificadoSnapshot(params: {
 }) {
   const { supabase, escolaId, alunoId, baseSnapshot, hashValidacao } = params;
   const client = supabase as SupabaseLike;
+  // O ano é o do snapshot oficial, nunca o histórico mais recente do aluno.
+  const targetYear = toNumber(baseSnapshot.ano_letivo);
+  if (targetYear == null || !Number.isInteger(targetYear) || targetYear < 1900 || targetYear > 3000) {
+    throw new Error("Certificado sem ano letivo válido no snapshot oficial.");
+  }
 
   const [officialRows, transitedRows] = await Promise.all([
     fetchOfficialHistoryRows(client, escolaId, alunoId),
@@ -279,11 +290,14 @@ export async function buildCertificadoSnapshot(params: {
 
   const sourceByClassNumber = new Map<number, HistoryClassSource>();
   for (const row of [...transitedRows, ...officialRows]) {
-    if (row.classNumber == null) continue;
+    // Exclui qualquer nota posterior ou fonte sem ano verificável.
+    if (row.classNumber == null || row.year == null || row.year > targetYear) continue;
     sourceByClassNumber.set(row.classNumber, selectPreferredSource(sourceByClassNumber.get(row.classNumber), row));
   }
 
-  const currentClassNumber = extractClassNumber(clean(stringOrNull(baseSnapshot.classe_concluida)));
+  const currentClassNumber = extractClassNumber(
+    clean(stringOrNull(baseSnapshot.classe_concluida)) ?? clean(stringOrNull(baseSnapshot.classe_nome))
+  );
   const columnNumbers = buildCycleColumns(
     currentClassNumber,
     Array.from(sourceByClassNumber.keys())
@@ -297,6 +311,14 @@ export async function buildCertificadoSnapshot(params: {
   const selectedSources = columnNumbers
     .map((value) => sourceByClassNumber.get(value))
     .filter((value): value is HistoryClassSource => Boolean(value));
+
+  // Não substituir notas da classe/ano solicitado por resultados mais antigos.
+  if (selectedSources.length === 0 ||
+      !selectedSources.some((source) =>
+        source.year === targetYear &&
+        (currentClassNumber == null || source.classNumber === currentClassNumber))) {
+    throw new Error("O histórico oficial do ano/classe selecionado não contém resultados verificáveis.");
+  }
 
   const officialSourceIds = selectedSources
     .filter((item) => item.source === "historico")
@@ -315,6 +337,17 @@ export async function buildCertificadoSnapshot(params: {
     const current = notesBySourceId.get(row.sourceId) ?? [];
     current.push(row);
     notesBySourceId.set(row.sourceId, current);
+  }
+
+  // Mesmo com histórico fechado, a impressão nunca pode omitir silenciosamente
+  // uma coluna de classe ou usar uma fonte inacessível como uma pauta vazia.
+  for (const source of selectedSources) {
+    const rows = notesBySourceId.get(source.sourceId) ?? [];
+    if (rows.length === 0 || rows.some((item) =>
+      !item.disciplineName.trim() || item.score == null ||
+      !Number.isFinite(item.score) || item.score < 0 || item.score > 20)) {
+      throw new Error("Existem disciplinas sem notas oficiais verificáveis no certificado.");
+    }
   }
 
   const disciplineMap = new Map<
@@ -361,6 +394,9 @@ export async function buildCertificadoSnapshot(params: {
       };
     });
 
+  if (disciplinas.length === 0) {
+    throw new Error("O certificado não contém classificações oficiais.");
+  }
   const mediaFinal = normalizeOverallMedia(baseSnapshot.media_final);
 
   return {

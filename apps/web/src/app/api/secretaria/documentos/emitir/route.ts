@@ -11,7 +11,8 @@ import { requireFeature } from "@/lib/plan/requireFeature";
 import { HttpError } from "@/lib/errors";
 import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
-import { checkSpecificDocumentPaid, BOLETIM_SERVICE_CODE, BOLETIM_LEGACY_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
+import { docPrintUrl } from "@/lib/documentos/printUrl";
+import { verificarCertificadoElegivel } from "@/lib/documentos/certificadoElegibilidade";
 
 const payloadSchema = z.object({
   alunoId: z.string().uuid(),
@@ -28,6 +29,9 @@ const payloadSchema = z.object({
   ]),
   ano_letivo: z.number().int().optional(), // Ano letivo para documentos finais
   ano_letivo_id: z.string().uuid().optional(),
+  // O mesmo contrato da Central também consulta e solicita o serviço.
+  // A ausência de action mantém os clientes legados em modo de emissão.
+  action: z.enum(["status", "solicitar", "emitir"]).optional(),
 });
 
 type TipoDocumento = z.infer<typeof payloadSchema>["tipoDocumento"];
@@ -69,12 +73,6 @@ export async function POST(request: Request) {
       ?? request.headers.get("idempotency-key")
       ?? ""
     ).trim();
-    if (idempotencyKey.length < 8 || idempotencyKey.length > 200) {
-      return NextResponse.json(
-        { ok: false, error: "Idempotency-Key header é obrigatório e deve ter entre 8 e 200 caracteres.", code: "IDEMPOTENCY_KEY_REQUIRED" },
-        { status: 400 },
-      );
-    }
     const supabase = await supabaseServerTyped<Database>();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
@@ -90,6 +88,13 @@ export async function POST(request: Request) {
     }
 
     const { alunoId, escolaId, tipoDocumento, ano_letivo, ano_letivo_id } = parsed.data;
+    const action = parsed.data.action ?? "emitir";
+    if (action === "emitir" && (idempotencyKey.length < 8 || idempotencyKey.length > 200)) {
+      return NextResponse.json({
+        ok: false, error: "Idempotency-Key header é obrigatório e deve ter entre 8 e 200 caracteres.",
+        code: "IDEMPOTENCY_KEY_REQUIRED",
+      }, { status: 400 });
+    }
 
     if (tipoDocumento === "certificado") {
       await requireFeature("doc_qr_code");
@@ -108,10 +113,10 @@ export async function POST(request: Request) {
     });
     if (authError) return authError;
 
-    const requiresAcademicContext =
-      FINAL_DOCUMENT_TYPES.includes(tipoDocumento) || tipoDocumento === "boletim_trimestral";
+    // A Central é sempre contextual ao ano letivo selecionado (incluindo
+    // ficha e cartão), para não emitir documentos no ano errado.
     let academicContext: Awaited<ReturnType<typeof resolveAcademicYearContext>> | null = null;
-    if (requiresAcademicContext && !ano_letivo_id) {
+    if (!ano_letivo_id) {
       return NextResponse.json(
         { ok: false, error: "ano_letivo_id é obrigatório para este documento.", code: "ACADEMIC_YEAR_REQUIRED" },
         { status: 400 },
@@ -121,30 +126,127 @@ export async function POST(request: Request) {
       academicContext = await resolveAcademicYearContext(supabase, {
         userId: user.id,
         requestedAcademicYearId: ano_letivo_id,
-        operation: "WRITE",
+        // Emissão histórica não altera notas, períodos ou matrículas.
+        operation: tipoDocumento === "boletim_trimestral" ? "WRITE" : "READ",
       });
       if (academicContext.escolaId !== escolaId) {
         return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
       }
     }
 
-    // Declaração oficial ≠ boletim dinâmico. Cada tipo exige a sua própria
-    // intenção liquidada e a concessão para a matrícula do ano selecionado.
-    // Uma aprovação gratuita da secretaria nunca abre acesso a notas.
-    if (tipoDocumento === "declaracao_notas" || tipoDocumento === "boletim_trimestral") {
-      const { data: matricula, error: matriculaError } = await supabase
-        .from("matriculas").select("id")
-        .eq("escola_id", escolaId).eq("aluno_id", alunoId)
-        .eq("session_id", academicContext!.anoLetivoId)
-        .limit(1).maybeSingle();
-      if (matriculaError) return NextResponse.json({ ok: false, error: "Falha ao consultar matrícula." }, { status: 503 });
-      if (!matricula) return NextResponse.json({ ok: false, error: "Matrícula não encontrada no ano letivo selecionado." }, { status: 409 });
-      const code = tipoDocumento === "declaracao_notas" ? BOLETIM_LEGACY_SERVICE_CODE : BOLETIM_SERVICE_CODE;
-      const access = await checkSpecificDocumentPaid(supabase, { escolaId, alunoId, matriculaId: matricula.id }, code);
-      if (access.error) return NextResponse.json({ ok: false, error: "Não foi possível confirmar a liquidação." }, { status: 503 });
-      if (!access.granted) {
-        return NextResponse.json({ ok: false, error: "Documento não emitido: confirme a liquidação efectiva da taxa deste serviço em Recebimentos. Aprovação administrativa não equivale a pagamento." }, { status: 409 });
+    // Reemissão / retry de documento existente: nunca gerar nem cobrar outro.
+    // A própria impressão mantém autenticação e autorização por escola.
+    const { data: enrollmentForDoc } = await supabase.from("matriculas")
+      .select("id").eq("escola_id", escolaId).eq("aluno_id", alunoId)
+      .eq("session_id", academicContext!.anoLetivoId)
+      .order("created_at", { ascending: false }).order("id", { ascending: false })
+      .limit(1).maybeSingle();
+    // Validar notas ANTES de apresentar checkout, cobrar ou reutilizar um
+    // certificado anterior. Falha fechada: nunca imprimir um diploma sem pauta.
+    if (tipoDocumento === "certificado") {
+      const anoDoDocumento = Number(academicContext!.anoLetivoLabel.slice(0, 4));
+      const elegibilidade = await verificarCertificadoElegivel({
+        supabase, escolaId, alunoId, anoLetivo: anoDoDocumento,
+      });
+      if (!elegibilidade.ok) {
+        const reconciliation = new URLSearchParams({
+          tipo: "historicos", ano: String(anoDoDocumento),
+        });
+        if (enrollmentForDoc?.id) reconciliation.set("matricula_id", enrollmentForDoc.id);
+        return NextResponse.json({
+          ok: false, code: elegibilidade.code, error: elegibilidade.error,
+          ...(elegibilidade.code === "CONSULTA_INDISPONIVEL" ? {} : {
+            next_action: {
+              type: "regularizar_historico",
+              label: "Abrir Reconciliação Histórica",
+              href: `/escola/${encodeURIComponent(escolaId)}/operacoes/academico/reconciliacao-historica?${reconciliation.toString()}`,
+            },
+          }),
+        }, { status: elegibilidade.code === "CONSULTA_INDISPONIVEL" ? 503 : 409 });
       }
+    }
+    if (enrollmentForDoc?.id) {
+      const { data: alreadyIssued, error: existingError } = await (supabase as any)
+        .from("documentos_emitidos")
+        .select("id, public_id, hash_validacao, tipo")
+        .eq("escola_id", escolaId).eq("aluno_id", alunoId)
+        .eq("tipo", tipoDocumento)
+        .contains("dados_snapshot", { matricula_id: enrollmentForDoc.id })
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (existingError) return NextResponse.json({ ok: false, error: "Falha ao consultar emissões existentes." }, { status: 503 });
+      if (alreadyIssued?.id) {
+        // Ler/imprimir um documento existente não cria outro pedido financeiro.
+        return NextResponse.json(action === "emitir" ? {
+          ok: true, docId: alreadyIssued.id, publicId: alreadyIssued.public_id,
+          hash: alreadyIssued.hash_validacao, tipo: alreadyIssued.tipo, idempotent: true,
+        } : {
+          ok: true, status: "issued", granted: true, docId: alreadyIssued.id,
+          publicId: alreadyIssued.public_id, printUrl: docPrintUrl(alreadyIssued.id, tipoDocumento),
+          message: "Documento já emitido. Pode imprimir novamente sem pagar.",
+        });
+      }
+    }
+
+    if (action !== "emitir") {
+      if (!enrollmentForDoc?.id) {
+        return NextResponse.json({
+          ok: false, code: "MATRICULA_NAO_ENCONTRADA",
+          error: "O aluno não possui matrícula no ano letivo escolhido.",
+        }, { status: 409 });
+      }
+      // Uma consulta é somente leitura; a solicitação pode criar uma intenção,
+      // mas apenas a RPC transacional realiza essa operação.
+      const { data: access, error: accessError } = await (supabase as any).rpc(
+        action === "solicitar" ? "documento_individual_solicitar" : "documento_individual_acesso",
+        {
+          p_escola_id: escolaId, p_aluno_id: alunoId,
+          p_session_id: academicContext!.anoLetivoId, p_tipo: tipoDocumento,
+        },
+      );
+      if (accessError) {
+        return NextResponse.json({
+          ok: false, error: "Não foi possível consultar o serviço documental.",
+        }, { status: 503 });
+      }
+      if (!access?.ok) {
+        const motivos: Record<string,string> = {
+          SERVICO_NAO_CONFIGURADO: "Configure o serviço em Emolumentos & Serviços.",
+          TAXA_NAO_CONFIGURADA: "Configure uma taxa positiva antes de emitir.",
+          MATRICULA_NAO_ENCONTRADA: "A matrícula do ano escolhido não foi encontrada.",
+        };
+        return NextResponse.json({
+          ok: false, code: access?.reason ?? "DOCUMENTO_INDISPONIVEL",
+          error: motivos[access?.reason] ?? "Documento indisponível.",
+        }, { status: 409 });
+      }
+      return NextResponse.json({
+        ok: true, status: access.status, granted: access.granted === true,
+        valor: Number(access.valor ?? 0),
+        matriculaId: access.matricula_id,
+        pedidoId: access.pedido_id ?? null,
+        pagamentoIntentId: access.pagamento_intent_id ?? null,
+        servicoCodigo: access.servico_codigo,
+        pagamentoObrigatorio: access.pagamento_obrigatorio === true,
+      });
+    }
+
+    // O servidor valida o serviço exato, matrícula/ano e liquidação no ledger.
+    // Nunca confiar em status ou valor enviados pelo cliente.
+    const { data: access, error: accessError } = await (supabase as any)
+      .rpc("documento_individual_acesso", {
+        p_escola_id: escolaId,
+        p_aluno_id: alunoId,
+        p_session_id: academicContext!.anoLetivoId,
+        p_tipo: tipoDocumento,
+      });
+    if (accessError) {
+      return NextResponse.json({ ok: false, error: "Falha ao validar pagamento." }, { status: 503 });
+    }
+    if (access?.granted !== true) {
+      return NextResponse.json({
+        ok: false, code: "DOCUMENT_PAYMENT_REQUIRED",
+        error: "Documento não emitido. Registe ou valide a taxa deste serviço, ou aguarde a aprovação quando aplicável.",
+      }, { status: 409 });
     }
 
     // Se for um documento final, usa a nova RPC baseada no histórico
@@ -157,10 +259,11 @@ export async function POST(request: Request) {
       }
 
       const { data: result, error: rpcError } = await (supabase as any)
-        .rpc("emitir_documento_final_idempotente", {
+        .rpc("emitir_documento_final_individual", {
           p_escola_id: escolaId,
           p_aluno_id: alunoId,
           p_ano_letivo: anoLetivoNumero,
+          p_session_id: academicContext!.anoLetivoId,
           p_tipo_documento: FINAL_DOC_BACKEND_TYPE[tipoDocumento],
           p_idempotency_key: idempotencyKey,
         });
@@ -246,6 +349,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "O ano letivo é obrigatório para este tipo de documento." }, { status: 400 });
     }
 
+    const estadosHistoricos = academicContext?.mode === "HISTORICAL_READ" && tipoDocumento === "declaracao_frequencia";
     let matriculaQuery = supabase
       .from("matriculas")
       .select(`
@@ -264,7 +368,9 @@ export async function POST(request: Request) {
       `)
       .eq("escola_id", escolaId)
       .eq("aluno_id", alunoId)
-      .in("status", ["ativa", "ativo", "matriculado"])
+      .in("status", estadosHistoricos
+        ? ["ativa", "ativo", "matriculado", "concluido", "reprovado", "transferido", "trancado"]
+        : ["ativa", "ativo", "matriculado"])
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -277,7 +383,7 @@ export async function POST(request: Request) {
     const { data: matricula, error: matriculaError } = await matriculaQuery.maybeSingle();
 
     if (matriculaError || !matricula) {
-      return NextResponse.json({ ok: false, error: "Matrícula ativa não encontrada" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: "Matrícula não encontrada no ano letivo selecionado" }, { status: 404 });
     }
 
     const aluno = (matricula as any).alunos || {};
@@ -301,6 +407,9 @@ export async function POST(request: Request) {
 
     const snapshot = {
       aluno_id: alunoId,
+      origem_emissao: "documentos_emissao_individual",
+      servico_pedido_id: access?.pedido_id ?? null,
+      pagamento_intent_id: access?.pagamento_intent_id ?? null,
       aluno_nome: aluno.nome_completo || aluno.nome || "",
       aluno_bi: aluno.bi_numero || null,
       aluno_pai: aluno.pai_nome || null,
@@ -354,6 +463,20 @@ export async function POST(request: Request) {
       // INSERT. O índice único deixa apenas uma vencer; a outra devolve o mesmo
       // documento em vez de fabricar uma segunda emissão.
       if (docError?.code === "23505") {
+        // Duas janelas, chaves diferentes, mesmo aluno/documento/ano.
+        const { data: issuedDoc } = await (supabase as any)
+          .from("documentos_emitidos")
+          .select("id, public_id, hash_validacao, tipo")
+          .eq("escola_id", escolaId).eq("aluno_id", alunoId)
+          .eq("tipo", tipoDocumento)
+          .contains("dados_snapshot", { matricula_id: matricula.id })
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (issuedDoc?.id) {
+          return NextResponse.json({
+            ok: true, docId: issuedDoc.id, publicId: issuedDoc.public_id,
+            hash: issuedDoc.hash_validacao, tipo: issuedDoc.tipo, idempotent: true,
+          });
+        }
         const { data: replayDoc } = await (supabase as any)
           .from("documentos_emitidos")
           .select("id, public_id, hash_validacao, tipo, idempotency_fingerprint")

@@ -163,7 +163,10 @@ test("conclusão e arquivo preservam candidato até ação explícita", () => {
 
 test("erros de recibo e duplicidade conservam o contexto da matrícula", () => {
   const wizard = read("components/secretaria/AdmissaoWizardClient.tsx");
-  assert.match(wizard, /if \(embedded\) setPostActionDocumentError/);
+  // Sem comprovativo, o pós-matrícula navega à Central em vez de
+  // iniciar outra emissão. Com comprovativo, reabre o documento existente.
+  assert.match(wizard, /result\.comprovante\?\.printUrl/);
+  assert.match(wizard, /router\.push\(\`\$\{secretariaBase\}\/documentos\?/);
   assert.match(wizard, /postActionDocumentError &&/);
   assert.match(wizard, /if \(embedded\) \{\s*onReset\(\);\s*onActionChange\?\.\("admissions"\);/);
 });

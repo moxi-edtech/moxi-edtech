@@ -100,6 +100,7 @@ export default function DocumentosOficiaisBatchClient() {
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
   const [periodoId, setPeriodoId] = useState<string>("");
   const [tipo, setTipo] = useState<"trimestral" | "anual" | "boletim_trimestral" | "certificado">("trimestral");
+  const historicalGenerationBlocked = isHistoricalYear && tipo !== "certificado";
   const [hidePendencias, setHidePendencias] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -140,8 +141,11 @@ export default function DocumentosOficiaisBatchClient() {
   }, [hidePendencias, isHistoricalYear, turmas]);
 
   const selectableTurmas = useMemo(() => {
-    return isHistoricalYear ? [] : filteredTurmas.filter((t) => t.pendencias === 0);
-  }, [filteredTurmas, isHistoricalYear]);
+    if (historicalGenerationBlocked) return [];
+    // O histórico fechado da turma é a fonte de emissão, não as notas operacionais.
+    if (isHistoricalYear && tipo === "certificado") return filteredTurmas;
+    return filteredTurmas.filter((t) => t.pendencias === 0);
+  }, [filteredTurmas, historicalGenerationBlocked, isHistoricalYear, tipo]);
 
   const allSelected = selectableTurmas.length > 0 && selectableTurmas.every((t) => selected.has(t.id));
 
@@ -359,8 +363,8 @@ export default function DocumentosOficiaisBatchClient() {
 
   const handleGenerate = async () => {
     if (selected.size === 0) return;
-    if (isHistoricalYear) {
-      setToast({ message: "Este ano está encerrado. Consulte os documentos já emitidos; a emissão oficial em lote exige ano ativo.", type: "error" });
+    if (historicalGenerationBlocked) {
+      setToast({ message: "O documento operacional exige ano ativo. Para históricos, utilize certificados ou declarações individuais.", type: "error" });
       return;
     }
     if (!academicYearId || yearsLoading || loading) {
@@ -652,12 +656,12 @@ export default function DocumentosOficiaisBatchClient() {
         >
           Atualizar status
         </button>
-        {!isHistoricalYear && <button
+        {!historicalGenerationBlocked && <button
           type="button"
           onClick={() => setSelected(new Set(selectableTurmas.map((t) => t.id)))}
           className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
         >
-          Selecionar turmas prontas
+          {isHistoricalYear ? "Selecionar turmas para certificados" : "Selecionar turmas prontas"}
         </button>}
       </div>
 
@@ -669,7 +673,7 @@ export default function DocumentosOficiaisBatchClient() {
                 <input
                   type="checkbox"
                   checked={allSelected}
-                  disabled={isHistoricalYear}
+                  disabled={historicalGenerationBlocked}
                   onChange={toggleAll}
                   className="rounded text-klasse-green dark:text-klasse-green-300 focus:ring-klasse-green"
                 />
@@ -698,7 +702,7 @@ export default function DocumentosOficiaisBatchClient() {
                     <input
                       type="checkbox"
                       checked={isChecked}
-                      disabled={hasPendencias || isHistoricalYear}
+                      disabled={historicalGenerationBlocked || (hasPendencias && !isHistoricalYear)}
                       onChange={() => toggleTurma(turma.id)}
                       className="rounded text-klasse-green dark:text-klasse-green-300 focus:ring-klasse-green disabled:opacity-50 cursor-pointer"
                     />
@@ -983,7 +987,7 @@ export default function DocumentosOficiaisBatchClient() {
 
           <button
             onClick={handleGenerate}
-            disabled={submitting || !academicYearId || loading || isHistoricalYear}
+            disabled={submitting || !academicYearId || loading || historicalGenerationBlocked}
             className="flex items-center gap-2 bg-klasse-gold text-foreground px-6 py-2.5 rounded-full text-sm font-bold hover:brightness-105 transition-all disabled:opacity-70"
           >
             {submitting ? (

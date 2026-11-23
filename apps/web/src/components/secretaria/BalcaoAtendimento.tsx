@@ -40,7 +40,7 @@ import { PagamentoDividaModal } from "@/components/secretaria/PagamentoDividaMod
 import { getTipoDocumentoFromCodigo } from "@/lib/documentos/identificacao";
 import { OmniSearchInput } from "@/components/secretaria/OmniSearchInput";
 import { isTipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
-import { emitirDocumento as emitirDocumentoViaApi, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
+import { abrirParaImpressao } from "@/lib/documentos/emissaoClient";
 import { kwanza } from "@/lib/formatters";
 import { isOverdueRematriculaDebt } from "@/lib/rematricula/debt";
 import { resolveCheckoutPaymentState } from "@/lib/financeiro/checkout-payment-state";
@@ -156,6 +156,15 @@ function isServicoRematricula(s: Servico): boolean {
 // prefixo DOC_.
 function getDocTipo(s: Servico): string | null {
   return getTipoDocumentoFromCodigo(s.documento_tipo ?? s.codigo);
+}
+
+
+function hrefEmissaoIndividual(alunoId: string | null, servico: Servico, anoLetivoId: string | null): string | null {
+  const tipo = getDocTipo(servico);
+  if (!alunoId || !isTipoDocumentoEmitivel(tipo)) return null;
+  const params = new URLSearchParams({ alunoId, tipo });
+  if (anoLetivoId) params.set("ano_letivo_id", anoLetivoId);
+  return `/secretaria/documentos?${params.toString()}`;
 }
 
 function getDocumentoResumo(servico: Servico): string {
@@ -661,10 +670,8 @@ function useCheckout({
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [billingWindowIssue, setBillingWindowIssue] = useState<BillingWindowIssue | null>(null);
-  const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
   const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
   const checkoutRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
-  const documentRequestRef = useRef<Map<string, { fingerprint: string; key: string }>>(new Map());
   // Serviços que emitem documento e acabaram de ser pagos. O carrinho é limpo no
   // sucesso, e sem isto o item pago desaparecia do ecrã sem forma de emitir o
   // documento — que é exactamente o que faltava ao pagar uma declaração.
@@ -674,6 +681,15 @@ function useCheckout({
 
   const checkout = useCallback(async (): Promise<boolean> => {
     if (!aluno || !carrinho.prontoParaPagar) return false;
+    // Um rascunho antigo ainda pode conter serviços documentais no carrinho.
+    // Não permitir um segundo checkout para o mesmo serviço. O operador
+    // remove o item e processa-o na Central, preservando os restantes itens.
+    if (carrinho.itens.some((item) =>
+      item.tipo === "servico" && isTipoDocumentoEmitivel(getDocTipo(item))
+    )) {
+      error("Documentos são cobrados e emitidos na Central de Documentos. Remova-os do carrinho para continuar com os demais pagamentos.");
+      return false;
+    }
     setIsSubmitting(true);
 
     try {
@@ -797,65 +813,9 @@ function useCheckout({
     }
   }, [billingWindowIssue, error, success]);
 
-  const emitirDocumento = useCallback(
-    async (servico: Servico): Promise<string | null> => {
-      if (!aluno) return null;
-
-      const tipoDocumento = getDocTipo(servico);
-      if (!tipoDocumento) {
-        error(`O serviço "${servico.nome}" não tem um documento associado.`);
-        return null;
-      }
-      // `getTipoDocumentoFromCodigo` pode devolver tipos que a rota de emissão
-      // não aceita — "recibo" é o caso real, e existe no catálogo de serviços.
-      // Sem esta guarda o POST devolvia 400 e o operador via um erro genérico.
-      if (!isTipoDocumentoEmitivel(tipoDocumento)) {
-        error(`O serviço "${servico.nome}" é emitido pelo fluxo de pagamento, não pelo balcão.`);
-        return null;
-      }
-
-      const fingerprint = JSON.stringify({
-        escolaId,
-        alunoId: aluno.id,
-        servicoId: servico.id,
-        tipoDocumento,
-        anoLetivoId: academicYearId ?? null,
-      });
-      const previousRequest = documentRequestRef.current.get(servico.id);
-      const request =
-        previousRequest?.fingerprint === fingerprint
-          ? previousRequest
-          : { fingerprint, key: crypto.randomUUID() };
-      documentRequestRef.current.set(servico.id, request);
-
-      setEmittingDocId(servico.id);
-      try {
-        const resultado = await emitirDocumentoViaApi({
-          escolaId,
-          alunoId: aluno.id,
-          tipoDocumento,
-          idempotencyKey: request.key,
-          anoLetivoId: academicYearId,
-        });
-        if (!resultado.ok) {
-          // A chave permanece associada à tentativa: retry após timeout/500 não
-          // pode fabricar um segundo documento oficial.
-          error(resultado.error);
-          return null;
-        }
-        documentRequestRef.current.delete(servico.id);
-        await onSuccess();
-        return resultado.printUrl;
-      } finally {
-        setEmittingDocId(null);
-      }
-    },
-    [aluno, escolaId, academicYearId, error, onSuccess]
-  );
 
   return {
     isSubmitting,
-    emittingDocId,
     printQueue,
     setPrintQueue,
     pagos,
@@ -863,7 +823,6 @@ function useCheckout({
     pendentes,
     setPendentes,
     checkout,
-    emitirDocumento,
     billingWindowIssue,
     setBillingWindowIssue,
     saveBillingWindow,
@@ -1820,9 +1779,8 @@ function Catalogo({
                       <button type="button" disabled={busy || (paid && selected)}
                         onClick={() => { if (paid) void onAdicionarServico(servico); else void onEmitirDocumento(servico); }}
                         className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground disabled:opacity-60">
-                        {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> A emitir...</> :
-                          paid ? selected ? "Adicionado à cobrança" : "Adicionar à cobrança" :
-                          <><Printer className="h-4 w-4" /> Emitir agora</>}
+                        {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> A abrir...</> :
+                          <><FileText className="h-4 w-4" /> Abrir emissão</>}
                       </button>
                     </div>
                   );
@@ -1839,7 +1797,7 @@ function Catalogo({
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Documentos</p>
                 <h2 className="mt-1 text-base font-black text-foreground">O que precisa emitir?</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Documentos gratuitos são emitidos imediatamente. Os pagos seguem para cobrança antes da emissão.
+                  Selecione o documento para abrir o fluxo individual. O KLASSE valida o pagamento e permite reimpressão sem nova cobrança.
                 </p>
                 {selectedCount > 0 ? (
                   <a
@@ -1872,7 +1830,7 @@ function Catalogo({
                       <div className="mt-2 flex items-center justify-between gap-1">
                         <span className="text-[11px] font-semibold text-muted-foreground font-sora">{kwanza.format(servico.preco)}</span>
                         <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${paid ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald"}`}>
-                          {busy ? "..." : paid ? "Cobrar" : "Adicionar"}
+                          {busy ? "..." : "Abrir emissão"}
                         </span>
                       </div>
                     </button>
@@ -1921,11 +1879,9 @@ function Catalogo({
                       ].join(" ")}
                     >
                       {busy ? (
-                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> A emitir...</>
-                      ) : paid ? (
-                        selected ? "Adicionado" : "Adicionar para cobrança"
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> A abrir...</>
                       ) : (
-                        <><Printer className="h-3.5 w-3.5" /> Emitir agora</>
+                        <><FileText className="h-3.5 w-3.5" /> Abrir emissão</>
                       )}
                     </button>
                   </div>
@@ -2047,6 +2003,7 @@ function CarrinhoPanel({
   checkout,
   audit,
   aluno,
+  academicYearId,
   embedded = false,
   mode = "all",
   atalhoActivo = true,
@@ -2055,6 +2012,7 @@ function CarrinhoPanel({
   checkout: ReturnType<typeof useCheckout>;
   audit: ReturnType<typeof useAuditTrail>;
   aluno: AlunoDossier | null;
+  academicYearId: string | null;
   embedded?: boolean;
   mode?: "all" | "payment" | "document";
   /** Desligado enquanto há um modal aberto — ver o efeito abaixo. */
@@ -2126,8 +2084,8 @@ function CarrinhoPanel({
                 {mode === "payment"
                   ? "Rever e confirmar"
                   : itens.length > 1
-                    ? "Documentos para emitir"
-                    : "Documento para emitir"}
+                    ? "Documentos selecionados"
+                    : "Documento selecionado"}
               </h3>
               {itens.length > 0 ? (
                 <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
@@ -2219,7 +2177,10 @@ function CarrinhoPanel({
           </div>
         ) : (
           itens.map((item) => {
-            const podeImprimir = item.tipo === "servico" && Number(item.preco ?? 0) <= 0 && getDocTipo(item as Servico) !== null;
+            const hrefDocumento = item.tipo === "servico"
+              ? hrefEmissaoIndividual(aluno?.id ?? null, item, academicYearId)
+              : null;
+            const podeImprimir = Boolean(hrefDocumento) && item.tipo === "servico" && Number(item.preco ?? 0) <= 0;
 
             return (
               <div
@@ -2235,20 +2196,11 @@ function CarrinhoPanel({
                         ? "Documento"
                         : item.tipo}
                   </p>
-                  {podeImprimir && (
-                    <button
-                      type="button"
-                      disabled={checkout.emittingDocId === item.id}
-                      onClick={async () => {
-                        const url = await checkout.emitirDocumento(item as Servico);
-                        if (!url) return;
-                        const impressao = abrirParaImpressao(url);
-                        if (!impressao.ok) checkout.setPrintQueue((prev) => [{ label: item.nome, url: impressao.url }, ...prev]);
-                      }}
-                      className="mt-1.5 text-[10px] font-semibold text-emerald hover:underline disabled:opacity-50"
-                    >
-                      {checkout.emittingDocId === item.id ? "A emitir…" : "Imprimir agora"}
-                    </button>
+                  {podeImprimir && hrefDocumento && (
+                    <Link href={hrefDocumento}
+                      className="mt-1.5 inline-block text-[10px] font-semibold text-emerald hover:underline">
+                      Abrir na Central de Documentos
+                    </Link>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -2316,19 +2268,12 @@ function CarrinhoPanel({
             {checkout.pagos.map((servico) => (
               <div key={servico.id} className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold text-foreground min-w-0 truncate">{servico.nome}</p>
-                <button
-                  type="button"
-                  disabled={checkout.emittingDocId === servico.id}
-                  onClick={async () => {
-                    const url = await checkout.emitirDocumento(servico);
-                    if (!url) return;
-                    const impressao = abrirParaImpressao(url);
-                    if (!impressao.ok) checkout.setPrintQueue((prev) => [{ label: servico.nome, url: impressao.url }, ...prev]);
-                  }}
-                  className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald hover:underline disabled:opacity-50"
+                <Link
+                  href={hrefEmissaoIndividual(aluno?.id ?? null, servico, academicYearId) ?? "/secretaria/documentos"}
+                  className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald hover:underline"
                 >
-                  {checkout.emittingDocId === servico.id ? "A emitir…" : "Emitir documento"}
-                </button>
+                  Abrir na Central
+                </Link>
               </div>
             ))}
           </div>
@@ -2892,31 +2837,38 @@ export default function BalcaoAtendimento({
     [carrinho]
   );
 
+  const abrirEmissaoIndividual = useCallback(
+    (servico: Servico) => {
+      if (!dossier.aluno?.id) {
+        error("Selecione um aluno primeiro.");
+        return false;
+      }
+      const href = hrefEmissaoIndividual(dossier.aluno.id, servico, effectiveAcademicYearId);
+      if (!href) return false;
+      window.location.assign(href);
+      return true;
+    },
+    [dossier.aluno?.id, effectiveAcademicYearId, error],
+  );
+
   const handleAdicionarServico = useCallback(
     async (s: Servico) => {
       if (!dossier.aluno?.id) {
         error("Selecione um aluno primeiro.");
         return;
       }
+      if (abrirEmissaoIndividual(s)) return;
       carrinho.adicionar(s);
     },
-    [dossier.aluno, carrinho, error]
+    [dossier.aluno?.id, abrirEmissaoIndividual, carrinho, error],
   );
 
   const handleEmitirDocumento = useCallback(
     async (servico: Servico) => {
-      const url = await checkout.emitirDocumento(servico);
-      if (!url) return;
-
-      const impressao = abrirParaImpressao(url);
-      if (!impressao.ok) {
-        checkout.setPrintQueue((previous) => [
-          { label: servico.nome, url: impressao.url },
-          ...previous,
-        ]);
-      }
+      if (abrirEmissaoIndividual(servico)) return;
+      error("Este serviço é emitido pelo fluxo de pagamento, não pela emissão documental.");
     },
-    [checkout],
+    [abrirEmissaoIndividual, error],
   );
 
   useEffect(() => {
@@ -3153,7 +3105,7 @@ export default function BalcaoAtendimento({
                   onAdicionarMensalidade={handleAdicionarMensalidade}
                   onAdicionarServico={handleAdicionarServico}
                   onEmitirDocumento={handleEmitirDocumento}
-                  emittingDocId={checkout.emittingDocId}
+                  emittingDocId={null}
                   unlockedMensalidadeIds={unlockedMensalidadeIds}
                   selectedItemKeys={selectedItemKeys}
                   selectedTotal={carrinho.total}
@@ -3255,6 +3207,7 @@ export default function BalcaoAtendimento({
                   checkout={checkout}
                   audit={audit}
                   aluno={dossier.aluno}
+                  academicYearId={effectiveAcademicYearId}
                   embedded={embedded}
                   mode={view === "payment" ? "payment" : view === "document" || view === "reenrollment" ? "document" : "all"}
                   atalhoActivo={

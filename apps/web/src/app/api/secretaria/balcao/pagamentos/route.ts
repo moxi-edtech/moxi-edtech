@@ -133,13 +133,52 @@ export async function POST(request: Request) {
       );
     }
 
+    const payload = parsed.data;
+    const meta = asRecord(payload.meta);
+    const isDocumentoIndividual = meta.origem === "documentos_emissao_individual";
+    if (isDocumentoIndividual) {
+      const pedidoId = getStringField(meta, "pedido_id");
+      const intentId = getStringField(meta, "pagamento_intent_id");
+      const codigo = getStringField(meta, "servico_codigo");
+      if (!pedidoId || !intentId || !codigo || !payload.ano_letivo_id || payload.mensalidade_id) {
+        return NextResponse.json({ ok: false, error: "Pedido e intenção documental obrigatórios." }, { status: 400 });
+      }
+      const { data: pedido, error: pedidoError } = await supabase.from("servico_pedidos")
+        .select("id, aluno_id, escola_id, matricula_id, servico_codigo, valor_cobrado, status, contexto")
+        .eq("id", pedidoId).eq("escola_id", escolaId).eq("aluno_id", payload.aluno_id).maybeSingle();
+      const { data: intent, error: intentError } = await supabase.from("pagamento_intents")
+        .select("id, escola_id, aluno_id, servico_pedido_id, amount, status")
+        .eq("id", intentId).eq("escola_id", escolaId).eq("aluno_id", payload.aluno_id).maybeSingle();
+      if (pedidoError || intentError) {
+        return NextResponse.json({ ok: false, error: "Não foi possível validar a solicitação." }, { status: 503 });
+      }
+      const contextoPedido = asRecord(pedido?.contexto);
+      if (!pedido || !intent || !pedido.matricula_id ||
+          contextoPedido.origem !== "documentos_emissao_individual" ||
+          contextoPedido.ano_letivo_id !== payload.ano_letivo_id ||
+          pedido.servico_codigo !== codigo || intent.servico_pedido_id !== pedido.id ||
+          Number(pedido.valor_cobrado) <= 0 ||
+          Number(pedido.valor_cobrado) !== payload.valor ||
+          Number(intent.amount) !== payload.valor ||
+          !["pending_payment", "granted"].includes(pedido.status) ||
+          ["settled", "canceled", "failed"].includes(intent.status)) {
+        return NextResponse.json({
+          ok: false, code: "DOCUMENT_PAYMENT_CONTEXT_MISMATCH",
+          error: "Esta cobrança não corresponde ao serviço solicitado. Atualize o estado do documento.",
+        }, { status: 409 });
+      }
+      const { data: matriculaPagamento } = await supabase.from("matriculas")
+        .select("session_id").eq("escola_id", escolaId).eq("id", pedido.matricula_id).maybeSingle();
+      if (matriculaPagamento?.session_id !== payload.ano_letivo_id) {
+        return NextResponse.json({ ok: false, error: "A cobrança pertence a outro ano letivo." }, { status: 409 });
+      }
+    }
     const { data: existingPagamento } = await supabase
       .from("pagamentos")
       .select("id, status, meta, aluno_id, mensalidade_id, valor_pago, metodo")
       .eq("escola_id", escolaId)
       .contains("meta", { idempotency_key: idempotencyKey })
       .maybeSingle();
-    const payload = parsed.data;
     // Repetir a mesma chave deve retomar também a emissão do recibo, não apenas
     // devolver o pagamento antigo. Reutilização com payload diferente é conflito.
     if (existingPagamento && (
@@ -153,7 +192,24 @@ export async function POST(request: Request) {
         error: "Esta chave pertence a outro pagamento.",
       }, { status: 409 });
     }
-    const meta = asRecord(payload.meta);
+    if (isDocumentoIndividual && existingPagamento && (
+      getStringField(asRecord(existingPagamento.meta), "pedido_id") !== getStringField(meta, "pedido_id") ||
+      getStringField(asRecord(existingPagamento.meta), "pagamento_intent_id") !== getStringField(meta, "pagamento_intent_id")
+    )) {
+      return NextResponse.json({ ok: false, code: "IDEMPOTENCY_KEY_CONFLICT", error: "A chave pertence a outro serviço documental." }, { status: 409 });
+    }
+    if (isDocumentoIndividual && !existingPagamento) {
+      const { data: previous } = await supabase.from("pagamentos")
+        .select("id").eq("escola_id", escolaId)
+        .contains("meta", { pagamento_intent_id: getStringField(meta, "pagamento_intent_id") })
+        .neq("status", "voided").limit(1).maybeSingle();
+      if (previous) {
+        return NextResponse.json({
+          ok: false, code: "PAYMENT_ALREADY_RECORDED",
+          error: "Esta cobrança já foi registada. Atualize o estado antes de tentar novamente.",
+        }, { status: 409 });
+      }
+    }
     const mensalidadeItem = (meta.itens as unknown[] | undefined)?.find((item) => asRecord(item).tipo === "mensalidade");
     const receiptItems = normalizeReceiptItems(meta, {
       descricao: getStringField(meta, "descricao_item") || "Propina",
@@ -166,7 +222,7 @@ export async function POST(request: Request) {
       academicContext = await resolveAcademicYearContext(supabase as any, {
         userId: user.id,
         requestedAcademicYearId: payload.ano_letivo_id,
-        operation: "WRITE",
+        operation: isDocumentoIndividual ? "READ" : "WRITE",
       });
     } catch (err) {
       if (err instanceof AcademicYearContextError) {
@@ -440,7 +496,7 @@ export async function POST(request: Request) {
     }).catch(() => null);
 
     const intentId = getStringField(meta, "pagamento_intent_id");
-    if (intentId) {
+    if (intentId && !isDocumentoIndividual) {
       await confirmPagamentoIntent({
         supabase,
         intentId: String(intentId),
@@ -519,10 +575,9 @@ async function confirmPagamentoIntent({
   }
 
   const normalizedMetodo = metodo === "kwik" ? "kiwk" : metodo;
-  // No balcão físico, se a secretária está processando TPA/Transfer, ela já viu o comprovativo.
-  // Portanto, liquidamos imediatamente para permitir a emissão do documento.
-  const isBalcaoEmissao = meta.origem === "documentos_emissao";
-  const newStatus = (normalizedMetodo === "cash" || isBalcaoEmissao) ? "settled" : "pending";
+  // A origem fornecida pelo cliente NUNCA pode liquidar TPA/transferência.
+  // Só cash confirmado no balcão ou conciliação financeira posterior liquida.
+  const newStatus = normalizedMetodo === "cash" ? "settled" : "pending";
 
   await supabase
     .from("pagamento_intents")

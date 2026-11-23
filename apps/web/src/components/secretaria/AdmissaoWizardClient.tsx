@@ -17,7 +17,6 @@ import { EnrollmentPostActionModal } from "./EnrollmentPostActionModal";
 import { AdmissionReceiptRecovery } from "./AdmissionReceiptRecovery";
 import { AdmissionCalendarResolution } from "./AdmissionCalendarResolution";
 import type { EnrollmentPostAction } from "./EnrollmentPostActions";
-import { emitirDocumento } from "@/lib/documentos/emissaoClient";
 
 /**
  * KLASSE Standard:
@@ -1727,7 +1726,6 @@ function Step3Pagamento(props: {
   }>>([]);
   const [mensalidadesSelecionadas, setMensalidadesSelecionadas] = useState<string[]>([]);
   const [priceLoading, setPriceLoading] = useState(false);
-  const postActionDocumentRequestRef = useRef<Map<string, string>>(new Map());
   const router = useRouter();
   const contextualHref = useCallback((path: string) => {
     const contextualPath = toContextualPortalPath(path, secretariaBase);
@@ -2122,51 +2120,18 @@ function Step3Pagamento(props: {
               anoLetivo: anoLetivo || "2025/2026",
             }}
             onEscolher={async (passo: Passo) => {
-              const targetAlunoId = result.aluno_id || candidaturaId;
-              const targetEscolaId = escolaId;
-
               if (passo.id === "emitir_boletim") {
                 setPostActionDocumentError(null);
                 if (result.comprovante?.printUrl) {
-                  window.open(result.comprovante.printUrl, "_blank");
-                } else if (targetEscolaId && targetAlunoId) {
-                  // Fallback: emitir manualmente se a auto-emissão falhou
-                  try {
-                    const academicYearId = new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM);
-                    const fingerprint = JSON.stringify({
-                      escolaId: targetEscolaId,
-                      alunoId: targetAlunoId,
-                      tipoDocumento: "comprovante_matricula",
-                      anoLetivoId: academicYearId,
-                    });
-                    const idempotencyKey =
-                      postActionDocumentRequestRef.current.get(fingerprint) ?? crypto.randomUUID();
-                    postActionDocumentRequestRef.current.set(fingerprint, idempotencyKey);
-
-                    const emissao = await emitirDocumento({
-                      escolaId: targetEscolaId,
-                      alunoId: targetAlunoId,
-                      tipoDocumento: "comprovante_matricula",
-                      idempotencyKey,
-                      anoLetivoId: academicYearId,
-                    });
-                    if (emissao.ok) {
-                      postActionDocumentRequestRef.current.delete(fingerprint);
-                      window.open(emissao.printUrl, "_blank");
-                    } else {
-                      console.error("Erro ao emitir documento:", emissao.error);
-                      // Se falhar o atalho, vai para o hub como fallback seguro.
-                      // A mesma chave fica retida para um retry desta intenção.
-                      if (embedded) setPostActionDocumentError("O comprovativo ainda não ficou disponível. Pode tentar novamente neste atendimento.");
-                      else router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
-                    }
-                  } catch (err) {
-                    if (embedded) setPostActionDocumentError("O comprovativo ainda não ficou disponível. Pode tentar novamente neste atendimento.");
-                      else router.push(`${secretariaBase}/documentos?alunoId=${targetAlunoId}&tipo=comprovante_matricula`);
-                  }
+                  // Documento já emitido: a impressão nunca gera outra cobrança.
+                  window.open(result.comprovante.printUrl, "_blank", "noopener,noreferrer");
                 } else {
-                  if (embedded) setPostActionDocumentError("Não foi possível identificar o aluno para emitir o comprovativo.");
-                  else router.push(`${secretariaBase}/documentos?tipo=comprovante_matricula`);
+                  // O atalho do pós-matrícula não tem um motor de emissão próprio.
+                  const params = new URLSearchParams({ tipo: "comprovante_matricula" });
+                  if (result.aluno_id) params.set("alunoId", result.aluno_id);
+                  const academicYearId = new URLSearchParams(window.location.search).get(ACADEMIC_YEAR_PARAM);
+                  if (academicYearId) params.set(ACADEMIC_YEAR_PARAM, academicYearId);
+                  router.push(`${secretariaBase}/documentos?${params.toString()}`);
                 }
               } else if (passo.id === "registar_propina") {
                 if (embedded && onActionChange) onActionChange("payment");

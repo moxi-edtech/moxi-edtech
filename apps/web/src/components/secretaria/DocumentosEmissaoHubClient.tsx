@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
-import { BookOpen, FileText, RefreshCw, Search, User } from "lucide-react";
-import { emitirDocumento, abrirParaImpressao } from "@/lib/documentos/emissaoClient";
+import { BookOpen, FileText, Printer, RefreshCw, Search, User } from "lucide-react";
+import { emitirDocumento, abrirParaImpressao, consultarDocumentoIndividual, DocumentoOperacaoErro, type DocumentoNextAction } from "@/lib/documentos/emissaoClient";
 import type { TipoDocumentoEmitivel } from "@/lib/documentos/printUrl";
 
 // Mesmo union que a rota de emissão aceita. Estava aqui duplicado (e uma
@@ -87,7 +87,6 @@ export default function DocumentosEmissaoHubClient({
   defaultTipo?: DocumentoTipo | null;
 }) {
   const escolaParam = escolaId;
-  const router = useRouter();
   const searchParams = useSearchParams();
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
   const [query, setQuery] = useState("");
@@ -97,6 +96,11 @@ export default function DocumentosEmissaoHubClient({
   const [tipo, setTipo] = useState<DocumentoTipo | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorAction, setErrorAction] = useState<DocumentoNextAction | null>(null);
+  const reportError = useCallback((err: unknown, fallback: string) => {
+    setError(err instanceof Error ? err.message : fallback);
+    setErrorAction(err instanceof DocumentoOperacaoErro ? err.nextAction : null);
+  }, []);
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [servicos, setServicos] = useState<ServicoItem[]>([]);
   const [loadingServicos, setLoadingServicos] = useState(false);
@@ -106,22 +110,34 @@ export default function DocumentosEmissaoHubClient({
   const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
   const referenceInputRef = useRef<HTMLInputElement | null>(null);
   const documentRequestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  const paymentRequestRef = useRef<{ intentId: string; key: string } | null>(null);
+  type EmissaoIndividualEstado = {
+    status: "issued" | "paid" | "free" | "pending_payment" | "verification" | "approval";
+    granted: boolean;
+    valor?: number;
+    pedidoId?: string | null;
+    pagamentoIntentId?: string | null;
+    servicoCodigo?: string;
+    docId?: string;
+    printUrl?: string;
+    pagamentoObrigatorio?: boolean;
+  };
+  const [documentState, setDocumentState] = useState<EmissaoIndividualEstado | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+
   const [anoLetivoOptions, setAnoLetivoOptions] = useState<Array<{ id: string; nome: string; ano_letivo: number; status: string }>>([]);
-  const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<number | null>(null);
+  const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<string>("");
   const [loadingAnoLetivo, setLoadingAnoLetivo] = useState(false);
   const selectedAnoLetivoId = useMemo(
-    () => anoLetivoOptions.find((item) => item.ano_letivo === anoLetivoSelecionado)?.id ?? academicYearId ?? null,
-    [anoLetivoOptions, anoLetivoSelecionado, academicYearId],
+    () => anoLetivoOptions.some((item) => item.id === anoLetivoSelecionado) ? anoLetivoSelecionado : null,
+    [anoLetivoOptions, anoLetivoSelecionado],
   );
+  const selectedAnoLetivo = anoLetivoOptions.find((item) => item.id === selectedAnoLetivoId) ?? null;
   const alunoIdParam = alunoId ?? searchParams?.get("alunoId");
   const tipoParam = (defaultTipo ?? (searchParams?.get("tipo") as DocumentoTipo | null)) ?? null;
 
-  type BalcaoDecision = {
-    decision: "GRANTED" | "BLOCKED" | "PENDING";
-    reason_detail?: string | null;
-    pedido_id?: string | null;
-    payment_intent_id?: string | null;
-  };
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -265,10 +281,11 @@ export default function DocumentosEmissaoHubClient({
           }));
         if (active) {
           setAnoLetivoOptions(mapped);
-          if (!anoLetivoSelecionado && mapped.length > 0) {
-            const ativo = mapped.find((item) => item.status === "ativa") ?? mapped[0];
-            setAnoLetivoSelecionado(ativo.ano_letivo);
-          }
+          setAnoLetivoSelecionado((previous) => {
+            if (mapped.some((item) => item.id === previous)) return previous;
+            if (academicYearId && mapped.some((item) => item.id === academicYearId)) return academicYearId;
+            return (mapped.find((item) => item.status === "ativa") ?? mapped[0])?.id ?? "";
+          });
         }
       } catch {
         if (active) setAnoLetivoOptions([]);
@@ -281,7 +298,7 @@ export default function DocumentosEmissaoHubClient({
     return () => {
       active = false;
     };
-  }, [escolaParam, anoLetivoSelecionado]);
+  }, [escolaParam, academicYearId]);
 
   const normalizedResults = useMemo(() => results.slice(0, 6), [results]);
 
@@ -300,139 +317,178 @@ export default function DocumentosEmissaoHubClient({
     return servicos.find((servico) => servico.codigo === codeByType[tipo]) ?? null;
   }, [servicos, tipo]);
 
-  const isPago = Boolean(selectedServico && Number(selectedServico.valor_base ?? 0) > 0);
-  const valorBase = Number(selectedServico?.valor_base ?? 0);
+  const valorBase = Number(documentState?.valor ?? selectedServico?.valor_base ?? 0);
+  const isPago = Boolean(documentState?.pagamentoObrigatorio ?? (valorBase > 0));
   const requiresPaidNotes = tipo === "declaracao_notas" || tipo === "boletim_trimestral";
-  // A direção decide o preço no catálogo; nunca inventar um valor padrão.
-  const missingNotesFee = requiresPaidNotes && (!selectedServico || valorBase <= 0);
-  const canSubmit = Boolean(selectedAluno?.id && tipo && !submitting && !missingNotesFee);
+  const missingNotesFee = requiresPaidNotes && !loadingServicos && !documentState &&
+    (!selectedServico || valorBase <= 0);
+  const canSubmit = Boolean(selectedAluno?.id && tipo && selectedAnoLetivoId &&
+    !submitting && !paymentBusy && !statusLoading);
 
   const handleSelectAluno = (id: string, label: string) => {
     setSelectedAluno({ id, label });
     setQuery(label);
   };
 
+  async function consultarEstado(action: "status" | "solicitar" = "status"): Promise<EmissaoIndividualEstado> {
+    if (!selectedAluno?.id || !tipo || !selectedAnoLetivoId) {
+      throw new Error("Selecione aluno, documento e ano letivo.");
+    }
+    return await consultarDocumentoIndividual({
+      escolaId,
+      alunoId: selectedAluno.id,
+      tipoDocumento: tipo,
+      anoLetivoId: selectedAnoLetivoId,
+      action,
+    }) as EmissaoIndividualEstado;
+  }
+
+  useEffect(() => {
+    let active = true;
+    setDocumentState(null);
+    setSuccess(null);
+    setError(null);
+    setErrorAction(null);
+    paymentRequestRef.current = null;
+    documentRequestRef.current = null;
+    if (!selectedAluno?.id || !tipo || !selectedAnoLetivoId) return;
+    setStatusLoading(true);
+    consultarDocumentoIndividual({
+      escolaId,
+      alunoId: selectedAluno.id,
+      tipoDocumento: tipo,
+      anoLetivoId: selectedAnoLetivoId,
+      action: "status",
+    }).then((data) => {
+      if (active) setDocumentState(data as EmissaoIndividualEstado);
+    }).catch((err: unknown) => {
+      if (active) reportError(err, "Falha ao consultar documento.");
+    }).finally(() => { if (active) setStatusLoading(false); });
+    return () => { active = false; };
+  }, [escolaId, selectedAluno?.id, tipo, selectedAnoLetivoId, reportError]);
+
+  const handleRefresh = async () => {
+    setStatusLoading(true);
+    setError(null);
+    setErrorAction(null);
+    try {
+      setDocumentState(await consultarEstado());
+    } catch (err) {
+      setDocumentState(null);
+      reportError(err, "Não foi possível atualizar o estado.");
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handleSolicitar = async () => {
+    if (!canSubmit) return;
+    setStatusLoading(true);
+    setError(null);
+    setErrorAction(null);
+    try {
+      setDocumentState(await consultarEstado("solicitar"));
+    } catch (err) {
+      setDocumentState(null);
+      reportError(err, "Não foi possível solicitar o documento.");
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handlePagamento = async () => {
+    if (!canSubmit || !selectedAluno?.id || !selectedAnoLetivoId || !documentState || error) return;
+    if (documentState.status !== "pending_payment") return;
+    setPaymentBusy(true);
+    setError(null);
+    setErrorAction(null);
+    try {
+      let estado = documentState;
+      if (!estado.pedidoId || !estado.pagamentoIntentId) {
+        estado = await consultarEstado("solicitar");
+        setDocumentState(estado);
+      }
+      if (!estado.pedidoId || !estado.pagamentoIntentId || !estado.servicoCodigo ||
+          !(Number(estado.valor) > 0)) {
+        throw new Error("A intenção de pagamento ainda não está pronta.");
+      }
+      if (metodo === "tpa" && !reference.trim()) throw new Error("Introduza a referência do TPA.");
+      if (metodo === "transfer" && !evidenceUrl.trim()) throw new Error("Indique o comprovativo da transferência.");
+
+      if (!paymentRequestRef.current || paymentRequestRef.current.intentId !== estado.pagamentoIntentId) {
+        paymentRequestRef.current = { intentId: estado.pagamentoIntentId, key: crypto.randomUUID() };
+      }
+      const pagamentoRes = await fetch("/api/secretaria/balcao/pagamentos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": paymentRequestRef.current.key,
+        },
+        body: JSON.stringify({
+          aluno_id: selectedAluno.id, ano_letivo_id: selectedAnoLetivoId,
+          mensalidade_id: null, valor: Number(estado.valor), metodo,
+          reference: reference.trim() || null,
+          evidence_url: evidenceUrl.trim() || null, gateway_ref: null,
+          meta: {
+            origem: "documentos_emissao_individual",
+            pedido_id: estado.pedidoId,
+            pagamento_intent_id: estado.pagamentoIntentId,
+            servico_codigo: estado.servicoCodigo,
+          },
+        }),
+      });
+      const response = await pagamentoRes.json().catch(() => ({}));
+      if (!pagamentoRes.ok || !response?.ok) throw new Error(response?.error || "Não foi possível registar o pagamento.");
+      const next = await consultarEstado();
+      setDocumentState(next);
+      setSuccess(next.granted
+        ? "Pagamento confirmado. Agora pode emitir o documento."
+        : "Pagamento registado. A emissão ficará disponível depois da validação financeira.");
+    } catch (err) {
+      reportError(err, "Pagamento não confirmado. Consulte o estado antes de repetir.");
+    } finally {
+      setPaymentBusy(false);
+    }
+  };
+
   const handleEmitir = async () => {
-    if (!selectedAluno?.id || !tipo) return;
-    if (missingNotesFee) {
-      setError("A escola precisa configurar uma taxa positiva para este documento antes de o emitir.");
+    if (!canSubmit || !selectedAluno?.id || !tipo || !selectedAnoLetivoId || !documentState?.granted) return;
+    if (documentState.status === "issued" && documentState.printUrl) {
+      const impressao = abrirParaImpressao(documentState.printUrl);
+      if (!impressao.ok) setPrintQueue((prev) => [{ label: selectedAluno.label, url: impressao.url }, ...prev]);
       return;
     }
     setSubmitting(true);
     setError(null);
+    setErrorAction(null);
+    setSuccess(null);
     try {
-      if (isPago && !selectedServico) {
-        throw new Error("Serviço não encontrado no catálogo.");
-      }
-
-      if (isPago && metodo === "tpa" && !reference.trim()) {
-        throw new Error("Referência obrigatória para TPA.");
-      }
-
-      if (isPago && metodo === "transfer" && !evidenceUrl.trim()) {
-        throw new Error("Comprovativo obrigatório para Transferência.");
-      }
-
-      if (tipo === "boletim_trimestral" && !anoLetivoSelecionado) {
-        throw new Error("Selecione o ano letivo para emitir o boletim.");
-      }
-
-      let pedidoId: string | null = null;
-      let intentId: string | null = null;
-
-      if (isPago && selectedServico) {
-        const supabase = (await import("@/lib/supabase/client")).createClient();
-        const { data, error: intentError } = await supabase.rpc("balcao_criar_pedido_e_decidir", {
-          p_servico_codigo: selectedServico.codigo,
-          p_aluno_id: selectedAluno.id,
-          p_contexto: {},
-        });
-
-        if (intentError || !data) {
-          throw new Error(intentError?.message || "Erro ao criar pedido.");
-        }
-
-        const decision = data as BalcaoDecision;
-        if (decision.decision === "BLOCKED") {
-          throw new Error(decision.reason_detail || "Serviço bloqueado.");
-        }
-
-        pedidoId = decision.pedido_id ?? null;
-        intentId = decision.payment_intent_id ?? null;
-      }
-
-      if (isPago && intentId) {
-        const idempotencyKey =
-          typeof crypto !== "undefined" && "randomUUID" in crypto
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-        const pagamentoRes = await fetch("/api/secretaria/balcao/pagamentos", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Idempotency-Key": idempotencyKey,
-          },
-          body: JSON.stringify({
-            aluno_id: selectedAluno.id,
-            ano_letivo_id: academicYearId,
-            mensalidade_id: null,
-            valor: valorBase,
-            metodo,
-            reference: reference || null,
-            evidence_url: evidenceUrl || null,
-            gateway_ref: null,
-            meta: {
-              origem: "documentos_emissao",
-              pedido_id: pedidoId,
-              pagamento_intent_id: intentId,
-              servico_codigo: selectedServico?.codigo ?? null,
-            },
-          }),
-        });
-        const pagamentoJson = await pagamentoRes.json().catch(() => ({}));
-        if (!pagamentoRes.ok || !pagamentoJson?.ok) {
-          throw new Error(pagamentoJson?.error || "Falha ao registrar pagamento.");
-        }
-      }
-
-      // `emitirDocumento` devolve sempre o URL de impressão junto com o docId,
-      // e omite `ano_letivo_id` quando é nulo (o zod da rota usa `.optional()`,
-      // não `.nullable()` — enviar `null` dava um erro ilegível). A abertura da
-      // aba mantém-se depois dos awaits, como estava.
-      const documentFingerprint = JSON.stringify({
-        escolaId,
-        alunoId: selectedAluno.id,
-        tipoDocumento: tipo,
-        anoLetivoId: selectedAnoLetivoId ?? null,
-        anoLetivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : null,
+      const fingerprint = JSON.stringify({
+        escolaId, alunoId: selectedAluno.id, tipoDocumento: tipo,
+        anoLetivoId: selectedAnoLetivoId,
       });
-      if (!documentRequestRef.current || documentRequestRef.current.fingerprint !== documentFingerprint) {
-        documentRequestRef.current = {
-          fingerprint: documentFingerprint,
-          key: crypto.randomUUID(),
-        };
+      if (!documentRequestRef.current || documentRequestRef.current.fingerprint !== fingerprint) {
+        documentRequestRef.current = { fingerprint, key: crypto.randomUUID() };
       }
-
       const emissao = await emitirDocumento({
-        escolaId,
-        alunoId: selectedAluno.id,
-        tipoDocumento: tipo,
+        escolaId, alunoId: selectedAluno.id, tipoDocumento: tipo,
         idempotencyKey: documentRequestRef.current.key,
         anoLetivoId: selectedAnoLetivoId,
-        anoLetivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : null,
+        anoLetivo: tipo === "boletim_trimestral" ? selectedAnoLetivo?.ano_letivo ?? null : null,
       });
       if (!emissao.ok) {
-        // Mantém a chave para que a próxima tentativa seja um replay seguro.
+        setErrorAction(emissao.nextAction ?? null);
         throw new Error(emissao.error);
       }
-      documentRequestRef.current = null;
-
+      setDocumentState({
+        ...documentState, status: "issued", granted: true,
+        docId: emissao.docId, printUrl: emissao.printUrl,
+      });
+      setSuccess("Documento emitido. Pode imprimir novamente sem nova cobrança.");
       const impressao = abrirParaImpressao(emissao.printUrl);
-      if (!impressao.ok) {
-        setPrintQueue((prev) => [{ label: selectedAluno.label, url: impressao.url }, ...prev]);
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro ao emitir documento");
+      if (!impressao.ok) setPrintQueue((prev) => [{ label: selectedAluno.label, url: impressao.url }, ...prev]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro na emissão. Consulte o estado antes de repetir.");
     } finally {
       setSubmitting(false);
     }
@@ -441,9 +497,9 @@ export default function DocumentosEmissaoHubClient({
   return (
     <main className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-foreground">Balcão de Emissão Rápida</h1>
+        <h2 className="text-lg font-semibold text-foreground">Emissão individual</h2>
         <p className="text-sm text-muted-foreground">
-          Selecione o aluno, escolha o tipo de declaração e imprima na hora.
+          Selecione o aluno e o ano letivo. Valide o pagamento antes de emitir; reimpressões não geram cobrança.
         </p>
       </div>
 
@@ -531,14 +587,14 @@ export default function DocumentosEmissaoHubClient({
         })}
       </section>
 
-      {tipo === "boletim_trimestral" && (
+      {tipo && (
         <section className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Ano letivo
           </label>
           <select
-            value={anoLetivoSelecionado ?? ""}
-            onChange={(event) => setAnoLetivoSelecionado(Number(event.target.value))}
+            value={anoLetivoSelecionado}
+            onChange={(event) => setAnoLetivoSelecionado(event.target.value)}
             className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
             disabled={loadingAnoLetivo || anoLetivoOptions.length === 0}
           >
@@ -546,7 +602,7 @@ export default function DocumentosEmissaoHubClient({
               {loadingAnoLetivo ? "A carregar..." : "Selecione o ano letivo"}
             </option>
             {anoLetivoOptions.map((item) => (
-              <option key={item.id} value={item.ano_letivo}>
+              <option key={item.id} value={item.id}>
                 {item.nome}
               </option>
             ))}
@@ -556,14 +612,15 @@ export default function DocumentosEmissaoHubClient({
 
       <section
         className={`overflow-hidden transition-all duration-300 ease-out ${
-          isPago && selectedServico ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
+          isPago && documentState?.status === "pending_payment" ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        {isPago && selectedServico && (
+        {isPago && documentState?.status === "pending_payment" && (
           <div className="rounded-2xl border border-border bg-muted p-5 shadow-sm space-y-4">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Checkout rápido</h3>
-              <p className="text-sm font-semibold text-foreground">Total a pagar: {valorBase} Kz</p>
+              <h3 className="text-sm font-semibold text-foreground">Registar pagamento do serviço</h3>
+              <p className="text-sm font-semibold text-foreground">Taxa configurada: {valorBase.toLocaleString("pt-AO")} Kz</p>
+              <p className="text-xs text-muted-foreground">Numerário validado no balcão. TPA e transferência requerem confirmação financeira.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {[
@@ -621,12 +678,30 @@ export default function DocumentosEmissaoHubClient({
           <p className="mt-1">Aluno: <strong>{selectedAluno.label}</strong></p>
           <p>Documento: <strong>{TIPOS.find((item) => item.id === tipo)?.title}</strong></p>
           <p>Taxa: <strong>{isPago ? `${valorBase} Kz` : "Gratuito"}</strong></p>
-          {requiresPaidNotes && <p className="mt-2 text-amber-800">A emissão só será permitida depois de este serviço estar concedido e o pagamento efectivamente liquidado. Confirmar o pedido não substitui validar o pagamento.</p>}
+          <p className="mt-2 text-muted-foreground">
+            {statusLoading ? "A verificar a situação do documento..." :
+              documentState?.status === "issued" ? "Documento emitido. Reimpressões não geram cobrança." :
+              documentState?.status === "paid" ? "Pagamento confirmado. Pronto para emitir." :
+              documentState?.status === "free" ? "Sem taxa pendente. Pronto para emitir." :
+              documentState?.status === "verification" ? "Pagamento em validação. Aguarde a confirmação financeira." :
+              documentState?.status === "approval" ? "Aguarda aprovação da secretaria." :
+              documentState?.status === "pending_payment" ? "Emissão bloqueada até ao registo e validação do pagamento." :
+              "A consultar a situação atual."}
+          </p>
         </section>
       )}
+      {success && (
+        <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{success}</p>
+      )}
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+        <div role="alert" className="space-y-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p>{error}</p>
+          {errorAction && (
+            <a href={errorAction.href}
+              className="inline-flex items-center rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted">
+              {errorAction.label}
+            </a>
+          )}
         </div>
       )}
 
@@ -635,29 +710,59 @@ export default function DocumentosEmissaoHubClient({
           <div className="font-semibold mb-2">Documentos prontos para impressão</div>
           <div className="space-y-2">
             {printQueue.map((doc, index) => (
-              <button
+              <a
                 key={`${doc.url}-${index}`}
-                type="button"
-                onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
-                className="w-full rounded-lg border border-emerald-200 bg-card px-3 py-2 text-left text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                href={doc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full rounded-xl border border-emerald-200 bg-card px-3 py-2 text-left text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
               >
                 Abrir documento
-              </button>
+              </a>
             ))}
           </div>
         </div>
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={handleEmitir}
-          disabled={!canSubmit}
-          className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
-          {isPago ? "Pagar e Emitir Documento" : "Emitir e Imprimir"}
-        </button>
+        {documentState?.status === "issued" && documentState.printUrl ? (
+          <>
+            <button type="button" onClick={handleEmitir} disabled={!canSubmit}
+              className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              <Printer className="h-4 w-4" /> Imprimir novamente
+            </button>
+            <a href={documentState.printUrl} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground">
+              Abrir documento
+            </a>
+          </>
+        ) : documentState?.granted ? (
+          <button type="button" onClick={handleEmitir} disabled={!canSubmit}
+            className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+            {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            Emitir documento
+          </button>
+        ) : documentState?.status === "pending_payment" ? (
+          <button type="button" onClick={handlePagamento} disabled={!canSubmit}
+            className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+            {paymentBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
+            Registar pagamento
+          </button>
+        ) : documentState?.status === "approval" ? (
+          <p className="text-sm text-muted-foreground">O pedido aguarda aprovação. Nenhuma cobrança adicional é necessária.</p>
+        ) : !statusLoading && !error && selectedAluno && tipo ? (
+          <button type="button" onClick={handleSolicitar} disabled={!canSubmit}
+            className="rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground disabled:opacity-60">
+            Verificar serviço
+          </button>
+        ) : null}
+        {selectedAluno && tipo && selectedAnoLetivoId && (
+          <button type="button" onClick={handleRefresh} disabled={submitting || paymentBusy || statusLoading}
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-60">
+            <RefreshCw className={`h-4 w-4 ${statusLoading ? "animate-spin" : ""}`} />
+            Atualizar estado
+          </button>
+        )}
       </div>
     </main>
   );

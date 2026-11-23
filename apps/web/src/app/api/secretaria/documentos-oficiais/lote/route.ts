@@ -139,14 +139,15 @@ export async function POST(req: Request) {
       }
     }
 
-    // Validação P0 WRITE do contexto do ano letivo para geração de documentos em lote
+    // Certificados podem ser emitidos a partir de anos já fechados.
+    // Documentos pedagógicos operacionais continuam sujeitos ao ano ativo.
     let academicContext;
     try {
       academicContext = await resolveAcademicYearContext(supabase as any, {
         userId: user.id,
         requestedAcademicYearId: parsed.data.ano_letivo_id,
         requestedEscolaId: escolaId,
-        operation: parsed.data.tipo === "lista_nominal" ? "READ" : "WRITE",
+        operation: ["lista_nominal", "certificado"].includes(parsed.data.tipo) ? "READ" : "WRITE",
       });
     } catch (err: any) {
       if (err instanceof AcademicYearContextError) {

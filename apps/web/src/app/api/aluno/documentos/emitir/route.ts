@@ -3,7 +3,9 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAlunoContext } from '@/lib/alunoContext'
 import { resolveBoletimMatricula } from '@/lib/aluno/resolveBoletimMatricula'
+import { AcademicYearContextError } from '@/lib/academic-year/context'
 import { resolveSelectedStudentId } from '@/lib/portalAlunoAuth'
+import { verificarCertificadoElegivel } from '@/lib/documentos/certificadoElegibilidade'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,17 +34,30 @@ export async function POST(req: Request) {
     const alunoId = resolveSelectedStudentId({ selectedId: studentId ?? null, authorizedIds, fallbackId: ctx.alunoId })
     if (!alunoId) return NextResponse.json({ ok: false, error: 'Educando não autorizado', next_action: { type: 'contact_secretaria', label: 'Regularizar acesso', href: '/aluno/avisos' } }, { status: 403 })
     const { escolaId } = ctx
-    const { data: matricula } = type === 'boletim'
-      ? { data: (await resolveBoletimMatricula(supabase, {
-          escolaId, alunoId, userId: ctx.userId, anoLetivoId,
-        })).matricula }
-      : await supabase.from('matriculas').select('id, turma_id, ano_letivo').eq('escola_id', escolaId).eq('aluno_id', alunoId).in('status', ['ativa', 'ativo']).order('ano_letivo', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle()
-    if (!matricula?.id) return NextResponse.json({ ok: false, error: 'O educando não possui matrícula activa', next_action: { type: 'contact_secretaria', label: 'Contactar a secretaria', href: '/aluno/avisos' } }, { status: 409 })
+    const { matricula, context } = await resolveBoletimMatricula(supabase, {
+      escolaId, alunoId, userId: ctx.userId, anoLetivoId, operation: 'READ',
+    });
+    if (!matricula?.id) return NextResponse.json({ ok: false, error: 'O educando não possui matrícula no ano letivo selecionado', next_action: { type: 'contact_secretaria', label: 'Contactar a secretaria', href: '/aluno/avisos' } }, { status: 409 })
     const matriculaId = matricula.id
-    const anoLetivo = "ano_letivo" in matricula ? matricula.ano_letivo : null
+    const anoLetivo = Number(context.anoLetivoLabel.slice(0, 4));
 
     // --- SEGURANÇA: Verificar se o aluno tem permissão (serviço pago/liberado) ---
-    const resolvedServiceCode = serviceCode ?? (type === 'boletim' ? BOLETIM_SERVICE_CODE : 'DOC_DECLARACAO_FREQUENCIA');
+    const codesByType = {
+      boletim: BOLETIM_SERVICE_CODE,
+      declaracao: 'DOC_DECLARACAO_FREQUENCIA',
+      cartao: 'DOC_CARTAO_ESTUDANTE',
+      ficha: 'DOC_FICHA_INSCRICAO',
+      historico: 'DOC_HISTORICO_ESCOLAR',
+      certificado: 'DOC_CERTIFICADO_HABILITACOES',
+    } as const;
+    const resolvedServiceCode = serviceCode ?? codesByType[type];
+    if ((type === 'certificado' && resolvedServiceCode !== 'DOC_CERTIFICADO_HABILITACOES') ||
+        (type === 'historico' && resolvedServiceCode !== 'DOC_HISTORICO_ESCOLAR') ||
+        (type === 'cartao' && resolvedServiceCode !== 'DOC_CARTAO_ESTUDANTE') ||
+        (type === 'ficha' && resolvedServiceCode !== 'DOC_FICHA_INSCRICAO') ||
+        (type === 'declaracao' && !['DOC_DECLARACAO_FREQUENCIA', 'DOC_DECLARACAO_NOTAS', 'DOC_COMPROVANTE_MATRICULA'].includes(resolvedServiceCode))) {
+      return NextResponse.json({ ok: false, error: 'Tipo e serviço documental incompatíveis.' }, { status: 400 });
+    }
     const supportedServiceCodes = new Set(['DOC_DECLARACAO_NOTAS', 'DOC_DECLARACAO_FREQUENCIA', 'DOC_BOLETIM_TRIMESTRAL', 'DOC_COMPROVANTE_MATRICULA', 'DOC_CARTAO_ESTUDANTE', 'DOC_FICHA_INSCRICAO', 'DOC_HISTORICO_ESCOLAR', 'DOC_CERTIFICADO_HABILITACOES']);
     if (!supportedServiceCodes.has(resolvedServiceCode)) {
       return NextResponse.json({ ok: false, error: 'Este serviço foi aprovado, mas a emissão digital ainda precisa ser concluída pela secretaria.', next_action: { type: 'contact_secretaria', label: 'Contactar a secretaria', href: '/aluno/avisos' } }, { status: 409 });
@@ -61,6 +76,10 @@ export async function POST(req: Request) {
     }
     if (BOLETIM_SERVICE_CODES.some((code) => code === resolvedServiceCode)) {
       return NextResponse.json({ ok: false, error: 'Este serviço só pode ser emitido como boletim.' }, { status: 400 });
+    }
+    if (resolvedServiceCode === 'DOC_DECLARACAO_NOTAS') {
+      // A declaração oficial com notas exige liquidação específica na Secretaria.
+      return NextResponse.json({ ok: false, error: 'Solicite a declaração oficial de notas à secretaria.' }, { status: 409 });
     }
 
     const { data: permission, error: permError } = await supabase
@@ -123,6 +142,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, url: `/aluno/documentos/${(operationalDoc as any).docId}/${printType}/print`, reused: Boolean((operationalDoc as any).reused) });
     }
     if (resolvedServiceCode === 'DOC_HISTORICO_ESCOLAR' || resolvedServiceCode === 'DOC_CERTIFICADO_HABILITACOES') {
+      // A RPC antiga fazia fallback para outro ano quando não encontrava histórico.
+      const { data: yearHistory, error: yearHistoryError } = await supabase
+        .from('historico_anos').select('id, snapshot_status')
+        .eq('escola_id', escolaId).eq('aluno_id', alunoId)
+        .eq('ano_letivo', anoLetivo).maybeSingle();
+      if (yearHistoryError) return NextResponse.json({ ok: false, error: 'Não foi possível consultar o histórico do ano.' }, { status: 503 });
+      if (!yearHistory || yearHistory.snapshot_status !== 'fechado') {
+        return NextResponse.json({ ok: false, error: 'Conclua o histórico do ano letivo selecionado antes de emitir.' }, { status: 409 });
+      }
+      if (resolvedServiceCode === 'DOC_CERTIFICADO_HABILITACOES') {
+        const elegibilidade = await verificarCertificadoElegivel({
+          supabase, escolaId, alunoId, anoLetivo,
+        });
+        if (!elegibilidade.ok) {
+          return NextResponse.json({
+            ok: false, code: elegibilidade.code, error: elegibilidade.error,
+            next_action: { type: 'contact_secretaria', label: 'Regularizar histórico na secretaria', href: '/aluno/avisos' },
+          }, { status: elegibilidade.code === 'CONSULTA_INDISPONIVEL' ? 503 : 409 });
+        }
+      }
       const { data: finalDoc, error: finalError } = await (supabase as any).rpc('aluno_emitir_documento_final', {
         p_escola_id: escolaId,
         p_aluno_id: alunoId,
@@ -170,6 +209,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: false, error: 'A emissão deste serviço não está disponível.' }, { status: 409 })
   } catch (err: any) {
+    if (err instanceof AcademicYearContextError) {
+      return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+    }
     console.error('Emit Doc API error:', err)
     return NextResponse.json({ ok: false, error: 'Erro interno ao emitir documento' }, { status: 500 })
   }

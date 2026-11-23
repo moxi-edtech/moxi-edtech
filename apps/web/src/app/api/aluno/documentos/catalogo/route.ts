@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       escolaId, alunoId: selectedId, userId: ctx.userId,
       anoLetivoId: new URL(request.url).searchParams.get("ano_letivo_id"),
     });
-    if (!matricula?.id) return NextResponse.json({ ok: false, error: "O educando não possui matrícula activa", next_action: { type: "contact_secretaria", label: "Contactar a secretaria", href: "/aluno/avisos" } }, { status: 409 });
+    if (!matricula?.id) return NextResponse.json({ ok: false, error: "O educando não possui matrícula no ano letivo selecionado", next_action: { type: "contact_secretaria", label: "Contactar a secretaria", href: "/aluno/avisos" } }, { status: 409 });
 
     // 1. Buscar catálogo de documentos da escola
     const { data: catalogo, error: catError } = await supabase
