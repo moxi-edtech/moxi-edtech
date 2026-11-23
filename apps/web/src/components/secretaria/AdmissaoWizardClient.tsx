@@ -1423,7 +1423,7 @@ function Step2FitAcademico(props: {
           <p className="mt-1 text-xs text-muted-foreground">Use apenas quando existir uma condição financeira autorizada.</p>
         </div>
         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card p-4">
-          <input type="checkbox" className="mt-1 h-4 w-4 accent-[#E3B23C]"
+          <input type="checkbox" className="mt-1 h-4 w-4 accent-klasse-gold"
             checked={sel.percentagemDesconto === 100 && sel.motivoDesconto === "Bolsa integral"}
             disabled={!canEditDraft || saving}
             onChange={(event) => void onUpdateFinanceiro(event.target.checked
