@@ -24,7 +24,7 @@ CREATE OR REPLACE FUNCTION public.klasse_autorizar_escrita_bolsa_matricula()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO 'pg_catalog','public'
-AS $
+AS $$
 DECLARE
   v_requer_autorizacao boolean := false;
 BEGIN
@@ -58,7 +58,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
 DROP TRIGGER IF EXISTS trg_03_autorizar_bolsa_matricula ON public.matriculas;
 CREATE TRIGGER trg_03_autorizar_bolsa_matricula
