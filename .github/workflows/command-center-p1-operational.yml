@@ -37,7 +37,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check both sorting orders and RLS on 55 fictional students
         env:
-          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          PGURL: postgresql://postgres@127.0.0.1:5432/postgres
+          PGPASSWORD: postgres # Disposable CI-only PostgreSQL service
         run: |
           psql "$PGURL" -v ON_ERROR_STOP=1 \
             -f supabase/ops/tests/regression_command_center_roster_sort_v2.sql \
@@ -61,7 +62,10 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -C apps/web typecheck
+      - name: Typecheck web contracts with bounded Node heap
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: pnpm -C apps/web typecheck
       - name: Focused lint
         run: |
           pnpm -C apps/web exec eslint \
