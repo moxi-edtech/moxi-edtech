@@ -77,3 +77,13 @@ A evolução da pesquisa para um modal de exploração **Curso → Classe → Tu
 ### Balcão — resolução académica excecional (2026-11-05)
 
 Implementação e limites: [registo operacional](ops/balcao-resolucao-excecional-20261105.md). Metas ainda não medidas: feedback local de mutação <50ms; consulta contextual p95 ≤500ms; primeira apresentação da pauta <300ms com skeleton. A geração integral do PDF é uma operação separada com progresso, sem promessa de conclusão nesse prazo.
+
+## Regra canónica de nomes (2026-11-23)
+
+- A pesquisa continua multi-entidade. Nos portais Secretaria/Operações, os resultados pessoais são apresentados como **Aluno** (matrícula válida) ou **Candidato** (sem matrícula válida para o ano da candidatura).
+- Um registo de `alunos` criado durante a admissão não significa matrícula concluída: só integra `vw_search_alunos` se existir matrícula em estado `ativo`, `ativa`, `concluido` ou `transferido`.
+- `vw_search_candidaturas` exclui candidaturas convertidas quando existe matrícula válida ligada por `matricula_id` ou por `escola_id + aluno_id + ano_letivo`. Matrículas anuladas e pendentes não escondem uma candidatura. Se o status da candidatura disser `matriculado` mas a matrícula estiver pendente, o resultado sinaliza regularização.
+- Um aluno de um ano anterior **pode ter uma candidatura pendente noutro ano letivo**; são estados académicos distintos. Não se deduplica por nome, telefone ou documento sem vínculo canónico.
+- `unaccent` e a pesquisa textual existente continuam válidos para consultas com e sem diacríticos, sem remover os acentos dos nomes exibidos.
+- Resultados de candidatos não são guardados em recentes nem cache de pesquisa, para reduzir resultados obsoletos após conversões. Permanecem a autorização por escola, tipos explícitos e a paginação por cursor da RPC.
+- Executar `supabase/ops/tests/regression_global_search_candidate_canonical.sql` após a migração e validar a pesquisa autenticada nos portais operacionais.
