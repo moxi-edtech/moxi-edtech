@@ -5,6 +5,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { CommandCenterShell } from "../../src/components/secretaria/command-center/CommandCenterShell";
+import { canManageBolsa, BOLSA_GESTAO_PAPEIS } from "../../src/lib/aluno/bolsa-permissions";
 
 // Next.js compiles these client JSX components with automatic JSX runtime.
 // The standalone tsx/node test runner uses the classic runtime instead.
@@ -99,7 +100,7 @@ test("the existing full profile and the workspace use exactly the same dossier l
 test("dossier API fails closed on cross-school students and requires operational role", () => {
   assert.match(dossierRoute, /requireRoleInSchool/);
   assert.match(dossierRoute, /K12_SECRETARIA_OPERACIONAL_ROLE_GROUP/);
-  assert.match(dossierRoute, /resolveEscolaIdForUser\(supabase, user\.id\)/);
+  assert.match(dossierRoute, /resolveEscolaIdForUser\(supabase, user\.id, requestedEscolaId\)/);
   assert.match(dossierRoute, /\.eq\("escola_id", escolaId\)/);
   assert.match(dossierRoute, /z\.string\(\)\.uuid\(\)/);
   assert.match(dossierRoute, /Cache-Control": "private, no-store/);
@@ -108,4 +109,30 @@ test("dossier API fails closed on cross-school students and requires operational
 test("grade panel allows authorized turma choice when the contextual lookup has no class", () => {
   assert.match(panel, /lockTurma=\{Boolean\(turmaId\)\}/);
   assert.match(modal, /turmaId=\{currentStudent\?\.turmaId \?\? null\}/);
+});
+
+test("bolsa integral is visible to admin, admin_financeiro and admin_secretaria in both dossier views", () => {
+  for (const role of ["admin", "admin_financeiro", "admin_secretaria", "admin_secretario"]) {
+    assert.equal(canManageBolsa(role), true, role);
+  }
+  for (const role of ["professor", "aluno", "encarregado", null, undefined, ""]) {
+    assert.equal(canManageBolsa(role), false, String(role));
+  }
+  assert.equal(canManageBolsa(" ADMIN_FINANCEIRO "), true);
+  assert.ok(BOLSA_GESTAO_PAPEIS.includes("admin_secretaria"));
+
+  assert.match(existingPage, /canManageBolsa\(member\?\.papel\)/);
+  assert.match(existingPage, /canManageBolsaForStudent && <BolsaIntegralCard/g);
+  assert.match(dossierRoute, /canManageBolsa: canManageBolsaForStudent/);
+  assert.match(dossierRoute, /result\.aluno\.perfil\.escola_id === escolaId/);
+  assert.match(dossier, /body\.canManageBolsa === true/);
+  assert.equal((dossier.match(/data\.canManageBolsa && <BolsaIntegralCard/g) ?? []).length, 2);
+
+  const bolsaApi = source("app/api/secretaria/alunos/[id]/bolsa/route.ts");
+  assert.match(bolsaApi, /roles: \[\.\.\.BOLSA_GESTAO_PAPEIS\]/);
+  assert.match(bolsaApi, /requireRoleInSchool/);
+  assert.match(bolsaApi, /\.eq\("escola_id", ctx\.escolaId\)/);
+  assert.match(dossier, /dossier\?escola_id=/);
+  assert.match(dossierRoute, /requestedEscolaId && !z\.string\(\)\.uuid\(\)/);
+  assert.match(dossierRoute, /Cache-Control": "private, no-store/);
 });
