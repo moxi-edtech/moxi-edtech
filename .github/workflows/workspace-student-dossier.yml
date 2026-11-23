@@ -13,6 +13,9 @@ on:
       - "apps/web/src/components/secretaria/command-center/CommandCenterStudentPicker.tsx"
       - "apps/web/src/components/secretaria/command-center/CommandCenterStudentDossier.tsx"
       - "apps/web/src/components/aluno/AlunoPerfilPage.tsx"
+      - "apps/web/src/components/aluno/BolsaIntegralCard.tsx"
+      - "apps/web/src/lib/aluno/bolsa-permissions.ts"
+      - "apps/web/src/app/api/secretaria/alunos/**/bolsa/route.ts"
       - "apps/web/src/lib/aluno/load-dossier-data.ts"
       - "apps/web/src/app/api/secretaria/alunos/**/dossier/route.ts"
       - "apps/web/tests/unit/workspace-student-dossier.spec.tsx"
@@ -51,6 +54,9 @@ jobs:
             src/components/secretaria/command-center/CommandCenterStudentPicker.tsx \
             src/components/secretaria/command-center/CommandCenterStudentDossier.tsx \
             src/components/aluno/AlunoPerfilPage.tsx \
+            src/components/aluno/BolsaIntegralCard.tsx \
+            src/lib/aluno/bolsa-permissions.ts \
+            'src/app/api/secretaria/alunos/[id]/bolsa/route.ts' \
             src/lib/aluno/load-dossier-data.ts \
             'src/app/api/secretaria/alunos/[id]/dossier/route.ts' \
             tests/unit/workspace-student-dossier.spec.tsx \
