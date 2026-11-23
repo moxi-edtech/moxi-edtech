@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     // 1. Buscar Mensalidades (Legado, para compatibilidade de UI e botões de pagar)
     const { data: mensalidades, error: mensError } = await supabase
       .from("mensalidades")
-      .select("id, ano_referencia, mes_referencia, valor_previsto, valor, valor_pago_total, data_vencimento, status, data_pagamento_efetiva")
+      .select("id, ano_referencia, mes_referencia, valor_previsto, valor, valor_pago_total, data_vencimento, status, data_pagamento_efetiva, bolsa_isencao_integral")
       .eq("aluno_id", alunoId)
       .eq("escola_id", ctx.escolaId)
       .gte("ano_referencia", fromAno)
@@ -55,6 +55,18 @@ export async function GET(request: Request) {
       .order("mes_referencia", { ascending: false }).order("id", { ascending: false });
 
     if (mensError) throw mensError;
+
+    // O estado da bolsa é por matrícula/ano; nunca inferir bolsa a partir do saldo 0.
+    const { data: matriculasBolsa, error: bolsaError } = await supabase
+      .from("matriculas")
+      .select("id, ano_letivo, bolsa_integral, bolsa_integral_inicio")
+      .eq("escola_id", ctx.escolaId)
+      .eq("aluno_id", alunoId)
+      .eq("bolsa_integral", true)
+      .gte("ano_letivo", fromAno)
+      .lte("ano_letivo", toAno)
+      .order("ano_letivo", { ascending: false });
+    if (bolsaError) throw bolsaError;
 
     const mensalidadeIds = (mensalidades ?? []).map((m) => m.id);
     const reciboByMensalidadeId = new Map<string, string>();
@@ -140,6 +152,7 @@ export async function GET(request: Request) {
         status, 
         pago_em: m.data_pagamento_efetiva,
         recibo_id: reciboByMensalidadeId.get(m.id) ?? null,
+        bolsa_isencao_integral: Boolean(m.bolsa_isencao_integral),
       };
     });
 
@@ -152,6 +165,10 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ok: true,
       mensalidades: rows,
+      bolsas: (matriculasBolsa ?? []).map(m => ({
+        ano_letivo: m.ano_letivo,
+        vigencia_inicio: m.bolsa_integral_inicio,
+      })),
       servicos,
       movimentos: ledgerMovimentos,
       resumo: {
