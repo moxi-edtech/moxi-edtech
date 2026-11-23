@@ -698,7 +698,7 @@ export default function DocumentosEmissaoHubClient({
           <p>{error}</p>
           {errorAction && (
             <a href={errorAction.href}
-              className="inline-flex items-center rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-800 hover:bg-red-100">
+              className="inline-flex items-center rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted">
               {errorAction.label}
             </a>
           )}
