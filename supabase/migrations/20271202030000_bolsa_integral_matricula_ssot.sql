@@ -5,7 +5,11 @@ BEGIN;
 
 ALTER TABLE public.matriculas
   ADD COLUMN IF NOT EXISTS bolsa_integral boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS bolsa_integral_motivo text;
+  ADD COLUMN IF NOT EXISTS bolsa_integral_motivo text,
+  ADD COLUMN IF NOT EXISTS bolsa_integral_inicio date;
+
+ALTER TABLE public.mensalidades
+  ADD COLUMN IF NOT EXISTS bolsa_isencao_integral boolean NOT NULL DEFAULT false;
 
 -- Reconhece matrículas com bolsa integral já codificada como desconto de 100%.
 UPDATE public.matriculas
@@ -14,6 +18,13 @@ UPDATE public.matriculas
  WHERE percentagem_desconto = 100
    AND motivo_desconto ILIKE '%bolsa%'
    AND bolsa_integral IS DISTINCT FROM true;
+
+-- Matrículas legadas com bolsa 100% preservam a vigência anual original.
+UPDATE public.matriculas m
+   SET bolsa_integral_inicio = date_trunc('month', coalesce(al.data_inicio, make_date(m.ano_letivo, 1, 1)))::date
+  FROM public.anos_letivos al
+ WHERE al.escola_id = m.escola_id AND al.ano = m.ano_letivo
+   AND m.bolsa_integral AND m.bolsa_integral_inicio IS NULL;
 
 -- Já existe índice UNIQUE (escola_id, aluno_id, ano_letivo) em produção.
 -- Evita índice parcial redundante e WAL adicional nas escritas de matrículas.
@@ -34,6 +45,7 @@ BEGIN
     v_requer_autorizacao :=
       NEW.bolsa_integral IS DISTINCT FROM OLD.bolsa_integral
       OR NEW.bolsa_integral_motivo IS DISTINCT FROM OLD.bolsa_integral_motivo
+      OR NEW.bolsa_integral_inicio IS DISTINCT FROM OLD.bolsa_integral_inicio
       OR (
         NEW.percentagem_desconto IS DISTINCT FROM OLD.percentagem_desconto
         AND (coalesce(NEW.percentagem_desconto,0) >= 100
@@ -44,6 +56,9 @@ BEGIN
   IF NOT v_requer_autorizacao
      OR session_user = 'postgres'
      OR coalesce(auth.jwt()->>'role', '') = 'service_role' THEN
+    IF NEW.bolsa_integral AND NEW.bolsa_integral_inicio IS NULL THEN
+      NEW.bolsa_integral_inicio := date_trunc('month', CURRENT_DATE)::date;
+    END IF;
     RETURN NEW;
   END IF;
 
@@ -56,13 +71,20 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'FORBIDDEN: sem permissão para alterar bolsa integral' USING ERRCODE='42501';
   END IF;
+  IF NEW.bolsa_integral AND NEW.bolsa_integral_inicio IS NULL THEN
+    NEW.bolsa_integral_inicio := date_trunc('month', CURRENT_DATE)::date;
+  END IF;
+  IF NEW.bolsa_integral_inicio IS NOT NULL
+     AND NEW.bolsa_integral_inicio <> date_trunc('month',NEW.bolsa_integral_inicio)::date THEN
+    RAISE EXCEPTION 'BOLSA_VIGENCIA_MES_INVALIDA' USING ERRCODE='23514';
+  END IF;
   RETURN NEW;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_03_autorizar_bolsa_matricula ON public.matriculas;
 CREATE TRIGGER trg_03_autorizar_bolsa_matricula
-  BEFORE INSERT OR UPDATE OF bolsa_integral, bolsa_integral_motivo, percentagem_desconto
+  BEFORE INSERT OR UPDATE OF bolsa_integral, bolsa_integral_motivo, bolsa_integral_inicio, percentagem_desconto
   ON public.matriculas FOR EACH ROW
   EXECUTE FUNCTION public.klasse_autorizar_escrita_bolsa_matricula();
 
@@ -78,6 +100,8 @@ SET search_path TO 'pg_catalog', 'public'
 AS $$
 DECLARE
   v_isento boolean := false;
+  v_bolsa boolean := false;
+  v_inicio date;
 BEGIN
   IF NEW.status NOT IN ('pendente', 'isento')
      OR coalesce(NEW.valor_pago_total, 0) <> 0
@@ -92,9 +116,12 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  SELECT (m.bolsa_integral OR coalesce(m.percentagem_desconto, 0) >= 100)
-    INTO v_isento
+  SELECT (m.bolsa_integral OR coalesce(m.percentagem_desconto, 0) >= 100),
+         m.bolsa_integral,
+         COALESCE(m.bolsa_integral_inicio, date_trunc('month',al.data_inicio)::date)
+    INTO v_isento, v_bolsa, v_inicio
   FROM public.matriculas m
+  LEFT JOIN public.anos_letivos al ON al.escola_id = m.escola_id AND al.ano = m.ano_letivo
   WHERE m.escola_id = NEW.escola_id
     AND m.aluno_id = NEW.aluno_id
     AND (
@@ -107,7 +134,9 @@ BEGIN
   LIMIT 1
   FOR SHARE;
 
-  IF coalesce(v_isento, false) THEN
+  IF coalesce(v_isento,false)
+     AND (NOT coalesce(v_bolsa,false)
+          OR date_trunc('month',NEW.data_vencimento)::date >= v_inicio) THEN
     IF TG_OP = 'INSERT' AND NEW.status = 'pendente' THEN
       RETURN NULL; -- nenhum título a pagar, nem título "pendente" de 0 Kz
     END IF;
@@ -120,6 +149,7 @@ BEGIN
     NEW.valor := 0;
     NEW.valor_previsto := 0;
     NEW.status := 'isento';
+    NEW.bolsa_isencao_integral := coalesce(v_bolsa,false);
   END IF;
 
   RETURN NEW;
