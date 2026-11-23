@@ -70,7 +70,7 @@ export default async function FinalDocumentPrint({ docId, expectedType, title, r
                 <tbody>{certificado.disciplinas.map((item, index) => (
                   <tr key={`${item.nome}-${index}`} className="border-b border-slate-100">
                     <td className="py-2">{item.nome}</td>
-                    {certificado.colunas.map((coluna) => <td key={coluna.key} className="px-2 py-2 text-center">{nota(item.notas[coluna.key])}</td>)}
+                    {certificado!.colunas.map((coluna) => <td key={coluna.key} className="px-2 py-2 text-center">{nota(item.notas[coluna.key])}</td>)}
                     <td className="py-2 text-center">{nota(item.media_final)}</td>
                   </tr>
                 ))}</tbody>
