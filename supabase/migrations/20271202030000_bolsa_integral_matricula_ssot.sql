@@ -39,44 +39,52 @@ AS $$
 DECLARE
   v_requer_autorizacao boolean := false;
 BEGIN
-  IF TG_OP = 'INSERT' THEN
-    v_requer_autorizacao := NEW.bolsa_integral OR coalesce(NEW.percentagem_desconto,0) >= 100;
-  ELSE
-    v_requer_autorizacao :=
-      NEW.bolsa_integral IS DISTINCT FROM OLD.bolsa_integral
-      OR NEW.bolsa_integral_motivo IS DISTINCT FROM OLD.bolsa_integral_motivo
-      OR NEW.bolsa_integral_inicio IS DISTINCT FROM OLD.bolsa_integral_inicio
-      OR (
-        NEW.percentagem_desconto IS DISTINCT FROM OLD.percentagem_desconto
-        AND (coalesce(NEW.percentagem_desconto,0) >= 100
-             OR coalesce(OLD.percentagem_desconto,0) >= 100)
-      );
+  -- Compatibilidade: uma bolsa aprovada na candidatura ainda chega como
+  -- percentagem_desconto=100 e motivo_desconto='Bolsa ...'.
+  -- Normalizamos imediatamente para a mesma fonte de verdade da matrícula.
+  IF NOT coalesce(NEW.bolsa_integral,false)
+     AND coalesce(NEW.percentagem_desconto,0)>=100
+     AND coalesce(NEW.motivo_desconto,'') ILIKE '%bolsa%' THEN
+    NEW.bolsa_integral := true;
+    NEW.bolsa_integral_motivo := left(coalesce(NEW.motivo_desconto,'Bolsa integral'),160);
+    SELECT date_trunc('month',al.data_inicio)::date INTO NEW.bolsa_integral_inicio
+    FROM public.anos_letivos al
+    WHERE al.escola_id=NEW.escola_id AND al.ano=NEW.ano_letivo
+    ORDER BY al.ativo DESC, al.created_at DESC LIMIT 1;
+  END IF;
+  IF NEW.bolsa_integral AND NEW.bolsa_integral_inicio IS NULL THEN
+    NEW.bolsa_integral_inicio := date_trunc('month',CURRENT_DATE)::date;
+  END IF;
+  IF NEW.bolsa_integral_inicio IS NOT NULL
+     AND NEW.bolsa_integral_inicio <> date_trunc('month',NEW.bolsa_integral_inicio)::date THEN
+    RAISE EXCEPTION 'BOLSA_VIGENCIA_MES_INVALIDA' USING ERRCODE='23514';
   END IF;
 
+  IF TG_OP='INSERT' THEN
+    v_requer_autorizacao := NEW.bolsa_integral OR coalesce(NEW.percentagem_desconto,0)>=100;
+  ELSE
+    v_requer_autorizacao :=
+       NEW.bolsa_integral IS DISTINCT FROM OLD.bolsa_integral
+       OR NEW.bolsa_integral_motivo IS DISTINCT FROM OLD.bolsa_integral_motivo
+       OR NEW.bolsa_integral_inicio IS DISTINCT FROM OLD.bolsa_integral_inicio
+       OR (NEW.motivo_desconto IS DISTINCT FROM OLD.motivo_desconto
+           AND (coalesce(NEW.percentagem_desconto,0)>=100 OR coalesce(OLD.percentagem_desconto,0)>=100))
+       OR (NEW.percentagem_desconto IS DISTINCT FROM OLD.percentagem_desconto
+           AND (coalesce(NEW.percentagem_desconto,0)>=100 OR coalesce(OLD.percentagem_desconto,0)>=100));
+  END IF;
   IF NOT v_requer_autorizacao
-     OR session_user = 'postgres'
-     OR coalesce(auth.jwt()->>'role', '') = 'service_role' THEN
-    IF NEW.bolsa_integral AND NEW.bolsa_integral_inicio IS NULL THEN
-      NEW.bolsa_integral_inicio := date_trunc('month', CURRENT_DATE)::date;
-    END IF;
+     OR session_user='postgres'
+     OR coalesce(auth.jwt()->>'role','')='service_role' THEN
     RETURN NEW;
   END IF;
 
   IF auth.uid() IS NULL OR NOT EXISTS (
     SELECT 1 FROM public.escola_users eu
-    WHERE eu.user_id = auth.uid()
-      AND eu.escola_id = NEW.escola_id
+    WHERE eu.user_id=auth.uid() AND eu.escola_id=NEW.escola_id
       AND eu.papel IN ('admin','admin_escola','admin_financeiro',
         'admin_secretaria','admin_secretario','secretaria','financeiro','diretor','staff_admin')
   ) THEN
     RAISE EXCEPTION 'FORBIDDEN: sem permissão para alterar bolsa integral' USING ERRCODE='42501';
-  END IF;
-  IF NEW.bolsa_integral AND NEW.bolsa_integral_inicio IS NULL THEN
-    NEW.bolsa_integral_inicio := date_trunc('month', CURRENT_DATE)::date;
-  END IF;
-  IF NEW.bolsa_integral_inicio IS NOT NULL
-     AND NEW.bolsa_integral_inicio <> date_trunc('month',NEW.bolsa_integral_inicio)::date THEN
-    RAISE EXCEPTION 'BOLSA_VIGENCIA_MES_INVALIDA' USING ERRCODE='23514';
   END IF;
   RETURN NEW;
 END;
@@ -84,7 +92,7 @@ $$;
 
 DROP TRIGGER IF EXISTS trg_03_autorizar_bolsa_matricula ON public.matriculas;
 CREATE TRIGGER trg_03_autorizar_bolsa_matricula
-  BEFORE INSERT OR UPDATE OF bolsa_integral, bolsa_integral_motivo, bolsa_integral_inicio, percentagem_desconto
+  BEFORE INSERT OR UPDATE OF bolsa_integral, bolsa_integral_motivo, bolsa_integral_inicio, percentagem_desconto, motivo_desconto
   ON public.matriculas FOR EACH ROW
   EXECUTE FUNCTION public.klasse_autorizar_escrita_bolsa_matricula();
 
