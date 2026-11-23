@@ -226,7 +226,8 @@ async function fetchOfficialHistoryNotes(supabase: SupabaseLike, sourceIds: stri
 
   return (data as HistoricalNoteRow[])
     .map((row) => {
-      const disciplineName = clean(row.disciplina_nome) ?? "Disciplina";
+      const disciplineName = clean(row.disciplina_nome);
+      if (!disciplineName) throw new Error("Disciplina sem identificação oficial no histórico.");
       const disciplineId = clean(row.disciplina_id);
       return {
         sourceId: String(row.historico_ano_id ?? ""),
@@ -253,7 +254,8 @@ async function fetchTransitedHistoryNotes(supabase: SupabaseLike, sourceIds: str
 
   return (data as TransitedNoteRow[])
     .map((row) => {
-      const disciplineName = clean(row.disciplina_nome) ?? "Disciplina";
+      const disciplineName = clean(row.disciplina_nome);
+      if (!disciplineName) throw new Error("Disciplina sem identificação oficial no histórico.");
       const disciplineId = clean(row.disciplina_id);
       return {
         sourceId: String(row.historico_transitado_ano_id ?? ""),
