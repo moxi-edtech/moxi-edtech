@@ -87,3 +87,13 @@ test("checkout legado bloqueia serviços documentais antes da transação", () =
   assert.ok(checkoutStart >= 0 && guard > checkoutStart && financialPost > guard);
   assert.match(balcao.slice(guard, financialPost), /isTipoDocumentoEmitivel\(getDocTipo\(item\)\)/);
 });
+
+test("PR #455 e #456 coexistem no fluxo de admissão sem perder bolsa nem duplicar emissão", () => {
+  const wizard = src("components/secretaria/AdmissaoWizardClient.tsx");
+  assert.match(wizard, /Bolsa integral de estudo/);
+  assert.match(wizard, /percentagemDesconto: 100, motivoDesconto: "Bolsa integral"/);
+  assert.match(wizard, /const canAdvance = safeUuid\(sel\.turmaId\) && safeUuid\(candidaturaId\) && !saving && !error/);
+  assert.match(wizard, /result\.comprovante\?\.printUrl/);
+  assert.match(wizard, /router\.push\(\`\$\{secretariaBase\}\/documentos\?\$\{params\.toString\(\)\}\`\)/);
+  assert.doesNotMatch(wizard, /postActionDocumentRequestRef/);
+});
