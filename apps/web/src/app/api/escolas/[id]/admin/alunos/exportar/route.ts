@@ -129,6 +129,65 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       )
     );
 
+    // Os alunos selecionados também precisam das informações académicas do ano
+    // ativo, não só dos dados pessoais. Evitar PDF com bolsa/classe vazias.
+    const { data: anoAtivo, error: anoError } = await context.supabase
+      .from("anos_letivos")
+      .select("id")
+      .eq("escola_id", context.escolaId)
+      .eq("ativo", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (anoError) throw anoError;
+
+    if (anoAtivo?.id) {
+      const { data: matriculas, error: matriculasError } = await context.supabase
+        .from("matriculas")
+        .select("aluno_id, turma_id, status, bolsa_integral, updated_at, created_at")
+        .eq("escola_id", context.escolaId)
+        .eq("session_id", anoAtivo.id)
+        .in("aluno_id", ids)
+        .in("status", ["ativo", "ativa"])
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false, nullsFirst: false });
+      if (matriculasError) throw matriculasError;
+      const matriculaPorAluno = new Map<string, any>();
+      for (const matricula of (matriculas ?? []) as any[]) {
+        if (!matriculaPorAluno.has(matricula.aluno_id)) {
+          matriculaPorAluno.set(matricula.aluno_id, matricula);
+        }
+      }
+      const turmaIds = Array.from(new Set((matriculas ?? [])
+        .map((matricula: any) => matricula.turma_id)
+        .filter((id): id is string => Boolean(id))));
+      const { data: turmas, error: turmasError } = turmaIds.length
+        ? await context.supabase
+            .from("turmas")
+            .select("id, nome, turno, classes ( nome )")
+            .eq("escola_id", context.escolaId)
+            .in("id", turmaIds)
+        : { data: [], error: null };
+      if (turmasError) throw turmasError;
+
+      const turmaPorId = new Map((turmas ?? []).map((turma: any) => [turma.id, turma]));
+      for (let i = 0; i < rows.length; i++) {
+        const matricula = matriculaPorAluno.get(rows[i].aluno_id ?? rows[i].id);
+        if (!matricula) continue;
+        const turma: any = turmaPorId.get(matricula.turma_id);
+        const classe = Array.isArray(turma?.classes) ? turma.classes[0] : turma?.classes;
+        rows[i] = {
+          ...rows[i],
+          status_matricula: "matriculado",
+          turma_id: matricula.turma_id ?? null,
+          turma_nome: turma?.nome ?? null,
+          classe_nome: classe?.nome ?? null,
+          turno: turma?.turno ?? null,
+          bolsa_integral: matricula.bolsa_integral === true,
+        };
+      }
+    }
+
     const format = parseAlunoExportFormat(payload?.tipo ?? "excel");
     const pdfContext = format === "pdf"
       ? await loadAlunosPdfInstitutionalContext(context.supabase, context.escolaId, {})
