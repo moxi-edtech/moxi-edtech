@@ -53,6 +53,8 @@ const mapStatusForRpc = (status?: string | null) => {
   return normalized;
 };
 
+export class InvalidAlunoFiltersError extends Error {}
+
 export function parseAlunoListFilters(url: URL): AlunoListFilters {
   const cursor = url.searchParams.get("cursor");
   const [cursorCreatedAt, cursorId] = cursor ? cursor.split(",") : [];
@@ -76,7 +78,7 @@ export function parseAlunoListFilters(url: URL): AlunoListFilters {
   });
 
   if (!parsed.success) {
-    return {};
+    throw new InvalidAlunoFiltersError("Filtros de alunos inválidos.");
   }
 
   return parsed.data;
