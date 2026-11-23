@@ -13,9 +13,11 @@ DECLARE
   v_aluno1 uuid := 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   v_aluno2 uuid := 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
   v_aluno3 uuid := '33333333-3333-4333-8333-333333333333';
+  v_aluno4 uuid := '34343434-3434-4434-8434-343434343434';
   v_mat1 uuid := '55555555-5555-4555-8555-555555555555';
   v_mat2 uuid := '66666666-6666-4666-8666-666666666666';
   v_mat3 uuid := '77777777-7777-4777-8777-777777777777';
+  v_mat4 uuid := '45454545-4545-4454-8454-454545454545';
   v_turma1 uuid := '88888888-8888-4888-8888-888888888888';
   v_turma2 uuid := '99999999-9999-4999-8999-999999999999';
   v_parcial uuid := '12121212-1212-4212-8212-121212121212';
@@ -24,6 +26,7 @@ DECLARE
   v_actor1 uuid := 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
   v_denied uuid := 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   v_result jsonb;
+  v_extra jsonb;
   v_val numeric;
   v_count int;
 BEGIN
@@ -148,6 +151,25 @@ BEGIN
   IF NOT EXISTS(SELECT 1 FROM public.mensalidades
     WHERE escola_id=v_escola2 AND status='pendente' AND valor=10000) THEN
     RAISE EXCEPTION 'FAIL: bolsa alterou escola alheia';
+  END IF;
+
+  -- Gerador em lote: recupera mês ANTERIOR à vigência, não cobra o posterior.
+  INSERT INTO public.matriculas(id,escola_id,aluno_id,turma_id,ano_letivo,status,
+    bolsa_integral,bolsa_integral_inicio)
+  VALUES(v_mat4,v_escola1,v_aluno4,v_turma1,y,'ativa',true,d0);
+  v_extra := public.gerar_mensalidades_lote(v_escola1,y,extract(month from dp)::int,10,v_turma1);
+  IF v_extra->>'ok'<>'true' OR NOT EXISTS(
+      SELECT 1 FROM public.mensalidades WHERE matricula_id=v_mat4
+        AND date_trunc('month',data_vencimento)::date=dp AND status='pendente' AND valor=10000
+    ) THEN
+    RAISE EXCEPTION 'FAIL: gerador não conservou as competências pré-bolsa: %',v_extra;
+  END IF;
+  v_extra := public.gerar_mensalidades_lote(v_escola1,y,extract(month from d1)::int,10,v_turma1);
+  IF v_extra->>'ok'<>'true' OR EXISTS(
+      SELECT 1 FROM public.mensalidades WHERE matricula_id=v_mat4
+        AND date_trunc('month',data_vencimento)::date=d1
+    ) THEN
+    RAISE EXCEPTION 'FAIL: gerador cobrou mês com bolsa ativa: %',v_extra;
   END IF;
 
   -- Defesa no BD: nenhuma nova propina para matrícula bolseira.
