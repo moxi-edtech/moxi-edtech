@@ -80,7 +80,7 @@ AS $$
 DECLARE
   v_isento boolean := false;
 BEGIN
-  IF NEW.status <> 'pendente'
+  IF NEW.status NOT IN ('pendente', 'isento')
      OR coalesce(NEW.valor_pago_total, 0) <> 0
      OR NEW.fiscal_documento_id IS NOT NULL THEN
     RETURN NEW;
@@ -102,7 +102,7 @@ BEGIN
   FOR SHARE;
 
   IF coalesce(v_isento, false) THEN
-    IF TG_OP = 'INSERT' THEN
+    IF TG_OP = 'INSERT' AND NEW.status = 'pendente' THEN
       RETURN NULL; -- nenhum título a pagar, nem título "pendente" de 0 Kz
     END IF;
     NEW.valor_original := greatest(
@@ -163,8 +163,7 @@ BEGIN
      )
      AND me.status = 'pendente'
      AND coalesce(me.valor_pago_total, 0) = 0
-     AND me.fiscal_documento_id IS NULL
-     AND (coalesce(me.valor, 0) > 0 OR coalesce(me.valor_previsto, 0) > 0);
+     AND me.fiscal_documento_id IS NULL;
 
   RETURN NEW;
 END;
@@ -546,7 +545,7 @@ UPDATE public.matriculas m
       SELECT 1 FROM public.mensalidades me
       WHERE me.matricula_id = m.id AND me.status = 'pendente'
         AND coalesce(me.valor_pago_total,0) = 0 AND me.fiscal_documento_id IS NULL
-        AND coalesce(me.valor_previsto,me.valor,0) > 0
+        AND true -- também converte propinas antigas de 0 Kz em estado pendente
    );
 
 COMMIT;
