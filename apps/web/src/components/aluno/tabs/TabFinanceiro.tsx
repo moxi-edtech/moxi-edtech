@@ -285,12 +285,20 @@ export function TabFinanceiro() {
                 <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-3">
                   <div>
                     <p className="text-sm font-medium text-foreground">{item.competencia}</p>
-                    <p className="text-xs text-muted-foreground">{money.format(item.valor)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {item.status === "isento" ? "Propina dispensada" : money.format(item.valor)}
+                    </p>
                   </div>
-                  {item.status === "pago" ? (
+                  {item.status === "isento" ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-klasse-green">
+                      <Check className="h-4 w-4" aria-hidden="true" /> Isento{item.bolsa_isencao_integral ? " · Bolsa" : ""}
+                    </span>
+                  ) : item.status === "cancelado" ? (
+                    <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">Cancelado</span>
+                  ) : item.status === "pago" ? (
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                        <Check className="h-4 w-4" /> Pago
+                        <Check className="h-4 w-4" /> {item.bolsa_isencao_integral ? "Pago parcialmente · saldo isento" : "Pago"}
                       </span>
                       {item.recibo_id ? (
                         <button
@@ -302,10 +310,12 @@ export function TabFinanceiro() {
                           <Printer className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-amber" />
                           Ver Recibo
                         </button>
+                      ) : item.bolsa_isencao_integral ? (
+                        <span className="text-xs text-muted-foreground">Sem novo recibo de pagamento</span>
                       ) : (
                         <span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 text-xs font-semibold text-muted-foreground cursor-not-allowed">
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          Gerando Recibo...
+                          A consultar recibo…
                         </span>
                       )}
                     </div>
@@ -313,18 +323,27 @@ export function TabFinanceiro() {
                     <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
                       Em Verificação
                     </span>
-                  ) : (
+                  ) : item.valor > 0 ? (
                     <div className="flex flex-wrap items-center gap-2">
+                    {item.status === "pago_parcial" && (
+                      <span className="text-xs text-muted-foreground">Pago parcialmente · saldo pendente</span>
+                    )}
                     <StudentAppyPayButton targetId={item.id} kind="monthly" studentId={studentId} descricao={`Propina ${item.competencia}`} onPaid={() => { setSelectedIds(prev => prev.filter(id => id !== item.id)); void refresh(); }} />
                     <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-amber-200 px-3 text-xs font-semibold text-amber-800">
                       <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={(event) => setSelectedIds((prev) => event.target.checked ? [...prev, item.id] : prev.filter((id) => id !== item.id))} />
                       <Wallet className="h-4 w-4" /> Seleccionar
                     </label>
                     </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Sem valor a pagar</span>
                   )}
                 </li>
               ))}
-              {!sortedMensalidades.length ? <li className="rounded-xl border border-border p-4 text-sm text-muted-foreground">Sem mensalidades no intervalo selecionado.</li> : null}
+              {!sortedMensalidades.length ? (
+                <li className="rounded-xl border border-border p-4 text-sm text-muted-foreground">
+                  {bolsas.length > 0 ? "Nenhuma propina lançada neste intervalo. A bolsa está registada na matrícula." : "Sem mensalidades no intervalo selecionado."}
+                </li>
+              ) : null}
             </ul>
           )}
         </section>
