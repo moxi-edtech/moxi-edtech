@@ -465,6 +465,16 @@ jobs:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_documentos_individuais_pagamento.sql
 
+      - name: Apply document RPC cutover in isolated database
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271203003000_documentos_individuais_cutover_rpc_legacy.sql
+
+      - name: Verify post-cutover RPC privileges (PostgreSQL 17)
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_documentos_individuais_cutover.sql
+
       - name: Create isolated grade-writer database
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
