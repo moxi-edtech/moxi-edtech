@@ -121,7 +121,10 @@ const stringOrNull = (value: unknown) => (typeof value === "string" ? value : nu
 
 const buildCycleColumns = (currentClassNumber: number | null, availableNumbers: number[]) => {
   if (currentClassNumber && currentClassNumber > 0) {
-    return [currentClassNumber - 2, currentClassNumber - 1, currentClassNumber].filter((item) => item > 0);
+    // Só imprimir colunas com uma fonte histórica real — nunca inventar uma
+    // coluna vazia para uma classe ainda não reconciliada.
+    return [currentClassNumber - 2, currentClassNumber - 1, currentClassNumber]
+      .filter((item) => item > 0 && availableNumbers.includes(item));
   }
 
   const uniqueSorted = Array.from(new Set(availableNumbers)).sort((a, b) => a - b);
@@ -162,6 +165,7 @@ async function fetchOfficialHistoryRows(
     `)
     .eq("escola_id", escolaId)
     .eq("aluno_id", alunoId)
+    .eq("snapshot_status", "fechado")
     .order("ano_letivo", { ascending: true });
 
   if (error || !Array.isArray(data)) throw new Error("Não foi possível carregar as fontes oficiais do certificado.");
