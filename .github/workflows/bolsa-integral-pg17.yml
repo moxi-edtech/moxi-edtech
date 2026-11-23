@@ -6,12 +6,28 @@ on:
       - 'supabase/migrations/20271202030000_bolsa_integral_matricula_ssot.sql'
       - 'supabase/ops/tests/bolsa_integral_pg17_*'
       - '.github/workflows/bolsa-integral-pg17.yml'
+      - 'apps/web/tests/unit/alunos-filtros-bolsa-ssot.spec.mjs'
+      - 'apps/web/src/lib/services/alunos.service.ts'
+      - 'apps/web/src/lib/services/alunosExport.server.ts'
+      - 'apps/web/src/components/escola-admin/AlunosListClient.tsx'
+      - 'apps/web/src/components/secretaria/AlunosSecretariaPage.tsx'
+      - 'apps/web/src/app/api/secretaria/alunos/**'
+      - 'apps/web/src/app/api/escolas/**/admin/alunos/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  filtros_alunos:
+    name: Filtros bolsa / classe / turma / turno · contratos
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testar filtros e exportação (sem dependências externas)
+        run: node --test apps/web/tests/unit/alunos-filtros-bolsa-ssot.spec.mjs
+
   postgres17:
     name: PostgreSQL 17 · migração e contratos financeiros
     runs-on: ubuntu-latest
