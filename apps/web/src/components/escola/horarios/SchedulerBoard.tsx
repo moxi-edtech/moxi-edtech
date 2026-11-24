@@ -9,7 +9,7 @@ import {
   useDraggable,
   useDroppable,
 } from "@dnd-kit/core";
-import { AlertOctagon, Check, GripVertical, Save, Wand2, Trash2 } from "lucide-react"; // Adicionei Trash se precisar limpar
+import { AlertOctagon, Check, GripVertical, Save, Wand2, Trash2, Pencil, Plus } from "lucide-react"; // Adicionei Trash se precisar limpar
 
 // --- TYPES ---
 export type SchedulerSlot = {
@@ -92,6 +92,7 @@ export function SchedulerBoard({
 }: SchedulerBoardProps) {
   const [grid, setGrid] = useState<Record<string, string | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [editingSlot, setEditingSlot] = useState<string | null>(null);
   const [assigningProfessor, setAssigningProfessor] = useState<SchedulerAula | null>(null);
   const [assigningTurmaSala, setAssigningTurmaSala] = useState(false);
   const currentGrid = controlledGrid ?? grid;
@@ -242,6 +243,8 @@ export function SchedulerBoard({
                 aulas={estoque}
                 slotLookup={slotLookup}
                 onSelectSlot={handleSelectSlot}
+                editingSlot={editingSlot}
+                setEditingSlot={setEditingSlot}
                 onAssignProfessor={busy ? undefined : onAssignProfessor}
                 setAssigningProfessor={setAssigningProfessor}
                 effectiveTurmaSala={effectiveTurmaSala}
@@ -329,7 +332,7 @@ const ActionButtons = React.memo(({
       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber text-white text-sm font-bold shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:opacity-70"
     >
       <Wand2 className="w-4 h-4" />
-      {autoCompleting ? "A gerar proposta..." : "Sugerir horário"}
+      {autoCompleting ? "A gerar proposta..." : "Preencher tempos livres"}
     </button>
     <button
       type="button"
@@ -380,6 +383,8 @@ const GridRow = React.memo(({
   aulas,
   slotLookup,
   onSelectSlot,
+  editingSlot,
+  setEditingSlot,
   onAssignProfessor,
   setAssigningProfessor,
   effectiveTurmaSala,
@@ -425,6 +430,8 @@ const GridRow = React.memo(({
             aulas={aulas}
             slotAvailable={Boolean(slotLookup?.[`${dia}-${tempo.id}`])}
             onSelectSlot={onSelectSlot}
+            editingSlot={editingSlot}
+            setEditingSlot={setEditingSlot}
             onAssignProfessor={onAssignProfessor}
             setAssigningProfessor={setAssigningProfessor}
             effectiveTurmaSala={effectiveTurmaSala}
@@ -448,6 +455,8 @@ const GridCell = React.memo(({
   aulas,
   slotAvailable,
   onSelectSlot,
+  editingSlot,
+  setEditingSlot,
   onAssignProfessor,
   setAssigningProfessor,
   effectiveTurmaSala,
@@ -473,15 +482,18 @@ const GridCell = React.memo(({
           />
         </DraggableGridItem>
       ) : null}
-      <select
+      {editingSlot === slotId ? <select
+        autoFocus
+        onBlur={() => setEditingSlot(null)}
+        onKeyDown={(event) => { if (event.key === "Escape") setEditingSlot(null); }}
         aria-label={`${dia}, ${horarioDia}: disciplina`}
         value={aulaId ?? ""}
-        onChange={(event) => onSelectSlot(slotId, event.target.value || null)}
+        onChange={(event) => { onSelectSlot(slotId, event.target.value || null); setEditingSlot(null); }}
         className="mt-1 w-full min-w-0 rounded-xl border border-border bg-card p-1.5 text-xs text-foreground focus:ring-4 focus:ring-klasse-gold/20"
       >
         <option value="">Tempo livre</option>
         {(aulas as SchedulerAula[]).map((item) => <option key={item.id} value={item.id}>{item.disciplina}</option>)}
-      </select>
+      </select> : <button type="button" onClick={()=>setEditingSlot(slotId)} aria-label={`${aula ? "Editar" : "Adicionar"} disciplina: ${dia}, ${horarioDia}`} className="mt-1 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-2 py-2 text-xs text-muted-foreground hover:border-klasse-gold hover:text-foreground">{aula?<Pencil size={14}/>:<Plus size={14}/>} {aula?"Editar":"Adicionar disciplina"}</button>}
     </DroppableSlot>
   );
 });
@@ -510,7 +522,7 @@ const AulaCard = React.memo(({
       ${aula.cor}
     `} title={conflictReason?.length ? conflictReason.join(" · ") : undefined}>
       <div className="flex justify-between items-start">
-        <span className="font-bold text-xs uppercase tracking-tight">{aula.sigla}</span>
+        <span className="font-semibold text-sm leading-tight">{aula.disciplina}</span>
         {(hasConflict || aula.conflito) && (
           <AlertOctagon className="w-4 h-4 text-rose-600 animate-pulse" />
         )}
