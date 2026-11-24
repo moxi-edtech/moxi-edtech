@@ -3,13 +3,14 @@ BEGIN;
 DO $$
 DECLARE t text; f text;
 BEGIN
- FOREACH t IN ARRAY ARRAY['fecho_caixa','secretaria_expedientes','secretaria_expediente_operacoes','secretaria_expediente_config','secretaria_expediente_reminders'] LOOP
+ FOREACH t IN ARRAY ARRAY['fecho_caixa','fecho_caixa_revisoes','secretaria_expedientes','secretaria_expediente_operacoes','secretaria_expediente_config','secretaria_expediente_reminders'] LOOP
    IF has_table_privilege('authenticated','public.'||t,'INSERT') OR has_table_privilege('authenticated','public.'||t,'UPDATE') OR has_table_privilege('authenticated','public.'||t,'DELETE') OR has_table_privilege('authenticated','public.'||t,'TRUNCATE') THEN
      RAISE EXCEPTION 'DIRECT_WRITE_ALLOWED: %',t;
    END IF;
+   IF has_table_privilege('service_role','public.'||t,'INSERT') OR has_table_privilege('service_role','public.'||t,'UPDATE') OR has_table_privilege('service_role','public.'||t,'DELETE') OR has_table_privilege('service_role','public.'||t,'TRUNCATE') THEN RAISE EXCEPTION 'SERVICE_DIRECT_WRITE_ALLOWED: %',t; END IF;
    IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid=('public.'||t)::regclass) THEN RAISE EXCEPTION 'RLS_DISABLED: %',t; END IF;
  END LOOP;
- FOREACH f IN ARRAY ARRAY['financeiro_fecho_declarar_e_snapshot(uuid,date,numeric,numeric,numeric,numeric)','financeiro_fecho_aprovar(uuid,uuid,text,text,jsonb)','declarar_fecho_caixa(uuid,numeric,numeric,numeric)','aprovar_fecho_caixa(uuid)','secretaria_fechar_expediente(uuid,date)','secretaria_configurar_expediente(uuid,time,integer,integer[],boolean)'] LOOP
+ FOREACH f IN ARRAY ARRAY['financeiro_fecho_declarar_e_snapshot(uuid,date,numeric,numeric,numeric,numeric)','financeiro_fecho_aprovar(uuid,uuid,text,text,jsonb)','financeiro_fecho_regularizar(uuid,date,integer,uuid,text,numeric,numeric,numeric,numeric)','declarar_fecho_caixa(uuid,numeric,numeric,numeric)','aprovar_fecho_caixa(uuid)','secretaria_fechar_expediente(uuid,date)','secretaria_configurar_expediente(uuid,time,integer,integer[],boolean)'] LOOP
    IF has_function_privilege('anon','public.'||f,'EXECUTE') OR NOT has_function_privilege('authenticated','public.'||f,'EXECUTE') THEN RAISE EXCEPTION 'WRONG_RPC_GRANT: %',f; END IF;
  END LOOP;
  IF has_function_privilege('authenticated','public.secretaria_enviar_lembretes_expediente()','EXECUTE') THEN RAISE EXCEPTION 'REMINDER_RPC_PUBLIC'; END IF;
