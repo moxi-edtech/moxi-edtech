@@ -73,3 +73,15 @@ test("a gestão da bolsa aparece no financeiro com prévia e histórico por matr
   assert.match(portal, /bolsaVigente/);
   assert.match(portal, /Histórico de bolsas/);
 });
+
+
+test("bolsa percentual: barra e campo exacto partilham estado; a RPC calcula o valor definitivo", () => {
+  assert.match(gestao, /type="range" min="0.01" max="99.99" step="0.01" value=\{valorBarra\}/);
+  assert.match(gestao, /type="number" inputMode="decimal" min="0.01" max="99.99" step="0.01" value=\{percentagem\}/);
+  assert.match(gestao, /aria-valuetext=/);
+  assert.match(gestao, /onChange=\{e => setPercentagem\(e.target.value\)\}/);
+  assert.match(gestao, /percentagem: taxa/);
+  assert.match(gestao, /O valor definitivo é calculado e validado no servidor/);
+  assert.match(apiGestao, /klasse_definir_bolsa_parcial/);
+  assert.match(apiGestao, /p_percentagem: parsed.data.percentagem/);
+});
