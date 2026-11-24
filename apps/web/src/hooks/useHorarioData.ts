@@ -55,7 +55,7 @@ const BASE_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const getBaseCacheKey = (escolaId: string) => `horarios:base:${escolaId}`;
 
-const mapSlots = (slots: SlotApi[]): { slots: SchedulerSlot[]; slotLookup: Record<string, string> } => {
+export const mapSlots = (slots: SlotApi[]): { slots: SchedulerSlot[]; slotLookup: Record<string, string> } => {
   const grouped = new Map<number, SlotApi[]>();
   const lookup: Record<string, string> = {};
 
@@ -65,7 +65,7 @@ const mapSlots = (slots: SlotApi[]): { slots: SchedulerSlot[]; slotLookup: Recor
     list.push(slot);
     grouped.set(slot.ordem, list);
     const dia = DIAS_SEMANA[slot.dia_semana - 1];
-    lookup[`${dia}-${slot.ordem}`] = slot.id;
+    if (!slot.is_intervalo) lookup[`${dia}-${slot.ordem}`] = slot.id;
   }
 
   const formatted: SchedulerSlot[] = Array.from(grouped.entries())
@@ -81,7 +81,7 @@ const mapSlots = (slots: SlotApi[]): { slots: SchedulerSlot[]; slotLookup: Recor
       }
       const first = sorted[0];
       const labelDefault = first ? `${first.inicio} - ${first.fim}` : "";
-      const tipo = (first?.is_intervalo ? "intervalo" : "aula") as "aula" | "intervalo";
+      const tipo = (items.every((item) => item.is_intervalo) ? "intervalo" : "aula") as "aula" | "intervalo";
       return {
         id: String(ordem),
         labelDefault,
@@ -190,7 +190,10 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
       .then(([slotsRes, salasRes, turmasRes]) => {
         if (controller.signal.aborted || requestId !== requestRef.current) return;
 
-        const slotsPayload = slotsRes.res.ok && slotsRes.json.ok ? (slotsRes.json.items || []) : [];
+        if (!slotsRes.res.ok || !slotsRes.json.ok || !salasRes.res.ok || !salasRes.json.ok || !turmasRes.res.ok || !turmasRes.json.ok) {
+          throw new Error("Não foi possível carregar todos os dados do horário. Tente novamente.");
+        }
+        const slotsPayload = slotsRes.json.items || [];
         const salasPayload = salasRes.res.ok && salasRes.json.ok ? (salasRes.json.items || []) : [];
         const turmasPayload = turmasRes.res.ok && turmasRes.json.ok ? (turmasRes.json.items || []) : [];
 
@@ -277,6 +280,7 @@ export function useHorarioTurmaData({
   slotLookup: Record<string, string>;
   refreshToken?: number;
 }) {
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [state, setState] = useState<TurmaDataState>({
     aulas: [],
     grid: {},
@@ -287,6 +291,7 @@ export function useHorarioTurmaData({
   const requestRef = useRef(0);
 
   const canLoadTurmaData = Boolean(escolaId && turmaId && versaoId && Object.keys(slotLookup).length > 0);
+  const contextKey = JSON.stringify([escolaId, turmaId, versaoId, slotLookup, refreshToken]);
 
   useEffect(() => {
     if (!canLoadTurmaData) {
@@ -342,9 +347,11 @@ export function useHorarioTurmaData({
 
         const slotKeyById = new Map(Object.entries(slotLookup).map(([key, id]) => [id, key]));
         const nextGrid: Record<string, string | null> = {};
+        let unmapped = 0;
         for (const item of quadroPayload) {
           const slotKey = slotKeyById.get(item.slot_id);
           if (slotKey) nextGrid[slotKey] = item.disciplina_id;
+          else unmapped++;
         }
 
         const aulasFiltradas = aulasPayload.filter((item: any) => {
@@ -352,8 +359,12 @@ export function useHorarioTurmaData({
           return shouldAppearInScheduler(rulesInput);
         });
 
+        const mappedAulas = mapAulas(aulasFiltradas);
+        const allowed = new Set(mappedAulas.map((aula) => aula.id));
+        const missingDiscipline = quadroPayload.some((item: any) => !allowed.has(item.disciplina_id));
+        setLoadedKey(contextKey);
         setState({
-          aulas: mapAulas(aulasFiltradas),
+          aulas: mappedAulas,
           grid: nextGrid,
           existingAssignments: quadroPayload.map((item: any) => ({
             slot_id: item.slot_id,
@@ -362,11 +373,12 @@ export function useHorarioTurmaData({
             sala_id: item.sala_id ?? null,
           })),
           loading: false,
-          error: disciplinasError || quadroError,
+          error: disciplinasError || quadroError || (unmapped || missingDiscipline ? "O horário contém aulas fora dos tempos ou disciplinas carregados. A edição foi bloqueada para preservar os registos." : null),
         });
       })
       .catch((error) => {
         if (controller.signal.aborted || requestId !== requestRef.current) return;
+        setLoadedKey(contextKey);
         setState((prev) => ({
           ...prev,
           loading: false,
@@ -375,7 +387,7 @@ export function useHorarioTurmaData({
       });
 
     return () => controller.abort();
-  }, [canLoadTurmaData, escolaId, turmaId, versaoId, slotLookup, refreshToken]);
+  }, [canLoadTurmaData, escolaId, turmaId, versaoId, slotLookup, refreshToken, contextKey]);
 
   const setAulas = (updater: (prev: SchedulerAula[]) => SchedulerAula[]) => {
     setState((prev) => ({ ...prev, aulas: updater(prev.aulas) }));
@@ -398,14 +410,14 @@ export function useHorarioTurmaData({
     setState((prev) => ({ ...prev, existingAssignments: updater(prev.existingAssignments) }));
   };
 
-  const effectiveState = canLoadTurmaData
+  const effectiveState = canLoadTurmaData && loadedKey === contextKey
     ? state
     : {
         ...state,
         aulas: [],
         grid: {},
         existingAssignments: [],
-        loading: false,
+        loading: canLoadTurmaData,
         error: null,
       };
 
