@@ -30,6 +30,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     ]);
     if (captureStart.error || !captureStart.data || school.error || closes.error || cash.error) return fail("Falha ao consultar os fechos.", 500);
     if (!closes.data?.length) return fail("Não existem expedientes fechados neste intervalo.", 404);
+    const cashIds=(cash.data??[]).map((c:any)=>c.id);
+    const revisions=cashIds.length?await supabase.from("fecho_caixa_revisoes").select("fecho_id,revision,snapshot,archived_at").eq("escola_id",escolaId).in("fecho_id",cashIds).order("revision",{ascending:true}).limit(501):null;
+    if(revisions?.error)return fail("Falha ao consultar as versões do caixa.",500);
+    if((revisions?.data?.length??0)>500)return fail("Reduza o intervalo de exportação para incluir todas as versões.",413);
     const days = closes.data.map((item: any) => item.day_key);
     // Bound the export, and fail explicitly instead of silently dropping rows.
     const rows: any[] = [];
@@ -99,6 +103,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }
       if(c&&Number(c.system_other_count)>0)line("Meio não classificado: "+money(c.system_other)+" ("+c.system_other_count+" pagamentos)",true);
       if(c) for(const [key,label] of [["cash","Numerário"],["tpa","TPA"],["transfer","Transferências"],["mcx","MCX"]]) line(label+": declarado "+money(c["declared_"+key])+" | sistema "+money(c["system_"+key])+" | diferença "+money(Number(c["declared_"+key])-Number(c["system_"+key])));
+      for(const rev of revisions?.data??[])if(rev.fecho_id===c?.id){
+        line("Versão anterior "+rev.revision+" | "+clock(rev.archived_at),true);
+        line("Estado: "+rev.snapshot.status+" | Decisão: "+(rev.snapshot.approval_note??"—"));
+        for(const [key,label] of [["cash","Numerário"],["tpa","TPA"],["transfer","Transferências"],["mcx","MCX"]])line(label+": declarado "+money(rev.snapshot["declared_"+key])+" | sistema "+money(rev.snapshot["system_"+key]));
+      }
       const dayRows = rows.filter(r=>r.day_key===close.day_key);
       for (const late of [false,true]) {
         const filtered = dayRows.filter(r=>r.is_after_close===late);
