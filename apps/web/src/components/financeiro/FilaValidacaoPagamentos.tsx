@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type MutableRefObject } from "react";
 import { getPagamentosPendentes, validarPagamentoAction } from "@/features/financeiro/actions";
 import type { PagamentoPendenteRow } from "@/hooks/usePagamentosPendentes";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
@@ -16,9 +16,10 @@ type EntityFilter = "todos" | "mensalidade" | "servico";
 
 interface FilaValidacaoPagamentosProps {
   escolaId: string;
+  closeGuardRef?: MutableRefObject<(() => boolean) | null>;
 }
 
-export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosProps) {
+export function FilaValidacaoPagamentos({ escolaId, closeGuardRef }: FilaValidacaoPagamentosProps) {
   const [pagamentos, setPagamentos] = useState<PagamentoPendenteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -29,6 +30,12 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
   const requestSequence = useRef(0);
   const activeSchool = useRef(escolaId);
   const [approvalTarget, setApprovalTarget] = useState<PagamentoPendenteRow | null>(null);
+  const decisionLock = useRef(false);
+  useLayoutEffect(() => {
+    if (!closeGuardRef) return;
+    closeGuardRef.current = () => decisionLock.current || Boolean(approvalTarget);
+    return () => { closeGuardRef.current = null; };
+  }, [closeGuardRef, approvalTarget]);
   
   const { success, error, warning } = useToast();
   const confirm = useConfirm();
@@ -105,56 +112,64 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
     }),
   [filterable, query, page]);
 
-  const handleApprove = async (pagamento: PagamentoPendenteRow) => {
+  const handleApprove = (pagamento: PagamentoPendenteRow) => {
+    if (decisionLock.current) return;
     setApprovalTarget(pagamento);
   };
 
   const confirmApprove = async () => {
     const pagamento = approvalTarget;
-    if (!pagamento) return;
+    if (!pagamento || decisionLock.current) return;
+    decisionLock.current = true;
     setApprovalTarget(null);
     setProcessingId(pagamento.pagamento_id);
-    const res = await validarPagamentoAction(pagamento.pagamento_id, true);
-    
-    if (res.success) {
-      const msg = pagamento.tipo_entidade === "servico"
-        ? `Pagamento validado e serviço (${pagamento.servico_nome}) deferido.`
-        : "Pagamento validado e mensalidade liquidada.";
-      success("Sucesso", msg);
-      void loadPagamentos();
-    } else {
-      error("Erro", res.error || "Não foi possível validar o pagamento.");
+    try {
+      const res = await validarPagamentoAction(pagamento.pagamento_id, true);
+      if (res.success) {
+        success("Sucesso", pagamento.tipo_entidade === "servico"
+          ? `Pagamento validado e serviço (${pagamento.servico_nome}) deferido.`
+          : "Pagamento validado e mensalidade liquidada.");
+        await loadPagamentos();
+      } else error("Erro", res.error || "Não foi possível validar o pagamento.");
+    } catch {
+      error("Erro", "Não foi possível confirmar o resultado da validação. Consulte a fila antes de repetir.");
+      await loadPagamentos();
+    } finally {
+      decisionLock.current = false;
+      setProcessingId(null);
     }
-    setProcessingId(null);
   };
 
   const handleReject = async (pagamento: PagamentoPendenteRow) => {
-    const motivo = await confirm({
-      title: "Rejeitar Comprovativo",
-      message: "Por favor, indique o motivo da rejeição. Esta informação será partilhada com o aluno.",
-      confirmLabel: "Rejeitar Pagamento",
-      variant: "danger",
-      inputType: "text",
-      placeholder: "Ex: Comprovativo ilegível ou valor incorrecto",
-    });
-
-    if (motivo === null) return; // Cancelou o modal
-
-    if (motivo.trim().length === 0) {
-      warning("Aviso", "O motivo de rejeição é obrigatório.");
-      return;
-    }
-
+    if (decisionLock.current) return;
+    decisionLock.current = true;
     setProcessingId(pagamento.pagamento_id);
-    const res = await validarPagamentoAction(pagamento.pagamento_id, false, motivo.trim());
-    
-    if (res.success) {
-      success("Sucesso", "Pagamento rejeitado com sucesso.");
-      void loadPagamentos();
-    } else {
-      error("Erro", res.error || "Não foi possível rejeitar o pagamento.");
+    try {
+      const motivo = await confirm({
+        title: "Rejeitar Comprovativo",
+        message: "Por favor, indique o motivo da rejeição. Esta informação será partilhada com o aluno.",
+        confirmLabel: "Rejeitar Pagamento",
+        variant: "danger",
+        inputType: "text",
+        placeholder: "Ex: Comprovativo ilegível ou valor incorrecto",
+      });
+      if (motivo === null) return;
+      if (!motivo.trim()) {
+        warning("Aviso", "O motivo de rejeição é obrigatório.");
+        return;
+      }
+      const res = await validarPagamentoAction(pagamento.pagamento_id, false, motivo.trim());
+      if (res.success) {
+        success("Sucesso", "Pagamento rejeitado com sucesso.");
+        await loadPagamentos();
+      } else error("Erro", res.error || "Não foi possível rejeitar o pagamento.");
+    } catch {
+      error("Erro", "Não foi possível confirmar o resultado da rejeição. Consulte a fila antes de repetir.");
+      await loadPagamentos();
+    } finally {
+      decisionLock.current = false;
+      setProcessingId(null);
     }
-    setProcessingId(null);
   };
 
   const stats = pagamentos.reduce(
@@ -315,7 +330,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleReject(p)}
-                          disabled={processingId === p.pagamento_id}
+                          disabled={Boolean(processingId)}
                           className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-200 bg-card px-3 py-2 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all disabled:opacity-50"
                           title="Rejeitar comprovativo"
                         >
@@ -328,7 +343,7 @@ export function FilaValidacaoPagamentos({ escolaId }: FilaValidacaoPagamentosPro
                         </button>
                         <button
                           onClick={() => handleApprove(p)}
-                          disabled={processingId === p.pagamento_id}
+                          disabled={Boolean(processingId)}
                           className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 text-xs font-bold transition-all shadow-sm shadow-emerald-600/20 disabled:opacity-50"
                         >
                           {processingId === p.pagamento_id ? (
