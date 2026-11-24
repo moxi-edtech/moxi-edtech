@@ -49,3 +49,6 @@ Na main auditada: decimal.ts, agtCertificationPlan.ts, workflow fiscal-certifica
 
 ## Etapa 1
 Recuperação dos dois módulos puros, testes existentes e workflow específico de #193; execução CI pendente à criação deste documento. Aritmética não integrada ao runtime e sem alteração de guard fiscal global. Os testes históricos têm escopo limitado: adicionar limites de precisão/expoente, sinais, arredondamento e validação de transporte antes de integrar consumidores. Nenhum ponto P01–P17 deve ser declarado encerrado com testes sintéticos.
+
+### Hardening adicional nesta branch
+Limites de entrada/expoente/escala para evitar alocação descontrolada; validação round-trip do número JSON, rejeição de inteiros JS inseguros, testes de sinais/divisão/limites. P11 conserva GR (duas amostras a demonstrar); P15 explicita FR e inventário restante. As restrições técnicas de recursos não são limites legais de valores. CI ainda por confirmar; não alterar contratos financeiros até validar schemas e integração.

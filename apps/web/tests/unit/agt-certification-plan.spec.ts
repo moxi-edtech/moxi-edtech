@@ -48,3 +48,8 @@ test("P09 uses the real Africa/Luanda clock and refuses times at or after 10h", 
   assert.equal(closed.localTime, "10:00:00");
   assert.equal(closed.eligible, false);
 });
+
+test("P11 requires remittance guides and P15 covers FR explicitly", () => {
+  assert.deepEqual(AGT_CERTIFICATION_PLAN.find((item) => item.point === "P11")?.documentTypes, ["GR"]);
+  assert.ok(AGT_CERTIFICATION_PLAN.find((item) => item.point === "P15")?.documentTypes.includes("FR"));
+});

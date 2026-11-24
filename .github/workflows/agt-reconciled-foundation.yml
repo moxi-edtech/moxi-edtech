@@ -7,7 +7,9 @@ on:
       - 'apps/web/src/lib/fiscal/agtCertificationPlan.ts'
       - 'apps/web/tests/unit/fiscal-decimal.spec.ts'
       - 'apps/web/tests/unit/agt-certification-plan.spec.ts'
-      - 'docs/ops/AGT_BASE_RECONCILIATION_20261013.md'
+      - 'docs/fiscal/certificacao/AGT_RECONCILIACAO_20261124.md'
+permissions:
+  contents: read
 jobs:
   isolated-fiscal-units:
     runs-on: ubuntu-latest

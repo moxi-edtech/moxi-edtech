@@ -10,6 +10,8 @@ import {
   parseExactDecimal,
   roundExact,
   subExact,
+  divExact,
+  parseSafeInteger,
 } from "../../src/lib/fiscal/decimal";
 
 test("exact decimal avoids IEEE-754 drift for decimal addition", () => {
@@ -54,4 +56,28 @@ test("rounded comparison is exact at the requested scale", () => {
 test("JSON numeric conversion happens only after exact arithmetic", () => {
   const exact = addExact(parseExactDecimal("12.60"), parseExactDecimal("90.00"));
   assert.equal(exactToJsonNumber(exact, 2), 102.6);
+});
+
+test("rejects oversized decimal input and exponent before allocation", () => {
+  assert.throws(() => parseExactDecimal("1e99999999"), /DECIMAL_EXPONENT_INVALID/);
+  assert.throws(() => parseExactDecimal("9".repeat(513)), /DECIMAL_INPUT_TOO_LONG/);
+  assert.throws(() => roundExact(parseExactDecimal("1"), 99999999), /DECIMAL_SCALE_INVALID/);
+});
+
+test("rejects lossy JSON wire numbers and unsafe JS integer input", () => {
+  assert.throws(() => exactToJsonNumber(parseExactDecimal("9007199254740993")), /DECIMAL_JSON_NUMBER_PRECISION_LOSS/);
+  assert.throws(() => parseExactDecimal(9007199254740992), /DECIMAL_INVALID/);
+  assert.equal(exactToJsonNumber(parseExactDecimal("0.0001")), 0.0001);
+});
+
+test("negative half-up and ceil division are deterministic", () => {
+  assert.equal(exactToFixed(roundExact(parseExactDecimal("-1.005"), 2), 2), "-1.01");
+  assert.equal(exactToFixed(divExact(parseExactDecimal("-1"), parseExactDecimal("3"), 2, "ceil"), 2), "-0.33");
+  assert.throws(() => divExact(parseExactDecimal("1"), parseExactDecimal("0")), /DECIMAL_DIVISION_BY_ZERO/);
+});
+
+test("safe integer parsing handles leading zeros and bounds", () => {
+  assert.equal(parseSafeInteger("001"), 1);
+  assert.throws(() => parseSafeInteger("9007199254740993"), /INTEGER_INVALID/);
+  assert.throws(() => parseSafeInteger("0", "series", { min: 1 }), /INTEGER_BELOW_MIN/);
 });

@@ -110,9 +110,10 @@ export const AGT_CERTIFICATION_PLAN: readonly AgtCertificationPlanItem[] = [
   },
   {
     point: "P11",
-    title: "Duas guias de remessa/transporte",
-    documentTypes: ["GR", "GT"],
+    title: "Duas guias de remessa",
+    documentTypes: ["GR"],
     execution: "emit",
+    notes: "Confirmar no ofício original; não substituir uma GR por GT sem aceitação AGT.",
   },
   {
     point: "P12",
@@ -136,9 +137,9 @@ export const AGT_CERTIFICATION_PLAN: readonly AgtCertificationPlanItem[] = [
   {
     point: "P15",
     title: "Outros tipos realmente emitidos pela aplicação",
-    documentTypes: ["ND", "RC"],
+    documentTypes: ["FR", "ND", "RC"],
     execution: "emit",
-    notes: "RE só deve entrar se permanecer no escopo comercial declarado do produto.",
+    notes: "Inventariar todos os tipos suportados; RE e GT devem entrar se permanecerem no escopo comercial declarado.",
   },
   {
     point: "P16",

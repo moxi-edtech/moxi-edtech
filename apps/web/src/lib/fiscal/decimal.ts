@@ -5,10 +5,15 @@ export type ExactDecimal = Readonly<{
 
 export type DecimalInput = string | number | bigint;
 
+// Resource limits for untrusted decimal text; these are not AGT monetary limits.
+const MAX_SCALE = 256;
+const MAX_INPUT_CHARS = 512;
+function assertScale(scale: number, max = MAX_SCALE) {
+  if (!Number.isSafeInteger(scale) || scale < 0 || scale > max) throw new Error("DECIMAL_SCALE_INVALID");
+}
+
 function pow10(scale: number): bigint {
-  if (!Number.isInteger(scale) || scale < 0) {
-    throw new Error("DECIMAL_SCALE_INVALID");
-  }
+  assertScale(scale, MAX_SCALE * 2);
   return 10n ** BigInt(scale);
 }
 
@@ -19,7 +24,8 @@ function expandExponent(raw: string): string {
   const sign = match[1] === "-" ? "-" : "";
   const intPart = match[2];
   const fracPart = match[3] ?? "";
-  const exponent = parseInt(match[4], 10);
+  const exponent = Number(match[4]);
+  if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > MAX_SCALE) throw new Error("DECIMAL_EXPONENT_INVALID");
   const digits = intPart + fracPart;
   const decimalIndex = intPart.length + exponent;
 
@@ -37,14 +43,16 @@ export function parseExactDecimal(value: DecimalInput, field = "decimal"): Exact
   if (typeof value === "bigint") {
     raw = value.toString();
   } else if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new Error(`DECIMAL_INVALID:${field}`);
+    if (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value))) throw new Error(`DECIMAL_INVALID:${field}`);
     raw = value.toString();
   } else {
     raw = value.trim();
   }
 
   if (!raw) throw new Error(`DECIMAL_EMPTY:${field}`);
+  if (raw.length > MAX_INPUT_CHARS) throw new Error(`DECIMAL_INPUT_TOO_LONG:${field}`);
   raw = expandExponent(raw);
+  if (raw.length > MAX_INPUT_CHARS) throw new Error(`DECIMAL_INPUT_TOO_LONG:${field}`);
 
   const match = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(raw);
   if (!match) throw new Error(`DECIMAL_INVALID:${field}`);
@@ -56,6 +64,7 @@ export function parseExactDecimal(value: DecimalInput, field = "decimal"): Exact
   while (fracPart.endsWith("0")) fracPart = fracPart.slice(0, -1);
 
   const scale = fracPart.length;
+  assertScale(scale);
   const digits = (intPart || "0") + fracPart;
   let coefficient = BigInt(digits || "0");
   if (negative && coefficient !== 0n) coefficient = -coefficient;
@@ -64,6 +73,8 @@ export function parseExactDecimal(value: DecimalInput, field = "decimal"): Exact
 }
 
 function align(a: ExactDecimal, b: ExactDecimal) {
+  assertScale(a.scale);
+  assertScale(b.scale);
   const scale = Math.max(a.scale, b.scale);
   return {
     scale,
@@ -96,9 +107,9 @@ export function divExact(
   mode: "half-up" | "ceil" | "trunc" = "half-up"
 ): ExactDecimal {
   if (b.coefficient === 0n) throw new Error("DECIMAL_DIVISION_BY_ZERO");
-  if (!Number.isInteger(targetScale) || targetScale < 0) {
-    throw new Error("DECIMAL_SCALE_INVALID");
-  }
+  assertScale(a.scale);
+  assertScale(b.scale);
+  assertScale(targetScale);
 
   let numerator = a.coefficient;
   let denominator = b.coefficient;
@@ -144,12 +155,14 @@ export function absExact(value: ExactDecimal): ExactDecimal {
 }
 
 export function normalizeExact(value: ExactDecimal): ExactDecimal {
+  assertScale(value.scale, MAX_SCALE * 2);
   let coefficient = value.coefficient;
   let scale = value.scale;
   while (scale > 0 && coefficient % 10n === 0n) {
     coefficient /= 10n;
     scale -= 1;
   }
+  assertScale(scale);
   return { coefficient, scale };
 }
 
@@ -158,9 +171,8 @@ export function roundExact(
   targetScale: number,
   mode: "half-up" | "ceil" | "trunc" = "half-up"
 ): ExactDecimal {
-  if (!Number.isInteger(targetScale) || targetScale < 0) {
-    throw new Error("DECIMAL_SCALE_INVALID");
-  }
+  assertScale(value.scale);
+  assertScale(targetScale);
   if (value.scale <= targetScale) {
     return {
       coefficient: value.coefficient * pow10(targetScale - value.scale),
@@ -223,6 +235,10 @@ export function exactToJsonNumber(value: ExactDecimal, fixedScale?: number): num
   if (typeof parsed !== "number" || !Number.isFinite(parsed)) {
     throw new Error("DECIMAL_JSON_NUMBER_INVALID");
   }
+  // JSON.stringify is the actual JS transport boundary. Refuse a lossy wire number.
+  if (cmpExact(parseExactDecimal(JSON.stringify(parsed)), parseExactDecimal(serialized)) !== 0) {
+    throw new Error("DECIMAL_JSON_NUMBER_PRECISION_LOSS");
+  }
   return parsed;
 }
 
@@ -254,8 +270,8 @@ export function parseSafeInteger(
     throw new Error(`INTEGER_INVALID:${field}`);
   }
 
-  const parsed = JSON.parse(raw) as unknown;
-  if (typeof parsed !== "number" || !Number.isSafeInteger(parsed)) {
+  const parsed = Number(raw);
+  if (!Number.isSafeInteger(parsed)) {
     if (options?.fallback !== undefined) return options.fallback;
     throw new Error(`INTEGER_INVALID:${field}`);
   }
