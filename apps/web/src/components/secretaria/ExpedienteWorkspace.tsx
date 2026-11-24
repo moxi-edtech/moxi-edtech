@@ -20,7 +20,7 @@ type Data = { date:string; captureStartedAt:string; closed:null|{id:string;close
 const DEFAULT_CONFIG: Config = {close_time:"17:00",reminder_minutes:30,weekdays:[1,2,3,4,5],enabled:false,email_summary:false};
 const cashState = (state?:string) => state==="approved"?"Aprovado":state==="rejected"?"Rejeitado":state==="declared"?"A aguardar aprovação":"Por declarar";
 
-export default function ExpedienteWorkspace({ escolaId, initialDate, portal="secretaria" }: { escolaId:string; initialDate?:string; portal?:"secretaria"|"admin"|"operacoes"|"financeiro" }) {
+export default function ExpedienteWorkspace({ escolaId, initialDate, initialHistory=false, portal="secretaria" }: { escolaId:string; initialDate?:string; initialHistory?:boolean; portal?:"secretaria"|"admin"|"operacoes"|"financeiro" }) {
   const [date,setDate] = useState(initialDate ?? today());
   const [from,setFrom] = useState(initialDate ?? today());
   const [data,setData] = useState<Data|null>(null);
@@ -31,7 +31,7 @@ export default function ExpedienteWorkspace({ escolaId, initialDate, portal="sec
   const [config,setConfig] = useState<Config>(DEFAULT_CONFIG);
   const [revision,setRevision] = useState(0);
   const [notice,setNotice]=useState("");
-  const [historyOpen,setHistoryOpen]=useState(portal!=="secretaria");
+  const [historyOpen,setHistoryOpen]=useState(initialHistory||portal!=="secretaria");
   const [technical,setTechnical]=useState(false);
   const [entityFilter,setEntityFilter]=useState("");
   const [actorFilter,setActorFilter]=useState("");
