@@ -57,7 +57,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
     {
       id: "aulas",
       icon: Activity,
-      label: "Aulas de hoje",
+      label: afterCounters ? "Aulas por confirmar" : "Aulas de hoje",
       value: summary.aulasAguardando,
       tone: summary.aulasAguardando > 0 ? "warning" : "default",
     },
@@ -100,7 +100,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
               className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground/80 transition hover:bg-muted disabled:opacity-60"
             >
               <Activity className={`h-3.5 w-3.5 ${refreshing ? "animate-pulse" : ""}`} />
-              Atualizar
+              {afterCounters ? "Atualizar pendências" : "Atualizar"}
             </button>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
           />
           <AcaoRapidaCard
             icon={<Wallet className="h-5 w-5" />}
-            label={afterCounters ? "Histórico de recebimentos" : "Recebimentos"}
+            label={afterCounters ? "Recebimentos completos" : "Recebimentos"}
             sublabel={afterCounters ? undefined : "Validação de pagamentos"}
             href={buildPortalHref(escolaParam, "/operacoes/recebimentos")}
           />
