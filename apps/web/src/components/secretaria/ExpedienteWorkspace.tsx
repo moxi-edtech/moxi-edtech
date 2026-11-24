@@ -7,13 +7,14 @@ import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 const input = "rounded-xl border border-border bg-card px-3 py-2 text-sm focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20 outline-none";
-const today = () => new Intl.DateTimeFormat("sv-SE", { timeZone:"Africa/Luanda", year:"numeric", month:"2-digit", day:"2-digit" }).format(new Date());
+const localDate = (value:Date) => new Intl.DateTimeFormat("sv-SE", { timeZone:"Africa/Luanda", year:"numeric", month:"2-digit", day:"2-digit" }).format(value);
+const today = () => localDate(new Date());
 const clock = (value: string) => new Intl.DateTimeFormat("pt-PT",{timeZone:"Africa/Luanda",dateStyle:"short",timeStyle:"short"}).format(new Date(value));
 const entityLabels: Record<string,string> = { alunos:"Alunos", candidaturas:"Candidaturas", matriculas:"Matrículas", pagamentos:"Pagamentos", documentos_emitidos:"Documentos emitidos", servico_pedidos:"Pedidos de serviço", mensalidades:"Propinas", notas:"Notas", financeiro_lancamentos:"Lançamentos financeiros", financeiro_estornos:"Estornos", reapreciacao_pedidos:"Reapreciações", frequencias:"Frequências" };
 const actionLabels: Record<string,string> = {CREATE:"Criação",UPDATE:"Alteração",DELETE:"Remoção"};
 type Operation = { id:number; occurred_at:string; actor_name:string; entity:string; entity_id:string; action:string; is_after_close:boolean; detail:Record<string,string> };
 type Config = { close_time:string; reminder_minutes:number; weekdays:number[]; enabled:boolean };
-type Data = { date:string; closed:null|{id:string;closed_at:string;closed_by_name:string;operation_count:number;summary:Record<string,number>}; operations:Operation[]; nextCursor:number|null; lateCount:number; preview:Record<string,number>; cash:null|({id:string;status:string}&Record<string,string|number|null>); config:Config|null; canClose:boolean; canConfigure:boolean; canApprove:boolean };
+type Data = { date:string; captureStartedAt:string; closed:null|{id:string;closed_at:string;closed_by_name:string;operation_count:number;summary:Record<string,number>}; operations:Operation[]; nextCursor:number|null; lateCount:number; preview:Record<string,number>; cash:null|({id:string;status:string}&Record<string,string|number|null>); config:Config|null; canClose:boolean; canConfigure:boolean; canApprove:boolean };
 const DEFAULT_CONFIG: Config = {close_time:"17:00",reminder_minutes:30,weekdays:[1,2,3,4,5],enabled:false};
 const cashState = (state?:string) => state==="approved"?"Aprovado":state==="rejected"?"Rejeitado":state==="declared"?"A aguardar aprovação":"Por declarar";
 
@@ -111,9 +112,10 @@ export default function ExpedienteWorkspace({ escolaId, initialDate }: { escolaI
     {error&&<div role="alert" className="rounded-xl border border-red-200 bg-card p-3 text-sm text-red-600">{error} <Button type="button" variant="ghost" disabled={busy} onClick={()=>setRevision(v=>v+1)}>Atualizar</Button></div>}
     {loading&&<p role="status" className="text-sm text-muted-foreground">A carregar expediente...</p>}
     {data&&<>
+      {date<=localDate(new Date(data.captureStartedAt))&&<p role="status" className="rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground">{date<localDate(new Date(data.captureStartedAt))?"O registo operacional ainda não estava ativo nesta data. Não existe histórico consolidado.":"Cobertura parcial: o registo operacional foi ativado em "+clock(data.captureStartedAt)+"."}</p>}
       <section className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><h2 className="flex items-center gap-2 font-semibold text-foreground"><CalendarCheck className="h-5 w-5 text-klasse-green"/> {data.closed?"Expediente fechado":"Expediente por fechar"}</h2><p className="mt-1 text-sm text-muted-foreground">{data.closed?clock(data.closed.closed_at)+" · "+data.closed.closed_by_name:"Confirme o resumo antes de encerrar o expediente."}</p></div>
+          <div><h2 className="flex items-center gap-2 font-semibold text-foreground"><CalendarCheck className="h-5 w-5 text-klasse-green"/> {data.closed?"Expediente fechado":date<localDate(new Date(data.captureStartedAt))?"Histórico indisponível":"Expediente por fechar"}</h2><p className="mt-1 text-sm text-muted-foreground">{data.closed?clock(data.closed.closed_at)+" · "+data.closed.closed_by_name:"Confirme o resumo antes de encerrar o expediente."}</p></div>
           {!data.closed&&data.canClose&&<Button type="button" disabled={busy||showCash} className="bg-klasse-gold text-klasse-gold-900" onClick={()=>setConfirm(true)}><LockKeyhole/> Fechar expediente</Button>}
         </div>
         {confirm&&!data.closed&&<div className="rounded-xl border border-border p-3 space-y-2"><p className="text-sm">O resumo ficará registado e a administração será notificada. Operações posteriores ficam identificadas como adendos.</p><div className="flex gap-2"><Button type="button" variant="outline" disabled={busy} onClick={()=>setConfirm(false)}>Cancelar</Button><Button type="button" loading={busy} className="bg-klasse-gold text-klasse-gold-900" onClick={()=>mutate({action:"close",date})}>Confirmar fecho</Button></div></div>}
