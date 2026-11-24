@@ -8,14 +8,14 @@ export const navLinks = [
 ]
 
 export const hero = {
-  eyebrow: 'A escola inteira, numa única visão.',
-  titleLines: ['Assuma o controlo total', 'da sua escola hoje.'],
+  eyebrow: 'Gestão escolar em Angola',
+  titleLines: ['Gestão escolar', 'num só sistema.'],
   subtitle:
-    'Direção, secretaria, professores, alunos e famílias ligados pela mesma informação. Menos retrabalho. Mais controlo para decidir.',
+    'Organize matrículas, propinas, notas e documentos escolares. A direcção, a secretaria e os professores trabalham com a mesma informação.',
   primaryCta: 'Falar no WhatsApp',
   diagnosticCta: 'Agendar diagnóstico',
   secondaryCta: 'Fale connosco',
-  note: 'Implementação acompanhada pela nossa equipa.',
+  note: 'Acompanhamento na implementação e formação da equipa.',
 }
 
 export const heroMockup = {
@@ -42,12 +42,12 @@ export const productCards = [
     description: 'Matrículas e documentos MED em poucos segundos.',
   },
   {
-    title: 'Zero desvio financeiro',
+    title: 'Controlo financeiro',
     description: 'Controlo total de propinas e multas. Cada Kwanza conta.',
   },
   {
     title: 'Decisão por dados',
-    description: 'Relatórios de inadimplência e notas sempre atualizados.',
+    description: 'Relatórios de propinas em atraso e resultados académicos.',
   },
   {
     title: 'KLASSE Network',
@@ -86,7 +86,7 @@ export const productSteps = [
 ]
 
 export const pricingIntro =
-  'Planos transparentes. Sem custos ocultos.'
+  'Compare os planos pela dimensão da escola e pelo apoio de que necessita.'
 
 export const pricingNote =
   'O plano Essencial inclui Balcão, Portal da Direção e MED — até 600 alunos.'
@@ -177,7 +177,7 @@ export const pilot = {
   badge: 'Lançamento em Angola',
   title: 'As primeiras escolas têm acompanhamento direto',
   description:
-    'Não é só software. A equipa KLASSE configura consigo, forma a equipa e acompanha a operação nos primeiros meses.',
+    'A equipa KLASSE configura o sistema consigo, forma os utilizadores e acompanha a operação nos primeiros meses.',
 }
 
 export interface PricingPlan {
@@ -202,7 +202,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     name: 'Essencial',
     slug: 'basic',
-    description: 'O essencial para pôr a secretaria a trabalhar sem stress.',
+    description: 'Para escolas com até 600 alunos.',
     price: '80.000',
     priceNote: 'por mês',
     saving: '2 meses grátis no anual',
@@ -225,7 +225,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     name: 'Profissional',
     slug: 'pro',
-    description: 'Para escolas que querem crescer com tudo organizado.',
+    description: 'Para escolas com até 1.500 alunos.',
     price: '140.000',
     priceNote: 'por mês',
     saving: '2 meses grátis no anual',
@@ -248,7 +248,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     name: 'Premium',
     slug: 'enterprise',
-    description: 'Para redes escolares ou escolas com múltiplos campi.',
+    description: 'Para redes escolares e escolas com vários estabelecimentos.',
     price: null,
     priceNote: 'Negociado',
     saving: null,
@@ -264,7 +264,7 @@ export const pricingPlans: PricingPlan[] = [
       'Suporte dedicado',
       'SLA 99.9% uptime',
     ],
-    cta: 'Fale conosco',
+    cta: 'Fale connosco',
     ctaHref: '/onboarding',
     featured: false,
   },
