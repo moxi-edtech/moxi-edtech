@@ -25,8 +25,7 @@ AS $function$
 BEGIN
   RAISE EXCEPTION 'IMMUTABILITY: evento fiscal é append-only';
 END;
-$function$
-
+$function$;
 CREATE OR REPLACE FUNCTION public.fiscal_block_item_mutation()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -35,8 +34,7 @@ AS $function$
 BEGIN
   RAISE EXCEPTION 'IMMUTABILITY: item de documento fiscal é append-only';
 END;
-$function$
-
+$function$;
 CREATE OR REPLACE FUNCTION public.fiscal_guard_contingency_series()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -87,8 +85,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$function$
-
+$function$;
 CREATE OR REPLACE FUNCTION public.fiscal_guard_series_counter()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -101,8 +98,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$function$
-
+$function$;
 CREATE OR REPLACE FUNCTION public.fiscal_reservar_numero_serie(p_serie_id uuid)
  RETURNS TABLE(numero bigint, numero_formatado text)
  LANGUAGE plpgsql
@@ -183,8 +179,7 @@ BEGIN
 
   RETURN NEXT;
 END;
-$function$
-
+$function$;
 CREATE OR REPLACE FUNCTION public.fiscal_validate_event_consistency()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -208,8 +203,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$function$
-
+$function$;
 CREATE TRIGGER items_immutable BEFORE UPDATE OR DELETE ON public.fiscal_documento_itens FOR EACH ROW EXECUTE FUNCTION public.fiscal_block_item_mutation();
 CREATE TRIGGER events_immutable BEFORE UPDATE OR DELETE ON public.fiscal_documentos_eventos FOR EACH ROW EXECUTE FUNCTION public.fiscal_block_event_mutation();
 CREATE TRIGGER events_consistency BEFORE INSERT OR UPDATE ON public.fiscal_documentos_eventos FOR EACH ROW EXECUTE FUNCTION public.fiscal_validate_event_consistency();

@@ -92,8 +92,7 @@ BEGIN
 
   RETURN NEXT;
 END;
-$function$
-
+$function$;
 CREATE OR REPLACE FUNCTION public.fiscal_guard_series_counter()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -110,8 +109,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$function$
-
+$function$;
 -- Serialize line insertion against finalization of the parent document.
 CREATE OR REPLACE FUNCTION public.fiscal_require_pending_item_parent() RETURNS trigger
 LANGUAGE plpgsql SET search_path TO 'pg_catalog','public' AS $$
