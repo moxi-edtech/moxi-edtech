@@ -15,9 +15,10 @@ interface Sala {
 interface StepSalasProps {
   escolaId: string;
   onComplete: () => void;
+  onBusyChange?: (busy:boolean)=>void;
 }
 
-export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
+export function StepSalas({ escolaId, onComplete, onBusyChange }: StepSalasProps) {
   const [salas, setSalas] = useState<Sala[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,9 +45,9 @@ export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome.trim()) return;
+    if (!nome.trim() || saving) return;
 
-    setSaving(true);
+    setSaving(true); onBusyChange?.(true);
     try {
       const res = await fetch(`/api/escolas/${escolaId}/salas`, {
         method: "POST",
@@ -68,12 +69,13 @@ export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
     } catch (e) {
       error("Erro na requisição.");
     } finally {
-      setSaving(false);
+      setSaving(false); onBusyChange?.(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Deseja realmente remover esta sala?")) return;
+    if (saving || !window.confirm("Deseja realmente remover esta sala?")) return;
+    setSaving(true); onBusyChange?.(true);
     
     try {
       const res = await fetch(`/api/escolas/${escolaId}/salas?id=${encodeURIComponent(id)}`, {
@@ -88,7 +90,7 @@ export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
       }
     } catch (e) {
       error("Erro na requisição.");
-    }
+    } finally { setSaving(false); onBusyChange?.(false); }
   };
 
   return (
@@ -166,7 +168,7 @@ export function StepSalas({ escolaId, onComplete }: StepSalasProps) {
                     </div>
                   </div>
                   <button 
-                    onClick={() => handleDelete(sala.id)}
+                    disabled={saving} onClick={() => handleDelete(sala.id)}
                     className="p-2 text-muted-foreground hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                   >
                     <Trash2 className="w-4 h-4" />

@@ -16,10 +16,11 @@ test("os três estados dependem da versão existente, não de uma atribuição d
 
 test("a publicação aceita professor nulo e não infere atribuição no editor", () => {
   const route = readFileSync(resolve(process.cwd(), "src/app/api/escolas/[id]/horarios/quadro/route.ts"), "utf8");
-  const page = readFileSync(resolve(process.cwd(), "src/app/escola/[id]/(portal)/horarios/quadro/page.tsx"), "utf8");
+  const page = readFileSync(resolve(process.cwd(), "src/components/escola/horarios/HorarioEditor.tsx"), "utf8");
   const modal = readFileSync(resolve(process.cwd(), "src/components/secretaria/TurmaHorarioModal.tsx"), "utf8");
   assert.match(route, /professor_id: z\.string\(\)\.uuid\(\)\.nullable\(\)\.optional\(\)/);
   assert.match(page, /professor_id: previous\?\.professor_id \?\? null/);
   assert.match(page, /timetableStateLabels\[horarioStatus\]/);
-  assert.match(modal, /Professor não indicado/);
+  assert.match(modal, /<HorarioEditor/);
+  assert.match(readFileSync(resolve(process.cwd(), "src/components/escola/horarios/SchedulerBoard.tsx"), "utf8"), /Professor não indicado/);
 });

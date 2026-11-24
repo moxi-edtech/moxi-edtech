@@ -27,7 +27,7 @@ test("legacy timetable version GET cannot create a draft in an archived or plann
   assert.match(route, /\.eq\("id", turmaId\)/);
   assert.match(route, /requestedAcademicYearId: turma\.session_id/);
   assert.match(route, /requestedYearId !== year\.id/);
-  assert.match(route, /if \(!draft && year\.status === "ACTIVE"\)/);
+  assert.match(route, /if \(!publicada && !draft && year\.status === "ACTIVE"\)/);
   assert.match(route, /year\.status === "ACTIVE" \? \(draft\?\.id \?\? null\) : null/);
   assert.match(route, /"HISTORICAL_READ"/);
 });

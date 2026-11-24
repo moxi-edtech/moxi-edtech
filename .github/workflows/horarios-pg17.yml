@@ -1,0 +1,127 @@
+name: Horários · PostgreSQL 17
+concurrency:
+  group: horarios-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+on:
+  pull_request:
+    paths:
+      - 'docs/engineering/horarios-publication-guard.proposed.sql'
+      - 'supabase/ops/tests/horarios_pg17_*'
+      - '.github/workflows/horarios-pg17.yml'
+      - 'apps/web/src/components/escola/horarios/**'
+      - 'apps/web/src/lib/horarios/**'
+      - 'apps/web/src/hooks/useHorarioData.ts'
+      - 'apps/web/src/app/api/escolas/**/horarios/**'
+      - 'apps/web/src/app/escola/**/horarios/**'
+      - 'apps/web/tests/unit/horarios-operational-flow.spec.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres17:
+    name: PostgreSQL 17 · integridade de horários
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: klasse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d klasse_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: klasse_test
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Confirm PostgreSQL 17
+        run: psql -X -v ON_ERROR_STOP=1 -c "SELECT version()"
+      - name: Apply candidate SQL in disposable database and validate
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/horarios_pg17_fixture.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/engineering/horarios-publication-guard.proposed.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/horarios_pg17_assert.sql
+
+      - name: Concurrent publication of the same school resource
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO public.horario_versoes(id,escola_id,turma_id,status) VALUES
+          (fixture_id(86),fixture_id(1),fixture_id(20),'draft'),
+          (fixture_id(87),fixture_id(1),fixture_id(24),'draft');
+          SQL
+          # Session A holds the same school lock through publication and commit.
+          psql -X -v ON_ERROR_STOP=1 > /tmp/horario-a.log 2>&1 <<'SQL' &
+          BEGIN;
+          SELECT set_config('request.jwt.claim.role','authenticated',true),set_config('request.jwt.claim.sub',fixture_id(100)::text,true);
+          SELECT public.upsert_quadro_horarios_versao_atomic(fixture_id(1),fixture_id(20),fixture_id(86),fixture_item(70,NULL,99),true);
+          SELECT pg_sleep(4);
+          COMMIT;
+          SQL
+          first=$!
+          # Wait until A really owns the advisory lock, not an assumed delay.
+          locked=0
+          for attempt in $(seq 1 40); do
+            if [ "$(psql -X -Atc "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype='advisory' AND granted)")" = t ]; then locked=1; break; fi
+            sleep 0.1
+          done
+          test "$locked" = 1
+          if psql -X -v ON_ERROR_STOP=1 > /tmp/horario-b.log 2>&1 <<'SQL'
+          BEGIN;
+          SELECT set_config('request.jwt.claim.role','authenticated',true),set_config('request.jwt.claim.sub',fixture_id(100)::text,true);
+          SELECT public.upsert_quadro_horarios_versao_atomic(fixture_id(1),fixture_id(24),fixture_id(87),fixture_item(70,NULL,99),true);
+          COMMIT;
+          SQL
+          then
+            cat /tmp/horario-b.log
+            echo 'ERROR: competing publication succeeded'; exit 1
+          fi
+          wait "$first" || { cat /tmp/horario-a.log; exit 1; }
+          grep -q 'HORARIO_CONFLICT' /tmp/horario-b.log
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF (SELECT status FROM public.horario_versoes WHERE id=fixture_id(86)) <> 'publicada'
+              OR (SELECT status FROM public.horario_versoes WHERE id=fixture_id(87)) <> 'draft'
+              OR (SELECT status FROM public.horario_versoes WHERE id=fixture_id(85)) <> 'publicada'
+              OR EXISTS (SELECT 1 FROM public.quadro_horarios WHERE versao_id=fixture_id(87))
+            THEN RAISE EXCEPTION 'concurrent publication lost atomicity'; END IF;
+          END $$;
+          SQL
+
+  web:
+    name: Horários · contratos UX e TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Testar contratos de horários
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/horarios-operational-flow.spec.ts tests/unit/audit-timetable-independent-teachers.spec.ts
+      - name: Typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: pnpm -C apps/web typecheck

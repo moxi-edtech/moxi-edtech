@@ -13,6 +13,7 @@ const BodySchema = z.object({
   strategy: z.enum(["v1"]).default("v1"),
   overwrite_unlocked: z.boolean().default(true),
   dry_run: z.boolean().default(true),
+  current_items: z.array(z.object({slot_id:z.string().uuid(),disciplina_id:z.string().uuid(),professor_id:z.string().uuid().nullable().optional(),sala_id:z.string().uuid().nullable().optional()})).max(500).optional(),
 });
 
 type Slot = {
@@ -484,16 +485,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const body = parsed.data;
 
-    let turnoId = body.turno ?? null;
-    if (!turnoId) {
-      const { data: turmaRow } = await supabase
-        .from("turmas")
-        .select("turno")
-        .eq("escola_id", escolaIdResolved)
-        .eq("id", body.turma_id)
-        .maybeSingle();
-      turnoId = mapTurnoId(turmaRow?.turno ?? null);
-    }
+    const {data: turmaRow,error: turmaError} = await supabase.from("turmas")
+      .select("turno,ano_letivo_id").eq("escola_id",escolaIdResolved).eq("id",body.turma_id).maybeSingle();
+    const turnoId = mapTurnoId(turmaRow?.turno ?? null);
+    if (turmaError || !turmaRow?.ano_letivo_id || !turnoId || (body.turno && body.turno !== turnoId))
+      return NextResponse.json({ok:false,error:"Turma ou turno inválido."},{status:409});
+    const {data: year,error: yearError} = await supabase.from("anos_letivos").select("id")
+      .eq("id",turmaRow.ano_letivo_id).eq("escola_id",escolaIdResolved).eq("ativo",true).maybeSingle();
+    if (yearError || !year) return NextResponse.json({ok:false,error:"Ano lectivo não activo."},{status:409});
 
     const slotsQuery = supabase
       .from("horario_slots")
@@ -523,13 +522,34 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const slotIds = slots.map((slot) => slot.id);
 
-    const { data: quadroRows, error: quadroError } = await supabase
-      .from("quadro_horarios")
-      .select("slot_id, turma_id, disciplina_id, professor_id, sala_id")
-      .eq("escola_id", escolaIdResolved)
-      .in("slot_id", slotIds);
-
-    if (quadroError) return NextResponse.json({ ok: false, error: quadroError.message }, { status: 400 });
+    const {data: yearTurmas,count: turmaCount,error: yearTurmasError} = await supabase.from("turmas")
+      .select("id",{count:"exact"}).eq("escola_id",escolaIdResolved).eq("ano_letivo_id",turmaRow.ano_letivo_id).order("id").limit(1000);
+    if (yearTurmasError || turmaCount !== (yearTurmas||[]).length)
+      return NextResponse.json({ok:false,error:"Não foi possível verificar todas as turmas do ano."},{status:503});
+    const quadroRows: Array<{slot_id:string;turma_id:string;disciplina_id:string;professor_id?:string|null;sala_id?:string|null}> = [];
+    const turmaIds = (yearTurmas||[]).map((t:{id:string})=>t.id);
+    for(let i=0;i<turmaIds.length;i+=50){
+      const {data:versions,count:vc,error:ve}=await supabase.from("horario_versoes").select("id",{count:"exact"})
+        .eq("escola_id",escolaIdResolved).eq("status","publicada").in("turma_id",turmaIds.slice(i,i+50)).limit(1000);
+      if(ve||vc!==(versions||[]).length) return NextResponse.json({ok:false,error:"Não foi possível verificar todas as versões."},{status:503});
+      const ids=(versions||[]).map((v:{id:string})=>v.id);
+      if(!ids.length)continue;
+      for(let j=0;j<slotIds.length;j+=50){
+        const {data:rows,count:rc,error:re}=await supabase.from("quadro_horarios").select("slot_id,turma_id,disciplina_id,professor_id,sala_id",{count:"exact"})
+          .eq("escola_id",escolaIdResolved).in("versao_id",ids).in("slot_id",slotIds.slice(j,j+50)).limit(1000);
+        if(re||rc!==(rows||[]).length)return NextResponse.json({ok:false,error:"Não foi possível verificar todas as aulas publicadas."},{status:503});
+        quadroRows.push(...(rows||[]));
+      }
+    }
+    if(body.current_items!==undefined){
+      const ids=new Set<string>();
+      for(const item of body.current_items){
+        if(ids.has(item.slot_id)||!slots.some(s=>s.id===item.slot_id&&!s.is_intervalo))return NextResponse.json({ok:false,error:"Tempos inválidos na edição actual."},{status:409});
+        ids.add(item.slot_id);
+      }
+      for(let i=quadroRows.length-1;i>=0;i--)if(quadroRows[i].turma_id===body.turma_id)quadroRows.splice(i,1);
+      quadroRows.push(...body.current_items.map(item=>({...item,turma_id:body.turma_id})));
+    }
 
     const { data: disciplinasRows, error: discError } = await supabase
       .from("turma_disciplinas")
@@ -653,6 +673,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       })
       .filter((disc) => disc.entra_no_horario !== false);
 
+    if(body.current_items?.some(item=>!disciplinaNeeds.some(d=>d.disciplina_id===item.disciplina_id)))return NextResponse.json({ok:false,error:"Disciplina inválida na edição actual."},{status:409});
     const { slotById, slotsByDay } = buildSlotIndex(slots);
     const occupiedByProfessor = new Map<string, Set<string>>();
     const occupiedBySala = new Map<string, Set<string>>();

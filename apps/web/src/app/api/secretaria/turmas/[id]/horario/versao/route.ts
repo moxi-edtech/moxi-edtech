@@ -66,8 +66,28 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const publicada = versoesRows.find((row) => row.status === "publicada") ?? null;
     let draft = versoesRows.find((row) => row.status === "draft") ?? null;
 
+    // Only a successfully saved draft newer than the official timetable takes
+    // precedence. Empty versions left by earlier GETs are not edits.
+    let savedDraft: HorarioVersaoRow | null = null;
+    if (publicada && year.status === "ACTIVE") {
+      const draftIds = versoesRows.filter((row) => row.status === "draft").map((row) => row.id);
+      if (draftIds.length) {
+        let eventsQuery = supabase.from("horario_eventos")
+          .select("versao_id")
+          .eq("escola_id", escolaId)
+          .eq("turma_id", turmaId)
+          .eq("tipo", "DRAFT_SAVE")
+          .in("versao_id", draftIds);
+        if (publicada.publicado_em) eventsQuery = eventsQuery.gt("created_at", publicada.publicado_em);
+        const { data: saved, error: savedError } = await eventsQuery
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (savedError) throw savedError;
+        savedDraft = versoesRows.find((row) => row.id === saved?.versao_id) ?? null;
+      }
+    }
+
     // Histórico e anos planeados: apenas consultar. Nunca criar draft no GET.
-    if (!draft && year.status === "ACTIVE") {
+    if (!publicada && !draft && year.status === "ACTIVE") {
       const { data: createdDraft, error: createDraftError } = await supabase
         .from("horario_versoes")
         .insert({ escola_id: escolaId, turma_id: turmaId, status: "draft" })
@@ -85,6 +105,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       ok: true,
       versao_id: year.status === "ACTIVE" ? (draft?.id ?? null) : null,
       versao_publicada_id: publicada?.id ?? null,
+      versao_edicao_id: year.status === "ACTIVE" ? (savedDraft?.id ?? publicada?.id ?? draft?.id ?? null) : publicada?.id ?? null,
+      tem_rascunho_nao_publicado: Boolean(savedDraft),
       modo: year.status === "ACTIVE" ? "CURRENT" : "HISTORICAL_READ",
       ano_letivo_id: year.id,
       versoes: versoesRows,

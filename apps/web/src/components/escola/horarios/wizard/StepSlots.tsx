@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Clock, Plus, Wand2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { useToast } from "@/components/feedback/FeedbackSystem";
+import { buildTurnoTemplate } from "@/lib/horarios/turno-template";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
+import { SlotsConfig, type HorarioSlot } from "@/components/escola/horarios/SlotsConfig";
 import { 
   Dialog, 
   DialogContent, 
@@ -26,6 +28,8 @@ interface Slot {
 interface StepSlotsProps {
   escolaId: string;
   onComplete: () => void;
+  initialTurno?: string | null;
+  onBusyChange?: (busy:boolean)=>void;
 }
 
 const TURNOS = [
@@ -65,11 +69,18 @@ function toMinutes(value: string) {
   return hours * 60 + minutes;
 }
 
-export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps) {
+export function StepSlots({ escolaId, onComplete, initialTurno, onBusyChange }: StepSlotsProps) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTurno, setActiveTurno] = useState("matinal");
+  const [activeTurno, setActiveTurno] = useState(initialTurno || "matinal");
+  const [templateOpen,setTemplateOpen] = useState(false);
+  const [template,setTemplate] = useState({inicio:initialTurno==="tarde"?"13:00":initialTurno==="noite"?"18:00":"07:00",aulas:6,minutos:45,pausaApos:3,pausaMinutos:15,intervaloEntre:5,dias:[1,2,3,4,5]});
+  const [loadError,setLoadError] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [advancedOpen,setAdvancedOpen]=useState(false);
+  const [advancedSlots,setAdvancedSlots]=useState<HorarioSlot[]>([]);
+  const [advancedError,setAdvancedError]=useState<string|null>(null);
+  const confirm=useConfirm();
   const { success, error } = useToast();
 
   const [newSlot, setNewSlot] = useState({
@@ -80,19 +91,25 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
   });
   const [savingSlot, setSavingSlot] = useState(false);
 
-  const activeSlots = slots.filter((slot) => slot.turno_id === activeTurno && slot.dia_semana === 1).sort((a, b) => a.ordem - b.ordem);
+  const turnSlots = slots.filter(slot=>slot.turno_id===activeTurno);
+  const firstDay = Math.min(...turnSlots.map(slot=>slot.dia_semana));
+  const activeSlots = turnSlots.filter(slot=>slot.dia_semana===firstDay).sort((a,b)=>a.ordem-b.ordem);
+  let generated: ReturnType<typeof buildTurnoTemplate> | null = null;
+  let templateError: string | null = null;
+  try {generated=buildTurnoTemplate({...template,turno:activeTurno});} catch(e){templateError=e instanceof Error?e.message:"Configuração inválida";}
   const localConflicts = activeSlots.flatMap((slot, index) => activeSlots.slice(index + 1).filter((other) => toMinutes(slot.inicio) < toMinutes(other.fim) && toMinutes(other.inicio) < toMinutes(slot.fim)).map((other) => `${slot.ordem}º tempo (${slot.inicio}-${slot.fim}) sobrepõe o ${other.ordem}º (${other.inicio}-${other.fim})`));
   const newSlotConflict = activeSlots.find((slot) => toMinutes(newSlot.inicio) < toMinutes(slot.fim) && toMinutes(slot.inicio) < toMinutes(newSlot.fim));
   const newSlotInvalid = toMinutes(newSlot.inicio) >= toMinutes(newSlot.fim);
 
   const fetchSlots = useCallback(async () => {
-    setLoading(true);
+    setLoading(true);setLoadError(false);
     try {
       const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`);
       const json = await res.json();
-      if (json.ok) setSlots(json.items || []);
+      if (!res.ok || !json.ok) throw new Error(json.error||"Não foi possível carregar os tempos");
+      setSlots(json.items || []);
     } catch (_e) {
-      error("Falha ao carregar horários.");
+      setLoadError(true);error("Falha ao carregar horários.");
     } finally {
       setLoading(false);
     }
@@ -102,51 +119,63 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
     void fetchSlots();
   }, [fetchSlots]);
 
+  const openAdvanced=()=>{
+    if(loading||loadError||savingSlot)return;
+    setAdvancedSlots(slots.map(slot=>({...slot})));setAdvancedError(null);setAdvancedOpen(true);
+  };
+  const advancedDirty=JSON.stringify(advancedSlots)!==JSON.stringify(slots);
+  const closeAdvanced=async()=>{
+    if(savingSlot)return;
+    if(advancedDirty&&!(await confirm({title:"Alterações por guardar",message:"Pretende fechar sem guardar a estrutura dos tempos?",confirmLabel:"Fechar sem guardar"})))return;
+    setAdvancedOpen(false);
+  };
+  const saveAdvanced=async()=>{
+    if(savingSlot||!advancedDirty)return;
+    const originalIds=new Set(slots.map(s=>s.id));
+    const updatedIds=new Set(advancedSlots.map(s=>s.id));
+    // The existing endpoint is an upsert, not a deletion API. Never advertise a
+    // successful removal or regenerate existing IDs behind published schedules.
+    if(slots.some(s=>!updatedIds.has(s.id))){
+      setAdvancedError("A remoção ou substituição de tempos existentes exige uma operação própria que preserve os horários publicados. Mantenha os tempos existentes e ajuste apenas os necessários.");
+      return;
+    }
+    const normalize=(value:string)=>value.slice(0,5);
+    const originalById=new Map(slots.map(slot=>[slot.id,slot]));
+    const changed=advancedSlots.filter(slot=>{
+      const prev=originalById.get(slot.id);
+      return !prev||prev.turno_id!==slot.turno_id||prev.dia_semana!==slot.dia_semana||prev.ordem!==slot.ordem||normalize(prev.inicio)!==normalize(slot.inicio)||normalize(prev.fim)!==normalize(slot.fim)||Boolean(prev.is_intervalo)!==Boolean(slot.is_intervalo);
+    });
+    if(!changed.length){setAdvancedOpen(false);return;}
+    if(changed.some(slot=>originalIds.has(slot.id))){
+      const accepted=await confirm({title:"Alterar tempos existentes?",message:"Os tempos são partilhados pelas turmas e a alteração pode reflectir-se nos quadros que os utilizam. Confirme apenas se a escola decidiu alterar a estrutura.",confirmLabel:"Guardar tempos"});
+      if(!accepted)return;
+    }
+    setSavingSlot(true);onBusyChange?.(true);setAdvancedError(null);
+    try{
+      const res=await fetch(`/api/escolas/${escolaId}/horarios/slots`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slots:changed})});
+      const json=await res.json().catch(()=>({}));
+      if(!res.ok||!json.ok){setAdvancedError(formatSlotSaveError(json));return;}
+      success("Estrutura de tempos guardada.");setAdvancedOpen(false);await fetchSlots();
+    }catch(e){setAdvancedError(e instanceof Error?e.message:"Falha ao guardar os tempos.");}
+    finally{setSavingSlot(false);onBusyChange?.(false);}
+  };
+
   const handleAutoGenerate = async () => {
-    const defaults = [
-      { ordem: 1, inicio: "07:15", fim: "08:05" },
-      { ordem: 2, inicio: "08:05", fim: "08:55" },
-      { ordem: 3, inicio: "08:55", fim: "09:45" },
-      { ordem: 4, inicio: "10:00", fim: "10:50", is_intervalo: true },
-      { ordem: 5, inicio: "10:50", fim: "11:40" },
-    ];
-
-    const payload = defaults.map(d => ({
-      ...d,
-      turno_id: activeTurno,
-      dia_semana: 1, // Base para geração
-      is_intervalo: d.is_intervalo || false
-    }));
-
-    // Replicar para todos os dias da semana
-    const fullPayload: SlotPayload[] = [];
-    for (let d = 1; d <= 5; d++) {
-      payload.forEach(p => fullPayload.push({ ...p, dia_semana: d }));
-    }
-
-    setSavingSlot(true);
+    if (loading || loadError || savingSlot || turnSlots.length || !generated) return;
+    setSavingSlot(true); onBusyChange?.(true);
     try {
-      const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`, {
-        method: "POST",
-        body: JSON.stringify({ slots: fullPayload }),
-      });
-      const json = await res.json();
-      if (json.ok) {
-        success("Grade padrão gerada para toda a semana!");
-        await fetchSlots();
-      } else {
-        error(formatSlotSaveError(json));
-      }
-    } catch (_e) {
-      error("Erro na rede.");
-    } finally {
-      setSavingSlot(false);
-    }
+      const res=await fetch(`/api/escolas/${escolaId}/horarios/slots`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slots:generated.items})});
+      const json=await res.json().catch(()=>({}));
+      if(!res.ok||!json.ok){error(formatSlotSaveError(json));return;}
+      success("Tempos configurados", "A estrutura foi guardada para os dias seleccionados.");
+      setTemplateOpen(false);await fetchSlots();
+    }catch{error("Erro na rede. Não foi possível confirmar a gravação.");}finally{setSavingSlot(false); onBusyChange?.(false);}
   };
 
   const handleAddSlot = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavingSlot(true);
+    if(loading||loadError||savingSlot||newSlotInvalid||newSlotConflict||localConflicts.length)return;
+    setSavingSlot(true); onBusyChange?.(true);
     
     // Adiciona para todos os dias da semana para simplificar o Wizard
     const payload = DIAS.map(dia => ({
@@ -171,7 +200,7 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
     } catch (_e) {
       error("Erro na rede.");
     } finally {
-      setSavingSlot(false);
+      setSavingSlot(false); onBusyChange?.(false);
     }
   };
 
@@ -187,14 +216,15 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
             <p className="text-sm text-muted-foreground">Defina os horários de início e fim de cada tempo de aula.</p>
           </div>
         </div>
-        <Button 
+        <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={loading||loadError||savingSlot} onClick={openAdvanced}>Editar tempos por dia</Button><Button 
           tone="gold" 
           variant="outline" 
-          onClick={() => setShowAddModal(true)} 
+          onClick={() => {setNewSlot(v=>({...v,ordem:Math.max(0,...turnSlots.map(s=>s.ordem))+1}));setShowAddModal(true)}}
+          disabled={loading||loadError||savingSlot} 
           className="gap-2 font-black border-2"
         >
           <Plus className="w-4 h-4" /> Novo Tempo
-        </Button>
+        </Button></div>
       </div>
 
       <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-sm mb-6">
@@ -202,7 +232,8 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
           {TURNOS.map(t => (
             <button
               key={t.id}
-              onClick={() => setActiveTurno(t.id)}
+              disabled={savingSlot}
+              onClick={() => {setActiveTurno(t.id);setTemplateOpen(false);setTemplate(v=>({...v,inicio:t.id==="tarde"?"13:00":t.id==="noite"?"18:00":"07:00"}));}}
               className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
                 activeTurno === t.id 
                   ? "bg-card text-amber shadow-sm ring-1 ring-ring"
@@ -215,7 +246,7 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
         </div>
 
         <div className="p-6">
-          {loading ? (
+          {loadError ? <div role="alert" className="text-sm text-red-700">Não foi possível carregar os tempos. <button type="button" onClick={()=>void fetchSlots()} className="underline">Tentar novamente</button></div> : loading ? (
             <div className="space-y-4">
               {[1, 2, 3].map(i => <div key={i} className="h-12 w-full rounded-xl bg-muted animate-pulse" />)}
             </div>
@@ -223,11 +254,19 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Configuração de {TURNOS.find(t => t.id === activeTurno)?.label}</h3>
-                <Button variant="outline" size="sm" onClick={handleAutoGenerate} disabled={savingSlot} className="gap-2 text-[10px] font-black uppercase tracking-widest border-2">
-                  <Wand2 className="w-3.5 h-3.5" /> Gerar Padrão (MED)
-                </Button>
+                {!turnSlots.length&&<Button variant="outline" size="sm" onClick={()=>setTemplateOpen(true)} disabled={savingSlot} className="gap-2"><Wand2 className="h-4 w-4"/> Configurar semana</Button>}
               </div>
 
+              {templateOpen&&!turnSlots.length&&<form className="space-y-4 rounded-xl border border-border bg-card p-4" onSubmit={e=>{e.preventDefault();void handleAutoGenerate()}}>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                  <label className="text-sm">Início<input type="time" required value={template.inicio} onChange={e=>setTemplate(v=>({...v,inicio:e.target.value}))} className="mt-1 block w-full rounded-xl border border-border p-2"/></label>
+                  {([{key:"aulas",label:"Aulas por dia",min:1,max:16},{key:"minutos",label:"Minutos por aula",min:15,max:120},{key:"intervaloEntre",label:"Pausa entre aulas (min)",min:0,max:30},{key:"pausaApos",label:"Intervalo após a aula",min:0,max:15},{key:"pausaMinutos",label:"Duração do intervalo",min:0,max:120}] as const).map(f=><label key={f.key} className="text-sm">{f.label}<input type="number" required min={f.min} max={f.max} value={template[f.key]} onChange={e=>setTemplate(v=>({...v,[f.key]:Number(e.target.value)}))} className="mt-1 block w-full rounded-xl border border-border p-2"/></label>)}
+                </div>
+                <div className="flex flex-wrap gap-3">{DIAS.map(d=><label key={d.id} className="flex items-center gap-1 text-sm"><input type="checkbox" checked={template.dias.includes(d.id)} onChange={e=>setTemplate(v=>({...v,dias:e.target.checked?[...v.dias,d.id].sort():v.dias.filter(x=>x!==d.id)}))}/>{d.label}</label>)}</div>
+                {templateError?<p role="alert" className="text-sm text-red-700">{templateError}</p>:<div className="rounded-xl bg-muted p-3 text-sm"><p className="mb-2 font-semibold">Prévia · {generated?.items.length} registos</p>{generated?.preview.map(p=><div key={p.ordem} className="flex justify-between gap-2"><span>{p.is_intervalo?"Intervalo":p.ordem+"º tempo"}</span><span>{p.inicio} – {p.fim}</span></div>)}</div>}
+                <p className="text-xs text-muted-foreground">Aplique apenas a um turno ainda sem tempos. Os horários existentes não serão substituídos.</p>
+                <Button type="submit" tone="gold" loading={savingSlot} disabled={!generated||savingSlot}>Guardar estrutura do turno</Button>
+              </form>}
               <div className="rounded-2xl border border-border overflow-hidden">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-muted text-[10px] font-black uppercase tracking-widest text-muted-foreground">
@@ -267,7 +306,17 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
         </div>
       </div>
 
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+      <div className="mt-4 flex justify-end"><Button type="button" tone="gold" onClick={onComplete} disabled={loading||loadError||savingSlot||!turnSlots.some(s=>!s.is_intervalo)}>Concluir configuração</Button></div>
+      {advancedOpen && <Dialog open={advancedOpen} onOpenChange={open=>{if(!open)void closeAdvanced()}}>
+        <DialogContent closeButton={false} onInteractOutside={e=>e.preventDefault()} className="flex max-h-[86vh] w-[92vw] max-w-6xl flex-col gap-0 overflow-hidden rounded-xl bg-card p-0">
+          <DialogHeader className="shrink-0 border-b border-border p-4 text-left"><div className="flex justify-between items-center gap-3"><div><DialogTitle>Editar tempos por dia</DialogTitle><DialogDescription>Altere os tempos e intervalos da estrutura semanal. As alterações só são enviadas ao guardar.</DialogDescription></div><Button variant="outline" disabled={savingSlot} onClick={()=>void closeAdvanced()}>Fechar</Button></div></DialogHeader>
+          <div className="min-h-0 overflow-y-auto p-4">
+            {advancedError&&<p role="alert" className="mb-3 rounded-xl border border-destructive/30 p-3 text-sm text-destructive">{advancedError}</p>}
+            <fieldset disabled={savingSlot} aria-busy={savingSlot}><SlotsConfig value={advancedSlots} onChange={setAdvancedSlots} onSave={saveAdvanced} initialTurno={activeTurno}/></fieldset>
+          </div>
+        </DialogContent>
+      </Dialog>}
+      <Dialog open={showAddModal} onOpenChange={open=>{if(!savingSlot)setShowAddModal(open)}}>
         <DialogContent className="sm:max-w-[400px] rounded-3xl">
           <DialogHeader>
               <DialogTitle className="text-2xl font-black text-foreground tracking-tight">Novo Tempo</DialogTitle>
@@ -324,7 +373,7 @@ export function StepSlots({ escolaId, onComplete: _onComplete }: StepSlotsProps)
             </div>
 
             <DialogFooter className="mt-6">
-              <Button type="button" variant="ghost" onClick={() => setShowAddModal(false)} className="font-bold">Cancelar</Button>
+              <Button type="button" disabled={savingSlot} variant="ghost" onClick={() => setShowAddModal(false)} className="font-bold">Cancelar</Button>
               <Button type="submit" tone="gold" loading={savingSlot} disabled={newSlotInvalid || Boolean(newSlotConflict) || localConflicts.length > 0} className="font-black px-8">Salvar Tempo</Button>
             </DialogFooter>
           </form>
