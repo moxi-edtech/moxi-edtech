@@ -10,9 +10,9 @@ type HorarioDataContextValue = ReturnType<typeof useHorarioBaseData> & {
 
 const HorarioDataContext = createContext<HorarioDataContextValue | null>(null);
 
-export function HorarioDataProvider({ children }: { children: ReactNode }) {
+export function HorarioDataProvider({ children, escolaId: explicitEscolaId }: { children: ReactNode; escolaId?: string }) {
   const params = useParams();
-  const escolaId = params?.id as string | undefined;
+  const escolaId = explicitEscolaId ?? (params?.id as string | undefined);
   const [baseRefreshToken, setBaseRefreshToken] = useState(0);
   const baseData = useHorarioBaseData(escolaId, baseRefreshToken);
 
