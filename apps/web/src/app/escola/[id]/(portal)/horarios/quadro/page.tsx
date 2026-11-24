@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
-import { AlertCircle, Save, WifiOff, Printer, FileDown, Wand2 } from "lucide-react";
+import { AlertCircle, Save, WifiOff, Printer, FileDown, Wand2, ArrowLeft, Undo2, Redo2 } from "lucide-react";
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
+import { HorariosWorkspace } from "@/components/escola/horarios/HorariosWorkspace";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { timetableStateLabels, type TimetablePublicationState } from "@/lib/horarios/timetable-publication-state";
@@ -116,11 +117,15 @@ function QuadroHorariosContent() {
   const [publishing, setPublishing] = useState(false);
   const [autoConfiguring, setAutoConfiguring] = useState(false);
   const [autoScheduling, setAutoScheduling] = useState(false);
-  const [clearingQuadro, setClearingQuadro] = useState(false);
+
   const [saveError, setSaveError] = useState<string | null>(null);
   const [conflictSlots, setConflictSlots] = useState<Record<string, boolean>>({});
   const [conflictReasons, setConflictReasons] = useState<Record<string, string[]>>({});
   const [autoDraftDirty, setAutoDraftDirty] = useState(false);
+  const [validated, setValidated] = useState(false);
+  const [undoStack, setUndoStack] = useState<Array<Record<string,string|null>>>([]);
+  const [redoStack, setRedoStack] = useState<Array<Record<string,string|null>>>([]);
+  const initialQueryApplied = useRef(false);
   const [autoProposalSummary, setAutoProposalSummary] = useState<{ filled: number; total: number; unmet: number } | null>(null);
   const [novaSala, setNovaSala] = useState("");
   const [turmaRefreshToken, setTurmaRefreshToken] = useState(0);
@@ -185,16 +190,7 @@ function QuadroHorariosContent() {
     setIsMounted(true);
   }, []);
 
-  // Mostrar wizard se não houver salas ou slots (e não estiver carregando)
-  useEffect(() => {
-    if (isMounted && !baseLoading && (rawSlots.length === 0)) {
-      const skipKey = `horarios:wizard-skipped:${escolaId}`;
-      const wasSkipped = typeof window !== "undefined" ? window.sessionStorage.getItem(skipKey) : null;
-      if (!wasSkipped) {
-        setShowWizard(true);
-      }
-    }
-  }, [isMounted, baseLoading, salas.length, slots.length, escolaId]);
+  // Do not open a wizard implicitly; the workspace exposes contextual setup.
 
   const handleSkipWizard = () => {
     const skipKey = `horarios:wizard-skipped:${escolaId}`;
@@ -290,11 +286,10 @@ function QuadroHorariosContent() {
       return;
     }
     const turmaIdFromQuery = searchParams?.get("turmaId") ?? null;
-    setTurmaId((prev) => {
-      if (prev && turmas.some((turma) => turma.id === prev)) return prev;
-      if (turmaIdFromQuery && turmas.some((turma) => turma.id === turmaIdFromQuery)) return turmaIdFromQuery;
-      return turmas[0]?.id ?? null;
-    });
+    if (!initialQueryApplied.current) {
+      initialQueryApplied.current = true;
+      if (turmaIdFromQuery && turmas.some((turma) => turma.id === turmaIdFromQuery)) setTurmaId(turmaIdFromQuery);
+    }
   }, [searchParams, turmas]);
 
   const loadCurriculoDisciplinas = useCallback(async (targetCursoId: string, options?: { force?: boolean }) => {
@@ -758,36 +753,35 @@ function QuadroHorariosContent() {
     }
   };
 
-  const handleClearQuadro = async () => {
-    if (!escolaId || !turmaId || !versaoId) return;
-    const ok = await confirm({
-      title: "Limpar quadro",
-      message: "Deseja realmente apagar todos os horários desta turma? Esta acção é irreversível.",
-      confirmLabel: "Limpar tudo",
-      variant: "danger",
-    });
-    if (!ok) return;
+  const switchTurma = async (nextTurmaId: string | null) => {
+    if (nextTurmaId === turmaId || saving || publishing || autoScheduling) return;
+    if (autoDraftDirty && !(await confirm({ title: "Alterações por guardar", message: "Pretende sair sem guardar as alterações deste horário?", confirmLabel: "Sair sem guardar" }))) return;
+    setAutoDraftDirty(false); setValidated(false); setUndoStack([]); setRedoStack([]);
+    setAutoProposalSummary(null); setConflictSlots({}); setConflictReasons({}); setSaveError(null);
+    setVersaoId(null); setHasSavedDraft(false); setVersionError(null); setHorarioStatus("sem_horario");
+    setTurmaId(nextTurmaId);
+  };
+  const editGrid = (next: Record<string,string|null>) => {
+    if (JSON.stringify(next) === JSON.stringify(grid)) return;
+    setUndoStack(prev=>[...prev.slice(-49), {...grid}]); setRedoStack([]);
+    setGrid(next); setConflictSlots({}); setConflictReasons({}); setValidated(false);
+    setAutoDraftDirty(true); setAutoProposalSummary(null);
+  };
+  const undoGrid = () => {
+    const previous = undoStack.at(-1); if (!previous) return;
+    setUndoStack(prev=>prev.slice(0,-1)); setRedoStack(prev=>[...prev.slice(-49), {...grid}]);
+    setGrid(previous); setConflictSlots({}); setConflictReasons({}); setValidated(false); setAutoDraftDirty(true); setAutoProposalSummary(null);
+  };
+  const redoGrid = () => {
+    const next = redoStack.at(-1); if (!next) return;
+    setRedoStack(prev=>prev.slice(0,-1)); setUndoStack(prev=>[...prev.slice(-49), {...grid}]);
+    setGrid(next); setConflictSlots({}); setConflictReasons({}); setValidated(false); setAutoDraftDirty(true); setAutoProposalSummary(null);
+  };
 
-    try {
-      setClearingQuadro(true);
-      const res = await fetch(
-        `/api/escolas/${escolaId}/horarios/quadro?versao_id=${versaoId}&turma_id=${turmaId}`,
-        { method: "DELETE" }
-      );
-      const json = await res.json().catch(() => null);
-      if (!res.ok || json?.ok === false) {
-        throw new Error(json?.error || "Falha ao limpar o quadro.");
-      }
-      setGrid({});
-      setAulas((prev) => prev.map((aula) => ({ ...aula, temposAlocados: 0 })));
-      setAutoDraftDirty(false);
-      refreshTurmaData();
-      success("Quadro limpo com sucesso.");
-    } catch (e: any) {
-      error(e?.message || "Falha ao limpar o quadro.");
-    } finally {
-      setClearingQuadro(false);
-    }
+  const handleClearQuadro = async () => {
+    if (!turmaId || !versaoId || saving || publishing) return;
+    const ok = await confirm({title:"Limpar quadro em edição",message:"Os tempos serão limpos apenas no editor. O horário oficial mantém-se. Pode desfazer a operação.",confirmLabel:"Limpar quadro",variant:"danger"});
+    if (ok) editGrid({});
   };
 
   const buildGridRows = () => {
@@ -1021,7 +1015,10 @@ function QuadroHorariosContent() {
         window.sessionStorage.setItem(`horarios:versao:${escolaId}:${turmaId}`, persistedVersion);
       }
       setHasSavedDraft(mode === "draft" && horarioStatus === "publicado");
-      setHorarioStatus(mode === "publish" || horarioStatus === "publicado" ? "publicado" : "rascunho");
+      const nextStatus = mode === "publish" || horarioStatus === "publicado" ? "publicado" : "rascunho";
+      setHorarioStatus(nextStatus);
+      setTurmas(prev=>prev.map(t=>t.id===turmaId?{...t,horario_status:nextStatus}:t));
+      setValidated(mode === "publish"); setUndoStack([]); setRedoStack([]);
       setAutoProposalSummary(null);
       if (mode === "publish" && Array.isArray(json?.warnings) && json.warnings.length > 0) {
         const publishWarnings = json.warnings as PublishWarning[];
@@ -1061,7 +1058,10 @@ function QuadroHorariosContent() {
   };
 
   const handleSalvar = (nextGrid: Record<string, string | null>) => submitQuadro(nextGrid, "draft");
-  const handlePublicar = (nextGrid: Record<string, string | null>) => submitQuadro(nextGrid, "publish");
+  const handlePublicar = async (nextGrid: Record<string, string | null>) => {
+    if (!(await confirm({title: "Publicar horário?",message: "O horário em edição ficará disponível para consulta nos portais. O horário oficial anterior será substituído apenas se a validação passar.",confirmLabel: "Publicar horário"}))) return;
+    await submitQuadro(nextGrid, "publish");
+  };
 
   const handleAutoConfigurar = async (options?: { rerunAutoComplete?: boolean }) => {
     if (!escolaId || !turmaId) return;
@@ -1563,6 +1563,7 @@ function QuadroHorariosContent() {
       <header className="sticky top-0 z-10 border-b border-border bg-card/90 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-4 p-6 max-w-7xl mx-auto">
           <div className="flex flex-wrap items-center gap-3">
+            {turmaId && <button type="button" onClick={()=>void switchTurma(null)} disabled={saving||publishing||autoScheduling} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold"><ArrowLeft size={16}/> Todas as turmas</button>}
             <div className="flex items-center gap-2 rounded-full bg-muted p-1">
               <Link
                 href={slotsHref}
@@ -1580,7 +1581,7 @@ function QuadroHorariosContent() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => setShowWizard(true)} 
+              onClick={async () => { if (!autoDraftDirty || await confirm({title:"Alterações por guardar",message:"Guarde o horário antes de alterar a estrutura dos tempos. Pretende continuar sem guardar?",confirmLabel:"Continuar sem guardar"})) { setAutoDraftDirty(false); setShowWizard(true); } }} 
               className="rounded-full gap-2 text-[10px] font-black uppercase tracking-widest border-2 border-border h-9"
             >
               <Wand2 className="w-3.5 h-3.5" /> Configurar base
@@ -1589,26 +1590,7 @@ function QuadroHorariosContent() {
               value={turmaId ?? ""}
               options={turmaOptions}
               disabled={saving || publishing || autoScheduling}
-              onChange={async (event) => {
-                const nextTurmaId = event.target.value || null;
-                if (nextTurmaId === turmaId) return;
-                if (autoDraftDirty) {
-                  const confirmed = await confirm({
-                    title: "Alterações não salvas",
-                    message: "Existem alterações ainda não guardadas. Se mudar de turma agora, serão perdidas. Deseja continuar?",
-                    confirmLabel: "Continuar sem salvar",
-                  });
-                  if (!confirmed) return;
-                }
-                setAutoDraftDirty(false);
-                setAutoProposalSummary(null);
-                setConflictSlots({});
-                setConflictReasons({});
-                setVersaoId(null);
-                setHasSavedDraft(false);
-                setVersionError(null);
-                setTurmaId(nextTurmaId);
-              }}
+              onChange={(event) => void switchTurma(event.target.value || null)}
               className="max-w-xs rounded-xl border-border focus:border-amber focus:ring-amber text-foreground"
             />            {selectedTurma?.sala ? (
               <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">
@@ -1659,7 +1641,7 @@ function QuadroHorariosContent() {
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Save className={`h-4 w-4 ${saving ? "text-amber" : "text-muted-foreground"}`} />
               <span>
-                {saving ? "Salvando..." : autoDraftDirty ? "Alterações não guardadas" : "Alterações prontas"}
+                {saving ? "A guardar..." : autoDraftDirty ? "Alterações por guardar" : "Sem alterações locais"}
               </span>
             </div>
           </div>
@@ -1678,8 +1660,8 @@ function QuadroHorariosContent() {
               <p className="mt-1 text-xl font-bold text-foreground">{disciplinasCompletas}/{aulas.length}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <p className="text-sm text-muted-foreground">Conflitos detectados</p>
-              <p className={`mt-1 text-xl font-bold ${conflitosCount ? "text-rose-600" : "text-foreground"}`}>{conflitosCount}</p>
+              <p className="text-sm text-muted-foreground">Validação de conflitos</p>
+              <p className={`mt-1 text-xl font-bold ${conflitosCount ? "text-rose-600" : "text-foreground"}`}>{conflitosCount > 0 ? conflitosCount : validated ? "Sem conflitos" : "Por validar"}</p>
             </div>
           </div>
         )}
@@ -1694,37 +1676,21 @@ function QuadroHorariosContent() {
             <div className="font-semibold">Alterações por guardar.</div>
             <div className="mt-1">Revise o quadro, ajuste manualmente se necessário e só depois salve ou publique.</div>
             {autoProposalSummary && <div className="mt-2 text-xs font-semibold">{autoProposalSummary.filled} de {autoProposalSummary.total} posições preenchidas{autoProposalSummary.unmet ? ` · ${autoProposalSummary.unmet} pendência(s)` : ""}.</div>}
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => submitQuadro(grid, "draft")}
-                disabled={saving || publishing}
-                className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
-              >
-                {saving ? "Salvando..." : "Salvar agora"}
-              </button>
-            </div>
+
           </div>
         )}
         {!turmaId ? (
-          <div className="flex h-[60vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card">
-            <AlertCircle className="h-10 w-10 text-muted-foreground" />
-            <p className="mt-4 text-sm text-muted-foreground">Selecione uma turma para montar o quadro.</p>
-          </div>
+          <HorariosWorkspace turmas={turmas} loading={baseLoading} error={baseError} onOpen={(id)=>void switchTurma(id)} onRefresh={refreshBaseData}/>
         ) : (
+          <>
+          <div className="mb-3 flex flex-wrap items-center gap-2"><button type="button" disabled={!undoStack.length||saving||publishing||autoScheduling} onClick={undoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Undo2 size={16}/> Desfazer</button><button type="button" disabled={!redoStack.length||saving||publishing||autoScheduling} onClick={redoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Redo2 size={16}/> Refazer</button><button type="button" disabled={!filledSlots||saving||publishing||autoScheduling} onClick={handleClearQuadro} className="rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40">Limpar edição</button></div>
           <SchedulerBoard
             diasSemana={DIAS_SEMANA}
             tempos={horariosDisponiveis}
             aulas={aulasWithAllocations}
             onSalvar={handleSalvar}
             grid={grid}
-            onGridChange={(next) => {
-              setGrid(() => next);
-              setConflictSlots({});
-              setConflictReasons({});
-              setAutoDraftDirty(true);
-              setAutoProposalSummary(null);
-            }}
+            onGridChange={editGrid}
             slotLookup={slotLookup}
             existingAssignments={existingAssignments}
             conflictSlots={conflictSlots}
@@ -1742,6 +1708,7 @@ function QuadroHorariosContent() {
             publishing={publishing}
             busy={isLoading || !!baseError || !!turmaError || !!versionError || !versaoId || saving || publishing || autoScheduling}
           />
+          </>
         )}
 
         {turmaId && (
@@ -1967,14 +1934,7 @@ function QuadroHorariosContent() {
             >
               Adicionar sala
             </button>
-            <button
-              type="button"
-              onClick={handleClearQuadro}
-              disabled={clearingQuadro}
-              className="h-10 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
-            >
-              {clearingQuadro ? "Limpando..." : "Limpar quadro"}
-            </button>
+
           </div>
         ) : null}
       </div>
