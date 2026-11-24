@@ -132,7 +132,6 @@ function QuadroHorariosContent() {
   const [adjustingSlots, setAdjustingSlots] = useState(false);
   const [generatingContraturno, setGeneratingContraturno] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [escolaNome, setEscolaNome] = useState<string>("");
   const [curriculoModalOpen, setCurriculoModalOpen] = useState(false);
   const [curriculoDisciplinas, setCurriculoDisciplinas] = useState<CurriculoDisciplinaItem[]>([]);
   const [curriculoClasses, setCurriculoClasses] = useState<Array<{ id: string; nome: string }>>([]);
@@ -212,20 +211,6 @@ function QuadroHorariosContent() {
     };
   }, [autoDraftDirty]);
 
-  useEffect(() => {
-    if (!escolaId) return;
-    let active = true;
-    fetch(`/api/escolas/${escolaId}/nome`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (!active) return;
-        if (json?.ok && json?.nome) setEscolaNome(json.nome);
-      })
-      .catch(() => null);
-    return () => {
-      active = false;
-    };
-  }, [escolaId]);
 
   useEffect(() => {
     let active = true;
@@ -784,27 +769,6 @@ function QuadroHorariosContent() {
     if (ok) editGrid({});
   };
 
-  const buildGridRows = () => {
-    const rows: Array<{ tempo: string; values: string[] }> = [];
-    const tempoLabels = (horariosDisponiveis ?? []).map((slot) => slot.labelDefault);
-    const sortedTempos = (horariosDisponiveis ?? []).map((slot) => slot.id);
-    const aulaById = new Map(aulas.map((aula) => [aula.id, aula]));
-
-    sortedTempos.forEach((tempoId, index) => {
-      const label = tempoLabels[index] ?? tempoId;
-      const values = DIAS_SEMANA.map((dia) => {
-        const key = `${dia}-${tempoId}`;
-        const disciplinaId = grid[key];
-        if (!disciplinaId) return "";
-        const aula = aulaById.get(disciplinaId);
-        return aula?.sigla || aula?.disciplina || "";
-      });
-      rows.push({ tempo: label, values });
-    });
-
-    return rows;
-  };
-
   const handleDownloadPdf = async () => {
     if (!selectedTurma || !horariosDisponiveis || horariosDisponiveis.length === 0) {
       error("Selecione uma turma e configure os horários.");
@@ -822,61 +786,9 @@ function QuadroHorariosContent() {
   };
 
   const handlePrint = () => {
-    if (!selectedTurma || !horariosDisponiveis || horariosDisponiveis.length === 0) {
-      error("Selecione uma turma e configure os horários.");
-      return;
-    }
-
-    const rows = buildGridRows();
-    const tableRows = rows
-      .map(
-        (row) =>
-          `<tr><td>${row.tempo}</td>${row.values
-            .map((value) => `<td>${value || ""}</td>`)
-            .join("")}</tr>`
-      )
-      .join("");
-
-    const html = `<!DOCTYPE html>
-      <html>
-        <head>
-          <title>Quadro de Horários</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
-            h1 { font-size: 18px; margin-bottom: 4px; }
-            .meta { font-size: 12px; color: #475569; margin-bottom: 12px; }
-            table { width: 100%; border-collapse: collapse; font-size: 11px; }
-            th, td { border: 1px solid #e2e8f0; padding: 6px; text-align: center; }
-            th { background: #f8fafc; }
-            td:first-child { text-align: left; min-width: 90px; }
-          </style>
-        </head>
-        <body>
-          <h1>Quadro de Horários</h1>
-          <div class="meta">${escolaNome || "Escola"} • ${selectedTurma?.curso?.nome ?? "Curso"} • ${selectedTurma?.classe?.nome ?? "Classe"} • ${selectedTurma?.turma_codigo || selectedTurma?.turma_nome || selectedTurma?.nome || "Turma"} • Turno ${turnoLabel}${selectedTurma?.sala ? ` • Sala ${selectedTurma.sala}` : ""}</div>
-          <table>
-            <thead>
-              <tr>
-                <th>Horário</th>
-                ${DIAS_SEMANA.map((dia) => `<th>${dia}</th>`).join("")}
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows}
-            </tbody>
-          </table>
-        </body>
-      </html>`;
-
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
-    if (!printWindow) {
-      error("Não foi possível abrir a janela de impressão.");
-      return;
-    }
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    if (!selectedTurma || horarioStatus !== "publicado") return;
+    const href = `/api/secretaria/turmas/${encodeURIComponent(selectedTurma.id)}/horario/pdf?inline=1`;
+    window.open(href, "_blank", "noopener,noreferrer");
   };
 
   const submitQuadro = async (
@@ -1545,7 +1457,8 @@ function QuadroHorariosContent() {
             </Button>
           </div>
           <HorarioWizard 
-            escolaId={escolaId} 
+            escolaId={escolaId}
+            initialTurno={turnoId}
             onFinish={() => {
               handleSkipWizard(); // Também salva que terminou para não reabrir
               refreshBaseData();
@@ -1585,7 +1498,7 @@ function QuadroHorariosContent() {
               onClick={async () => { if (!autoDraftDirty || await confirm({title:"Alterações por guardar",message:"Guarde o horário antes de alterar a estrutura dos tempos. Pretende continuar sem guardar?",confirmLabel:"Continuar sem guardar"})) { setAutoDraftDirty(false); setShowWizard(true); } }} 
               className="rounded-full gap-2 text-[10px] font-black uppercase tracking-widest border-2 border-border h-9"
             >
-              <Wand2 className="w-3.5 h-3.5" /> Configurar base
+              <Wand2 className="w-3.5 h-3.5" /> Configurar tempos e salas
             </Button>
             <Select
               value={turmaId ?? ""}
@@ -1616,7 +1529,7 @@ function QuadroHorariosContent() {
               className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted"
             >
               <Printer className="h-3 w-3" />
-              Imprimir
+              Abrir PDF para imprimir
             </button>
             {isLoading ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1670,7 +1583,7 @@ function QuadroHorariosContent() {
         {turmaId && !isLoading && !Object.keys(slotLookup).length && (
           <div className="mb-4 rounded-xl border border-border bg-card p-4 text-sm">
             <p className="font-semibold">Ainda não existem tempos para o turno desta turma.</p>
-            <Link href={slotsHref} className="mt-2 inline-block font-semibold underline">Configurar tempos do turno</Link>
+            <button type="button" onClick={()=>setShowWizard(true)} className="mt-2 inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-2 text-sm font-semibold text-white">Configurar tempos do turno</button>
           </div>
         )}
         {autoDraftDirty && turmaId && (
