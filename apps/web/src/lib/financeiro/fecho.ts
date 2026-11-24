@@ -84,6 +84,7 @@ export async function getFechoCaixaData({
     .select("papel")
     .eq("escola_id", escolaId)
     .eq("user_id", user.id)
+    .eq("tenant_type","k12")
     .maybeSingle();
 
   const papel = String((vinc as any)?.papel ?? "").toLowerCase();
@@ -109,15 +110,20 @@ export async function getFechoCaixaData({
     .eq("escola_id", escolaId)
     .eq("day_key", dateStr)
     .eq("status", "settled")
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
 
   if (operadorFilter) {
     pagamentosQuery = pagamentosQuery.eq("created_by", operadorFilter);
   }
 
-  const { data: rows, error } = await pagamentosQuery;
-  if (error) {
-    return { ok: false, error: error.message };
+  const rows: any[] = [];
+  for(let offset=0;;offset+=500){
+    const {data:page,error}=await pagamentosQuery.range(offset,offset+499);
+    if(error)return {ok:false,error:error.message};
+    rows.push(...(page??[]));
+    if(rows.length>5000)return {ok:false,error:"Volume elevado. Consulte o fecho consolidado."};
+    if(!page||page.length<500)break;
   }
 
   const alunoIds = Array.from(new Set((rows || []).map((row: any) => row.aluno_id).filter(Boolean)));
