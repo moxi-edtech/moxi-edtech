@@ -147,7 +147,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       anoLetivoId: academicContext.anoLetivoId,
     })
 
-    const { data: previousPublishedVersion } = await supabase
+    const { data: previousPublishedVersion, error: previousPublishedError } = await supabase
       .from('horario_versoes')
       .select('id')
       .eq('escola_id', escolaIdResolved)
@@ -157,6 +157,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .limit(1)
       .maybeSingle()
 
+    if (previousPublishedError) return NextResponse.json({ ok: false, error: 'Não foi possível consultar a versão publicada.' }, { status: 503 })
     const mode = parsed.data.mode ?? 'draft'
     if (mode === 'publish' && parsed.data.items.length === 0) {
       return NextResponse.json({ ok: false, error: 'Adicione pelo menos uma aula antes de publicar.' }, { status: 400 })
@@ -180,11 +181,29 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         entidade_id: parsed.data.turma_id,
       }).catch(() => null)
 
+    // A published version is a snapshot, never the editor's write target.
+    // Resolve the source under the exact tenant/turma before creating a draft.
+    const sourceVersionId = parsed.data.versao_id ?? previousPublishedVersion?.id ?? null
+    let sourceStatus: string | null = null
+    if (sourceVersionId) {
+      const { data: sourceVersion, error: sourceError } = await supabase
+        .from('horario_versoes')
+        .select('id, status')
+        .eq('escola_id', escolaIdResolved)
+        .eq('turma_id', parsed.data.turma_id)
+        .eq('id', sourceVersionId)
+        .maybeSingle()
+      if (sourceError || !sourceVersion || !['draft', 'publicada'].includes(sourceVersion.status)) {
+        return NextResponse.json({ ok: false, error: 'Versão desactualizada. Recarregue o horário.' }, { status: 409 })
+      }
+      sourceStatus = sourceVersion.status
+    }
+    // Keep the old publication available while editing or validating its replacement.
     const { data: versionIdFromDb, error: ensureVersionError } = await supabase.rpc('ensure_horario_versao', {
       p_escola_id: escolaIdResolved,
       p_turma_id: parsed.data.turma_id,
-      p_versao_id: parsed.data.versao_id ?? null,
-      p_status: mode === 'publish' ? 'draft' : mode,
+      p_versao_id: sourceStatus === 'draft' ? sourceVersionId : null,
+      p_status: 'draft',
     })
 
     if (ensureVersionError || !versionIdFromDb) {
@@ -192,16 +211,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ ok: false, error: ensureVersionError?.message || 'Falha ao garantir versão' }, { status: 400 })
     }
 
-    const versaoId = String(versionIdFromDb)
+    let versaoId = String(versionIdFromDb)
 
-    const { data: previousRows } = await supabase
+    const { data: previousRows, error: previousRowsError } = await supabase
       .from('quadro_horarios')
       .select('slot_id, disciplina_id, professor_id, sala_id, versao_id')
       .eq('escola_id', escolaIdResolved)
       .eq('turma_id', parsed.data.turma_id)
-      .eq('versao_id', versaoId)
+      .eq('versao_id', sourceVersionId ?? versaoId)
       .limit(200)
 
+    if (previousRowsError) return NextResponse.json({ ok: false, error: 'Não foi possível preservar o horário anterior.' }, { status: 503 })
     const previousBySlot = new Map((previousRows || []).map((row: { slot_id: string; sala_id?: string | null }) => [row.slot_id, row]))
     const payload = parsed.data.items.map((item) => ({
       escola_id: escolaIdResolved,
@@ -384,10 +404,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     })
 
     if (upsertError) {
+      const conflict = /conflito|HORARIO_CONFLICT|HORARIO_STALE/i.test(upsertError.message || '')
+      if (conflict) return NextResponse.json({ ok: false, error: upsertError.message }, { status: 409 })
       emitObs('error', 400, { error_code: 'UPSERT_QUADRO_FAILED' })
       return NextResponse.json({ ok: false, error: upsertError.message }, { status: 400 })
     }
 
+    versaoId = String((upsertResult as { versao_id?: string } | null)?.versao_id ?? versaoId)
     const { data, error: selectError } = await supabase
       .from('quadro_horarios')
       .select('id, turma_id, disciplina_id, professor_id, sala_id, slot_id, versao_id')
