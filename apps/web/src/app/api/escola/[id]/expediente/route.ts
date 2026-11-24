@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { daySchema, expedienteAccess, getExpediente, todayLuanda } from "@/lib/secretaria/expediente";
+import { daySchema, expedienteAccess, getExpediente, getExpedienteHistory, todayLuanda } from "@/lib/secretaria/expediente";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,12 +19,22 @@ export async function GET(req: Request, { params }: Context) {
     const date = daySchema.safeParse(url.searchParams.get("date") ?? todayLuanda());
     const cursor = Number(url.searchParams.get("cursor") ?? 0);
     if (!date.success || date.data > todayLuanda() || !Number.isSafeInteger(cursor) || cursor < 0) return json({ ok: false, error: "Filtro inválido." }, 400);
-    if (url.searchParams.get("view") === "summary") {
-      const { data, error } = await access.supabase.from("secretaria_expedientes").select("closed_at,operation_count").eq("escola_id",access.escolaId).eq("day_key",date.data).maybeSingle();
-      if(error) return json({ok:false,error:"Falha ao consultar estado."},500);
-      return json({ok:true,closed:data,canClose:access.canClose});
+    const view=url.searchParams.get("view");
+    if(view==="history"||view==="supervision"){
+      if(view==="supervision"&&!access.canSupervise)return json({ok:false,error:"Sem acesso à supervisão."},403);
+      const end=daySchema.safeParse(url.searchParams.get("to")??todayLuanda());
+      const start=daySchema.safeParse(url.searchParams.get("from")??todayLuanda().slice(0,8)+"01");
+      if(!start.success||!end.success||end.data>todayLuanda()||start.data>end.data||Date.parse(end.data)-Date.parse(start.data)>30*86400000)return json({ok:false,error:"Selecione um período de até 31 dias."},400);
+      return json({ok:true,...await getExpedienteHistory(access,start.data,end.data)});
     }
-    return json({ ok: true, date: date.data, ...await getExpediente(access, date.data, cursor) });
+    if (view === "summary") {
+      const [close,cash]=await Promise.all([access.supabase.from("secretaria_expedientes").select("closed_at,operation_count").eq("escola_id",access.escolaId).eq("day_key",date.data).maybeSingle(),access.supabase.from("fecho_caixa").select("status").eq("escola_id",access.escolaId).eq("day_key",date.data).maybeSingle()]);
+      if(close.error||cash.error)return json({ok:false,error:"Falha ao consultar estado."},500);
+      return json({ok:true,closed:close.data,cashStatus:cash.data?.status??null,canClose:access.canClose});
+    }
+    const filters=z.object({entity:z.string().regex(/^[a-z_]{1,64}$/).optional(),actor:z.union([z.literal("system"),z.string().uuid()]).optional(),late:z.enum(["1","0"]).optional()}).safeParse({entity:url.searchParams.get("entity")??undefined,actor:url.searchParams.get("actor")??undefined,late:url.searchParams.get("late")??undefined});
+    if(!filters.success)return json({ok:false,error:"Filtro inválido."},400);
+    return json({ ok: true, date: date.data, ...await getExpediente(access, date.data, cursor,{entity:filters.data.entity,actor:filters.data.actor,late:filters.data.late==="1"}) });
   } catch { return json({ ok: false, error: "Não foi possível consultar o expediente." }, 500); }
 }
 export async function POST(req: Request, { params }: Context) {
