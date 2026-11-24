@@ -61,15 +61,15 @@ export default function PrintTrigger({ showManualButton = false, autoPrint = tru
   if (autoPrint && !showManualButton) return null;
 
   return (
-    <div className="fixed right-4 top-4 z-[100] flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg print:hidden" role="group" aria-label={autoPrint ? "Impressão do recibo" : "Impressão do documento"}>
-      <span className="text-xs text-slate-700">{autoPrint ? "A impressão não abriu?" : "Documento pronto para impressão"}</span>
+    <div className="fixed right-4 top-4 z-[100] flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3 shadow-lg print:hidden" role="group" aria-label={autoPrint ? "Impressão do recibo" : "Impressão do documento"}>
+      <span className="text-xs text-muted-foreground">{autoPrint ? "A impressão não abriu?" : "Documento pronto para impressão"}</span>
       <button
         type="button"
         onClick={() => {
           manuallyRequested.current = true;
           window.print();
         }}
-        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#1F6B3B] px-4 py-2 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F6B3B]"
+        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
       >
         <Printer className="h-4 w-4" aria-hidden="true" />
         {autoPrint ? "Imprimir recibo" : "Imprimir documento"}
