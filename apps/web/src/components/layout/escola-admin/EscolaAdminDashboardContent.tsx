@@ -442,7 +442,7 @@ export default function EscolaAdminDashboardContent({
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="min-w-0 space-y-5 pb-8 min-[1700px]:space-y-8 min-[1700px]:pb-12" style={isOperacoes ? { containerType: "inline-size" } : undefined}
+      className={isOperacoes ? "operations-dashboard-flow min-w-0 pb-10" : "min-w-0 space-y-5 pb-8 min-[1700px]:space-y-8 min-[1700px]:pb-12"} style={isOperacoes ? { containerType: "inline-size" } : undefined}
     >
 
       {/* ── 1. HEADER ────────────────────────────────────────────────────────── */}
@@ -478,7 +478,7 @@ export default function EscolaAdminDashboardContent({
 
       {/* Na secretaria, contexto e pendências formam uma única região de leitura.
           Não alteramos os componentes, os links ou o modo Administração. */}
-      <div className={isOperacoes ? "space-y-3" : "contents"}>
+      <div className={isOperacoes ? "space-y-4 empty:hidden" : "contents"}>
         {estadoVital && (
           <motion.div variants={itemVariants} className="min-w-0">
             <EstadoVitalBanner estado={estadoVital} compact={isOperacoes} calendarHref={isOperacoes ? buildPortalHref(escolaParam, "/operacoes/calendario") : undefined} />
@@ -513,12 +513,12 @@ export default function EscolaAdminDashboardContent({
           afterCounters={
             <>
               <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
-              <section aria-label="Visão geral da escola" className="space-y-3">
-                <h2 className="text-sm font-semibold text-foreground">Visão geral da escola</h2>
+              <section aria-label="Visão geral da escola" className="space-y-4">
+                <h2 className="text-base font-semibold text-foreground">Visão geral da escola</h2>
                 {kpiSection}
               </section>
               {hasMovimentoReceita && (
-                <section aria-label="Recebido neste mês" className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <section aria-label="Recebido neste mês" className="rounded-xl border border-border bg-card p-5 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-sm font-medium text-muted-foreground">Recebido neste mês (caixa)</h2>
                     <button ref={revenueTriggerRef} type="button" aria-haspopup="dialog" aria-expanded={revenueDetailsOpen} onClick={() => setRevenueDetailsOpen(true)} className="text-sm font-medium text-emerald underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">

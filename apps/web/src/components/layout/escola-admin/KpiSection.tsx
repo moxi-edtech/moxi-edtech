@@ -73,7 +73,7 @@ export default function KpiSection({
 
   // Keep the loading skeleton in the same column structure as the final KPIs.
   const gridClasses = mode === "operacoes"
-    ? "operations-kpi-grid grid gap-3"
+    ? "operations-kpi-grid grid"
     : "grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1280px]:grid-cols-4 min-[1700px]:gap-4";
 
   if (error) {
@@ -88,7 +88,7 @@ export default function KpiSection({
   if (loading) {
     return (
       <div className={gridClasses}>
-        {Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)}
+        {Array.from({ length: 4 }).map((_, i) => mode === "operacoes" ? <div key={i} className="operations-metric-summary motion-safe:animate-pulse rounded-xl border border-border bg-card" /> : <KpiSkeleton key={i} />)}
       </div>
     );
   }
@@ -122,7 +122,7 @@ export default function KpiSection({
           value: s.alunos,
           icon: Users,
           href: portalHref("alunos"),
-          variant: turmasOk ? ("brand" as const) : ("warning" as const),
+          variant: "brand" as const,
           trend: undefined,
           chartData: undefined,
           description: undefined,

@@ -40,6 +40,7 @@ export default function ExpedienteDashboardCard({escolaId,portal}:{escolaId:stri
    icon={<CalendarCheck className="h-5 w-5"/>}
    label="Fecho diário"
    dashboardCompact={portal==="operacoes"}
+   needsAttention={portal==="operacoes" && ((summary?.pendingCount??0)>0 || (summary?.rejectedCount??0)>0)}
    sublabel={portal==="secretaria"?(summary?.rejectedCount?"Caixa a regularizar":summary?.closed?"Expediente fechado":summary?"Expediente por fechar":"Gerir expediente"):(summary?.pendingCount?summary.pendingCount+" por validar":summary?.rejectedCount?summary.rejectedCount+" a regularizar":"Gerir fechos")}
    onClick={openWorkspace}
    buttonRef={triggerRef}

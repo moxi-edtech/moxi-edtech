@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { operationalCardTone, operationalCardIconClasses } from "@/lib/ui/operational-card-tone";
 import type { ReactNode, Ref } from "react";
 import { ChevronRight, Lock } from "lucide-react";
 
@@ -14,6 +15,8 @@ type AcaoRapidaCardProps = {
   disabledReason?: string;
   compact?: boolean;
   dashboardCompact?: boolean;
+  /** A confirmed operational pending item, independent of the legacy static variant. */
+  needsAttention?: boolean;
   variant?: "green" | "yellow";
 };
 
@@ -29,6 +32,7 @@ export default function AcaoRapidaCard({
   disabledReason,
   compact = false,
   dashboardCompact = false,
+  needsAttention = false,
   variant = "green",
 }: AcaoRapidaCardProps) {
   const colorClasses = variant === "yellow"
@@ -36,10 +40,11 @@ export default function AcaoRapidaCard({
     : "bg-emerald/10 text-emerald dark:text-emerald-300";
 
   if (dashboardCompact) {
-    const className = "group flex h-full min-h-[80px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    const tone = operationalCardTone({ unavailable: disabled, needsAttention });
+    const className = "group flex h-full min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
     const content = (
       <>
-        <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+        <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl [&>svg]:size-4 ${operationalCardIconClasses[tone]}`}>
           {disabled ? <Lock className="h-4 w-4" /> : icon}
         </span>
         <span className="min-w-0 flex-1">

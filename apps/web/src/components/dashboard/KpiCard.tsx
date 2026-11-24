@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { operationalCardTone, operationalCardIconClasses } from "@/lib/ui/operational-card-tone";
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { TrendingUp, TrendingDown, ArrowRight, ChevronRight } from "lucide-react";
@@ -64,20 +65,24 @@ export function KpiCard({
   }[variant];
 
   if (compact) {
+    const unavailable = value == null || (typeof value === "number" && !Number.isFinite(value));
+    const tone = operationalCardTone({ unavailable, needsAttention: variant === "warning" });
     const content = (
       <>
-        <div className="flex items-start justify-between gap-2">
-          <span className="text-sm font-medium text-muted-foreground">{label}</span>
-          <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="operations-metric-header">
+          <span className="min-w-0 break-words text-sm font-medium leading-5 text-muted-foreground">{label}</span>
+          <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${operationalCardIconClasses[tone]}`}>
+            <Icon className="h-4 w-4" />
+          </span>
         </div>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <span className={`text-2xl font-semibold tabular-nums ${variant === "warning" ? "text-amber-700 dark:text-amber-300" : "text-foreground"}`}>{typeof value === "number" ? value.toLocaleString("pt-AO") : value ?? "—"}</span>
+        <div className="operations-metric-value">
+          <span className={`text-2xl font-semibold tabular-nums ${tone === "attention" ? "text-amber-700 dark:text-amber-300" : "text-foreground"}`}>{unavailable ? "—" : typeof value === "number" ? value.toLocaleString("pt-AO") : value}</span>
           {href && <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />}
         </div>
-        {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
+        <div className="min-h-4 text-xs leading-4 text-muted-foreground">{description}</div>
       </>
     );
-    const className = "flex h-full min-w-0 flex-col justify-between rounded-xl border border-border bg-card p-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    const className = "operations-metric-card operations-metric-summary rounded-xl border border-border bg-card p-4 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
     return href ? <Link href={href} className={className + " hover:border-ring"}>{content}</Link> : <div className={className}>{content}</div>;
   }
 

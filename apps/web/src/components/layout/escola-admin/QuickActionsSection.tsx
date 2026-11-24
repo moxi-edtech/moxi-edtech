@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { HorarioDataProvider } from "@/components/escola/horarios/HorarioDataProvider";
 import { Button } from "@/components/ui/Button";
-import { PlusCircle, UserPlus, FileText, Megaphone, Calendar, Table2, Wallet, UploadCloud } from "lucide-react";
+import { PlusCircle, UserPlus, FileText, Megaphone, Calendar, Table2, Wallet } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
 import AvisosNovoPage from "@/app/escola/[id]/(portal)/admin/avisos/novo/page";
 import EventosPage from "@/app/escola/[id]/(portal)/eventos/page";
@@ -82,27 +82,6 @@ export default function QuickActionsSection({
 
   const actions: QuickAction[] = portalBase === "operacoes"
     ? [
-        {
-          key: "funcionario",
-          label: "Nova Matrícula",
-          icon: UserPlus,
-          href: buildPortalHref(escolaParam, "/operacoes/matriculas/nova"),
-          variant: "green",
-        },
-        {
-          key: "nota",
-          label: "Nova Admissão",
-          icon: FileText,
-          href: buildPortalHref(escolaParam, "/operacoes/admissoes/nova"),
-          variant: "green",
-        },
-        {
-          key: "aviso",
-          label: "Importar Alunos",
-          icon: UploadCloud,
-          href: buildPortalHref(escolaParam, "/operacoes/importacoes"),
-          variant: "green",
-        },
         {
           key: "recebimentos",
           label: "Recebimentos",
@@ -208,7 +187,7 @@ export default function QuickActionsSection({
 
   return (
     <section className={portalBase === "operacoes" ? "min-w-0" : "rounded-xl border border-border bg-card p-5 shadow-sm"}>
-      {portalBase === "operacoes" ? <h2 className="mb-3 text-sm font-semibold text-foreground">Ações rápidas</h2> : <header className="mb-5">
+      {portalBase === "operacoes" ? <h2 className="mb-4 text-base font-semibold text-foreground">Ações rápidas</h2> : <header className="mb-5">
         <SecaoLabel className="text-emerald">Atalhos do portal</SecaoLabel>
         <div className="mt-1 flex items-center gap-2.5">
           <div className="rounded-lg bg-emerald/10 p-2 text-emerald">
@@ -218,7 +197,7 @@ export default function QuickActionsSection({
         </div>
       </header>}
 
-      <div className={portalBase === "operacoes" ? "operations-actions-grid grid gap-3" : "grid grid-cols-2 gap-3 sm:grid-cols-3 min-[1280px]:grid-cols-5"}>
+      <div className={portalBase === "operacoes" ? "operations-actions-grid grid" : "grid grid-cols-2 gap-3 sm:grid-cols-3 min-[1280px]:grid-cols-5"}>
         <ExpedienteDashboardCard escolaId={escolaId} portal={portalBase} />
         {actions.map((action) => (
           <AcaoRapidaCard
