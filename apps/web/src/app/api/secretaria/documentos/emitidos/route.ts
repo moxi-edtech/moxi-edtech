@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     if (!Number.isSafeInteger(page) || page < 1 || page > 10000) return NextResponse.json({ ok: false, error: "Página inválida" }, { status: 400 });
     const tipo = params.get("tipo");
     if (tipo && !(TIPOS_DOCUMENTO_EMITIVEL as readonly string[]).includes(tipo)) return NextResponse.json({ ok: false, error: "Tipo inválido" }, { status: 400 });
-    let query = supabase.from("documentos_emitidos").select("id, aluno_id, tipo, public_id, created_at, dados_snapshot->>ano_letivo", { count: "exact" })
+    let query = supabase.from("documentos_emitidos").select("id, aluno_id, tipo, public_id, created_at, ano_letivo:dados_snapshot->>ano_letivo", { count: "exact" })
       .eq("escola_id", escolaId).in("tipo", [...TIPOS_DOCUMENTO_EMITIVEL]);
     if (tipo) query = query.eq("tipo", tipo);
     const search = (params.get("q") ?? "").trim().slice(0, 100);
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     const ids = [...new Set((data ?? []).map((doc: any) => doc.aluno_id).filter(Boolean))];
     const { data: alunos, error: alunoError } = ids.length ? await supabase.from("alunos").select("id,nome,nome_completo").eq("escola_id", escolaId).in("id", ids) : { data: [], error: null };
     if (alunoError) throw alunoError;
-    const names = new Map<string, string>((alunos ?? []).map((aluno: any) => [aluno.id, aluno.nome_completo || aluno.nome]));
+    const names = new Map<string, string>((alunos ?? []).map((aluno: any) => [String(aluno.id), String(aluno.nome_completo || aluno.nome || "Aluno")] as [string, string]));
     return NextResponse.json({ ok: true, total: count ?? 0, items: (data ?? []).map((doc: any) => ({
       id: doc.id, tipo: doc.tipo, aluno: names.get(doc.aluno_id) ?? "Aluno", publicId: doc.public_id,
       ano: doc.ano_letivo, criadoEm: doc.created_at, printUrl: docPrintUrl(doc.id, doc.tipo),

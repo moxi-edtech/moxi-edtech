@@ -52,7 +52,7 @@ BEGIN
  PERFORM public.emitir_documento_final('00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007105',2026,'certificado');
 END; $$;
 RESET ROLE;
-DO $
+DO $$
 DECLARE v_id uuid;
 BEGIN
  IF has_function_privilege('authenticated','public._documento_individual_politica(uuid,uuid,uuid,text,uuid)','EXECUTE')
@@ -67,5 +67,5 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL;
  END;
 END;
-$;
+$$;
 ROLLBACK;
