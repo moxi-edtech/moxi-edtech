@@ -50,6 +50,7 @@ export const sidebarConfig: SidebarConfig = {
   ],
   operacoes: [
     { href: "/escola/[escolaId]/operacoes/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+    { href: "/escola/[escolaId]/operacoes/fecho-diario", label: "Fecho diário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/operacoes/alunos", label: "Alunos", icon: "Users" },
     {
       href: "/escola/[escolaId]/operacoes/matriculas",
@@ -105,7 +106,6 @@ export const sidebarConfig: SidebarConfig = {
       icon: "CalendarDays",
       children: [
         { href: "/escola/[escolaId]/operacoes/horarios/quadro", label: "Quadro de horários" },
-        { href: "/escola/[escolaId]/operacoes/horarios/slots", label: "Tempos e turnos" },
         { href: "/escola/[escolaId]/operacoes/calendario", label: "Calendário escolar" },
       ],
     },
@@ -208,6 +208,7 @@ export const sidebarConfig: SidebarConfig = {
   ],
   admin: [
     { href: "/escola/[escolaId]/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+    { href: "/escola/[escolaId]/admin/fecho-diario", label: "Fecho diário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/admin/alunos", label: "Alunos", icon: "Users" },
     {
       href: "/escola/[escolaId]/secretaria/admissoes",
@@ -296,7 +297,7 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/escola/[escolaId]/secretaria/rematricula/reconciliacao", label: "Pendências de reconciliação", badge: "Resolver" },
       ],
     },
-    { href: "/escola/[escolaId]/secretaria/fecho", label: "Fecho de Caixa", icon: "Lock" },
+    { href: "/escola/[escolaId]/secretaria/fecho-diario", label: "Fecho diário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/secretaria/recebimentos", label: "Recebimentos", icon: "Wallet" },
     { href: "/escola/[escolaId]/secretaria/acesso", label: "Acesso ao Portal", icon: "KeyRound" },
     { href: "/escola/[escolaId]/admin/comunicacao/whatsapp", label: "WhatsApp KLASSE", icon: "MessageSquare" },
@@ -315,7 +316,6 @@ export const sidebarConfig: SidebarConfig = {
       icon: "CalendarClock",
       children: [
         { href: "/escola/[escolaId]/horarios/quadro", label: "Quadro de horários" },
-        { href: "/escola/[escolaId]/horarios/slots", label: "Tempos e turnos" },
       ],
     },
     { href: "/escola/[escolaId]/secretaria/calendario", label: "Calendário", icon: "CalendarDays" },

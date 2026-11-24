@@ -132,3 +132,10 @@ $$;
 CREATE TRIGGER fixture_mensalidades_ledger
   AFTER INSERT OR UPDATE ON public.mensalidades
   FOR EACH ROW EXECUTE FUNCTION public.fixture_ledger_on_mensalidade();
+
+-- Real family engine dependencies and a privileged test-only actor.
+ALTER TABLE public.matriculas ADD COLUMN session_id uuid;
+CREATE TABLE public.financeiro_agregados_familiares(id uuid PRIMARY KEY, escola_id uuid NOT NULL);
+CREATE TABLE public.financeiro_agregados_membros(agregado_id uuid NOT NULL, aluno_id uuid NOT NULL);
+CREATE TABLE public.financeiro_politicas_desconto_familiar(escola_id uuid, ano_letivo_id uuid, ativo boolean, minimo_filhos integer, percentagem numeric);
+CREATE FUNCTION public.check_super_admin_role() RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT true $$;

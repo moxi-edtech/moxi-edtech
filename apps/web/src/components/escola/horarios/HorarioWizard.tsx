@@ -1,154 +1,33 @@
 "use client";
-
-import React, { useState } from "react";
-import { 
-  CheckCircle2, 
-  ChevronRight, 
-  ChevronLeft,
-  School, 
-  Clock, 
-  LayoutDashboard,
-  Zap,
-  ShieldCheck,
-  Wand2
-} from "lucide-react";
+import { useState } from "react";
+import { Clock, School, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-
 import { StepSalas } from "./wizard/StepSalas";
 import { StepSlots } from "./wizard/StepSlots";
-
-type Step = {
-  id: number;
-  title: string;
-  description: string;
-  icon: React.ElementType;
-};
-
-const STEPS: Step[] = [
-  { id: 0, title: "Ambientes", description: "Salas e espaços de aprendizagem.", icon: School },
-  { id: 1, title: "Horários", description: "Estrutura de tempos e turnos.", icon: Clock },
-  { id: 2, title: "Quadro", description: "Montagem e ajustes operacionais da grade.", icon: LayoutDashboard },
-];
 
 interface HorarioWizardProps {
   escolaId: string;
   onFinish?: () => void;
   initialStep?: number;
+  initialTurno?: string | null;
+  embedded?: boolean;
+  onBusyChange?: (busy:boolean)=>void;
 }
 
-export function HorarioWizard({ escolaId, onFinish, initialStep = 0 }: HorarioWizardProps) {
-  const [currentStep, setCurrentStep] = useState(initialStep);
-  const [loading, setLoading] = useState(false);
-  const canProceed = true;
-
-  const handleNext = () => {
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep(prev => prev + 1);
-    } else {
-      onFinish?.();
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
-  };
-
-  return (
-    <div className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm">
-      {/* Header */}
-      <div className="mb-10 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-foreground tracking-tight">Configurar base do horário</h1>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">Defina apenas a estrutura-base. Cargas, professores e sala da turma ficam no próprio quadro.</p>
-        </div>
-        <div className="h-12 w-12 rounded-2xl bg-amber/10 border border-amber/20 flex items-center justify-center">
-            <Zap className="h-6 w-6 text-amber" />
-        </div>
-      </div>
-
-      {/* Stepper Visual */}
-      <div className="mb-12 flex items-center justify-between px-4 overflow-x-auto pb-6 scrollbar-hide">
-        {STEPS.map((step, index) => (
-          <div key={step.id} className="flex flex-1 items-center last:flex-none min-w-[120px]">
-            <div className="flex flex-col items-center gap-3">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border-2 transition-all duration-300 ${
-                currentStep > index ? "border-emerald-500 bg-emerald-50 text-emerald-600 shadow-sm" :
-                currentStep === index ? "border-amber bg-amber/10 text-amber shadow-md ring-4 ring-amber/10" :
-                "border-border text-muted-foreground"
-              }`}>
-                {currentStep > index ? <CheckCircle2 className="h-6 w-6" /> : <step.icon className="h-5 w-5" />}
-              </div>
-              <span className={`text-[10px] font-black uppercase tracking-widest text-center ${currentStep === index ? "text-foreground" : "text-muted-foreground"}`}>
-                {step.title}
-              </span>
-            </div>
-            {index < STEPS.length - 1 && (
-              <div className={`mx-4 h-[2px] flex-1 rounded-full ${currentStep > index ? "bg-emerald-500" : "bg-muted"}`} />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Conteúdo do Passo */}
-      <div className="mb-10 min-h-[400px] rounded-3xl border border-border bg-muted/40 p-6 md:p-10 relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-64 w-64 rounded-full bg-card/40 blur-3xl pointer-events-none" />
-        
-        <div className="w-full relative z-10">
-          {currentStep === 0 && (
-            <StepSalas escolaId={escolaId} onComplete={() => handleNext()} />
-          )}
-          {currentStep === 1 && (
-            <StepSlots escolaId={escolaId} onComplete={() => handleNext()} />
-          )}
-          {currentStep === 2 && (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="h-20 w-20 rounded-full bg-emerald-50 flex items-center justify-center mb-6">
-                <LayoutDashboard className="h-10 w-10 text-emerald-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-black text-foreground">Base pronta</h3>
-              <p className="mb-8 max-w-md mx-auto text-sm text-muted-foreground">
-                Ambientes e slots estão configurados. Continue no quadro para distribuir aulas, ajustar cargas, atribuir professores, definir sala e publicar.
-              </p>
-              <Button tone="gold" size="lg" onClick={onFinish} className="font-black gap-2">
-                Ir para o Quadro <Wand2 className="w-5 h-5" />
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="flex justify-between border-t border-border pt-8">
-        <Button 
-          tone="gray" 
-          variant="ghost" 
-          className="h-12 px-8 font-bold rounded-2xl"
-          disabled={currentStep === 0 || loading}
-          onClick={handleBack}
-        >
-          <ChevronLeft className="mr-2 h-5 w-5" /> Voltar
-        </Button>
-        
-        {currentStep < STEPS.length - 1 && (
-          <Button 
-            tone="gold" 
-            className="h-12 px-10 gap-2 font-black rounded-2xl shadow-lg shadow-amber/20"
-            loading={loading}
-            disabled={!canProceed}
-            onClick={handleNext}
-          >
-            Próximo passo <ChevronRight className="ml-2 h-5 w-5" />
-          </Button>
-        )}
-      </div>
-
-      {/* Footer Guard */}
-      <div className="mt-8 flex items-center justify-center gap-2.5 py-3 px-6 rounded-2xl bg-muted/50 border border-border w-fit mx-auto">
-        <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ambiente de Operação Segura • Klasse Timetable v2</span>
-      </div>
+// Configuration is a workspace, not a mandatory sequence. Rooms are optional.
+export function HorarioWizard({escolaId,onFinish,initialStep=1,initialTurno,embedded=false,onBusyChange}:HorarioWizardProps){
+  const [tab,setTab]=useState(initialStep===0?"salas":"tempos");
+  const [busy,setBusy]=useState(false);
+  const notifyBusy=(value:boolean)=>{setBusy(value);onBusyChange?.(value)};
+  return <section className={embedded?"font-sora":"rounded-xl border border-border bg-card p-5 md:p-6 font-sora"}>
+    {!embedded&&<div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div><h1 className="text-xl font-semibold text-klasse-green">Configurar tempos e salas</h1><p className="text-sm text-muted-foreground">Os tempos são partilhados pelas turmas do turno. As salas são opcionais.</p></div>
+      <Button variant="outline" onClick={onFinish} disabled={busy} className="gap-2"><ArrowLeft size={16}/> Voltar aos horários</Button>
+    </div>}
+    <div role="tablist" aria-label="Configuração" className="mb-5 flex gap-2 border-b border-border pb-3">
+      <button type="button" role="tab" aria-selected={tab==="tempos"} disabled={busy} onClick={()=>setTab("tempos")} className={"inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold "+(tab==="tempos"?"bg-klasse-gold/15 text-foreground":"text-muted-foreground")}><Clock size={16}/> Tempos dos turnos</button>
+      <button type="button" role="tab" aria-selected={tab==="salas"} disabled={busy} onClick={()=>setTab("salas")} className={"inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold "+(tab==="salas"?"bg-klasse-gold/15 text-foreground":"text-muted-foreground")}><School size={16}/> Salas (opcional)</button>
     </div>
-  );
+    <div role="tabpanel">{tab==="tempos"?<StepSlots escolaId={escolaId} initialTurno={initialTurno} onBusyChange={notifyBusy} onComplete={()=>onFinish?.()}/>:<StepSalas escolaId={escolaId} onBusyChange={notifyBusy} onComplete={()=>setTab("tempos")}/>}</div>
+  </section>;
 }

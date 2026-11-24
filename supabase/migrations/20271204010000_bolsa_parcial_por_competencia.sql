@@ -223,4 +223,381 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.klasse_definir_bolsa_parcial(uuid,uuid,uuid,numeric,text,date,boolean,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.klasse_definir_bolsa_parcial(uuid,uuid,uuid,numeric,text,date,boolean,text) TO authenticated;
+-- Scholarship and family discounts cannot be stacked. Skip scholarship history
+-- on the original family engine, without interrupting other family members.
+CREATE OR REPLACE FUNCTION public.aplicar_desconto_familiar_interno(p_escola_id uuid, p_ano_letivo_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_matricula record;
+  v_total integer;
+  v_percent numeric;
+  v_aplicados integer := 0;
+  v_mensalidades integer := 0;
+  v_changed integer;
+BEGIN
+  FOR v_matricula IN
+    SELECT m.id, m.aluno_id, af.id AS agregado_id,
+           COALESCE(m.motivo_desconto, '') AS motivo_desconto
+    FROM public.matriculas m
+    JOIN public.financeiro_agregados_membros am ON am.aluno_id = m.aluno_id
+    JOIN public.financeiro_agregados_familiares af
+      ON af.id = am.agregado_id AND af.escola_id = m.escola_id
+    WHERE m.escola_id = p_escola_id
+      AND m.session_id = p_ano_letivo_id
+      AND m.status IN ('ativa', 'ativo', 'active', 'matriculado')
+      AND NOT m.bolsa_integral AND m.bolsa_parcial_periodos='[]'::jsonb
+    ORDER BY m.id
+  LOOP
+    SELECT COUNT(DISTINCT m2.aluno_id)::integer INTO v_total
+    FROM public.matriculas m2
+    JOIN public.financeiro_agregados_membros am2 ON am2.aluno_id = m2.aluno_id
+    WHERE am2.agregado_id = v_matricula.agregado_id
+      AND m2.escola_id = p_escola_id
+      AND m2.session_id = p_ano_letivo_id
+      AND m2.status IN ('ativa', 'ativo', 'active', 'matriculado');
+
+    SELECT p.percentagem INTO v_percent
+    FROM public.financeiro_politicas_desconto_familiar p
+    WHERE p.escola_id = p_escola_id AND p.ano_letivo_id = p_ano_letivo_id
+      AND p.ativo AND p.minimo_filhos <= v_total
+    ORDER BY p.minimo_filhos DESC LIMIT 1;
+    v_percent := COALESCE(v_percent, 0);
+
+    IF v_matricula.motivo_desconto <> ''
+       AND v_matricula.motivo_desconto NOT LIKE 'Desconto familiar automático%' THEN
+      CONTINUE;
+    END IF;
+
+    UPDATE public.matriculas SET
+      percentagem_desconto = v_percent,
+      motivo_desconto = CASE WHEN v_percent > 0
+        THEN format('Desconto familiar automático · %s filhos', v_total) ELSE NULL END,
+      updated_at = now()
+    WHERE id = v_matricula.id AND escola_id = p_escola_id
+      AND NOT bolsa_integral AND bolsa_parcial_periodos='[]'::jsonb;
+    GET DIAGNOSTICS v_changed = ROW_COUNT;
+    -- Recheck after obtaining the row lock: a scholarship may have been assigned concurrently.
+    IF v_changed = 0 THEN CONTINUE; END IF;
+
+    UPDATE public.mensalidades SET
+      valor_original = COALESCE(valor_original, valor),
+      desconto_aplicado = ROUND(COALESCE(valor_original, valor) * v_percent / 100, 2),
+      valor = ROUND(COALESCE(valor_original, valor) * (1 - v_percent / 100), 2),
+      valor_previsto = ROUND(COALESCE(valor_original, valor) * (1 - v_percent / 100), 2),
+      observacoes = CASE WHEN v_percent > 0
+        THEN format('Desconto familiar automático: %s%% (%s filhos)', v_percent, v_total)
+        ELSE NULL END,
+      updated_at = now()
+    WHERE matricula_id = v_matricula.id AND escola_id = p_escola_id
+      AND status = 'pendente' AND COALESCE(valor_pago_total, 0) = 0;
+    GET DIAGNOSTICS v_changed = ROW_COUNT;
+    v_mensalidades := v_mensalidades + v_changed;
+    v_aplicados := v_aplicados + 1;
+  END LOOP;
+  RETURN jsonb_build_object('ok', true, 'matriculas_aplicadas', v_aplicados, 'mensalidades_atualizadas', v_mensalidades);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.aplicar_desconto_familiar_interno(uuid,uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.aplicar_desconto_familiar_interno(uuid,uuid) TO service_role;
+
+-- Legacy super-admin repricing changes settled payments and accounting entries.
+-- For scholarships, allow classification only, with both repricing flags off.
+CREATE OR REPLACE FUNCTION public.super_admin_reclassificar_aluno_turma(p_matricula_id uuid, p_turma_destino_id uuid, p_reprecificar_abertas boolean DEFAULT true, p_reprecificar_pagas boolean DEFAULT false, p_motivo text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_matricula record;
+  v_turma_destino record;
+  v_turma_origem_id uuid;
+  v_tabela_id uuid;
+  v_valor_novo numeric;
+  v_matriculas_atualizadas int := 0;
+  v_mensalidades_turma_atualizadas int := 0;
+  v_mensalidades_abertas_reprecificadas int := 0;
+  v_mensalidades_pagas_reprecificadas int := 0;
+  v_pagamentos_reprecificados int := 0;
+  v_lancamentos_reprecificados int := 0;
+BEGIN
+  IF NOT public.check_super_admin_role() THEN
+    RAISE EXCEPTION 'Somente Super Admin pode reclassificar aluno.';
+  END IF;
+
+  SELECT
+    m.id,
+    m.escola_id,
+    m.aluno_id,
+    m.turma_id,
+    m.ano_letivo,
+    m.status,
+    m.bolsa_integral,
+    m.bolsa_parcial_periodos
+    INTO v_matricula
+  FROM public.matriculas m
+  WHERE m.id = p_matricula_id FOR UPDATE;
+
+  IF v_matricula.id IS NULL THEN
+    RAISE EXCEPTION 'Matrícula não encontrada.';
+  END IF;
+
+  IF (v_matricula.bolsa_integral OR v_matricula.bolsa_parcial_periodos <> '[]'::jsonb)
+     AND (coalesce(p_reprecificar_abertas,false) OR coalesce(p_reprecificar_pagas,false)) THEN
+    RAISE EXCEPTION 'BOLSA_RECLASSIFICACAO_SEM_REPRECO: desative o recálculo de propinas e reveja os títulos separadamente.' USING ERRCODE='23514';
+  END IF;
+
+  SELECT
+    t.id,
+    t.escola_id,
+    t.nome,
+    t.curso_id,
+    t.classe_id,
+    t.ano_letivo
+    INTO v_turma_destino
+  FROM public.turmas t
+  WHERE t.id = p_turma_destino_id;
+
+  IF v_turma_destino.id IS NULL THEN
+    RAISE EXCEPTION 'Turma destino não encontrada.';
+  END IF;
+
+  IF v_turma_destino.escola_id IS DISTINCT FROM v_matricula.escola_id THEN
+    RAISE EXCEPTION 'Turma destino pertence a outra escola.';
+  END IF;
+
+  IF v_turma_destino.ano_letivo IS NOT NULL
+     AND v_matricula.ano_letivo IS NOT NULL
+     AND v_turma_destino.ano_letivo::int IS DISTINCT FROM v_matricula.ano_letivo::int THEN
+    RAISE EXCEPTION 'Turma destino pertence a outro ano letivo.';
+  END IF;
+
+  SELECT ft.id, ft.valor_mensalidade
+    INTO v_tabela_id, v_valor_novo
+  FROM public.financeiro_tabelas ft
+  WHERE ft.escola_id = v_matricula.escola_id
+    AND ft.ano_letivo = v_matricula.ano_letivo
+    AND ft.curso_id = v_turma_destino.curso_id
+    AND ft.classe_id = v_turma_destino.classe_id
+  ORDER BY ft.updated_at DESC NULLS LAST, ft.created_at DESC NULLS LAST
+  LIMIT 1;
+
+  IF v_tabela_id IS NULL THEN
+    SELECT ft.id, ft.valor_mensalidade
+      INTO v_tabela_id, v_valor_novo
+    FROM public.financeiro_tabelas ft
+    WHERE ft.escola_id = v_matricula.escola_id
+      AND ft.ano_letivo = v_matricula.ano_letivo
+      AND ft.curso_id = v_turma_destino.curso_id
+      AND ft.classe_id IS NULL
+    ORDER BY ft.updated_at DESC NULLS LAST, ft.created_at DESC NULLS LAST
+    LIMIT 1;
+  END IF;
+
+  IF v_tabela_id IS NULL THEN
+    SELECT ft.id, ft.valor_mensalidade
+      INTO v_tabela_id, v_valor_novo
+    FROM public.financeiro_tabelas ft
+    WHERE ft.escola_id = v_matricula.escola_id
+      AND ft.ano_letivo = v_matricula.ano_letivo
+      AND ft.curso_id IS NULL
+      AND ft.classe_id = v_turma_destino.classe_id
+    ORDER BY ft.updated_at DESC NULLS LAST, ft.created_at DESC NULLS LAST
+    LIMIT 1;
+  END IF;
+
+  IF v_tabela_id IS NULL THEN
+    SELECT ft.id, ft.valor_mensalidade
+      INTO v_tabela_id, v_valor_novo
+    FROM public.financeiro_tabelas ft
+    WHERE ft.escola_id = v_matricula.escola_id
+      AND ft.ano_letivo = v_matricula.ano_letivo
+      AND ft.curso_id IS NULL
+      AND ft.classe_id IS NULL
+    ORDER BY ft.updated_at DESC NULLS LAST, ft.created_at DESC NULLS LAST
+    LIMIT 1;
+  END IF;
+
+  IF (p_reprecificar_abertas OR p_reprecificar_pagas) AND v_valor_novo IS NULL THEN
+    RAISE EXCEPTION 'Tabela de propina não encontrada para a turma destino.';
+  END IF;
+
+  v_turma_origem_id := v_matricula.turma_id;
+
+  UPDATE public.matriculas m
+  SET turma_id = p_turma_destino_id,
+      updated_at = now()
+  WHERE m.id = p_matricula_id
+    AND m.turma_id IS DISTINCT FROM p_turma_destino_id;
+  GET DIAGNOSTICS v_matriculas_atualizadas = ROW_COUNT;
+
+  UPDATE public.mensalidades mn
+  SET turma_id = p_turma_destino_id,
+      updated_at = now()
+  WHERE mn.matricula_id = p_matricula_id
+    AND mn.escola_id = v_matricula.escola_id
+    AND mn.turma_id IS DISTINCT FROM p_turma_destino_id;
+  GET DIAGNOSTICS v_mensalidades_turma_atualizadas = ROW_COUNT;
+
+  IF p_reprecificar_abertas THEN
+    UPDATE public.mensalidades mn
+    SET valor = v_valor_novo,
+        valor_previsto = v_valor_novo,
+        tabela_id = v_tabela_id,
+        status = 'pendente',
+        updated_at = now()
+    WHERE mn.matricula_id = p_matricula_id
+      AND mn.escola_id = v_matricula.escola_id
+      AND mn.status IN ('pendente', 'pago_parcial', 'atrasado', 'parcial', 'isento')
+      AND coalesce(mn.valor_pago_total, 0) = 0;
+    GET DIAGNOSTICS v_mensalidades_abertas_reprecificadas = ROW_COUNT;
+  END IF;
+
+  IF p_reprecificar_pagas THEN
+    WITH mensalidades_pagas AS (
+      UPDATE public.mensalidades mn
+      SET valor = v_valor_novo,
+          valor_previsto = v_valor_novo,
+          valor_pago_total = v_valor_novo,
+          tabela_id = v_tabela_id,
+          updated_at = now()
+      WHERE mn.matricula_id = p_matricula_id
+        AND mn.escola_id = v_matricula.escola_id
+        AND mn.status = 'pago'
+      RETURNING mn.id
+    ),
+    pagamentos_atualizados AS (
+      UPDATE public.pagamentos p
+      SET valor_pago = v_valor_novo,
+          updated_at = now(),
+          meta = coalesce(p.meta, '{}'::jsonb) || jsonb_build_object(
+            'correcao_valor_propina', 'reclassificacao_turma',
+            'valor_corrigido', v_valor_novo,
+            'turma_destino_id', p_turma_destino_id,
+            'corrigido_por', 'super_admin_tool',
+            'corrigido_em', now()
+          )
+      FROM mensalidades_pagas mp
+      WHERE p.mensalidade_id = mp.id
+        AND p.status IN ('settled', 'concluido', 'pago')
+      RETURNING p.id
+    )
+    SELECT
+      (SELECT count(*) FROM mensalidades_pagas),
+      (SELECT count(*) FROM pagamentos_atualizados)
+      INTO v_mensalidades_pagas_reprecificadas, v_pagamentos_reprecificados;
+  END IF;
+
+  IF p_reprecificar_abertas OR p_reprecificar_pagas THEN
+    UPDATE public.financeiro_lancamentos fl
+    SET valor_original = v_valor_novo,
+        updated_at = now()
+    WHERE fl.matricula_id = p_matricula_id
+      AND fl.origem::text = 'mensalidade'
+      AND (
+        (p_reprecificar_pagas AND fl.status::text IN ('pago', 'concluido', 'settled'))
+        OR (p_reprecificar_abertas AND fl.status::text IN ('pendente', 'pago_parcial', 'atrasado', 'parcial'))
+      );
+    GET DIAGNOSTICS v_lancamentos_reprecificados = ROW_COUNT;
+  END IF;
+
+  INSERT INTO public.audit_logs (escola_id, user_id, action, entity, entity_id, portal, details)
+  VALUES (
+    v_matricula.escola_id,
+    auth.uid(),
+    'SUPER_ADMIN_RECLASSIFICAR_ALUNO_TURMA',
+    'matriculas',
+    p_matricula_id::text,
+    'super_admin',
+    jsonb_build_object(
+      'aluno_id', v_matricula.aluno_id,
+      'turma_origem_id', v_turma_origem_id,
+      'turma_destino_id', p_turma_destino_id,
+      'turma_destino_nome', v_turma_destino.nome,
+      'tabela_id', v_tabela_id,
+      'valor_novo', v_valor_novo,
+      'reprecificar_abertas', p_reprecificar_abertas,
+      'reprecificar_pagas', p_reprecificar_pagas,
+      'motivo', p_motivo,
+      'matriculas_atualizadas', v_matriculas_atualizadas,
+      'mensalidades_turma_atualizadas', v_mensalidades_turma_atualizadas,
+      'mensalidades_abertas_reprecificadas', v_mensalidades_abertas_reprecificadas,
+      'mensalidades_pagas_reprecificadas', v_mensalidades_pagas_reprecificadas,
+      'pagamentos_reprecificados', v_pagamentos_reprecificados,
+      'lancamentos_reprecificados', v_lancamentos_reprecificados
+    )
+  );
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'matricula_id', p_matricula_id,
+    'aluno_id', v_matricula.aluno_id,
+    'turma_origem_id', v_turma_origem_id,
+    'turma_destino_id', p_turma_destino_id,
+    'turma_destino_nome', v_turma_destino.nome,
+    'tabela_id', v_tabela_id,
+    'valor_novo', v_valor_novo,
+    'matriculas_atualizadas', v_matriculas_atualizadas,
+    'mensalidades_turma_atualizadas', v_mensalidades_turma_atualizadas,
+    'mensalidades_abertas_reprecificadas', v_mensalidades_abertas_reprecificadas,
+    'mensalidades_pagas_reprecificadas', v_mensalidades_pagas_reprecificadas,
+    'pagamentos_reprecificados', v_pagamentos_reprecificados,
+    'lancamentos_reprecificados', v_lancamentos_reprecificados
+  );
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.super_admin_reclassificar_aluno_turma(uuid,uuid,boolean,boolean,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.super_admin_reclassificar_aluno_turma(uuid,uuid,boolean,boolean,text) TO authenticated,service_role;
+
+-- Fail closed if another price writer attempts to erase the scholarship.
+-- Do not silently rewrite an arbitrary manual adjustment or a payment.
+CREATE FUNCTION public.klasse_proteger_repreco_bolsa_parcial()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public'
+AS $
+DECLARE
+  v_periodos jsonb;
+  v_taxa numeric;
+  v_valor numeric;
+BEGIN
+  IF ROW(NEW.valor,NEW.valor_previsto,NEW.valor_original,NEW.desconto_aplicado)
+      IS NOT DISTINCT FROM ROW(OLD.valor,OLD.valor_previsto,OLD.valor_original,OLD.desconto_aplicado) THEN
+    RETURN NEW;
+  END IF;
+  SELECT m.bolsa_parcial_periodos INTO v_periodos
+    FROM public.matriculas m
+    WHERE m.escola_id=OLD.escola_id AND m.aluno_id=OLD.aluno_id
+      AND (m.id=OLD.matricula_id OR (OLD.matricula_id IS NULL
+        AND m.ano_letivo::text=OLD.ano_letivo AND m.turma_id=OLD.turma_id))
+    ORDER BY m.created_at DESC LIMIT 1;
+  IF v_periodos IS NULL OR v_periodos='[]'::jsonb THEN RETURN NEW; END IF;
+  IF OLD.status::text NOT IN ('pendente','atrasado')
+     OR coalesce(OLD.valor_pago_total,0)<>0
+     OR OLD.fiscal_documento_id IS NOT NULL
+     OR coalesce(OLD.status_fiscal,'pending')<>'pending'
+     OR EXISTS(SELECT 1 FROM public.pagamentos p WHERE p.mensalidade_id=OLD.id)
+     OR EXISTS(SELECT 1 FROM public.documentos_emitidos d WHERE d.escola_id=OLD.escola_id AND d.mensalidade_id=OLD.id)
+  THEN RAISE EXCEPTION 'BOLSA_REPRECO_TITULO_PROTEGIDO' USING ERRCODE='23514'; END IF;
+  v_taxa := public.klasse_percentagem_bolsa_parcial(v_periodos,NEW.data_vencimento);
+  IF v_taxa=0 THEN RETURN NEW; END IF;
+  IF NEW.valor_original IS NULL OR NEW.valor_original<0.01 THEN
+    RAISE EXCEPTION 'BOLSA_REPRECO_BASE_INVALIDA' USING ERRCODE='23514';
+  END IF;
+  v_valor := greatest(0.01,round(NEW.valor_original*(1-v_taxa/100),2));
+  IF NEW.valor IS DISTINCT FROM v_valor OR NEW.valor_previsto IS DISTINCT FROM v_valor
+     OR NEW.desconto_aplicado IS DISTINCT FROM NEW.valor_original-v_valor THEN
+    RAISE EXCEPTION 'BOLSA_REPRECO_INCOMPATIVEL: preserve a percentagem e a vigência.' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$;
+REVOKE ALL ON FUNCTION public.klasse_proteger_repreco_bolsa_parcial() FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER trg_07_proteger_repreco_bolsa_parcial
+ BEFORE UPDATE OF valor,valor_previsto,valor_original,desconto_aplicado ON public.mensalidades
+ FOR EACH ROW EXECUTE FUNCTION public.klasse_proteger_repreco_bolsa_parcial();
+
 COMMIT;

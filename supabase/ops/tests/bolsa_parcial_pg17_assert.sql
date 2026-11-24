@@ -18,6 +18,8 @@ DECLARE
  dp date := (d0 - interval '1 month')::date;
  y int := extract(year from dp)::int;
  r jsonb;
+ familia uuid := gen_random_uuid(); sessao uuid := gen_random_uuid();
+ irmao uuid := gen_random_uuid(); mi uuid := gen_random_uuid(); mensalidade_irmao uuid := gen_random_uuid();
 BEGIN
  INSERT INTO public.escola_users VALUES(s,ator,'admin_financeiro');
  INSERT INTO public.anos_letivos(id,escola_id,ano,data_inicio,data_fim) VALUES
@@ -61,6 +63,39 @@ BEGIN
  OR NOT EXISTS(SELECT 1 FROM public.mensalidades WHERE id=mf AND valor=10000)
  OR NOT EXISTS(SELECT 1 FROM public.fixture_ledger WHERE mensalidade_id=atual AND tipo='credito' AND delta=5000)
  THEN RAISE EXCEPTION 'FAIL: atribuição e preservação financeira: %',r; END IF;
+ -- Exercise the real family recalculation: the sibling gets 10%, the
+ -- scholarship holder and existing protected titles remain unchanged.
+ UPDATE public.matriculas SET session_id=sessao WHERE id=m;
+ INSERT INTO public.matriculas(id,escola_id,aluno_id,turma_id,ano_letivo,session_id)
+   VALUES(mi,s,irmao,t,y,sessao);
+ INSERT INTO public.financeiro_agregados_familiares VALUES(familia,s);
+ INSERT INTO public.financeiro_agregados_membros VALUES(familia,aluno),(familia,irmao);
+ INSERT INTO public.financeiro_politicas_desconto_familiar VALUES(s,sessao,true,2,10);
+ INSERT INTO public.mensalidades(id,escola_id,aluno_id,matricula_id,turma_id,ano_letivo,
+   mes_referencia,ano_referencia,data_vencimento,valor,valor_previsto,valor_original)
+ VALUES(mensalidade_irmao,s,irmao,mi,t,y::text,extract(month from d0),extract(year from d0),d0+9,10000,10000,10000);
+ r := public.aplicar_desconto_familiar_interno(s,sessao);
+ IF r->>'matriculas_aplicadas' IS DISTINCT FROM '1'
+ OR NOT EXISTS(SELECT 1 FROM public.matriculas WHERE id=m AND percentagem_desconto=0)
+ OR NOT EXISTS(SELECT 1 FROM public.mensalidades WHERE id=atual AND valor=5000)
+ OR NOT EXISTS(SELECT 1 FROM public.mensalidades WHERE id=mensalidade_irmao AND valor=9000)
+ THEN RAISE EXCEPTION 'FAIL: conflito de desconto familiar: %',r; END IF;
+ BEGIN
+   UPDATE public.mensalidades SET valor=10000,valor_previsto=10000,desconto_aplicado=0 WHERE id=atual;
+   RAISE EXCEPTION 'FAIL: sobrescrita da bolsa';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+   UPDATE public.mensalidades SET valor=9000,valor_previsto=9000 WHERE id=mp;
+   RAISE EXCEPTION 'FAIL: sobrescrita de pagamento parcial';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+   UPDATE public.mensalidades SET valor=9000,valor_previsto=9000 WHERE id=mf;
+   RAISE EXCEPTION 'FAIL: sobrescrita de documento';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+   PERFORM public.super_admin_reclassificar_aluno_turma(m,t,true,true,'Teste protegido');
+   RAISE EXCEPTION 'FAIL: super-admin reprecificou bolsa';
+ EXCEPTION WHEN check_violation THEN NULL; END;
  BEGIN
   PERFORM public.klasse_definir_bolsa_integral(s,aluno,m,true,'Bolsa integral',d0);
   RAISE EXCEPTION 'FAIL: sobreposição integral/parcial';
@@ -82,6 +117,12 @@ BEGIN
    AND public.klasse_percentagem_bolsa_parcial(bolsa_parcial_periodos,d1)=25
    AND public.klasse_percentagem_bolsa_parcial(bolsa_parcial_periodos,d3)=0)
  THEN RAISE EXCEPTION 'FAIL: retirada e histórico: %',r; END IF;
+ -- Even after scheduling withdrawal, historical scholarship installments
+ -- remain protected against automatic family pricing.
+ r := public.aplicar_desconto_familiar_interno(s,sessao);
+ IF NOT EXISTS(SELECT 1 FROM public.mensalidades WHERE id=atual AND valor=5000)
+ OR NOT EXISTS(SELECT 1 FROM public.matriculas WHERE id=m AND percentagem_desconto=0)
+ THEN RAISE EXCEPTION 'FAIL: histórico após retirada'; END IF;
  -- Competência anterior à bolsa nunca recebe o desconto.
  INSERT INTO public.mensalidades(escola_id,aluno_id,matricula_id,turma_id,ano_letivo,
     mes_referencia,ano_referencia,data_vencimento,valor,valor_previsto,valor_original)
