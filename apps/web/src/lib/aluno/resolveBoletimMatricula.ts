@@ -50,6 +50,7 @@ export async function resolveBoletimMatricula(
     .eq("aluno_id", input.alunoId)
     .eq("session_id", context.anoLetivoId)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(1).maybeSingle();
   if (error) throw error;
   assertBoletimMatriculaScope(data, context.anoLetivoId, context.mode, input.operation);

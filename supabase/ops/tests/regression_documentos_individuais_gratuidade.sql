@@ -91,6 +91,16 @@ BEGIN
 END;
 $portaltest$;
 RESET ROLE;
+UPDATE public.servico_pedidos SET status='granted' WHERE escola_id='00000000-0000-4000-8000-000000007101' AND servico_codigo='DOC_CERTIFICADO_HABILITACOES';
+SET LOCAL ROLE authenticated;
+DO $approved$
+DECLARE v jsonb;
+BEGIN
+  v:=public.aluno_documento_acesso('00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007105','00000000-0000-4000-8000-000000007106','00000000-0000-4000-8000-000000007108','certificado');
+  IF (v->>'granted')::boolean IS DISTINCT FROM true THEN RAISE EXCEPTION 'PORTAL_APPROVED_BLOCKED: %',v; END IF;
+END;
+$approved$;
+RESET ROLE;
 UPDATE public.historico_disciplinas SET nota_final=NULL WHERE historico_ano_id='00000000-0000-4000-8000-000000007110';
 UPDATE public.servicos_escola SET valor_base=1000, exige_pagamento_antes_de_liberar=true WHERE escola_id='00000000-0000-4000-8000-000000007101' AND codigo='DOC_DECLARACAO_NOTAS';
 SET LOCAL ROLE authenticated;
@@ -103,4 +113,14 @@ BEGIN
 END;
 $notastest$;
 RESET ROLE;
+DO $roles_test$
+DECLARE v_role text; v jsonb;
+BEGIN
+  FOREACH v_role IN ARRAY ARRAY['admin_secretaria','diretor'] LOOP
+    UPDATE public.escola_users SET papel=v_role WHERE escola_id='00000000-0000-4000-8000-000000007101' AND user_id='00000000-0000-4000-8000-000000007103';
+    v:=public.documento_individual_acesso('00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007105','00000000-0000-4000-8000-000000007106','certificado');
+    IF v->>'reason' IS DISTINCT FROM 'NOTAS_INCOMPLETAS' THEN RAISE EXCEPTION 'ROLE_AUTHZ_MISMATCH % %',v_role,v; END IF;
+  END LOOP;
+END;
+$roles_test$;
 ROLLBACK;

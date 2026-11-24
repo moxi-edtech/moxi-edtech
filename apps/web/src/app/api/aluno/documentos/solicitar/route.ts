@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     if (!alunoId) return NextResponse.json({ ok: false, error: "Educando não autorizado", next_action: { type: "contact_secretaria", label: "Regularizar acesso", href: "/aluno/avisos" } }, { status: 403 });
 
     if (codigo === "DOC_DECLARACAO_NOTAS") {
-      return NextResponse.json({ ok: false, error: "Solicite a declaração oficial de notas à secretaria. A emissão depende da taxa própria liquidada." }, { status: 409 });
+      return NextResponse.json({ ok: false, error: "Solicite a declaração oficial de notas à secretaria. A secretaria valida a elegibilidade e a eventual taxa própria do documento." }, { status: 409 });
     }
 
     // Um boletim sem taxa configurada não pode criar um pedido gratuito

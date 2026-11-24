@@ -165,7 +165,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
          if (academicYearId) nav.set("ano_letivo_id", academicYearId);
          router.push(buildPortalHref(escolaSlug, `/aluno/avisos${nav.size ? `?${nav.toString()}` : ""}`));
        }
-    } else if (doc.status === 'rejected' && isBoletimServiceCode(doc.codigo)) {
+    } else if (doc.status === 'rejected' && doc.pagamento_intent_id) {
       if (!doc.pagamento_intent_id) {
         error("Comprovativo não localizado", "Contacte a secretaria. Não solicite outro boletim nem pague novamente.");
         return;
@@ -300,7 +300,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                    <div className="flex flex-wrap items-start gap-2">
                      <h3 className="min-w-0 break-words text-sm font-semibold leading-6 text-foreground sm:text-base">{doc.nome}</h3>
                      <span className="inline-flex max-w-full shrink-0 items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-                       {doc.pagamento_configurado === false ? "Taxa por definir" : doc.valor > 0 ? formatKwanza(doc.valor) : "Gratuito"}
+                       {doc.pagamento_configurado === false ? "Indisponível" : doc.valor > 0 ? formatKwanza(doc.valor) : "Gratuito"}
                      </span>
                    </div>
                    {doc.descricao && (
@@ -326,7 +326,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                      <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> A processar
                    </span>
                  ) : doc.pagamento_configurado === false ? (
-                   <p className="text-xs font-medium leading-5 text-amber-800">Taxa ainda não disponível.</p>
+                   <p className="text-xs font-medium leading-5 text-amber-800">{doc.indisponivel_motivo ?? "Taxa ainda não disponível."}</p>
                  ) : (
                    <PortalAction onClick={() => void handleAction(doc)}
                       variant={["pending", "blocked"].includes(doc.status) ? "outline" : "primary"}

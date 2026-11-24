@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     // 2. Buscar pedidos e intenções
     const { data: pedidos, error: pedError } = await supabase
       .from("servico_pedidos")
-      .select("id, status, servico_codigo, valor_cobrado, reason_detail, created_at, pagamento_intents(id, status, meta, created_at)")
+      .select("id, status, servico_codigo, valor_cobrado, contexto, reason_detail, created_at, pagamento_intents(id, status, meta, created_at)")
       .eq("aluno_id", selectedId)
       .eq("escola_id", escolaId)
       .eq("matricula_id", matricula.id)
@@ -84,12 +84,11 @@ export async function GET(request: Request) {
       servico_codigo: pedido.servico_codigo,
       valor_cobrado: pedido.valor_cobrado,
       status: pedido.status,
+      contexto: pedido.contexto,
       pagamento_intents: (pedido.pagamento_intents ?? []).map((intent) => ({ status: intent.status })),
     })));
     const pedidoBoletimPago = (pedidos ?? []).find((order) =>
-      isBoletimServiceCode(order.servico_codigo) &&
-      order.status === "granted" && Number(order.valor_cobrado) > 0 &&
-      (order.pagamento_intents ?? []).some((intent) => intent.status === "settled"));
+      isBoletimPaid([order]));
     const docs = catalogo.map((item) => {
       const pedidosServico = (pedidos ?? []).filter((pedido) => pedido.servico_codigo === item.codigo);
       const pedido = pedidosServico.find((order) => order.status === "granted" && (
@@ -115,8 +114,11 @@ export async function GET(request: Request) {
         else if (decision.status === 'verification') status = 'pending';
         else if (decision.status === 'pending_payment') status = decision.pagamento_intent_id ? 'pending_payment' : 'available';
       }
-      const metadata = intent?.meta && typeof intent.meta === "object" && !Array.isArray(intent.meta)
-        ? intent.meta : null;
+      const chosenPedido = tipo ? pedidosServico.find(order => order.id === decision?.pedido_id) : pedido;
+      const chosenIntent = tipo ? (chosenPedido?.pagamento_intents ?? []).find(order => order.id === decision?.pagamento_intent_id) : intent;
+      if (tipo && decision?.ok && !decision.granted && chosenIntent?.status === 'failed') status = 'rejected';
+      const metadata = chosenIntent?.meta && typeof chosenIntent.meta === "object" && !Array.isArray(chosenIntent.meta)
+        ? chosenIntent.meta : null;
       return {
         ...item,
         pedido_id: tipo ? decision?.pedido_id ?? null : pedido?.id ?? null,
@@ -125,14 +127,14 @@ export async function GET(request: Request) {
         status,
         valor: item.codigo === BOLETIM_SERVICE_CODE && boletimPago
           ? pedidoBoletimPago?.valor_cobrado ?? item.valor_base
-          : pedido?.valor_cobrado ?? item.valor_base,
+          : tipo ? chosenPedido?.valor_cobrado ?? decision?.valor ?? item.valor_base : pedido?.valor_cobrado ?? item.valor_base,
         // Uma taxa de 0 Kz não significa automaticamente gratuidade:
         // há escolas com pagamento obrigatório ainda sem preço configurado.
         pagamento_configurado: tipo ? decision?.ok === true : Number(pedido?.valor_cobrado ?? item.valor_base) > 0 ||
           (!item.exige_pagamento_antes_de_liberar && !isBoletimServiceCode(item.codigo)) ||
           (isBoletimServiceCode(item.codigo) && boletimPago) ||
           (status === "granted" && !isBoletimServiceCode(item.codigo)),
-        reject_reason: typeof metadata?.reject_reason === "string" ? metadata.reject_reason : pedido?.reason_detail ?? null,
+        reject_reason: typeof metadata?.reject_reason === "string" ? metadata.reject_reason : chosenPedido?.reason_detail ?? null,
         next_action: status === "granted"
           ? { type: "download", label: "Descarregar", href: "/aluno/documentos" }
           : status === "pending" || status === "blocked"
