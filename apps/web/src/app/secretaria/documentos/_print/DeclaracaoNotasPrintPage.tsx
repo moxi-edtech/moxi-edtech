@@ -55,7 +55,7 @@ export default async function DeclaracaoNotasPrintPage({ params, requireStudentO
   const classe = String(snapshot.classe_concluida ?? snapshot.classe_nome ?? "—");
 
   return (
-    <main className={`min-h-screen ${styles.printRoot} font-serif text-slate-900`}>
+    <main className={`min-h-screen ${styles.printRoot} font-serif ${styles.notesPrint}`}>
       <PrintTrigger />
       <article className={`${styles.sheet} space-y-8 shadow-sm`}>
         <PrintLetterhead escolaNome={escolaNome} logoUrl={logoUrl}
@@ -67,21 +67,21 @@ export default async function DeclaracaoNotasPrintPage({ params, requireStudentO
           tendo obtido as seguintes classificações registadas no histórico anual fechado.
         </p>
         <table className="w-full border-collapse text-sm">
-          <thead><tr className="border-b border-slate-300 text-left">
+          <thead><tr className="border-b text-left">
             <th className="py-2">Disciplina</th><th className="py-2 text-right">Nota final</th>
           </tr></thead>
           <tbody>{(notas as NotaHistorica[]).map((item, index) => (
-            <tr key={`${item.disciplina_nome ?? "disciplina"}-${index}`} className="border-b border-slate-200">
+            <tr key={`${item.disciplina_nome ?? "disciplina"}-${index}`} className="border-b">
               <td className="py-2">{item.disciplina_nome ?? "—"}</td>
               <td className="py-2 text-right">{formatNota(item.nota_final ?? item.media_final)}</td>
             </tr>
           ))}</tbody>
         </table>
         <footer className="flex items-end justify-between gap-8 pt-8 text-xs">
-          <div className="min-w-48 border-t border-slate-400 pt-2 text-center">Assinatura e carimbo da escola</div>
+          <div className="min-w-48 border-t pt-2 text-center">Assinatura e carimbo da escola</div>
           {validationUrl ? <div className="space-y-1 text-center"><QRCode value={validationUrl} size={80} /><span>Validar autenticidade</span></div> : null}
         </footer>
-        <p className="break-all text-[10px] text-slate-500">Hash: {hash || "—"}</p>
+        <p className="break-all text-[10px]">Hash: {hash || "—"}</p>
       </article>
     </main>
   );
