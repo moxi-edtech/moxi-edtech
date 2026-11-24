@@ -45,3 +45,50 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/horarios_pg17_fixture.sql
           psql -X -v ON_ERROR_STOP=1 -f docs/engineering/horarios-publication-guard.proposed.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/horarios_pg17_assert.sql
+
+      - name: Concurrent publication of the same school resource
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO public.horario_versoes(id,escola_id,turma_id,status) VALUES
+          (fixture_id(86),fixture_id(1),fixture_id(20),'draft'),
+          (fixture_id(87),fixture_id(1),fixture_id(24),'draft');
+          SQL
+          # Session A holds the same school lock through publication and commit.
+          psql -X -v ON_ERROR_STOP=1 > /tmp/horario-a.log 2>&1 <<'SQL' &
+          BEGIN;
+          SELECT set_config('request.jwt.claim.role','authenticated',true),set_config('request.jwt.claim.sub',fixture_id(100)::text,true);
+          SELECT public.upsert_quadro_horarios_versao_atomic(fixture_id(1),fixture_id(20),fixture_id(86),fixture_item(70,NULL,99),true);
+          SELECT pg_sleep(4);
+          COMMIT;
+          SQL
+          first=$!
+          # Wait until A really owns the advisory lock, not an assumed delay.
+          locked=0
+          for attempt in $(seq 1 40); do
+            if [ "$(psql -X -Atc "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype='advisory' AND granted)")" = t ]; then locked=1; break; fi
+            sleep 0.1
+          done
+          test "$locked" = 1
+          if psql -X -v ON_ERROR_STOP=1 > /tmp/horario-b.log 2>&1 <<'SQL'
+          BEGIN;
+          SELECT set_config('request.jwt.claim.role','authenticated',true),set_config('request.jwt.claim.sub',fixture_id(100)::text,true);
+          SELECT public.upsert_quadro_horarios_versao_atomic(fixture_id(1),fixture_id(24),fixture_id(87),fixture_item(70,NULL,99),true);
+          COMMIT;
+          SQL
+          then
+            cat /tmp/horario-b.log
+            echo 'ERROR: competing publication succeeded'; exit 1
+          fi
+          wait "$first" || { cat /tmp/horario-a.log; exit 1; }
+          grep -q 'HORARIO_CONFLICT' /tmp/horario-b.log
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF (SELECT status FROM public.horario_versoes WHERE id=fixture_id(86)) <> 'publicada'
+              OR (SELECT status FROM public.horario_versoes WHERE id=fixture_id(87)) <> 'draft'
+              OR (SELECT status FROM public.horario_versoes WHERE id=fixture_id(85)) <> 'publicada'
+              OR EXISTS (SELECT 1 FROM public.quadro_horarios WHERE versao_id=fixture_id(87))
+            THEN RAISE EXCEPTION 'concurrent publication lost atomicity'; END IF;
+          END $$;
+          SQL
