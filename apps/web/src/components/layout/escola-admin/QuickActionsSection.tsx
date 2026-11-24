@@ -11,6 +11,7 @@ import NovoFuncionarioPage from "@/app/escola/[id]/(portal)/funcionarios/novo/pa
 import FuncionariosPage from "@/app/escola/[id]/(portal)/funcionarios/page";
 import ProfessoresPage from "@/app/escola/[id]/(portal)/professores/page";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
+import ExpedienteDashboardCard from "@/components/secretaria/ExpedienteDashboardCard";
 import SecaoLabel from "@/components/shared/SecaoLabel";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
@@ -190,6 +191,7 @@ export default function QuickActionsSection({
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 min-[1280px]:grid-cols-5">
+        <ExpedienteDashboardCard escolaId={escolaId} portal={portalBase} />
         {actions.map((action) => (
           <AcaoRapidaCard
             key={action.key}
