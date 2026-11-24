@@ -794,12 +794,12 @@ function QuadroHorariosContent() {
     }catch(e){error(e instanceof Error?e.message:"Não foi possível copiar o horário.");}finally{setAutoScheduling(false);}
   };
   const undoGrid = () => {
-    const previous = undoStack.at(-1); if (!previous) return;
+    const previous = undoStack[undoStack.length - 1]; if (!previous) return;
     setUndoStack(prev=>prev.slice(0,-1)); setRedoStack(prev=>[...prev.slice(-49), {...grid}]);
     setGrid(previous); setConflictSlots({}); setConflictReasons({}); setValidated(false); setAutoDraftDirty(true); setAutoProposalSummary(null);
   };
   const redoGrid = () => {
-    const next = redoStack.at(-1); if (!next) return;
+    const next = redoStack[redoStack.length - 1]; if (!next) return;
     setRedoStack(prev=>prev.slice(0,-1)); setUndoStack(prev=>[...prev.slice(-49), {...grid}]);
     setGrid(next); setConflictSlots({}); setConflictReasons({}); setValidated(false); setAutoDraftDirty(true); setAutoProposalSummary(null);
   };
@@ -1621,7 +1621,7 @@ function QuadroHorariosContent() {
         {turmaId && !isLoading && !Object.keys(slotLookup).length && (
           <div className="mb-4 rounded-xl border border-border bg-card p-4 text-sm">
             <p className="font-semibold">Ainda não existem tempos para o turno desta turma.</p>
-            <button type="button" onClick={()=>setShowWizard(true)} className="mt-2 inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-2 text-sm font-semibold text-white">Configurar tempos do turno</button>
+            <Button type="button" tone="gold" onClick={()=>setShowWizard(true)} className="mt-2">Configurar tempos do turno</Button>
           </div>
         )}
         {autoDraftDirty && turmaId && (
