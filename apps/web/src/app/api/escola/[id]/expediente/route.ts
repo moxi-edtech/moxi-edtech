@@ -8,7 +8,7 @@ type Context = { params: Promise<{ id: string }> };
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store" } });
 const payload = z.discriminatedUnion("action", [
   z.object({ action: z.literal("close"), date: daySchema }),
-  z.object({ action: z.literal("configure"), closeTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), reminderMinutes: z.number().int().min(0).max(180), weekdays: z.array(z.number().int().min(1).max(7)).min(1).max(7), enabled: z.boolean() }),
+  z.object({ action: z.literal("configure"), closeTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), reminderMinutes: z.number().int().min(0).max(180), weekdays: z.array(z.number().int().min(1).max(7)).min(1).max(7), enabled: z.boolean(), emailSummary: z.boolean().default(false) }),
 ]);
 export async function GET(req: Request, { params }: Context) {
   try {
@@ -42,7 +42,7 @@ export async function POST(req: Request, { params }: Context) {
       if (error) return json({ ok: false, error: "Não foi possível fechar o expediente." }, error.code === "42501" ? 403 : 409);
     } else {
       if (!access.canConfigure) return json({ ok: false, error: "Sem permissão para configurar." }, 403);
-      const { error } = await access.supabase.rpc("secretaria_configurar_expediente", { p_escola_id: access.escolaId, p_close_time: p.closeTime, p_reminder_minutes: p.reminderMinutes, p_weekdays: [...new Set(p.weekdays)], p_enabled: p.enabled });
+      const { error } = await access.supabase.rpc("secretaria_configurar_expediente", { p_escola_id: access.escolaId, p_close_time: p.closeTime, p_reminder_minutes: p.reminderMinutes, p_weekdays: [...new Set(p.weekdays)], p_enabled: p.enabled, p_email_summary: p.emailSummary });
       if (error) return json({ ok: false, error: "Não foi possível guardar as preferências." }, error.code === "42501" ? 403 : 400);
     }
     return json({ ok: true });
