@@ -54,30 +54,22 @@ export async function getExpedienteHistory(access: Access, start: string, end: s
   return {days,closedCount:days.filter(d=>d.closedAt).length,missingCount:days.filter(d=>d.expected&&!d.closedAt).length,pendingCount:pending.count??0,rejectedCount:rejected.count??0,pending:queue(pending.data??[]),rejected:queue(rejected.data??[]),scheduleConfigured:Boolean(config.data),captureDay};
 }
 
-export async function getExpediente(access: Extract<Awaited<ReturnType<typeof expedienteAccess>>, { ok: true }>, date: string, cursor = 0, filters: ActivityFilter = {}) {
+export async function getExpedienteActivity(access: Access, date: string, cursor = 0, filters: ActivityFilter = {}) {
   const { supabase, escolaId } = access;
   let operationQuery=supabase.from("secretaria_expediente_operacoes").select("id,occurred_at,actor_id,actor_role,origin,entity,entity_id,action,record_kind,transaction_id,is_after_close,detail").eq("escola_id",escolaId).eq("day_key",date).gt("id",cursor);
   if(filters.entity)operationQuery=operationQuery.eq("entity",filters.entity);
   if(filters.actor==="system")operationQuery=operationQuery.eq("origin","service_role");else if(filters.actor)operationQuery=operationQuery.eq("actor_id",filters.actor);
   if(filters.late)operationQuery=operationQuery.eq("is_after_close",true);
-  const [closed, operations, late, config, cash, preview, captureStart, variation, actors] = await Promise.all([
-    supabase.from("secretaria_expedientes").select("id,day_key,closed_at,closed_by,operation_count,business_count,human_count,system_count,summary").eq("escola_id", escolaId).eq("day_key", date).maybeSingle(),
+
+  const [operations,actors]=await Promise.all([
     operationQuery.order("id",{ascending:true}).limit(51),
-    supabase.from("secretaria_expediente_operacoes").select("id", { count: "exact", head: true }).eq("escola_id", escolaId).eq("day_key", date).eq("is_after_close", true),
-    supabase.from("secretaria_expediente_config").select("close_time,reminder_minutes,weekdays,enabled,email_summary").eq("escola_id", escolaId).maybeSingle(),
-    supabase.from("fecho_caixa").select("id,status,declared_by,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_other,system_other_count,revision,revision_reason,approval_note").eq("escola_id", escolaId).eq("day_key", date).maybeSingle(),
-    supabase.rpc("secretaria_expediente_resumo", { p_escola_id: escolaId, p_day_key: date }),
-    supabase.rpc("secretaria_expediente_capture_started_at", { p_escola_id: escolaId }),
-    supabase.rpc("financeiro_fecho_variacao", { p_escola_id: escolaId, p_day_key: date }),
     cursor===0?supabase.rpc("secretaria_expediente_responsaveis",{p_escola_id:escolaId,p_day_key:date}):Promise.resolve({data:[],error:null}),
   ]);
-  if (actors.error || variation.error || captureStart.error || !captureStart.data || preview.error || closed.error || operations.error || late.error || config.error || cash.error) throw new Error("Não foi possível consultar o expediente.");
-  const revisions = cash.data ? await supabase.from("fecho_caixa_revisoes").select("revision,snapshot,archived_at").eq("escola_id",escolaId).eq("fecho_id",cash.data.id).order("revision",{ascending:false}).limit(20) : null;
-  if(revisions?.error)throw new Error("Não foi possível consultar as revisões do caixa.");
+  if(operations.error||actors.error)throw new Error("Não foi possível consultar a atividade.");
   const rows = operations.data ?? [];
   const page = rows.slice(0, 50);
   const filterActorIds:string[]=(actors.data??[]).map((a:{actor_id:string})=>a.actor_id);
-  const actorIds = [...new Set<string>([...filterActorIds,...page.map((row: { actor_id: string | null }) => row.actor_id).filter((id: string | null): id is string => id !== null), ...(closed.data ? [closed.data.closed_by] : [])])];
+  const actorIds = [...new Set<string>([...filterActorIds,...page.map((row: { actor_id: string | null }) => row.actor_id).filter((id: string | null): id is string => id !== null)])];
   // Names are optional display enrichment; immutable UUID remains the identity.
   const names = new Map<string, string>();
   for(let i=0;i<actorIds.length;i+=100){
@@ -87,5 +79,29 @@ export async function getExpediente(access: Extract<Awaited<ReturnType<typeof ex
   const studentIds = [...new Set<string>(page.map((row:any)=>row.entity==="alunos"?row.entity_id:row.detail?.aluno_id).filter((id:unknown):id is string=>typeof id==="string"&&z.string().uuid().safeParse(id).success))];
   const students=new Map<string,string>();
   if(studentIds.length){const result=await supabase.from("alunos").select("id,nome,nome_completo").eq("escola_id",escolaId).in("id",studentIds);for(const s of result.data??[])students.set(s.id,s.nome_completo||s.nome||"Aluno");}
-  return { actorOptions:filterActorIds.map(id=>({id,name:names.get(id)??"Funcionário · "+id.slice(0,6)})), closed: closed.data ? { ...closed.data, closed_by_name: names.get(closed.data.closed_by) ?? "Funcionário" } : null, operations: page.map((row: any) => ({ ...row, student_id:students.has(row.entity==="alunos"?row.entity_id:row.detail?.aluno_id)?(row.entity==="alunos"?row.entity_id:row.detail?.aluno_id):null,student_name:students.get(row.entity==="alunos"?row.entity_id:row.detail?.aluno_id)??null, actor_name: row.origin === "service_role" ? "Sistema · automático" : names.get(row.actor_id) ?? "Funcionário" })), nextCursor: rows.length > 50 ? page[49].id : null, lateCount: late.count ?? 0, preview: preview.data ?? {}, config: config.data, cash: cash.data, cashRevisions: revisions?.data ?? [], variation: variation.data, captureStartedAt: captureStart.data, canSupervise:access.canSupervise, canDeclare: access.canClose || access.canApprove && !access.canConfigure, canClose: access.canClose && date >= new Intl.DateTimeFormat("sv-SE",{timeZone:"Africa/Luanda",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(captureStart.data)), canConfigure: access.canConfigure, canApprove: access.canApprove && cash.data?.declared_by !== access.userId };
+  return {actorOptions:filterActorIds.map(id=>({id,name:names.get(id)??"Funcionário · "+id.slice(0,6)})), operations: page.map((row: any) => ({ ...row, student_id:students.has(row.entity==="alunos"?row.entity_id:row.detail?.aluno_id)?(row.entity==="alunos"?row.entity_id:row.detail?.aluno_id):null,student_name:students.get(row.entity==="alunos"?row.entity_id:row.detail?.aluno_id)??null, actor_name: row.origin === "service_role" ? "Sistema · automático" : names.get(row.actor_id) ?? "Funcionário" })), nextCursor: rows.length > 50 ? page[49].id : null};
+}
+export async function getExpedienteDetail(access:Access,date:string){
+  const {supabase,escolaId}=access;
+  const [closed, late, config, cash, preview, captureStart, variation] = await Promise.all([
+    supabase.from("secretaria_expedientes").select("id,day_key,closed_at,closed_by,operation_count,business_count,human_count,system_count,summary").eq("escola_id", escolaId).eq("day_key", date).maybeSingle(),
+    supabase.from("secretaria_expediente_operacoes").select("id", { count: "exact", head: true }).eq("escola_id", escolaId).eq("day_key", date).eq("is_after_close", true),
+    supabase.from("secretaria_expediente_config").select("close_time,reminder_minutes,weekdays,enabled,email_summary").eq("escola_id", escolaId).maybeSingle(),
+    supabase.from("fecho_caixa").select("id,status,operador_id,declared_by,declared_at,approved_by,approved_at,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_other,system_other_count,revision,revision_reason,approval_note").eq("escola_id", escolaId).eq("day_key", date).maybeSingle(),
+    supabase.rpc("secretaria_expediente_resumo", { p_escola_id: escolaId, p_day_key: date }),
+    supabase.rpc("secretaria_expediente_capture_started_at", { p_escola_id: escolaId }),
+    supabase.rpc("financeiro_fecho_variacao", { p_escola_id: escolaId, p_day_key: date }),
+  ]);
+  if (variation.error || captureStart.error || !captureStart.data || preview.error || closed.error || late.error || config.error || cash.error) throw new Error("Não foi possível consultar o expediente.");
+  const revisions = cash.data ? await supabase.from("fecho_caixa_revisoes").select("revision,snapshot,archived_at").eq("escola_id",escolaId).eq("fecho_id",cash.data.id).order("revision",{ascending:false}).limit(20) : null;
+  if(revisions?.error)throw new Error("Não foi possível consultar as revisões do caixa.");
+  const ids=[...new Set<string>([closed.data?.closed_by,cash.data?.declared_by??cash.data?.operador_id,cash.data?.approved_by].filter((id:unknown):id is string=>typeof id==="string"))];
+  const names=new Map<string,string>();
+  if(ids.length){const r=await supabase.from("profiles").select("user_id,nome").eq("escola_id",escolaId).in("user_id",ids);for(const s of r.data??[])names.set(s.user_id,s.nome??"Funcionário");}
+  const actor=(id:string|null|undefined)=>id?(names.get(id)??"Funcionário · "+id.slice(0,6)):null;
+  return {closed:closed.data?{...closed.data,closed_by_name:actor(closed.data.closed_by)}:null,lateCount:late.count??0,preview:preview.data??{},config:config.data,cash:cash.data?{...cash.data,declared_by_name:actor(cash.data.declared_by??cash.data.operador_id),approved_by_name:actor(cash.data.approved_by)}:null,cashRevisions:revisions?.data??[],variation:variation.data,captureStartedAt:captureStart.data,canSupervise:access.canSupervise,canDeclare:access.canClose||access.canApprove&&!access.canConfigure,canClose:access.canClose&&date>=new Intl.DateTimeFormat("sv-SE",{timeZone:"Africa/Luanda",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(captureStart.data)),canConfigure:access.canConfigure,canApprove:access.canApprove&&(cash.data?.declared_by??cash.data?.operador_id)!==access.userId};
+}
+export async function getExpediente(access:Access,date:string,cursor=0,filters:ActivityFilter={}){
+  const [detail,activity]=await Promise.all([getExpedienteDetail(access,date),getExpedienteActivity(access,date,cursor,filters)]);
+  return {...detail,...activity};
 }
