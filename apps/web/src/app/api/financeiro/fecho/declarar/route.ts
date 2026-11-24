@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const date = new Date(value + "T00:00:00Z"); return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value; }, "Data inválida");
-const snapshotColumns = "id, escola_id, day_key, status, declared_by, declared_at, declared_cash, declared_tpa, declared_transfer, declared_mcx, system_cash, system_tpa, system_transfer, system_mcx";
+const snapshotColumns = "id, escola_id, day_key, status, declared_by, declared_at, declared_cash, declared_tpa, declared_transfer, declared_mcx, system_cash, system_tpa, system_transfer, system_mcx, system_other, system_other_count";
 const payloadSchema = z.object({
   escolaId: z.string().min(1).optional(),
   day_key: dateSchema,
@@ -57,17 +57,6 @@ export async function POST(request: Request) {
 
     const { day_key, declared } = parsed.data;
 
-    const { data: existing, error: existingError } = await supabase
-      .from("fecho_caixa")
-      .select(snapshotColumns)
-      .eq("escola_id", escolaId)
-      .eq("day_key", day_key)
-      .maybeSingle();
-    if (existingError) return NextResponse.json({ ok: false, error: "Não foi possível consultar o fecho." }, { status: 500 });
-    if (existing) {
-      return NextResponse.json({ ok: true, data: existing, idempotent: true });
-    }
-
     const { data, error } = await supabase.rpc("financeiro_fecho_declarar_e_snapshot", {
       p_escola_id: escolaId,
       p_day_key: day_key,
@@ -78,7 +67,7 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ ok: false, error: "Não foi possível declarar o fecho." }, { status: error.code === "42501" ? 403 : error.code === "22023" ? 400 : 500 });
+      return NextResponse.json({ ok: false, error: error.code === "23505" ? "Já existe uma declaração com valores diferentes para esta data." : "Não foi possível declarar o fecho." }, { status: error.code === "42501" ? 403 : error.code === "22023" ? 400 : error.code === "23505" ? 409 : 500 });
     }
 
     return NextResponse.json({ ok: true, data });
