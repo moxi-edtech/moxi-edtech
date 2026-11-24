@@ -1,7 +1,8 @@
 "use client";
 import dynamic from "next/dynamic";
 import {useEffect,useRef,useState} from "react";
-import {CalendarCheck,ArrowRight} from "lucide-react";
+import {CalendarCheck} from "lucide-react";
+import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import {Button} from "@/components/ui/Button";
 import {ModalShell} from "@/components/ui/ModalShell";
 import type {ExpedienteCloseGuard} from "@/components/secretaria/ExpedienteWorkspace";
@@ -31,14 +32,18 @@ export default function ExpedienteDashboardCard({escolaId,portal}:{escolaId:stri
    if(state==="busy"){setCloseWarning("busy");return;}
    if(state==="draft"&&!discard){setCloseWarning("draft");return;}
    setCloseWarning(null);setOpen(false);setRefreshVersion(v=>v+1);
-   window.requestAnimationFrame(()=>triggerRef.current?.focus());
+   window.requestAnimationFrame(()=>triggerRef.current?.focus({preventScroll:true}));
  }
- const title=portal==="secretaria"?"Fecho diário":"Controlo de expedientes";
+ const title="Gestão de fechos";
  return <>
- <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
- <div className="flex items-start gap-3"><CalendarCheck className="mt-0.5 h-5 w-5 text-klasse-green"/><div><h2 className="font-semibold text-foreground">{title}</h2><p className="text-sm text-muted-foreground">{summary?.closed?"Expediente fechado · "+summary.closed.operation_count+" registos de atividade":summary?"Expediente de hoje por fechar":"Consulte o expediente e o histórico."}</p>{summary&&<p className="text-sm text-muted-foreground">{summary.cashStatus==="approved"?"Caixa aprovado":summary.cashStatus==="declared"?"Caixa a validar":summary.cashStatus==="rejected"?"Caixa a regularizar":"Caixa por declarar"}{summary.pendingCount!==null?" · "+summary.pendingCount+" por validar":""}{summary.rejectedCount>0?" · "+summary.rejectedCount+" a regularizar":""}</p>}</div></div>
- <Button ref={triggerRef} type="button" variant="outline" aria-haspopup="dialog" aria-expanded={open} onClick={openWorkspace}>{portal!=="secretaria"?"Consultar pendências":summary?.rejectedCount?"Regularizar caixa":summary&&!summary.closed&&summary.canClose?"Concluir expediente":"Consultar fecho"}<ArrowRight className="h-4 w-4"/></Button>
- </section>
+ <AcaoRapidaCard
+   icon={<CalendarCheck className="h-5 w-5"/>}
+   label="Fecho diário"
+   sublabel={portal==="secretaria"?(summary?.rejectedCount?"Caixa a regularizar":summary?.closed?"Expediente fechado":summary?"Expediente por fechar":"Gerir expediente"):(summary?.pendingCount?summary.pendingCount+" por validar":summary?.rejectedCount?summary.rejectedCount+" a regularizar":"Gerir fechos")}
+   onClick={openWorkspace}
+   buttonRef={triggerRef}
+   dialogOpen={open}
+ />
  <ModalShell open={open} size="wide" title={title} description={portal==="secretaria"?"Conclua o expediente sem sair do dashboard.":"Acompanhe e valide os fechos sem sair do dashboard."} onClose={()=>closeWorkspace()}
  footer={closeWarning?<div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm"><p>{closeWarning==="busy"?"Existe uma operação em curso. Aguarde a conclusão antes de fechar.":"Existe uma conferência ou edição aberta. Fechar descartará alterações ainda não guardadas."}</p><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={()=>setCloseWarning(null)}>Continuar no expediente</Button>{closeWarning==="draft"&&<Button type="button" variant="destructive" onClick={()=>closeWorkspace(true)}>Descartar e fechar</Button>}</div></div>:undefined}>
  {open&&<Workspace escolaId={escolaId} portal={portal} initialHistory={initialHistory} embedded closeGuardRef={closeGuardRef}/>}
