@@ -992,7 +992,7 @@ export default function AlunosListClient({
       url.searchParams.set("tipo", tipo);
       url.searchParams.set("all", "1");
       url.searchParams.set("status", tab === "ativos" ? "active" : "archived");
-      if (q.trim())                    url.searchParams.set("q", q.trim());
+      if (debouncedQ.trim())           url.searchParams.set("q", debouncedQ.trim());
       if (filtros.situacao_financeira) url.searchParams.set("situacao_financeira", filtros.situacao_financeira);
       if (filtros.turma_id)            url.searchParams.set("turma_id", filtros.turma_id);
       if (filtros.classe_id) url.searchParams.set("classe_id", filtros.classe_id);
@@ -1001,7 +1001,10 @@ export default function AlunosListClient({
       if (filtros.status_matricula)    url.searchParams.set("status_matricula", filtros.status_matricula);
 
       const res = await fetch(url.toString());
-      if (!res.ok) throw new Error("Falha na exportação.");
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(typeof payload?.error === "string" ? payload.error : `Falha na exportação (HTTP ${res.status}).`);
+      }
 
       const blob        = await res.blob();
       const blobUrl     = URL.createObjectURL(blob);
@@ -1011,7 +1014,7 @@ export default function AlunosListClient({
       a.href            = blobUrl;
       a.download        = filename;
       a.click();
-      URL.revokeObjectURL(blobUrl);
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       success("Exportação concluída", `Lista exportada em ${tipo === "excel" ? "Excel" : "PDF"}.`);
     } catch (e: any) {
       error("Erro na exportação", e.message);
@@ -1028,7 +1031,10 @@ export default function AlunosListClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: [...selected], tipo: "excel" }),
       });
-      if (!res.ok) throw new Error("Falha na exportação.");
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(typeof payload?.error === "string" ? payload.error : `Falha na exportação (HTTP ${res.status}).`);
+      }
       const blob    = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       const a       = document.createElement("a");
