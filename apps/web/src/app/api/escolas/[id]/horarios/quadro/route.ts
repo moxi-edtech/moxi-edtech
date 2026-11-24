@@ -226,7 +226,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .limit(500) : { data: [], error: null }
 
     if (previousRowsError) return NextResponse.json({ ok: false, error: 'Não foi possível preservar o horário anterior.' }, { status: 503 })
-    const previousBySlot = new Map((previousRows || []).map((row: { slot_id: string; sala_id?: string | null }) => [row.slot_id, row]))
+    const previousBySlot = new Map<string, { slot_id: string; sala_id?: string | null }>()
+    for (const row of previousRows || []) previousBySlot.set(row.slot_id, row)
     const payload = parsed.data.items.map((item) => ({
       escola_id: escolaIdResolved,
       turma_id: parsed.data.turma_id,
