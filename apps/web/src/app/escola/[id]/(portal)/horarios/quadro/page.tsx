@@ -1036,7 +1036,7 @@ function QuadroHorariosContent() {
           })
           .join(" | ");
         warning(
-          "Quadro publicado com pendências",
+          "Referência curricular — informativo",
           warningDetails || "O horário foi publicado. A comparação curricular é informativa."
         );
       }
@@ -1044,7 +1044,7 @@ function QuadroHorariosContent() {
         options?.successTitle ?? (mode === "publish" ? "Quadro publicado." : "Quadro salvo."),
         options?.successMessage
           ?? (mode === "publish"
-            ? "Publicação concluída sem pendências."
+            ? "Horário disponível para consulta."
             : "Você pode ajustar a distribuição a qualquer momento.")
       );
       return true;
@@ -1212,7 +1212,11 @@ function QuadroHorariosContent() {
   };
 
   const handleAutoCompletar = async () => {
-    if (!escolaId || !turmaId) return;
+    if (!escolaId || !turmaId || isLoading || saving || publishing || autoScheduling) return;
+    if (Object.values(grid).some(Boolean)) {
+      const accepted = await confirm({ title: "Sugerir nova distribuição?", message: "A proposta substituirá o quadro em edição, sem publicar ou guardar automaticamente.", confirmLabel: "Gerar proposta" });
+      if (!accepted) return;
+    }
     setAutoScheduling(true);
     try {
       const turnoId = selectedTurma ? mapTurnoId(selectedTurma.turno ?? "M") : undefined;
@@ -1592,11 +1596,16 @@ function QuadroHorariosContent() {
                 if (autoDraftDirty) {
                   const confirmed = await confirm({
                     title: "Alterações não salvas",
-                    message: "Existem horários sugeridos que ainda não foram guardados. Se mudar de turma agora, estas sugestões serão perdidas. Deseja continuar?",
+                    message: "Existem alterações ainda não guardadas. Se mudar de turma agora, serão perdidas. Deseja continuar?",
                     confirmLabel: "Continuar sem salvar",
                   });
                   if (!confirmed) return;
                 }
+                setAutoDraftDirty(false);
+                setAutoProposalSummary(null);
+                setConflictSlots({});
+                setConflictReasons({});
+                setVersaoId(null);
                 setTurmaId(nextTurmaId);
               }}
               className="max-w-xs rounded-xl border-border focus:border-amber focus:ring-amber text-foreground"
@@ -1647,7 +1656,7 @@ function QuadroHorariosContent() {
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Save className={`h-4 w-4 ${saving ? "text-amber" : "text-muted-foreground"}`} />
               <span>
-                {saving ? "Salvando..." : autoDraftDirty ? "Proposta não salva" : "Alterações prontas"}
+                {saving ? "Salvando..." : autoDraftDirty ? "Alterações não guardadas" : "Alterações prontas"}
               </span>
             </div>
           </div>
@@ -1673,7 +1682,7 @@ function QuadroHorariosContent() {
         )}
         {autoDraftDirty && turmaId && (
           <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-            <div className="font-semibold">Proposta de distribuição pronta para revisão.</div>
+            <div className="font-semibold">Alterações por guardar.</div>
             <div className="mt-1">Revise o quadro, ajuste manualmente se necessário e só depois salve ou publique.</div>
             {autoProposalSummary && <div className="mt-2 text-xs font-semibold">{autoProposalSummary.filled} de {autoProposalSummary.total} posições preenchidas{autoProposalSummary.unmet ? ` · ${autoProposalSummary.unmet} pendência(s)` : ""}.</div>}
             <div className="mt-3">
@@ -1705,6 +1714,7 @@ function QuadroHorariosContent() {
               setConflictSlots({});
               setConflictReasons({});
               setAutoDraftDirty(true);
+              setAutoProposalSummary(null);
             }}
             slotLookup={slotLookup}
             existingAssignments={existingAssignments}
