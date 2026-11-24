@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { CalendarClock, CheckCircle2, Search, Pencil, Plus, RotateCcw } from "lucide-react";
 import { type TimetablePublicationState } from "@/lib/horarios/timetable-publication-state";
 
@@ -52,7 +53,7 @@ export function HorariosWorkspace({turmas, onOpen, onRefresh, loading, error}: {
           {visible.map(t=><tr key={t.id} className="border-t border-border hover:bg-muted/30">
             <td className="px-4 py-3 font-semibold">{turmaLabel(t)}</td><td className="px-4 py-3">{t.classe?.nome||"—"}</td><td className="px-4 py-3">{turnos[t.turno||""]||"—"}</td><td className="px-4 py-3">{t.sala||"—"}</td>
             <td className="px-4 py-3"><span className={"inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium "+(t.horario_status==="publicado"?"bg-green-50 text-klasse-green":"bg-muted text-muted-foreground")}>{t.horario_status==="publicado"?<CheckCircle2 size={14}/>:<CalendarClock size={14}/>} {t.horario_status==="publicado"?"Publicado":t.horario_status==="rascunho"?"Rascunho":t.horario_status==="sem_horario"?"Sem horário":"Por confirmar"}</span></td>
-            <td className="px-4 py-3"><button type="button" onClick={()=>onOpen(t.id)} className={"inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold "+(t.horario_status==="sem_horario"?"bg-klasse-gold text-white":"border border-border bg-card")}>{t.horario_status==="sem_horario"?<Plus size={16}/>:<Pencil size={16}/>} {t.horario_status==="sem_horario"?"Montar horário":t.horario_status==="rascunho"?"Continuar":"Editar horário"}</button></td>
+            <td className="px-4 py-3"><Button type="button" tone={t.horario_status==="sem_horario"?"gold":"gray"} variant={t.horario_status==="sem_horario"?"default":"outline"} onClick={()=>onOpen(t.id)} className="gap-2 whitespace-nowrap">{t.horario_status==="sem_horario"?<Plus size={16}/>:<Pencil size={16}/>} {t.horario_status==="sem_horario"?"Montar horário":t.horario_status==="rascunho"?"Continuar":"Editar horário"}</Button></td>
           </tr>)}
         </tbody></table></div>
         {!visible.length && <p className="p-6 text-center text-sm text-muted-foreground">Nenhuma turma corresponde aos filtros.</p>}
