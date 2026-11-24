@@ -558,7 +558,7 @@ GRANT EXECUTE ON FUNCTION public.super_admin_reclassificar_aluno_turma(uuid,uuid
 CREATE FUNCTION public.klasse_proteger_repreco_bolsa_parcial()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO 'pg_catalog','public'
-AS $
+AS $$
 DECLARE
   v_periodos jsonb;
   v_taxa numeric;
@@ -594,7 +594,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 REVOKE ALL ON FUNCTION public.klasse_proteger_repreco_bolsa_parcial() FROM PUBLIC,anon,authenticated;
 CREATE TRIGGER trg_07_proteger_repreco_bolsa_parcial
  BEFORE UPDATE OF valor,valor_previsto,valor_original,desconto_aplicado ON public.mensalidades
