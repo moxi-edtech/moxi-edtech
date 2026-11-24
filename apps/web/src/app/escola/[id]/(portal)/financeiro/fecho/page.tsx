@@ -61,6 +61,7 @@ type FechoDeclaracao = {
   system_tpa: number | null;
   system_transfer: number | null;
   system_mcx: number | null;
+  revision?: number;
   system_other?: number | null;
   system_other_count?: number | null;
 };
@@ -78,7 +79,7 @@ export default function FechoCaixaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [obs, setObs] = useState("");
-  const [scope, setScope] = useState<"self" | "all">("self");
+  const [scope, setScope] = useState<"self" | "all">("all");
   const [declaring, setDeclaring] = useState(false);
   const [declared, setDeclared] = useState({ cash: "", tpa: "", transfer: "", mcx: "" });
   const [fechoResult, setFechoResult] = useState<FechoDeclaracao | null>(null);
@@ -136,7 +137,7 @@ export default function FechoCaixaPage() {
   const rows = useMemo(() => data?.items || [], [data]);
 
   const declareFecho = async () => {
-    if (!escolaId || declaring || snapshotLoading || snapshotError || fechoResult) return;
+    if (!escolaId || scope!=="all" || declaring || snapshotLoading || snapshotError || fechoResult) return;
     setDeclaring(true);
     try {
       const payload = {
@@ -179,7 +180,7 @@ export default function FechoCaixaPage() {
           fecho_id: fechoResult.id,
           aprovacao: approvalStatus,
           justificativa: approvalNote.trim() || undefined,
-          meta: { origem: "portal_financeiro" },
+          meta: { expected_revision: fechoResult.revision??1 },
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -277,11 +278,11 @@ export default function FechoCaixaPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Declaração cega</h2>
-            <p className="text-xs text-muted-foreground">Informe os valores antes do snapshot do sistema.</p>
+            <p className="text-xs text-muted-foreground">Declare os totais da escola inteira. O filtro de operador serve apenas para consultar lançamentos.</p>
           </div>
           <Button
             onClick={declareFecho}
-            disabled={declaring || snapshotLoading || Boolean(snapshotError) || Boolean(fechoResult)}
+            disabled={scope!=="all" || declaring || snapshotLoading || Boolean(snapshotError) || Boolean(fechoResult)}
             className="bg-amber text-white px-4 py-2 rounded-lg text-sm font-semibold"
           >
             {declaring ? "Declarando..." : "Declarar Fecho"}
@@ -333,6 +334,7 @@ export default function FechoCaixaPage() {
             </div>
             <div className="text-sm text-muted-foreground">Estado: {fechoResult.status === "approved" ? "Aprovado" : fechoResult.status === "rejected" ? "Rejeitado" : fechoResult.status === "declared" ? "A aguardar aprovação" : "Por declarar"}</div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-sm text-muted-foreground">{(["cash", "tpa", "transfer", "mcx"] as const).map((key, i) => <div key={key}>{["Numerário", "TPA", "Transferências", "MCX"][i]} declarado: {formatKz(Number(fechoResult[`declared_${key}`] ?? 0))}</div>)}</div>
+            {fechoResult.status==="rejected"&&<Link className="text-sm font-medium underline" href={`/escola/${escolaId}/operacoes/fecho-diario?date=${date}`}>Regularizar caixa no Fecho Diário</Link>}
             {fechoResult.status === "declared" && <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <select
                 value={approvalStatus}
