@@ -1,0 +1,10 @@
+# Fiscal Provider persistence — phase 2
+
+Status: versioned proposal; no production application. Only mock/sandbox activation is permitted at database level. Existing fiscal and financial tables remain unchanged.
+
+- Connections are scoped to the existing fiscal company, with one active connection per environment. Identity is immutable; rotation/replacement creates a new connection. No actual credentials are stored.
+- fiscal_operations is both the request ledger and transactional outbox. Source identity is unique per company, source kind, source UUID and document type; idempotency key is unique per company, not provider. An NC source must identify the distinct credit obligation, not merely the original invoice. Caller must derive the canonical source server-side.
+- Enqueue is invoker-only, service-role only, compares full JSONB on replay, and rejects conflicting payloads. It can participate in a future database payment transaction; no payment hook exists now. Admission locks the connection row so disable and insert serialize. Ordinary read-committed retries converge; serialization errors must be retried by the future transaction owner.
+- Both base tables are RLS-enabled and deny every client role. Even authenticated school staff cannot read them directly. Trusted backend authorization and narrow read projections remain future work. service_role is trusted and must not be exposed to a client.
+- Request rows are append-only for service_role; no worker transitions or official documents/events tables yet. They need to be designed with lease fencing, durable reconciliation and official artifacts in phase 3. No external API calls, native engine activation, payment changes, or production data migration.
+- PG17 workflow applies the exact migration to a disposable fixture with simulated default grants. Tests cover privileges, RLS, tenant isolation, idempotent replay, snapshot/source conflicts, disabled connections and production activation. Full migration-history replay, real concurrent transactions, live advisors and authenticated E2E are separate gates.
