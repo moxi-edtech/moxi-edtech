@@ -62,6 +62,7 @@ type SchedulerBoardProps = {
   canPublicar?: boolean;
   publishDisabledReason?: string;
   publishing?: boolean;
+  busy?: boolean;
 };
 
 // --- COMPONENT ---
@@ -87,6 +88,7 @@ export function SchedulerBoard({
   canPublicar = true,
   publishDisabledReason,
   publishing,
+  busy = false,
 }: SchedulerBoardProps) {
   const [grid, setGrid] = useState<Record<string, string | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -132,9 +134,9 @@ export function SchedulerBoard({
   }, [onGridChange]);
 
   const handleSelectSlot = useCallback((slotKey: string, disciplinaId: string | null) => {
-    if (!slotLookup?.[slotKey] || (disciplinaId && !aulaById.has(disciplinaId))) return;
+    if (busy || !slotLookup?.[slotKey] || (disciplinaId && !aulaById.has(disciplinaId))) return;
     updateGrid({ ...currentGrid, [slotKey]: disciplinaId });
-  }, [aulaById, currentGrid, slotLookup, updateGrid]);
+  }, [aulaById, busy, currentGrid, slotLookup, updateGrid]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
@@ -144,7 +146,7 @@ export function SchedulerBoard({
     const baseId = active.data.current?.baseId as string | undefined;
     const source = active.data.current?.sourceSlot as string | undefined;
     // A cancelled drop must never remove an existing lesson.
-    if (!target || !baseId || !aulaById.has(baseId) || source === target) return;
+    if (busy || !target || !baseId || !aulaById.has(baseId) || source === target) return;
     if (target !== "trash" && !slotLookup?.[target]) return;
     if (source && !slotLookup?.[source]) return;
     const next = { ...currentGrid };
@@ -156,7 +158,7 @@ export function SchedulerBoard({
       next[target] = baseId;
     }
     updateGrid(next);
-  }, [aulaById, currentGrid, slotLookup, updateGrid]);
+  }, [aulaById, busy, currentGrid, slotLookup, updateGrid]);
 
   const getAulaById = useCallback((id: string) => aulaById.get(id), [aulaById]);
 
@@ -189,7 +191,7 @@ export function SchedulerBoard({
 
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveId(null)}>
-      <div className="flex flex-col lg:flex-row h-full min-h-[600px] bg-muted font-sora rounded-xl border border-border overflow-hidden">
+      <fieldset disabled={busy} aria-busy={busy} className="min-w-0 flex flex-col lg:flex-row h-full min-h-[600px] bg-muted font-sora rounded-xl border border-border overflow-hidden">
         {/* SIDEBAR */}
         <div className="w-full lg:w-72 lg:shrink-0 bg-card border-b lg:border-b-0 lg:border-r border-border p-4 flex flex-col z-10">
           <div className="mb-6">
@@ -200,7 +202,7 @@ export function SchedulerBoard({
           <StatusAlerts
             conflictCount={conflictCount}
             shouldShowTurmaSalaWarning={shouldShowTurmaSalaWarning}
-            onSetAssigningTurmaSala={() => setAssigningTurmaSala(true)}
+            onSetAssigningTurmaSala={() => { if (!busy) setAssigningTurmaSala(true); }}
           />
 
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 max-h-64 lg:max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
@@ -219,6 +221,7 @@ export function SchedulerBoard({
             canPublicar={canPublicar}
             publishDisabledReason={publishDisabledReason}
             publishing={publishing}
+            busy={busy}
             grid={currentGrid}
           />
         </div>
@@ -239,7 +242,7 @@ export function SchedulerBoard({
                 aulas={estoque}
                 slotLookup={slotLookup}
                 onSelectSlot={handleSelectSlot}
-                onAssignProfessor={onAssignProfessor}
+                onAssignProfessor={busy ? undefined : onAssignProfessor}
                 setAssigningProfessor={setAssigningProfessor}
                 effectiveTurmaSala={effectiveTurmaSala}
                 salas={salas}
@@ -249,7 +252,7 @@ export function SchedulerBoard({
         </div>
 
         <DragOverlay>{overlayItem}</DragOverlay>
-      </div>
+      </fieldset>
 
       {assigningProfessor && (
         <AssignProfessorModal
@@ -315,13 +318,14 @@ const ActionButtons = React.memo(({
   canPublicar,
   publishDisabledReason,
   publishing,
+  busy,
   grid
 }: any) => (
   <div className="mt-6 pt-6 border-t border-border space-y-3">
     <button
       type="button"
       onClick={onAutoCompletar}
-      disabled={autoCompleting}
+      disabled={autoCompleting || busy}
       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber text-white text-sm font-bold shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:opacity-70"
     >
       <Wand2 className="w-4 h-4" />
@@ -330,6 +334,7 @@ const ActionButtons = React.memo(({
     <button
       type="button"
       onClick={onSalvar}
+      disabled={busy}
       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-border bg-card text-foreground text-sm font-bold hover:bg-muted active:scale-[0.98] transition-all"
     >
       <Save className="w-4 h-4" />
@@ -339,7 +344,7 @@ const ActionButtons = React.memo(({
       <button
         type="button"
         onClick={() => onPublicar(grid)}
-        disabled={!canPublicar || publishing}
+        disabled={!canPublicar || publishing || busy}
         title={!canPublicar ? publishDisabledReason : undefined}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-klasse-gold text-klasse-gold-900 text-sm font-bold shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
       >
