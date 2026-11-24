@@ -39,7 +39,7 @@ export function sortAlunoExportRows(items: AlunoListItem[]) {
 }
 
 function valueFor(row: AlunoListItem, key: (typeof EXPORT_HEADERS)[number]["key"]) {
-  const value = (row as Record<string, unknown>)[key];
+  const value = key === "bolseiro" ? row.bolseiro ?? row.bolsa_integral : (row as Record<string, unknown>)[key];
   if (value === null || value === undefined) return "";
   if (key === "created_at" && typeof value === "string") return value.slice(0, 10);
   if (key === "bolseiro") return value === true ? "Sim" : value === false ? "Não" : "";
