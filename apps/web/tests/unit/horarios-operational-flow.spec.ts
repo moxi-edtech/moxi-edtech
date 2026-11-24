@@ -139,7 +139,7 @@ test("horários: workspace remains mounted behind the editor and setup dialogs",
   assert.doesNotMatch(page,/href=\{slotsHref\}/);
   assert.match(page,/if \(autoDraftDirty\) \{\s*warning\("Guarde o rascunho primeiro"/);
   assert.match(page,/if \(setupBusyRef\.current\) return;/);
-  assert.match(page,/onCloseAutoFocus=\{event=>\{event\.preventDefault\(\);editorTriggerRef\.current\?\.focus\(\)\}\}/);
+  assert.match(page,/onCloseAutoFocus=\{event=>\{event\.preventDefault\(\);editorTriggerRef\.current\?\.focus\(\{preventScroll:true\}\)\}\}/);
 });
 test("horários: resource and advanced time operations use guarded dialogs",()=>{
   const board=readFileSync("src/components/escola/horarios/SchedulerBoard.tsx","utf8");
@@ -161,4 +161,25 @@ test("horários: workspace and secretaria share one editor and no independent wr
   assert.doesNotMatch(modal,/fetch\(|handleSave|handleAutoComplete/);
   assert.match(editor,/if \(embedded && nextTurmaId === null\) \{ onClose\?\.\(\); return; \}/);
   assert.match(editor,/onUpdated\?\.\(\)/);
+});
+
+
+test("horários: compact viewport uses a day editor with shared grid and persistent actions",()=>{
+ const editor=readFileSync("src/components/escola/horarios/HorarioEditor.tsx","utf8");
+ const board=readFileSync("src/components/escola/horarios/SchedulerBoard.tsx","utf8");
+ assert.match(board,/new ResizeObserver\(measure\)/);
+ assert.match(board,/node.clientWidth < 1100/);
+ assert.match(board,/layout === "day" \|\| \(layout === "auto" && compact\)/);
+ assert.match(board,/aria-label="Dia da semana"/);
+ assert.match(board,/aria-pressed=\{activeDay===dia\}/);
+ assert.match(board,/const key=activeDay\+"-"\+tempo.id/);
+ assert.match(board,/if\(tempo.tipo==="intervalo"\)return/);
+ assert.match(board,/slotLookup\?\.\[key\]\?/);
+ assert.match(board,/onChange=\{event=>handleSelectSlot\(key,event.target.value\|\|null\)\}/);
+ assert.match(board,/min-h-11 w-full min-w-0/);
+ assert.match(board,/conflictReasons\[key\].join/);
+ assert.match(editor,/h-\[100dvh\] w-screen/);
+ assert.match(editor,/<SchedulerBoard\s+externalActions/);
+ assert.match(editor,/<footer className="shrink-0[\s\S]*?onClick=\{\(\)=>void handleSalvar\(grid\)\}[\s\S]*?onClick=\{\(\)=>void handlePublicar\(grid\)\}/);
+ assert.match(editor,/aria-label="Selecionar turma"/);
 });
