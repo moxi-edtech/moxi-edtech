@@ -67,3 +67,25 @@ test("SQL dollar quoting, automatic origin and cash completeness",()=>{
  assert.match(pdf,/Sistema \(automático\)/);
  assert.match(pdf,/Meio não classificado/);
 });
+
+
+test("contextual history, supervision and cash experience",()=>{
+ const ui=src("components/secretaria/ExpedienteWorkspace.tsx");
+ const history=src("components/secretaria/ExpedienteHistory.tsx");
+ const cash=src("components/secretaria/FechoCaixaCego.tsx");
+ const access=src("lib/secretaria/expediente.ts");
+ const api=src("app/api/escola/[id]/expediente/route.ts");
+ assert.match(ui,/Concluir o expediente/);
+ assert.match(ui,/Encerrar sem declaração de caixa/);
+ assert.match(ui,/Detalhes técnicos/);
+ assert.match(ui,/student_name/);
+ assert.match(history,/Caixas por validar/);
+ assert.match(history,/data.pendingCount>data.pending.length/);
+ assert.match(cash,/Contar notas e moedas/);
+ assert.match(cash,/Numerário contado/);
+ assert.match(access,/day>captureDay/);
+ assert.match(access,/operationQuery.eq\("actor_id",filters.actor\)/);
+ assert.match(access,/secretaria_expediente_responsaveis/);
+ assert.match(api,/view==="supervision"&&!access.canSupervise/);
+ assert.match(api,/30\*86400000/);
+});
