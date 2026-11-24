@@ -226,6 +226,7 @@ export default function FechoCaixaPage() {
             />
           </div>
 
+          <Link className="rounded-xl border border-border px-4 py-2 text-sm font-medium" href={`/escola/${escolaId}/financeiro/fecho-diario?date=${date}`}>Fecho diário e histórico</Link>
           {/* Botão de Impressão */}
           <Link
             href={`/escola/${escolaId}/financeiro/fecho/print?date=${date}&operador_scope=${scope}`}
@@ -334,7 +335,7 @@ export default function FechoCaixaPage() {
             </div>
             <div className="text-sm text-muted-foreground">Estado: {fechoResult.status === "approved" ? "Aprovado" : fechoResult.status === "rejected" ? "Rejeitado" : fechoResult.status === "declared" ? "A aguardar aprovação" : "Por declarar"}</div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-sm text-muted-foreground">{(["cash", "tpa", "transfer", "mcx"] as const).map((key, i) => <div key={key}>{["Numerário", "TPA", "Transferências", "MCX"][i]} declarado: {formatKz(Number(fechoResult[`declared_${key}`] ?? 0))}</div>)}</div>
-            {fechoResult.status==="rejected"&&<Link className="text-sm font-medium underline" href={`/escola/${escolaId}/operacoes/fecho-diario?date=${date}`}>Regularizar caixa no Fecho Diário</Link>}
+            {fechoResult.status==="rejected"&&<Link className="text-sm font-medium underline" href={`/escola/${escolaId}/financeiro/fecho-diario?date=${date}`}>Regularizar caixa no Fecho Diário</Link>}
             {fechoResult.status === "declared" && <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <select
                 value={approvalStatus}
