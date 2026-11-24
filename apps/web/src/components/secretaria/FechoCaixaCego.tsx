@@ -91,7 +91,7 @@ export default function FechoCaixaCego({ onConfirm, onClose, completionLabel="Vo
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" disabled={submitting} onClick={onClose} className="border border-border bg-card text-foreground">Cancelar</Button>
-        <Button type="submit" disabled={submitting} className="bg-klasse-gold text-white hover:brightness-95">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}{submitting ? "A registar..." : "Declarar fecho"}</Button>
+        <Button type="submit" disabled={submitting} tone="gold">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}{submitting ? "A registar..." : "Declarar fecho"}</Button>
       </div>
     </form>
   );
