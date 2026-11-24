@@ -10,7 +10,7 @@ const fail = (error: string, status: number) => NextResponse.json({ ok: false, e
 const dateLabel = (value: string) => value.split("-").reverse().join("/");
 const money = (v: unknown) => new Intl.NumberFormat("pt-AO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v ?? 0)) + " Kz";
 const clock = (value: string) => new Intl.DateTimeFormat("pt-PT", { timeZone: "Africa/Luanda", dateStyle: "short", timeStyle: "short" }).format(new Date(value));
-const entities: Record<string,string> = { alunos:"Alunos", candidaturas:"Candidaturas", matriculas:"Matrículas", pagamentos:"Pagamentos", documentos_emitidos:"Documentos emitidos", servico_pedidos:"Pedidos de serviço", mensalidades:"Propinas", notas:"Notas", financeiro_lancamentos:"Lançamentos financeiros", financeiro_estornos:"Estornos", reapreciacao_pedidos:"Reapreciações", frequencias:"Frequências" };
+const entities: Record<string,string> = { alunos:"Alunos", candidaturas:"Candidaturas", matriculas:"Matrículas", pagamentos:"Pagamentos", documentos_emitidos:"Documentos emitidos", servico_pedidos:"Pedidos de serviço", mensalidades:"Propinas", notas:"Notas", financeiro_lancamentos:"Lançamentos financeiros", financeiro_estornos:"Estornos", reapreciacao_pedidos:"Reapreciações", frequencias:"Frequências",aluno_encarregados:"Encarregados",matricula_reclassificacoes:"Reclassificações",matricula_desistencia_sinalizacoes:"Desistências",matricula_desistencia_reativacoes:"Reativações",financeiro_pagamento_alocacoes:"Alocações",financeiro_pagamento_reversoes:"Reversões",financeiro_cobrancas:"Cobranças",financeiro_reconciliacoes_mensalidades:"Reconciliações",pautas_oficiais:"Pautas oficiais",pauta_conclusoes:"Conclusões de pauta",excecoes_pauta:"Exceções de pauta",professores:"Professores",turmas:"Turmas",turma_disciplinas:"Disciplinas",turma_disciplinas_professores:"Atribuições de professores",quadro_horarios:"Quadro de horários",horario_slots:"Tempos de horário",horario_versoes:"Versões de horário",horario_eventos:"Eventos de horário",aluno_falta_justificacoes:"Justificações de faltas",frequencia_status_periodo:"Fecho de frequência",rematricula_janelas:"Janelas de rematrícula" };
 const actions: Record<string,string> = { CREATE:"Criação", UPDATE:"Alteração", DELETE:"Remoção" };
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -99,7 +99,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         line((late?"Adendos posteriores ao fecho":"Operações até ao fecho")+" ("+filtered.length+")",true);
         for(const r of filtered){
           line(clock(r.occurred_at)+" | "+(actions[r.action]??r.action)+" "+(entities[r.entity]??r.entity)+" | "+(r.origin==="service_role"?"Sistema (automático)":names.get(r.actor_id)??r.actor_id));
-          line("Referência: "+r.entity_id+(r.detail?.status?" | Estado: "+r.detail.status:"")+(r.detail?.valor?" | Valor: "+money(r.detail.valor):""));
+          line("Referência: "+r.entity_id+(r.detail?.status?" | Estado: "+r.detail.status:"")+(r.detail?.payment_day&&r.detail.payment_day!==r.day_key?" | Data financeira: "+r.detail.payment_day:"")+(r.detail?.valor?" | Valor: "+money(r.detail.valor):""));
         }
       }
     }
