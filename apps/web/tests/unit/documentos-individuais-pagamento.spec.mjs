@@ -136,5 +136,7 @@ test("portal documental consulta a política única com matrícula e ano explíc
   assert.match(policy, /NOT p_portal AND coalesce/);
   assert.match(policy, /public\._aluno_documento_autorizar/);
   assert.match(policy, /DOCUMENT_EXPLICIT_YEAR_REQUIRED/);
-  assert.match(policy, /'admin_secretaria','diretor'/);
+  assert.match(policy, /'admin_secretaria',[\s\S]*?'diretor'/);
+  const roles = src('lib/roles.ts');
+  assert.match(roles, /K12_DOCUMENTOS_ROLE_GROUP = \[[\s\S]*?'admin_secretaria',[\s\S]*?'diretor'/);
 });

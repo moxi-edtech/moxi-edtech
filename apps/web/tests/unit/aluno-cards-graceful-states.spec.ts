@@ -9,8 +9,11 @@ test("documentos com preço zero e pagamento obrigatório não são vendidos com
   const solicitar = await read("app/api/aluno/documentos/solicitar/route.ts");
   assert.match(catalogo, /!item\.exige_pagamento_antes_de_liberar/);
   assert.match(catalogo, /Number\(pedido\?\.valor_cobrado \?\? item\.valor_base\) > 0/);
-  assert.match(solicitar, /configuredService\?\.exige_pagamento_antes_de_liberar/);
-  assert.match(solicitar, /Number\(configuredService\.valor_base\) <= 0/);
+  const policy = await readFile(new URL('../../../../supabase/migrations/20271203004000_documentos_individuais_gratuidade_ssot.sql', import.meta.url), 'utf8');
+  assert.match(solicitar, /aluno_documento_solicitar/);
+  assert.match(catalogo, /aluno_documento_acesso/);
+  assert.match(policy, /IF v_exige_pagamento AND coalesce\(v_serv.valor_base,0\) <= 0 THEN/);
+  assert.match(policy, /TAXA_NAO_CONFIGURADA/);
 });
 
 test("cartões do aluno são curtos, exibem motivo só quando rejeitado e preservam ações", async () => {

@@ -31,7 +31,11 @@ test("certificado exclui notas de anos posteriores", () => {
 test("portal do aluno escolhe a matrícula do ano solicitado", () => {
   const portal = src("app/api/aluno/documentos/emitir/route.ts");
   assert.match(portal, /resolveBoletimMatricula\(supabase/);
-  assert.match(portal, /\.eq\('ano_letivo', anoLetivo\)/);
+  assert.match(portal, /p_session_id: context\.anoLetivoId/);
+  assert.match(portal, /p_matricula_id: matriculaId/);
+  const policy = readFileSync(resolve(process.cwd(), '../../supabase/migrations/20271203004000_documentos_individuais_gratuidade_ssot.sql'), 'utf8');
+  assert.match(policy, /m\.aluno_id=p_aluno_id AND m\.session_id=p_session_id/);
+  assert.match(policy, /AND matricula_id = v_matricula/);
   assert.doesNotMatch(portal, /order\('ano_letivo', \{ ascending: false \}\)/);
   assert.match(portal, /Tipo e serviço documental incompatíveis/);
 });
@@ -72,7 +76,10 @@ test("impressão nunca exibe diploma oficial com notas ocultas por erro de leitu
   assert.match(print, /certificado\.disciplinas\.length === 0/);
   assert.match(builder, /throw new Error\("Não foi possível carregar as fontes oficiais do certificado/);
   assert.match(builder, /source\.year === targetYear/);
-  assert.match(portal, /verificarCertificadoElegivel/);
+  assert.match(portal, /aluno_documento_acesso/);
+  const policy = readFileSync(resolve(process.cwd(), '../../supabase/migrations/20271203004000_documentos_individuais_gratuidade_ssot.sql'), 'utf8');
+  assert.match(policy, /p_tipo IN \('certificado','declaracao_notas'\)/);
+  assert.match(policy, /NOTAS_INCOMPLETAS/);
 });
 
 test("RPCs impedem emissão e cobrança sem notas antes da impressão", () => {
