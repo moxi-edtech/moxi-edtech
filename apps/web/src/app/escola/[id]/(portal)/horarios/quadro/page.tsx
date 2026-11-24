@@ -1588,6 +1588,7 @@ function QuadroHorariosContent() {
             <Select
               value={turmaId ?? ""}
               options={turmaOptions}
+              disabled={saving || publishing || autoScheduling}
               onChange={async (event) => {
                 const nextTurmaId = event.target.value || null;
                 if (nextTurmaId === turmaId) return;
@@ -1738,7 +1739,8 @@ function QuadroHorariosContent() {
             onPublicar={handlePublicar}
             canPublicar={canPublicar}
             publishDisabledReason={filledSlots === 0 ? "Adicione pelo menos uma aula." : "Aguarde os dados ou verifique a ligação."}
-            publishing={publishing || saving}
+            publishing={publishing}
+            busy={isLoading || !!baseError || !!turmaError || !!versionError || !versaoId || saving || publishing || autoScheduling}
           />
         )}
 
