@@ -28,6 +28,7 @@ interface StepSlotsProps {
   escolaId: string;
   onComplete: () => void;
   initialTurno?: string | null;
+  onBusyChange?: (busy:boolean)=>void;
 }
 
 const TURNOS = [
@@ -67,7 +68,7 @@ function toMinutes(value: string) {
   return hours * 60 + minutes;
 }
 
-export function StepSlots({ escolaId, onComplete, initialTurno }: StepSlotsProps) {
+export function StepSlots({ escolaId, onComplete, initialTurno, onBusyChange }: StepSlotsProps) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTurno, setActiveTurno] = useState(initialTurno || "matinal");
@@ -115,20 +116,20 @@ export function StepSlots({ escolaId, onComplete, initialTurno }: StepSlotsProps
 
   const handleAutoGenerate = async () => {
     if (loading || loadError || savingSlot || turnSlots.length || !generated) return;
-    setSavingSlot(true);
+    setSavingSlot(true); onBusyChange?.(true);
     try {
       const res=await fetch(`/api/escolas/${escolaId}/horarios/slots`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slots:generated.items})});
       const json=await res.json().catch(()=>({}));
       if(!res.ok||!json.ok){error(formatSlotSaveError(json));return;}
       success("Tempos configurados", "A estrutura foi guardada para os dias seleccionados.");
       setTemplateOpen(false);await fetchSlots();
-    }catch{error("Erro na rede. Não foi possível confirmar a gravação.");}finally{setSavingSlot(false);}
+    }catch{error("Erro na rede. Não foi possível confirmar a gravação.");}finally{setSavingSlot(false); onBusyChange?.(false);}
   };
 
   const handleAddSlot = async (e: React.FormEvent) => {
     e.preventDefault();
     if(loading||loadError||savingSlot||newSlotInvalid||newSlotConflict||localConflicts.length)return;
-    setSavingSlot(true);
+    setSavingSlot(true); onBusyChange?.(true);
     
     // Adiciona para todos os dias da semana para simplificar o Wizard
     const payload = DIAS.map(dia => ({
@@ -153,7 +154,7 @@ export function StepSlots({ escolaId, onComplete, initialTurno }: StepSlotsProps
     } catch (_e) {
       error("Erro na rede.");
     } finally {
-      setSavingSlot(false);
+      setSavingSlot(false); onBusyChange?.(false);
     }
   };
 
