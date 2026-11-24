@@ -107,13 +107,15 @@ test("Central usa só a decisão canónica e apresenta ações de emissão, paga
   const hub = src("components/secretaria/DocumentosEmissaoHubClient.tsx");
   assert.doesNotMatch(hub, /missingNotesFee|requiresPaidNotes|selectedServico|admin\/servicos/);
   assert.match(hub, /Emitir e imprimir/);
-  assert.match(hub, /Aprovar emissão/);
+  assert.doesNotMatch(hub, /Aprovar emissão|handleSolicitar/);
   assert.match(hub, /Registar pagamento/);
   assert.match(hub, /Tentar novamente/);
   assert.match(hub, /estado\.status !== "pending_payment"/);
-  assert.match(hub, /api\/secretaria\/documentos\/aprovacoes/);
+  assert.doesNotMatch(hub, /api\/secretaria\/documentos\/aprovacoes/);
   const fix = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271203004000_documentos_individuais_gratuidade_ssot.sql"), "utf8");
   assert.doesNotMatch(fix, /OR p_tipo IN \('declaracao_notas'/);
   assert.match(fix, /OR p_tipo = 'boletim_trimestral'/);
   assert.match(fix, /exige_pagamento_antes_de_liberar/);
+  assert.match(fix, /NOT v_administrativo AND v_serv.exige_aprovacao/);
+  assert.match(fix, /public.safe_auth_uid\(\) IS NOT NULL/);
 });

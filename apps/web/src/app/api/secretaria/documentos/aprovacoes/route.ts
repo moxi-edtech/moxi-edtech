@@ -40,12 +40,13 @@ export async function GET() {
   try {
     const authz = await authorize();
     if (authz.error || !authz.escolaId) return authz.error;
-    const { data: pedidos, error } = await authz.supabase
+    const { data: pedidos, error, count } = await authz.supabase
       .from("servico_pedidos")
-      .select("id, aluno_id, matricula_id, servico_codigo, servico_nome, valor_cobrado, reason_detail, contexto, created_at")
+      .select("id, aluno_id, matricula_id, servico_codigo, servico_nome, valor_cobrado, reason_detail, contexto, created_at", { count: "exact" })
       .eq("escola_id", authz.escolaId)
       .eq("status", "blocked")
       .eq("valor_cobrado", 0)
+      .or("contexto->>origem.is.null,contexto->>origem.neq.documentos_emissao_individual")
       .in("servico_codigo", [...PORTAL_DOCUMENT_CODES])
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
@@ -61,6 +62,7 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
+      total: count ?? null,
       items: (pedidos ?? []).map((pedido: any) => ({
         ...pedido,
         aluno: alunosById.get(pedido.aluno_id) ?? null,
@@ -100,6 +102,7 @@ export async function POST(request: Request) {
       .eq("escola_id", authz.escolaId)
       .eq("status", "blocked")
       .eq("valor_cobrado", 0)
+      .or("contexto->>origem.is.null,contexto->>origem.neq.documentos_emissao_individual")
       .in("servico_codigo", [...PORTAL_DOCUMENT_CODES])
       .select("id, aluno_id, servico_codigo, servico_nome, status")
       .maybeSingle();

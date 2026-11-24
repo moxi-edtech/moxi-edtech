@@ -246,7 +246,7 @@ export async function POST(request: Request) {
     if (access?.granted !== true) {
       return NextResponse.json({
         ok: false, code: "DOCUMENT_PAYMENT_REQUIRED",
-        error: "Documento não emitido. Registe ou valide a taxa deste serviço, ou aguarde a aprovação quando aplicável.",
+        error: "Documento não emitido. Registe ou valide a taxa deste serviço, ou confirme a elegibilidade.",
       }, { status: 409 });
     }
 

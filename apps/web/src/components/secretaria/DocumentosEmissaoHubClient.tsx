@@ -332,37 +332,6 @@ export default function DocumentosEmissaoHubClient({
     }
   };
 
-  const handleSolicitar = async () => {
-    if (!canSubmit) return;
-    setStatusLoading(true);
-    setError(null);
-    setErrorAction(null);
-    try {
-      let estado = await consultarEstado("solicitar");
-      setDocumentState(estado);
-      // A aprovação permanece explícita e auditada pelo endpoint existente.
-      if (estado.status === "approval" && estado.pedidoId) {
-        const response = await fetch("/api/secretaria/documentos/aprovacoes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pedidoId: estado.pedidoId, decision: "approve" }),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.ok) {
-          throw new Error(result.error || "Não foi possível aprovar o pedido.");
-        }
-        estado = await consultarEstado();
-        setDocumentState(estado);
-        if (estado.granted) setSuccess("Emissão aprovada. Pode emitir e imprimir.");
-      }
-    } catch (err) {
-      setDocumentState(null);
-      reportError(err, "Não foi possível aprovar a emissão.");
-    } finally {
-      setStatusLoading(false);
-    }
-  };
-
   const handlePagamento = async () => {
     if (!canSubmit || !selectedAluno?.id || !selectedAnoLetivoId || !documentState) return;
     if (documentState.status !== "pending_payment") return;
@@ -467,7 +436,7 @@ export default function DocumentosEmissaoHubClient({
       <div className="space-y-1">
         <h2 className="text-lg font-semibold text-foreground">Emissão individual</h2>
         <p className="text-sm text-muted-foreground">
-          Selecione o aluno, o documento e o ano letivo. Emita, pague ou aprove conforme a situação do serviço.
+          Selecione o aluno, o documento e o ano letivo. Emita diretamente ou registe o pagamento quando necessário.
         </p>
       </div>
 
@@ -639,7 +608,7 @@ export default function DocumentosEmissaoHubClient({
               documentState?.status === "paid" ? "Pagamento confirmado. Pronto para emitir." :
               documentState?.status === "free" ? "Sem taxa pendente. Pronto para emitir." :
               documentState?.status === "verification" ? "Pagamento em validação. Aguarde a confirmação financeira." :
-              documentState?.status === "approval" ? "Aguarda aprovação da secretaria." :
+              documentState?.status === "approval" ? "Não foi possível confirmar a autorização de emissão. Atualize o estado." :
               documentState?.status === "pending_payment" ? "Emissão bloqueada até ao registo e validação do pagamento." :
               error ? "Não foi possível confirmar a situação. Resolva a pendência ou tente novamente." : !selectedAnoLetivoId ? "Selecione o ano letivo." : "Consulte a situação do documento."}
           </p>
@@ -683,11 +652,6 @@ export default function DocumentosEmissaoHubClient({
             className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
             {paymentBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
             Registar pagamento
-          </button>
-        ) : documentState?.status === "approval" ? (
-          <button type="button" onClick={handleSolicitar} disabled={!canSubmit}
-            className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-            <FileText className="h-4 w-4" /> Aprovar emissão
           </button>
         ) : null}
         {selectedAluno && tipo && selectedAnoLetivoId && (

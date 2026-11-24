@@ -15,6 +15,13 @@ DECLARE
   v_pedido public.servico_pedidos%ROWTYPE;
   v_intent public.pagamento_intents%ROWTYPE;
   v_pago boolean := false;
+  -- Derivado da sessão autenticada, nunca de um parâmetro HTTP ou snapshot.
+  v_administrativo boolean := coalesce(public.safe_auth_uid() IS NOT NULL
+    AND public.current_tenant_escola_id() = p_escola_id
+    AND public.user_has_role_in_school(p_escola_id, ARRAY[
+      'secretaria','secretaria_financeiro','admin_financeiro','admin_secretario',
+      'admin','admin_escola','staff_admin','diretor'
+    ]::text[]), false);
   v_exige_pagamento boolean;
   v_ano integer;
   v_historico uuid;
@@ -146,12 +153,12 @@ BEGIN
       WHEN v_exige_pagamento AND v_pago THEN 'paid'
       WHEN v_exige_pagamento AND v_intent.id IS NOT NULL AND v_intent.status = 'pending' THEN 'verification'
       WHEN v_exige_pagamento THEN 'pending_payment'
-      WHEN v_serv.exige_aprovacao AND v_pedido.status IS DISTINCT FROM 'granted' THEN 'approval'
+      WHEN NOT v_administrativo AND v_serv.exige_aprovacao AND v_pedido.status IS DISTINCT FROM 'granted' THEN 'approval'
       ELSE 'free'
     END,
     'granted', CASE
       WHEN v_exige_pagamento THEN v_pago
-      WHEN v_serv.exige_aprovacao THEN coalesce(v_pedido.status = 'granted', false)
+      WHEN NOT v_administrativo AND v_serv.exige_aprovacao THEN coalesce(v_pedido.status = 'granted', false)
       ELSE true
     END,
     'valor', v_serv.valor_base,

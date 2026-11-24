@@ -24,7 +24,7 @@ type Approval = {
 type Decision = "approve" | "reject";
 const PAGE_SIZE = 10;
 
-export default function DocumentosAprovacoesQueue() {
+export default function DocumentosAprovacoesQueue({ onCountChange }: { onCountChange?: (count: number | null) => void } = {}) {
   const [items, setItems] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -52,13 +52,15 @@ export default function DocumentosAprovacoesQueue() {
       if (!response.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar a fila.");
       if (controller.signal.aborted) return;
       setItems(Array.isArray(json.items) ? json.items : []);
+      onCountChange?.(typeof json.total === "number" ? json.total : null);
     } catch (err) {
       if (controller.signal.aborted) return;
+      onCountChange?.(null);
       setLoadError(err instanceof Error ? err.message : "Falha ao carregar a fila.");
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, []);
+  }, [onCountChange]);
 
   useEffect(() => {
     void load();
@@ -103,6 +105,7 @@ export default function DocumentosAprovacoesQueue() {
       setItems((current) => current.filter((entry) => entry.id !== selectedId));
       setFeedback(json.message || "Decisão registada.");
       setSelected(null);
+      await load();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Não foi possível concluir a decisão.");
     } finally {

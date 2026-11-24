@@ -21,26 +21,34 @@ BEGIN
   v := public.documento_individual_acesso(s,a,y,'declaracao_notas');
   IF v->>'status' IS DISTINCT FROM 'free' OR (v->>'granted')::boolean IS DISTINCT FROM true THEN RAISE EXCEPTION 'FREE_DECLARATION_BLOCKED: %',v; END IF;
   v := public.documento_individual_acesso(s,a,y,'certificado');
-  IF v->>'status' IS DISTINCT FROM 'approval' OR (v->>'granted')::boolean IS DISTINCT FROM false THEN RAISE EXCEPTION 'APPROVAL_NOT_EXPLICIT: %',v; END IF;
-  BEGIN
-    PERFORM public.emitir_documento_final(s,a,2026,'certificado');
-    RAISE EXCEPTION 'LEGACY_APPROVAL_BYPASS';
-  EXCEPTION WHEN insufficient_privilege THEN NULL;
-  END;
+  IF v->>'status' IS DISTINCT FROM 'free' OR (v->>'granted')::boolean IS DISTINCT FROM true THEN RAISE EXCEPTION 'STAFF_FREE_CERTIFICATE_BLOCKED: %',v; END IF;
   v := public.documento_individual_solicitar(s,a,y,'certificado');
-  w := public.documento_individual_solicitar(s,a,y,'certificado');
-  IF v->>'pedido_id' IS NULL OR v->>'pedido_id' IS DISTINCT FROM w->>'pedido_id' OR v->>'pagamento_intent_id' IS NOT NULL THEN RAISE EXCEPTION 'FREE_APPROVAL_REQUEST_INVALID: %',v; END IF;
+  IF v->>'pedido_id' IS NOT NULL OR v->>'pagamento_intent_id' IS NOT NULL THEN RAISE EXCEPTION 'STAFF_CREATED_REDUNDANT_APPROVAL: %',v; END IF;
   IF public.documento_individual_acesso(s,a,y,'declaracao_frequencia')->>'reason' IS DISTINCT FROM 'TAXA_NAO_CONFIGURADA' THEN RAISE EXCEPTION 'MISCONFIGURED_PAID_SERVICE_ALLOWED'; END IF;
   IF public.documento_individual_acesso(s,a,y,'boletim_trimestral')->>'reason' IS DISTINCT FROM 'TAXA_NAO_CONFIGURADA' THEN RAISE EXCEPTION 'PAID_BOLETIM_BYPASSED'; END IF;
 END; $$;
 RESET ROLE;
-UPDATE public.servico_pedidos SET status='granted' WHERE escola_id='00000000-0000-4000-8000-000000007101' AND servico_codigo='DOC_CERTIFICADO_HABILITACOES';
+-- A política privada é exercitada pelo dono da função, com identidade de aluno.
+DO $$
+DECLARE s uuid := '00000000-0000-4000-8000-000000007101'; a uuid := '00000000-0000-4000-8000-000000007105'; y uuid := '00000000-0000-4000-8000-000000007106'; v jsonb;
+BEGIN
+  PERFORM set_config('request.jwt.claims',json_build_object('sub','00000000-0000-4000-8000-000000007105','role','authenticated','escola_id',s)::text,true);
+  v := public._documento_individual_politica(s,a,y,'certificado',NULL);
+  IF v->>'status' IS DISTINCT FROM 'approval' OR (v->>'granted')::boolean IS DISTINCT FROM false THEN RAISE EXCEPTION 'STUDENT_APPROVAL_BYPASS: %',v; END IF;
+  BEGIN
+    INSERT INTO public.documentos_emitidos(escola_id,aluno_id,tipo,dados_snapshot,hash_validacao)
+    VALUES (s,a,'certificado',jsonb_build_object('matricula_id','00000000-0000-4000-8000-000000007108','ano_letivo',2026),'student-guard-hash');
+    RAISE EXCEPTION 'STUDENT_INSERT_BYPASS';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub','00000000-0000-4000-8000-000000007103','role','authenticated','escola_id',s)::text,true);
+END; $$;
 SET LOCAL ROLE authenticated;
 DO $$
 DECLARE v jsonb;
 BEGIN
  v := public.documento_individual_acesso('00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007105','00000000-0000-4000-8000-000000007106','certificado');
- IF v->>'status' IS DISTINCT FROM 'free' OR (v->>'granted')::boolean IS DISTINCT FROM true THEN RAISE EXCEPTION 'APPROVED_FREE_CERTIFICATE_BLOCKED: %',v; END IF;
+ IF v->>'status' IS DISTINCT FROM 'free' OR (v->>'granted')::boolean IS DISTINCT FROM true THEN RAISE EXCEPTION 'STAFF_FREE_CERTIFICATE_BLOCKED: %',v; END IF;
  PERFORM public.emitir_documento_final('00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007105',2026,'certificado');
 END; $$;
 RESET ROLE;
@@ -50,7 +58,7 @@ BEGIN
  IF has_function_privilege('authenticated','public._documento_individual_politica(uuid,uuid,uuid,text,uuid)','EXECUTE')
  OR has_function_privilege('anon','public._documento_individual_politica(uuid,uuid,uuid,text,uuid)','EXECUTE')
  THEN RAISE EXCEPTION 'PRIVATE_POLICY_EXPOSED'; END IF;
- IF NOT EXISTS (SELECT 1 FROM public.documentos_emitidos WHERE escola_id='00000000-0000-4000-8000-000000007101' AND tipo::text='certificado') THEN RAISE EXCEPTION 'APPROVED_PERSISTENCE_FAILED'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.documentos_emitidos WHERE escola_id='00000000-0000-4000-8000-000000007101' AND tipo::text='certificado') THEN RAISE EXCEPTION 'STAFF_PERSISTENCE_FAILED'; END IF;
  BEGIN
    INSERT INTO public.documentos_emitidos(escola_id,aluno_id,tipo,dados_snapshot,hash_validacao)
    VALUES ('00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007105','declaracao_frequencia',
