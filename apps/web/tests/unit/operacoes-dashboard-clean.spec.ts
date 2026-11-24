@@ -118,5 +118,22 @@ test("operational card families share column thresholds and aligned metric rows"
   assert.match(hub, /operations-metric-card operations-metric-daily/);
   assert.match(hub, /className="operations-metric-value"/);
   assert.equal((hub.match(/dashboardCompact=\{Boolean\(afterCounters\)\}/g) ?? []).length, 4);
-  assert.match(action, /h-full min-h-\[80px\]/);
+  assert.match(action, /h-full min-h-\[88px\]/);
+});
+
+test("operations dashboard uses a consistent breathing rhythm without changing the admin layout", () => {
+  const css = source("app/globals.css");
+  const dashboard = source("components/layout/escola-admin/EscolaAdminDashboardContent.tsx");
+  const hub = source("components/layout/operacoes/OperacoesPainelHub.tsx");
+  const quick = source("components/layout/escola-admin/QuickActionsSection.tsx");
+  const kpi = source("components/dashboard/KpiCard.tsx");
+  const action = source("components/shared/AcaoRapidaCard.tsx");
+  assert.match(css, /\.operations-dashboard-flow \{ display: flex; flex-direction: column; gap: 1\.75rem; \}/);
+  assert.match(css, /\.operations-dashboard-flow \{ gap: 2rem; \}/);
+  assert.match(css, /grid-auto-rows: 1fr;\s*align-items: stretch;\s*gap: 1rem;/);
+  assert.match(dashboard, /isOperacoes \? "operations-dashboard-flow min-w-0 pb-10" : "min-w-0 space-y-5/);
+  assert.match(hub, /afterCounters \? "operations-dashboard-flow min-w-0"/);
+  assert.match(quick, /mb-4 text-base font-semibold text-foreground">Ações rápidas/);
+  assert.match(kpi, /operations-metric-summary rounded-xl border border-border bg-card p-4/);
+  assert.match(action, /min-h-\[88px\][^"]*bg-card p-4/);
 });

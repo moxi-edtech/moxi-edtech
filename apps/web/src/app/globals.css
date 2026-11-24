@@ -49,14 +49,19 @@
 /* Títulos de páginas partilhados ganham a marca apenas nos portais. */
 .klasse-portal-theme .klasse-dashboard-header-title { color: var(--primary); }
 
-/* Operações: uma grelha por família, mesmas margens e linhas de base.
+/* Operações: ritmo vertical e respiro consistentes, apenas neste dashboard.
    Alturas mínimas, nunca fixas: rótulos e zoom podem ampliar os cartões. */
+.operations-dashboard-flow { display: flex; flex-direction: column; gap: 1.75rem; }
+@container (min-width: 920px) {
+  .operations-dashboard-flow { gap: 2rem; }
+}
 .operations-daily-grid,
 .operations-actions-grid,
 .operations-kpi-grid {
   grid-template-columns: minmax(0, 1fr);
   grid-auto-rows: 1fr;
   align-items: stretch;
+  gap: 1rem;
 }
 .operations-metric-card {
   display: grid;
@@ -80,8 +85,8 @@
   gap: 0.5rem;
   min-height: 2rem;
 }
-.operations-metric-daily { min-height: 7rem; }
-.operations-metric-summary { min-height: 8.25rem; }
+.operations-metric-daily { min-height: 7.5rem; }
+.operations-metric-summary { min-height: 9rem; }
 @container (min-width: 480px) {
   .operations-actions-grid, .operations-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

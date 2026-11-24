@@ -41,7 +41,7 @@ export default function AcaoRapidaCard({
 
   if (dashboardCompact) {
     const tone = operationalCardTone({ unavailable: disabled, needsAttention });
-    const className = "group flex h-full min-h-[80px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    const className = "group flex h-full min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
     const content = (
       <>
         <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl [&>svg]:size-4 ${operationalCardIconClasses[tone]}`}>

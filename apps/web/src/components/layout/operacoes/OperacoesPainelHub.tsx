@@ -95,10 +95,10 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
   if (onlyReopen && !authorized) return null;
 
   return (
-    <section aria-label={onlyReopen ? "Solicitações académicas" : "Operação"} className={afterCounters ? "min-w-0 space-y-6" : "space-y-5 min-[1700px]:space-y-8"}>
+    <section aria-label={onlyReopen ? "Solicitações académicas" : "Operação"} className={afterCounters ? "operations-dashboard-flow min-w-0" : "space-y-5 min-[1700px]:space-y-8"}>
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {afterCounters ? <h2 className="text-sm font-semibold text-foreground">Acompanhamento diário</h2> : <SecaoLabel>{onlyReopen ? "Solicitações académicas" : "Operação"}</SecaoLabel>}
+          {afterCounters ? <h2 className="text-base font-semibold text-foreground">Acompanhamento diário</h2> : <SecaoLabel>{onlyReopen ? "Solicitações académicas" : "Operação"}</SecaoLabel>}
           <div className="flex items-center gap-2">
             {operationalSnapshot && !onlyReopen && (
               <button
@@ -130,7 +130,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
             </button>
           </div>
         ) : (
-          <div className={afterCounters ? "operations-daily-grid mt-3 grid gap-3" : "mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4"}>
+          <div className={afterCounters ? "operations-daily-grid mt-4 grid" : "mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4"}>
             {loading
               ? (onlyReopen ? [0] : [0, 1, 2]).map((i) => (
                   <div key={i} className={`${afterCounters ? "operations-metric-daily" : "h-[104px]"} motion-safe:animate-pulse rounded-xl border border-border bg-card`} />
@@ -143,7 +143,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
                       aria-haspopup="dialog"
                       aria-expanded={aberto === id}
                       onClick={(event) => { counterTrigger.current = event.currentTarget; setAberto(id); }}
-                      className="group operations-metric-card operations-metric-daily rounded-xl border border-border bg-card p-3 text-left shadow-sm transition hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="group operations-metric-card operations-metric-daily rounded-xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <span className="operations-metric-header text-sm font-medium leading-5 text-muted-foreground">
                         <span className="min-w-0 break-words">{label}</span>
@@ -172,8 +172,8 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
       {!onlyReopen && (<>
       {afterCounters}
       <div>
-        {afterCounters ? <h2 className="text-sm font-semibold text-foreground">Financeiro</h2> : <SecaoLabel>Financeiro</SecaoLabel>}
-        <div className={afterCounters ? "operations-actions-grid mt-3 grid gap-3" : "mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-4 min-[1700px]:mt-4 min-[1700px]:gap-4"}>
+        {afterCounters ? <h2 className="text-base font-semibold text-foreground">Financeiro</h2> : <SecaoLabel>Financeiro</SecaoLabel>}
+        <div className={afterCounters ? "operations-actions-grid mt-4 grid" : "mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-4 min-[1700px]:mt-4 min-[1700px]:gap-4"}>
           <AcaoRapidaCard
             dashboardCompact={Boolean(afterCounters)}
             icon={<TrendingUp className="h-5 w-5" />}

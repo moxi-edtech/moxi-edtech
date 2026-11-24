@@ -34,3 +34,9 @@
 - Ações rápidas e atalhos financeiros: mesma variante horizontal de 80px mínimos e grelha 1/2/4 colunas (480px e 920px de largura útil). Os quatro indicadores gerais usam os mesmos pontos de mudança, com cabeçalho, número e rodapé alinhados e mínimo de 8.25rem. Reservar o rodapé não desloca a linha dos números quando apenas alguns têm descrição.
 - Todas as grelhas esticam os cards da família; alturas mínimas permitem quebra de texto e zoom, sem cortar rótulos. Ícones de 16px em suportes de 32px, cores contextuais existentes. Financeiro secundário mantém links e modal; inadimplência sinaliza pendência quando confirmada. Nenhuma mudança de rota, consulta ou outro portal.
 - CI e inspeção visual autenticada ainda necessários; os contratos estáticos não substituem validação em browser.
+
+## Respiro visual
+
+- Ritmo entre secções de 28px, 32px no espaço útil largo do hub; grelhas com 16px de separação, títulos de secção 16px e margem de 16px até aos cartões.
+- Padding interno de 16px nos cartões compactos; mínimos de 120px (acompanhamento), 144px (indicadores gerais), 88px (atalhos). Alturas continuam flexíveis. Caixa mensal com 20px de padding.
+- Sem novos textos, ornamentos ou secções; preserva o contraste dos ícones e as quatro ações rápidas. Escopo Operações, sem alterar variantes não compactas nem consultas. Contratos de espaçamento adicionados; confirmação visual autenticada e CI pendentes.

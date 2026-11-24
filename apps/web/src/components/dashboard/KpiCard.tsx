@@ -82,7 +82,7 @@ export function KpiCard({
         <div className="min-h-4 text-xs leading-4 text-muted-foreground">{description}</div>
       </>
     );
-    const className = "operations-metric-card operations-metric-summary rounded-xl border border-border bg-card p-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    const className = "operations-metric-card operations-metric-summary rounded-xl border border-border bg-card p-4 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
     return href ? <Link href={href} className={className + " hover:border-ring"}>{content}</Link> : <div className={className}>{content}</div>;
   }
 
