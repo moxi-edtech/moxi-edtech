@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GraduationCap, Loader2, ClipboardList, ExternalLink } from "lucide-react";
 import Link from "next/link";
@@ -73,6 +73,7 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
   const [confirmando, setConfirmando] = useState(false);
   const [modalidade, setModalidade] = useState<"integral" | "parcial" | "retirar-parcial">("integral");
   const [percentagem, setPercentagem] = useState("50");
+  const percentagemId = useId();
   const [avisoFiscal, setAvisoFiscal] = useState(0);
   const [avisoPagamento, setAvisoPagamento] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -113,6 +114,7 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
   const retirarParcial = modalidade === "retirar-parcial";
   const taxa = retirarParcial ? 0 : Number(percentagem);
   const taxaValida = retirarParcial || (percentagem.trim() !== "" && Number.isFinite(taxa) && taxa >= 0.01 && taxa <= 99.99 && /^\d{1,2}(\.\d{1,2})?$/.test(percentagem));
+  const valorBarra = Math.min(99.99, Math.max(0.01, Number.isFinite(taxa) && taxa > 0 ? taxa : 50));
   const inicioParcial = mesVigencia || (retirarParcial ? mesSeguinte(mesAtual) : mesAtual);
   const parcelasParciais = (matricula?.previsao ?? []).filter(c => c.competencia_parcial >= inicioParcial && c.percentual_anterior !== taxa);
   const parciaisElegiveis = parcelasParciais.filter(c => c.parcial_elegivel);
@@ -267,14 +269,32 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
           {confirmando && !matricula.bolseiro && !regularizacao && (
             <fieldset className="space-y-2">
               <legend className="mb-2 text-xs font-medium text-foreground">Modalidade</legend>
-              {!parcialAtiva && <label className="flex items-center gap-2 text-sm"><input type="radio" name={`bolsa-tipo-${alunoId}`} checked={modalidade === "integral"} onChange={() => { setModalidade("integral"); setMotivo("Bolsa integral"); setMesVigencia(""); }} /> Bolsa integral (100%)</label>}
-              <label className="flex items-center gap-2 text-sm"><input type="radio" name={`bolsa-tipo-${alunoId}`} disabled={matricula.desconto_comercial} checked={modalidade === "parcial"} onChange={() => { setModalidade("parcial"); setMotivo(matricula.bolsa_parcial_motivo || "Bolsa parcial"); setMesVigencia(""); }} /> Bolsa parcial</label>
-              {parcialAtiva && <label className="flex items-center gap-2 text-sm"><input type="radio" name={`bolsa-tipo-${alunoId}`} checked={retirarParcial} onChange={() => { setModalidade("retirar-parcial"); setMesVigencia(""); }} /> Retirar bolsa parcial</label>}
+              {!parcialAtiva && <label className="flex items-center gap-2 text-sm"><input type="radio" name={`${percentagemId}-tipo`} checked={modalidade === "integral"} onChange={() => { setModalidade("integral"); setMotivo("Bolsa integral"); setMesVigencia(""); }} /> Bolsa integral (100%)</label>}
+              <label className="flex items-center gap-2 text-sm"><input type="radio" name={`${percentagemId}-tipo`} disabled={matricula.desconto_comercial} checked={modalidade === "parcial"} onChange={() => { setModalidade("parcial"); setMotivo(matricula.bolsa_parcial_motivo || "Bolsa parcial"); setMesVigencia(""); }} /> Bolsa parcial</label>
+              {parcialAtiva && <label className="flex items-center gap-2 text-sm"><input type="radio" name={`${percentagemId}-tipo`} checked={retirarParcial} onChange={() => { setModalidade("retirar-parcial"); setMesVigencia(""); }} /> Retirar bolsa parcial</label>}
               {matricula.desconto_comercial && <p className="text-xs text-muted-foreground">Existe um desconto comercial nesta matrícula. A bolsa parcial não acumula com outro desconto.</p>}
-              {modalidade === "parcial" && <div>
-                <label htmlFor={`bolsa-percentagem-${alunoId}`} className="mb-1 block text-xs font-medium">Percentual da bolsa (%)</label>
-                <input id={`bolsa-percentagem-${alunoId}`} type="number" min="0.01" max="99.99" step="0.01" value={percentagem} onChange={e => setPercentagem(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20" />
-              </div>}
+              {modalidade === "parcial" && (
+                <div className="space-y-3 rounded-xl border border-border bg-background p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <label htmlFor={`${percentagemId}-valor`} className="text-sm font-medium text-foreground">Percentual da bolsa</label>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <input id={`${percentagemId}-valor`} type="number" inputMode="decimal" min="0.01" max="99.99" step="0.01" value={percentagem} disabled={saving} aria-invalid={!taxaValida} aria-describedby={`${percentagemId}-ajuda`} onChange={e => setPercentagem(e.target.value)} className="w-24 rounded-xl border border-border bg-card px-3 py-2 text-right text-sm font-semibold tabular-nums outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20" />
+                      <span aria-hidden="true" className="text-sm text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                  <label htmlFor={`${percentagemId}-barra`} className="sr-only">Ajustar percentual da bolsa</label>
+                  <input id={`${percentagemId}-barra`} type="range" min="0.01" max="99.99" step="0.01" value={valorBarra} disabled={saving} aria-valuetext={`${valorBarra.toLocaleString("pt-AO")}%`} onChange={e => setPercentagem(e.target.value)} className="h-11 w-full cursor-pointer accent-klasse-gold focus-visible:rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:cursor-not-allowed" />
+                  <div aria-hidden="true" className="flex justify-between text-xs tabular-nums text-muted-foreground">
+                    <span>0,01%</span><span>25%</span><span>50%</span><span>75%</span><span>99,99%</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {[25, 50, 75].map(valor => (
+                      <button key={valor} type="button" disabled={saving} aria-pressed={taxaValida && taxa === valor} onClick={() => setPercentagem(String(valor))} className={`min-h-9 rounded-xl border px-3 py-1.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${taxaValida && taxa === valor ? "border-klasse-gold bg-klasse-gold/10 text-foreground" : "border-border bg-card text-muted-foreground"}`}>{valor}%</button>
+                    ))}
+                  </div>
+                  <p id={`${percentagemId}-ajuda`} className={`text-xs ${taxaValida ? "text-muted-foreground" : "text-destructive"}`}>{taxaValida ? "Arraste a barra ou introduza um valor exacto. Para 100%, selecione bolsa integral." : "Introduza um percentual entre 0,01% e 99,99%, com até duas casas decimais."}</p>
+                </div>
+              )}
             </fieldset>
           )}
           {confirmando && (
@@ -327,7 +347,7 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
                       <p className="mt-1 text-xs text-muted-foreground">{parciaisElegiveis.length} propina(s) elegível(is) · {retirarParcial ? "valor integral" : `${taxa}% de bolsa`}.</p>
                       {parciaisElegiveis.slice(0,24).map(c => <div key={c.competencia_parcial} className="flex justify-between gap-3 text-xs"><span>{c.competencia_parcial}</span><span>{kwanza.format(c.valor_aberto)} → <strong>{kwanza.format(liquidoParcial(c))}</strong></span></div>)}
                       {parciaisRevisao.length > 0 && <p className="text-xs text-muted-foreground">{parciaisRevisao.length} cobrança(s) preservada(s) para revisão financeira.</p>}
-                      <p className="text-xs text-muted-foreground">A base revalida as cobranças ao confirmar. A vigência também afeta futuras gerações.</p>
+                      <p className="text-xs text-muted-foreground">Simulação indicativa. O valor definitivo é calculado e validado no servidor ao confirmar. A vigência também afeta futuras gerações.</p>
                     </> : <p role="alert" className="text-xs text-destructive">Confirme o percentual e a vigência.</p>}
                   </div>
                 ) : <>
