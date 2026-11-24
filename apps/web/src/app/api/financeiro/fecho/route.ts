@@ -18,6 +18,7 @@ export async function GET(req: Request) {
 
     const data = await getFechoCaixaData({
       date,
+      escolaId: url.searchParams.get("escolaId"),
       operadorId,
       operadorScope: operadorScope === "all" ? "all" : "self",
     });
