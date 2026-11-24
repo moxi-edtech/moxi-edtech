@@ -573,7 +573,7 @@ function FiltrosPanel({ filtros, turmas, onChange, onClose, activeCount }: {
         </div>
 
         <div>
-          <label htmlFor="filtro-bolsa" className="mb-2 block text-xs font-semibold text-muted-foreground">Bolsa integral</label>
+          <label htmlFor="filtro-bolsa" className="mb-2 block text-xs font-semibold text-muted-foreground">Bolsa</label>
           <select id="filtro-bolsa" value={local.bolsa} onChange={e => setLocal(f => ({...f, bolsa:e.target.value as Filtros["bolsa"]}))} className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
             <option value="">Todos</option><option value="sim">Bolseiros</option><option value="nao">Não bolseiros</option>
           </select>

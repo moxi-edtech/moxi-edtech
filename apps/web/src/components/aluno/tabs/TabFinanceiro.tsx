@@ -40,7 +40,7 @@ type DadosPagamento = {
 type ApiResponse = {
   ok: boolean;
   mensalidades: Array<Omit<Item, "status"> & { status: string }>;
-  bolsas?: Array<{ ano_letivo: number; vigencia_inicio: string | null }>;
+  bolsas?: Array<{ ano_letivo: number; vigencia_inicio: string | null; percentagem?: number }>;
   ano_letivo_atual?: number | null;
   servicos?: AlunoServicoFinanceiro[];
   movimentos: Movimento[];
@@ -55,7 +55,7 @@ type ApiResponse = {
 };
 type ParsedFinanceiroPayload = {
   rows: Item[];
-  bolsas: Array<{ ano_letivo: number; vigencia_inicio: string | null }>;
+  bolsas: Array<{ ano_letivo: number; vigencia_inicio: string | null; percentagem?: number }>;
   anoLetivoAtual: number | null;
   movimentos: Movimento[];
   resumo: ApiResponse["resumo"];
@@ -89,7 +89,7 @@ export function TabFinanceiro() {
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Item[]>([]);
-  const [bolsas, setBolsas] = useState<Array<{ ano_letivo: number; vigencia_inicio: string | null }>>([]);
+  const [bolsas, setBolsas] = useState<Array<{ ano_letivo: number; vigencia_inicio: string | null; percentagem?: number }>>([]);
   const [anoLetivoAtual, setAnoLetivoAtual] = useState<number | null>(null);
   const bolsaVigente = bolsas.find(bolsa => bolsa.ano_letivo === anoLetivoAtual);
   const bolsasAnteriores = bolsas.filter(bolsa => bolsa.ano_letivo !== anoLetivoAtual);
@@ -185,11 +185,11 @@ export function TabFinanceiro() {
         <section aria-label="Bolsa de estudo do ano letivo atual" className="flex items-start gap-3 rounded-xl border border-klasse-green/20 bg-klasse-green/5 p-4">
           <Check className="mt-0.5 h-5 w-5 shrink-0 text-klasse-green" aria-hidden="true" />
           <div>
-            <p className="text-sm font-semibold text-klasse-green">Bolsa integral de estudo · Ano atual</p>
+            <p className="text-sm font-semibold text-klasse-green">{(bolsaVigente.percentagem ?? 100) === 100 ? "Bolsa integral de estudo" : `Bolsa parcial de estudo · ${bolsaVigente.percentagem}%`} · Ano atual</p>
             <p className="mt-1 text-sm text-foreground">Ano letivo {bolsaVigente.ano_letivo}/{bolsaVigente.ano_letivo + 1}
               {bolsaVigente.vigencia_inicio ? ` · Desde ${bolsaVigente.vigencia_inicio.slice(0, 7)}` : ""}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">As propinas cobertas estão isentas. Outros serviços ou meses anteriores ao início da bolsa podem continuar devidos.</p>
+            <p className="mt-1 text-xs text-muted-foreground">{(bolsaVigente.percentagem ?? 100) === 100 ? "As propinas cobertas estão isentas." : "As propinas abrangidas pela vigência têm desconto percentual."} Outros serviços ou meses anteriores ao início da bolsa podem continuar devidos.</p>
           </div>
         </section>
       )}
@@ -197,7 +197,7 @@ export function TabFinanceiro() {
         <details className="rounded-xl border border-border bg-card p-4">
           <summary className="cursor-pointer text-sm font-medium text-foreground">Histórico de bolsas ({bolsasAnteriores.length})</summary>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-            {bolsasAnteriores.map(bolsa => <li key={bolsa.ano_letivo}>Ano {bolsa.ano_letivo}/{bolsa.ano_letivo + 1} · benefício histórico, não renovado automaticamente</li>)}
+            {bolsasAnteriores.map(bolsa => <li key={bolsa.ano_letivo}>Ano {bolsa.ano_letivo}/{bolsa.ano_letivo + 1} · {bolsa.percentagem ?? 100}% · benefício histórico, não renovado automaticamente</li>)}
           </ul>
         </details>
       )}

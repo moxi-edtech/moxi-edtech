@@ -1554,7 +1554,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                       </select>
                     </div>
                     <div>
-                      <label htmlFor="sec-alunos-bolsa" className="block text-xs font-bold text-muted-foreground mb-1.5">Bolsa integral</label>
+                      <label htmlFor="sec-alunos-bolsa" className="block text-xs font-bold text-muted-foreground mb-1.5">Bolsa</label>
                       <select id="sec-alunos-bolsa" value={filters.bolsa} onChange={event => setFilters(prev => ({...prev, bolsa:event.target.value as Filters["bolsa"]}))} className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
                         <option value="">Todos</option><option value="sim">Bolseiros</option><option value="nao">Não bolseiros</option>
                       </select>

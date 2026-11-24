@@ -22,13 +22,13 @@ test("os quatro filtros são aceites e validados na API", () => {
 });
 
 test("a bolsa é a matrícula SSOT no ano selecionado, nunca o valor de mensalidade", () => {
-  assert.match(service, /"id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id, bolsa_integral"/);
+  assert.match(service, /"id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id, bolsa_integral, bolsa_parcial_percentagem"/);
   assert.match(service, /\.from\("matriculas"\)/);
   assert.match(service, /\.eq\("escola_id", escolaId\)/);
   assert.match(service, /matriculasQuery = matriculasQuery\.eq\("session_id", options\.academicYearId\)/);
   assert.match(service, /matriculasQuery = matriculasQuery\.eq\("ano_letivo", targetAno\)/);
   assert.match(service, /row\.bolsa_integral === true/);
-  assert.match(service, /row\.bolsa_integral === \(filters\.bolsa === "sim"\)/);
+  assert.match(service, /row\.bolseiro === \(filters\.bolsa === "sim"\)/);
   assert.match(service, /bolsa_integral: null/); // sem matrícula não é "não bolseiro"
 });
 
@@ -64,7 +64,7 @@ test("Admin e Secretaria passam os mesmos filtros à listagem e exportação", (
 test("Excel e PDF incluem classe, turno e status real da bolsa", () => {
   assert.match(exportRenderer, /key: "classe_nome", label: "Classe"/);
   assert.match(exportRenderer, /key: "turno", label: "Turno"/);
-  assert.match(exportRenderer, /key: "bolsa_integral", label: "Bolseiro"/);
+  assert.match(exportRenderer, /key: "bolseiro", label: "Bolseiro"/);
   assert.match(exportRenderer, /value === true \? "Sim" : value === false \? "Não"/);
   assert.match(exportRenderer, /renderNominalA4\(/);
   assert.match(exportRenderer, /key: "bolsa", label: "Bolsa"/);

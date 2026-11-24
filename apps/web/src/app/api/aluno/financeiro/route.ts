@@ -59,10 +59,10 @@ export async function GET(request: Request) {
     // O estado da bolsa é por matrícula/ano; nunca inferir bolsa a partir do saldo 0.
     const { data: matriculasBolsa, error: bolsaError } = await supabase
       .from("matriculas")
-      .select("id, ano_letivo, bolsa_integral, bolsa_integral_inicio")
+      .select("id, ano_letivo, bolsa_integral, bolsa_integral_inicio, bolsa_parcial_percentagem, bolsa_parcial_periodos")
       .eq("escola_id", ctx.escolaId)
       .eq("aluno_id", alunoId)
-      .eq("bolsa_integral", true)
+      .or("bolsa_integral.eq.true,bolsa_parcial_percentagem.gt.0")
       .gte("ano_letivo", fromAno)
       .lte("ano_letivo", toAno)
       .order("ano_letivo", { ascending: false });
@@ -179,7 +179,8 @@ export async function GET(request: Request) {
       ano_letivo_atual: anoAtivo?.ano ?? null,
       bolsas: (matriculasBolsa ?? []).map(m => ({
         ano_letivo: m.ano_letivo,
-        vigencia_inicio: m.bolsa_integral_inicio,
+        vigencia_inicio: m.bolsa_integral ? m.bolsa_integral_inicio : (Array.isArray(m.bolsa_parcial_periodos) ? (m.bolsa_parcial_periodos[m.bolsa_parcial_periodos.length - 1] as { inicio?: string } | undefined)?.inicio ?? null : null),
+        percentagem: m.bolsa_integral ? 100 : Number(m.bolsa_parcial_percentagem),
       })),
       servicos,
       movimentos: ledgerMovimentos,
