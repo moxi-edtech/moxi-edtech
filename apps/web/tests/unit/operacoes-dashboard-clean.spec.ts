@@ -100,3 +100,23 @@ test("operational icon semantics are contextual, not decorative", () => {
   assert.match(kpi, /op\.mensalidadesPendentes > 0 \? \("warning"/);
   assert.match(kpi, /op\.mensalidadesInadimplentes > 0 \? \("warning"/);
 });
+
+test("operational card families share column thresholds and aligned metric rows", () => {
+  const css = source("app/globals.css");
+  const kpi = source("components/dashboard/KpiCard.tsx");
+  const kpiSection = source("components/layout/escola-admin/KpiSection.tsx");
+  const hub = source("components/layout/operacoes/OperacoesPainelHub.tsx");
+  const action = source("components/shared/AcaoRapidaCard.tsx");
+  assert.match(css, /@container \(min-width: 480px\)\s*\{\s*\.operations-actions-grid, \.operations-kpi-grid \{ grid-template-columns: repeat\(2,/);
+  assert.match(css, /@container \(min-width: 920px\)\s*\{\s*\.operations-actions-grid, \.operations-kpi-grid \{ grid-template-columns: repeat\(4,/);
+  assert.match(css, /grid-auto-rows: 1fr;/);
+  assert.match(css, /\.operations-metric-header \{[\s\S]*?min-height: 2\.5rem;/);
+  assert.match(kpi, /operations-metric-card operations-metric-summary/);
+  assert.match(kpi, /className="operations-metric-value"/);
+  assert.match(kpi, /min-h-4 text-xs leading-4 text-muted-foreground">\{description\}/);
+  assert.match(kpiSection, /operations-metric-summary motion-safe:animate-pulse/);
+  assert.match(hub, /operations-metric-card operations-metric-daily/);
+  assert.match(hub, /className="operations-metric-value"/);
+  assert.equal((hub.match(/dashboardCompact=\{Boolean\(afterCounters\)\}/g) ?? []).length, 4);
+  assert.match(action, /h-full min-h-\[80px\]/);
+});

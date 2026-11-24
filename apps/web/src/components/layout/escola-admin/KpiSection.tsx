@@ -88,7 +88,7 @@ export default function KpiSection({
   if (loading) {
     return (
       <div className={gridClasses}>
-        {Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)}
+        {Array.from({ length: 4 }).map((_, i) => mode === "operacoes" ? <div key={i} className="operations-metric-summary motion-safe:animate-pulse rounded-xl border border-border bg-card" /> : <KpiSkeleton key={i} />)}
       </div>
     );
   }

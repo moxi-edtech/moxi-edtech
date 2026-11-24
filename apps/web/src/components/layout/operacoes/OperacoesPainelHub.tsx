@@ -95,7 +95,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
   if (onlyReopen && !authorized) return null;
 
   return (
-    <section aria-label={onlyReopen ? "Solicitações académicas" : "Operação"} className="space-y-5 min-[1700px]:space-y-8">
+    <section aria-label={onlyReopen ? "Solicitações académicas" : "Operação"} className={afterCounters ? "min-w-0 space-y-6" : "space-y-5 min-[1700px]:space-y-8"}>
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           {afterCounters ? <h2 className="text-sm font-semibold text-foreground">Acompanhamento diário</h2> : <SecaoLabel>{onlyReopen ? "Solicitações académicas" : "Operação"}</SecaoLabel>}
@@ -133,7 +133,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
           <div className={afterCounters ? "operations-daily-grid mt-3 grid gap-3" : "mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4"}>
             {loading
               ? (onlyReopen ? [0] : [0, 1, 2]).map((i) => (
-                  <div key={i} className={`${afterCounters ? "min-h-[88px]" : "h-[104px]"} motion-safe:animate-pulse rounded-xl border border-border bg-card`} />
+                  <div key={i} className={`${afterCounters ? "operations-metric-daily" : "h-[104px]"} motion-safe:animate-pulse rounded-xl border border-border bg-card`} />
                 ))
               : contadores.filter(({ id }) => !onlyReopen || id === "reabertura").map(({ id, icon: Icon, label, value, tone }) => (
                   afterCounters ? (
@@ -143,15 +143,15 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
                       aria-haspopup="dialog"
                       aria-expanded={aberto === id}
                       onClick={(event) => { counterTrigger.current = event.currentTarget; setAberto(id); }}
-                      className="group flex min-h-[88px] min-w-0 flex-col justify-between gap-2 rounded-xl border border-border bg-card p-3 text-left shadow-sm transition hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="group operations-metric-card operations-metric-daily rounded-xl border border-border bg-card p-3 text-left shadow-sm transition hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <span className="flex items-start justify-between gap-2 text-sm font-medium text-muted-foreground">
-                        {label}
+                      <span className="operations-metric-header text-sm font-medium leading-5 text-muted-foreground">
+                        <span className="min-w-0 break-words">{label}</span>
                         <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${operationalCardIconClasses[operationalCardTone({ needsAttention: value > 0 })]}`}>
                           <Icon className="h-4 w-4" />
                         </span>
                       </span>
-                      <span className="flex items-center justify-between gap-2">
+                      <span className="operations-metric-value">
                         <span className={`text-2xl font-semibold tabular-nums ${tone === "warning" ? "text-amber-700 dark:text-amber-300" : "text-foreground"}`}>{value.toLocaleString("pt-AO")}</span>
                         <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
                       </span>
@@ -172,27 +172,32 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
       {!onlyReopen && (<>
       {afterCounters}
       <div>
-        <SecaoLabel>Financeiro</SecaoLabel>
-        <div className="mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-4 min-[1700px]:mt-4 min-[1700px]:gap-4">
+        {afterCounters ? <h2 className="text-sm font-semibold text-foreground">Financeiro</h2> : <SecaoLabel>Financeiro</SecaoLabel>}
+        <div className={afterCounters ? "operations-actions-grid mt-3 grid gap-3" : "mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-4 min-[1700px]:mt-4 min-[1700px]:gap-4"}>
           <AcaoRapidaCard
+            dashboardCompact={Boolean(afterCounters)}
             icon={<TrendingUp className="h-5 w-5" />}
             label="Inadimplência"
+            needsAttention={Boolean(afterCounters) && operationalSnapshot?.mensalidadesStatusDisponivel !== false && (operationalSnapshot?.mensalidadesInadimplentes ?? 0) > 0}
             sublabel="Radar de cobranças"
             href={buildPortalHref(escolaParam, "/operacoes/radar")}
           />
           <AcaoRapidaCard
+            dashboardCompact={Boolean(afterCounters)}
             icon={<Wallet className="h-5 w-5" />}
             label={afterCounters ? "Recebimentos completos" : "Recebimentos"}
             sublabel={afterCounters ? undefined : "Validação de pagamentos"}
             href={buildPortalHref(escolaParam, "/operacoes/recebimentos")}
           />
           <AcaoRapidaCard
+            dashboardCompact={Boolean(afterCounters)}
             icon={<BarChart3 className="h-5 w-5" />}
             label="Gráficos"
             sublabel="Evolução e pagamentos"
             onClick={() => setAberto("graficos")}
           />
           <AcaoRapidaCard
+            dashboardCompact={Boolean(afterCounters)}
             icon={<Inbox className="h-5 w-5" />}
             label="Turmas e alunos"
             sublabel="Matriz financeira por turma"

@@ -27,3 +27,10 @@
 - Verde: estado normal ou ação disponível. Dourado/âmbar: pendência confirmada (aulas, planos, reaberturas, propinas e fechos por validar ou regularizar). Cinzento: ação bloqueada ou indicador sem dados. Precedência do estado indisponível; números e rótulos continuam a transmitir o significado sem depender só da cor.
 - A cor é derivada dos contadores já existentes, sem novas consultas. Atalhos sem contadores próprios ficam verdes; não se usa a variante estática amarela para simular pendências. Indicador de alunos não sinaliza falta de turmas como se fosse uma pendência de alunos.
 - Regra partilhada em `operational-card-tone.ts`, com testes dos estados normal, atenção e indisponível; variantes não compactas preservadas. CI e homologação visual pendentes.
+
+## Alinhamento e hierarquia das famílias de cards
+
+- Acompanhamento diário: três métricas com a mesma grelha de cabeçalho/valor, mínimo de 7rem e uma coluna quando não houver largura para três; evita um card isolado em segunda fila.
+- Ações rápidas e atalhos financeiros: mesma variante horizontal de 80px mínimos e grelha 1/2/4 colunas (480px e 920px de largura útil). Os quatro indicadores gerais usam os mesmos pontos de mudança, com cabeçalho, número e rodapé alinhados e mínimo de 8.25rem. Reservar o rodapé não desloca a linha dos números quando apenas alguns têm descrição.
+- Todas as grelhas esticam os cards da família; alturas mínimas permitem quebra de texto e zoom, sem cortar rótulos. Ícones de 16px em suportes de 32px, cores contextuais existentes. Financeiro secundário mantém links e modal; inadimplência sinaliza pendência quando confirmada. Nenhuma mudança de rota, consulta ou outro portal.
+- CI e inspeção visual autenticada ainda necessários; os contratos estáticos não substituem validação em browser.
