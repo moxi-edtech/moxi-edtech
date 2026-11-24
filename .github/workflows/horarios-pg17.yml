@@ -1,0 +1,47 @@
+name: Horários · PostgreSQL 17
+on:
+  pull_request:
+    paths:
+      - 'docs/engineering/horarios-publication-guard.proposed.sql'
+      - 'supabase/ops/tests/horarios_pg17_*'
+      - '.github/workflows/horarios-pg17.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres17:
+    name: PostgreSQL 17 · integridade de horários
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: klasse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d klasse_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: klasse_test
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Confirm PostgreSQL 17
+        run: psql -X -v ON_ERROR_STOP=1 -c "SELECT version()"
+      - name: Apply candidate SQL in disposable database and validate
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/horarios_pg17_fixture.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/engineering/horarios-publication-guard.proposed.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/horarios_pg17_assert.sql
