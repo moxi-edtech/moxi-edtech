@@ -158,6 +158,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .maybeSingle()
 
     const mode = parsed.data.mode ?? 'draft'
+    if (mode === 'publish' && parsed.data.items.length === 0) {
+      return NextResponse.json({ ok: false, error: 'Adicione pelo menos uma aula antes de publicar.' }, { status: 400 })
+    }
     const emitObs = (status: 'success' | 'error', httpStatus: number, details: Record<string, unknown> = {}) =>
       emitirEvento(supabase as any, {
         escola_id: escolaIdResolved,
@@ -223,7 +226,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const seenSlots = new Set<string>()
     const seenProfessors = new Set<string>()
     const seenSalas = new Set<string>()
-    for (const item of parsed.data.items) {
+    for (const item of payload) {
       if (seenSlots.has(item.slot_id)) conflicts.push({ slot_id: item.slot_id, kind: 'turma' })
       seenSlots.add(item.slot_id)
       if (item.professor_id) {
@@ -239,41 +242,65 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (mode === 'publish') {
-      const { data: publishedVersions } = await supabase
-        .from('horario_versoes')
+      // Scope conflicts to the selected academic year and other turmas.
+      const { data: otherTurmas, error: otherTurmasError } = await supabase
+        .from('turmas')
         .select('id')
         .eq('escola_id', escolaIdResolved)
-        .eq('status', 'publicada')
-
-      const publishedVersionIds = (publishedVersions || []).map((row: { id: string }) => row.id)
-
-      if (slotIds.length > 0 && professorIds.length > 0 && publishedVersionIds.length > 0) {
-        const { data: profConflicts } = await supabase
-          .from('quadro_horarios')
-          .select('slot_id, professor_id')
-          .eq('escola_id', escolaIdResolved)
-          .in('slot_id', slotIds)
-          .in('professor_id', professorIds as string[])
-          .in('versao_id', publishedVersionIds)
-          .neq('versao_id', versaoId)
-
-        for (const row of profConflicts || []) {
-          conflicts.push({ slot_id: row.slot_id, professor_id: row.professor_id, kind: 'professor' })
-        }
+        .eq('ano_letivo_id', academicContext.anoLetivoId)
+        .neq('id', parsed.data.turma_id)
+      if (otherTurmasError) {
+        return NextResponse.json({ ok: false, error: 'Não foi possível validar conflitos. Tente novamente.' }, { status: 503 })
       }
 
-      if (slotIds.length > 0 && salaIds.length > 0 && publishedVersionIds.length > 0) {
-        const { data: salaConflicts } = await supabase
-          .from('quadro_horarios')
-          .select('slot_id, sala_id')
+      const otherTurmaIds = (otherTurmas || []).map((row: { id: string }) => row.id)
+      if (otherTurmaIds.length > 0 && slotIds.length > 0) {
+        const { data: publishedVersions, error: publishedError } = await supabase
+          .from('horario_versoes')
+          .select('id')
           .eq('escola_id', escolaIdResolved)
-          .in('slot_id', slotIds)
-          .in('sala_id', salaIds as string[])
-          .in('versao_id', publishedVersionIds)
-          .neq('versao_id', versaoId)
+          .eq('status', 'publicada')
+          .in('turma_id', otherTurmaIds)
+        if (publishedError) {
+          return NextResponse.json({ ok: false, error: 'Não foi possível validar conflitos. Tente novamente.' }, { status: 503 })
+        }
+        const publishedVersionIds = (publishedVersions || []).map((row: { id: string }) => row.id)
+        const expectedBySlot = new Map(payload.map((item) => [item.slot_id, item]))
 
-        for (const row of salaConflicts || []) {
-          conflicts.push({ slot_id: row.slot_id, sala_id: row.sala_id, kind: 'sala' })
+        if (professorIds.length > 0 && publishedVersionIds.length > 0) {
+          const { data: profConflicts, error: professorError } = await supabase
+            .from('quadro_horarios')
+            .select('slot_id, professor_id')
+            .eq('escola_id', escolaIdResolved)
+            .in('slot_id', slotIds)
+            .in('professor_id', professorIds as string[])
+            .in('versao_id', publishedVersionIds)
+          if (professorError) {
+            return NextResponse.json({ ok: false, error: 'Não foi possível validar professores. Tente novamente.' }, { status: 503 })
+          }
+          for (const row of profConflicts || []) {
+            if (expectedBySlot.get(row.slot_id)?.professor_id === row.professor_id) {
+              conflicts.push({ slot_id: row.slot_id, professor_id: row.professor_id, kind: 'professor' })
+            }
+          }
+        }
+
+        if (salaIds.length > 0 && publishedVersionIds.length > 0) {
+          const { data: salaConflicts, error: salaError } = await supabase
+            .from('quadro_horarios')
+            .select('slot_id, sala_id')
+            .eq('escola_id', escolaIdResolved)
+            .in('slot_id', slotIds)
+            .in('sala_id', salaIds as string[])
+            .in('versao_id', publishedVersionIds)
+          if (salaError) {
+            return NextResponse.json({ ok: false, error: 'Não foi possível validar salas. Tente novamente.' }, { status: 503 })
+          }
+          for (const row of salaConflicts || []) {
+            if (expectedBySlot.get(row.slot_id)?.sala_id === row.sala_id) {
+              conflicts.push({ slot_id: row.slot_id, sala_id: row.sala_id, kind: 'sala' })
+            }
+          }
         }
       }
     }
@@ -352,7 +379,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       p_escola_id: escolaIdResolved,
       p_turma_id: parsed.data.turma_id,
       p_versao_id: versaoId,
-      p_items: parsed.data.items,
+      p_items: payload,
       p_publish: mode === 'publish',
     })
 
