@@ -24,8 +24,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!start.success || !end.success || end.data < start.data || end.data > todayLuanda() || (Date.parse(end.data) - Date.parse(start.data)) / 86400000 >= MAX_DAYS) return fail("Selecione um intervalo de até 31 dias.", 400);
     const [school, closes, cash, captureStart] = await Promise.all([
       supabase.from("escolas").select("nome").eq("id", escolaId).single(),
-      supabase.from("secretaria_expedientes").select("id,day_key,closed_at,closed_by,operation_count,summary").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
-      supabase.from("fecho_caixa").select("day_key,status,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
+      supabase.from("secretaria_expedientes").select("id,day_key,closed_at,closed_by,operation_count,human_count,system_count,summary").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
+      supabase.from("fecho_caixa").select("day_key,status,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_other,system_other_count").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
       supabase.rpc("secretaria_expediente_capture_started_at", { p_escola_id: escolaId }),
     ]);
     if (captureStart.error || !captureStart.data || school.error || closes.error || cash.error) return fail("Falha ao consultar os fechos.", 500);
@@ -38,14 +38,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (watermark.error) return fail("Falha ao consultar operações.", 500);
     const maxId = watermark.data?.id ?? 0;
     while (cursor < maxId) {
-      const page = await supabase.from("secretaria_expediente_operacoes").select("id,day_key,occurred_at,actor_id,actor_role,entity,entity_id,action,is_after_close,detail").eq("escola_id", escolaId).in("day_key", days).gt("id", cursor).lte("id", maxId).order("id").limit(500);
+      const page = await supabase.from("secretaria_expediente_operacoes").select("id,day_key,occurred_at,actor_id,actor_role,origin,entity,entity_id,action,is_after_close,detail").eq("escola_id", escolaId).in("day_key", days).gt("id", cursor).lte("id", maxId).order("id").limit(500);
       if (page.error) return fail("Falha ao consultar operações.", 500);
       if (!page.data?.length) break;
       rows.push(...page.data);
       if (rows.length > MAX_ROWS) return fail("Volume demasiado elevado. Reduza o intervalo de exportação.", 413);
       cursor = page.data[page.data.length - 1].id;
     }
-    const actorIds = [...new Set<string>([...rows.map(r => r.actor_id), ...closes.data.map((r: any) => r.closed_by)])];
+    const actorIds = [...new Set<string>([...rows.map(r => r.actor_id).filter((id): id is string => typeof id === "string"), ...closes.data.map((r: any) => r.closed_by)])];
     const names = new Map<string,string>();
     for (let i = 0; i < actorIds.length; i += 100) {
       const { data } = await supabase.from("profiles").select("user_id,nome").eq("escola_id", escolaId).in("user_id", actorIds.slice(i,i+100));
@@ -86,17 +86,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       openPage();
       line("Fechado em "+clock(close.closed_at)+" | Responsável: "+(names.get(close.closed_by)??close.closed_by));
       line("Registos de atividade no fecho: "+close.operation_count,true);
+      line("Humanos: "+close.human_count+" | Automáticos: "+close.system_count);
       if (close.day_key === new Intl.DateTimeFormat("sv-SE",{timeZone:"Africa/Luanda",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(captureStart.data))) line("Cobertura parcial: registo ativado em "+clock(captureStart.data));
       for (const [entity,count] of Object.entries(close.summary ?? {})) line((entities[entity]??entity)+": "+count);
       const c = cashByDay.get(close.day_key);
       line("Caixa: "+(c?.status === "approved" ? "Aprovado" : c?.status === "declared" ? "Declarado" : c?.status === "rejected" ? "Rejeitado" : "Sem declaração"),true);
+      if(c&&Number(c.system_other_count)>0)line("Meio não classificado: "+money(c.system_other)+" ("+c.system_other_count+" pagamentos)",true);
       if(c) for(const [key,label] of [["cash","Numerário"],["tpa","TPA"],["transfer","Transferências"],["mcx","MCX"]]) line(label+": declarado "+money(c["declared_"+key])+" | sistema "+money(c["system_"+key])+" | diferença "+money(Number(c["declared_"+key])-Number(c["system_"+key])));
       const dayRows = rows.filter(r=>r.day_key===close.day_key);
       for (const late of [false,true]) {
         const filtered = dayRows.filter(r=>r.is_after_close===late);
         line((late?"Adendos posteriores ao fecho":"Operações até ao fecho")+" ("+filtered.length+")",true);
         for(const r of filtered){
-          line(clock(r.occurred_at)+" | "+(actions[r.action]??r.action)+" "+(entities[r.entity]??r.entity)+" | "+(names.get(r.actor_id)??r.actor_id));
+          line(clock(r.occurred_at)+" | "+(actions[r.action]??r.action)+" "+(entities[r.entity]??r.entity)+" | "+(r.origin==="service_role"?"Sistema (automático)":names.get(r.actor_id)??r.actor_id));
           line("Referência: "+r.entity_id+(r.detail?.status?" | Estado: "+r.detail.status:"")+(r.detail?.valor?" | Valor: "+money(r.detail.valor):""));
         }
       }
