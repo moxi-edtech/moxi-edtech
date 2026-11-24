@@ -39,6 +39,7 @@ export default function ExpedienteDashboardCard({escolaId,portal}:{escolaId:stri
  <AcaoRapidaCard
    icon={<CalendarCheck className="h-5 w-5"/>}
    label="Fecho diário"
+   dashboardCompact={portal==="operacoes"}
    sublabel={portal==="secretaria"?(summary?.rejectedCount?"Caixa a regularizar":summary?.closed?"Expediente fechado":summary?"Expediente por fechar":"Gerir expediente"):(summary?.pendingCount?summary.pendingCount+" por validar":summary?.rejectedCount?summary.rejectedCount+" a regularizar":"Gerir fechos")}
    onClick={openWorkspace}
    buttonRef={triggerRef}

@@ -112,6 +112,7 @@ export default function KpiSection({
     documentosEmProcessamento: 0,
     turmasSemHorarioPublicado: 0,
   };
+  const propinasDisponiveis = Boolean(operationalSnapshot) && operationalSnapshot?.mensalidadesStatusDisponivel !== false;
   const alunosChartData = toChartData(alunoSeries);
   const alunosTrend = trendFromSeries(alunoSeries) ?? { value: 0, isPositive: true };
   const kpis = mode === "operacoes"
@@ -124,7 +125,7 @@ export default function KpiSection({
           variant: turmasOk ? ("brand" as const) : ("warning" as const),
           trend: undefined,
           chartData: undefined,
-          description: "Base activa",
+          description: undefined,
         },
         {
           label: "Turmas",
@@ -134,27 +135,27 @@ export default function KpiSection({
           variant: "default" as const,
           trend: undefined,
           chartData: undefined,
-          description: "Em circulação",
+          description: undefined,
         },
         {
-          label: "Pendentes",
-          value: op.mensalidadesPendentes,
+          label: "Propinas pendentes",
+          value: propinasDisponiveis ? op.mensalidadesPendentes : undefined,
           icon: Wallet,
           href: buildPortalHref(escolaParam, "/operacoes/recebimentos"),
-          variant: op.mensalidadesPendentes > 0 ? ("warning" as const) : ("success" as const),
+          variant: !propinasDisponiveis ? ("default" as const) : op.mensalidadesPendentes > 0 ? ("warning" as const) : ("success" as const),
           trend: undefined,
           chartData: undefined,
-          description: "Cobranças por tratar",
+          description: propinasDisponiveis ? "Não vencidas · ano activo" : "Dados indisponíveis",
         },
         {
-          label: "Em Atraso",
-          value: op.mensalidadesInadimplentes,
+          label: "Propinas em atraso",
+          value: propinasDisponiveis ? op.mensalidadesInadimplentes : undefined,
           icon: UserCheck,
           href: financeRadarHref,
-          variant: op.mensalidadesInadimplentes > 0 ? ("warning" as const) : ("success" as const),
+          variant: !propinasDisponiveis ? ("default" as const) : op.mensalidadesInadimplentes > 0 ? ("warning" as const) : ("success" as const),
           trend: undefined,
           chartData: undefined,
-          description: "Cobrança crítica",
+          description: propinasDisponiveis ? "Ano activo" : "Dados indisponíveis",
         },
       ]
     : [
