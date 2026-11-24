@@ -87,3 +87,30 @@ test("PDF geral partilha template institucional da lista nominal e recebe dados 
   assert.match(exportAdmin, /loadAlunosPdfInstitutionalContext/);
   assert.match(exportSecretaria, /loadAlunosPdfInstitutionalContext/);
 });
+
+test("exportação percorre lotes brutos completos sem depender da paginação visual", () => {
+  const full = service.slice(service.indexOf("export async function listAllAlunos"));
+  assert.match(full, /limit: 50/);
+  assert.match(full, /scanSingleBatch: true/);
+  assert.match(service, /if \(options\.scanSingleBatch\) \{\s*items = enriched;\s*exhausted = mapped\.length < pageLimit;\s*break;/);
+  assert.match(full, /cursorCreatedAt === page\.nextCursor\.created_at && cursorId === page\.nextCursor\.id/);
+  assert.match(full, /all\.length > 10000/);
+});
+
+test("exportações preservam autorização, timeout limitado e diagnóstico sem dados de alunos", () => {
+  for (const route of [exportAdmin, exportSecretaria]) {
+    assert.match(route, /requireRoleInSchool/);
+    assert.match(route, /export const maxDuration = 60/);
+    assert.match(route, /requestId, phase, elapsedMs/);
+    assert.match(route, /phase = "list"/);
+    assert.match(route, /phase = "render"/);
+  }
+  for (const page of [admin, secretaria]) {
+    assert.match(page, /await downloadAlunosExport\(/);
+  }
+  const download = src("lib/services/alunosExportDownload.client.ts");
+  assert.match(download, /credentials: "same-origin"/);
+  assert.match(download, /response\.status === 504/);
+  assert.match(download, /content-type/);
+  assert.match(download, /window\.setTimeout\(\(\) => URL\.revokeObjectURL/);
+});
