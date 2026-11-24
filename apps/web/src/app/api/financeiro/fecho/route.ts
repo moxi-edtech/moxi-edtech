@@ -4,7 +4,6 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { z } from "zod";
 import type { Database } from "~types/supabase";
-import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -43,7 +42,6 @@ const BodySchema = z.object({
 export async function POST(req: Request) {
   try {
     const supabase = await supabaseServerTyped<Database>();
-    const supabaseAny = supabase as any;
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -71,24 +69,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Payload inválido", issues: parsed.error.issues }, { status: 400 });
     }
 
-    let idempotencyQuery = supabaseAny
-      .from("idempotency_keys")
-      .select("result")
-      .eq("escola_id", escolaId)
-      .eq("scope", "financeiro_fecho_declarar")
-      .eq("key", idempotencyKey)
-
-    idempotencyQuery = applyKf2ListInvariants(idempotencyQuery, {
-      defaultLimit: 1,
-      order: [{ column: 'created_at', ascending: false }],
-    })
-
-    const { data: existingIdempotency } = await idempotencyQuery.maybeSingle();
-
-    if (existingIdempotency?.result) {
-      return NextResponse.json(existingIdempotency.result, { status: 200 });
-    }
-
     const { error: rpcError, data: rpcData } = await supabase.rpc("declarar_fecho_caixa", {
       p_escola_id: escolaId,
       p_valor_declarado_especie: parsed.data.valor_declarado_especie,
@@ -97,20 +77,11 @@ export async function POST(req: Request) {
     });
 
     if (rpcError) {
-      return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 });
+      return NextResponse.json({ ok: false, error: rpcError.code === "23505" ? "Já existe uma declaração com outros valores." : "Não foi possível declarar o fecho." }, { status: rpcError.code === "23505" ? 409 : rpcError.code === "42501" ? 403 : 400 });
     }
 
     const responsePayload = { ok: true, data: rpcData };
 
-    await supabaseAny.from("idempotency_keys").upsert(
-      {
-        escola_id: escolaId,
-        scope: "financeiro_fecho_declarar",
-        key: idempotencyKey,
-        result: responsePayload,
-      },
-      { onConflict: "escola_id,scope,key" }
-    );
 
     return NextResponse.json(responsePayload);
 
