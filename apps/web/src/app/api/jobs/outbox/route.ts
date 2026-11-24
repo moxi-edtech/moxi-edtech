@@ -782,6 +782,8 @@ async function sendExpedienteSummary(admin: NonNullable<ReturnType<typeof getAdm
   const closeId = event.payload?.close_id;
   const recipientId = event.payload?.recipient_id;
   if(typeof closeId!=="string"||typeof recipientId!=="string")throw new Error("invalid expediente email payload");
+  const key="expediente-email:"+closeId+":"+recipientId;
+  if(event.idempotency_key!==key||event.dedupe_key!==key)throw new Error("invalid expediente email dedupe");
   const [close, member, profile, config, school] = await Promise.all([
     admin.from("secretaria_expedientes").select("day_key,operation_count,business_count,human_count,system_count").eq("id",closeId).eq("escola_id",event.escola_id).maybeSingle(),
     admin.from("escola_users").select("papel").eq("escola_id",event.escola_id).eq("user_id",recipientId).eq("tenant_type","k12").in("papel",["admin","admin_escola","staff_admin","admin_financeiro","admin_secretaria","admin_secretario","diretor"]).maybeSingle(),
@@ -798,7 +800,7 @@ async function sendExpedienteSummary(admin: NonNullable<ReturnType<typeof getAdm
   const portal= ["admin_financeiro","admin_secretaria","admin_secretario"].includes(member.data.papel)?"operacoes":"admin";
   const link="https://app.klasse.ao/escola/"+encodeURIComponent(event.escola_id)+"/"+portal+"/fecho-diario?date="+encodeURIComponent(row.day_key);
   const text="Expediente de "+row.day_key+" concluído. Registos: "+row.operation_count+" (humanos: "+row.human_count+", automáticos: "+row.system_count+"). Registos de negócio distintos: "+row.business_count+". Consulte: "+link;
-  const result=await sendMail({to:data.user.email,subject:"KLASSE · Fecho diário "+row.day_key,text,html:"<p>"+text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</p>",idempotencyKey:event.idempotency_key??event.id});
+  const result=await sendMail({to:data.user.email,subject:"KLASSE · Fecho diário "+row.day_key,text,html:"<p>"+text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</p>",idempotencyKey:key});
   if(!result.ok)throw new Error("expediente email delivery failed");
 }
 
