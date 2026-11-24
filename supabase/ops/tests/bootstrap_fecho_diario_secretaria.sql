@@ -21,6 +21,7 @@ CREATE TYPE public.evento_tipo AS ENUM ('financeiro.fecho.autorizado');
 CREATE TYPE public.notificacao_prioridade AS ENUM ('info','aviso','urgente');
 CREATE TABLE public.eventos(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),escola_id uuid NOT NULL REFERENCES public.escolas(id),tipo public.evento_tipo NOT NULL,actor_id uuid,entidade_tipo text,entidade_id uuid,payload jsonb NOT NULL DEFAULT '{}');
 CREATE TABLE public.notificacoes(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),escola_id uuid NOT NULL REFERENCES public.escolas(id),evento_id uuid REFERENCES public.eventos(id),destinatario_id uuid REFERENCES auth.users(id),titulo text,corpo text,prioridade public.notificacao_prioridade,action_label text,action_url text,gatilho text,tipo text,agrupamento_chave text,UNIQUE(evento_id,destinatario_id));
+CREATE TABLE public.outbox_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),escola_id uuid NOT NULL,event_type text NOT NULL,dedupe_key text NOT NULL,idempotency_key text NOT NULL,payload jsonb NOT NULL,tenant_scope text,UNIQUE(escola_id,dedupe_key));
 CREATE TABLE public.fecho_caixa(
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), escola_id uuid NOT NULL REFERENCES public.escolas(id) ON DELETE CASCADE,
  operador_id uuid NOT NULL REFERENCES auth.users(id), data_fecho date NOT NULL,
