@@ -11,7 +11,17 @@ test("os três portais usam a mesma fila e o mesmo modal de decisão", () => {
   const secretaria = source("app/secretaria/(portal-secretaria)/Dashboard.tsx");
   const panel = source("components/layout/operacoes/NotasReaberturaPanel.tsx");
   assert.match(shared, /<NotasReaberturaPanel onDecided=\{refresh\}/);
-  assert.match(admin, /onlyReopen=\{!isOperacoes\}/);
+  // Operações mounts the full hub before the management summary; Admin mounts
+  // the decision-only hub in its own mutually exclusive branch.
+  const fullHub = admin.match(/\{isOperacoes \? \(\s*<OperacoesPainelHub\b([\s\S]*?)afterCounters=\{/);
+  assert.ok(fullHub, "Operações must mount the shared full hub");
+  assert.doesNotMatch(fullHub[1], /\bonlyReopen\b/);
+  assert.match(shared, /\bonlyReopen\s*=\s*false\b/);
+  const decisionHub = admin.match(/\{!isOperacoes && <motion\.div[^>]*>\s*<OperacoesPainelHub\b([^>]*?)\/>/);
+  assert.ok(decisionHub, "Admin must mount the shared decision-only hub");
+  assert.match(decisionHub[1], /\bonlyReopen\s*$/);
+  assert.equal((admin.match(/<OperacoesPainelHub\b/g) ?? []).length, 2);
+  assert.equal((shared.match(/useOperacoesPendencias\(\{ onlyReopen \}\)/g) ?? []).length, 1);
   assert.match(secretaria, /<OperacoesPainelHub escolaId=\{escolaId\} onlyReopen/);
   assert.match(panel, /method: "PATCH"/);
   assert.match(panel, /onDecided\?\.\(\)/);
