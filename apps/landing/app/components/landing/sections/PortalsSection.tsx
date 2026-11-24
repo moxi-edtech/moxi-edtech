@@ -20,25 +20,25 @@ const slides: PortalSlide[] = [
     id: 'diretor',
     tab: 'Diretor',
     badge: 'Portal do Diretor',
-    title: 'Caixa, risco e operacao em segundos.',
-    description: 'O diretor acompanha receitas, atrasos e movimento diario sem depender de relatorios manuais.',
-    points: ['Receita prevista vs realizada em tempo real', 'Radar de inadimplencia com prioridades', 'Entradas recentes para decisao rapida'],
+    title: 'Acompanhamento da gestão escolar',
+    description: 'Consulte receitas, propinas em atraso e o movimento diário da escola.',
+    points: ['Receita prevista e receita realizada', 'Propinas em atraso', 'Recebimentos recentes'],
   },
   {
     id: 'aluno',
     tab: 'Aluno',
     badge: 'Portal do Aluno',
-    title: 'O seu filho na palma da mao.',
-    description: 'Notas, presencas e propinas em tempo real.',
-    points: ['Notas por disciplina em segundos', 'Presencas com historico claro', 'Propinas visiveis sem ir a secretaria'],
+    title: 'Notas, presenças e propinas',
+    description: 'O aluno e o encarregado podem consultar o percurso escolar no telemóvel.',
+    points: ['Notas por disciplina', 'Histórico de presenças', 'Consulta da situação financeira'],
   },
   {
     id: 'professor',
     tab: 'Professor',
     badge: 'Portal do Professor',
-    title: 'Notas, avaliações e pautas no mesmo lugar.',
-    description: 'O professor lança notas, acompanha a turma e publica a pauta sem depender da secretaria.',
-    points: ['Pauta Digital por turma e disciplina', 'Lançamento de notas com histórico claro', 'Publicação pronta para direção e encarregados'],
+    title: 'Avaliação e acompanhamento da turma',
+    description: 'O professor regista notas e presenças e acompanha as avaliações da turma.',
+    points: ['Pauta Digital por turma e disciplina', 'Lançamento de notas com histórico claro', 'Consulta dos resultados por período'],
   },
 ]
 
@@ -46,49 +46,28 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
   if (activeId === 'aluno') {
     return (
       <div className="device-stage device-stage--aluno">
-        <div className="portais-device-head">
-          <span className="post-brand"><img src="/logo-klasse.png" alt="" />KLASSE</span>
-          <span className="post-headline">Portal do Aluno</span>
-        </div>
-        <div className="portal-real-mobile">
-          <Image src="/assets/device-hero-clean.png" alt="Portal do aluno KLASSE no telemóvel com lupa" fill sizes="(max-width: 900px) 92vw, 42vw" />
-        </div>
-        <div className="phone portal-legacy-phone" aria-hidden="true">
-          <div className="phone-shell">
-            <div className="phone-notch" />
-            <div className="phone-screen">
-              <div className="ph-status"><span>07:00</span><span>5G 87%</span></div>
-              <div className="ph-header">
-                <div className="ph-logo" aria-hidden="true">
-                  <img src="/logo-klasse.png" alt="" />
-                </div>
-                <div className="ph-header-text">
-                  <div className="ph-portal-lbl">Portal do Aluno</div>
-                  <div className="ph-escola">Colegio Nova Geracao</div>
-                </div>
-              </div>
-              <div className="ph-student-bar"><span className="alvid-pill">Mbemba Neto</span></div>
-              <div className="ph-hero-card">
-                <div className="ph-ano">Ano Lectivo 2025-2026</div>
-                <div className="ph-name">Mbemba Lopes da Costa Neto</div>
-                <div className="ph-pills">
-                  <span className="pill pill-white">8.a Classe</span>
-                  <span className="pill pill-dark">Turma 8A</span>
-                </div>
-                <div className="ph-stats">
-                  <div className="ph-stat"><div className="ph-stat-lbl">Ultima Nota</div><div className="ph-stat-val">14</div></div>
-                  <div className="ph-stat"><div className="ph-stat-lbl">Propinas</div><div className="ph-stat-val ph-stat-warn">0</div></div>
-                  <div className="ph-stat"><div className="ph-stat-lbl">Proxima Aula</div><div className="ph-stat-val ph-stat-time">08:00</div></div>
-                </div>
-              </div>
-              <div className="ph-section-hd"><span>Notas Recentes</span><span>Ver todas</span></div>
-              <div className="ph-note-card"><div className="ph-note-row"><span>Matematica</span><strong>14</strong></div><div className="ph-bar"><i style={{ width: '70%' }} /></div></div>
-              <div className="ph-note-card"><div className="ph-note-row"><span>Portugues</span><strong>17</strong></div><div className="ph-bar"><i style={{ width: '85%' }} /></div></div>
-              <div className="ph-note-card"><div className="ph-note-row"><span>Fisica</span><strong className="warn">12</strong></div><div className="ph-bar"><i className="warn" style={{ width: '60%' }} /></div></div>
-              <div className="ph-nav"><span className="active">Inicio</span><span>Academico</span><span>Financeiro</span><span>Docs</span><span>Avisos</span></div>
-            </div>
+        <figure className="student-portal-preview" aria-label="Exemplo ilustrativo do portal do aluno">
+          <header className="student-preview-header">
+            <img src="/logo-klasse.png" alt="" />
+            <div><strong>Portal do Aluno</strong><small>8.ª classe · 1.º trimestre</small></div>
+          </header>
+          <div className="student-preview-body">
+            <h3>O meu percurso escolar</h3>
+            <section className="student-preview-section">
+              <h4>Notas por disciplina</h4>
+              <dl>
+                <div><dt>Matemática</dt><dd>14 / 20</dd></div>
+                <div><dt>Língua Portuguesa</dt><dd>17 / 20</dd></div>
+                <div><dt>Física</dt><dd>12 / 20</dd></div>
+              </dl>
+            </section>
+            <section className="student-preview-section">
+              <h4>Propinas</h4>
+              <dl><div><dt>Novembro</dt><dd className="student-preview-paid">Liquidada</dd></div></dl>
+            </section>
           </div>
-        </div>
+          <figcaption>Exemplo ilustrativo · dados fictícios</figcaption>
+        </figure>
       </div>
     )
   }
@@ -121,14 +100,14 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
                   </nav>
                   <div className="teacher-school"><small>Escola</small><b>Klasse Luanda</b></div>
                 </aside>
-                <main className="teacher-workspace">
+                <div className="teacher-workspace">
                   <div className="teacher-topbar">
                     <div><small>Professor</small><b>Portal do professor</b></div>
                     <span className="teacher-sync">Salvo</span>
                   </div>
                   <div className="teacher-hero-row">
                     <div><small>Lançamento de notas</small><h3>Pauta Digital</h3><p>Matemática · 10ª A · Iº Trimestre</p></div>
-                    <button type="button">Publicar pauta</button>
+                    <button type="button" disabled>Publicar pauta</button>
                   </div>
                   <div className="teacher-kpis">
                     <article><small>Alunos</small><b>32</b></article>
@@ -136,7 +115,7 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
                     <article><small>Média</small><b>15.8</b></article>
                   </div>
                   <div className="teacher-gradebook">
-                    <div className="teacher-gradebook-head"><b>Lançamento de Notas</b><span>Sincronizado</span></div>
+                    <div className="teacher-gradebook-head"><b>Lançamento de Notas</b><span>Exemplo ilustrativo</span></div>
                     <div className="teacher-table">
                       <div className="teacher-tr teacher-th"><span>Nº</span><span>Nome do Aluno</span><span>Status</span><span>MAC</span><span>NPP</span><span>NPT</span><span>MT1</span></div>
                       <div className="teacher-tr"><span>01</span><span><i />Ana Manuel</span><span className="ok">Salvo</span><span>16</span><span>15</span><span>17</span><b>16.0</b></div>
@@ -145,7 +124,7 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
                       <div className="teacher-tr"><span>04</span><span><i />Elisa Mateus</span><span className="ok">Salvo</span><span>15</span><span>16</span><span>16</span><b>15.7</b></div>
                     </div>
                   </div>
-                </main>
+                </div>
               </div>
             </div>
           </div>
@@ -169,7 +148,7 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
           <div className="dashboard-screen dashboard-screen--real">
             <Image
               src="/assets/dashboard-notebook.png"
-              alt="Dashboard real do KLASSE para direção"
+              alt="Painel de gestão escolar do KLASSE"
               fill
               sizes="(max-width: 900px) 92vw, 42vw"
             />
@@ -192,9 +171,8 @@ export function PortalsSection() {
     <section className="portais section-accent" id="portais">
       <div className="container">
         <FadeIn className="portais-device-intro">
-          <div className="sec-eyebrow">O sistema</div>
-          <h2 className="sec-h">Cada pessoa vê o que precisa.</h2>
-          <p className="sec-p">Cada perfil trabalha no seu próprio fluxo, com menos ruído e mais velocidade de execução.</p>
+          <h2 className="sec-h">Um portal para cada função</h2>
+          <p className="sec-p">A direcção, os professores e os alunos têm áreas próprias de trabalho e consulta.</p>
         </FadeIn>
 
         <div className="portais-swap" aria-label="Portais KLASSE com troca de perfil">
@@ -261,7 +239,7 @@ export function PortalsSection() {
 
             <div className="portais-swap-actions">
               <a className="btn-p" href="#onboarding">
-                Pedir demo guiada
+                Pedir demonstração
               </a>
             </div>
           </div>
