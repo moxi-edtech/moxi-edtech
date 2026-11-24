@@ -128,6 +128,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const cobrancasDaMatricula = (cobrancas ?? [])
     .filter((me: any) => me.matricula_id === atual.id || (!me.matricula_id && me.turma_id === atual.turma_id));
   const periodosParciais: Array<{ inicio: string; percentagem: number; motivo: string | null }> = Array.isArray(atual.bolsa_parcial_periodos) ? atual.bolsa_parcial_periodos : [];
+  const ultimoPeriodoParcial = periodosParciais[periodosParciais.length - 1];
   const previsao = cobrancasDaMatricula
     .filter((me: any) => Number.isInteger(me.ano_referencia) && me.mes_referencia >= 1 && me.mes_referencia <= 12)
     .map((me: any) => {
@@ -186,8 +187,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
          /bolsa/i.test(atual.motivo_desconto ?? ""))),
       bolsa_integral: Boolean(atual.bolsa_integral),
       bolsa_parcial_percentagem: Number(atual.bolsa_parcial_percentagem ?? 0),
-      bolsa_parcial_inicio: periodosParciais.at(-1)?.inicio ?? null,
-      bolsa_parcial_motivo: periodosParciais.at(-1)?.motivo ?? null,
+      bolsa_parcial_inicio: ultimoPeriodoParcial?.inicio ?? null,
+      bolsa_parcial_motivo: ultimoPeriodoParcial?.motivo ?? null,
       desconto_comercial: Number(atual.percentagem_desconto ?? 0) !== 0 && !atual.bolsa_integral,
       isencao_outra_politica: Boolean(!atual.bolsa_integral &&
         Number(atual.percentagem_desconto ?? 0) >= 100 &&
