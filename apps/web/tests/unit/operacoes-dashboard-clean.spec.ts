@@ -63,3 +63,24 @@ test("financial status failures do not masquerade as zero", () => {
   assert.match(kpi, /propinasDisponiveis \? op\.mensalidadesInadimplentes : undefined/);
   assert.match(focus, /mensalidadesStatusDisponivel === false \? null/);
 });
+
+test("Operações restores branded green icon containers and only four daily shortcuts", () => {
+  const quick = source("components/layout/escola-admin/QuickActionsSection.tsx");
+  const action = source("components/shared/AcaoRapidaCard.tsx");
+  const kpi = source("components/dashboard/KpiCard.tsx");
+  const hub = source("components/layout/operacoes/OperacoesPainelHub.tsx");
+  const css = source("app/globals.css");
+  const list = quick.match(/const actions: QuickAction\[\] = portalBase === "operacoes"\s*\? \[([\s\S]*?)\]\s*:\s*\[/);
+  assert.ok(list);
+  assert.deepEqual([...list[1].matchAll(/key: "([^"]+)"/g)].map((match) => match[1]), ["recebimentos", "horarios", "criar_aviso"]);
+  assert.doesNotMatch(list[1], /Nova Matrícula|Nova Admissão|Importar Alunos/);
+  assert.match(quick, /<ExpedienteDashboardCard escolaId=\{escolaId\} portal=\{portalBase\}/);
+  assert.match(quick, /Novo Funcionário/);
+  assert.match(quick, /Lançar Nota/);
+  const green = /bg-emerald\/10 text-emerald dark:text-emerald-300/;
+  assert.match(action.slice(action.indexOf("if (dashboardCompact)"), action.indexOf("const inner =")), green);
+  assert.match(action, /disabled \? "bg-muted text-muted-foreground" : "bg-emerald\/10 text-emerald dark:text-emerald-300"/);
+  assert.match(kpi.slice(kpi.indexOf("if (compact)"), kpi.indexOf("const Content =")), green);
+  assert.match(hub, /rounded-xl bg-emerald\/10 text-emerald dark:text-emerald-300/);
+  assert.doesNotMatch(css, /\.operations-actions-grid \{ grid-template-columns: repeat\(3,/);
+});

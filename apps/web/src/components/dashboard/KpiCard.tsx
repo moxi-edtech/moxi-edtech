@@ -68,7 +68,9 @@ export function KpiCard({
       <>
         <div className="flex items-start justify-between gap-2">
           <span className="text-sm font-medium text-muted-foreground">{label}</span>
-          <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300">
+            <Icon className="h-4 w-4" />
+          </span>
         </div>
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className={`text-2xl font-semibold tabular-nums ${variant === "warning" ? "text-amber-700 dark:text-amber-300" : "text-foreground"}`}>{typeof value === "number" ? value.toLocaleString("pt-AO") : value ?? "—"}</span>

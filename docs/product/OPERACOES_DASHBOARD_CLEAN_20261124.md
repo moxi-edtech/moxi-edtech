@@ -15,3 +15,9 @@
 - CI da revisão e homologação autenticada ainda pendentes.
 
 - Em caso de falha no resumo de estados ou ausência de ano activo, os cartões e o foco exibem dados indisponíveis em vez de zero. Grelhas de atalhos usam 2/3/4 colunas conforme largura útil.
+
+## Ajuste de identidade e atalhos (feedback pós-publicação)
+
+- Ícones funcionais dos cards compactos de acompanhamento, indicadores e atalhos voltam ao padrão verde do design system (`bg-emerald/10 text-emerald dark:text-emerald-300`). Estados de alerta mantêm o valor em âmbar; ícone de bloqueio mantém estilo neutro.
+- Ações rápidas de Operações: Fecho diário, Recebimentos, Quadro de Horários e Criar Aviso. Nova matrícula, Nova admissão e Importar Alunos deixam apenas esta superfície; não se removem rotas, permissões nem fluxos de outros portais.
+- Quatro atalhos em 4/2/1 colunas conforme largura útil; sem fila de três com cartão isolado. CI e homologação visual pendentes.

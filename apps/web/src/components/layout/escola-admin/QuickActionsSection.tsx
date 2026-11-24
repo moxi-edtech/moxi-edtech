@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { HorarioDataProvider } from "@/components/escola/horarios/HorarioDataProvider";
 import { Button } from "@/components/ui/Button";
-import { PlusCircle, UserPlus, FileText, Megaphone, Calendar, Table2, Wallet, UploadCloud } from "lucide-react";
+import { PlusCircle, UserPlus, FileText, Megaphone, Calendar, Table2, Wallet } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
 import AvisosNovoPage from "@/app/escola/[id]/(portal)/admin/avisos/novo/page";
 import EventosPage from "@/app/escola/[id]/(portal)/eventos/page";
@@ -82,27 +82,6 @@ export default function QuickActionsSection({
 
   const actions: QuickAction[] = portalBase === "operacoes"
     ? [
-        {
-          key: "funcionario",
-          label: "Nova Matrícula",
-          icon: UserPlus,
-          href: buildPortalHref(escolaParam, "/operacoes/matriculas/nova"),
-          variant: "green",
-        },
-        {
-          key: "nota",
-          label: "Nova Admissão",
-          icon: FileText,
-          href: buildPortalHref(escolaParam, "/operacoes/admissoes/nova"),
-          variant: "green",
-        },
-        {
-          key: "aviso",
-          label: "Importar Alunos",
-          icon: UploadCloud,
-          href: buildPortalHref(escolaParam, "/operacoes/importacoes"),
-          variant: "green",
-        },
         {
           key: "recebimentos",
           label: "Recebimentos",

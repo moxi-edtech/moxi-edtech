@@ -39,7 +39,7 @@ export default function AcaoRapidaCard({
     const className = "group flex h-full min-h-[80px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
     const content = (
       <>
-        <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+        <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${disabled ? "bg-muted text-muted-foreground" : "bg-emerald/10 text-emerald dark:text-emerald-300"}`}>
           {disabled ? <Lock className="h-4 w-4" /> : icon}
         </span>
         <span className="min-w-0 flex-1">
