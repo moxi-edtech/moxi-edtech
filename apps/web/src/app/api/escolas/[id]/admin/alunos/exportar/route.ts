@@ -81,9 +81,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (error instanceof InvalidAlunoFiltersError) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
-    const message = error instanceof Error ? error.message : String(error);
     console.error("[admin alunos export error]", error);
-    return NextResponse.json({ ok: false, error: message || "Erro desconhecido" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "Não foi possível preparar a exportação. Reaplique os filtros e tente novamente." }, { status: 500 });
   }
 }
 
