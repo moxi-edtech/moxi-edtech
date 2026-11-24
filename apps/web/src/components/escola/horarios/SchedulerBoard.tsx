@@ -10,8 +10,6 @@ import {
   useDroppable,
 } from "@dnd-kit/core";
 import { AlertOctagon, Check, GripVertical, Save, Wand2, Trash2 } from "lucide-react"; // Adicionei Trash se precisar limpar
-import { getAllocationStatus, validateAssignment } from "@/lib/rules/scheduler-rules";
-import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- TYPES ---
 export type SchedulerSlot = {
@@ -85,14 +83,11 @@ export function SchedulerBoard({
   onAssignProfessor,
   turmaSala,
   onAssignTurmaSala,
-  onAutoConfigurarCargas,
-  autoConfiguring,
   onPublicar,
   canPublicar = true,
   publishDisabledReason,
   publishing,
 }: SchedulerBoardProps) {
-  const { error: showError } = useToast();
   const [grid, setGrid] = useState<Record<string, string | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [assigningProfessor, setAssigningProfessor] = useState<SchedulerAula | null>(null);
@@ -120,38 +115,10 @@ export function SchedulerBoard({
 
   const aulaById = useMemo(() => new Map(estoque.map((aula) => [aula.id, aula])), [estoque]);
 
-  // Detecção de Conflitos em Tempo Real (Local)
-  const conflictSlots = useMemo(() => {
-    const merged: Record<string, boolean> = { ...(externalConflictSlots || {}) };
-
-    for (const [slotKey, disciplinaId] of Object.entries(currentGrid)) {
-      if (!disciplinaId) continue;
-      const slotId = slotLookup?.[slotKey];
-      if (!slotId) continue;
-
-      const aula = aulaById.get(disciplinaId);
-      if (!aula) continue;
-
-      const results = validateAssignment(
-        slotId,
-        disciplinaId,
-        aula.professorId ?? null,
-        aula.salaId ?? null,
-        existingAssignments
-      );
-
-      if (results.some((r) => r.severity === "hard")) {
-        merged[slotKey] = true;
-      }
-    }
-    return merged;
-  }, [currentGrid, slotLookup, aulaById, existingAssignments, externalConflictSlots]);
-
-  const missingLoadCount = useMemo(
-    () => (estoque || []).filter((a) => a.missingLoad).length,
-    [estoque]
-  );
-  const conflictCount = useMemo(() => Object.keys(conflictSlots).length, [conflictSlots]);
+  // existingAssignments contains this turma's saved version, not other turmas.
+  // Cross-turma conflicts are checked by the server when publishing.
+  const conflictSlots = externalConflictSlots ?? {};
+  const conflictCount = Object.values(conflictSlots).filter(Boolean).length;
 
   // --- DND HANDLERS (Otimizados) ---
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -159,64 +126,37 @@ export function SchedulerBoard({
     setActiveId(baseId ?? (event.active.id as string));
   }, []);
 
+  const updateGrid = useCallback((nextGrid: Record<string, string | null>) => {
+    setGrid(nextGrid);
+    onGridChange?.(nextGrid);
+  }, [onGridChange]);
+
+  const handleSelectSlot = useCallback((slotKey: string, disciplinaId: string | null) => {
+    if (!slotLookup?.[slotKey] || (disciplinaId && !aulaById.has(disciplinaId))) return;
+    updateGrid({ ...currentGrid, [slotKey]: disciplinaId });
+  }, [aulaById, currentGrid, slotLookup, updateGrid]);
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
-    const slotId = over?.id as string | undefined;
-    const baseId = active.data.current?.baseId;
-    const sourceSlot = active.data.current?.sourceSlot as string | undefined;
-
-    if (!baseId) return;
-    if (sourceSlot && slotId && sourceSlot === slotId) return;
-
-    const shouldRemove = !slotId || slotId === "trash";
-    if (!shouldRemove && slotId) {
-      const targetSlotId = slotLookup?.[slotId];
-      const aula = aulaById.get(String(baseId));
-      if (targetSlotId && aula) {
-        const sourceSlotId = sourceSlot ? slotLookup?.[sourceSlot] : undefined;
-        const persistedAssignments = existingAssignments.filter(
-          (assignment) => assignment.slot_id !== targetSlotId && assignment.slot_id !== sourceSlotId
-        );
-        const persistedConflicts = validateAssignment(
-          targetSlotId,
-          aula.id,
-          aula.professorId ?? null,
-          aula.salaId ?? null,
-          persistedAssignments
-        ).filter((result) => result.severity === "hard");
-        const localConflicts: string[] = [];
-        for (const [key, assignedId] of Object.entries(currentGrid)) {
-          if (!assignedId || key === slotId || key === sourceSlot) continue;
-          const assigned = aulaById.get(assignedId);
-          if (!assigned) continue;
-          if (aula.professorId && assigned.professorId === aula.professorId) localConflicts.push("Professor já usado neste horário");
-          if (aula.salaId && assigned.salaId === aula.salaId) localConflicts.push("Sala já usada neste horário");
-        }
-        const reasons = Array.from(new Set([...persistedConflicts.map((result) => result.message), ...localConflicts]));
-        if (reasons.length > 0) {
-          showError("Alocação bloqueada", `${aula.disciplina}: ${reasons.join(" ")}`);
-          return;
-        }
-      }
+    const target = over?.id as string | undefined;
+    const baseId = active.data.current?.baseId as string | undefined;
+    const source = active.data.current?.sourceSlot as string | undefined;
+    // A cancelled drop must never remove an existing lesson.
+    if (!target || !baseId || !aulaById.has(baseId) || source === target) return;
+    if (target !== "trash" && !slotLookup?.[target]) return;
+    if (source && !slotLookup?.[source]) return;
+    const next = { ...currentGrid };
+    if (target === "trash") {
+      if (!source) return;
+      next[source] = null;
+    } else {
+      if (source) next[source] = currentGrid[target] ?? null;
+      next[target] = baseId;
     }
-    setGrid((prev) => {
-      const baseGrid = controlledGrid ?? prev;
-      const nextGrid = { ...baseGrid };
-      const targetPrevious = slotId ? baseGrid[slotId] || null : null;
-      if (sourceSlot) {
-        nextGrid[sourceSlot] = shouldRemove ? null : targetPrevious;
-      }
-      if (!shouldRemove && slotId) {
-        nextGrid[slotId] = baseId;
-      }
-      if (onGridChange) {
-        Promise.resolve().then(() => onGridChange(nextGrid));
-      }
-      return nextGrid;
-    });
-  }, [aulaById, controlledGrid, currentGrid, existingAssignments, onGridChange, showError, slotLookup]);
+    updateGrid(next);
+  }, [aulaById, currentGrid, slotLookup, updateGrid]);
 
   const getAulaById = useCallback((id: string) => aulaById.get(id), [aulaById]);
 
@@ -248,25 +188,22 @@ export function SchedulerBoard({
   }, [activeId, estoque]);
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex h-full min-h-[600px] bg-muted font-sora">
+    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveId(null)}>
+      <div className="flex flex-col lg:flex-row h-full min-h-[600px] bg-muted font-sora rounded-xl border border-border overflow-hidden">
         {/* SIDEBAR */}
-        <div className="w-80 bg-card border-r border-border p-5 flex flex-col shadow-sm z-10">
+        <div className="w-full lg:w-72 lg:shrink-0 bg-card border-b lg:border-b-0 lg:border-r border-border p-4 flex flex-col z-10">
           <div className="mb-6">
             <h2 className="text-lg font-bold text-foreground tracking-tight">Disciplinas</h2>
-            <p className="text-xs text-muted-foreground">Arraste para o quadro</p>
+            <p className="text-xs text-muted-foreground">Arraste uma disciplina ou seleccione-a directamente no tempo.</p>
           </div>
 
           <StatusAlerts
-            missingLoadCount={missingLoadCount}
-            onAutoConfigurarCargas={onAutoConfigurarCargas}
-            autoConfiguring={autoConfiguring}
             conflictCount={conflictCount}
             shouldShowTurmaSalaWarning={shouldShowTurmaSalaWarning}
             onSetAssigningTurmaSala={() => setAssigningTurmaSala(true)}
           />
 
-          <div className="space-y-3 overflow-y-auto flex-1 pr-1 custom-scrollbar">
+          <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 max-h-64 lg:max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
             {estoque.map((aula) => (
               <DraggableSource key={aula.id} aula={aula} />
             ))}
@@ -287,7 +224,7 @@ export function SchedulerBoard({
         </div>
 
         {/* GRID */}
-        <div className="flex-1 p-6 overflow-auto bg-muted/50">
+        <div className="min-w-0 flex-1 p-3 overflow-auto bg-muted/50">
           <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden min-w-[800px]">
             <GridHeader diasSemana={diasSemana} />
             {tempos?.map((tempo) => (
@@ -299,6 +236,9 @@ export function SchedulerBoard({
                 conflictSlots={conflictSlots}
                 conflictReasons={conflictReasons}
                 getAulaById={getAulaById}
+                aulas={estoque}
+                slotLookup={slotLookup}
+                onSelectSlot={handleSelectSlot}
                 onAssignProfessor={onAssignProfessor}
                 setAssigningProfessor={setAssigningProfessor}
                 effectiveTurmaSala={effectiveTurmaSala}
@@ -339,30 +279,11 @@ export function SchedulerBoard({
 // --- OPTIMIZED SUB-COMPONENTS ---
 
 const StatusAlerts = React.memo(({
-  missingLoadCount,
-  onAutoConfigurarCargas,
-  autoConfiguring,
   conflictCount,
   shouldShowTurmaSalaWarning,
   onSetAssigningTurmaSala
 }: any) => (
   <>
-    {missingLoadCount > 0 && (
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-        <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
-        <div className="mt-1">Defina a carga para publicar o quadro.</div>
-        {onAutoConfigurarCargas && (
-          <button
-            type="button"
-            onClick={onAutoConfigurarCargas}
-            disabled={autoConfiguring}
-            className="mt-2 w-full rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {autoConfiguring ? "Configurando..." : "Auto-Configurar cargas"}
-          </button>
-        )}
-      </div>
-    )}
     {conflictCount > 0 && (
       <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
         <div className="font-semibold">{conflictCount} conflito(s) no quadro.</div>
@@ -370,13 +291,13 @@ const StatusAlerts = React.memo(({
       </div>
     )}
     {shouldShowTurmaSalaWarning && (
-      <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+      <div className="mb-4 rounded-xl border border-border bg-muted p-3 text-xs text-foreground">
         <div className="font-semibold">Turma sem sala definida.</div>
-        <div className="mt-1">Defina uma sala padrão para concluir o horário da turma.</div>
+        <div className="mt-1">Pode definir a sala padrão agora ou mais tarde.</div>
         <button
           type="button"
           onClick={onSetAssigningTurmaSala}
-          className="mt-2 w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white"
+          className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground"
         >
           Definir sala
         </button>
@@ -404,7 +325,7 @@ const ActionButtons = React.memo(({
       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber text-white text-sm font-bold shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:opacity-70"
     >
       <Wand2 className="w-4 h-4" />
-      {autoCompleting ? "Auto-Completar..." : "Auto-Completar"}
+      {autoCompleting ? "A gerar proposta..." : "Sugerir horário"}
     </button>
     <button
       type="button"
@@ -412,7 +333,7 @@ const ActionButtons = React.memo(({
       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-border bg-card text-foreground text-sm font-bold hover:bg-muted active:scale-[0.98] transition-all"
     >
       <Save className="w-4 h-4" />
-      Salvar Alterações
+      Guardar rascunho
     </button>
     {onPublicar && (
       <button
@@ -423,7 +344,7 @@ const ActionButtons = React.memo(({
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-klasse-gold text-klasse-gold-900 text-sm font-bold shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
       >
         <Check className="w-4 h-4" />
-        {publishing ? "Publicando..." : "Publicar"}
+        {publishing ? "A publicar..." : "Publicar horário"}
       </button>
     )}
   </div>
@@ -451,6 +372,9 @@ const GridRow = React.memo(({
   conflictSlots,
   conflictReasons,
   getAulaById,
+  aulas,
+  slotLookup,
+  onSelectSlot,
   onAssignProfessor,
   setAssigningProfessor,
   effectiveTurmaSala,
@@ -493,6 +417,9 @@ const GridRow = React.memo(({
             hasConflict={Boolean(conflictSlots?.[`${dia}-${tempo.id}`])}
             conflictReason={conflictReasons?.[`${dia}-${tempo.id}`]}
             getAulaById={getAulaById}
+            aulas={aulas}
+            slotAvailable={Boolean(slotLookup?.[`${dia}-${tempo.id}`])}
+            onSelectSlot={onSelectSlot}
             onAssignProfessor={onAssignProfessor}
             setAssigningProfessor={setAssigningProfessor}
             effectiveTurmaSala={effectiveTurmaSala}
@@ -513,6 +440,9 @@ const GridCell = React.memo(({
   hasConflict,
   conflictReason,
   getAulaById,
+  aulas,
+  slotAvailable,
+  onSelectSlot,
   onAssignProfessor,
   setAssigningProfessor,
   effectiveTurmaSala,
@@ -520,6 +450,7 @@ const GridCell = React.memo(({
 }: any) => {
   const slotId = `${dia}-${tempoId}`;
   const aula = aulaId ? getAulaById(aulaId) : null;
+  if (!slotAvailable) return <div className="border-r border-border bg-muted/40 p-2 text-xs text-muted-foreground">Sem tempo</div>;
 
   return (
     <DroppableSlot id={slotId} hasConflict={hasConflict} isFilled={!!aula}>
@@ -537,6 +468,15 @@ const GridCell = React.memo(({
           />
         </DraggableGridItem>
       ) : null}
+      <select
+        aria-label={`${dia}, ${horarioDia}: disciplina`}
+        value={aulaId ?? ""}
+        onChange={(event) => onSelectSlot(slotId, event.target.value || null)}
+        className="mt-1 w-full min-w-0 rounded-xl border border-border bg-card p-1.5 text-xs text-foreground focus:ring-4 focus:ring-klasse-gold/20"
+      >
+        <option value="">Tempo livre</option>
+        {(aulas as SchedulerAula[]).map((item) => <option key={item.id} value={item.id}>{item.disciplina}</option>)}
+      </select>
     </DroppableSlot>
   );
 });
@@ -589,7 +529,7 @@ const AulaCard = React.memo(({
               event.stopPropagation();
               setAssigningProfessor(aula);
             }}
-            className="text-[10px] font-semibold text-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="text-xs font-semibold underline text-foreground"
           >
             Atribuir professor
           </button>
@@ -613,67 +553,17 @@ const DraggableSource = React.memo(({ aula }: { aula: SchedulerAula }) => {
     data: { baseId: aula.id },
   });
 
-  const allocation = getAllocationStatus(aula.temposTotal, aula.temposAlocados, aula.missingLoad);
-  const isComplete = allocation.isComplete;
-  const isOverbooked = allocation.isOverbooked;
-  const totalLabel = aula.missingLoad ? "?" : aula.temposTotal;
-
   return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={`
-        group relative p-3 rounded-xl border transition-all select-none
-        ${isDragging ? "opacity-30" : "opacity-100"}
-        ${isComplete 
-            ? "bg-emerald-50/50 border-emerald-100" 
-            : isOverbooked
-            ? "bg-rose-50/50 border-rose-100"
-            : "bg-card border-border hover:border-amber/50 hover:shadow-sm cursor-grab active:cursor-grabbing"
-        }
-      `}
-    >
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex items-center gap-2">
-          <div className={`w-2.5 h-2.5 rounded-full ring-2 ring-ring shadow-sm ${aula.cor.split(" ")[0]}`} />
-          <span className={`font-bold text-sm ${isComplete ? "text-emerald-700" : isOverbooked ? "text-rose-700" : "text-foreground"}`}>
-            {aula.disciplina}
-          </span>
-        </div>
-        {isComplete ? (
-          <Check className="w-4 h-4 text-emerald-600" />
-        ) : isOverbooked ? (
-          <AlertOctagon className="w-4 h-4 text-rose-600 animate-pulse" />
-        ) : (
-          <GripVertical className="w-4 h-4 text-muted-foreground group-hover:text-amber transition-colors" />
-        )}
+    <div ref={setNodeRef} {...listeners} {...attributes}
+      className={`rounded-xl border border-border bg-card p-3 select-none cursor-grab active:cursor-grabbing hover:border-klasse-gold/50 ${isDragging ? "opacity-30" : ""}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-semibold text-foreground">{aula.disciplina}</span>
+        <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
       </div>
-
-      <div className="flex items-center justify-between mt-3">
-         <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Carga Horária</span>
-            <span className={`text-xs font-mono font-bold ${isComplete ? "text-emerald-600" : isOverbooked ? "text-rose-600" : "text-muted-foreground"}`}>
-               {aula.temposAlocados} de {totalLabel} tempos
-            </span>
-         </div>
-         <div className="h-2 w-20 bg-muted rounded-full overflow-hidden ring-1 ring-ring/50">
-            <div
-              className={`h-full transition-all duration-500 ${
-                isComplete ? "bg-emerald-500" : isOverbooked ? "bg-rose-500" : "bg-amber"
-              }`}
-              style={{ width: `${Math.min(100, allocation.progress)}%` }}
-            />
-         </div>
-      </div>
-      
-      {isOverbooked && (
-        <div className="mt-2 text-[9px] font-bold text-rose-600 uppercase tracking-tight">
-          Excesso de {aula.temposAlocados - aula.temposTotal} aulas
-        </div>
-      )}
+      <p className="mt-1 text-xs text-muted-foreground">{aula.temposAlocados} tempo(s) programado(s)</p>
     </div>
   );
+
 });
 DraggableSource.displayName = "DraggableSource";
 
