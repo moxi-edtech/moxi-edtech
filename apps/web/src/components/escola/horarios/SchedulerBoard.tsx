@@ -106,12 +106,16 @@ export function SchedulerBoard({
     if (!node) return;
     const measure = () => setCompact(node.clientWidth < 1100);
     measure();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize",measure);
+      return () => window.removeEventListener("resize",measure);
+    }
     const observer = new ResizeObserver(measure);
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
   const dayMode = layout === "day" || (layout === "auto" && compact);
-  const activeDay = diasSemana.includes(selectedDay) ? selectedDay : diasSemana[0];
+  const activeDay = diasSemana.includes(selectedDay) ? selectedDay : (diasSemana[0] ?? "Segunda");
   const [assigningProfessor, setAssigningProfessor] = useState<SchedulerAula | null>(null);
   const [assigningTurmaSala, setAssigningTurmaSala] = useState(false);
   const currentGrid = controlledGrid ?? grid;
@@ -236,7 +240,7 @@ export function SchedulerBoard({
                 <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-mono text-sm font-semibold">{range}</p>{conflictSlots[key]&&<span className="text-sm font-medium text-destructive">Conflito</span>}</div>
                 {slotLookup?.[key]?<><label className="mt-2 block text-sm"><span className="sr-only">{activeDay}, {range}: disciplina</span><select value={currentGrid[key]??""} onChange={event=>handleSelectSlot(key,event.target.value||null)} className="block min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 py-2 text-base text-foreground focus:ring-4 focus:ring-klasse-gold/20"><option value="">Tempo livre</option>{estoque.map(item=><option key={item.id} value={item.id}>{item.disciplina}</option>)}</select></label>
                 {aula&&<div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground"><span className="min-w-0 break-words">{aula.professorId?aula.professor:"Professor não indicado"}{effectiveTurmaSala?" · "+effectiveTurmaSala:""}</span>{!aula.professorId&&onAssignProfessor&&<Button type="button" variant="outline" onClick={()=>setAssigningProfessor(aula)} className="min-h-11">Atribuir professor</Button>}</div>}</>:<p className="mt-2 text-sm text-muted-foreground">Sem tempo neste dia</p>}
-                {conflictReasons?.[key]?.length?<p className="mt-2 text-sm text-destructive">{conflictReasons[key].join(" · ")}</p>:null}
+                {conflictReasons?.[key]?.length?<p className="mt-2 text-sm text-destructive">{(conflictReasons[key] ?? []).join(" · ")}</p>:null}
               </div>;
             })}
           </div>
