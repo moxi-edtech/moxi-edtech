@@ -22,12 +22,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const start = daySchema.safeParse(url.searchParams.get("from") ?? url.searchParams.get("date") ?? todayLuanda());
     const end = daySchema.safeParse(url.searchParams.get("to") ?? (start.success ? start.data : ""));
     if (!start.success || !end.success || end.data < start.data || end.data > todayLuanda() || (Date.parse(end.data) - Date.parse(start.data)) / 86400000 >= MAX_DAYS) return fail("Selecione um intervalo de até 31 dias.", 400);
-    const [school, closes, cash] = await Promise.all([
+    const [school, closes, cash, captureStart] = await Promise.all([
       supabase.from("escolas").select("nome").eq("id", escolaId).single(),
       supabase.from("secretaria_expedientes").select("id,day_key,closed_at,closed_by,operation_count,summary").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
       supabase.from("fecho_caixa").select("day_key,status,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
+      supabase.rpc("secretaria_expediente_capture_started_at", { p_escola_id: escolaId }),
     ]);
-    if (school.error || closes.error || cash.error) return fail("Falha ao consultar os fechos.", 500);
+    if (captureStart.error || !captureStart.data || school.error || closes.error || cash.error) return fail("Falha ao consultar os fechos.", 500);
     if (!closes.data?.length) return fail("Não existem expedientes fechados neste intervalo.", 404);
     const days = closes.data.map((item: any) => item.day_key);
     // Bound the export, and fail explicitly instead of silently dropping rows.
@@ -85,6 +86,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       openPage();
       line("Fechado em "+clock(close.closed_at)+" | Responsável: "+(names.get(close.closed_by)??close.closed_by));
       line("Registos de atividade no fecho: "+close.operation_count,true);
+      if (close.day_key === new Intl.DateTimeFormat("sv-SE",{timeZone:"Africa/Luanda",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(captureStart.data))) line("Cobertura parcial: registo ativado em "+clock(captureStart.data));
       for (const [entity,count] of Object.entries(close.summary ?? {})) line((entities[entity]??entity)+": "+count);
       const c = cashByDay.get(close.day_key);
       line("Caixa: "+(c?.status === "approved" ? "Aprovado" : c?.status === "declared" ? "Declarado" : c?.status === "rejected" ? "Rejeitado" : "Sem declaração"),true);
