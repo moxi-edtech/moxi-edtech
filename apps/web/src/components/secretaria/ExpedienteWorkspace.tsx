@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from "react";
 import Link from "next/link";
 import ExpedienteHistory from "@/components/secretaria/ExpedienteHistory";
 import FechoCaixaCego from "@/components/secretaria/FechoCaixaCego";
@@ -21,7 +21,8 @@ type Data = { date:string; captureStartedAt:string; closed:null|{id:string;close
 const DEFAULT_CONFIG: Config = {close_time:"17:00",reminder_minutes:30,weekdays:[1,2,3,4,5],enabled:false,email_summary:false};
 const cashState = (state?:string) => state==="approved"?"Aprovado":state==="rejected"?"Rejeitado":state==="declared"?"A aguardar aprovação":"Por declarar";
 
-export default function ExpedienteWorkspace({ escolaId, initialDate, initialHistory=false, portal="secretaria" }: { escolaId:string; initialDate?:string; initialHistory?:boolean; portal?:"secretaria"|"admin"|"operacoes"|"financeiro" }) {
+export type ExpedienteCloseGuard = () => "busy"|"draft"|null;
+export default function ExpedienteWorkspace({ escolaId, initialDate, initialHistory=false, portal="secretaria", embedded=false, closeGuardRef }: { escolaId:string; initialDate?:string; initialHistory?:boolean; portal?:"secretaria"|"admin"|"operacoes"|"financeiro"; embedded?:boolean; closeGuardRef?:MutableRefObject<ExpedienteCloseGuard|null> }) {
   const [date,setDate] = useState(initialDate ?? today());
   const [from,setFrom] = useState(initialDate ?? today());
   const [data,setData] = useState<Data|null>(null);
@@ -55,6 +56,11 @@ export default function ExpedienteWorkspace({ escolaId, initialDate, initialHist
   const [correctionReason,setCorrectionReason] = useState("");
   const correctionId = useRef<string|null>(null);
   const lock = useRef(false);
+  useLayoutEffect(()=>{
+    if(!closeGuardRef)return;
+    closeGuardRef.current=()=>lock.current?"busy":showCash||confirm||settings||cashNote.trim()||correctionReason.trim()?"draft":null;
+    return()=>{closeGuardRef.current=null;};
+  },[closeGuardRef,showCash,confirm,settings,cashNote,correctionReason]);
   const endpoint = "/api/escola/"+encodeURIComponent(escolaId)+"/expediente";
   const filterParams=new URLSearchParams({...(entityFilter?{entity:entityFilter}:{}),...(actorFilter?{actor:actorFilter}:{}),...(lateOnly?{late:"1"}:{})}).toString();
   const filterSuffix=filterParams?"&"+filterParams:"";
@@ -145,8 +151,8 @@ export default function ExpedienteWorkspace({ escolaId, initialDate, initialHist
   const activitySummary=visibleData?.closed?.summary??visibleData?.preview??{};
   const supervise=portal!=="secretaria"&&Boolean(data?.canSupervise);
   function focusCash(){setConfirm(false);setShowCash(true);window.requestAnimationFrame(()=>cashRef.current?.scrollIntoView({block:"start",behavior:"smooth"}));}
-  return <div className={PORTAL_PAGE_INSET+" space-y-4"}>
-    <DashboardHeader title={portal==="secretaria"?"Fecho diário":"Controlo de expedientes"} description={portal==="secretaria"?"Conclua o dia. A atividade já está registada.":"Acompanhe fechos, valide caixas e resolva exceções."}/>
+  return <div className={(embedded?"w-full min-w-0":PORTAL_PAGE_INSET)+" space-y-4"}>
+    {!embedded&&<DashboardHeader title={portal==="secretaria"?"Fecho diário":"Controlo de expedientes"} description={portal==="secretaria"?"Conclua o dia. A atividade já está registada.":"Acompanhe fechos, valide caixas e resolva exceções."}/>}
     {historyOpen&&data&&<ExpedienteHistory endpoint={endpoint} today={today()} selected={date} onSelect={selectDay} supervise={supervise} refresh={revision} disabled={busy||showCash||loading||settings}/> }
     <div ref={detailRef} className="scroll-mt-4"/>
     {notice&&<p role="status" className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm"><CheckCircle2 className="h-4 w-4 text-klasse-green"/>{notice}</p>}
