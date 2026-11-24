@@ -74,6 +74,22 @@ END; $$;
 REVOKE ALL ON FUNCTION public.financeiro_fecho_declarar_e_snapshot(uuid,date,numeric,numeric,numeric,numeric),public.financeiro_fecho_aprovar(uuid,uuid,text,text,jsonb),public.declarar_fecho_caixa(uuid,numeric,numeric,numeric),public.aprovar_fecho_caixa(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.financeiro_fecho_declarar_e_snapshot(uuid,date,numeric,numeric,numeric,numeric),public.financeiro_fecho_aprovar(uuid,uuid,text,text,jsonb),public.declarar_fecho_caixa(uuid,numeric,numeric,numeric),public.aprovar_fecho_caixa(uuid) TO authenticated;
 
+CREATE TABLE public.secretaria_expediente_meta (
+ singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),
+ capture_started_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+INSERT INTO public.secretaria_expediente_meta(singleton) VALUES(true);
+ALTER TABLE public.secretaria_expediente_meta ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.secretaria_expediente_meta FROM PUBLIC,anon,authenticated;
+CREATE OR REPLACE FUNCTION public.secretaria_expediente_capture_started_at(p_escola_id uuid)
+RETURNS timestamptz LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
+AS $ DECLARE v timestamptz; BEGIN
+ IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['secretaria','admin_secretaria','admin_secretario','secretaria_financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
+ SELECT capture_started_at INTO v FROM public.secretaria_expediente_meta WHERE singleton;
+ RETURN v;
+END; $;
+REVOKE ALL ON FUNCTION public.secretaria_expediente_capture_started_at(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.secretaria_expediente_capture_started_at(uuid) TO authenticated;
 CREATE TABLE public.secretaria_expedientes (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), escola_id uuid NOT NULL REFERENCES public.escolas(id) ON DELETE CASCADE,
  day_key date NOT NULL, closed_at timestamptz NOT NULL, closed_by uuid NOT NULL,
@@ -148,7 +164,7 @@ AS $$
 DECLARE v public.secretaria_expedientes; v_summary jsonb; v_count bigint; v_event uuid;
 BEGIN
  IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['secretaria','secretaria_financeiro','admin_secretaria','admin_secretario','admin_financeiro','admin','admin_escola','staff_admin']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
- IF p_day_key IS NULL OR p_day_key>(clock_timestamp() AT TIME ZONE 'Africa/Luanda')::date THEN RAISE EXCEPTION 'invalid_day' USING ERRCODE='22023'; END IF;
+ IF p_day_key IS NULL OR p_day_key>(clock_timestamp() AT TIME ZONE 'Africa/Luanda')::date OR p_day_key<(public.secretaria_expediente_capture_started_at(p_escola_id) AT TIME ZONE 'Africa/Luanda')::date THEN RAISE EXCEPTION 'invalid_day' USING ERRCODE='22023'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('secretaria-close:'||p_escola_id::text||':'||p_day_key::text,0));
  SELECT * INTO v FROM public.secretaria_expedientes WHERE escola_id=p_escola_id AND day_key=p_day_key;
  IF FOUND THEN RETURN v; END IF;
