@@ -12,7 +12,7 @@ REVOKE ALL ON FUNCTION public.fecho_diario_has_role(uuid,text[]) FROM PUBLIC,ano
 GRANT EXECUTE ON FUNCTION public.fecho_diario_has_role(uuid,text[]) TO authenticated;
 
 -- Financial writes only via RPC; existing reads limited to authorized school roles.
-ALTER TABLE public.fecho_caixa ADD COLUMN system_other numeric(14,2) NOT NULL DEFAULT 0, ADD COLUMN system_other_count bigint NOT NULL DEFAULT 0 CHECK(system_other_count>=0);
+ALTER TABLE public.fecho_caixa ADD COLUMN system_other numeric(14,2) NOT NULL DEFAULT 0, ADD COLUMN system_other_count bigint NOT NULL DEFAULT 0 CHECK(system_other_count>=0), ADD COLUMN approval_variation jsonb;
 REVOKE ALL ON public.fecho_caixa FROM PUBLIC,anon,authenticated;
 GRANT SELECT ON public.fecho_caixa TO authenticated;
 DROP POLICY IF EXISTS fecho_select ON public.fecho_caixa;
@@ -76,7 +76,7 @@ BEGIN
  v_variation:=public.financeiro_fecho_variacao(p_escola_id,v_row.day_key);
  IF p_aprovacao='approved' AND (EXISTS(SELECT 1 FROM jsonb_each_text(v_variation) v WHERE v.value::numeric<>0) OR v_row.system_other_count>0 OR (v_row.declared_cash,v_row.declared_tpa,v_row.declared_transfer,v_row.declared_mcx) IS DISTINCT FROM (v_row.system_cash,v_row.system_tpa,v_row.system_transfer,v_row.system_mcx)) AND nullif(trim(p_justificativa),'') IS NULL THEN RAISE EXCEPTION 'variance_requires_justification' USING ERRCODE='22023'; END IF;
  IF v_row.status<>'declared' THEN RAISE EXCEPTION 'fecho_already_processed'; END IF;
- UPDATE public.fecho_caixa SET status=p_aprovacao,approved_by=auth.uid(),approved_at=clock_timestamp(),approval_note=p_justificativa,aprovado_por=auth.uid(),aprovado_em=clock_timestamp(),observacao_aprovador=p_justificativa,updated_at=clock_timestamp()
+ UPDATE public.fecho_caixa SET status=p_aprovacao,approved_by=auth.uid(),approved_at=clock_timestamp(),approval_note=p_justificativa,approval_variation=v_variation,aprovado_por=auth.uid(),aprovado_em=clock_timestamp(),observacao_aprovador=p_justificativa,updated_at=clock_timestamp()
  WHERE id=v_row.id RETURNING * INTO v_row;
  INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details) VALUES(p_escola_id,auth.uid(),'FECHO_APROVADO','fecho_caixa',v_row.id::text,'financeiro',jsonb_build_object('status',p_aprovacao,'variation_at_approval',v_variation));
  RETURN v_row;
