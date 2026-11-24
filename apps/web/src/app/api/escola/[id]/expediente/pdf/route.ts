@@ -10,7 +10,7 @@ const fail = (error: string, status: number) => NextResponse.json({ ok: false, e
 const dateLabel = (value: string) => value.split("-").reverse().join("/");
 const money = (v: unknown) => new Intl.NumberFormat("pt-AO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v ?? 0)) + " Kz";
 const clock = (value: string) => new Intl.DateTimeFormat("pt-PT", { timeZone: "Africa/Luanda", dateStyle: "short", timeStyle: "short" }).format(new Date(value));
-const entities: Record<string,string> = { alunos:"Alunos", candidaturas:"Candidaturas", matriculas:"Matrículas", pagamentos:"Pagamentos", documentos_emitidos:"Documentos emitidos", servico_pedidos:"Pedidos de serviço", mensalidades:"Propinas", notas:"Notas", financeiro_lancamentos:"Lançamentos financeiros", financeiro_estornos:"Estornos", reapreciacao_pedidos:"Reapreciações", frequencias:"Frequências",aluno_encarregados:"Encarregados",matricula_reclassificacoes:"Reclassificações",matricula_desistencia_sinalizacoes:"Desistências",matricula_desistencia_reativacoes:"Reativações",financeiro_pagamento_alocacoes:"Alocações",financeiro_pagamento_reversoes:"Reversões",financeiro_cobrancas:"Cobranças",financeiro_reconciliacoes_mensalidades:"Reconciliações",pautas_oficiais:"Pautas oficiais",pauta_conclusoes:"Conclusões de pauta",excecoes_pauta:"Exceções de pauta",professores:"Professores",turmas:"Turmas",turma_disciplinas:"Disciplinas",turma_disciplinas_professores:"Atribuições de professores",quadro_horarios:"Quadro de horários",horario_slots:"Tempos de horário",horario_versoes:"Versões de horário",horario_eventos:"Eventos de horário",aluno_falta_justificacoes:"Justificações de faltas",frequencia_status_periodo:"Fecho de frequência",rematricula_janelas:"Janelas de rematrícula" };
+const entities: Record<string,string> = { alunos:"Alunos", candidaturas:"Candidaturas", matriculas:"Matrículas", pagamentos:"Pagamentos", documentos_emitidos:"Documentos emitidos", servico_pedidos:"Pedidos de serviço", mensalidades:"Propinas", notas:"Notas", financeiro_lancamentos:"Lançamentos financeiros", financeiro_estornos:"Estornos", reapreciacao_pedidos:"Reapreciações", frequencias:"Frequências",aluno_encarregados:"Encarregados",matricula_reclassificacoes:"Reclassificações",matricula_desistencia_sinalizacoes:"Desistências",matricula_desistencia_reativacoes:"Reativações",financeiro_pagamento_alocacoes:"Alocações",financeiro_pagamento_reversoes:"Reversões",financeiro_cobrancas:"Cobranças",financeiro_reconciliacoes_mensalidades:"Reconciliações",pautas_oficiais:"Pautas oficiais",pauta_conclusoes:"Conclusões de pauta",excecoes_pauta:"Exceções de pauta",professores:"Professores",turmas:"Turmas",turma_disciplinas:"Disciplinas",turma_disciplinas_professores:"Atribuições de professores",quadro_horarios:"Quadro de horários",horario_slots:"Tempos de horário",horario_versoes:"Versões de horário",horario_eventos:"Eventos de horário",aluno_falta_justificacoes:"Justificações de faltas",frequencia_status_periodo:"Fecho de frequência",rematricula_janelas:"Janelas de rematrícula",atendimentos_balcao:"Atendimentos",balcao_academic_operacoes:"Operações académicas do Balcão",balcao_historic_recovery_requests:"Pedidos de recuperação histórica",balcao_late_reenroll_authorizations:"Autorizações de rematrícula",melhoria_nota_pedidos:"Pedidos de melhoria de nota",official_document_exports:"Exportações documentais",virada_importacoes:"Importações de virada" };
 const actions: Record<string,string> = { CREATE:"Criação", UPDATE:"Alteração", DELETE:"Remoção" };
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -24,8 +24,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!start.success || !end.success || end.data < start.data || end.data > todayLuanda() || (Date.parse(end.data) - Date.parse(start.data)) / 86400000 >= MAX_DAYS) return fail("Selecione um intervalo de até 31 dias.", 400);
     const [school, closes, cash, captureStart] = await Promise.all([
       supabase.from("escolas").select("nome").eq("id", escolaId).single(),
-      supabase.from("secretaria_expedientes").select("id,day_key,closed_at,closed_by,operation_count,human_count,system_count,summary").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
-      supabase.from("fecho_caixa").select("day_key,status,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_other,system_other_count,approval_variation,approval_note").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
+      supabase.from("secretaria_expedientes").select("id,day_key,closed_at,closed_by,operation_count,business_count,human_count,system_count,summary").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
+      supabase.from("fecho_caixa").select("id,day_key,status,revision,revision_reason,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_other,system_other_count,approval_variation,approval_note").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
       supabase.rpc("secretaria_expediente_capture_started_at", { p_escola_id: escolaId }),
     ]);
     if (captureStart.error || !captureStart.data || school.error || closes.error || cash.error) return fail("Falha ao consultar os fechos.", 500);
@@ -38,7 +38,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (watermark.error) return fail("Falha ao consultar operações.", 500);
     const maxId = watermark.data?.id ?? 0;
     while (cursor < maxId) {
-      const page = await supabase.from("secretaria_expediente_operacoes").select("id,day_key,occurred_at,actor_id,actor_role,origin,entity,entity_id,action,is_after_close,detail").eq("escola_id", escolaId).in("day_key", days).gt("id", cursor).lte("id", maxId).order("id").limit(500);
+      const page = await supabase.from("secretaria_expediente_operacoes").select("id,day_key,occurred_at,actor_id,actor_role,origin,entity,entity_id,action,record_kind,transaction_id,is_after_close,detail").eq("escola_id", escolaId).in("day_key", days).gt("id", cursor).lte("id", maxId).order("id").limit(500);
       if (page.error) return fail("Falha ao consultar operações.", 500);
       if (!page.data?.length) break;
       rows.push(...page.data);
@@ -86,11 +86,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       openPage();
       line("Fechado em "+clock(close.closed_at)+" | Responsável: "+(names.get(close.closed_by)??close.closed_by));
       line("Registos de atividade no fecho: "+close.operation_count,true);
-      line("Humanos: "+close.human_count+" | Automáticos: "+close.system_count);
+      line("Humanos: "+close.human_count+" | Automáticos: "+close.system_count+" | Registos de negócio distintos: "+close.business_count);
       if (close.day_key === new Intl.DateTimeFormat("sv-SE",{timeZone:"Africa/Luanda",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(captureStart.data))) line("Cobertura parcial: registo ativado em "+clock(captureStart.data));
       for (const [entity,count] of Object.entries(close.summary ?? {})) line((entities[entity]??entity)+": "+count);
       const c = cashByDay.get(close.day_key);
       line("Caixa: "+(c?.status === "approved" ? "Aprovado" : c?.status === "declared" ? "Declarado" : c?.status === "rejected" ? "Rejeitado" : "Sem declaração"),true);
+      if(c)line("Versão "+c.revision+(c.revision_reason?" | Motivo: "+c.revision_reason:""));
       if(c?.approval_note)line("Justificação da decisão: "+c.approval_note);
       if(c?.approval_variation&&Object.values(c.approval_variation).some(n=>Number(n)!==0)){
         line("Variação registada na decisão:",true);
@@ -104,7 +105,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         line((late?"Adendos posteriores ao fecho":"Operações até ao fecho")+" ("+filtered.length+")",true);
         for(const r of filtered){
           line(clock(r.occurred_at)+" | "+(actions[r.action]??r.action)+" "+(entities[r.entity]??r.entity)+" | "+(r.origin==="service_role"?"Sistema (automático)":names.get(r.actor_id)??r.actor_id));
-          line("Referência: "+r.entity_id+(r.detail?.status?" | Estado: "+r.detail.status:"")+(r.detail?.payment_day&&r.detail.payment_day!==r.day_key?" | Data financeira: "+r.detail.payment_day:"")+(r.detail?.valor?" | Valor: "+money(r.detail.valor):""));
+          line((r.record_kind==="business"?"Negócio":"Mutação")+" | Tx "+r.transaction_id+" | Referência: "+r.entity_id+(r.detail?.status?" | Estado: "+r.detail.status:"")+(r.detail?.payment_day&&r.detail.payment_day!==r.day_key?" | Data financeira: "+r.detail.payment_day:"")+(r.detail?.valor?" | Valor: "+money(r.detail.valor):""));
         }
       }
     }
