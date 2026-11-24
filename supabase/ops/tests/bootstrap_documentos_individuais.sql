@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS public.pagamentos (
   escola_id uuid NOT NULL,
   aluno_id uuid NOT NULL,
   mensalidade_id uuid,
+  pagamento_intent_id uuid,
   valor_pago numeric(12,2) NOT NULL,
   metodo text NOT NULL DEFAULT 'cash',
   status text NOT NULL DEFAULT 'pending',
@@ -129,3 +130,5 @@ CREATE TABLE IF NOT EXISTS public.turmas(id uuid PRIMARY KEY,escola_id uuid NOT 
 ALTER TABLE public.turmas ADD COLUMN IF NOT EXISTS session_id uuid;
 CREATE TABLE IF NOT EXISTS public.pautas_lote_jobs(id uuid PRIMARY KEY, escola_id uuid,created_by uuid,tipo text,status text,cancel_requested_at timestamptz);
 CREATE TABLE IF NOT EXISTS public.pautas_lote_itens(job_id uuid,turma_id uuid);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_test_pagamentos_intent ON public.pagamentos(pagamento_intent_id) WHERE pagamento_intent_id IS NOT NULL;

@@ -200,7 +200,7 @@ export async function POST(request: Request) {
     if (isDocumentoIndividual && !existingPagamento) {
       const { data: previous } = await supabase.from("pagamentos")
         .select("id").eq("escola_id", escolaId)
-        .contains("meta", { pagamento_intent_id: getStringField(meta, "pagamento_intent_id") })
+        .eq("pagamento_intent_id", getStringField(meta, "pagamento_intent_id")!)
         .neq("status", "voided").limit(1).maybeSingle();
       if (previous) {
         return NextResponse.json({

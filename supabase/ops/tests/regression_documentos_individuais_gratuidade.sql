@@ -140,6 +140,8 @@ END;
 $cross$;
 RESET ROLE;
 UPDATE public.pagamento_intents SET status='settled' WHERE servico_pedido_id IN (SELECT id FROM public.servico_pedidos WHERE escola_id='00000000-0000-4000-8000-000000007101' AND servico_codigo='DOC_DECLARACAO_NOTAS');
+INSERT INTO public.pagamentos(escola_id,aluno_id,pagamento_intent_id,valor_pago,status,meta)
+SELECT escola_id,aluno_id,id,amount,'settled',jsonb_build_object('origem','pagamento_intent','pagamento_intent_id',id,'servico_pedido_id',servico_pedido_id) FROM public.pagamento_intents WHERE servico_pedido_id IN (SELECT id FROM public.servico_pedidos WHERE escola_id='00000000-0000-4000-8000-000000007101' AND servico_codigo='DOC_DECLARACAO_NOTAS');
 UPDATE public.servico_pedidos SET status='granted' WHERE escola_id='00000000-0000-4000-8000-000000007101' AND servico_codigo='DOC_DECLARACAO_NOTAS';
 UPDATE public.servicos_escola SET valor_base=3000 WHERE escola_id='00000000-0000-4000-8000-000000007101' AND codigo='DOC_DECLARACAO_NOTAS';
 SET LOCAL ROLE authenticated;
@@ -155,6 +157,27 @@ BEGIN
 END;
 $price$;
 RESET ROLE;
+-- Simulate a price-increased, desk-origin service with the production ledger materializer.
+UPDATE public.servicos_escola SET valor_base=400,exige_pagamento_antes_de_liberar=true WHERE escola_id='00000000-0000-4000-8000-000000007101' AND codigo='DOC_CERTIFICADO_HABILITACOES';
+SET LOCAL ROLE authenticated;
+DO $deskscope$
+DECLARE s uuid:='00000000-0000-4000-8000-000000007101'; a uuid:='00000000-0000-4000-8000-000000007105'; y uuid:='00000000-0000-4000-8000-000000007106'; v jsonb;
+BEGIN
+ PERFORM set_config('request.jwt.claims',json_build_object('sub','00000000-0000-4000-8000-000000007103','role','authenticated','escola_id',s)::text,true);
+ v:=public.documento_individual_solicitar(s,a,y,'certificado');
+ IF v->>'pagamento_intent_id' IS NULL THEN RAISE EXCEPTION 'DESK_DRAFT_MISSING %',v; END IF;
+END;
+$deskscope$;
+RESET ROLE;
+INSERT INTO public.pagamentos(escola_id,aluno_id,valor_pago,status,meta)
+SELECT i.escola_id,i.aluno_id,i.amount,'settled',jsonb_build_object('origem','documentos_emissao_individual','pagamento_intent_id',i.id,'pedido_id',p.id,'servico_codigo',p.servico_codigo)
+FROM public.pagamento_intents i JOIN public.servico_pedidos p ON p.id=i.servico_pedido_id WHERE p.escola_id='00000000-0000-4000-8000-000000007101' AND p.servico_codigo='DOC_CERTIFICADO_HABILITACOES' AND p.valor_cobrado>0;
+DO $desklink$
+BEGIN
+ IF NOT EXISTS (SELECT 1 FROM public.pagamentos WHERE meta->>'origem'='documentos_emissao_individual' AND pagamento_intent_id IS NOT NULL AND status='settled') THEN RAISE EXCEPTION 'DESK_PAYMENT_FK_MISSING'; END IF;
+END;
+$desklink$;
+UPDATE public.servicos_escola SET valor_base=0,exige_pagamento_antes_de_liberar=false WHERE escola_id='00000000-0000-4000-8000-000000007101' AND codigo='DOC_CERTIFICADO_HABILITACOES';
 INSERT INTO public.servico_pedidos(escola_id,aluno_id,matricula_id,servico_escola_id,status,servico_codigo,servico_nome,valor_cobrado,contexto)
 SELECT s.escola_id,'00000000-0000-4000-8000-000000007105','00000000-0000-4000-8000-000000007108',s.id,'blocked',s.codigo,'Fila teste '||n,0,jsonb_build_object('origem','portal_aluno_documentos')
 FROM public.servicos_escola s CROSS JOIN generate_series(1,65) n WHERE s.escola_id='00000000-0000-4000-8000-000000007101' AND s.codigo='DOC_CERTIFICADO_HABILITACOES';

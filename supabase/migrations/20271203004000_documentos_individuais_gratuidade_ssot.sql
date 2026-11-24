@@ -128,8 +128,8 @@ BEGIN
       AND i.amount>=p.valor_cobrado AND (
         EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p.escola_id AND pg.aluno_id=p.aluno_id
           AND pg.status='settled' AND pg.valor_pago>=p.valor_cobrado
-          AND pg.meta->>'pagamento_intent_id'=i.id::text AND pg.meta->>'pedido_id'=p.id::text)
-        OR (p.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND i.status='settled' AND NOT EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p.escola_id AND pg.aluno_id=p.aluno_id AND pg.meta->>'pagamento_intent_id'=i.id::text AND pg.meta->>'pedido_id'=p.id::text))
+          AND pg.mensalidade_id IS NULL AND (pg.pagamento_intent_id=i.id OR (pg.meta->>'pagamento_intent_id'=i.id::text AND coalesce(pg.meta->>'pedido_id',pg.meta->>'servico_pedido_id')=p.id::text)))
+        OR (coalesce(p.contexto->>'origem','') NOT IN ('documentos_emissao_individual','portal_aluno_documentos') AND i.status='settled' AND NOT EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p.escola_id AND pg.aluno_id=p.aluno_id AND pg.mensalidade_id IS NULL AND (pg.pagamento_intent_id=i.id OR (pg.meta->>'pagamento_intent_id'=i.id::text AND coalesce(pg.meta->>'pedido_id',pg.meta->>'servico_pedido_id')=p.id::text))))
       )
   ) THEN 0 WHEN p.status='pending_payment' THEN 1 WHEN p.status='granted' THEN 2 ELSE 3 END,
   p.created_at DESC,p.id DESC LIMIT 1;
@@ -140,15 +140,15 @@ BEGIN
     ORDER BY CASE WHEN i.amount>=v_pedido.valor_cobrado AND (
       EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p_escola_id AND pg.aluno_id=p_aluno_id
         AND pg.status='settled' AND pg.valor_pago>=v_pedido.valor_cobrado
-        AND pg.meta->>'pagamento_intent_id'=i.id::text AND pg.meta->>'pedido_id'=v_pedido.id::text)
-      OR (v_pedido.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND i.status='settled' AND NOT EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=v_pedido.escola_id AND pg.aluno_id=v_pedido.aluno_id AND pg.meta->>'pagamento_intent_id'=i.id::text AND pg.meta->>'pedido_id'=v_pedido.id::text))
+        AND pg.mensalidade_id IS NULL AND (pg.pagamento_intent_id=i.id OR (pg.meta->>'pagamento_intent_id'=i.id::text AND coalesce(pg.meta->>'pedido_id',pg.meta->>'servico_pedido_id')=v_pedido.id::text)))
+      OR (coalesce(v_pedido.contexto->>'origem','') NOT IN ('documentos_emissao_individual','portal_aluno_documentos') AND i.status='settled' AND NOT EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=v_pedido.escola_id AND pg.aluno_id=v_pedido.aluno_id AND pg.mensalidade_id IS NULL AND (pg.pagamento_intent_id=i.id OR (pg.meta->>'pagamento_intent_id'=i.id::text AND coalesce(pg.meta->>'pedido_id',pg.meta->>'servico_pedido_id')=v_pedido.id::text))))
     ) THEN 0 ELSE 1 END,i.created_at DESC,i.id DESC LIMIT 1;
     v_pago := coalesce(v_pedido.status='granted' AND v_pedido.valor_cobrado>0
       AND v_intent.amount>=v_pedido.valor_cobrado AND (
         EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p_escola_id AND pg.aluno_id=p_aluno_id
           AND pg.status='settled' AND pg.valor_pago>=v_pedido.valor_cobrado
-          AND pg.meta->>'pagamento_intent_id'=v_intent.id::text AND pg.meta->>'pedido_id'=v_pedido.id::text)
-        OR (v_pedido.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND v_intent.status='settled' AND NOT EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=v_pedido.escola_id AND pg.aluno_id=v_pedido.aluno_id AND pg.meta->>'pagamento_intent_id'=v_intent.id::text AND pg.meta->>'pedido_id'=v_pedido.id::text))
+          AND pg.mensalidade_id IS NULL AND (pg.pagamento_intent_id=v_intent.id OR (pg.meta->>'pagamento_intent_id'=v_intent.id::text AND coalesce(pg.meta->>'pedido_id',pg.meta->>'servico_pedido_id')=v_pedido.id::text)))
+        OR (coalesce(v_pedido.contexto->>'origem','') NOT IN ('documentos_emissao_individual','portal_aluno_documentos') AND v_intent.status='settled' AND NOT EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=v_pedido.escola_id AND pg.aluno_id=v_pedido.aluno_id AND pg.mensalidade_id IS NULL AND (pg.pagamento_intent_id=v_intent.id OR (pg.meta->>'pagamento_intent_id'=v_intent.id::text AND coalesce(pg.meta->>'pedido_id',pg.meta->>'servico_pedido_id')=v_pedido.id::text))))
       ),false);
   END IF;
   IF v_pago THEN v_exige_pagamento:=true; END IF;
@@ -717,5 +717,49 @@ BEGIN
   RETURN public._documento_final_render(p_escola_id,p_aluno_id,p_ano_letivo,p_tipo_documento,v_mat,v_actor,'secretaria');
 END;
 $stafffinal$;
+
+
+CREATE OR REPLACE FUNCTION public._documento_pagamento_vincular_intent()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO '' AS $link$
+DECLARE v_intent public.pagamento_intents%ROWTYPE; v_pedido public.servico_pedidos%ROWTYPE;
+BEGIN
+ IF NEW.meta->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' THEN RETURN NEW; END IF;
+ SELECT * INTO v_intent FROM public.pagamento_intents
+ WHERE id=(NEW.meta->>'pagamento_intent_id')::uuid AND escola_id=NEW.escola_id AND aluno_id=NEW.aluno_id FOR UPDATE;
+ IF v_intent.id IS NULL OR v_intent.status <> 'draft' THEN RAISE EXCEPTION 'DOCUMENT_PAYMENT_ALREADY_SUBMITTED' USING ERRCODE='23514'; END IF;
+ SELECT * INTO v_pedido FROM public.servico_pedidos WHERE id=v_intent.servico_pedido_id AND escola_id=NEW.escola_id AND aluno_id=NEW.aluno_id;
+ IF v_pedido.id IS NULL OR v_pedido.id::text IS DISTINCT FROM NEW.meta->>'pedido_id'
+    OR v_pedido.servico_codigo IS DISTINCT FROM NEW.meta->>'servico_codigo'
+    OR v_pedido.servico_codigo NOT IN ('DOC_DECLARACAO_FREQUENCIA','DOC_DECLARACAO_NOTAS','DOC_COMPROVANTE_MATRICULA','DOC_CARTAO_ESTUDANTE','DOC_FICHA_INSCRICAO','DOC_HISTORICO_ESCOLAR','DOC_CERTIFICADO_HABILITACOES','DOC_BOLETIM_TRIMESTRAL')
+    OR v_pedido.status <> 'pending_payment' OR v_pedido.valor_cobrado<=0 OR NEW.valor_pago<>v_pedido.valor_cobrado OR v_intent.amount<>v_pedido.valor_cobrado
+    OR NEW.mensalidade_id IS NOT NULL OR (NEW.pagamento_intent_id IS NOT NULL AND NEW.pagamento_intent_id<>v_intent.id)
+    OR NOT EXISTS (SELECT 1 FROM public.matriculas m WHERE m.id=v_pedido.matricula_id AND m.escola_id=NEW.escola_id AND m.aluno_id=NEW.aluno_id) THEN
+   RAISE EXCEPTION 'DOCUMENT_PAYMENT_CONTEXT_MISMATCH' USING ERRCODE='23514';
+ END IF;
+ NEW.pagamento_intent_id:=v_intent.id;
+ RETURN NEW;
+END;
+$link$;
+REVOKE ALL ON FUNCTION public._documento_pagamento_vincular_intent() FROM PUBLIC,anon,authenticated,service_role;
+DROP TRIGGER IF EXISTS trg_documento_pagamento_vincular_intent ON public.pagamentos;
+CREATE TRIGGER trg_documento_pagamento_vincular_intent BEFORE INSERT ON public.pagamentos
+FOR EACH ROW EXECUTE FUNCTION public._documento_pagamento_vincular_intent();
+
+-- If the portal submits proof against a cash draft created at the desk,
+-- classify the uncollected draft as transfer. Existing paid/desk ledger rows
+-- cannot be overwritten by the portal.
+DO $proof$
+DECLARE v_def text; v_marker text := 'status = ''pending'','; 
+BEGIN
+ IF to_regprocedure('public.aluno_submeter_comprovativo_servico(uuid,text,text)') IS NOT NULL THEN
+   SELECT pg_get_functiondef('public.aluno_submeter_comprovativo_servico(uuid,text,text)'::regprocedure) INTO v_def;
+   IF position('DOCUMENT_PROOF_CHANNEL' in v_def)=0 THEN
+     IF position(v_marker in v_def)=0 THEN RAISE EXCEPTION 'UNEXPECTED_PROOF_CONTRACT'; END IF;
+     v_def:=replace(v_def,v_marker,v_marker||' method = CASE WHEN v_intent.status=''draft'' AND v_intent.method=''cash'' AND EXISTS (SELECT 1 FROM public.servico_pedidos p WHERE p.id=v_intent.servico_pedido_id AND p.escola_id=v_intent.escola_id AND p.aluno_id=v_intent.aluno_id AND p.contexto->>''origem''=''documentos_emissao_individual'') THEN ''transfer'' ELSE v_intent.method END, /* DOCUMENT_PROOF_CHANNEL */');
+     EXECUTE v_def;
+   END IF;
+ END IF;
+END;
+$proof$;
 
 COMMIT;
