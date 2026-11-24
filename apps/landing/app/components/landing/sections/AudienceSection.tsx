@@ -47,8 +47,7 @@ export function AudienceSection() {
         <div className="audience-layout">
           <FadeIn direction="right">
             <h2 className="sec-title">
-              Se estes problemas já são da <span className="audience-escola">sua escola</span>, o{' '}
-              <span className="audience-klasse">KLASSE</span> é para si.
+              Para escolas privadas que precisam de organizar a gestão
             </h2>
             <p className="sec-sub">
               O KLASSE foi concebido para a realidade administrativa e académica das escolas angolanas.
