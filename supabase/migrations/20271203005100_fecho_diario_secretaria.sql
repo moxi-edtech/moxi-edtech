@@ -43,22 +43,42 @@ BEGIN
  INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details) VALUES(p_escola_id,auth.uid(),'FECHO_DECLARADO','fecho_caixa',v_row.id::text,'financeiro',jsonb_build_object('day_key',p_day_key));
  RETURN v_row;
 END; $$;
+-- Read-only reconciliation: report movements since declaration, never rewrite the snapshot.
+CREATE OR REPLACE FUNCTION public.financeiro_fecho_variacao(p_escola_id uuid,p_day_key date)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
+AS $$
+DECLARE f public.fecho_caixa%ROWTYPE; v_cash numeric; v_tpa numeric; v_transfer numeric; v_mcx numeric; v_other numeric; v_other_count bigint;
+BEGIN
+ IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['secretaria','secretaria_financeiro','financeiro','admin_financeiro','admin','admin_escola','staff_admin','admin_secretaria','admin_secretario','diretor']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
+ SELECT * INTO f FROM public.fecho_caixa WHERE escola_id=p_escola_id AND day_key=p_day_key;
+ IF NOT FOUND THEN RETURN NULL; END IF;
+ SELECT coalesce(sum(valor_pago) FILTER(WHERE metodo='cash'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo='tpa'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo='transfer'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo IN ('mcx','kwik','kiwk')),0),coalesce(sum(valor_pago) FILTER(WHERE metodo IS NULL OR metodo NOT IN ('cash','tpa','transfer','mcx','kwik','kiwk')),0),count(*) FILTER(WHERE metodo IS NULL OR metodo NOT IN ('cash','tpa','transfer','mcx','kwik','kiwk'))
+ INTO v_cash,v_tpa,v_transfer,v_mcx,v_other,v_other_count FROM public.pagamentos WHERE escola_id=p_escola_id AND day_key=p_day_key AND status='settled';
+ RETURN jsonb_build_object('cash',v_cash-f.system_cash,'tpa',v_tpa-f.system_tpa,'transfer',v_transfer-f.system_transfer,'mcx',v_mcx-f.system_mcx,'other',v_other-f.system_other,'other_count',v_other_count-f.system_other_count);
+END; $$;
+REVOKE ALL ON FUNCTION public.financeiro_fecho_variacao(uuid,date) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.financeiro_fecho_variacao(uuid,date) TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.financeiro_fecho_aprovar(p_escola_id uuid,p_fecho_id uuid,p_aprovacao text,p_justificativa text DEFAULT NULL,p_aprovacao_meta jsonb DEFAULT '{}'::jsonb)
 RETURNS public.fecho_caixa LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
-DECLARE v_row public.fecho_caixa%ROWTYPE;
+DECLARE v_row public.fecho_caixa%ROWTYPE; v_variation jsonb;
 BEGIN
  IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
  IF p_aprovacao IS NULL OR p_aprovacao NOT IN ('approved','rejected') OR length(coalesce(p_justificativa,''))>255 OR (p_aprovacao='rejected' AND nullif(trim(p_justificativa),'') IS NULL) THEN RAISE EXCEPTION 'invalid_decision' USING ERRCODE='22023'; END IF;
+ SELECT * INTO v_row FROM public.fecho_caixa WHERE escola_id=p_escola_id AND id=p_fecho_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'fecho_not_found'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('cash-close:'||p_escola_id::text||':'||v_row.day_key::text,0));
  SELECT * INTO v_row FROM public.fecho_caixa WHERE escola_id=p_escola_id AND id=p_fecho_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'fecho_not_found'; END IF;
  IF v_row.declared_by=auth.uid() THEN RAISE EXCEPTION 'self_approval_not_allowed' USING ERRCODE='42501'; END IF;
  IF v_row.status=p_aprovacao THEN RETURN v_row; END IF;
- IF p_aprovacao='approved' AND (v_row.system_other_count>0 OR (v_row.declared_cash,v_row.declared_tpa,v_row.declared_transfer,v_row.declared_mcx) IS DISTINCT FROM (v_row.system_cash,v_row.system_tpa,v_row.system_transfer,v_row.system_mcx)) AND nullif(trim(p_justificativa),'') IS NULL THEN RAISE EXCEPTION 'variance_requires_justification' USING ERRCODE='22023'; END IF;
+ v_variation:=public.financeiro_fecho_variacao(p_escola_id,v_row.day_key);
+ IF p_aprovacao='approved' AND (EXISTS(SELECT 1 FROM jsonb_each_text(v_variation) v WHERE v.value::numeric<>0) OR v_row.system_other_count>0 OR (v_row.declared_cash,v_row.declared_tpa,v_row.declared_transfer,v_row.declared_mcx) IS DISTINCT FROM (v_row.system_cash,v_row.system_tpa,v_row.system_transfer,v_row.system_mcx)) AND nullif(trim(p_justificativa),'') IS NULL THEN RAISE EXCEPTION 'variance_requires_justification' USING ERRCODE='22023'; END IF;
  IF v_row.status<>'declared' THEN RAISE EXCEPTION 'fecho_already_processed'; END IF;
  UPDATE public.fecho_caixa SET status=p_aprovacao,approved_by=auth.uid(),approved_at=clock_timestamp(),approval_note=p_justificativa,aprovado_por=auth.uid(),aprovado_em=clock_timestamp(),observacao_aprovador=p_justificativa,updated_at=clock_timestamp()
  WHERE id=v_row.id RETURNING * INTO v_row;
- INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details) VALUES(p_escola_id,auth.uid(),'FECHO_APROVADO','fecho_caixa',v_row.id::text,'financeiro',jsonb_build_object('status',p_aprovacao));
+ INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details) VALUES(p_escola_id,auth.uid(),'FECHO_APROVADO','fecho_caixa',v_row.id::text,'financeiro',jsonb_build_object('status',p_aprovacao,'variation_at_approval',v_variation));
  RETURN v_row;
 END; $$;
 -- Legacy signatures remain available, with the same authorization and transitions.
