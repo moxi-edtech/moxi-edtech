@@ -19,6 +19,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!access.ok) return fail("Sem acesso ao expediente.", access.status);
     const { supabase, escolaId } = access;
     const url = new URL(req.url);
+    const format=url.searchParams.get("format")??"detail";
+    if(format!=="summary"&&format!=="detail")return fail("Tipo de relatório inválido.",400);
+    const detailed=format==="detail";
     const start = daySchema.safeParse(url.searchParams.get("from") ?? url.searchParams.get("date") ?? todayLuanda());
     const end = daySchema.safeParse(url.searchParams.get("to") ?? (start.success ? start.data : ""));
     if (!start.success || !end.success || end.data < start.data || end.data > todayLuanda() || (Date.parse(end.data) - Date.parse(start.data)) / 86400000 >= MAX_DAYS) return fail("Selecione um intervalo de até 31 dias.", 400);
@@ -30,7 +33,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     ]);
     if (captureStart.error || !captureStart.data || school.error || closes.error || cash.error) return fail("Falha ao consultar os fechos.", 500);
     if (!closes.data?.length) return fail("Não existem expedientes fechados neste intervalo.", 404);
-    const cashIds=(cash.data??[]).map((c:any)=>c.id);
+    const cashIds=(detailed?(cash.data??[]):[]).map((c:any)=>c.id);
     const revisions=cashIds.length?await supabase.from("fecho_caixa_revisoes").select("fecho_id,revision,snapshot,archived_at").eq("escola_id",escolaId).in("fecho_id",cashIds).order("revision",{ascending:true}).limit(501):null;
     if(revisions?.error)return fail("Falha ao consultar as versões do caixa.",500);
     if((revisions?.data?.length??0)>500)return fail("Reduza o intervalo de exportação para incluir todas as versões.",413);
@@ -38,7 +41,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // Bound the export, and fail explicitly instead of silently dropping rows.
     const rows: any[] = [];
     let cursor = 0;
-    const watermark = await supabase.from("secretaria_expediente_operacoes").select("id").eq("escola_id", escolaId).in("day_key", days).order("id", { ascending: false }).limit(1).maybeSingle();
+    const watermark = detailed?await supabase.from("secretaria_expediente_operacoes").select("id").eq("escola_id", escolaId).in("day_key", days).order("id", { ascending: false }).limit(1).maybeSingle():{data:null,error:null};
     if (watermark.error) return fail("Falha ao consultar operações.", 500);
     const maxId = watermark.data?.id ?? 0;
     while (cursor < maxId) {
@@ -49,6 +52,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       if (rows.length > MAX_ROWS) return fail("Volume demasiado elevado. Reduza o intervalo de exportação.", 413);
       cursor = page.data[page.data.length - 1].id;
     }
+    const lateCounts=new Map<string,number>();
+    if(!detailed){const counts=await Promise.all(days.map(async(day:string)=>({day,result:await supabase.from("secretaria_expediente_operacoes").select("id",{count:"exact",head:true}).eq("escola_id",escolaId).eq("day_key",day).eq("is_after_close",true)})));if(counts.some(x=>x.result.error))return fail("Falha ao consultar adendos.",500);for(const x of counts)lateCounts.set(x.day,x.result.count??0);}
     const actorIds = [...new Set<string>([...rows.map(r => r.actor_id).filter((id): id is string => typeof id === "string"), ...closes.data.map((r: any) => r.closed_by)])];
     const names = new Map<string,string>();
     for (let i = 0; i < actorIds.length; i += 100) {
@@ -71,7 +76,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const nameSize = Math.min(12, 525 / Math.max(1,bold.widthOfTextAtSize(name,1)));
       page.drawText(name,{x:35,y,font:bold,size:nameSize,color:rgb(.12,.42,.23)});
       y -= 21;
-      page.drawText("Fecho diário da secretaria | " + dateLabel(currentDay),{x:35,y,font:bold,size:12});
+      page.drawText((detailed?"Fecho diário detalhado | ":"Fecho diário resumido | ") + dateLabel(currentDay),{x:35,y,font:bold,size:12});
       y -= 23;
     };
     const line = (value: unknown, emphasis = false) => {
@@ -108,6 +113,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         line("Estado: "+rev.snapshot.status+" | Decisão: "+(rev.snapshot.approval_note??"—"));
         for(const [key,label] of [["cash","Numerário"],["tpa","TPA"],["transfer","Transferências"],["mcx","MCX"]])line(label+": declarado "+money(rev.snapshot["declared_"+key])+" | sistema "+money(rev.snapshot["system_"+key]));
       }
+      if(!detailed){line("Adendos posteriores ao fecho ("+(lateCounts.get(close.day_key)??0)+")",true);continue;}
       const dayRows = rows.filter(r=>r.day_key===close.day_key);
       for (const late of [false,true]) {
         const filtered = dayRows.filter(r=>r.is_after_close===late);
