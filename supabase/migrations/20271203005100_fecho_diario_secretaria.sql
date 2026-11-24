@@ -130,11 +130,11 @@ ALTER TABLE public.secretaria_expediente_meta ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.secretaria_expediente_meta FROM PUBLIC,anon,authenticated;
 CREATE OR REPLACE FUNCTION public.secretaria_expediente_capture_started_at(p_escola_id uuid)
 RETURNS timestamptz LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=''
-AS $ DECLARE v timestamptz; BEGIN
+AS $$ DECLARE v timestamptz; BEGIN
  IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['secretaria','admin_secretaria','admin_secretario','secretaria_financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
  SELECT capture_started_at INTO v FROM public.secretaria_expediente_meta WHERE singleton;
  RETURN v;
-END; $;
+END; $$;
 REVOKE ALL ON FUNCTION public.secretaria_expediente_capture_started_at(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.secretaria_expediente_capture_started_at(uuid) TO authenticated;
 CREATE TABLE public.secretaria_expedientes (
@@ -279,11 +279,11 @@ GRANT EXECUTE ON FUNCTION public.secretaria_enviar_lembretes_expediente() TO ser
 -- Preview totals from the same durable ledger, not client-side pagination.
 CREATE OR REPLACE FUNCTION public.secretaria_expediente_resumo(p_escola_id uuid,p_day_key date)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=''
-AS $ DECLARE v jsonb; BEGIN
+AS $$ DECLARE v jsonb; BEGIN
  IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['secretaria','admin_secretaria','admin_secretario','secretaria_financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
  SELECT coalesce(jsonb_object_agg(entity,n),'{}'::jsonb) INTO v FROM(SELECT entity,count(*) n FROM public.secretaria_expediente_operacoes WHERE escola_id=p_escola_id AND day_key=p_day_key AND NOT is_after_close GROUP BY entity)s;
  RETURN v;
-END; $;
+END; $$;
 REVOKE ALL ON FUNCTION public.secretaria_expediente_resumo(uuid,date) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.secretaria_expediente_resumo(uuid,date) TO authenticated;
 SELECT cron.schedule('secretaria-expediente-reminder','*/15 * * * *','SELECT public.secretaria_enviar_lembretes_expediente();');
