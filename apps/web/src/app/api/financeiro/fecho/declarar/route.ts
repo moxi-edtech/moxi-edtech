@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { recordAuditServer } from "@/lib/audit";
 import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
-import { roleMatchesAllowedRoles } from "@/lib/permissions";
+const WRITE_ROLES = [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP, "admin_secretaria", "admin_secretario"];
+const READ_ROLES = [...WRITE_ROLES, "diretor"];
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -50,8 +50,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
     }
 
-    const { data: membership, error: membershipError } = await supabase.from("escola_users").select("papel").eq("escola_id", escolaId).eq("user_id", user.id).maybeSingle();
-    if (membershipError || !roleMatchesAllowedRoles(String(membership?.papel ?? ""), [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP], "k12")) {
+    const { data: membership, error: membershipError } = await supabase.from("escola_users").select("papel").eq("escola_id", escolaId).eq("user_id", user.id).eq("tenant_type", "k12").limit(20);
+    if (membershipError || !membership?.some((row: { papel: string }) => WRITE_ROLES.includes(row.papel))) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
@@ -78,17 +78,8 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: false, error: "Não foi possível declarar o fecho." }, { status: error.code === "42501" ? 403 : error.code === "22023" ? 400 : 500 });
     }
-
-    await recordAuditServer({
-      escolaId,
-      portal: "financeiro",
-      acao: "FECHO_DECLARADO",
-      entity: "fecho_caixa",
-      entityId: (data as any)?.id ?? null,
-      details: { day_key, declared },
-    }).catch(() => null);
 
     return NextResponse.json({ ok: true, data });
   } catch (e) {
@@ -106,8 +97,8 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
   const escolaId = await resolveEscolaIdForUser(supabase, user.id, url.searchParams.get("escolaId"));
   if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
-  const { data: membership, error: membershipError } = await supabase.from("escola_users").select("papel").eq("escola_id", escolaId).eq("user_id", user.id).maybeSingle();
-  if (membershipError || !roleMatchesAllowedRoles(String(membership?.papel ?? ""), [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP], "k12")) {
+  const { data: membership, error: membershipError } = await supabase.from("escola_users").select("papel").eq("escola_id", escolaId).eq("user_id", user.id).eq("tenant_type", "k12").limit(20);
+  if (membershipError || !membership?.some((row: { papel: string }) => READ_ROLES.includes(row.papel))) {
     return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
   }
   const { data, error } = await supabase.from("fecho_caixa").select(snapshotColumns).eq("escola_id", escolaId).eq("day_key", date.data).maybeSingle();
