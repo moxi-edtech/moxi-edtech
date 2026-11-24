@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Clock, Plus, Wand2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { buildTurnoTemplate } from "@/lib/horarios/turno-template";
-import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
+import { SlotsConfig, type HorarioSlot } from "@/components/escola/horarios/SlotsConfig";
 import { 
   Dialog, 
   DialogContent, 
@@ -76,6 +77,10 @@ export function StepSlots({ escolaId, onComplete, initialTurno, onBusyChange }: 
   const [template,setTemplate] = useState({inicio:initialTurno==="tarde"?"13:00":initialTurno==="noite"?"18:00":"07:00",aulas:6,minutos:45,pausaApos:3,pausaMinutos:15,intervaloEntre:5,dias:[1,2,3,4,5]});
   const [loadError,setLoadError] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [advancedOpen,setAdvancedOpen]=useState(false);
+  const [advancedSlots,setAdvancedSlots]=useState<HorarioSlot[]>([]);
+  const [advancedError,setAdvancedError]=useState<string|null>(null);
+  const confirm=useConfirm();
   const { success, error } = useToast();
 
   const [newSlot, setNewSlot] = useState({
@@ -113,6 +118,47 @@ export function StepSlots({ escolaId, onComplete, initialTurno, onBusyChange }: 
   useEffect(() => {
     void fetchSlots();
   }, [fetchSlots]);
+
+  const openAdvanced=()=>{
+    if(loading||loadError||savingSlot)return;
+    setAdvancedSlots(slots.map(slot=>({...slot})));setAdvancedError(null);setAdvancedOpen(true);
+  };
+  const advancedDirty=JSON.stringify(advancedSlots)!==JSON.stringify(slots);
+  const closeAdvanced=async()=>{
+    if(savingSlot)return;
+    if(advancedDirty&&!(await confirm({title:"Alterações por guardar",message:"Pretende fechar sem guardar a estrutura dos tempos?",confirmLabel:"Fechar sem guardar"})))return;
+    setAdvancedOpen(false);
+  };
+  const saveAdvanced=async()=>{
+    if(savingSlot||!advancedDirty)return;
+    const originalIds=new Set(slots.map(s=>s.id));
+    const updatedIds=new Set(advancedSlots.map(s=>s.id));
+    // The existing endpoint is an upsert, not a deletion API. Never advertise a
+    // successful removal or regenerate existing IDs behind published schedules.
+    if(slots.some(s=>!updatedIds.has(s.id))){
+      setAdvancedError("A remoção ou substituição de tempos existentes exige uma operação própria que preserve os horários publicados. Mantenha os tempos existentes e ajuste apenas os necessários.");
+      return;
+    }
+    const normalize=(value:string)=>value.slice(0,5);
+    const originalById=new Map(slots.map(slot=>[slot.id,slot]));
+    const changed=advancedSlots.filter(slot=>{
+      const prev=originalById.get(slot.id);
+      return !prev||prev.turno_id!==slot.turno_id||prev.dia_semana!==slot.dia_semana||prev.ordem!==slot.ordem||normalize(prev.inicio)!==normalize(slot.inicio)||normalize(prev.fim)!==normalize(slot.fim)||Boolean(prev.is_intervalo)!==Boolean(slot.is_intervalo);
+    });
+    if(!changed.length){setAdvancedOpen(false);return;}
+    if(changed.some(slot=>originalIds.has(slot.id))){
+      const accepted=await confirm({title:"Alterar tempos existentes?",message:"Os tempos são partilhados pelas turmas e a alteração pode reflectir-se nos quadros que os utilizam. Confirme apenas se a escola decidiu alterar a estrutura.",confirmLabel:"Guardar tempos"});
+      if(!accepted)return;
+    }
+    setSavingSlot(true);onBusyChange?.(true);setAdvancedError(null);
+    try{
+      const res=await fetch(`/api/escolas/${escolaId}/horarios/slots`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slots:changed})});
+      const json=await res.json().catch(()=>({}));
+      if(!res.ok||!json.ok){setAdvancedError(formatSlotSaveError(json));return;}
+      success("Estrutura de tempos guardada.");setAdvancedOpen(false);await fetchSlots();
+    }catch(e){setAdvancedError(e instanceof Error?e.message:"Falha ao guardar os tempos.");}
+    finally{setSavingSlot(false);onBusyChange?.(false);}
+  };
 
   const handleAutoGenerate = async () => {
     if (loading || loadError || savingSlot || turnSlots.length || !generated) return;
@@ -170,7 +216,7 @@ export function StepSlots({ escolaId, onComplete, initialTurno, onBusyChange }: 
             <p className="text-sm text-muted-foreground">Defina os horários de início e fim de cada tempo de aula.</p>
           </div>
         </div>
-        <Button 
+        <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={loading||loadError||savingSlot} onClick={openAdvanced}>Editar tempos por dia</Button><Button 
           tone="gold" 
           variant="outline" 
           onClick={() => {setNewSlot(v=>({...v,ordem:Math.max(0,...turnSlots.map(s=>s.ordem))+1}));setShowAddModal(true)}}
@@ -178,7 +224,7 @@ export function StepSlots({ escolaId, onComplete, initialTurno, onBusyChange }: 
           className="gap-2 font-black border-2"
         >
           <Plus className="w-4 h-4" /> Novo Tempo
-        </Button>
+        </Button></div>
       </div>
 
       <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-sm mb-6">
@@ -261,6 +307,15 @@ export function StepSlots({ escolaId, onComplete, initialTurno, onBusyChange }: 
       </div>
 
       <div className="mt-4 flex justify-end"><Button type="button" tone="gold" onClick={onComplete} disabled={loading||loadError||savingSlot||!turnSlots.some(s=>!s.is_intervalo)}>Concluir configuração</Button></div>
+      {advancedOpen && <Dialog open={advancedOpen} onOpenChange={open=>{if(!open)void closeAdvanced()}}>
+        <DialogContent closeButton={false} onInteractOutside={e=>e.preventDefault()} className="flex max-h-[86vh] w-[92vw] max-w-6xl flex-col gap-0 overflow-hidden rounded-xl bg-card p-0">
+          <DialogHeader className="shrink-0 border-b border-border p-4 text-left"><div className="flex justify-between items-center gap-3"><div><DialogTitle>Editar tempos por dia</DialogTitle><DialogDescription>Altere os tempos e intervalos da estrutura semanal. As alterações só são enviadas ao guardar.</DialogDescription></div><Button variant="outline" disabled={savingSlot} onClick={()=>void closeAdvanced()}>Fechar</Button></div></DialogHeader>
+          <div className="min-h-0 overflow-y-auto p-4">
+            {advancedError&&<p role="alert" className="mb-3 rounded-xl border border-destructive/30 p-3 text-sm text-destructive">{advancedError}</p>}
+            <fieldset disabled={savingSlot} aria-busy={savingSlot}><SlotsConfig value={advancedSlots} onChange={setAdvancedSlots} onSave={saveAdvanced} initialTurno={activeTurno}/></fieldset>
+          </div>
+        </DialogContent>
+      </Dialog>}
       <Dialog open={showAddModal} onOpenChange={open=>{if(!savingSlot)setShowAddModal(open)}}>
         <DialogContent className="sm:max-w-[400px] rounded-3xl">
           <DialogHeader>
