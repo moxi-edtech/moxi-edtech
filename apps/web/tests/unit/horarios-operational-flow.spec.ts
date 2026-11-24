@@ -55,7 +55,7 @@ test("horários: interval never becomes an editable lesson slot", () => {
 });
 
 test("horários: editor and API guard the selected shift and incomplete reads", () => {
-  const page = readFileSync("src/app/escola/[id]/(portal)/horarios/quadro/page.tsx", "utf8");
+  const page = readFileSync("src/components/escola/horarios/HorarioEditor.tsx", "utf8");
   const route = readFileSync("src/app/api/escolas/[id]/horarios/quadro/route.ts", "utf8");
   assert.match(page, /rawSlots\.filter\(\(slot\) => slot\.turno_id === turnoId\)/);
   assert.match(route, /\.eq\('turno_id', expectedShift\)/);
@@ -65,7 +65,7 @@ test("horários: editor and API guard the selected shift and incomplete reads", 
 
 test("horários: published version is not a draft save target and saved version is reused", () => {
   const route = readFileSync("src/app/api/escolas/[id]/horarios/quadro/route.ts", "utf8");
-  const page = readFileSync("src/app/escola/[id]/(portal)/horarios/quadro/page.tsx", "utf8");
+  const page = readFileSync("src/components/escola/horarios/HorarioEditor.tsx", "utf8");
   const version = readFileSync("src/app/api/secretaria/turmas/[id]/horario/versao/route.ts", "utf8");
   assert.match(route, /p_versao_id: sourceStatus === 'draft' \? sourceVersionId : null/);
   assert.match(page, /setVersaoId\(persistedVersion\)/);
@@ -117,7 +117,7 @@ test("horários: validação é anterior à criação da versão e nunca chama a
 
 test("horários: entrada consolidada não cria rascunhos; sugestões mantêm aulas locais",()=>{
   const overview=readFileSync("src/app/api/escolas/[id]/horarios/overview/route.ts","utf8");
-  const page=readFileSync("src/app/escola/[id]/(portal)/horarios/quadro/page.tsx","utf8");
+  const page=readFileSync("src/components/escola/horarios/HorarioEditor.tsx","utf8");
   const auto=readFileSync("src/app/api/escolas/[id]/horarios/auto/route.ts","utf8");
   assert.match(overview,/\.eq\("ano_letivo_id", year\.id\)/);
   assert.doesNotMatch(overview,/\.insert\(|\.update\(|\.delete\(|\.rpc\(/);
@@ -130,7 +130,7 @@ test("horários: entrada consolidada não cria rascunhos; sugestões mantêm aul
 });
 
 test("horários: workspace remains mounted behind the editor and setup dialogs",()=>{
-  const page=readFileSync("src/app/escola/[id]/(portal)/horarios/quadro/page.tsx","utf8");
+  const page=readFileSync("src/components/escola/horarios/HorarioEditor.tsx","utf8");
   const roster=page.indexOf("<HorariosWorkspace turmas=");
   const editor=page.indexOf("<Dialog open={Boolean(turmaId)}");
   const setup=page.indexOf("<Dialog open={showWizard}");
@@ -150,4 +150,15 @@ test("horários: resource and advanced time operations use guarded dialogs",()=>
   assert.match(slots,/setAdvancedSlots\(slots\.map/);
   assert.match(slots,/slots\.some\(s=>!updatedIds\.has\(s\.id\)\)/);
   assert.match(slots,/onBusyChange\?\.\(true\)/);
+});
+
+test("horários: workspace and secretaria share one editor and no independent writer",()=>{
+  const page=readFileSync("src/app/escola/[id]/(portal)/horarios/quadro/page.tsx","utf8");
+  const modal=readFileSync("src/components/secretaria/TurmaHorarioModal.tsx","utf8");
+  const editor=readFileSync("src/components/escola/horarios/HorarioEditor.tsx","utf8");
+  assert.match(page,/<HorarioEditor\/>/);
+  assert.match(modal,/<HorarioEditor key=\{turma.id\} escolaId=\{escolaId\} initialTurmaId=\{turma.id\}/);
+  assert.doesNotMatch(modal,/fetch\(|handleSave|handleAutoComplete/);
+  assert.match(editor,/if \(embedded && nextTurmaId === null\) \{ onClose\?\.\(\); return; \}/);
+  assert.match(editor,/onUpdated\?\.\(\)/);
 });
