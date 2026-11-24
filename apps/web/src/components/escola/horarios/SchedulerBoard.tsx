@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/Button";
 import {
   DndContext,
   DragOverlay,
@@ -53,9 +55,9 @@ type SchedulerBoardProps = {
   conflictReasons?: Record<string, string[]>;
   salas?: Array<{ id: string; nome: string }>;
   professores?: Array<{ id: string; nome: string }>;
-  onAssignProfessor?: (aula: SchedulerAula, professorUserId: string) => Promise<void> | void;
+  onAssignProfessor?: (aula: SchedulerAula, professorUserId: string) => Promise<boolean | void> | boolean | void;
   turmaSala?: string | null;
-  onAssignTurmaSala?: (salaId: string) => Promise<void> | void;
+  onAssignTurmaSala?: (salaId: string) => Promise<boolean | void> | boolean | void;
   onAutoConfigurarCargas?: () => void;
   autoConfiguring?: boolean;
   onPublicar?: (grid: Record<string, string | null>) => void;
@@ -202,7 +204,7 @@ export function SchedulerBoard({
 
           <StatusAlerts
             conflictCount={conflictCount}
-            shouldShowTurmaSalaWarning={shouldShowTurmaSalaWarning}
+            shouldShowTurmaSalaWarning={shouldShowTurmaSalaWarning && Boolean(onAssignTurmaSala)}
             onSetAssigningTurmaSala={() => { if (!busy) setAssigningTurmaSala(true); }}
           />
 
@@ -263,8 +265,8 @@ export function SchedulerBoard({
           professores={professores || []}
           onClose={() => setAssigningProfessor(null)}
           onAssign={async (professorId) => {
-            if (onAssignProfessor) await onAssignProfessor(assigningProfessor, professorId);
-            setAssigningProfessor(null);
+            if (!onAssignProfessor) return;
+            if (await onAssignProfessor(assigningProfessor, professorId) !== false) setAssigningProfessor(null);
           }}
         />
       )}
@@ -273,8 +275,8 @@ export function SchedulerBoard({
           salas={salas || []}
           onClose={() => setAssigningTurmaSala(false)}
           onAssign={async (salaId) => {
-            if (onAssignTurmaSala) await onAssignTurmaSala(salaId);
-            setAssigningTurmaSala(false);
+            if (!onAssignTurmaSala) return;
+            if (await onAssignTurmaSala(salaId) !== false) setAssigningTurmaSala(false);
           }}
         />
       )}
@@ -646,135 +648,40 @@ const TrashDropzone = ({ active }: { active: boolean }) => {
   );
 };
 
-const AssignProfessorModal = ({
-  aula,
-  professores,
-  onClose,
-  onAssign,
-}: {
-  aula: SchedulerAula;
-  professores: Array<{ id: string; nome: string }>;
-  onClose: () => void;
-  onAssign: (professorId: string) => void | Promise<void>;
-}) => {
-  const [selected, setSelected] = useState("");
-  const [saving, setSaving] = useState(false);
-  const canSave = Boolean(selected);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-foreground">Atribuir professor</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-border px-2 py-1 text-xs font-semibold text-muted-foreground"
-          >
-            Fechar
-          </button>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">{aula.disciplina}</p>
-        <select
-          value={selected}
-          onChange={(event) => setSelected(event.target.value)}
-          className="mt-4 w-full rounded-lg border border-border px-3 py-2 text-sm"
-        >
-          <option value="">Selecione um professor</option>
-          {professores.map((prof) => (
-            <option key={prof.id} value={prof.id}>
-              {prof.nome}
-            </option>
-          ))}
+type ResourceOption = {id:string;nome:string};
+function ResourceAssignmentDialog({title,description,options,placeholder,onClose,onAssign}:{
+  title:string;description:string;options:ResourceOption[];placeholder:string;
+  onClose:()=>void;onAssign:(id:string)=>void|Promise<void>;
+}){
+  const [selected,setSelected]=useState("");
+  const [saving,setSaving]=useState(false);
+  const [error,setError]=useState<string|null>(null);
+  const submit=async()=>{
+    if(!selected||saving)return;
+    setSaving(true);setError(null);
+    try{await onAssign(selected);}
+    catch(e){setError(e instanceof Error?e.message:"Não foi possível guardar a atribuição.");}
+    finally{setSaving(false);}
+  };
+  return <Dialog open onOpenChange={open=>{if(!open&&!saving)onClose()}}>
+    <DialogContent closeButton={!saving} onInteractOutside={e=>e.preventDefault()} className="rounded-xl border-border bg-card">
+      <DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>
+      <label className="text-sm font-medium">{placeholder}
+        <select value={selected} disabled={saving} onChange={e=>setSelected(e.target.value)} className="mt-2 block w-full rounded-xl border border-border bg-card px-3 py-2 text-sm">
+          <option value="">{placeholder}</option>
+          {options.map(option=><option key={option.id} value={option.id}>{option.nome}</option>)}
         </select>
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={!canSave || saving}
-            onClick={async () => {
-              if (!selected) return;
-              setSaving(true);
-              await onAssign(selected);
-              setSaving(false);
-            }}
-            className="rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-          >
-            {saving ? "Salvando..." : "Salvar"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+      </label>
+      {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
+      <DialogFooter><Button variant="outline" disabled={saving} onClick={onClose}>Cancelar</Button><Button tone="gold" loading={saving} disabled={!selected} onClick={()=>void submit()}> {saving?"A guardar…":"Guardar"}</Button></DialogFooter>
+    </DialogContent>
+  </Dialog>;
+}
 
-const AssignTurmaSalaModal = ({
-  salas,
-  onClose,
-  onAssign,
-}: {
-  salas: Array<{ id: string; nome: string }>;
-  onClose: () => void;
-  onAssign: (salaId: string) => void | Promise<void>;
-}) => {
-  const [selected, setSelected] = useState("");
-  const [saving, setSaving] = useState(false);
-  const canSave = Boolean(selected);
+const AssignProfessorModal = ({aula,professores,onClose,onAssign}:{
+  aula:SchedulerAula;professores:ResourceOption[];onClose:()=>void;onAssign:(id:string)=>void|Promise<void>;
+}) => <ResourceAssignmentDialog title="Atribuir professor" description={aula.disciplina} options={professores} placeholder="Seleccione um professor" onClose={onClose} onAssign={onAssign}/>;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-foreground">Definir sala da turma</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-border px-2 py-1 text-xs font-semibold text-muted-foreground"
-          >
-            Fechar
-          </button>
-        </div>
-        <select
-          value={selected}
-          onChange={(event) => setSelected(event.target.value)}
-          className="mt-4 w-full rounded-lg border border-border px-3 py-2 text-sm"
-        >
-          <option value="">Selecione uma sala</option>
-          {salas.map((sala) => (
-            <option key={sala.id} value={sala.id}>
-              {sala.nome}
-            </option>
-          ))}
-        </select>
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={!canSave || saving}
-            onClick={async () => {
-              if (!selected) return;
-              setSaving(true);
-              await onAssign(selected);
-              setSaving(false);
-            }}
-            className="rounded-lg bg-amber px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-          >
-            {saving ? "Salvando..." : "Salvar"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+const AssignTurmaSalaModal = ({salas,onClose,onAssign}:{
+  salas:ResourceOption[];onClose:()=>void;onAssign:(id:string)=>void|Promise<void>;
+}) => <ResourceAssignmentDialog title="Definir sala da turma" description="Sala padrão do quadro de horários." options={salas} placeholder="Seleccione uma sala" onClose={onClose} onAssign={onAssign}/>;
