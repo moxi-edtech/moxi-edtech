@@ -52,3 +52,20 @@ Recuperação dos dois módulos puros, testes existentes e workflow específico 
 
 ### Hardening adicional nesta branch
 Limites de entrada/expoente/escala para evitar alocação descontrolada; validação round-trip do número JSON, rejeição de inteiros JS inseguros, testes de sinais/divisão/limites. P11 conserva GR (duas amostras a demonstrar); P15 explicita FR e inventário restante. As restrições técnicas de recursos não são limites legais de valores. CI ainda por confirmar; não alterar contratos financeiros até validar schemas e integração.
+
+## Inventário de versões (consulta de leitura, 24/11)
+Árvore Git de main 4e9ef8d6dae5b0f05382ac8ba170ec0d61d8f32b, pasta supabase/migrations, sem truncamento; somente blobs cujo nome corresponde a timestamp de 14 dígitos e extensão SQL. Comparação com SELECT version,name,statements IS NOT NULL FROM supabase_migrations.schema_migrations; nenhum conteúdo SQL remoto foi publicado.
+
+| Medida | Total |
+|---|---:|
+| Ficheiros versionados / versões únicas na main | 1019 |
+| Versões remotas | 786 |
+| Versões comuns | 687 |
+| Somente main | 332 |
+| Somente remoto | 99 |
+| Somente remoto com nome BILL/fiscal/AGT/SAFT | 59 |
+| Somente main com nome BILL/fiscal/AGT/SAFT | 1 |
+| Versões comuns com nome diferente | 86 |
+| Entradas remotas sem statements (NULL) | 90 |
+
+Classificação por nome é aproximação, não prova de ausência/presença de objectos nem de equivalência. Não usar estes totais para reparar ledger. O freeze remoto 20261026105253_freeze_unhomologated_fiscal_issuance_20261026 e o ficheiro local 20271026121500_freeze_unhomologated_fiscal_issuance são versões distintas; comparar conteúdo/ACL/catálogo antes de decidir a proveniência. Gate A continua aberto. As 59 entradas incluem a cadeia BILL-001 a BILL-010, chaves, contingência, outbox e freeze; não importar sem prova de conteúdo e replay em ambiente descartável.
