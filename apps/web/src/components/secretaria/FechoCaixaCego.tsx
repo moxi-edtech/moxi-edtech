@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Banknote, CreditCard, CheckCircle2, AlertTriangle, Loader2, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -24,11 +24,11 @@ export default function FechoCaixaCego({ onConfirm, onClose }: Props) {
   const [result, setResult] = useState<ResultadoFecho | null>(null);
   const cash = NOTES.reduce((sum, note) => sum + note * Number(counts[note] || 0), 0);
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending.current || result) return;
     const values = [cash, ...Object.values(digital).map(Number)];
-    if (!values.every(value => Number.isFinite(value) && value >= 0 && value <= 999999999999.99)) {
+    if (!values.every(value => Number.isFinite(value) && value >= 0 && value <= 9999999999.99)) {
       setError("Informe valores válidos e não negativos.");
       return;
     }
@@ -81,7 +81,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: Props) {
         <div><h2 className="flex items-center gap-2 font-semibold text-foreground"><CreditCard className="h-5 w-5 text-klasse-green" /> Pagamentos digitais</h2><p className="mt-1 text-sm text-muted-foreground">Informe os totais dos comprovativos. Deixe vazio quando não houver movimento.</p></div>
         <div className="grid gap-3 sm:grid-cols-3">{CHANNELS.slice(1).map(([key, label]) => {
           const channel = key as keyof typeof digital;
-          return <label key={channel} className="space-y-1 text-sm"><span className="font-medium">{label} (Kz)</span><input type="number" min="0" max="999999999999.99" step="0.01" inputMode="decimal" className={inputClass} value={digital[channel]} placeholder="0,00" disabled={submitting} onChange={event => setDigital(prev => ({ ...prev, [channel]: event.target.value }))} /></label>;
+          return <label key={channel} className="space-y-1 text-sm"><span className="font-medium">{label} (Kz)</span><input type="number" min="0" max="9999999999.99" step="0.01" inputMode="decimal" className={inputClass} value={digital[channel]} placeholder="0,00" disabled={submitting} onChange={event => setDigital(prev => ({ ...prev, [channel]: event.target.value }))} /></label>;
         })}</div>
       </section>
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
