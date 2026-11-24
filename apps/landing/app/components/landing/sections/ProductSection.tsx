@@ -27,39 +27,39 @@ export function ProductSection() {
 
   const features = [
     {
-      title: 'Fecho de caixa com mais controlo',
+      title: 'Fecho de caixa',
       description:
-        'O operador declara primeiro. O sistema confere depois. Mais transparência para cada recebimento.',
+        'O operador declara os recebimentos e o sistema permite conferir os valores no fecho de caixa.',
       icon: Wallet,
     },
     {
-      title: 'Documentos sem filas',
+      title: 'Documentos escolares',
       description:
-        'Declarações e documentos emitidos em lote, em segundos, sem repetir o mesmo trabalho na secretaria.',
+        'Emita declarações e documentos em lote a partir dos registos da escola.',
       icon: BookOpen,
     },
     {
-      title: 'Matrículas sem retrabalho',
+      title: 'Matrículas e rematrículas',
       description:
         'Matrículas e rematrículas organizadas por turma, com os dados certos desde o primeiro registo.',
       icon: Users,
     },
     {
-      title: 'Atrasos que aparecem cedo',
+      title: 'Propinas em atraso',
       description:
-        'Veja quem está em dívida, organize as prioridades e aja antes que o problema cresça.',
+        'Consulte os alunos com propinas em dívida e organize as cobranças.',
       icon: CalendarCheck,
     },
     {
-      title: 'O professor trabalha onde está',
+      title: 'Notas e presenças',
       description:
-        'Notas e presenças lançadas no telemóvel, no ritmo da aula e sem depender da secretaria.',
+        'Os professores registam avaliações e presenças por turma e disciplina.',
       icon: ClipboardCheck,
     },
     {
-      title: 'Famílias com informação clara',
+      title: 'Portal do aluno',
       description:
-        'Notas, presenças e situação financeira no mesmo portal, sem mensagens espalhadas.',
+        'Alunos e encarregados consultam notas, presenças e a situação financeira.',
       icon: BarChart3,
     },
   ]
@@ -70,16 +70,14 @@ export function ProductSection() {
     <section className="features z section-bg section-bg-product section-accent" id="produto">
       <div className="container">
         <FadeIn className="product-intro product-intro--slide">
-          <div className="sec-eyebrow">O que muda no dia a dia</div>
-          <h2 className="sec-title product-title-main">Menos tarefas espalhadas. Mais escola a funcionar.</h2>
-          <p className="sec-sub">O KLASSE transforma os processos que mais consomem tempo em fluxos claros, acompanháveis e integrados.</p>
+          <h2 className="sec-title product-title-main">Da matrícula ao fecho de caixa</h2>
+          <p className="sec-sub">As operações académicas e financeiras partilham os mesmos registos da escola.</p>
         </FadeIn>
 
         <FadeIn className="product-film" direction="up">
           <div className="product-film-copy">
-            <div className="sec-eyebrow">Feito para a rotina real</div>
-            <h3>Menos troca de contexto. Mais tempo para a escola.</h3>
-            <p>O KLASSE aproxima as pessoas e os processos que já fazem parte do dia a dia da instituição.</p>
+            <h3>Conheça o KLASSE</h3>
+            <p>Veja como se apresenta o sistema.</p>
           </div>
           <div className="product-film-frame">
             <video
@@ -99,7 +97,6 @@ export function ProductSection() {
             >
               <source src="/assets/klasse-login-hero.mp4" type="video/mp4" />
             </video>
-            <span className="product-film-live"><i /> produto em movimento</span>
           </div>
         </FadeIn>
 
@@ -141,12 +138,12 @@ export function ProductSection() {
 
         <FadeInStagger className="product-highlight-row">
           <FadeIn direction="up" className="product-highlight-card">
-            <h3>Conciliacao bancaria assistida</h3>
-            <p>Upload e matching automatico para fechar o ciclo financeiro com menos erro manual.</p>
+            <h3>Conciliação bancária assistida</h3>
+            <p>Importe comprovativos e acompanhe a conciliação dos pagamentos.</p>
           </FadeIn>
           <FadeIn direction="up" className="product-highlight-card">
-            <h3>Relatorios para a direcao</h3>
-            <p>Visao diaria do academico e financeiro para decisoes rapidas.</p>
+            <h3>Relatórios para a direcção</h3>
+            <p>Consulte indicadores académicos e financeiros da escola.</p>
           </FadeIn>
         </FadeInStagger>
       </div>
