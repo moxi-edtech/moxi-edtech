@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Save, WifiOff, Printer, FileDown, Wand2, ArrowLeft, Undo2, Redo2, CheckCircle2, Copy, FileSpreadsheet, History } from "lucide-react";
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
 import { HorariosWorkspace } from "@/components/escola/horarios/HorariosWorkspace";
@@ -89,6 +89,8 @@ export default function QuadroHorariosPage() {
 function QuadroHorariosContent() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const escolaId = params?.id as string;
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
@@ -186,10 +188,11 @@ function QuadroHorariosContent() {
 
   // The workspace opens setup only on explicit action or a configuration deep link.
   useEffect(() => {
-    if (baseLoading || baseError || initialSetupQueryApplied.current) return;
+    if (searchParams?.get("configurar") !== "1") { initialSetupQueryApplied.current=false; return; }
+    if (baseLoading || baseError || initialSetupQueryApplied.current || autoDraftDirty || saving || publishing || validating || autoScheduling) return;
     initialSetupQueryApplied.current = true;
-    if (searchParams?.get("configurar") === "1") setShowWizard(true);
-  }, [baseLoading, baseError, searchParams]);
+    setShowWizard(true);
+  }, [baseLoading, baseError, searchParams, autoDraftDirty, saving, publishing, validating, autoScheduling]);
 
   const openSetup = () => {
     if (saving || publishing || validating || autoScheduling || baseLoading || baseError) return;
@@ -206,6 +209,10 @@ function QuadroHorariosContent() {
   const closeSetup = () => {
     if (setupBusyRef.current) return;
     setShowWizard(false);
+    if (searchParams?.get("configurar") === "1" && pathname) {
+      const query = new URLSearchParams(searchParams.toString()); query.delete("configurar");
+      router.replace(pathname + (query.size ? `?${query.toString()}` : ""), { scroll:false });
+    }
     refreshBaseData();
     if (turmaId) refreshTurmaData();
   };
