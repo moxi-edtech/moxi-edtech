@@ -78,6 +78,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
     }
     console.error("[alunos export error]", e);
-    return NextResponse.json({ ok: false, error: e.message || "Erro desconhecido" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "Não foi possível preparar a exportação. Reaplique os filtros e tente novamente." }, { status: 500 });
   }
 }
