@@ -537,7 +537,7 @@ const AulaCard = React.memo(({
           </div>
         ) : (
           <div className="text-[10px] font-medium opacity-70 truncate leading-tight">
-            A definir
+            Professor não indicado
           </div>
         )}
         {!aula.professorId && onAssignProfessor ? (
