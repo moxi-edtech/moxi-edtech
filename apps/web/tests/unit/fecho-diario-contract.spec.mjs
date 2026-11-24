@@ -147,3 +147,23 @@ test("daily-close shortcut is inside quick actions and modal uses a non-translat
  assert.doesNotMatch(src("components/layout/escola-admin/EscolaAdminDashboardContent.tsx"),/ExpedienteDashboardCard/);
  assert.doesNotMatch(src("app/secretaria/(portal-secretaria)/page.tsx"),/ExpedienteDashboardCard/);
 });
+
+
+test("operations quick actions mount canonical receipts and timetable workspaces only in wide modals",()=>{
+ const quick=src("components/layout/escola-admin/QuickActionsSection.tsx");
+ const timetable=src("components/escola/horarios/HorarioEditor.tsx");
+ const receipts=src("components/financeiro/FilaValidacaoPagamentos.tsx");
+ assert.match(quick,/key: "recebimentos",\s*label: "Recebimentos",\s*opensModal: true/);
+ assert.match(quick,/key: "horarios",\s*label: "Quadro de Horários",\s*opensModal: true/);
+ assert.match(quick,/onClick=\{action.opensModal \? \(\) => launchAction\(action\) : undefined\}/);
+ assert.match(quick,/<ModalShell open=\{Boolean\(operationalModal\)\} size="wide"/);
+ assert.match(quick,/<RecebimentosWorkspace key=\{escolaId\} escolaId=\{escolaId\} closeGuardRef=\{closeGuardRef\}/);
+ assert.match(quick,/<HorarioDataProvider key=\{escolaId\} escolaId=\{escolaId\}><HorarioWorkspace escolaId=\{escolaId\} dashboardModal closeGuardRef=\{closeGuardRef\}/);
+ assert.match(quick,/if \(closeGuardRef.current\?\.\(\)\)/);
+ assert.match(timetable,/if \(embedded \|\| dashboardModal\) return;/);
+ assert.match(timetable,/if \(embedded && nextTurmaId === null\) \{ onClose\?\.\(\); return; \}/);
+ assert.match(timetable,/closeGuardRef.current = \(\) => Boolean\(turmaId \|\| showWizard/);
+ assert.match(receipts,/closeGuardRef.current = \(\) => decisionLock.current \|\| Boolean\(approvalTarget\)/);
+ assert.match(receipts,/if \(!pagamento \|\| decisionLock.current\) return;/);
+ assert.match(receipts,/finally \{\s*decisionLock.current = false;/);
+});
