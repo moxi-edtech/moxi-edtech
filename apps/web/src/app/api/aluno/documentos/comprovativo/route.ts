@@ -3,7 +3,6 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
-import { isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
 import { AcademicYearContextError } from "@/lib/academic-year/context";
 
 export const dynamic = "force-dynamic";
@@ -64,10 +63,10 @@ export async function POST(request: Request) {
     if (pedidoError || !pedido) {
       return NextResponse.json({ ok: false, error: "Pedido original não encontrado. Contacte a secretaria." }, { status: 409 });
     }
-    if (isBoletimServiceCode(pedido.servico_codigo ?? "")) {
+    if (pedido.servico_codigo) {
       const { matricula } = await resolveBoletimMatricula(supabase, {
         escolaId: ctx.escolaId, alunoId, userId: ctx.userId,
-        anoLetivoId: academicYearId, operation: "WRITE",
+        anoLetivoId: academicYearId, operation: pedido.servico_codigo === "DOC_BOLETIM_TRIMESTRAL" ? "WRITE" : "READ",
       });
       if (pedido.matricula_id !== matricula?.id) {
         return NextResponse.json({ ok: false, error: "Este comprovativo pertence a outra matrícula. Não volte a pagar." }, { status: 409 });

@@ -154,8 +154,7 @@ export async function POST(request: Request) {
       }
       const contextoPedido = asRecord(pedido?.contexto);
       if (!pedido || !intent || !pedido.matricula_id ||
-          contextoPedido.origem !== "documentos_emissao_individual" ||
-          contextoPedido.ano_letivo_id !== payload.ano_letivo_id ||
+          (contextoPedido.ano_letivo_id != null && contextoPedido.ano_letivo_id !== payload.ano_letivo_id) ||
           pedido.servico_codigo !== codigo || intent.servico_pedido_id !== pedido.id ||
           Number(pedido.valor_cobrado) <= 0 ||
           Number(pedido.valor_cobrado) !== payload.valor ||
@@ -168,7 +167,7 @@ export async function POST(request: Request) {
         }, { status: 409 });
       }
       const { data: matriculaPagamento } = await supabase.from("matriculas")
-        .select("session_id").eq("escola_id", escolaId).eq("id", pedido.matricula_id).maybeSingle();
+        .select("session_id").eq("escola_id", escolaId).eq("aluno_id", payload.aluno_id).eq("id", pedido.matricula_id).maybeSingle();
       if (matriculaPagamento?.session_id !== payload.ano_letivo_id) {
         return NextResponse.json({ ok: false, error: "A cobrança pertence a outro ano letivo." }, { status: 409 });
       }

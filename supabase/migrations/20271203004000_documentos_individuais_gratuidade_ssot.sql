@@ -110,51 +110,48 @@ BEGIN
     OR coalesce(v_serv.exige_pagamento_antes_de_liberar, false)
     OR p_tipo = 'boletim_trimestral';
 
-  IF v_exige_pagamento AND coalesce(v_serv.valor_base,0) <= 0 THEN
-    RETURN jsonb_build_object('ok', false, 'status', 'blocked', 'reason', 'TAXA_NAO_CONFIGURADA');
-  END IF;
 
   -- Só um pagamento do serviço EXATO e da matrícula do ano escolhido é elegível.
-  SELECT * INTO v_pedido
-  FROM public.servico_pedidos
-  WHERE escola_id = p_escola_id AND aluno_id = p_aluno_id
-    AND matricula_id = v_matricula AND servico_codigo = v_codigo
-    AND status IN ('granted','pending_payment','blocked')
-  ORDER BY CASE WHEN contexto->>'origem' = 'documentos_emissao_individual' THEN 0 ELSE 1 END,
-           created_at DESC, id DESC
-  LIMIT 1;
+  -- A tarifa contratada é imutável para a intenção já criada. Preferir
+  -- qualquer liquidação válida da matrícula/serviço, mesmo se há pedido mais recente.
+  SELECT p.* INTO v_pedido
+  FROM public.servico_pedidos p
+  WHERE p.escola_id=p_escola_id AND p.aluno_id=p_aluno_id AND p.matricula_id=v_matricula
+    AND p.servico_codigo=v_codigo AND p.status IN ('granted','pending_payment','blocked')
+    AND (p.valor_cobrado>0 OR NOT v_exige_pagamento)
+  ORDER BY CASE WHEN p.status='granted' AND p.valor_cobrado>0 AND EXISTS (
+    SELECT 1 FROM public.pagamento_intents i
+    WHERE i.escola_id=p.escola_id AND i.aluno_id=p.aluno_id AND i.servico_pedido_id=p.id
+      AND i.amount>=p.valor_cobrado AND (
+        EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p.escola_id AND pg.aluno_id=p.aluno_id
+          AND pg.status='settled' AND pg.valor_pago>=p.valor_cobrado
+          AND pg.meta->>'pagamento_intent_id'=i.id::text AND pg.meta->>'pedido_id'=p.id::text)
+        OR (p.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND i.status='settled')
+      )
+  ) THEN 0 WHEN p.status='pending_payment' THEN 1 WHEN p.status='granted' THEN 2 ELSE 3 END,
+  p.created_at DESC,p.id DESC LIMIT 1;
 
   IF v_pedido.id IS NOT NULL THEN
-    SELECT * INTO v_intent
-    FROM public.pagamento_intents
-    WHERE escola_id = p_escola_id
-      AND aluno_id = p_aluno_id
-      AND servico_pedido_id = v_pedido.id
-    ORDER BY created_at DESC, id DESC LIMIT 1;
-
-    IF v_intent.id IS NOT NULL AND v_pedido.status = 'granted'
-       AND v_intent.amount >= v_pedido.valor_cobrado
-       AND v_pedido.valor_cobrado >= v_serv.valor_base
-       AND (
-         -- Novo fluxo: exige liquidação real ligada à intenção exata.
-         (v_pedido.contexto->>'origem' = 'documentos_emissao_individual'
-           AND EXISTS (
-             SELECT 1 FROM public.pagamentos pg
-             WHERE pg.escola_id = p_escola_id AND pg.aluno_id = p_aluno_id
-               AND pg.status = 'settled' AND pg.valor_pago >= v_pedido.valor_cobrado
-               AND pg.meta->>'pagamento_intent_id' = v_intent.id::text
-               AND pg.meta->>'pedido_id' = v_pedido.id::text
-           ))
-         OR
-         -- Pedidos existentes continuam válidos quando a própria intenção foi
-         -- efetivamente liquidada pelo sistema legado.
-         (v_pedido.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual'
-           AND v_intent.status = 'settled')
-       ) THEN
-      v_pago := true;
-    END IF;
+    SELECT i.* INTO v_intent FROM public.pagamento_intents i
+    WHERE i.escola_id=p_escola_id AND i.aluno_id=p_aluno_id AND i.servico_pedido_id=v_pedido.id
+    ORDER BY CASE WHEN i.amount>=v_pedido.valor_cobrado AND (
+      EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p_escola_id AND pg.aluno_id=p_aluno_id
+        AND pg.status='settled' AND pg.valor_pago>=v_pedido.valor_cobrado
+        AND pg.meta->>'pagamento_intent_id'=i.id::text AND pg.meta->>'pedido_id'=v_pedido.id::text)
+      OR (v_pedido.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND i.status='settled')
+    ) THEN 0 ELSE 1 END,i.created_at DESC,i.id DESC LIMIT 1;
+    v_pago := coalesce(v_pedido.status='granted' AND v_pedido.valor_cobrado>0
+      AND v_intent.amount>=v_pedido.valor_cobrado AND (
+        EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p_escola_id AND pg.aluno_id=p_aluno_id
+          AND pg.status='settled' AND pg.valor_pago>=v_pedido.valor_cobrado
+          AND pg.meta->>'pagamento_intent_id'=v_intent.id::text AND pg.meta->>'pedido_id'=v_pedido.id::text)
+        OR (v_pedido.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND v_intent.status='settled')
+      ),false);
   END IF;
-
+  IF v_pago THEN v_exige_pagamento:=true; END IF;
+  IF v_exige_pagamento AND coalesce(v_pedido.valor_cobrado,v_serv.valor_base,0)<=0 THEN
+    RETURN jsonb_build_object('ok',false,'status','blocked','reason','TAXA_NAO_CONFIGURADA');
+  END IF;
   RETURN jsonb_build_object(
     'ok', true,
     'status', CASE
@@ -169,7 +166,7 @@ BEGIN
       WHEN NOT v_administrativo AND v_serv.exige_aprovacao THEN coalesce(v_pedido.status = 'granted', false)
       ELSE true
     END,
-    'valor', v_serv.valor_base,
+    'valor', CASE WHEN v_exige_pagamento THEN coalesce(v_pedido.valor_cobrado,v_serv.valor_base) ELSE v_serv.valor_base END,
     'servico_codigo', v_codigo,
     'matricula_id', v_matricula,
     'pedido_id', v_pedido.id,
@@ -291,14 +288,13 @@ BEGIN
     SELECT 1 FROM public.matriculas m WHERE m.id=p_matricula_id AND m.escola_id=p_escola_id
       AND m.aluno_id=p_aluno_id AND m.session_id=p_session_id
   ) THEN RAISE EXCEPTION 'CROSS_YEAR_ENTITY_MISMATCH' USING ERRCODE='42501'; END IF;
-  -- The official declaration with notes remains an institutional document;
-  -- the dynamic paid boletim retains its dedicated existing contract.
+  -- The dynamic paid boletim retains its dedicated existing contract.
   IF p_tipo IS NOT NULL THEN
-    IF p_tipo NOT IN ('declaracao_frequencia','comprovante_matricula','cartao_estudante','ficha_inscricao','historico','certificado')
+    IF p_tipo NOT IN ('declaracao_frequencia','declaracao_notas','comprovante_matricula','cartao_estudante','ficha_inscricao','historico','certificado')
       THEN RAISE EXCEPTION 'DOCUMENT_TYPE_INVALID' USING ERRCODE='22023'; END IF;
     RETURN public._documento_individual_politica(p_escola_id,p_aluno_id,p_session_id,p_tipo,p_matricula_id,true);
   END IF;
-  FOREACH v_tipo IN ARRAY ARRAY['declaracao_frequencia','comprovante_matricula','cartao_estudante','ficha_inscricao','historico','certificado'] LOOP
+  FOREACH v_tipo IN ARRAY ARRAY['declaracao_frequencia','declaracao_notas','comprovante_matricula','cartao_estudante','ficha_inscricao','historico','certificado'] LOOP
     v_result := v_result || jsonb_build_object(v_tipo,public._documento_individual_politica(p_escola_id,p_aluno_id,p_session_id,v_tipo,p_matricula_id,true));
   END LOOP;
   RETURN v_result;
@@ -389,6 +385,8 @@ BEGIN
       v_def:=replace(v_def,v_marker,'PERFORM public._aluno_documento_exigir(p_escola_id,p_aluno_id,'||v_mat||','||v_tipo||'); '||v_marker);
       IF v_sig LIKE '%aluno_emitir_documento_final%' THEN
         v_def:=replace(v_def,'dados_snapshot->>''ano_letivo'' = p_ano_letivo::text','dados_snapshot->>''matricula_id'' = v_hist.matricula_id::text');
+        IF position('(''historico'', ''certificado'')' in v_def)=0 THEN RAISE EXCEPTION 'UNEXPECTED_FINAL_TYPES'; END IF;
+        v_def:=replace(v_def,'(''historico'', ''certificado'')','(''historico'', ''certificado'', ''declaracao_notas'')');
       END IF;
       EXECUTE v_def;
     END IF;
@@ -424,5 +422,180 @@ BEGIN
   END IF;
 END;
 $roles$;
+
+
+CREATE OR REPLACE FUNCTION public.documentos_aprovacoes_pagina(p_escola_id uuid,p_page integer,p_query text DEFAULT '')
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO '' AS $queue$
+DECLARE v_total bigint; v_filtered bigint; v_items jsonb; v_query text := lower(btrim(coalesce(p_query,'')));
+BEGIN
+  IF public.safe_auth_uid() IS NULL OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
+    OR NOT public.user_has_role_in_school(p_escola_id,ARRAY['secretaria','secretaria_financeiro','admin_financeiro','admin_secretaria','admin','admin_escola','staff_admin','diretor']) THEN
+    RAISE EXCEPTION 'AUTH_FORBIDDEN' USING ERRCODE='42501';
+  END IF;
+  IF p_page IS NULL OR p_page NOT BETWEEN 1 AND 100000 OR length(v_query)>100 THEN RAISE EXCEPTION 'INVALID_PAGE' USING ERRCODE='22023'; END IF;
+  WITH pending AS MATERIALIZED (
+    SELECT p.id,p.aluno_id,p.matricula_id,p.servico_codigo,p.servico_nome,p.valor_cobrado,p.created_at,
+      to_jsonb(p)->>'reason_detail' AS reason_detail,
+      jsonb_build_object('nome',a.nome,'nome_completo',to_jsonb(a)->>'nome_completo','numero_processo',to_jsonb(a)->>'numero_processo') AS aluno,
+      lower(concat_ws(' ',a.nome,to_jsonb(a)->>'nome_completo',to_jsonb(a)->>'numero_processo',p.servico_nome,p.servico_codigo)) AS search_text
+    FROM public.servico_pedidos p LEFT JOIN public.alunos a ON a.id=p.aluno_id AND a.escola_id=p.escola_id
+    WHERE p.escola_id=p_escola_id AND p.status='blocked' AND p.valor_cobrado=0
+      AND p.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual'
+      AND p.servico_codigo IN ('DOC_DECLARACAO_FREQUENCIA','DOC_DECLARACAO_NOTAS','DOC_COMPROVANTE_MATRICULA','DOC_CARTAO_ESTUDANTE','DOC_FICHA_INSCRICAO','DOC_HISTORICO_ESCOLAR','DOC_CERTIFICADO_HABILITACOES')
+  ), filtered AS MATERIALIZED (SELECT * FROM pending WHERE v_query='' OR strpos(search_text,v_query)>0),
+  page_rows AS (SELECT * FROM filtered ORDER BY created_at,id LIMIT 10 OFFSET ((p_page-1)*10))
+  SELECT (SELECT count(*) FROM pending),(SELECT count(*) FROM filtered),
+    coalesce((SELECT jsonb_agg(to_jsonb(r)-'search_text' ORDER BY r.created_at,r.id) FROM page_rows r),'[]'::jsonb)
+    INTO v_total,v_filtered,v_items;
+  RETURN jsonb_build_object('ok',true,'total',v_total,'filteredTotal',v_filtered,'items',v_items);
+END;
+$queue$;
+REVOKE ALL ON FUNCTION public.documentos_aprovacoes_pagina(uuid,integer,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.documentos_aprovacoes_pagina(uuid,integer,text) TO authenticated;
+CREATE INDEX IF NOT EXISTS idx_documentos_aprovacoes_escola ON public.servico_pedidos(escola_id,created_at,id)
+WHERE status='blocked' AND valor_cobrado=0;
+
+CREATE OR REPLACE FUNCTION public.documento_individual_solicitar(
+  p_escola_id uuid, p_aluno_id uuid, p_session_id uuid, p_tipo text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $$
+DECLARE
+  v_actor uuid := public.safe_auth_uid();
+  v_access jsonb;
+  v_serv public.servicos_escola%ROWTYPE;
+  v_pedido public.servico_pedidos%ROWTYPE;
+  v_intent uuid;
+  v_matricula uuid;
+BEGIN
+  v_access := public.documento_individual_acesso(p_escola_id,p_aluno_id,p_session_id,p_tipo);
+  IF coalesce((v_access->>'ok')::boolean,false) IS NOT TRUE THEN
+    RETURN v_access;
+  END IF;
+  IF (v_access->>'granted')::boolean THEN
+    RETURN v_access;
+  END IF;
+
+  v_matricula := (v_access->>'matricula_id')::uuid;
+  SELECT * INTO v_serv FROM public.servicos_escola
+   WHERE escola_id=p_escola_id AND codigo=v_access->>'servico_codigo' AND ativo IS TRUE;
+
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('documento_individual:' || p_escola_id::text || ':'
+      || p_aluno_id::text || ':' || p_session_id::text || ':' || v_serv.codigo, 0)
+  );
+
+  -- Reavaliar após o lock comum aos dois portais.
+  v_access := public.documento_individual_acesso(p_escola_id,p_aluno_id,p_session_id,p_tipo);
+  IF coalesce((v_access->>'ok')::boolean,false) IS NOT TRUE OR (v_access->>'granted')::boolean THEN RETURN v_access; END IF;
+  SELECT * INTO v_pedido FROM public.servico_pedidos
+  WHERE escola_id=p_escola_id AND aluno_id=p_aluno_id AND matricula_id=v_matricula
+    AND servico_codigo=v_serv.codigo
+    AND status IN ('pending_payment','granted','blocked')
+    AND id=(v_access->>'pedido_id')::uuid
+  ORDER BY created_at DESC, id DESC LIMIT 1;
+
+  IF v_pedido.id IS NULL THEN
+    UPDATE public.servico_pedidos SET status='canceled' WHERE escola_id=p_escola_id AND aluno_id=p_aluno_id AND matricula_id=v_matricula AND servico_codigo=v_serv.codigo AND valor_cobrado=0 AND status='blocked' AND contexto->>'origem'='documentos_emissao_individual';
+    INSERT INTO public.servico_pedidos (
+      escola_id,aluno_id,matricula_id,servico_escola_id,status,servico_codigo,
+      servico_nome,valor_cobrado,contexto,created_by
+    ) VALUES (
+      p_escola_id,p_aluno_id,v_matricula,v_serv.id,
+      CASE WHEN v_serv.valor_base > 0 THEN 'pending_payment' ELSE 'blocked' END,
+      v_serv.codigo,v_serv.nome,v_serv.valor_base,
+      jsonb_build_object('origem','documentos_emissao_individual','ano_letivo_id',p_session_id,
+        'tipo_documento',p_tipo),v_actor
+    ) RETURNING * INTO v_pedido;
+  END IF;
+
+  IF v_pedido.valor_cobrado > 0 THEN
+    SELECT id INTO v_intent FROM public.pagamento_intents
+    WHERE escola_id=p_escola_id AND aluno_id=p_aluno_id AND servico_pedido_id=v_pedido.id
+    ORDER BY created_at DESC,id DESC LIMIT 1;
+    IF v_intent IS NULL THEN
+      INSERT INTO public.pagamento_intents (
+        escola_id,aluno_id,servico_pedido_id,amount,method,status,currency,created_by
+      ) VALUES (
+        p_escola_id,p_aluno_id,v_pedido.id,v_pedido.valor_cobrado,'cash','draft','AOA',v_actor
+      ) RETURNING id INTO v_intent;
+    END IF;
+  END IF;
+  RETURN public.documento_individual_acesso(p_escola_id,p_aluno_id,p_session_id,p_tipo);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.documento_individual_solicitar(uuid,uuid,uuid,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.documento_individual_solicitar(uuid,uuid,uuid,text) TO authenticated, service_role;
+
+
+CREATE OR REPLACE FUNCTION public.documento_individual_sync_pagamento()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $$
+DECLARE
+  v_pedido public.servico_pedidos%ROWTYPE;
+  v_intent public.pagamento_intents%ROWTYPE;
+  v_intent_id uuid;
+BEGIN
+  IF NEW.meta->>'origem' IS DISTINCT FROM 'documentos_emissao_individual'
+     OR NEW.meta->>'pagamento_intent_id' IS NULL
+     OR NEW.meta->>'pedido_id' IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  BEGIN
+    v_intent_id := (NEW.meta->>'pagamento_intent_id')::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN
+    RAISE EXCEPTION 'DOCUMENT_PAYMENT_INVALID_INTENT: referência inválida';
+  END;
+
+  SELECT * INTO v_intent FROM public.pagamento_intents
+  WHERE id = v_intent_id AND escola_id = NEW.escola_id
+    AND aluno_id = NEW.aluno_id FOR UPDATE;
+  IF v_intent.id IS NULL OR v_intent.servico_pedido_id::text IS DISTINCT FROM NEW.meta->>'pedido_id' THEN
+    RAISE EXCEPTION 'DOCUMENT_PAYMENT_INVALID_INTENT: intenção fora da solicitação';
+  END IF;
+
+  SELECT * INTO v_pedido FROM public.servico_pedidos
+  WHERE id = v_intent.servico_pedido_id AND escola_id = NEW.escola_id
+    AND aluno_id = NEW.aluno_id FOR UPDATE;
+  IF v_pedido.id IS NULL
+     OR v_pedido.servico_codigo NOT IN ('DOC_DECLARACAO_FREQUENCIA','DOC_DECLARACAO_NOTAS','DOC_COMPROVANTE_MATRICULA','DOC_CARTAO_ESTUDANTE','DOC_FICHA_INSCRICAO','DOC_HISTORICO_ESCOLAR','DOC_CERTIFICADO_HABILITACOES','DOC_BOLETIM_TRIMESTRAL')
+     OR NOT EXISTS (SELECT 1 FROM public.matriculas m WHERE m.id=v_pedido.matricula_id AND m.escola_id=NEW.escola_id AND m.aluno_id=NEW.aluno_id)
+     OR v_pedido.status NOT IN ('pending_payment','granted')
+     OR v_pedido.servico_codigo IS DISTINCT FROM NEW.meta->>'servico_codigo'
+     OR v_intent.amount <> v_pedido.valor_cobrado
+     OR NEW.valor_pago <> v_intent.amount
+     OR NEW.mensalidade_id IS NOT NULL THEN
+    RAISE EXCEPTION 'DOCUMENT_PAYMENT_INVALID_AMOUNT: serviço, valor ou pedido inválido';
+  END IF;
+
+  -- O guard do boletim exige draft -> pending -> settled.
+  IF v_intent.status = 'draft' THEN
+    UPDATE public.pagamento_intents
+    SET status = 'pending', method = NEW.metodo::text, reference = NEW.reference,
+        evidence_url = NEW.evidence_url
+    WHERE id = v_intent.id;
+  END IF;
+
+  IF NEW.status = 'settled' THEN
+    UPDATE public.pagamento_intents
+    SET status = 'settled', settled_at = coalesce(NEW.settled_at, now())
+    WHERE id = v_intent.id AND status = 'pending';
+
+    UPDATE public.servico_pedidos
+    SET status = 'granted'
+    WHERE id = v_pedido.id AND status = 'pending_payment';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 
 COMMIT;

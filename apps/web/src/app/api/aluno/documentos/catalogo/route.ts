@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 const PORTAL_DOCUMENT_CODES = [
   "DOC_DECLARACAO_FREQUENCIA",
+  "DOC_DECLARACAO_NOTAS",
   "DOC_BOLETIM_TRIMESTRAL",
   "DOC_COMPROVANTE_MATRICULA",
   "DOC_CARTAO_ESTUDANTE",
@@ -92,7 +93,7 @@ export async function GET(request: Request) {
     const docs = catalogo.map((item) => {
       const pedidosServico = (pedidos ?? []).filter((pedido) => pedido.servico_codigo === item.codigo);
       const pedido = pedidosServico.find((order) => order.status === "granted" && (
-        !isBoletimServiceCode(item.codigo) ||
+        item.codigo !== BOLETIM_SERVICE_CODE ||
         (Number(order.valor_cobrado) > 0 && (order.pagamento_intents ?? []).some((intent) => intent.status === "settled"))
       )) ?? pedidosServico[0];
       const intents = [...(pedido?.pagamento_intents ?? [])].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
@@ -102,7 +103,7 @@ export async function GET(request: Request) {
       else if (intent?.status === "failed" || pedido?.status === "canceled") status = "rejected";
       else if (intent?.status === "settled" && status !== "granted") status = "pending";
       if (item.codigo === BOLETIM_SERVICE_CODE && boletimPago) status = "granted";
-      if (isBoletimServiceCode(item.codigo) && status === "granted" && !boletimPago) {
+      if (item.codigo === BOLETIM_SERVICE_CODE && status === "granted" && !boletimPago) {
         status = "pending";
       }
       const tipo = portalDocumentType(item.codigo);
@@ -131,9 +132,9 @@ export async function GET(request: Request) {
         // Uma taxa de 0 Kz não significa automaticamente gratuidade:
         // há escolas com pagamento obrigatório ainda sem preço configurado.
         pagamento_configurado: tipo ? decision?.ok === true : Number(pedido?.valor_cobrado ?? item.valor_base) > 0 ||
-          (!item.exige_pagamento_antes_de_liberar && !isBoletimServiceCode(item.codigo)) ||
-          (isBoletimServiceCode(item.codigo) && boletimPago) ||
-          (status === "granted" && !isBoletimServiceCode(item.codigo)),
+          (!item.exige_pagamento_antes_de_liberar && item.codigo !== BOLETIM_SERVICE_CODE) ||
+          (item.codigo === BOLETIM_SERVICE_CODE && boletimPago) ||
+          (status === "granted" && item.codigo !== BOLETIM_SERVICE_CODE),
         reject_reason: typeof metadata?.reject_reason === "string" ? metadata.reject_reason : chosenPedido?.reason_detail ?? null,
         next_action: status === "granted"
           ? { type: "download", label: "Descarregar", href: "/aluno/documentos" }

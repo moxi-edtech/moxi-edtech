@@ -9,7 +9,7 @@ import { PortalStatus } from "@/components/portal/ui/PortalStatus";
 import { PortalAction } from "@/components/portal/ui/PortalAction";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { BOLETIM_SERVICE_CODE, BOLETIM_LEGACY_SERVICE_CODE, isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
+import { BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { formatKwanza } from "@/lib/formatters";
@@ -47,6 +47,7 @@ interface DocumentoCatalogo {
 
 const DIGITAL_DOCUMENT_CODES = new Set([
   'DOC_DECLARACAO_FREQUENCIA',
+  'DOC_DECLARACAO_NOTAS',
   BOLETIM_SERVICE_CODE,
   'DOC_COMPROVANTE_MATRICULA',
   'DOC_CARTAO_ESTUDANTE',
@@ -65,7 +66,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   const rawServiceCode = searchParams?.get("servico") ?? null;
   // Deep links legados continuam a abrir o único boletim, sem iniciar nova cobrança antiga.
   const requestedService = focusServiceCode ?? rawServiceCode;
-  const serviceCode = requestedService === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : requestedService;
+  const serviceCode = requestedService;
   const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
   const queryParams = new URLSearchParams();
   if (studentId) queryParams.set("studentId", studentId);
@@ -82,7 +83,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   const [selectedDoc, setSelectedDoc] = useState<DocumentoCatalogo | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const visibleDocs = docs.filter((doc) =>
-    doc.codigo !== BOLETIM_LEGACY_SERVICE_CODE && (!serviceCode || doc.codigo === serviceCode)
+    (!serviceCode || doc.codigo === serviceCode)
   );
 
   const fetchCatalogo = useCallback(async (quiet = false) => {
@@ -221,7 +222,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   const handleDownload = async (doc: DocumentoCatalogo) => {
     setLoading(doc.codigo);
     try {
-      const isBoletim = isBoletimServiceCode(doc.codigo);
+      const isBoletim = doc.codigo === BOLETIM_SERVICE_CODE;
       if (isBoletim) {
         const res = await fetch(`/api/aluno/boletim/pdf${query}`, { cache: "no-store" });
         if (!res.ok) {

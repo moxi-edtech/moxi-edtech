@@ -16,9 +16,9 @@ function formatNota(value: number | string | null) {
   return Number.isFinite(number) ? String(number).replace(".", ",") : "—";
 }
 
-export default async function DeclaracaoNotasPrintPage({ params }: { params: Promise<{ docId: string }> }) {
+export default async function DeclaracaoNotasPrintPage({ params, requireStudentOwnership = false }: { params: Promise<{ docId: string }>; requireStudentOwnership?: boolean }) {
   const { docId } = await params;
-  const result = await getDocumentoEmitido(docId);
+  const result = await getDocumentoEmitido(docId, { requireStudentOwnership });
   if ("error" in result) return <div className="p-8">{result.error}</div>;
   const { doc, escolaNome, logoUrl, validationBaseUrl } = result;
   if (doc.tipo !== "declaracao_notas") {
@@ -35,7 +35,7 @@ export default async function DeclaracaoNotasPrintPage({ params }: { params: Pro
   const db = await supabaseServerTyped<any>();
   const { data: historico, error: historicoError } = await db.from("historico_anos")
     .select("id, snapshot_status").eq("escola_id", doc.escola_id)
-    .eq("aluno_id", doc.aluno_id).eq("ano_letivo", ano).maybeSingle();
+    .eq("aluno_id", doc.aluno_id).eq("ano_letivo", ano).eq("matricula_id", String(snapshot.matricula_id ?? "")).maybeSingle();
   if (historicoError || !historico || historico.snapshot_status !== "fechado") {
     return <div className="p-8">O histórico deste ano não está fechado. Regularize-o na Secretaria.</div>;
   }
@@ -43,7 +43,7 @@ export default async function DeclaracaoNotasPrintPage({ params }: { params: Pro
   const { data: notas, error: notasError } = await db.from("historico_disciplinas")
     .select("disciplina_nome, nota_final, media_final").eq("historico_ano_id", historico.id)
     .order("disciplina_nome", { ascending: true }).limit(200);
-  if (notasError || !notas?.length) {
+  if (notasError || !notas?.length || (notas as NotaHistorica[]).some(n => !n.disciplina_nome?.trim() || (n.nota_final ?? n.media_final) == null || !Number.isFinite(Number(n.nota_final ?? n.media_final)) || Number(n.nota_final ?? n.media_final) < 0 || Number(n.nota_final ?? n.media_final) > 20)) {
     return <div className="p-8">Sem classificações oficiais para o ano letivo selecionado.</div>;
   }
 

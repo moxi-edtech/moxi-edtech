@@ -1,5 +1,6 @@
 export const PORTAL_DOCUMENT_TYPES = {
   DOC_DECLARACAO_FREQUENCIA: "declaracao_frequencia",
+  DOC_DECLARACAO_NOTAS: "declaracao_notas",
   DOC_COMPROVANTE_MATRICULA: "comprovante_matricula",
   DOC_CARTAO_ESTUDANTE: "cartao_estudante",
   DOC_FICHA_INSCRICAO: "ficha_inscricao",
