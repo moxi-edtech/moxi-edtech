@@ -113,3 +113,21 @@ test("activity filters do not refresh detail state and report types are explicit
  assert.match(pdf,/const detailed=format==="detail"/);
  assert.match(pdf,/if\(!detailed\)\{line\("Adendos posteriores ao fecho/);
 });
+
+
+test("dashboard opens a shared, lazy-loaded, draft-aware daily-close modal",()=>{
+ const card=src("components/secretaria/ExpedienteDashboardCard.tsx");
+ const workspace=src("components/secretaria/ExpedienteWorkspace.tsx");
+ assert.match(card,/dynamic\(\(\)=>import\("@\/components\/secretaria\/ExpedienteWorkspace"\)/);
+ assert.match(card,/aria-haspopup="dialog"/);
+ assert.match(card,/<ModalShell open=\{open\} size="wide"/);
+ assert.match(card,/\{open&&<Workspace/);
+ assert.match(card,/embedded closeGuardRef=\{closeGuardRef\}/);
+ assert.match(card,/if\(state==="busy"\)/);
+ assert.match(card,/if\(state==="draft"&&!discard\)/);
+ assert.match(card,/setRefreshVersion\(v=>v\+1\)/);
+ assert.match(card,/triggerRef.current\?\.focus\(\)/);
+ assert.doesNotMatch(card,/href=|router\.push/);
+ assert.match(workspace,/closeGuardRef.current=\(\)=>lock.current\?"busy"/);
+ assert.match(workspace,/!embedded&&<DashboardHeader/);
+});
