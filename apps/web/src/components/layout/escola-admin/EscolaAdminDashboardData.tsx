@@ -536,8 +536,8 @@ export default async function EscolaAdminDashboardData({
       else if (status === "ajuste") pagamentosResumo.ajuste += total;
     });
 
-    const activeAno = Number(anoLetivoResult.data?.ano ?? currentYear);
     // Both cards use the same active-school-year operational status read model.
+    const mensalidadesStatusDisponivel = !mensalidadesStatusResult.error && Boolean(anoLetivoResult.data?.ano);
 
     const setupBlockers = [
       !setupStatus.anoLetivoOk,
@@ -574,6 +574,7 @@ export default async function EscolaAdminDashboardData({
     const turmasSemHorarioPublicado = Math.max(0, turmasDoAnoAtivo.length - turmasComHorarioPublicadoNoAno);
 
     const operationalSnapshot: OperationalSnapshot = {
+      mensalidadesStatusDisponivel,
       mensalidadesPendentes: pagamentosResumo.pendente,
       mensalidadesCompetencia: null,
       mensalidadesInadimplentes: pagamentosResumo.inadimplente,
@@ -675,6 +676,7 @@ export default async function EscolaAdminDashboardData({
         stats={emptyKpis}
         pendingTurmasCount={0}
         operationalSnapshot={{
+          mensalidadesStatusDisponivel: false,
           mensalidadesPendentes: 0,
           mensalidadesCompetencia: null,
           mensalidadesInadimplentes: 0,

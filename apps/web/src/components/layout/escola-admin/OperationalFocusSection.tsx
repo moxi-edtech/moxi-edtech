@@ -24,7 +24,7 @@ type Props = {
 type FocusCard = {
   key: string;
   label: string;
-  value: number;
+  value: number | null;
   description: string;
   href: string;
   cta: string;
@@ -34,7 +34,7 @@ type FocusCard = {
 
 function FocusMetricCard({ card }: { card: FocusCard }) {
   const Icon = card.icon;
-  const isZero = card.value === 0;
+  const isZero = card.value === 0 || card.value === null;
 
   return (
     <Link
@@ -51,7 +51,7 @@ function FocusMetricCard({ card }: { card: FocusCard }) {
 
       <div className="mt-3">
         <span className={`text-2xl font-black ${isZero ? "text-muted-foreground" : "text-foreground"}`}>
-          {card.value}
+          {card.value ?? "—"}
         </span>
       </div>
     </Link>
@@ -71,7 +71,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
       label: snapshot.mensalidadesCompetencia
         ? `Cobranças Pendentes (${snapshot.mensalidadesCompetencia})`
         : "Cobranças Pendentes",
-      value: snapshot.mensalidadesPendentes,
+      value: snapshot.mensalidadesStatusDisponivel === false ? null : snapshot.mensalidadesPendentes,
       description: snapshot.mensalidadesCompetencia
         ? "Mensalidades em aberto na competência operacional seleccionada."
         : "Propinas não vencidas, no ano lectivo activo.",
@@ -113,7 +113,7 @@ export default function OperationalFocusSection({ escolaId, snapshot }: Props) {
     {
       key: "inadimplencia",
       label: "Em Atraso",
-      value: snapshot.mensalidadesInadimplentes,
+      value: snapshot.mensalidadesStatusDisponivel === false ? null : snapshot.mensalidadesInadimplentes,
       description: "Casos que já exigem contacto activo ou negociação com o encarregado.",
       href: buildPortalHref(escolaParam, "/operacoes/turmas-alunos"),
       cta: "Ver carteira",

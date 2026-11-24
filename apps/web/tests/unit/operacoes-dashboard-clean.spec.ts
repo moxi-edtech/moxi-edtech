@@ -53,3 +53,13 @@ test("pending and overdue cards use the same active academic year and cash over 
   assert.match(dashboard, /hasMetaReceita && rawPercentualReceita > 100/);
   assert.match(dashboard, /dívidas antigas, adiantamentos ou serviços/);
 });
+
+test("financial status failures do not masquerade as zero", () => {
+  const data = source("components/layout/escola-admin/EscolaAdminDashboardData.tsx");
+  const kpi = source("components/layout/escola-admin/KpiSection.tsx");
+  const focus = source("components/layout/escola-admin/OperationalFocusSection.tsx");
+  assert.match(data, /mensalidadesStatusDisponivel = !mensalidadesStatusResult\.error/);
+  assert.match(kpi, /propinasDisponiveis \? op\.mensalidadesPendentes : undefined/);
+  assert.match(kpi, /propinasDisponiveis \? op\.mensalidadesInadimplentes : undefined/);
+  assert.match(focus, /mensalidadesStatusDisponivel === false \? null/);
+});

@@ -13,3 +13,5 @@
 - Propinas pendentes passam a usar o estado operacional pendente do ano lectivo activo, com âmbito explícito; o cálculo antigo total menos pagas antecipadas incluía liquidações não antecipadas. Propinas em atraso usam o mesmo read model. Não se afirma um total mensal que a view não fornece.
 - Caixa acima do previsto mostra distinção de competência/caixa sem abrir modal. Sem migração, sem consulta adicional e sem mudança de RLS.
 - CI da revisão e homologação autenticada ainda pendentes.
+
+- Em caso de falha no resumo de estados ou ausência de ano activo, os cartões e o foco exibem dados indisponíveis em vez de zero. Grelhas de atalhos usam 2/3/4 colunas conforme largura útil.
