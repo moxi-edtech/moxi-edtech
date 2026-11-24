@@ -22,6 +22,11 @@ BEGIN
   IF v->>'status' IS DISTINCT FROM 'free' OR (v->>'granted')::boolean IS DISTINCT FROM true THEN RAISE EXCEPTION 'FREE_DECLARATION_BLOCKED: %',v; END IF;
   v := public.documento_individual_acesso(s,a,y,'certificado');
   IF v->>'status' IS DISTINCT FROM 'approval' OR (v->>'granted')::boolean IS DISTINCT FROM false THEN RAISE EXCEPTION 'APPROVAL_NOT_EXPLICIT: %',v; END IF;
+  BEGIN
+    PERFORM public.emitir_documento_final(s,a,2026,'certificado');
+    RAISE EXCEPTION 'LEGACY_APPROVAL_BYPASS';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
   v := public.documento_individual_solicitar(s,a,y,'certificado');
   w := public.documento_individual_solicitar(s,a,y,'certificado');
   IF v->>'pedido_id' IS NULL OR v->>'pedido_id' IS DISTINCT FROM w->>'pedido_id' OR v->>'pagamento_intent_id' IS NOT NULL THEN RAISE EXCEPTION 'FREE_APPROVAL_REQUEST_INVALID: %',v; END IF;
@@ -36,5 +41,23 @@ DECLARE v jsonb;
 BEGIN
  v := public.documento_individual_acesso('00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007105','00000000-0000-4000-8000-000000007106','certificado');
  IF v->>'status' IS DISTINCT FROM 'free' OR (v->>'granted')::boolean IS DISTINCT FROM true THEN RAISE EXCEPTION 'APPROVED_FREE_CERTIFICATE_BLOCKED: %',v; END IF;
+ PERFORM public.emitir_documento_final('00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007105',2026,'certificado');
 END; $$;
+RESET ROLE;
+DO $
+DECLARE v_id uuid;
+BEGIN
+ IF has_function_privilege('authenticated','public._documento_individual_politica(uuid,uuid,uuid,text,uuid)','EXECUTE')
+ OR has_function_privilege('anon','public._documento_individual_politica(uuid,uuid,uuid,text,uuid)','EXECUTE')
+ THEN RAISE EXCEPTION 'PRIVATE_POLICY_EXPOSED'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.documentos_emitidos WHERE escola_id='00000000-0000-4000-8000-000000007101' AND tipo::text='certificado') THEN RAISE EXCEPTION 'APPROVED_PERSISTENCE_FAILED'; END IF;
+ BEGIN
+   INSERT INTO public.documentos_emitidos(escola_id,aluno_id,tipo,dados_snapshot,hash_validacao)
+   VALUES ('00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007105','declaracao_frequencia',
+   jsonb_build_object('matricula_id','00000000-0000-4000-8000-000000007108','ano_letivo',2026),'guard-test-hash');
+   RAISE EXCEPTION 'DIRECT_INSERT_PAYMENT_BYPASS';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END;
+$;
 ROLLBACK;

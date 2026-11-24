@@ -1,17 +1,14 @@
 BEGIN;
 
--- Honor explicit zero-price declaration configuration; retain the separate paid boletim contract.
--- Preserve SECURITY DEFINER authorization and exact tenant, enrollment and ledger checks.
-CREATE OR REPLACE FUNCTION public.documento_individual_acesso(
-  p_escola_id uuid, p_aluno_id uuid, p_session_id uuid, p_tipo text
+-- A decisão de acesso é única; a autorização do chamador pertence aos adaptadores.
+CREATE OR REPLACE FUNCTION public._documento_individual_politica(
+  p_escola_id uuid, p_aluno_id uuid, p_session_id uuid, p_tipo text, p_matricula_id uuid
 )
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY DEFINER
 SET search_path TO ''
 AS $$
 DECLARE
-  v_actor uuid := public.safe_auth_uid();
   v_codigo text;
   v_serv public.servicos_escola%ROWTYPE;
   v_matricula uuid;
@@ -25,16 +22,6 @@ DECLARE
   v_total_notas integer;
   v_invalidas integer;
 BEGIN
-  IF v_actor IS NULL
-     OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
-     OR NOT public.user_has_role_in_school(p_escola_id, ARRAY[
-       'secretaria','secretaria_financeiro','admin_financeiro','admin_secretario',
-       'admin','admin_escola','staff_admin','diretor'
-     ]::text[]) THEN
-    RAISE EXCEPTION 'AUTH_FORBIDDEN: acesso à emissão individual negado'
-      USING ERRCODE = '42501';
-  END IF;
-
   v_codigo := CASE p_tipo
     WHEN 'declaracao_frequencia' THEN 'DOC_DECLARACAO_FREQUENCIA'
     WHEN 'declaracao_notas' THEN 'DOC_DECLARACAO_NOTAS'
@@ -50,10 +37,17 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'status', 'blocked', 'reason', 'DOCUMENT_TYPE_INVALID');
   END IF;
 
+  SELECT ano INTO v_ano FROM public.anos_letivos
+  WHERE id = p_session_id AND escola_id = p_escola_id;
+  IF v_ano IS NULL THEN
+    RETURN jsonb_build_object('ok',false,'status','blocked','reason','ANO_LETIVO_INVALIDO');
+  END IF;
+
   SELECT id INTO v_matricula
   FROM public.matriculas
   WHERE escola_id = p_escola_id AND aluno_id = p_aluno_id
     AND session_id = p_session_id
+    AND (p_matricula_id IS NULL OR id = p_matricula_id)
     AND status IN ('ativa','ativo','matriculado','concluido','reprovado','transferido','trancado')
   ORDER BY created_at DESC, id DESC LIMIT 1;
   IF v_matricula IS NULL THEN
@@ -72,11 +66,10 @@ BEGIN
   -- simples fecho, exige notas por disciplina com valores válidos (zero conta).
   -- Nunca usar pautas de outra escola, matrícula ou ano.
   IF p_tipo = 'certificado' THEN
-    SELECT ano INTO v_ano FROM public.anos_letivos
-    WHERE id = p_session_id AND escola_id = p_escola_id;
     SELECT id, snapshot_status INTO v_historico, v_status_historico
     FROM public.historico_anos
     WHERE escola_id = p_escola_id AND aluno_id = p_aluno_id AND ano_letivo = v_ano
+      AND matricula_id = v_matricula
     LIMIT 1;
     IF v_historico IS NULL THEN
       RETURN jsonb_build_object('ok',false,'granted',false,'status','blocked','reason','HISTORICO_INEXISTENTE');
@@ -171,7 +164,86 @@ BEGIN
 END;
 $$;
 
+
+REVOKE ALL ON FUNCTION public._documento_individual_politica(uuid,uuid,uuid,text,uuid) FROM PUBLIC, anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.documento_individual_acesso(
+  p_escola_id uuid, p_aluno_id uuid, p_session_id uuid, p_tipo text
+)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $$
+DECLARE
+  v_actor uuid := public.safe_auth_uid();
+BEGIN
+  IF v_actor IS NULL
+     OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
+     OR NOT public.user_has_role_in_school(p_escola_id, ARRAY[
+       'secretaria','secretaria_financeiro','admin_financeiro','admin_secretario',
+       'admin','admin_escola','staff_admin','diretor'
+     ]::text[]) THEN
+    RAISE EXCEPTION 'AUTH_FORBIDDEN: acesso à emissão individual negado'
+      USING ERRCODE = '42501';
+  END IF;
+
+  RETURN public._documento_individual_politica(p_escola_id,p_aluno_id,p_session_id,p_tipo,NULL);
+END;
+$$;
 REVOKE ALL ON FUNCTION public.documento_individual_acesso(uuid,uuid,uuid,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.documento_individual_acesso(uuid,uuid,uuid,text) TO authenticated, service_role;
+
+-- Defesa em profundidade: inclusive RPCs legadas e workers devem respeitar
+-- a decisão canónica no ponto de persistência. Não afeta reimpressões.
+CREATE OR REPLACE FUNCTION public._guard_documento_emissao_ssot()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $$
+DECLARE
+  v_session uuid;
+  v_ano integer;
+  v_matricula uuid;
+  v_acesso jsonb;
+BEGIN
+  IF NEW.tipo::text NOT IN ('certificado','historico','declaracao_notas','declaracao_frequencia') THEN
+    RETURN NEW;
+  END IF;
+  v_matricula := (NEW.dados_snapshot->>'matricula_id')::uuid;
+  SELECT m.session_id, y.ano INTO v_session, v_ano
+  FROM public.matriculas m JOIN public.anos_letivos y ON y.id=m.session_id AND y.escola_id=m.escola_id
+  WHERE m.id=v_matricula AND m.escola_id=NEW.escola_id AND m.aluno_id=NEW.aluno_id;
+  IF v_session IS NULL OR NEW.dados_snapshot->>'ano_letivo' IS DISTINCT FROM v_ano::text THEN
+    RAISE EXCEPTION 'DOCUMENT_ENROLLMENT_INVALID' USING ERRCODE='42501';
+  END IF;
+  v_acesso := public._documento_individual_politica(NEW.escola_id,NEW.aluno_id,v_session,NEW.tipo::text,v_matricula);
+  IF coalesce((v_acesso->>'granted')::boolean,false) IS NOT TRUE THEN
+    RAISE EXCEPTION 'DOCUMENT_ACCESS_DENIED: %',coalesce(v_acesso->>'reason',v_acesso->>'status','blocked') USING ERRCODE='42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public._guard_documento_emissao_ssot() FROM PUBLIC, anon, authenticated, service_role;
+DROP TRIGGER IF EXISTS guard_documento_emissao_ssot ON public.documentos_emitidos;
+CREATE TRIGGER guard_documento_emissao_ssot BEFORE INSERT ON public.documentos_emitidos
+FOR EACH ROW EXECUTE FUNCTION public._guard_documento_emissao_ssot();
+
+DROP POLICY IF EXISTS documentos_emissao_staff_insert ON public.documentos_emitidos;
+CREATE POLICY documentos_emissao_staff_insert ON public.documentos_emitidos AS RESTRICTIVE FOR INSERT TO authenticated
+WITH CHECK (tipo::text NOT IN ('certificado','historico','declaracao_notas','declaracao_frequencia')
+ OR (escola_id=public.current_tenant_escola_id() AND public.user_has_role_in_school(escola_id, ARRAY[
+ 'secretaria','secretaria_financeiro','admin_financeiro','admin_secretario','admin','admin_escola','staff_admin','diretor'
+ ]::text[])));
+
+-- Corrige a coerção text -> enum da RPC de produção sem substituir os
+-- restantes mecanismos legais/idempotentes da função.
+DO $patch$
+DECLARE v_definition text;
+BEGIN
+  SELECT pg_get_functiondef('public.emitir_documento_final(uuid,uuid,integer,text)'::regprocedure) INTO v_definition;
+  IF position('v_numero_sequencial, p_tipo_documento, v_snapshot' in v_definition)>0 THEN
+    v_definition := replace(v_definition,'v_numero_sequencial, p_tipo_documento, v_snapshot','v_numero_sequencial, p_tipo_documento::public.tipo_documento, v_snapshot');
+    EXECUTE v_definition;
+  ELSIF position('p_tipo_documento::public.tipo_documento' in v_definition)=0 THEN
+    RAISE EXCEPTION 'UNEXPECTED_EMITIR_DOCUMENTO_FINAL_DEFINITION';
+  END IF;
+END;
+$patch$;
 
 COMMIT;

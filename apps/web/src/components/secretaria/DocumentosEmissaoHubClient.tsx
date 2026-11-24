@@ -664,7 +664,7 @@ export default function DocumentosEmissaoHubClient({
         {documentState?.status === "issued" && documentState.printUrl ? (
           <>
             <button type="button" onClick={handleEmitir} disabled={!canSubmit}
-              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
               <Printer className="h-4 w-4" /> Imprimir novamente
             </button>
             <a href={documentState.printUrl} target="_blank" rel="noopener noreferrer"
@@ -674,19 +674,19 @@ export default function DocumentosEmissaoHubClient({
           </>
         ) : documentState?.granted ? (
           <button type="button" onClick={handleEmitir} disabled={!canSubmit}
-            className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+            className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
             {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
             Emitir e imprimir
           </button>
         ) : documentState?.status === "pending_payment" ? (
           <button type="button" onClick={handlePagamento} disabled={!canSubmit}
-            className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+            className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
             {paymentBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
             Registar pagamento
           </button>
         ) : documentState?.status === "approval" ? (
           <button type="button" onClick={handleSolicitar} disabled={!canSubmit}
-            className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+            className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
             <FileText className="h-4 w-4" /> Aprovar emissão
           </button>
         ) : null}
