@@ -31,7 +31,7 @@ export async function getExpediente(access: Extract<Awaited<ReturnType<typeof ex
     supabase.from("secretaria_expedientes").select("id,day_key,closed_at,closed_by,operation_count,business_count,human_count,system_count,summary").eq("escola_id", escolaId).eq("day_key", date).maybeSingle(),
     supabase.from("secretaria_expediente_operacoes").select("id,occurred_at,actor_id,actor_role,origin,entity,entity_id,action,record_kind,transaction_id,is_after_close,detail").eq("escola_id", escolaId).eq("day_key", date).gt("id", cursor).order("id", { ascending: true }).limit(51),
     supabase.from("secretaria_expediente_operacoes").select("id", { count: "exact", head: true }).eq("escola_id", escolaId).eq("day_key", date).eq("is_after_close", true),
-    supabase.from("secretaria_expediente_config").select("close_time,reminder_minutes,weekdays,enabled").eq("escola_id", escolaId).maybeSingle(),
+    supabase.from("secretaria_expediente_config").select("close_time,reminder_minutes,weekdays,enabled,email_summary").eq("escola_id", escolaId).maybeSingle(),
     supabase.from("fecho_caixa").select("id,status,declared_by,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_other,system_other_count,revision,revision_reason,approval_note").eq("escola_id", escolaId).eq("day_key", date).maybeSingle(),
     supabase.rpc("secretaria_expediente_resumo", { p_escola_id: escolaId, p_day_key: date }),
     supabase.rpc("secretaria_expediente_capture_started_at", { p_escola_id: escolaId }),
