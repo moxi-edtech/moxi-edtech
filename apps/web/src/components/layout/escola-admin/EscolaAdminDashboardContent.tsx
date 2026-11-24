@@ -538,7 +538,30 @@ export default function EscolaAdminDashboardContent({
                 </section>
               )}
               <ModalShell open={revenueDetailsOpen} onClose={() => setRevenueDetailsOpen(false)} title="Detalhes financeiros do mês" description="Recebimentos em caixa e cobrança da competência">
-                {revenueDetailsOpen && hasMovimentoReceita && revenueSection}
+                {revenueDetailsOpen && hasMovimentoReceita && (
+                  <dl className="divide-y divide-border rounded-xl border border-border bg-card px-4">
+                    {[
+                      ["Recebido no mês (caixa)", realizadoReceita],
+                      ["Previsto no mês", hasMetaReceita ? previstoReceita : null],
+                      ["Cobrança da competência", pagoCompetencia],
+                      ["Mensalidades", caixaMensalidades],
+                      ["Dívidas antigas", caixaDividasAnteriores],
+                      ["Serviços", caixaServicos],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex flex-wrap items-baseline justify-between gap-2 py-3 text-sm">
+                        <dt className="text-muted-foreground">{label}</dt>
+                        <dd className="font-semibold tabular-nums text-foreground">{typeof value === "number" && mounted ? moeda.format(value) : "—"}</dd>
+                      </div>
+                    ))}
+                    {hasMetaReceita && (
+                      <div className="flex flex-wrap justify-between gap-2 py-3 text-sm">
+                        <dt className="text-muted-foreground">Competência liquidada</dt>
+                        <dd className="font-semibold">{percentualCompetencia}%</dd>
+                      </div>
+                    )}
+                    {isAcimaDaMeta && <div className="py-3 text-sm text-muted-foreground">O caixa pode incluir propinas de meses anteriores ou adiantamentos.</div>}
+                  </dl>
+                )}
               </ModalShell>
             </>
           }
