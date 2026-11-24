@@ -43,31 +43,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
     }
 
-    const { data: roleRow } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const actorRole = (roleRow as { role?: string | null } | null)?.role ?? null;
+    const {data: memberships,error: membershipError}=await supabase.from("escola_users").select("papel").eq("escola_id",escolaId).eq("user_id",user.id).eq("tenant_type","k12").in("papel",["financeiro","admin_financeiro","admin","admin_escola","staff_admin","diretor"]).limit(1);
+    if(membershipError||!memberships?.length)return NextResponse.json({ok:false,error:"Sem permissão para decidir o fecho."},{status:403});
+    const actorRole=memberships[0].papel;
 
-    const desiredStatus = parsed.data.aprovacao === "approved" ? "approved" : "rejected";
     const { data: existing } = await supabase
       .from("fecho_caixa")
       .select("id, status, escola_id, day_key, approved_by, approved_at, declared_cash, declared_tpa, declared_transfer, declared_mcx, system_cash, system_tpa, system_transfer, system_mcx")
       .eq("escola_id", escolaId)
       .eq("id", parsed.data.fecho_id)
       .maybeSingle();
-    if (existing?.status === desiredStatus) {
-      return NextResponse.json({ ok: true, data: existing, idempotent: true });
-    }
-    if (existing?.status && existing.status !== "declared") {
-      return NextResponse.json(
-        { ok: false, error: "Fecho já foi processado" },
-        { status: 409 }
-      );
-    }
 
     const { data, error } = await supabase.rpc("financeiro_fecho_aprovar", {
       p_escola_id: escolaId,
@@ -78,10 +63,10 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: false, error: "Não foi possível decidir o fecho." }, { status: error.code === "42501" ? 403 : error.code === "22023" ? 400 : 409 });
     }
 
-    if (parsed.data.aprovacao === "approved") {
+    if (parsed.data.aprovacao === "approved" && existing?.status !== "approved") {
       const { data: escolaRow } = await supabase
         .from("escolas")
         .select("slug")
@@ -96,7 +81,7 @@ export async function POST(request: Request) {
         actorId: user.id,
         actorRole: actorRole ?? "admin",
         agrupamentoTTLHoras: 12,
-      });
+      }).catch(() => null);
     }
 
     return NextResponse.json({ ok: true, data });
