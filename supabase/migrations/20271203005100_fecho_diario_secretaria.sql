@@ -123,16 +123,21 @@ BEGIN
  v_at:=clock_timestamp(); v_day:=(v_at AT TIME ZONE 'Africa/Luanda')::date;
  PERFORM pg_advisory_xact_lock_shared(hashtextextended('secretaria-close:'||v_school::text||':'||v_day::text,0));
  v_at:=clock_timestamp();
+ -- A transaction may wait across midnight: re-lock the new local day before classifying.
+ IF (v_at AT TIME ZONE 'Africa/Luanda')::date<>v_day THEN
+  v_day:=(v_at AT TIME ZONE 'Africa/Luanda')::date;
+  PERFORM pg_advisory_xact_lock_shared(hashtextextended('secretaria-close:'||v_school::text||':'||v_day::text,0));
+ END IF;
  SELECT EXISTS(SELECT 1 FROM public.secretaria_expedientes WHERE escola_id=v_school AND day_key=v_day) INTO v_late;
  v_action:=CASE WHEN TG_OP='INSERT' THEN 'CREATE' WHEN TG_OP='DELETE' THEN 'DELETE' ELSE 'UPDATE' END;
- v_detail:=jsonb_strip_nulls(jsonb_build_object('aluno_id',v_row->>'aluno_id','matricula_id',v_row->>'matricula_id','status_anterior',v_old->>'status','status',v_row->>'status','tipo',v_row->>'tipo','valor',CASE WHEN TG_TABLE_NAME='pagamentos' THEN v_row->>'valor_pago' END,'metodo',CASE WHEN TG_TABLE_NAME='pagamentos' THEN v_row->>'metodo' END));
+ v_detail:=jsonb_strip_nulls(jsonb_build_object('aluno_id',v_row->>'aluno_id','matricula_id',v_row->>'matricula_id','status_anterior',coalesce(v_old->>'status',v_old->>'estado'),'status',coalesce(v_row->>'status',v_row->>'estado'),'tipo',v_row->>'tipo','valor',CASE WHEN TG_TABLE_NAME='pagamentos' THEN v_row->>'valor_pago' WHEN TG_TABLE_NAME='financeiro_estornos' THEN v_row->>'valor' END,'metodo',CASE WHEN TG_TABLE_NAME='pagamentos' THEN v_row->>'metodo' END));
  INSERT INTO public.secretaria_expediente_operacoes(escola_id,day_key,occurred_at,actor_id,actor_role,entity,entity_id,action,is_after_close,detail)
  VALUES(v_school,v_day,v_at,v_actor,v_role,TG_TABLE_NAME,v_row->>'id',v_action,v_late,v_detail);
  RETURN NULL;
 END; $$;
 REVOKE ALL ON FUNCTION public.capture_secretaria_expediente_operation() FROM PUBLIC,anon,authenticated;
 DO $$ DECLARE t text; BEGIN
- FOREACH t IN ARRAY ARRAY['alunos','candidaturas','matriculas','pagamentos','documentos_emitidos','servico_pedidos','mensalidades','notas','financeiro_lancamentos'] LOOP
+ FOREACH t IN ARRAY ARRAY['alunos','candidaturas','matriculas','pagamentos','documentos_emitidos','servico_pedidos','mensalidades','notas','financeiro_lancamentos','financeiro_estornos','reapreciacao_pedidos','frequencias'] LOOP
  EXECUTE format('CREATE TRIGGER trg_secretaria_expediente_operation AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.capture_secretaria_expediente_operation()',t);
  END LOOP;
 END; $$;
@@ -153,7 +158,7 @@ BEGIN
  INSERT INTO public.secretaria_expedientes(escola_id,day_key,closed_at,closed_by,operation_count,summary) VALUES(p_escola_id,p_day_key,clock_timestamp(),auth.uid(),v_count,v_summary) RETURNING * INTO v;
  INSERT INTO public.eventos(escola_id,tipo,actor_id,entidade_tipo,entidade_id,payload) VALUES(p_escola_id,'secretaria.expediente.fechado',auth.uid(),'secretaria_expedientes',v.id,jsonb_build_object('day_key',p_day_key,'operation_count',v_count)) RETURNING id INTO v_event;
  INSERT INTO public.notificacoes(escola_id,evento_id,destinatario_id,titulo,corpo,prioridade,action_label,action_url,gatilho,tipo,agrupamento_chave)
- SELECT DISTINCT p_escola_id,v_event,e.user_id,'Expediente concluído',p_day_key::text||' · '||v_count::text||' registos de atividade','info'::public.notificacao_prioridade,'Consultar fecho','/escola/'||p_escola_id::text||'/operacoes/fecho-diario?date='||p_day_key::text,'S','I','expediente:'||v.id::text
+ SELECT DISTINCT p_escola_id,v_event,e.user_id,'Expediente concluído',p_day_key::text||' · '||v_count::text||' registos de atividade','info'::public.notificacao_prioridade,'Consultar fecho','/escola/'||p_escola_id::text||CASE WHEN e.papel IN ('admin_financeiro','admin_secretaria','admin_secretario') THEN '/operacoes' ELSE '/admin' END||'/fecho-diario?date='||p_day_key::text,'S','I','expediente:'||v.id::text
  FROM public.escola_users e WHERE e.escola_id=p_escola_id AND e.tenant_type='k12' AND e.papel IN ('admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria','admin_secretario','diretor') AND EXISTS(SELECT 1 FROM public.profiles p WHERE p.user_id=e.user_id AND p.deleted_at IS NULL)
  ON CONFLICT(evento_id,destinatario_id) DO NOTHING;
  RETURN v;
@@ -187,7 +192,7 @@ BEGIN
  IF NOT FOUND THEN CONTINUE; END IF;
  INSERT INTO public.eventos(escola_id,tipo,payload,entidade_tipo) VALUES(c.escola_id,'secretaria.expediente.lembrete',jsonb_build_object('day_key',v_day),'secretaria_expedientes') RETURNING id INTO v_event;
  INSERT INTO public.notificacoes(escola_id,evento_id,destinatario_id,titulo,corpo,prioridade,action_label,action_url,gatilho,tipo,agrupamento_chave)
- SELECT DISTINCT c.escola_id,v_event,e.user_id,'Fecho do expediente','O expediente de hoje ainda está por fechar.','aviso'::public.notificacao_prioridade,'Fechar expediente','/escola/'||c.escola_id::text||'/operacoes/fecho-diario?date='||v_day::text,'S','A','expediente-lembrete:'||v_day::text
+ SELECT DISTINCT c.escola_id,v_event,e.user_id,'Fecho do expediente','O expediente de hoje ainda está por fechar.','aviso'::public.notificacao_prioridade,'Fechar expediente','/escola/'||c.escola_id::text||CASE WHEN e.papel IN ('admin_financeiro','admin_secretaria','admin_secretario') THEN '/operacoes' ELSE '/secretaria' END||'/fecho-diario?date='||v_day::text,'S','A','expediente-lembrete:'||v_day::text
  FROM public.escola_users e WHERE e.escola_id=c.escola_id AND e.tenant_type='k12' AND e.papel IN ('secretaria','secretaria_financeiro','admin_secretaria','admin_secretario','admin_financeiro') AND EXISTS(SELECT 1 FROM public.profiles p WHERE p.user_id=e.user_id AND p.deleted_at IS NULL)
  ON CONFLICT(evento_id,destinatario_id) DO NOTHING;
  v_n:=v_n+1;
@@ -196,5 +201,15 @@ BEGIN
 END; $$;
 REVOKE ALL ON FUNCTION public.secretaria_enviar_lembretes_expediente() FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.secretaria_enviar_lembretes_expediente() TO service_role;
+-- Preview totals from the same durable ledger, not client-side pagination.
+CREATE OR REPLACE FUNCTION public.secretaria_expediente_resumo(p_escola_id uuid,p_day_key date)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=''
+AS $ DECLARE v jsonb; BEGIN
+ IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['secretaria','admin_secretaria','admin_secretario','secretaria_financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
+ SELECT coalesce(jsonb_object_agg(entity,n),'{}'::jsonb) INTO v FROM(SELECT entity,count(*) n FROM public.secretaria_expediente_operacoes WHERE escola_id=p_escola_id AND day_key=p_day_key AND NOT is_after_close GROUP BY entity)s;
+ RETURN v;
+END; $;
+REVOKE ALL ON FUNCTION public.secretaria_expediente_resumo(uuid,date) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.secretaria_expediente_resumo(uuid,date) TO authenticated;
 SELECT cron.schedule('secretaria-expediente-reminder','*/15 * * * *','SELECT public.secretaria_enviar_lembretes_expediente();');
 COMMIT;
