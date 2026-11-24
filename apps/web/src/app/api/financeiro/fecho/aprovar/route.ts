@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ ok: false, error: "Não foi possível decidir o fecho." }, { status: error.code === "42501" ? 403 : error.code === "22023" ? 400 : 409 });
+      return NextResponse.json({ ok: false, error: error.message.includes("variance_requires_justification") ? "Existem divergências ou movimentos posteriores à declaração. Informe uma justificação." : "Não foi possível decidir o fecho." }, { status: error.code === "42501" ? 403 : error.code === "22023" ? 400 : 409 });
     }
 
     if (parsed.data.aprovacao === "approved" && existing?.status !== "approved") {
