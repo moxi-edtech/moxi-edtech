@@ -38,7 +38,7 @@ export default async function CartaoEstudantePrintPage({
 
   return (
     <div className={`min-h-screen ${styles.printRoot} text-slate-900`}>
-      <PrintTrigger />
+      <PrintTrigger autoPrint={false} />
       <div className={`${styles.sheet} shadow-lg`}>
         <div className="max-w-md border border-slate-200 rounded-xl p-6 space-y-4">
           <header className="text-center space-y-1">

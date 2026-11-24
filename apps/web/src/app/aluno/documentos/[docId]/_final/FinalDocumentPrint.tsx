@@ -76,7 +76,7 @@ export default async function FinalDocumentPrint({ docId, expectedType, title, r
   }
   return (
     <main className="min-h-screen bg-slate-100 p-4 font-serif text-slate-900 print:bg-white md:p-10">
-      <PrintTrigger />
+      <PrintTrigger autoPrint={false} />
       <article className="mx-auto max-w-3xl space-y-8 bg-white p-8 shadow-sm print:max-w-none print:shadow-none">
         <PrintLetterhead
           escolaNome={result.escolaNome}

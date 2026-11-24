@@ -34,7 +34,7 @@ test("registro de TPA/transferência não auto-liquida por origem do cliente", (
 test("impressão falhada e reimpressão não passam pelo pagamento", () => {
   const hub = src("components/secretaria/DocumentosEmissaoHubClient.tsx");
   const api = src("app/api/secretaria/documentos/emitir/route.ts");
-  assert.match(hub, /Imprimir novamente/);
+  assert.match(hub, /Abrir para reimprimir/);
   assert.match(hub, /setDocumentState\(\{\s*\.\.\.documentState, status: "issued"/);
   assert.match(api, /status: "issued", granted: true/);
   assert.match(migration, /pg_catalog\.pg_advisory_xact_lock\(/);
@@ -106,7 +106,7 @@ test("PR #455 e #456 coexistem no fluxo de admissão sem perder bolsa nem duplic
 test("Central usa só a decisão canónica e apresenta ações de emissão, pagamento e aprovação", () => {
   const hub = src("components/secretaria/DocumentosEmissaoHubClient.tsx");
   assert.doesNotMatch(hub, /missingNotesFee|requiresPaidNotes|selectedServico|admin\/servicos/);
-  assert.match(hub, /Emitir e imprimir/);
+  assert.match(hub, /Emitir e abrir documento/);
   assert.doesNotMatch(hub, /Aprovar emissão|handleSolicitar/);
   assert.match(hub, /Registar pagamento/);
   assert.match(hub, /Tentar novamente/);
@@ -157,4 +157,17 @@ test("fila integral e lote usam escopo e reemissão canónicos", () => {
  assert.match(policy, /REVOKE ALL ON FUNCTION public\.documento_final_lote_item[^\n]+FROM PUBLIC,anon,authenticated/);
  assert.match(policy, /public\._documento_final_persistir/);
  assert.match(src("app/aluno/documentos/[docId]/notas/print/page.tsx"), /requireStudentOwnership/);
+});
+
+
+test("official document previews never open a native print dialog on mount", () => {
+  const trigger = src("app/secretaria/documentos/_print/PrintTrigger.tsx");
+  assert.match(trigger, /useEffect\(\(\) => \{[\s\S]*?if \(!autoPrint\) return;[\s\S]*?window\.print\(\)/);
+  assert.match(trigger, /if \(autoPrint && !showManualButton\) return null/);
+  assert.match(trigger, /onClick=\{\(\) => \{[\s\S]*?window\.print\(\)/);
+  assert.match(trigger, /Imprimir documento/);
+  for (const path of ["app/secretaria/documentos/[docId]/cartao/print/page.tsx","app/secretaria/documentos/[docId]/frequencia/print/page.tsx","app/secretaria/documentos/[docId]/ficha/print/page.tsx","app/secretaria/documentos/[docId]/boletim-trimestral/print/page.tsx","app/secretaria/documentos/_print/ComprovanteMatriculaPrintDocument.tsx","app/secretaria/documentos/_print/DeclaracaoNotasPrintPage.tsx","app/aluno/documentos/[docId]/_final/FinalDocumentPrint.tsx"]) {
+    assert.match(src(path), /<PrintTrigger autoPrint=\{false\} \/>/, path);
+  }
+  assert.match(src("app/secretaria/documentos/_print/ReciboPrintDocument.tsx"), /<PrintTrigger showManualButton \/>/);
 });

@@ -56,7 +56,7 @@ export default async function DeclaracaoNotasPrintPage({ params, requireStudentO
 
   return (
     <main className={`min-h-screen ${styles.printRoot} font-serif ${styles.notesPrint}`}>
-      <PrintTrigger />
+      <PrintTrigger autoPrint={false} />
       <article className={`${styles.sheet} space-y-8 shadow-sm`}>
         <PrintLetterhead escolaNome={escolaNome} logoUrl={logoUrl}
           titulo="Declaração com Notas" data={new Date(doc.created_at).toLocaleDateString("pt-PT")}

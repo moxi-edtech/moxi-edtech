@@ -421,7 +421,7 @@ export default function DocumentosEmissaoHubClient({
         ...documentState, status: "issued", granted: true,
         docId: emissao.docId, printUrl: emissao.printUrl,
       });
-      setSuccess("Documento emitido. Pode imprimir novamente sem nova cobrança.");
+      setSuccess("Documento emitido. Imprima na aba do documento ou reabra-o sem nova cobrança.");
       const impressao = abrirParaImpressao(emissao.printUrl);
       if (!impressao.ok) setPrintQueue((prev) => [{ label: selectedAluno.label, url: impressao.url }, ...prev]);
     } catch (err) {
@@ -634,7 +634,7 @@ export default function DocumentosEmissaoHubClient({
           <>
             <button type="button" onClick={handleEmitir} disabled={!canSubmit}
               className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-              <Printer className="h-4 w-4" /> Imprimir novamente
+              <Printer className="h-4 w-4" /> Abrir para reimprimir
             </button>
             <a href={documentState.printUrl} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground">
@@ -645,7 +645,7 @@ export default function DocumentosEmissaoHubClient({
           <button type="button" onClick={handleEmitir} disabled={!canSubmit}
             className="inline-flex items-center gap-2 rounded-xl bg-amber px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
             {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-            Emitir e imprimir
+            Emitir e abrir documento
           </button>
         ) : documentState?.status === "pending_payment" ? (
           <button type="button" onClick={handlePagamento} disabled={!canSubmit}
