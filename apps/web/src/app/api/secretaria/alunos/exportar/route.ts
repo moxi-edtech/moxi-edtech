@@ -15,8 +15,12 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
+export const maxDuration = 60;
 
 export async function GET(req: Request) {
+  const startedAt = Date.now();
+  const requestId = crypto.randomUUID();
+  let phase = "authorization";
   try {
     const supabase = await createRouteClient();
     const { data: userRes, error: userErr } = await supabase.auth.getUser();
@@ -44,8 +48,11 @@ export async function GET(req: Request) {
       requestedAcademicYearId: url.searchParams.get("ano_letivo_id"),
       operation: "READ",
     });
+    phase = "filters";
     const filters = parseAlunoListFilters(url);
     const format = parseAlunoExportFormat(url.searchParams.get("tipo"));
+    phase = "list";
+    console.info("[alunos export start]", { requestId, format });
     const sorted = sortAlunoExportRows(
       await listAllAlunos(supabase, escolaId, filters, {
         includeFinanceiro: true,
@@ -53,12 +60,15 @@ export async function GET(req: Request) {
         academicYearId: filters.ano ? undefined : context.anoLetivoId,
       })
     );
+    phase = "pdf-context";
     const pdfContext = format === "pdf"
       ? await loadAlunosPdfInstitutionalContext(supabase, escolaId, filters, {
           academicYearId: filters.ano ? undefined : context.anoLetivoId,
         })
       : undefined;
+    phase = "render";
     const rendered = await renderAlunosExport(sorted, format, pdfContext);
+    console.info("[alunos export ready]", { requestId, format, elapsedMs: Date.now() - startedAt });
     const status = filters.status ?? "ativo";
     const segmento = filters.situacaoFinanceira === "em_atraso" ? "inadimplentes" : status;
     const filename = `alunos-${segmento}-${Date.now()}.${rendered.extension}`;
@@ -77,7 +87,7 @@ export async function GET(req: Request) {
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
     }
-    console.error("[alunos export error]", e);
-    return NextResponse.json({ ok: false, error: e.message || "Erro desconhecido" }, { status: 500 });
+    console.error("[alunos export error]", { requestId, phase, elapsedMs: Date.now() - startedAt, code: e?.code });
+    return NextResponse.json({ ok: false, error: "Não foi possível gerar a lista de alunos.", requestId }, { status: 500 });
   }
 }
