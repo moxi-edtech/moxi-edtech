@@ -136,11 +136,12 @@ export async function POST(request: Request) {
 
     // Reemissão / retry de documento existente: nunca gerar nem cobrar outro.
     // A própria impressão mantém autenticação e autorização por escola.
-    const { data: enrollmentForDoc } = await supabase.from("matriculas")
+    const { data: enrollmentForDoc, error: enrollmentError } = await supabase.from("matriculas")
       .select("id").eq("escola_id", escolaId).eq("aluno_id", alunoId)
       .eq("session_id", academicContext!.anoLetivoId)
       .order("created_at", { ascending: false }).order("id", { ascending: false })
       .limit(1).maybeSingle();
+    if (enrollmentError) return NextResponse.json({ ok: false, error: "Não foi possível consultar a matrícula. Tente novamente." }, { status: 503 });
     // Validar notas ANTES de apresentar checkout, cobrar ou reutilizar um
     // certificado anterior. Falha fechada: nunca imprimir um diploma sem pauta.
     if (tipoDocumento === "certificado") {
@@ -211,7 +212,7 @@ export async function POST(request: Request) {
       if (!access?.ok) {
         const motivos: Record<string,string> = {
           SERVICO_NAO_CONFIGURADO: "Configure o serviço em Emolumentos & Serviços.",
-          TAXA_NAO_CONFIGURADA: "Configure uma taxa positiva antes de emitir.",
+          TAXA_NAO_CONFIGURADA: "O serviço exige pagamento, mas não tem taxa definida. Corrija em Emolumentos & Serviços.",
           MATRICULA_NAO_ENCONTRADA: "A matrícula do ano escolhido não foi encontrada.",
         };
         return NextResponse.json({
