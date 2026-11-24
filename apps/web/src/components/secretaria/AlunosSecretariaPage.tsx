@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { StatusPill as StatusBadge } from "@/components/ui/StatusPill";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { downloadAlunosExport } from "@/lib/services/alunosExportDownload.client";
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { OperationalCursorPagination, OperationalTableEmptyState, OperationalTableErrorState } from "@/components/ui/OperationalTableStates";
@@ -1112,6 +1113,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
   const [bulkArchiveLoading, setBulkArchiveLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showExport, setShowExport] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const isInitialLoading = loading && items.length === 0;
 
   const isInadimplentesTab = (value: TabStatus) => value === "inadimplentes";
@@ -1305,7 +1307,8 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     URL.revokeObjectURL(url);
   };
 
-  const handleExport = (tipo: "excel" | "pdf") => {
+  const handleExport = async (tipo: "excel" | "pdf") => {
+    if (exporting) return;
     const params = new URLSearchParams({
       q: debouncedQ,
       status: TAB_TO_STATUS[tab],
@@ -1325,7 +1328,15 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     params.set("all", "1");
     params.set("tipo", tipo);
     setShowExport(false);
-    window.open(`/api/secretaria/alunos/exportar?${params.toString()}`, "_blank");
+    setExporting(true);
+    try {
+      await downloadAlunosExport(`/api/secretaria/alunos/exportar?${params.toString()}`, tipo, `alunos-${Date.now()}.${tipo === "excel" ? "xlsx" : "pdf"}`);
+      success("Exportação concluída", `Lista exportada em ${tipo === "excel" ? "Excel" : "PDF"}.`);
+    } catch (e) {
+      error("Erro na exportação", e instanceof Error ? e.message : "Não foi possível exportar a lista.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleBulkArchive = async (reason: string) => {
@@ -1583,10 +1594,11 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
               <div className="relative">
                 <button
                   onClick={() => setShowExport((prev) => !prev)}
+                  disabled={exporting}
                   className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted/50 transition-colors"
                   title="Exportar lista filtrada"
                 >
-                  <Download size={12} /> Exportar
+                  {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} Exportar
                 </button>
                 {showExport && (
                   <div className="absolute right-0 mt-2 w-40 rounded-xl border border-border bg-card shadow-xl p-2 z-20">
