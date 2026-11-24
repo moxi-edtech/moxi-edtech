@@ -25,7 +25,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const [school, closes, cash, captureStart] = await Promise.all([
       supabase.from("escolas").select("nome").eq("id", escolaId).single(),
       supabase.from("secretaria_expedientes").select("id,day_key,closed_at,closed_by,operation_count,human_count,system_count,summary").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
-      supabase.from("fecho_caixa").select("day_key,status,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_other,system_other_count").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
+      supabase.from("fecho_caixa").select("day_key,status,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_other,system_other_count,approval_variation,approval_note").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
       supabase.rpc("secretaria_expediente_capture_started_at", { p_escola_id: escolaId }),
     ]);
     if (captureStart.error || !captureStart.data || school.error || closes.error || cash.error) return fail("Falha ao consultar os fechos.", 500);
@@ -91,6 +91,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       for (const [entity,count] of Object.entries(close.summary ?? {})) line((entities[entity]??entity)+": "+count);
       const c = cashByDay.get(close.day_key);
       line("Caixa: "+(c?.status === "approved" ? "Aprovado" : c?.status === "declared" ? "Declarado" : c?.status === "rejected" ? "Rejeitado" : "Sem declaração"),true);
+      if(c?.approval_note)line("Justificação da decisão: "+c.approval_note);
+      if(c?.approval_variation&&Object.values(c.approval_variation).some(n=>Number(n)!==0)){
+        line("Variação registada na decisão:",true);
+        for(const [key,label] of [["cash","Numerário"],["tpa","TPA"],["transfer","Transferências"],["mcx","MCX"],["other","Não classificado"]]) if(Number(c.approval_variation[key]??0)!==0)line(label+": "+money(c.approval_variation[key]));
+      }
       if(c&&Number(c.system_other_count)>0)line("Meio não classificado: "+money(c.system_other)+" ("+c.system_other_count+" pagamentos)",true);
       if(c) for(const [key,label] of [["cash","Numerário"],["tpa","TPA"],["transfer","Transferências"],["mcx","MCX"]]) line(label+": declarado "+money(c["declared_"+key])+" | sistema "+money(c["system_"+key])+" | diferença "+money(Number(c["declared_"+key])-Number(c["system_"+key])));
       const dayRows = rows.filter(r=>r.day_key===close.day_key);
