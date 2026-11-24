@@ -8,6 +8,8 @@ INSERT INTO public.escola_users VALUES
  ('10000000-0000-0000-0000-000000000002','20000000-0000-0000-0000-000000000003','k12','admin');
 INSERT INTO public.profiles SELECT id,NULL FROM auth.users;
 SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"role":"authenticated","sub":"20000000-0000-0000-0000-000000000002"}',true);
+SELECT public.secretaria_configurar_expediente('10000000-0000-0000-0000-000000000001','17:00',30,ARRAY[1,2,3,4,5],true,true);
 SELECT set_config('request.jwt.claims','{"role":"authenticated","sub":"20000000-0000-0000-0000-000000000001"}',true);
 INSERT INTO public.atendimentos_balcao(escola_id,status) VALUES('10000000-0000-0000-0000-000000000001','open');
 UPDATE public.atendimentos_balcao SET status='closed';
@@ -82,6 +84,7 @@ DO $$ DECLARE f public.fecho_caixa; BEGIN
 END $$;
 RESET ROLE;
 DO $$ BEGIN
+ IF (SELECT count(*) FROM public.outbox_events WHERE event_type='secretaria_expediente_email')<>1 THEN RAISE EXCEPTION 'email queue missing or duplicate'; END IF;
  IF (SELECT count(*) FROM public.eventos WHERE tipo='financeiro.fecho.autorizado')<>1 THEN RAISE EXCEPTION 'approval event duplication'; END IF;
  IF (SELECT count(*) FROM public.eventos WHERE tipo='secretaria.expediente.fechado')<>1 THEN RAISE EXCEPTION 'close event duplication'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.notificacoes n JOIN public.eventos e ON e.id=n.evento_id WHERE e.tipo='financeiro.fecho.autorizado' AND n.destinatario_id='20000000-0000-0000-0000-000000000001') THEN RAISE EXCEPTION 'notification absent'; END IF;
