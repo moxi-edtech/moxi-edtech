@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
-import { Save, WifiOff, Printer, FileDown, Wand2, ArrowLeft, Undo2, Redo2, CheckCircle2 } from "lucide-react";
+import { Save, WifiOff, Printer, FileDown, Wand2, ArrowLeft, Undo2, Redo2, CheckCircle2, Copy, FileSpreadsheet } from "lucide-react";
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
 import { HorariosWorkspace } from "@/components/escola/horarios/HorariosWorkspace";
+import { ImportHorarioDialog } from "@/components/escola/horarios/ImportHorarioDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { timetableStateLabels, type TimetablePublicationState } from "@/lib/horarios/timetable-publication-state";
@@ -123,6 +125,9 @@ function QuadroHorariosContent() {
   const [conflictReasons, setConflictReasons] = useState<Record<string, string[]>>({});
   const [autoDraftDirty, setAutoDraftDirty] = useState(false);
   const [validated, setValidated] = useState(false);
+  const [importOpen,setImportOpen]=useState(false);
+  const [copyOpen,setCopyOpen]=useState(false);
+  const [copySource,setCopySource]=useState("");
   const [undoStack, setUndoStack] = useState<Array<Record<string,string|null>>>([]);
   const [redoStack, setRedoStack] = useState<Array<Record<string,string|null>>>([]);
   const initialQueryApplied = useRef(false);
@@ -741,7 +746,7 @@ function QuadroHorariosContent() {
   const switchTurma = async (nextTurmaId: string | null) => {
     if (nextTurmaId === turmaId || saving || publishing || autoScheduling) return;
     if (autoDraftDirty && !(await confirm({ title: "Alterações por guardar", message: "Pretende sair sem guardar as alterações deste horário?", confirmLabel: "Sair sem guardar" }))) return;
-    setAutoDraftDirty(false); setValidated(false); setUndoStack([]); setRedoStack([]);
+    setAutoDraftDirty(false); setValidated(false); setUndoStack([]); setRedoStack([]); setImportOpen(false); setCopyOpen(false); setCopySource("");
     setAutoProposalSummary(null); setConflictSlots({}); setConflictReasons({}); setSaveError(null);
     setVersaoId(null); setHasSavedDraft(false); setVersionError(null); setHorarioStatus("sem_horario");
     setTurmaId(nextTurmaId);
@@ -751,6 +756,27 @@ function QuadroHorariosContent() {
     setUndoStack(prev=>[...prev.slice(-49), {...grid}]); setRedoStack([]);
     setGrid(next); setConflictSlots({}); setConflictReasons({}); setValidated(false);
     setAutoDraftDirty(true); setAutoProposalSummary(null);
+  };
+  const copyCandidates = turmas.filter(t=>t.id!==turmaId && t.horario_status==="publicado" && !!selectedTurma?.curso_id && !!selectedTurma?.classe_id && !!selectedTurma?.ano_letivo_id && t.curso_id===selectedTurma.curso_id && t.classe_id===selectedTurma.classe_id && t.ano_letivo_id===selectedTurma.ano_letivo_id && t.turno===selectedTurma.turno);
+  const copyHorario = async () => {
+    if(!copySource || !copyCandidates.some(t=>t.id===copySource) || !selectedTurma?.ano_letivo_id || !online || autoScheduling || saving || publishing)return;
+    setAutoScheduling(true);
+    try{
+      const params=new URLSearchParams({turma_id:copySource,ano_letivo_id:selectedTurma.ano_letivo_id});
+      const res=await fetch(`/api/escolas/${escolaId}/horarios/quadro?${params}`,{cache:"no-store"});
+      const json=await res.json().catch(()=>({}));
+      if(!res.ok||!json.ok||!json.versao_id||!Array.isArray(json.items)||!json.items.length)throw new Error(json.error||"A turma de origem não tem um horário publicado.");
+      const lookup=new Map(Object.entries(slotLookup).map(([key,id])=>[id,key]));
+      const subjects=new Set(aulas.map(a=>a.id));const next:Record<string,string|null>={};
+      for(const item of json.items){
+        const key=lookup.get(item.slot_id);
+        if(!key||!subjects.has(item.disciplina_id)||next[key])throw new Error("A distribuição da origem não é compatível com os tempos ou disciplinas desta turma.");
+        next[key]=item.disciplina_id;
+      }
+      // Copy only the distribution, not staff/room assignments of the other turma.
+      editGrid(next);setCopyOpen(false);setCopySource("");
+      success("Distribuição copiada", "Reveja o quadro e valide conflitos antes de publicar.");
+    }catch(e){error(e instanceof Error?e.message:"Não foi possível copiar o horário.");}finally{setAutoScheduling(false);}
   };
   const undoGrid = () => {
     const previous = undoStack.at(-1); if (!previous) return;
@@ -1598,7 +1624,7 @@ function QuadroHorariosContent() {
           <HorariosWorkspace turmas={turmas} loading={baseLoading} error={baseError} onOpen={(id)=>void switchTurma(id)} onRefresh={refreshBaseData}/>
         ) : (
           <>
-          <div className="mb-3 flex flex-wrap items-center gap-2"><button type="button" disabled={!canPublicar||autoScheduling} onClick={()=>void submitQuadro(grid,"validate")} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><CheckCircle2 size={16}/> Validar conflitos</button><button type="button" disabled={!undoStack.length||saving||publishing||autoScheduling} onClick={undoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Undo2 size={16}/> Desfazer</button><button type="button" disabled={!redoStack.length||saving||publishing||autoScheduling} onClick={redoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Redo2 size={16}/> Refazer</button><button type="button" disabled={!filledSlots||saving||publishing||autoScheduling} onClick={handleClearQuadro} className="rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40">Limpar edição</button></div>
+          <div className="mb-3 flex flex-wrap items-center gap-2"><button type="button" disabled={isLoading||!versaoId||!aulas.length||!totalSlots||saving||publishing||autoScheduling||!!turmaError||!!baseError} onClick={()=>setImportOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><FileSpreadsheet size={16}/> Importar Excel</button><button type="button" disabled={isLoading||!versaoId||!aulas.length||!totalSlots||!copyCandidates.length||saving||publishing||autoScheduling||!online} onClick={()=>setCopyOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><Copy size={16}/> Copiar de outra turma</button><button type="button" disabled={!canPublicar||autoScheduling} onClick={()=>void submitQuadro(grid,"validate")} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><CheckCircle2 size={16}/> Validar conflitos</button><button type="button" disabled={!undoStack.length||saving||publishing||autoScheduling} onClick={undoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Undo2 size={16}/> Desfazer</button><button type="button" disabled={!redoStack.length||saving||publishing||autoScheduling} onClick={redoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Redo2 size={16}/> Refazer</button><button type="button" disabled={!filledSlots||saving||publishing||autoScheduling} onClick={handleClearQuadro} className="rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40">Limpar edição</button></div>
           <SchedulerBoard
             diasSemana={DIAS_SEMANA}
             tempos={horariosDisponiveis}
@@ -1857,6 +1883,8 @@ function QuadroHorariosContent() {
         ) : null}
       </div>
       </div>
+      {importOpen && <ImportHorarioDialog open={importOpen} onClose={()=>setImportOpen(false)} onApply={editGrid} slots={rawSlots.filter(s=>s.turno_id===turnoId)} disciplines={aulas}/>}
+      {copyOpen && <Dialog open={copyOpen} onOpenChange={v=>{if(!v&&!autoScheduling)setCopyOpen(false)}}><DialogContent className="rounded-xl"><DialogHeader><DialogTitle>Copiar distribuição de outra turma</DialogTitle><DialogDescription>Seleccione uma turma publicada da mesma classe, curso, turno e ano. A distribuição em edição será substituída. Nenhuma alteração será publicada.</DialogDescription></DialogHeader><label className="text-sm">Turma de origem<select value={copySource} onChange={e=>setCopySource(e.target.value)} className="mt-1 block w-full rounded-xl border border-border bg-card p-3"><option value="">Seleccione a turma</option>{copyCandidates.map(t=><option key={t.id} value={t.id}>{t.turma_codigo||t.turma_nome||t.nome}</option>)}</select></label><DialogFooter><Button variant="outline" disabled={autoScheduling} onClick={()=>setCopyOpen(false)}>Cancelar</Button><Button tone="gold" disabled={!copySource||autoScheduling} loading={autoScheduling} onClick={()=>void copyHorario()}>Copiar para edição</Button></DialogFooter></DialogContent></Dialog>}
       {curriculoModalOpen && selectedTurma?.curso_id && (
         <DisciplinaModal
           open={curriculoModalOpen}
