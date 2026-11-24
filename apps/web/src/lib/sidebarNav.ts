@@ -105,7 +105,6 @@ export const sidebarConfig: SidebarConfig = {
       icon: "CalendarDays",
       children: [
         { href: "/escola/[escolaId]/operacoes/horarios/quadro", label: "Quadro de horários" },
-        { href: "/escola/[escolaId]/operacoes/horarios/slots", label: "Tempos e turnos" },
         { href: "/escola/[escolaId]/operacoes/calendario", label: "Calendário escolar" },
       ],
     },
@@ -315,7 +314,6 @@ export const sidebarConfig: SidebarConfig = {
       icon: "CalendarClock",
       children: [
         { href: "/escola/[escolaId]/horarios/quadro", label: "Quadro de horários" },
-        { href: "/escola/[escolaId]/horarios/slots", label: "Tempos e turnos" },
       ],
     },
     { href: "/escola/[escolaId]/secretaria/calendario", label: "Calendário", icon: "CalendarDays" },
