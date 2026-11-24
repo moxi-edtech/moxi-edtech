@@ -98,6 +98,8 @@ function QuadroHorariosContent() {
   const [setupBusy, setSetupBusy] = useState(false);
   const setupBusyRef = useRef(false);
   const modalClosingRef = useRef(false);
+  const editorTriggerRef = useRef<HTMLElement | null>(null);
+  const setupTriggerRef = useRef<HTMLElement | null>(null);
   const [versaoId, setVersaoId] = useState<string | null>(null);
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
   const [versionError, setVersionError] = useState<string | null>(null);
@@ -147,7 +149,6 @@ function QuadroHorariosContent() {
     turmas,
     loading: baseLoading,
     error: baseError,
-    setSalas,
     setTurmas,
     setRawSlots,
     refreshBaseData,
@@ -187,6 +188,7 @@ function QuadroHorariosContent() {
       warning("Guarde o rascunho primeiro", "A alteração dos tempos ou salas recarrega o quadro. Guarde a edição antes de configurar.");
       return;
     }
+    setupTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setShowWizard(true);
   };
   const onSetupBusy = useCallback((busy: boolean) => {
@@ -748,6 +750,7 @@ function QuadroHorariosContent() {
     setAutoDraftDirty(false); setValidated(false); setUndoStack([]); setRedoStack([]); setImportOpen(false); setCopyOpen(false); setCopySource(""); setHistoryOpen(false); setVersionHistory([]); setCurriculoModalOpen(false);
     setAutoProposalSummary(null); setConflictSlots({}); setConflictReasons({}); setSaveError(null);
     setVersaoId(null); setHasSavedDraft(false); setVersionError(null); setHorarioStatus("sem_horario");
+    if (nextTurmaId && !turmaId) editorTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setTurmaId(nextTurmaId);
   };
   const editGrid = (next: Record<string,string|null>) => {
@@ -1235,11 +1238,11 @@ function QuadroHorariosContent() {
   };
 
   const handleAssignProfessor = async (aula: (typeof aulas)[number], professorUserId: string) => {
-    if (!turmaId || saving || publishing || validating || autoScheduling) return;
-    if (autoDraftDirty) { warning("Guarde o rascunho primeiro", "A atribuição docente recarrega os vínculos. As suas alterações serão preservadas."); return; }
+    if (!turmaId || saving || publishing || validating || autoScheduling) return false;
+    if (autoDraftDirty) { warning("Guarde o rascunho primeiro", "A atribuição docente recarrega os vínculos. As suas alterações serão preservadas."); return false; }
     if (!aula?.cursoMatrizId) {
       error("Disciplina sem vínculo de currículo.");
-      return;
+      return false;
     }
     try {
       const res = await fetch(`/api/secretaria/turmas/${turmaId}/atribuir-professor`, {
@@ -1257,18 +1260,20 @@ function QuadroHorariosContent() {
       }
       success("Professor atribuído.");
       refreshTurmaData();
+      return true;
     } catch (err) {
       error(err instanceof Error ? err.message : "Falha ao atribuir professor.");
+      return false;
     }
   };
 
   const handleAssignTurmaSala = async (salaId: string) => {
-    if (!escolaId || !turmaId || saving || publishing || validating || autoScheduling) return;
-    if (autoDraftDirty) { warning("Guarde o rascunho primeiro", "A configuração da sala recarrega os dados da turma."); return; }
+    if (!escolaId || !turmaId || saving || publishing || validating || autoScheduling) return false;
+    if (autoDraftDirty) { warning("Guarde o rascunho primeiro", "A configuração da sala recarrega os dados da turma."); return false; }
     const sala = salas.find((item) => item.id === salaId);
     if (!sala) {
       error("Sala não encontrada.");
-      return;
+      return false;
     }
     try {
       const res = await fetch(`/api/escolas/${escolaId}/turmas/${turmaId}/sala`, {
@@ -1287,8 +1292,10 @@ function QuadroHorariosContent() {
         )
       );
       refreshTurmaData();
+      return true;
     } catch (err) {
       error(err instanceof Error ? err.message : "Falha ao atribuir sala.");
+      return false;
     }
   };
 
@@ -1458,7 +1465,7 @@ function QuadroHorariosContent() {
         </div>
       </div>
       {turmaId && <Dialog open={Boolean(turmaId)} onOpenChange={open=>{if(!open)void switchTurma(null)}}>
-        <DialogContent closeButton={false} onInteractOutside={event=>event.preventDefault()} className="flex h-[92vh] w-[96vw] max-w-[1600px] flex-col gap-0 overflow-hidden rounded-xl border-border bg-card p-0 text-foreground">
+        <DialogContent closeButton={false} onCloseAutoFocus={event=>{event.preventDefault();editorTriggerRef.current?.focus()}} onInteractOutside={event=>event.preventDefault()} className="flex h-[92vh] w-[96vw] max-w-[1600px] flex-col gap-0 overflow-hidden rounded-xl border-border bg-card p-0 text-foreground">
           <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-left">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
@@ -1571,6 +1578,7 @@ function QuadroHorariosContent() {
           <>
           <div className="mb-3 flex flex-wrap items-center gap-2"><button type="button" disabled={isLoading||!versaoId||!aulas.length||!totalSlots||saving||publishing||validating||autoScheduling||!!turmaError||!!baseError} onClick={()=>setImportOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><FileSpreadsheet size={16}/> Importar Excel</button><button type="button" disabled={isLoading||!versaoId||!aulas.length||!totalSlots||!copyCandidates.length||saving||publishing||validating||autoScheduling||!online} onClick={()=>setCopyOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><Copy size={16}/> Copiar de outra turma</button><button type="button" disabled={isLoading||historyLoading||saving||publishing||validating||autoScheduling} onClick={()=>void openHistory()} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><History size={16}/> Histórico</button><button type="button" disabled={!canPublicar||autoScheduling} onClick={()=>void submitQuadro(grid,"validate")} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><CheckCircle2 size={16}/> Validar conflitos</button><button type="button" disabled={!undoStack.length||saving||publishing||validating||autoScheduling} onClick={undoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Undo2 size={16}/> Desfazer</button><button type="button" disabled={!redoStack.length||saving||publishing||validating||autoScheduling} onClick={redoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Redo2 size={16}/> Refazer</button><button type="button" disabled={!filledSlots||saving||publishing||validating||autoScheduling} onClick={handleClearQuadro} className="rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40">Limpar edição</button></div>
           <SchedulerBoard
+            key={turmaId}
             diasSemana={DIAS_SEMANA}
             tempos={horariosDisponiveis}
             aulas={aulasWithAllocations}
@@ -1801,7 +1809,7 @@ function QuadroHorariosContent() {
         </DialogContent>
       </Dialog>}
       {showWizard && <Dialog open={showWizard} onOpenChange={open=>{if(!open)closeSetup()}}>
-        <DialogContent closeButton={false} onInteractOutside={event=>event.preventDefault()} className="flex max-h-[88vh] w-[92vw] max-w-5xl flex-col gap-0 overflow-hidden rounded-xl bg-card p-0">
+        <DialogContent closeButton={false} onCloseAutoFocus={event=>{event.preventDefault();setupTriggerRef.current?.focus()}} onInteractOutside={event=>event.preventDefault()} className="flex max-h-[88vh] w-[92vw] max-w-5xl flex-col gap-0 overflow-hidden rounded-xl bg-card p-0">
           <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-left">
             <div className="flex items-center justify-between gap-3">
               <div><DialogTitle className="text-klasse-green">Configurar tempos e salas</DialogTitle><DialogDescription>Os tempos são partilhados pelas turmas do turno. As salas são opcionais.</DialogDescription></div>
