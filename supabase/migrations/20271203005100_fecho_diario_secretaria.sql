@@ -204,7 +204,8 @@ CREATE TABLE public.secretaria_expediente_config (
  escola_id uuid PRIMARY KEY REFERENCES public.escolas(id) ON DELETE CASCADE, close_time time NOT NULL DEFAULT '17:00',
  reminder_minutes integer NOT NULL DEFAULT 30 CHECK(reminder_minutes BETWEEN 0 AND 180),
  weekdays integer[] NOT NULL DEFAULT ARRAY[1,2,3,4,5] CHECK(cardinality(weekdays)>0 AND weekdays <@ ARRAY[1,2,3,4,5,6,7]),
- enabled boolean NOT NULL DEFAULT true
+ enabled boolean NOT NULL DEFAULT true,
+ email_summary boolean NOT NULL DEFAULT false
 );
 CREATE TABLE public.secretaria_expediente_reminders (
  escola_id uuid NOT NULL REFERENCES public.escolas(id) ON DELETE CASCADE, day_key date NOT NULL, PRIMARY KEY(escola_id,day_key)
@@ -215,6 +216,7 @@ ALTER TABLE public.secretaria_expediente_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.secretaria_expediente_reminders ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.secretaria_expedientes,public.secretaria_expediente_operacoes,public.secretaria_expediente_config,public.secretaria_expediente_reminders FROM PUBLIC,anon,authenticated,service_role;
 GRANT SELECT ON public.secretaria_expedientes,public.secretaria_expediente_operacoes,public.secretaria_expediente_config TO authenticated;
+GRANT SELECT ON public.secretaria_expedientes,public.secretaria_expediente_config TO service_role;
 CREATE POLICY expediente_read ON public.secretaria_expedientes FOR SELECT TO authenticated USING(public.fecho_diario_has_role(escola_id,ARRAY['secretaria','admin_secretaria','admin_secretario','secretaria_financeiro','financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']));
 CREATE POLICY expediente_operations_read ON public.secretaria_expediente_operacoes FOR SELECT TO authenticated USING(public.fecho_diario_has_role(escola_id,ARRAY['secretaria','admin_secretaria','admin_secretario','secretaria_financeiro','financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']));
 CREATE POLICY expediente_config_read ON public.secretaria_expediente_config FOR SELECT TO authenticated USING(public.fecho_diario_has_role(escola_id,ARRAY['secretaria','admin_secretaria','admin_secretario','secretaria_financeiro','financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']));
@@ -284,20 +286,26 @@ BEGIN
  SELECT DISTINCT p_escola_id,v_event,e.user_id,'Expediente concluído',p_day_key::text||' · '||v_human::text||' registos humanos e '||v_system::text||' automáticos','info'::public.notificacao_prioridade,'Consultar fecho','/escola/'||p_escola_id::text||CASE WHEN e.papel IN ('admin_financeiro','admin_secretaria','admin_secretario') THEN '/operacoes' ELSE '/admin' END||'/fecho-diario?date='||p_day_key::text,'S','I','expediente:'||v.id::text
  FROM public.escola_users e WHERE e.escola_id=p_escola_id AND e.tenant_type='k12' AND e.papel IN ('admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria','admin_secretario','diretor') AND EXISTS(SELECT 1 FROM public.profiles p WHERE p.user_id=e.user_id AND p.deleted_at IS NULL)
  ON CONFLICT(evento_id,destinatario_id) DO NOTHING;
+ IF EXISTS(SELECT 1 FROM public.secretaria_expediente_config WHERE escola_id=p_escola_id AND email_summary) THEN
+  INSERT INTO public.outbox_events(escola_id,event_type,dedupe_key,idempotency_key,payload,tenant_scope)
+  SELECT p_escola_id,'secretaria_expediente_email','expediente-email:'||v.id::text||':'||n.destinatario_id::text,'expediente-email:'||v.id::text||':'||n.destinatario_id::text,jsonb_build_object('close_id',v.id,'recipient_id',n.destinatario_id),'k12'
+  FROM public.notificacoes n WHERE n.evento_id=v_event AND n.escola_id=p_escola_id
+  ON CONFLICT DO NOTHING;
+ END IF;
  RETURN v;
 END; $$;
 REVOKE ALL ON FUNCTION public.secretaria_fechar_expediente(uuid,date) FROM PUBLIC,anon,service_role;
 GRANT EXECUTE ON FUNCTION public.secretaria_fechar_expediente(uuid,date) TO authenticated;
-CREATE OR REPLACE FUNCTION public.secretaria_configurar_expediente(p_escola_id uuid,p_close_time time,p_reminder_minutes integer,p_weekdays integer[],p_enabled boolean)
+CREATE OR REPLACE FUNCTION public.secretaria_configurar_expediente(p_escola_id uuid,p_close_time time,p_reminder_minutes integer,p_weekdays integer[],p_enabled boolean,p_email_summary boolean DEFAULT false)
 RETURNS public.secretaria_expediente_config LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$ DECLARE v public.secretaria_expediente_config; BEGIN
  IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria','admin_secretario','diretor']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
- INSERT INTO public.secretaria_expediente_config VALUES(p_escola_id,p_close_time,p_reminder_minutes,p_weekdays,p_enabled)
- ON CONFLICT(escola_id) DO UPDATE SET close_time=excluded.close_time,reminder_minutes=excluded.reminder_minutes,weekdays=excluded.weekdays,enabled=excluded.enabled RETURNING * INTO v;
+ INSERT INTO public.secretaria_expediente_config VALUES(p_escola_id,p_close_time,p_reminder_minutes,p_weekdays,p_enabled,p_email_summary)
+ ON CONFLICT(escola_id) DO UPDATE SET close_time=excluded.close_time,reminder_minutes=excluded.reminder_minutes,weekdays=excluded.weekdays,enabled=excluded.enabled,email_summary=excluded.email_summary RETURNING * INTO v;
  RETURN v;
 END; $$;
-REVOKE ALL ON FUNCTION public.secretaria_configurar_expediente(uuid,time,integer,integer[],boolean) FROM PUBLIC,anon,service_role;
-GRANT EXECUTE ON FUNCTION public.secretaria_configurar_expediente(uuid,time,integer,integer[],boolean) TO authenticated;
+REVOKE ALL ON FUNCTION public.secretaria_configurar_expediente(uuid,time,integer,integer[],boolean,boolean) FROM PUBLIC,anon,service_role;
+GRANT EXECUTE ON FUNCTION public.secretaria_configurar_expediente(uuid,time,integer,integer[],boolean,boolean) TO authenticated;
 -- Opt-in per school configuration; one durable reminder per day, no polling clients.
 CREATE OR REPLACE FUNCTION public.secretaria_enviar_lembretes_expediente()
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
