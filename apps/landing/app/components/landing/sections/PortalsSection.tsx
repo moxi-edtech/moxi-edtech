@@ -46,28 +46,49 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
   if (activeId === 'aluno') {
     return (
       <div className="device-stage device-stage--aluno">
-        <figure className="student-portal-preview" aria-label="Exemplo ilustrativo do portal do aluno">
-          <header className="student-preview-header">
-            <img src="/logo-klasse.png" alt="" />
-            <div><strong>Portal do Aluno</strong><small>8.ª classe · 1.º trimestre</small></div>
-          </header>
-          <div className="student-preview-body">
-            <h3>O meu percurso escolar</h3>
-            <section className="student-preview-section">
-              <h4>Notas por disciplina</h4>
-              <dl>
-                <div><dt>Matemática</dt><dd>14 / 20</dd></div>
-                <div><dt>Língua Portuguesa</dt><dd>17 / 20</dd></div>
-                <div><dt>Física</dt><dd>12 / 20</dd></div>
-              </dl>
-            </section>
-            <section className="student-preview-section">
-              <h4>Propinas</h4>
-              <dl><div><dt>Novembro</dt><dd className="student-preview-paid">Liquidada</dd></div></dl>
-            </section>
+        <div className="portais-device-head">
+          <span className="post-brand"><img src="/logo-klasse.png" alt="" />KLASSE</span>
+          <span className="post-headline">Portal do Aluno</span>
+        </div>
+        <div className="portal-real-mobile">
+          <Image src="/assets/device-hero-clean.png" alt="Portal do aluno KLASSE no telemóvel com lupa" fill sizes="(max-width: 900px) 92vw, 42vw" />
+        </div>
+        <div className="phone portal-legacy-phone" aria-hidden="true">
+          <div className="phone-shell">
+            <div className="phone-notch" />
+            <div className="phone-screen">
+              <div className="ph-status"><span>07:00</span><span>5G 87%</span></div>
+              <div className="ph-header">
+                <div className="ph-logo" aria-hidden="true">
+                  <img src="/logo-klasse.png" alt="" />
+                </div>
+                <div className="ph-header-text">
+                  <div className="ph-portal-lbl">Portal do Aluno</div>
+                  <div className="ph-escola">Colegio Nova Geracao</div>
+                </div>
+              </div>
+              <div className="ph-student-bar"><span className="alvid-pill">Mbemba Neto</span></div>
+              <div className="ph-hero-card">
+                <div className="ph-ano">Ano Lectivo 2025-2026</div>
+                <div className="ph-name">Mbemba Lopes da Costa Neto</div>
+                <div className="ph-pills">
+                  <span className="pill pill-white">8.a Classe</span>
+                  <span className="pill pill-dark">Turma 8A</span>
+                </div>
+                <div className="ph-stats">
+                  <div className="ph-stat"><div className="ph-stat-lbl">Ultima Nota</div><div className="ph-stat-val">14</div></div>
+                  <div className="ph-stat"><div className="ph-stat-lbl">Propinas</div><div className="ph-stat-val ph-stat-warn">0</div></div>
+                  <div className="ph-stat"><div className="ph-stat-lbl">Proxima Aula</div><div className="ph-stat-val ph-stat-time">08:00</div></div>
+                </div>
+              </div>
+              <div className="ph-section-hd"><span>Notas Recentes</span><span>Ver todas</span></div>
+              <div className="ph-note-card"><div className="ph-note-row"><span>Matematica</span><strong>14</strong></div><div className="ph-bar"><i style={{ width: '70%' }} /></div></div>
+              <div className="ph-note-card"><div className="ph-note-row"><span>Portugues</span><strong>17</strong></div><div className="ph-bar"><i style={{ width: '85%' }} /></div></div>
+              <div className="ph-note-card"><div className="ph-note-row"><span>Fisica</span><strong className="warn">12</strong></div><div className="ph-bar"><i className="warn" style={{ width: '60%' }} /></div></div>
+              <div className="ph-nav"><span className="active">Inicio</span><span>Academico</span><span>Financeiro</span><span>Docs</span><span>Avisos</span></div>
+            </div>
           </div>
-          <figcaption>Exemplo ilustrativo · dados fictícios</figcaption>
-        </figure>
+        </div>
       </div>
     )
   }
