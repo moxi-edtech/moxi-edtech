@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { daySchema, expedienteAccess, getExpediente, getExpedienteHistory, getExpedienteDetail, getExpedienteActivity, todayLuanda } from "@/lib/secretaria/expediente";
+import { daySchema, expedienteAccess, getExpediente, getExpedienteHistory, getExpedienteDetail, getExpedienteActivity, getExpedienteQueue, todayLuanda } from "@/lib/secretaria/expediente";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,6 +21,14 @@ export async function GET(req: Request, { params }: Context) {
     if (!date.success || date.data > todayLuanda() || !Number.isSafeInteger(cursor) || cursor < 0) return json({ ok: false, error: "Filtro inválido." }, 400);
     const view=url.searchParams.get("view");
     if(view==="detail")return json({ok:true,date:date.data,...await getExpedienteDetail(access,date.data)});
+    if(view==="queue"){
+      const state=z.enum(["declared","rejected"]).safeParse(url.searchParams.get("status"));
+      const rawAfter=url.searchParams.get("after");
+      const after=rawAfter===null?null:daySchema.safeParse(rawAfter);
+      if(!state.success||after&&!after.success)return json({ok:false,error:"Filtro inválido."},400);
+      if(state.data==="declared"&&!access.canSupervise)return json({ok:false,error:"Sem acesso à supervisão."},403);
+      return json({ok:true,...await getExpedienteQueue(access,state.data,after?.success?after.data:undefined)});
+    }
     if(view==="history"||view==="supervision"){
       if(view==="supervision"&&!access.canSupervise)return json({ok:false,error:"Sem acesso à supervisão."},403);
       const end=daySchema.safeParse(url.searchParams.get("to")??todayLuanda());
