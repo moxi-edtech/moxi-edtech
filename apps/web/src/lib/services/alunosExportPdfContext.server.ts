@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchImageBytes } from "@/lib/pdf/documentTemplate";
 import type { AlunoListFilters } from "@/lib/schemas/aluno.schema";
+import { InvalidAlunoFiltersError } from "@/lib/services/alunos.service";
 
 /** Metadados institucionais da exportação, sempre resolvidos pelo tenant autorizado. */
 export type AlunosPdfInstitutionalContext = {
@@ -68,7 +69,7 @@ export async function loadAlunosPdfInstitutionalContext(
 
   if (anoError) throw anoError;
   if (!ano || !Number.isInteger(Number(ano.ano))) {
-    throw new Error("Ano letivo não identificado para a emissão do documento.");
+    throw new InvalidAlunoFiltersError("Ano letivo não identificado. Selecione um ano letivo válido para exportar.");
   }
   const anoInicio = Number(ano.ano);
   const anoLetivo = `${anoInicio}/${anoInicio + 1}`;
@@ -84,9 +85,9 @@ export async function loadAlunosPdfInstitutionalContext(
 
   if (classeRes.error) throw classeRes.error;
   if (turmaRes.error) throw turmaRes.error;
-  if (filters.classeId && !classeRes.data) throw new Error("Classe não encontrada na escola.");
+  if (filters.classeId && !classeRes.data) throw new InvalidAlunoFiltersError("A classe selecionada não pertence a esta escola.");
   if (filters.turmaId && (!turmaRes.data || Number(turmaRes.data.ano_letivo) !== anoInicio)) {
-    throw new Error("Turma não pertence ao ano letivo selecionado.");
+    throw new InvalidAlunoFiltersError("A turma selecionada não pertence ao ano letivo atual. Reveja os filtros.");
   }
 
   const turno = filters.turno === "manha" ? "Manhã"
