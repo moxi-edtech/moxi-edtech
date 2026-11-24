@@ -18,6 +18,7 @@ import { Select } from "@/components/ui/Select";
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 import { HorarioWizard } from "@/components/escola/horarios/HorarioWizard";
 import { Button } from "@/components/ui/Button";
+import { useEscolaId } from "@/hooks/useEscolaId";
 import { downloadHorarioTurmaPdf } from "@/lib/horarios/downloadHorarioTurmaPdf";
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
@@ -89,6 +90,8 @@ function QuadroHorariosContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const escolaId = params?.id as string;
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   const { online } = useOfflineStatus();
   const { success, error, warning, toast: rawToast } = useToast();
   const confirm = useConfirm();
@@ -126,6 +129,7 @@ function QuadroHorariosContent() {
   const [undoStack, setUndoStack] = useState<Array<Record<string,string|null>>>([]);
   const [redoStack, setRedoStack] = useState<Array<Record<string,string|null>>>([]);
   const initialQueryApplied = useRef(false);
+  const initialSetupQueryApplied = useRef(false);
   const [autoProposalSummary, setAutoProposalSummary] = useState<{ filled: number; total: number; unmet: number } | null>(null);
   const [turmaRefreshToken, setTurmaRefreshToken] = useState(0);
   const [adjustingSlots, setAdjustingSlots] = useState(false);
@@ -180,10 +184,15 @@ function QuadroHorariosContent() {
     setIsMounted(true);
   }, []);
 
-  // Do not open a wizard implicitly; the workspace exposes contextual setup.
+  // The workspace opens setup only on explicit action or a configuration deep link.
+  useEffect(() => {
+    if (baseLoading || baseError || initialSetupQueryApplied.current) return;
+    initialSetupQueryApplied.current = true;
+    if (searchParams?.get("configurar") === "1") setShowWizard(true);
+  }, [baseLoading, baseError, searchParams]);
 
   const openSetup = () => {
-    if (saving || publishing || validating || autoScheduling || baseLoading) return;
+    if (saving || publishing || validating || autoScheduling || baseLoading || baseError) return;
     if (autoDraftDirty) {
       warning("Guarde o rascunho primeiro", "A alteração dos tempos ou salas recarrega o quadro. Guarde a edição antes de configurar.");
       return;
@@ -268,16 +277,14 @@ function QuadroHorariosContent() {
   }, [escolaId, turmaId]);
 
   useEffect(() => {
-    if (turmas.length === 0) {
-      setTurmaId(null);
-      return;
-    }
+    if (baseLoading || baseError) return;
+    if (turmas.length === 0) return;
     const turmaIdFromQuery = searchParams?.get("turmaId") ?? null;
     if (!initialQueryApplied.current) {
       initialQueryApplied.current = true;
       if (turmaIdFromQuery && turmas.some((turma) => turma.id === turmaIdFromQuery)) setTurmaId(turmaIdFromQuery);
     }
-  }, [searchParams, turmas]);
+  }, [searchParams, turmas, baseLoading, baseError]);
 
   const loadCurriculoDisciplinas = useCallback(async (targetCursoId: string, options?: { force?: boolean }) => {
     const cached = curriculoDataCacheRef.current.get(targetCursoId);
@@ -1827,7 +1834,7 @@ function QuadroHorariosContent() {
       {importOpen && <ImportHorarioDialog open={importOpen} onClose={()=>setImportOpen(false)} onApply={editGrid} slots={rawSlots.filter(s=>s.turno_id===turnoId)} disciplines={aulas}/>}
       {copyOpen && <Dialog open={copyOpen} onOpenChange={v=>{if(!v&&!autoScheduling)setCopyOpen(false)}}><DialogContent className="rounded-xl"><DialogHeader><DialogTitle>Copiar distribuição de outra turma</DialogTitle><DialogDescription>Seleccione uma turma publicada da mesma classe, curso, turno e ano. A distribuição em edição será substituída. Nenhuma alteração será publicada.</DialogDescription></DialogHeader><label className="text-sm">Turma de origem<select value={copySource} onChange={e=>setCopySource(e.target.value)} className="mt-1 block w-full rounded-xl border border-border bg-card p-3"><option value="">Seleccione a turma</option>{copyCandidates.map(t=><option key={t.id} value={t.id}>{t.turma_codigo||t.turma_nome||t.nome}</option>)}</select></label><DialogFooter><Button variant="outline" disabled={autoScheduling} onClick={()=>setCopyOpen(false)}>Cancelar</Button><Button tone="gold" disabled={!copySource||autoScheduling} loading={autoScheduling} onClick={()=>void copyHorario()}>Copiar para edição</Button></DialogFooter></DialogContent></Dialog>}
       {curriculoModalOpen && selectedTurma?.curso_id && (
-        <Dialog open={curriculoModalOpen} onOpenChange={open=>{if(!open)setCurriculoModalOpen(false)}}><DialogContent closeButton={false} onInteractOutside={event=>event.preventDefault()} className="max-h-[88vh] w-[92vw] max-w-3xl overflow-y-auto rounded-xl p-0"><DialogTitle className="sr-only">Configurar disciplina</DialogTitle><DialogDescription className="sr-only">Alterações de referência curricular</DialogDescription>
+        <Dialog open={curriculoModalOpen} onOpenChange={open=>{if(!open)setCurriculoModalOpen(false)}}><DialogContent closeButton={false} onEscapeKeyDown={event=>event.preventDefault()} onInteractOutside={event=>event.preventDefault()} className="max-h-[88vh] w-[92vw] max-w-3xl overflow-y-auto rounded-xl p-0"><DialogTitle className="sr-only">Configurar disciplina</DialogTitle><DialogDescription className="sr-only">Alterações de referência curricular</DialogDescription>
         <DisciplinaModal
           embedded
           open={curriculoModalOpen}
