@@ -105,6 +105,7 @@ export function getTemplatePreview(id: EmailTemplateId, args: any = {}) {
 }
 
 type SendArgs = {
+  idempotencyKey?: string
   to: string | string[]
   cc?: string | string[]
   bcc?: string | string[]
@@ -115,6 +116,7 @@ type SendArgs = {
 }
 
 export async function sendMail({
+  idempotencyKey,
   to,
   cc,
   bcc,
@@ -141,7 +143,7 @@ export async function sendMail({
       html: resolvedHtml,
       text: resolvedText,
       attachments,
-    })
+    }, idempotencyKey ? { idempotencyKey } : undefined)
     if (error) return { ok: false, error: error.message }
     return { ok: true }
   } catch (e) {
