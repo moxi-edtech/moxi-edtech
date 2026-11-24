@@ -7,22 +7,21 @@ import { FadeIn, FadeInStagger } from '../FadeIn'
 
 export function DashboardSection() {
   const bullets = [
-    'Receita prevista vs. receita realizada',
+    'Receita prevista e receita realizada',
     'Turmas e alunos com atraso prioritário',
     'Alertas operacionais e financeiros no mesmo painel',
-    'Direção com contexto para decisão diária',
+    'Indicadores para a gestão diária',
   ]
 
   return (
     <section className="dashboard section-accent" id="dashboard">
       <div className="container dashboard-grid">
         <FadeIn direction="right" className="dashboard-copy">
-          <div className="sec-eyebrow">Painel de gestão</div>
           <h2 className="sec-title">
-            O director ve <span>tudo</span> em tempo real.
+            A escola vista pela direcção
           </h2>
           <p className="sec-sub">
-            Do fecho de caixa ao risco de inadimplência, a direção acompanha a escola com dados acionáveis num único painel.
+            Acompanhe receitas, propinas em atraso e os principais indicadores académicos e financeiros.
           </p>
           <FadeInStagger className="dashboard-bullets">
             {bullets.map((bullet) => (
@@ -52,7 +51,6 @@ export function DashboardSection() {
             <div className="dashboard-neck" />
             <div className="dashboard-stand" />
             <div className="dashboard-base" />
-            <div className="dashboard-real-caption"><span>Produto real</span><strong>Uma visão única para a escola inteira.</strong></div>
           </div>
         </motion.div>
       </div>
