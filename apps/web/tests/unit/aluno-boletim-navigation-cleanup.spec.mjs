@@ -44,10 +44,12 @@ test('um único serviço inicia novos pedidos de boletim, preservando pagamentos
 test('a fila de documentos gratuitos não aprova o boletim pago; documentos oficiais continuam', () => {
   const decisions = read('app/api/secretaria/documentos/aprovacoes/route.ts');
   assert.doesNotMatch(decisions, /DOC_BOLETIM_TRIMESTRAL/);
-  assert.doesNotMatch(decisions, /DOC_DECLARACAO_NOTAS/);
-  const hub = read('components/secretaria/DocumentosEmissaoHubClient.tsx');
-  assert.match(hub, /declaracao_notas: "DOC_DECLARACAO_NOTAS"/);
-  assert.match(hub, /boletim_trimestral: "DOC_BOLETIM_TRIMESTRAL"/);
+  // Declaração oficial pode ser gratuita, mas a fila nunca liquida um pedido pago.
+  assert.match(decisions, /DOC_DECLARACAO_NOTAS/);
+  assert.equal((decisions.match(/\.eq\("valor_cobrado", 0\)/g) ?? []).length, 2);
+  const policy = readFileSync(new URL('../../../supabase/migrations/20271203004000_documentos_individuais_gratuidade_ssot.sql', src), 'utf8');
+  assert.match(policy, /WHEN 'declaracao_notas' THEN 'DOC_DECLARACAO_NOTAS'/);
+  assert.match(policy, /WHEN 'boletim_trimestral' THEN 'DOC_BOLETIM_TRIMESTRAL'/);
 });
 
 test('o antigo portal paralelo não existe, e a emissão do boletim continua em API única', () => {
