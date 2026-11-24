@@ -40,7 +40,7 @@ export default async function DeclaracaoFrequenciaPrintPage({
 
   return (
     <div className={`min-h-screen ${styles.printRoot} font-serif text-slate-900`}>
-      <PrintTrigger />
+      <PrintTrigger autoPrint={false} />
       <div className={`${styles.sheet} shadow-lg`}>
         <div className="space-y-8">
           <header className="text-center space-y-2">

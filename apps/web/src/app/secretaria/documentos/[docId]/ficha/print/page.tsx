@@ -42,7 +42,7 @@ export default async function FichaInscricaoPrintPage({
 
   return (
     <div className={`min-h-screen ${styles.printRoot} font-serif text-slate-900`}>
-      <PrintTrigger />
+      <PrintTrigger autoPrint={false} />
       <div className={`${styles.sheet} shadow-lg`}>
         <div className="space-y-8">
           <header className="text-center space-y-2 border-b border-slate-200 pb-6">
