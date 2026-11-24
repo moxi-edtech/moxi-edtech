@@ -36,8 +36,8 @@ test("API and PDF require authorized school and paginate historical rows",()=>{
  assert.doesNotMatch(api+pdf+access,/SUPABASE_SERVICE_ROLE_KEY|createAdminClient/);
 });
 test("workspace accessible from three dashboards and exports without opening a tab",()=>{
- const dashboard=src("components/layout/escola-admin/EscolaAdminDashboardContent.tsx");
- const secretaria=src("app/secretaria/(portal-secretaria)/page.tsx");
+ const dashboard=src("components/layout/escola-admin/QuickActionsSection.tsx");
+ const secretaria=src("app/secretaria/(portal-secretaria)/Dashboard.tsx");
  const ui=src("components/secretaria/ExpedienteWorkspace.tsx");
  assert.match(dashboard,/ExpedienteDashboardCard/);
  assert.match(secretaria,/ExpedienteDashboardCard/);
@@ -119,15 +119,31 @@ test("dashboard opens a shared, lazy-loaded, draft-aware daily-close modal",()=>
  const card=src("components/secretaria/ExpedienteDashboardCard.tsx");
  const workspace=src("components/secretaria/ExpedienteWorkspace.tsx");
  assert.match(card,/dynamic\(\(\)=>import\("@\/components\/secretaria\/ExpedienteWorkspace"\)/);
- assert.match(card,/aria-haspopup="dialog"/);
+ assert.match(card,/dialogOpen=\{open\}/);
+ assert.match(src("components/shared/AcaoRapidaCard.tsx"),/aria-haspopup=\{dialogOpen !== undefined \? "dialog"/);
  assert.match(card,/<ModalShell open=\{open\} size="wide"/);
  assert.match(card,/\{open&&<Workspace/);
  assert.match(card,/embedded closeGuardRef=\{closeGuardRef\}/);
  assert.match(card,/if\(state==="busy"\)/);
  assert.match(card,/if\(state==="draft"&&!discard\)/);
  assert.match(card,/setRefreshVersion\(v=>v\+1\)/);
- assert.match(card,/triggerRef.current\?\.focus\(\)/);
+ assert.match(card,/triggerRef.current\?\.focus\(\{preventScroll:true\}\)/);
  assert.doesNotMatch(card,/href=|router\.push/);
  assert.match(workspace,/closeGuardRef.current=\(\)=>lock.current\?"busy"/);
  assert.match(workspace,/!embedded&&<DashboardHeader/);
+});
+
+test("daily-close shortcut is inside quick actions and modal uses a non-translated viewport",()=>{
+ const dialog=src("components/ui/dialog.tsx");
+ const shell=src("components/ui/ModalShell.tsx");
+ const quick=src("components/layout/escola-admin/QuickActionsSection.tsx");
+ const secretaria=src("app/secretaria/(portal-secretaria)/Dashboard.tsx");
+ assert.match(dialog,/layout === "viewport" \? "fixed inset-0 z-50 flex h-\[100dvh\] w-full items-center justify-center overflow-hidden" : "fixed left-\[50%\]/);
+ assert.match(shell,/layout="viewport"/);
+ assert.match(shell,/max-h-full/);
+ assert.match(shell,/overflow-y-auto overscroll-contain/);
+ assert.match(quick,/<ExpedienteDashboardCard escolaId=\{escolaId\} portal=\{portalBase\} \/>/);
+ assert.match(secretaria,/<SecaoLabel>Ações rápidas<\/SecaoLabel>[\s\S]*?<ExpedienteDashboardCard escolaId=\{escolaId\} portal="secretaria"/);
+ assert.doesNotMatch(src("components/layout/escola-admin/EscolaAdminDashboardContent.tsx"),/ExpedienteDashboardCard/);
+ assert.doesNotMatch(src("app/secretaria/(portal-secretaria)/page.tsx"),/ExpedienteDashboardCard/);
 });
