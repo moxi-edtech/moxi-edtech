@@ -71,7 +71,7 @@ export const dynamic = "force-dynamic";
 export default function FechoCaixaPage() {
   const params = useParams();
   const escolaId = params?.id as string;
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => new Intl.DateTimeFormat("sv-SE", { timeZone: "Africa/Luanda", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()));
   const [data, setData] = useState<FechoResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +80,8 @@ export default function FechoCaixaPage() {
   const [declaring, setDeclaring] = useState(false);
   const [declared, setDeclared] = useState({ cash: "", tpa: "", transfer: "", mcx: "" });
   const [fechoResult, setFechoResult] = useState<FechoDeclaracao | null>(null);
+  const [snapshotLoading, setSnapshotLoading] = useState(true);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState<"approved" | "rejected">("approved");
   const [approvalNote, setApprovalNote] = useState("");
@@ -108,11 +110,31 @@ export default function FechoCaixaPage() {
     return () => { active = false; };
   }, [date, scope, escolaId]);
 
+  useEffect(() => {
+    if (!escolaId) return;
+    let active = true;
+    setFechoResult(null);
+    setSnapshotLoading(true);
+    setSnapshotError(null);
+    setDeclared({ cash: "", tpa: "", transfer: "", mcx: "" });
+    setApprovalNote("");
+    setApprovalStatus("approved");
+    fetch(`/api/financeiro/fecho/declarar?date=${encodeURIComponent(date)}&escolaId=${encodeURIComponent(escolaId)}`, { cache: "no-store" })
+      .then(async res => {
+        const json = await res.json();
+        if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao consultar declaração");
+        if (active) setFechoResult(json.data);
+      })
+      .catch(err => { if (active) setSnapshotError(err instanceof Error ? err.message : "Falha ao consultar declaração"); })
+      .finally(() => { if (active) setSnapshotLoading(false); });
+    return () => { active = false; };
+  }, [date, escolaId]);
+
   const totals = data?.totals || { especie: 0, tpa: 0, transferencia: 0, mcx: 0, total: 0 };
   const rows = useMemo(() => data?.items || [], [data]);
 
   const declareFecho = async () => {
-    if (!escolaId) return;
+    if (!escolaId || declaring || snapshotLoading || snapshotError || fechoResult) return;
     setDeclaring(true);
     try {
       const payload = {
@@ -129,7 +151,7 @@ export default function FechoCaixaPage() {
 
       const res = await fetch("/api/financeiro/fecho/declarar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": `fecho-${date}` },
         body: JSON.stringify(payload),
       });
       const json = await res.json().catch(() => ({}));
@@ -144,17 +166,17 @@ export default function FechoCaixaPage() {
   };
 
   const aprovarFecho = async () => {
-    if (!fechoResult?.id || !escolaId) return;
+    if (!fechoResult?.id || !escolaId || approving || fechoResult.status !== "declared" || fechoResult.day_key !== date) return;
     setApproving(true);
     try {
       const res = await fetch("/api/financeiro/fecho/aprovar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": `fecho-${fechoResult.id}-${approvalStatus}` },
         body: JSON.stringify({
           escolaId,
           fecho_id: fechoResult.id,
           aprovacao: approvalStatus,
-          justificativa: approvalNote || null,
+          justificativa: approvalNote.trim() || undefined,
           meta: { origem: "portal_financeiro" },
         }),
       });
@@ -195,6 +217,7 @@ export default function FechoCaixaPage() {
             <input
               type="date"
               value={date}
+              disabled={declaring || approving}
               onChange={(event) => setDate(event.target.value)}
               className="pl-9 pr-4 py-2.5 rounded-xl border border-border bg-card text-sm font-semibold text-foreground outline-none transition-all focus:border-klasse-gold focus:ring-1 focus:ring-klasse-gold cursor-pointer"
             />
@@ -256,14 +279,16 @@ export default function FechoCaixaPage() {
           </div>
           <Button
             onClick={declareFecho}
-            disabled={declaring}
+            disabled={declaring || snapshotLoading || Boolean(snapshotError) || Boolean(fechoResult)}
             className="bg-amber text-white px-4 py-2 rounded-lg text-sm font-semibold"
           >
             {declaring ? "Declarando..." : "Declarar Fecho"}
           </Button>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {snapshotLoading && <p role="status" className="text-sm text-muted-foreground">A consultar fecho registado...</p>}
+        {snapshotError && <p role="alert" className="text-sm text-red-600">{snapshotError}</p>}
+        {!fechoResult && !snapshotLoading && !snapshotError && <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <input
             type="number"
             value={declared.cash}
@@ -292,7 +317,7 @@ export default function FechoCaixaPage() {
             placeholder="MCX"
             className="rounded-lg border border-border px-3 py-2 text-sm"
           />
-        </div>
+        </div>}
 
         {fechoResult ? (
           <div className="rounded-lg border border-border bg-muted p-4 space-y-3">
@@ -303,8 +328,9 @@ export default function FechoCaixaPage() {
               <div>Transfer: {formatKz(Number(fechoResult.system_transfer ?? 0))}</div>
               <div>MCX: {formatKz(Number(fechoResult.system_mcx ?? 0))}</div>
             </div>
-            <div className="text-xs text-muted-foreground">Status: {fechoResult.status ?? "—"}</div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="text-sm text-muted-foreground">Estado: {fechoResult.status === "approved" ? "Aprovado" : fechoResult.status === "rejected" ? "Rejeitado" : fechoResult.status === "declared" ? "A aguardar aprovação" : "Por declarar"}</div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-sm text-muted-foreground">{(["cash", "tpa", "transfer", "mcx"] as const).map((key, i) => <div key={key}>{["Numerário", "TPA", "Transferências", "MCX"][i]} declarado: {formatKz(Number(fechoResult[`declared_${key}`] ?? 0))}</div>)}</div>
+            {fechoResult.status === "declared" && <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <select
                 value={approvalStatus}
                 onChange={(e) => setApprovalStatus(e.target.value as "approved" | "rejected")}
@@ -326,7 +352,7 @@ export default function FechoCaixaPage() {
               >
                 {approving ? "Salvando..." : "Atualizar"}
               </Button>
-            </div>
+            </div>}
           </div>
         ) : null}
       </section>
