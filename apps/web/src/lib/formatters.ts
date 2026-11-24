@@ -39,6 +39,19 @@ function parseSchoolDateInput(value?: string | null): Date | null {
   return Number.isFinite(parsed.getTime()) ? parsed : null;
 }
 
+// Difference in school calendar days, not browser-local midnights or elapsed hours.
+const schoolCalendarDay = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: SCHOOL_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit",
+});
+
+export function schoolDaysPastDue(value?: string | null, now: Date = new Date()): number | null {
+  const date = parseSchoolDateInput(value);
+  if (!date || !Number.isFinite(now.getTime())) return null;
+  const dueDay = Date.parse(schoolCalendarDay.format(date) + "T00:00:00Z");
+  const currentDay = Date.parse(schoolCalendarDay.format(now) + "T00:00:00Z");
+  return (currentDay - dueDay) / 86400000;
+}
+
 export function formatDate(dateString?: string | null): string {
   const date = parseSchoolDateInput(dateString);
   if (!date) return "—";
