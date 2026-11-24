@@ -61,6 +61,7 @@ type SchedulerBoardProps = {
   onAutoConfigurarCargas?: () => void;
   autoConfiguring?: boolean;
   onPublicar?: (grid: Record<string, string | null>) => void;
+  externalActions?: boolean;
   canPublicar?: boolean;
   publishDisabledReason?: string;
   publishing?: boolean;
@@ -90,11 +91,27 @@ export function SchedulerBoard({
   canPublicar = true,
   publishDisabledReason,
   publishing,
+  externalActions = false,
   busy = false,
 }: SchedulerBoardProps) {
   const [grid, setGrid] = useState<Record<string, string | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingSlot, setEditingSlot] = useState<string | null>(null);
+  const [layout, setLayout] = useState<"auto"|"day"|"week">("auto");
+  const [compact, setCompact] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(diasSemana[0] ?? "Segunda");
+  const boardRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const node = boardRef.current;
+    if (!node) return;
+    const measure = () => setCompact(node.clientWidth < 1100);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const dayMode = layout === "day" || (layout === "auto" && compact);
+  const activeDay = diasSemana.includes(selectedDay) ? selectedDay : diasSemana[0];
   const [assigningProfessor, setAssigningProfessor] = useState<SchedulerAula | null>(null);
   const [assigningTurmaSala, setAssigningTurmaSala] = useState(false);
   const currentGrid = controlledGrid ?? grid;
@@ -193,10 +210,40 @@ export function SchedulerBoard({
   }, [activeId, estoque]);
 
   return (
+    <div ref={boardRef} className="min-w-0 w-full space-y-3">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div role="group" aria-label="Visualização do horário" className="flex flex-wrap gap-2">
+        <Button type="button" variant={dayMode?"default":"outline"} aria-pressed={dayMode} onClick={()=>{setEditingSlot(null);setLayout("day");}} className="min-h-11">Por dia</Button>
+        <Button type="button" variant={!dayMode?"default":"outline"} aria-pressed={!dayMode} onClick={()=>{setEditingSlot(null);setLayout("week");}} className="min-h-11">Semana</Button>
+      </div>
+      <p className="text-xs text-muted-foreground">{dayMode?"Escolha o dia e a disciplina de cada tempo.":"Arraste ou seleccione as disciplinas."}</p>
+    </div>
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveId(null)}>
-      <fieldset disabled={busy} aria-busy={busy} className="min-w-0 flex flex-col lg:flex-row h-full min-h-[600px] bg-muted font-sora rounded-xl border border-border overflow-hidden">
+      <fieldset disabled={busy} aria-busy={busy} className="min-w-0 flex flex-col bg-muted font-sora rounded-xl border border-border overflow-hidden">
+        {dayMode ? <div className="min-w-0 space-y-3 p-2 sm:p-4">
+          <StatusAlerts conflictCount={conflictCount} shouldShowTurmaSalaWarning={shouldShowTurmaSalaWarning && Boolean(onAssignTurmaSala)} onSetAssigningTurmaSala={()=>{if(!busy)setAssigningTurmaSala(true);}}/>
+          <div role="group" aria-label="Dia da semana" className="grid grid-cols-5 gap-1">
+            {diasSemana.map(dia=><button key={dia} type="button" aria-pressed={activeDay===dia} aria-label={dia} onClick={()=>{setSelectedDay(dia);setEditingSlot(null);}} className={"min-h-11 min-w-0 rounded-xl border px-1 text-sm font-semibold "+(activeDay===dia?"border-primary bg-primary text-primary-foreground":"border-border bg-card text-foreground")}><span className="sm:hidden">{dia.slice(0,3)}</span><span className="hidden sm:inline">{dia}</span></button>)}
+          </div>
+          <h3 className="font-semibold text-foreground">{activeDay}</h3>
+          <div className="space-y-2">
+            {tempos?.map(tempo=>{
+              const key=activeDay+"-"+tempo.id;
+              const aula=currentGrid[key]?getAulaById(currentGrid[key]!):undefined;
+              const range=tempo.horariosPorDia?.[activeDay]||tempo.labelDefault;
+              if(tempo.tipo==="intervalo")return <div key={tempo.id} className="rounded-xl border border-border bg-muted p-3 text-sm text-muted-foreground">{range} · Intervalo</div>;
+              return <div key={tempo.id} className={"min-w-0 rounded-xl border bg-card p-3 "+(conflictSlots[key]?"border-destructive":"border-border")}>
+                <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-mono text-sm font-semibold">{range}</p>{conflictSlots[key]&&<span className="text-sm font-medium text-destructive">Conflito</span>}</div>
+                {slotLookup?.[key]?<><label className="mt-2 block text-sm"><span className="sr-only">{activeDay}, {range}: disciplina</span><select value={currentGrid[key]??""} onChange={event=>handleSelectSlot(key,event.target.value||null)} className="block min-h-11 w-full min-w-0 rounded-xl border border-border bg-card px-3 py-2 text-base text-foreground focus:ring-4 focus:ring-klasse-gold/20"><option value="">Tempo livre</option>{estoque.map(item=><option key={item.id} value={item.id}>{item.disciplina}</option>)}</select></label>
+                {aula&&<div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground"><span className="min-w-0 break-words">{aula.professorId?aula.professor:"Professor não indicado"}{effectiveTurmaSala?" · "+effectiveTurmaSala:""}</span>{!aula.professorId&&onAssignProfessor&&<Button type="button" variant="outline" onClick={()=>setAssigningProfessor(aula)} className="min-h-11">Atribuir professor</Button>}</div>}</>:<p className="mt-2 text-sm text-muted-foreground">Sem tempo neste dia</p>}
+                {conflictReasons?.[key]?.length?<p className="mt-2 text-sm text-destructive">{conflictReasons[key].join(" · ")}</p>:null}
+              </div>;
+            })}
+          </div>
+          <details className="rounded-xl border border-border bg-card p-3"><summary className="cursor-pointer py-2 text-sm font-semibold">Disciplinas e tempos programados</summary><ul className="mt-2 divide-y divide-border">{estoque.map(aula=><li key={aula.id} className="flex items-center justify-between gap-3 py-2 text-sm"><span className="min-w-0 break-words">{aula.disciplina}</span><span className="shrink-0 font-mono">{aula.temposAlocados}</span></li>)}</ul></details>
+        </div> : <div className="flex min-w-0 flex-col xl:flex-row">
         {/* SIDEBAR */}
-        <div className="w-full lg:w-72 lg:shrink-0 bg-card border-b lg:border-b-0 lg:border-r border-border p-4 flex flex-col z-10">
+        <div className="w-full xl:w-64 xl:shrink-0 bg-card border-b xl:border-b-0 xl:border-r border-border p-3 flex flex-col z-10">
           <div className="mb-6">
             <h2 className="text-lg font-bold text-foreground tracking-tight">Disciplinas</h2>
             <p className="text-xs text-muted-foreground">Arraste uma disciplina ou seleccione-a directamente no tempo.</p>
@@ -216,21 +263,10 @@ export function SchedulerBoard({
 
           <TrashDropzone active={Boolean(activeId)} />
 
-          <ActionButtons
-            onAutoCompletar={onAutoCompletar}
-            autoCompleting={autoCompleting}
-            onSalvar={() => onSalvar?.(currentGrid)}
-            onPublicar={onPublicar}
-            canPublicar={canPublicar}
-            publishDisabledReason={publishDisabledReason}
-            publishing={publishing}
-            busy={busy}
-            grid={currentGrid}
-          />
         </div>
 
         {/* GRID */}
-        <div className="min-w-0 flex-1 p-3 overflow-auto bg-muted/50">
+        <div className="min-w-0 flex-1 p-2 sm:p-3 overflow-x-auto bg-muted/50">
           <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden min-w-[800px]">
             <GridHeader diasSemana={diasSemana} />
             {tempos?.map((tempo) => (
@@ -256,6 +292,8 @@ export function SchedulerBoard({
           </div>
         </div>
 
+        </div>}
+        {!externalActions&&<ActionButtons onAutoCompletar={onAutoCompletar} autoCompleting={autoCompleting} onSalvar={()=>onSalvar?.(currentGrid)} onPublicar={onPublicar} canPublicar={canPublicar} publishDisabledReason={publishDisabledReason} publishing={publishing} busy={busy} grid={currentGrid}/>}
         <DragOverlay>{overlayItem}</DragOverlay>
       </fieldset>
 
@@ -281,6 +319,7 @@ export function SchedulerBoard({
         />
       )}
     </DndContext>
+    </div>
   );
 }
 
