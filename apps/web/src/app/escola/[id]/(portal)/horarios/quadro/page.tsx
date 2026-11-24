@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
-import { Save, WifiOff, Printer, FileDown, Wand2, ArrowLeft, Undo2, Redo2, CheckCircle2, Copy, FileSpreadsheet } from "lucide-react";
+import { Save, WifiOff, Printer, FileDown, Wand2, ArrowLeft, Undo2, Redo2, CheckCircle2, Copy, FileSpreadsheet, History } from "lucide-react";
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
 import { HorariosWorkspace } from "@/components/escola/horarios/HorariosWorkspace";
 import { ImportHorarioDialog } from "@/components/escola/horarios/ImportHorarioDialog";
@@ -117,6 +117,11 @@ function QuadroHorariosContent() {
   const [turmaId, setTurmaId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [validating,setValidating]=useState(false);
+  const [historyOpen,setHistoryOpen]=useState(false);
+  const [historyLoading,setHistoryLoading]=useState(false);
+  const [historyError,setHistoryError]=useState<string|null>(null);
+  const [versionHistory,setVersionHistory]=useState<Array<{id:string;status:string;created_at?:string|null;publicado_em?:string|null}>>([]);
   const [autoConfiguring, setAutoConfiguring] = useState(false);
   const [autoScheduling, setAutoScheduling] = useState(false);
 
@@ -181,7 +186,7 @@ function QuadroHorariosContent() {
     setAulas,
     setGrid,
   } = useHorarioTurmaData({ escolaId, turmaId, versaoId, slotLookup, refreshToken: turmaRefreshToken });
-  const refreshTurmaData = () => setTurmaRefreshToken((prev) => prev + 1);
+  const refreshTurmaData = () => { setValidated(false); setTurmaRefreshToken((prev) => prev + 1); };
   const hasMissingLoadInAulas = aulas.some((aula) => aula.missingLoad);
   const slotsHref = turmaId
     ? `${horarioBasePath}/slots?turmaId=${encodeURIComponent(turmaId)}`
@@ -499,7 +504,7 @@ function QuadroHorariosContent() {
     () => Object.values(grid).filter((value) => Boolean(value)).length,
     [grid]
   );
-  const canPublicar = !isLoading && !baseError && !turmaError && !versionError && !!versaoId && online && !saving && !publishing && filledSlots > 0;
+  const canPublicar = !isLoading && !baseError && !turmaError && !versionError && !!versaoId && online && !saving && !publishing && !validating && filledSlots > 0;
   const totalCarga = useMemo(
     () => aulasWithAllocations.reduce((acc, aula) => acc + (aula.temposTotal || 0), 0),
     [aulasWithAllocations]
@@ -744,9 +749,9 @@ function QuadroHorariosContent() {
   };
 
   const switchTurma = async (nextTurmaId: string | null) => {
-    if (nextTurmaId === turmaId || saving || publishing || autoScheduling) return;
+    if (nextTurmaId === turmaId || saving || publishing || validating || autoScheduling) return;
     if (autoDraftDirty && !(await confirm({ title: "Alterações por guardar", message: "Pretende sair sem guardar as alterações deste horário?", confirmLabel: "Sair sem guardar" }))) return;
-    setAutoDraftDirty(false); setValidated(false); setUndoStack([]); setRedoStack([]); setImportOpen(false); setCopyOpen(false); setCopySource("");
+    setAutoDraftDirty(false); setValidated(false); setUndoStack([]); setRedoStack([]); setImportOpen(false); setCopyOpen(false); setCopySource(""); setHistoryOpen(false); setVersionHistory([]);
     setAutoProposalSummary(null); setConflictSlots({}); setConflictReasons({}); setSaveError(null);
     setVersaoId(null); setHasSavedDraft(false); setVersionError(null); setHorarioStatus("sem_horario");
     setTurmaId(nextTurmaId);
@@ -757,9 +762,19 @@ function QuadroHorariosContent() {
     setGrid(next); setConflictSlots({}); setConflictReasons({}); setValidated(false);
     setAutoDraftDirty(true); setAutoProposalSummary(null);
   };
+  const openHistory=async()=>{
+    if(!turmaId||historyLoading)return;
+    setHistoryOpen(true);setHistoryLoading(true);setHistoryError(null);setVersionHistory([]);
+    try{
+      const res=await fetch(`/api/secretaria/turmas/${turmaId}/horario/versao?escola_id=${encodeURIComponent(escolaId)}`,{cache:"no-store"});
+      const json=await res.json().catch(()=>({}));
+      if(!res.ok||!json.ok||!Array.isArray(json.versoes))throw new Error(json.error||"Não foi possível consultar o histórico.");
+      setVersionHistory(json.versoes);
+    }catch(e){setHistoryError(e instanceof Error?e.message:"Falha na consulta.");}finally{setHistoryLoading(false);}
+  };
   const copyCandidates = turmas.filter(t=>t.id!==turmaId && t.horario_status==="publicado" && !!selectedTurma?.curso_id && !!selectedTurma?.classe_id && !!selectedTurma?.ano_letivo_id && t.curso_id===selectedTurma.curso_id && t.classe_id===selectedTurma.classe_id && t.ano_letivo_id===selectedTurma.ano_letivo_id && t.turno===selectedTurma.turno);
   const copyHorario = async () => {
-    if(!copySource || !copyCandidates.some(t=>t.id===copySource) || !selectedTurma?.ano_letivo_id || !online || autoScheduling || saving || publishing)return;
+    if(!copySource || !copyCandidates.some(t=>t.id===copySource) || !selectedTurma?.ano_letivo_id || !online || autoScheduling || saving || publishing || validating)return;
     setAutoScheduling(true);
     try{
       const params=new URLSearchParams({turma_id:copySource,ano_letivo_id:selectedTurma.ano_letivo_id});
@@ -790,7 +805,7 @@ function QuadroHorariosContent() {
   };
 
   const handleClearQuadro = async () => {
-    if (!turmaId || !versaoId || saving || publishing) return;
+    if (!turmaId || !versaoId || saving || publishing || validating) return;
     const ok = await confirm({title:"Limpar quadro em edição",message:"Os tempos serão limpos apenas no editor. O horário oficial mantém-se. Pode desfazer a operação.",confirmLabel:"Limpar quadro",variant:"danger"});
     if (ok) editGrid({});
   };
@@ -822,7 +837,7 @@ function QuadroHorariosContent() {
     mode: "draft" | "publish" | "validate",
     options?: { successTitle?: string; successMessage?: string }
   ): Promise<boolean> => {
-    if (!escolaId || !turmaId || !versaoId || isLoading || baseError || turmaError || versionError || saving || publishing || !turnoId || !Object.keys(slotLookup).length) return false;
+    if (!escolaId || !turmaId || !versaoId || isLoading || baseError || turmaError || versionError || saving || publishing || validating || !turnoId || !Object.keys(slotLookup).length) return false;
     if (Object.entries(nextGrid).some(([key, id]) => id && !slotLookup[key])) {
       error("Existem aulas fora dos tempos configurados. Recarregue antes de guardar.");
       return false;
@@ -840,11 +855,9 @@ function QuadroHorariosContent() {
       return false;
     }
 
-    if (mode === "draft") {
-      setSaving(true);
-    } else {
-      setPublishing(true);
-    }
+    if (mode === "draft") setSaving(true);
+    else if (mode === "validate") setValidating(true);
+    else setPublishing(true);
     setSaveError(null);
 
     // The timetable has its own optional teacher attribution.
@@ -989,11 +1002,9 @@ function QuadroHorariosContent() {
       error(message);
       return false;
     } finally {
-      if (mode === "draft") {
-        setSaving(false);
-      } else {
-        setPublishing(false);
-      }
+      if (mode === "draft") setSaving(false);
+      else if (mode === "validate") setValidating(false);
+      else setPublishing(false);
     }
   };
 
@@ -1150,7 +1161,7 @@ function QuadroHorariosContent() {
   };
 
   const handleAutoCompletar = async () => {
-    if (!escolaId || !turmaId || isLoading || saving || publishing || autoScheduling) return;
+    if (!escolaId || !turmaId || isLoading || saving || publishing || validating || autoScheduling) return;
     if (filledSlots >= totalSlots) { success("Quadro preenchido", "Não existem tempos livres."); return; }
     const currentItems = Object.entries(grid).flatMap(([key,disciplina_id]) => {
       if (!disciplina_id || !slotLookup[key]) return [];
@@ -1230,7 +1241,7 @@ function QuadroHorariosContent() {
   };
 
   const handleAssignProfessor = async (aula: (typeof aulas)[number], professorUserId: string) => {
-    if (!turmaId || saving || publishing || autoScheduling) return;
+    if (!turmaId || saving || publishing || validating || autoScheduling) return;
     if (autoDraftDirty) { warning("Guarde o rascunho primeiro", "A atribuição docente recarrega os vínculos. As suas alterações serão preservadas."); return; }
     if (!aula?.cursoMatrizId) {
       error("Disciplina sem vínculo de currículo.");
@@ -1258,7 +1269,7 @@ function QuadroHorariosContent() {
   };
 
   const handleAssignTurmaSala = async (salaId: string) => {
-    if (!escolaId || !turmaId || saving || publishing || autoScheduling) return;
+    if (!escolaId || !turmaId || saving || publishing || validating || autoScheduling) return;
     if (autoDraftDirty) { warning("Guarde o rascunho primeiro", "A configuração da sala recarrega os dados da turma."); return; }
     const sala = salas.find((item) => item.id === salaId);
     if (!sala) {
@@ -1502,7 +1513,7 @@ function QuadroHorariosContent() {
       <header className="sticky top-0 z-10 border-b border-border bg-card/90 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-4 p-6 max-w-7xl mx-auto">
           <div className="flex flex-wrap items-center gap-3">
-            {turmaId && <button type="button" onClick={()=>void switchTurma(null)} disabled={saving||publishing||autoScheduling} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold"><ArrowLeft size={16}/> Todas as turmas</button>}
+            {turmaId && <button type="button" onClick={()=>void switchTurma(null)} disabled={saving||publishing||validating||autoScheduling} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold"><ArrowLeft size={16}/> Todas as turmas</button>}
             <div className="flex items-center gap-2 rounded-full bg-muted p-1">
               <Link
                 href={slotsHref}
@@ -1529,7 +1540,7 @@ function QuadroHorariosContent() {
             <Select
               value={turmaId ?? ""}
               options={turmaOptions}
-              disabled={saving || publishing || autoScheduling}
+              disabled={saving || publishing || validating || autoScheduling}
               onChange={(event) => void switchTurma(event.target.value || null)}
               className="max-w-xs rounded-xl border-border focus:border-amber focus:ring-amber text-foreground"
             />            {selectedTurma?.sala ? (
@@ -1573,6 +1584,7 @@ function QuadroHorariosContent() {
             {turmaError ? <span className="text-xs text-rose-600">{turmaError}</span> : null}
             {versionError ? <span role="alert" className="text-xs text-rose-600">{versionError}</span> : null}
             {hasSavedDraft && <span className="text-xs font-semibold text-muted-foreground">Rascunho guardado · aguarda publicação</span>}
+            {turmaId && horarioStatus==="publicado" && (hasSavedDraft||autoDraftDirty) && <span className="text-xs text-muted-foreground">O PDF contém apenas a versão oficial.</span>}
             {turmaId && (
               <span role="status" className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground">
                 {timetableStateLabels[horarioStatus]}
@@ -1582,7 +1594,7 @@ function QuadroHorariosContent() {
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Save className={`h-4 w-4 ${saving ? "text-amber" : "text-muted-foreground"}`} />
               <span>
-                {saving ? "A guardar..." : autoDraftDirty ? "Alterações por guardar" : "Sem alterações locais"}
+                {saving ? "A guardar..." : validating ? "A validar conflitos..." : publishing ? "A publicar..." : autoDraftDirty ? "Alterações por guardar" : "Sem alterações locais"}
               </span>
             </div>
           </div>
@@ -1624,7 +1636,7 @@ function QuadroHorariosContent() {
           <HorariosWorkspace turmas={turmas} loading={baseLoading} error={baseError} onOpen={(id)=>void switchTurma(id)} onRefresh={refreshBaseData}/>
         ) : (
           <>
-          <div className="mb-3 flex flex-wrap items-center gap-2"><button type="button" disabled={isLoading||!versaoId||!aulas.length||!totalSlots||saving||publishing||autoScheduling||!!turmaError||!!baseError} onClick={()=>setImportOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><FileSpreadsheet size={16}/> Importar Excel</button><button type="button" disabled={isLoading||!versaoId||!aulas.length||!totalSlots||!copyCandidates.length||saving||publishing||autoScheduling||!online} onClick={()=>setCopyOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><Copy size={16}/> Copiar de outra turma</button><button type="button" disabled={!canPublicar||autoScheduling} onClick={()=>void submitQuadro(grid,"validate")} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><CheckCircle2 size={16}/> Validar conflitos</button><button type="button" disabled={!undoStack.length||saving||publishing||autoScheduling} onClick={undoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Undo2 size={16}/> Desfazer</button><button type="button" disabled={!redoStack.length||saving||publishing||autoScheduling} onClick={redoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Redo2 size={16}/> Refazer</button><button type="button" disabled={!filledSlots||saving||publishing||autoScheduling} onClick={handleClearQuadro} className="rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40">Limpar edição</button></div>
+          <div className="mb-3 flex flex-wrap items-center gap-2"><button type="button" disabled={isLoading||!versaoId||!aulas.length||!totalSlots||saving||publishing||validating||autoScheduling||!!turmaError||!!baseError} onClick={()=>setImportOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><FileSpreadsheet size={16}/> Importar Excel</button><button type="button" disabled={isLoading||!versaoId||!aulas.length||!totalSlots||!copyCandidates.length||saving||publishing||validating||autoScheduling||!online} onClick={()=>setCopyOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><Copy size={16}/> Copiar de outra turma</button><button type="button" disabled={isLoading||historyLoading||saving||publishing||validating||autoScheduling} onClick={()=>void openHistory()} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><History size={16}/> Histórico</button><button type="button" disabled={!canPublicar||autoScheduling} onClick={()=>void submitQuadro(grid,"validate")} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><CheckCircle2 size={16}/> Validar conflitos</button><button type="button" disabled={!undoStack.length||saving||publishing||validating||autoScheduling} onClick={undoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Undo2 size={16}/> Desfazer</button><button type="button" disabled={!redoStack.length||saving||publishing||validating||autoScheduling} onClick={redoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Redo2 size={16}/> Refazer</button><button type="button" disabled={!filledSlots||saving||publishing||validating||autoScheduling} onClick={handleClearQuadro} className="rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40">Limpar edição</button></div>
           <SchedulerBoard
             diasSemana={DIAS_SEMANA}
             tempos={horariosDisponiveis}
@@ -1647,7 +1659,7 @@ function QuadroHorariosContent() {
             canPublicar={canPublicar}
             publishDisabledReason={filledSlots === 0 ? "Adicione pelo menos uma aula." : "Aguarde os dados ou verifique a ligação."}
             publishing={publishing}
-            busy={isLoading || !!baseError || !!turmaError || !!versionError || !versaoId || saving || publishing || autoScheduling}
+            busy={isLoading || !!baseError || !!turmaError || !!versionError || !versaoId || saving || publishing || validating || autoScheduling}
           />
           </>
         )}
@@ -1656,7 +1668,7 @@ function QuadroHorariosContent() {
           <details className="mt-4 rounded-xl border border-border bg-card p-4">
             <summary className="cursor-pointer text-sm font-semibold text-foreground">Planeamento curricular (opcional)</summary>
             {autoDraftDirty && <p className="mt-2 text-sm text-muted-foreground">Guarde o rascunho antes de efectuar alterações ao currículo.</p>}
-            <fieldset disabled={autoDraftDirty || saving || publishing || autoScheduling}>
+            <fieldset disabled={autoDraftDirty || saving || publishing || validating || autoScheduling}>
             <p className="mt-2 mb-4 text-sm text-muted-foreground">Os tempos programados são calculados pelo quadro. As referências curriculares não impedem a publicação; só altere o currículo se a escola decidir fazê-lo.</p>
                     {turmaId && excessoCarga > 0 && (
           <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
@@ -1883,6 +1895,9 @@ function QuadroHorariosContent() {
         ) : null}
       </div>
       </div>
+      {historyOpen && <Dialog open={historyOpen} onOpenChange={v=>{if(!v&&!historyLoading)setHistoryOpen(false)}}><DialogContent className="rounded-xl"><DialogHeader><DialogTitle>Histórico de versões</DialogTitle><DialogDescription>Consulte a publicação actual, versões arquivadas e rascunhos. Este histórico não restaura nem altera horários.</DialogDescription></DialogHeader>
+        {historyLoading?<p role="status" className="text-sm">A carregar versões…</p>:historyError?<p role="alert" className="text-sm text-red-700">{historyError}</p>:versionHistory.length===0?<p className="text-sm text-muted-foreground">Ainda não existem versões registadas.</p>:<div className="max-h-80 overflow-auto rounded-xl border border-border">{versionHistory.map(v=><div key={v.id} className="flex items-center justify-between gap-3 border-b border-border p-3 last:border-0"><div><p className="text-sm font-semibold">{v.status==="publicada"?"Publicação actual":v.status==="arquivada"?"Versão arquivada":"Rascunho"}{v.id===versaoId?" · Em edição":""}</p><p className="text-xs text-muted-foreground">{v.publicado_em?"Publicado em "+new Date(v.publicado_em).toLocaleString("pt-AO",{timeZone:"Africa/Luanda"}):v.created_at?"Criado em "+new Date(v.created_at).toLocaleString("pt-AO",{timeZone:"Africa/Luanda"}):"Data não indicada"}</p></div></div>)}</div>}
+        <DialogFooter><Button variant="outline" disabled={historyLoading} onClick={()=>setHistoryOpen(false)}>Fechar</Button></DialogFooter></DialogContent></Dialog>}
       {importOpen && <ImportHorarioDialog open={importOpen} onClose={()=>setImportOpen(false)} onApply={editGrid} slots={rawSlots.filter(s=>s.turno_id===turnoId)} disciplines={aulas}/>}
       {copyOpen && <Dialog open={copyOpen} onOpenChange={v=>{if(!v&&!autoScheduling)setCopyOpen(false)}}><DialogContent className="rounded-xl"><DialogHeader><DialogTitle>Copiar distribuição de outra turma</DialogTitle><DialogDescription>Seleccione uma turma publicada da mesma classe, curso, turno e ano. A distribuição em edição será substituída. Nenhuma alteração será publicada.</DialogDescription></DialogHeader><label className="text-sm">Turma de origem<select value={copySource} onChange={e=>setCopySource(e.target.value)} className="mt-1 block w-full rounded-xl border border-border bg-card p-3"><option value="">Seleccione a turma</option>{copyCandidates.map(t=><option key={t.id} value={t.id}>{t.turma_codigo||t.turma_nome||t.nome}</option>)}</select></label><DialogFooter><Button variant="outline" disabled={autoScheduling} onClick={()=>setCopyOpen(false)}>Cancelar</Button><Button tone="gold" disabled={!copySource||autoScheduling} loading={autoScheduling} onClick={()=>void copyHorario()}>Copiar para edição</Button></DialogFooter></DialogContent></Dialog>}
       {curriculoModalOpen && selectedTurma?.curso_id && (
