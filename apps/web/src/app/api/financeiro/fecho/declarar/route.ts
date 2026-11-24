@@ -10,10 +10,11 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const date = new Date(value + "T00:00:00Z"); return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value; }, "Data inválida");
-const snapshotColumns = "id, escola_id, day_key, status, declared_by, declared_at, declared_cash, declared_tpa, declared_transfer, declared_mcx, system_cash, system_tpa, system_transfer, system_mcx, system_other, system_other_count";
+const snapshotColumns = "id, escola_id, day_key, status, declared_by, declared_at, declared_cash, declared_tpa, declared_transfer, declared_mcx, system_cash, system_tpa, system_transfer, system_mcx, system_other, system_other_count, revision, revision_reason, approval_note";
 const payloadSchema = z.object({
   escolaId: z.string().min(1).optional(),
   day_key: dateSchema,
+  correction: z.object({ expectedRevision: z.number().int().positive(), requestId: z.string().uuid(), reason: z.string().trim().min(1).max(255) }).optional(),
   declared: z.object({
     cash: z.number().finite().nonnegative().max(9999999999.99),
     tpa: z.number().finite().nonnegative().max(9999999999.99),
@@ -55,9 +56,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const { day_key, declared } = parsed.data;
+    const { day_key, declared, correction } = parsed.data;
 
-    const { data, error } = await supabase.rpc("financeiro_fecho_declarar_e_snapshot", {
+    const { data, error } = await supabase.rpc(correction ? "financeiro_fecho_regularizar" : "financeiro_fecho_declarar_e_snapshot", {
+      ...(correction ? { p_expected_revision: correction.expectedRevision, p_request_id: correction.requestId, p_reason: correction.reason } : {}),
       p_escola_id: escolaId,
       p_day_key: day_key,
       p_cash: declared.cash,
@@ -67,7 +69,7 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.code === "23505" ? "Já existe uma declaração com valores diferentes para esta data." : "Não foi possível declarar o fecho." }, { status: error.code === "42501" ? 403 : error.code === "22023" ? 400 : error.code === "23505" ? 409 : 500 });
+      return NextResponse.json({ ok: false, error: error.code === "23505" ? "A declaração foi alterada ou já existe. Atualize o fecho antes de continuar." : "Não foi possível declarar o fecho." }, { status: error.code === "42501" ? 403 : error.code === "22023" ? 400 : error.code === "23505" ? 409 : 500 });
     }
 
     return NextResponse.json({ ok: true, data });
