@@ -3,6 +3,8 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { slotsOverlap, resourceConflicts, type LessonSlot } from "../../src/lib/horarios/temporal-conflicts";
 import { mapSlots } from "../../src/hooks/useHorarioData";
+import { buildTurnoTemplate } from "../../src/lib/horarios/turno-template";
+import { buildImportTemplate, parseTimetableMatrix } from "../../src/lib/horarios/import-matrix";
 
 const slot = (id: string, dia_semana: number, inicio: string, fim: string): LessonSlot => ({ id, dia_semana, inicio, fim });
 const slots = [
@@ -68,4 +70,61 @@ test("horários: published version is not a draft save target and saved version 
   assert.match(route, /p_versao_id: sourceStatus === 'draft' \? sourceVersionId : null/);
   assert.match(page, /setVersaoId\(persistedVersion\)/);
   assert.match(version, /savedDraft\?\.id \?\? publicada\?\.id/);
+});
+
+test("horários: configura a semana do Curtume com seis tempos e intervalo sem duplicar aulas", () => {
+  const template = buildTurnoTemplate({inicio:"13:00",aulas:6,minutos:45,pausaApos:3,pausaMinutos:15,intervaloEntre:5,dias:[1,2,3,4,5],turno:"tarde"});
+  assert.equal(template.items.length,35);
+  assert.equal(template.items.filter(i=>!i.is_intervalo).length,30);
+  assert.deepEqual(template.preview.map(i=>[i.inicio,i.fim,i.is_intervalo]),[
+    ["13:00","13:45",false],["13:50","14:35",false],["14:40","15:25",false],
+    ["15:25","15:40",true],["15:40","16:25",false],["16:30","17:15",false],["17:20","18:05",false],
+  ]);
+});
+
+test("horários: template rejeita dias repetidos e fim depois da meia-noite",()=>{
+  const config={inicio:"23:30",aulas:2,minutos:45,pausaApos:1,pausaMinutos:0,intervaloEntre:5,dias:[1],turno:"noite"};
+  assert.throws(()=>buildTurnoTemplate(config),/meia-noite/);
+  assert.throws(()=>buildTurnoTemplate({...config,inicio:"18:00",dias:[1,1]}),/Verifique/);
+});
+
+const excelSlots=[{id:"a",dia_semana:1,ordem:1,inicio:"13:00:00",fim:"13:45:00"},{id:"b",dia_semana:2,ordem:1,inicio:"13:00:00",fim:"13:45:00"},{id:"break",dia_semana:1,ordem:2,inicio:"13:45:00",fim:"14:00:00",is_intervalo:true}];
+const subjects=[{id:"mat",disciplina:"Matemática"},{id:"lp",disciplina:"Língua Portuguesa"}];
+
+test("horários: Excel importa apenas correspondências exactas e aceita acentos equivalentes",()=>{
+  const rows=buildImportTemplate(excelSlots);
+  rows[1]![1]="MATEMATICA";rows[1]![2]="Língua Portuguesa";
+  const result=parseTimetableMatrix(rows,excelSlots,subjects);
+  assert.deepEqual(result.errors,[]);
+  assert.deepEqual(result.grid,{"Segunda-1":"mat","Terça-1":"lp"});
+});
+
+test("horários: Excel rejeita disciplina desconhecida, intervalo e células duplicadas",()=>{
+  const rows=[["Horário","Segunda","Terça","Quarta","Quinta","Sexta"],["13:00-13:45","Matemática","???","","",""],["13:00-13:45","Matemática","","","",""],["13:45-14:00","Matemática","","","",""]];
+  const result=parseTimetableMatrix(rows,excelSlots,subjects);
+  assert.equal(result.errors.length,3);
+  assert.equal(result.count,1);
+});
+
+test("horários: validação é anterior à criação da versão e nunca chama a RPC de escrita",()=>{
+  const route=readFileSync("src/app/api/escolas/[id]/horarios/quadro/route.ts","utf8");
+  const validation=route.indexOf("if (mode === 'validate') {");
+  const create=route.indexOf("supabase.rpc('ensure_horario_versao'");
+  const write=route.indexOf("supabase.rpc('upsert_quadro_horarios_versao_atomic'");
+  assert.ok(validation>=0&&create>validation&&write>create);
+  assert.match(route.slice(validation,create),/return NextResponse\.json\(\{ ok: true, validated: true/);
+});
+
+test("horários: entrada consolidada não cria rascunhos; sugestões mantêm aulas locais",()=>{
+  const overview=readFileSync("src/app/api/escolas/[id]/horarios/overview/route.ts","utf8");
+  const page=readFileSync("src/app/escola/[id]/(portal)/horarios/quadro/page.tsx","utf8");
+  const auto=readFileSync("src/app/api/escolas/[id]/horarios/auto/route.ts","utf8");
+  assert.match(overview,/\.eq\("ano_letivo_id", year\.id\)/);
+  assert.doesNotMatch(overview,/\.insert\(|\.update\(|\.delete\(|\.rpc\(/);
+  assert.match(page,/overwrite_unlocked: false/);
+  assert.match(page,/current_items: currentItems/);
+  assert.match(page,/if \(!slotKey \|\| nextGrid\[slotKey\]/);
+  assert.match(auto,/\.eq\("status","publicada"\)/);
+  assert.match(page,/if \(ok\) editGrid\(\{\}\)/);
+  assert.match(page,/horario\/pdf\?inline=1/);
 });
