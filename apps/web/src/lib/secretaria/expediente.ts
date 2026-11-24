@@ -28,6 +28,17 @@ export async function expedienteAccess(requestedSchool: string) {
 type Access = Extract<Awaited<ReturnType<typeof expedienteAccess>>, {ok:true}>;
 type ActivityFilter = {entity?:string; actor?:string; late?:boolean};
 
+const queueColumns="day_key,status,revision,declared_by,operador_id,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_other_count";
+export async function getExpedienteQueue(access:Access,status:"declared"|"rejected",after?:string){
+  let q=access.supabase.from("fecho_caixa").select(queueColumns,{count:"exact"}).eq("escola_id",access.escolaId).eq("status",status);
+  if(after)q=q.gt("day_key",after);
+  const r=await q.order("day_key").limit(21);
+  if(r.error)throw new Error("Não foi possível consultar as pendências.");
+  const cents=(v:unknown)=>Math.round(Number(v??0)*100);
+  const keys=["cash","tpa","transfer","mcx"];
+  const rows=(r.data??[]).slice(0,20).map((row:any)=>({date:row.day_key,status:row.status,revision:row.revision,canApprove:access.canApprove&&(row.declared_by??row.operador_id)!==access.userId,total:keys.reduce((sum,key)=>sum+cents(row["declared_"+key]),0)/100,difference:keys.reduce((sum,key)=>sum+Math.abs(cents(row["declared_"+key])-cents(row["system_"+key])),0)/100,unclassified:Number(row.system_other_count??0)}));
+  return {rows,count:r.count??0,nextCursor:(r.data?.length??0)>20?rows[19].date:null};
+}
 export async function getExpedienteHistory(access: Access, start: string, end: string) {
   const {supabase,escolaId}=access;
   const [closed,cash,config,capture,pending,rejected]=await Promise.all([
@@ -35,10 +46,10 @@ export async function getExpedienteHistory(access: Access, start: string, end: s
     supabase.from("fecho_caixa").select("day_key,status,revision,declared_by").eq("escola_id",escolaId).gte("day_key",start).lte("day_key",end),
     supabase.from("secretaria_expediente_config").select("weekdays").eq("escola_id",escolaId).maybeSingle(),
     supabase.rpc("secretaria_expediente_capture_started_at",{p_escola_id:escolaId}),
-    supabase.from("fecho_caixa").select("day_key,status,revision,declared_by",{count:"exact"}).eq("escola_id",escolaId).eq("status","declared").order("day_key").limit(20),
-    supabase.from("fecho_caixa").select("day_key,status,revision,declared_by",{count:"exact"}).eq("escola_id",escolaId).eq("status","rejected").order("day_key").limit(20),
+    access.canSupervise?getExpedienteQueue(access,"declared"):Promise.resolve({rows:[],count:0,nextCursor:null}),
+    getExpedienteQueue(access,"rejected"),
   ]);
-  if([closed,cash,config,capture,pending,rejected].some(r=>r.error)||!capture.data)throw new Error("Não foi possível consultar o histórico.");
+  if([closed,cash,config,capture].some(r=>r.error)||!capture.data)throw new Error("Não foi possível consultar o histórico.");
   const captureDay=new Intl.DateTimeFormat("sv-SE",{timeZone:"Africa/Luanda",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(capture.data));
   const closedByDay=new Map<string,any>((closed.data??[]).map((r:any)=>[r.day_key,r]));
   const cashByDay=new Map<string,any>((cash.data??[]).map((r:any)=>[r.day_key,r]));
@@ -50,8 +61,7 @@ export async function getExpedienteHistory(access: Access, start: string, end: s
     const expected=day>captureDay && day<todayLuanda() && Boolean(config.data?.weekdays?.includes(date.getUTCDay()||7));
     if(close||payment||expected||day===todayLuanda())days.push({date:day,closedAt:close?.closed_at??null,records:close?.operation_count??null,expected,cashStatus:payment?.status??null,canApprove:Boolean(payment&&access.canApprove&&payment.declared_by!==access.userId)});
   }
-  const queue=(rows:any[])=>rows.map(r=>({date:r.day_key,status:r.status,revision:r.revision,canApprove:access.canApprove&&r.declared_by!==access.userId}));
-  return {days,closedCount:days.filter(d=>d.closedAt).length,missingCount:days.filter(d=>d.expected&&!d.closedAt).length,pendingCount:pending.count??0,rejectedCount:rejected.count??0,pending:queue(pending.data??[]),rejected:queue(rejected.data??[]),scheduleConfigured:Boolean(config.data),captureDay};
+  return {days,closedCount:days.filter(d=>d.closedAt).length,missingCount:days.filter(d=>d.expected&&!d.closedAt).length,pendingCount:pending.count,rejectedCount:rejected.count,pending:pending.rows,rejected:rejected.rows,pendingCursor:pending.nextCursor,rejectedCursor:rejected.nextCursor,scheduleConfigured:Boolean(config.data),captureDay};
 }
 
 export async function getExpedienteActivity(access: Access, date: string, cursor = 0, filters: ActivityFilter = {}) {
