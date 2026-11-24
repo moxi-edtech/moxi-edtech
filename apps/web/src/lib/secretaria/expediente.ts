@@ -42,7 +42,7 @@ export async function getExpedienteHistory(access: Access, start: string, end: s
   const captureDay=new Intl.DateTimeFormat("sv-SE",{timeZone:"Africa/Luanda",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(capture.data));
   const closedByDay=new Map<string,any>((closed.data??[]).map((r:any)=>[r.day_key,r]));
   const cashByDay=new Map<string,any>((cash.data??[]).map((r:any)=>[r.day_key,r]));
-  const days=[];
+  const days: {date:string;closedAt:string|null;records:number|null;expected:boolean;cashStatus:string|null;canApprove:boolean}[]=[];
   for(let date=new Date(end+"T00:00:00Z");date.toISOString().slice(0,10)>=start;date.setUTCDate(date.getUTCDate()-1)){
     const day=date.toISOString().slice(0,10);
     const close=closedByDay.get(day), payment=cashByDay.get(day);
