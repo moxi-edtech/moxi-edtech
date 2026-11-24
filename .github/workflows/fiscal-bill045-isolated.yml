@@ -1,0 +1,45 @@
+name: Fiscal BILL-004 and BILL-005 isolated PostgreSQL 17
+on:
+  pull_request:
+    paths:
+      - 'supabase/ops/fiscal/bill045-*'
+      - 'supabase/ops/tests/bill045-*'
+      - 'supabase/ops/tests/bill023-baseline.sql'
+      - 'supabase/ops/fiscal/bill023-fixture-candidate.sql'
+      - 'apps/web/src/app/api/fiscal/setup/series/route.ts'
+      - '.github/workflows/fiscal-bill045-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  bill045-postgres17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: fixture-only
+          POSTGRES_DB: bill023_fixture
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bill023_fixture"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGUSER: postgres
+      PGPASSWORD: fixture-only
+      PGDATABASE: bill023_fixture
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reproduce observed baseline
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/bill023-baseline.sql
+      - name: Apply previous candidate guards
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/ops/fiscal/bill023-fixture-candidate.sql
+      - name: Test private central allocator and provisioning evidence
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/bill045-regression.sql
+      - name: Exercise 32 concurrent connections
+        run: bash supabase/ops/tests/bill045-concurrency.sh
+      - name: Verify integration candidate and freeze contract
+        run: node --test supabase/ops/tests/bill045-source-contract.test.mjs
