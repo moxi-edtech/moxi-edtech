@@ -199,6 +199,7 @@ CREATE TABLE public.secretaria_expediente_operacoes (
  transaction_id text NOT NULL,
  is_after_close boolean NOT NULL, detail jsonb NOT NULL DEFAULT '{}'::jsonb
 );
+REVOKE ALL ON SEQUENCE public.secretaria_expediente_operacoes_id_seq FROM PUBLIC,anon,authenticated,service_role;
 CREATE INDEX secretaria_expediente_operacoes_day_idx ON public.secretaria_expediente_operacoes(escola_id,day_key,id);
 CREATE TABLE public.secretaria_expediente_config (
  escola_id uuid PRIMARY KEY REFERENCES public.escolas(id) ON DELETE CASCADE, close_time time NOT NULL DEFAULT '17:00',
