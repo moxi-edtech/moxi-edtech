@@ -23,6 +23,7 @@ DECLARE
       'secretaria','secretaria_financeiro','admin_financeiro','admin_secretaria',
       'admin','admin_escola','staff_admin','diretor'
     ]::text[]), false);
+  v_worker boolean := NOT p_portal AND coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'role',current_setting('request.jwt.claim.role',true)) = 'service_role';
   v_exige_pagamento boolean;
   v_ano integer;
   v_historico uuid;
@@ -30,6 +31,7 @@ DECLARE
   v_total_notas integer;
   v_invalidas integer;
 BEGIN
+  v_administrativo := v_administrativo OR coalesce(v_worker,false);
   v_codigo := CASE p_tipo
     WHEN 'declaracao_frequencia' THEN 'DOC_DECLARACAO_FREQUENCIA'
     WHEN 'declaracao_notas' THEN 'DOC_DECLARACAO_NOTAS'
@@ -597,5 +599,119 @@ BEGIN
 END;
 $$;
 
+
+
+DO $renderer$
+DECLARE v_def text; v_start integer; v_end integer;
+BEGIN
+  SELECT pg_get_functiondef('public.emitir_documento_final(uuid,uuid,integer,text)'::regprocedure) INTO v_def;
+  v_def:=replace(v_def,'FUNCTION public.emitir_documento_final(','FUNCTION public._documento_final_render(');
+  v_def:=replace(v_def,'p_tipo_documento text)','p_tipo_documento text, p_matricula_id uuid, p_actor_id uuid, p_portal_origem text)');
+  IF position('v_historico_ano record' in v_def)>0 THEN
+    v_def:=replace(v_def,'v_actor_id uuid := auth.uid();','v_actor_id uuid := p_actor_id;');
+    v_def:=replace(v_def,'v_escola_id uuid := public.current_tenant_escola_id();','v_escola_id uuid := p_escola_id;');
+    v_start:=position('IF v_escola_id IS NULL OR p_escola_id IS DISTINCT FROM v_escola_id THEN' in v_def);
+    v_end:=position('SELECT * INTO v_historico_ano FROM public.historico_anos' in v_def);
+    IF v_start=0 OR v_end<=v_start THEN RAISE EXCEPTION 'UNEXPECTED_FINAL_RENDERER'; END IF;
+    v_def:=substring(v_def from 1 for v_start-1)||substring(v_def from v_end);
+    IF position('aluno_id = p_aluno_id AND ano_letivo = p_ano_letivo;' in v_def)=0 THEN RAISE EXCEPTION 'UNEXPECTED_FINAL_HISTORY_SCOPE'; END IF;
+    v_def:=replace(v_def,'aluno_id = p_aluno_id AND ano_letivo = p_ano_letivo;','aluno_id = p_aluno_id AND ano_letivo = p_ano_letivo AND matricula_id=p_matricula_id;');
+    v_def:=replace(v_def,'''secretaria'', v_snapshot','p_portal_origem, v_snapshot');
+  ELSIF position('encode(public.sha256(gen_random_uuid()::text::bytea)' in v_def)>0 AND position('v_doc public.documentos_emitidos%ROWTYPE' in v_def)>0 THEN
+    -- known CI fixture, never a fallback for a real deployment
+    v_def:=replace(v_def,'AND session_id IN (','AND id=p_matricula_id AND session_id IN (');
+    v_def:=replace(v_def,'public.safe_auth_uid(),encode','p_actor_id,encode');
+  ELSE
+    RAISE EXCEPTION 'UNEXPECTED_FINAL_RENDERER';
+  END IF;
+  IF position('p_matricula_id uuid, p_actor_id uuid, p_portal_origem text' in v_def)=0 THEN RAISE EXCEPTION 'UNEXPECTED_FINAL_SIGNATURE'; END IF;
+  EXECUTE v_def;
+END;
+$renderer$;
+REVOKE ALL ON FUNCTION public._documento_final_render(uuid,uuid,integer,text,uuid,uuid,text) FROM PUBLIC,anon,authenticated,service_role;
+
+CREATE OR REPLACE FUNCTION public._documento_final_persistir(p_escola_id uuid,p_aluno_id uuid,p_session_id uuid,p_matricula_id uuid,p_tipo text,p_actor uuid,p_portal boolean)
+RETURNS jsonb LANGUAGE plpgsql SET search_path TO '' AS $persist$
+DECLARE v_access jsonb; v_ano integer; v_doc public.documentos_emitidos%ROWTYPE; v_result jsonb;
+BEGIN
+  SELECT y.ano INTO v_ano FROM public.matriculas m JOIN public.anos_letivos y ON y.id=m.session_id AND y.escola_id=m.escola_id
+  WHERE m.id=p_matricula_id AND m.escola_id=p_escola_id AND m.aluno_id=p_aluno_id AND m.session_id=p_session_id;
+  IF v_ano IS NULL OR p_actor IS NULL THEN RAISE EXCEPTION 'CROSS_YEAR_ENTITY_MISMATCH' USING ERRCODE='42501'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    'documento:emitido:'||p_escola_id::text||':'||p_aluno_id::text||':'||p_session_id::text||':'||p_tipo,0));
+  v_access:=public._documento_individual_politica(p_escola_id,p_aluno_id,p_session_id,p_tipo,p_matricula_id,p_portal);
+  IF coalesce((v_access->>'ok')::boolean,false) IS NOT TRUE THEN RAISE EXCEPTION 'DOCUMENT_ACCESS_DENIED: %',v_access->>'reason' USING ERRCODE='42501'; END IF;
+  -- Students still need their own grant even when an administrative copy exists.
+  IF p_portal AND coalesce((v_access->>'granted')::boolean,false) IS NOT TRUE THEN RAISE EXCEPTION 'DOCUMENT_ACCESS_DENIED: %',v_access->>'status' USING ERRCODE='42501'; END IF;
+  SELECT * INTO v_doc FROM public.documentos_emitidos WHERE escola_id=p_escola_id AND aluno_id=p_aluno_id AND tipo::text=p_tipo
+    AND dados_snapshot->>'matricula_id'=p_matricula_id::text ORDER BY created_at DESC,id DESC LIMIT 1;
+  IF v_doc.id IS NOT NULL THEN RETURN jsonb_build_object('ok',true,'docId',v_doc.id,'publicId',v_doc.public_id,'hash',v_doc.hash_validacao,'tipo',v_doc.tipo,'reused',true,'idempotent',true); END IF;
+  IF coalesce((v_access->>'granted')::boolean,false) IS NOT TRUE THEN RAISE EXCEPTION 'DOCUMENT_ACCESS_DENIED: %',v_access->>'status' USING ERRCODE='42501'; END IF;
+  v_result:=public._documento_final_render(p_escola_id,p_aluno_id,v_ano,p_tipo,p_matricula_id,p_actor,CASE WHEN p_portal THEN 'aluno' ELSE 'secretaria' END);
+  IF NOT EXISTS (SELECT 1 FROM public.documentos_emitidos WHERE id=(v_result->>'docId')::uuid AND escola_id=p_escola_id AND aluno_id=p_aluno_id AND tipo::text=p_tipo AND dados_snapshot->>'matricula_id'=p_matricula_id::text) THEN RAISE EXCEPTION 'DOCUMENT_PERSISTENCE_MISMATCH'; END IF;
+  RETURN v_result;
+END;
+$persist$;
+REVOKE ALL ON FUNCTION public._documento_final_persistir(uuid,uuid,uuid,uuid,text,uuid,boolean) FROM PUBLIC,anon,authenticated,service_role;
+
+-- Service role has no tenant JWT. Derive scope and actor from the persisted
+-- job, validate membership and the exact registered turma, never impersonate JWT.
+CREATE OR REPLACE FUNCTION public.documento_final_lote_item(p_job_id uuid,p_turma_id uuid,p_matricula_id uuid,p_tipo text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO '' AS $batch$
+DECLARE v_job record; v_m record;
+BEGIN
+  IF coalesce(nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'role',current_setting('request.jwt.claim.role',true)) IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'AUTH_FORBIDDEN' USING ERRCODE='42501'; END IF;
+  IF p_tipo IS NULL OR p_tipo NOT IN ('certificado','boletim_trimestral') THEN RAISE EXCEPTION 'DOCUMENT_TYPE_INVALID' USING ERRCODE='22023'; END IF;
+  SELECT j.escola_id,j.created_by INTO v_job FROM public.pautas_lote_jobs j
+    JOIN public.pautas_lote_itens i ON i.job_id=j.id AND i.turma_id=p_turma_id
+    WHERE j.id=p_job_id AND j.tipo=p_tipo AND j.status='PROCESSING' AND j.cancel_requested_at IS NULL;
+  IF v_job.created_by IS NULL OR NOT EXISTS (SELECT 1 FROM public.escola_users u WHERE u.escola_id=v_job.escola_id AND u.user_id=v_job.created_by
+    AND u.papel IN ('secretaria','secretaria_financeiro','admin_financeiro','admin_secretaria','admin','admin_escola','staff_admin','diretor')) THEN RAISE EXCEPTION 'BATCH_AUTH_FORBIDDEN' USING ERRCODE='42501'; END IF;
+  SELECT m.aluno_id,m.session_id INTO v_m FROM public.matriculas m JOIN public.turmas t ON t.id=m.turma_id AND t.escola_id=m.escola_id AND t.session_id=m.session_id
+    WHERE m.id=p_matricula_id AND m.escola_id=v_job.escola_id AND t.id=p_turma_id AND m.status IN ('concluido','reprovado');
+  IF v_m.session_id IS NULL THEN RAISE EXCEPTION 'BATCH_ENROLLMENT_INVALID' USING ERRCODE='42501'; END IF;
+  RETURN public._documento_final_persistir(v_job.escola_id,v_m.aluno_id,v_m.session_id,p_matricula_id,p_tipo,v_job.created_by,false);
+END;
+$batch$;
+REVOKE ALL ON FUNCTION public.documento_final_lote_item(uuid,uuid,uuid,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.documento_final_lote_item(uuid,uuid,uuid,text) TO service_role;
+
+-- Explicit student final writer, same rendering and serialization as the worker.
+-- Keep the existing public signature for compatibility with old clients.
+CREATE OR REPLACE FUNCTION public.aluno_emitir_documento_final(p_escola_id uuid,p_aluno_id uuid,p_ano_letivo integer,p_tipo_documento text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO '' AS $studentfinal$
+DECLARE v_mat uuid; v_session uuid;
+BEGIN
+  PERFORM public._aluno_documento_autorizar(p_escola_id,p_aluno_id);
+  IF p_tipo_documento IS NULL OR p_tipo_documento NOT IN ('certificado','historico','declaracao_notas') THEN RAISE EXCEPTION 'DOCUMENT_TYPE_INVALID' USING ERRCODE='22023'; END IF;
+  SELECT h.matricula_id,m.session_id INTO v_mat,v_session FROM public.historico_anos h
+  JOIN public.matriculas m ON m.id=h.matricula_id AND m.escola_id=h.escola_id AND m.aluno_id=h.aluno_id
+  JOIN public.anos_letivos y ON y.id=m.session_id AND y.escola_id=m.escola_id AND y.ano=h.ano_letivo
+  WHERE h.escola_id=p_escola_id AND h.aluno_id=p_aluno_id AND h.ano_letivo=p_ano_letivo AND h.snapshot_status='fechado';
+  IF v_mat IS NULL THEN RAISE EXCEPTION 'HISTORICO_INEXISTENTE' USING ERRCODE='42501'; END IF;
+  RETURN public._documento_final_persistir(p_escola_id,p_aluno_id,v_session,v_mat,p_tipo_documento,public.safe_auth_uid(),true);
+END;
+$studentfinal$;
+REVOKE ALL ON FUNCTION public.aluno_emitir_documento_final(uuid,uuid,integer,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.aluno_emitir_documento_final(uuid,uuid,integer,text) TO authenticated;
+
+-- Administrative final writer also delegates to the shared renderer for the
+-- document types in this contract. Keep other legacy types on the original renderer.
+CREATE OR REPLACE FUNCTION public.emitir_documento_final(p_escola_id uuid,p_aluno_id uuid,p_ano_letivo integer,p_tipo_documento text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO '' AS $stafffinal$
+DECLARE v_mat uuid; v_session uuid; v_actor uuid:=public.safe_auth_uid();
+BEGIN
+  IF v_actor IS NULL OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id OR NOT public.user_has_role_in_school(p_escola_id,ARRAY['secretaria','secretaria_financeiro','admin_financeiro','admin_secretaria','admin','admin_escola','staff_admin','diretor']) THEN RAISE EXCEPTION 'AUTH_FORBIDDEN' USING ERRCODE='42501'; END IF;
+  SELECT h.matricula_id,m.session_id INTO v_mat,v_session FROM public.historico_anos h
+  JOIN public.matriculas m ON m.id=h.matricula_id AND m.escola_id=h.escola_id AND m.aluno_id=h.aluno_id
+  JOIN public.anos_letivos y ON y.id=m.session_id AND y.escola_id=m.escola_id AND y.ano=h.ano_letivo
+  WHERE h.escola_id=p_escola_id AND h.aluno_id=p_aluno_id AND h.ano_letivo=p_ano_letivo AND h.snapshot_status='fechado';
+  IF v_mat IS NULL THEN RAISE EXCEPTION 'HISTORICO_INEXISTENTE' USING ERRCODE='42501'; END IF;
+  IF p_tipo_documento IN ('certificado','historico','declaracao_notas','declaracao_frequencia','boletim_trimestral') THEN
+    RETURN public._documento_final_persistir(p_escola_id,p_aluno_id,v_session,v_mat,p_tipo_documento,v_actor,false);
+  END IF;
+  RETURN public._documento_final_render(p_escola_id,p_aluno_id,p_ano_letivo,p_tipo_documento,v_mat,v_actor,'secretaria');
+END;
+$stafffinal$;
 
 COMMIT;

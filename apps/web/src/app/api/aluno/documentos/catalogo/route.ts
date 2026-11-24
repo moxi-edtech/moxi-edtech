@@ -1,5 +1,5 @@
 import { portalDocumentType, DOCUMENT_BLOCK_REASONS } from "@/lib/documentos/portalDocumentPolicy";
-import { isBoletimPaid, BOLETIM_SERVICE_CODE, isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
+import { isBoletimPaid, BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { AcademicYearContextError } from "@/lib/academic-year/context";

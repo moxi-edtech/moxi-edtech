@@ -34,8 +34,9 @@ test('um único serviço inicia novos pedidos de boletim, preservando pagamentos
   const docs = read('components/aluno/tabs/TabDocumentos.tsx');
   const notas = read('components/aluno/tabs/TabNotas.tsx');
   const access = read('lib/aluno/boletimAccess.ts');
-  assert.match(docs, /requestedService === BOLETIM_LEGACY_SERVICE_CODE \? BOLETIM_SERVICE_CODE/);
-  assert.match(docs, /doc.codigo !== BOLETIM_LEGACY_SERVICE_CODE/);
+  assert.match(docs, /const isBoletim = doc.codigo === BOLETIM_SERVICE_CODE/);
+  assert.match(docs, /'DOC_DECLARACAO_NOTAS'/);
+  assert.match(access, /context\?\.tipo_documento !== 'declaracao_notas'/);
   assert.doesNotMatch(notas, /servicos.find\(\(item\) => item.codigo === "DOC_DECLARACAO_NOTAS"/);
   assert.match(notas, /item.codigo === BOLETIM_SERVICE_CODE/);
   assert.match(access, /BOLETIM_SERVICE_CODES = \["DOC_BOLETIM_TRIMESTRAL", "DOC_DECLARACAO_NOTAS"\]/);
@@ -46,8 +47,9 @@ test('a fila de documentos gratuitos não aprova o boletim pago; documentos ofic
   assert.doesNotMatch(decisions, /DOC_BOLETIM_TRIMESTRAL/);
   // Declaração oficial pode ser gratuita, mas a fila nunca liquida um pedido pago.
   assert.match(decisions, /DOC_DECLARACAO_NOTAS/);
-  assert.equal((decisions.match(/\.eq\("valor_cobrado", 0\)/g) ?? []).length, 2);
+  assert.equal((decisions.match(/\.eq\("valor_cobrado", 0\)/g) ?? []).length, 1);
   const policy = readFileSync(new URL('../../../supabase/migrations/20271203004000_documentos_individuais_gratuidade_ssot.sql', src), 'utf8');
+  assert.match(policy, /p\.status='blocked' AND p\.valor_cobrado=0/);
   assert.match(policy, /WHEN 'declaracao_notas' THEN 'DOC_DECLARACAO_NOTAS'/);
   assert.match(policy, /WHEN 'boletim_trimestral' THEN 'DOC_BOLETIM_TRIMESTRAL'/);
 });

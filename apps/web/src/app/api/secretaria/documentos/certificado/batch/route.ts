@@ -6,7 +6,7 @@ import { requireRoleInSchool } from '@/lib/authz'
 import { requireFeature } from '@/lib/plan/requireFeature'
 import { HttpError } from '@/lib/errors'
 import { buildCertificadoSnapshot, type CertificadoSnapshot } from '@/lib/documentos/certificadoSnapshot'
-import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from '@/lib/roles'
+import { K12_DOCUMENTOS_ROLE_GROUP } from '@/lib/roles'
 import { AcademicYearContextError, assertAcademicYearEntity, resolveAcademicYearContext } from '@/lib/academic-year/context'
 
 export const dynamic = 'force-dynamic'
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
+      roles: [...K12_DOCUMENTOS_ROLE_GROUP],
     })
     if (authError) return authError
 
@@ -85,24 +85,30 @@ export async function POST(request: Request) {
     const { data: matriculas, error: matError } = await query
     if (matError) return NextResponse.json({ ok: false, error: matError.message }, { status: 400 })
 
+    if (!matriculas?.length || (alunos_ids?.length && new Set(matriculas.map((m: any) => m.aluno_id)).size !== new Set(alunos_ids).size)) return NextResponse.json({ ok: false, error: 'Não existem matrículas elegíveis para todos os alunos selecionados.' }, { status: 409 })
     const snapshots: CertificadoSnapshot[] = []
     for (const m of matriculas || []) {
-      const { data: docRes, error: emitError } = await supabase.rpc('emitir_documento_final', {
+      const { data: access, error: accessError } = await supabase.rpc('documento_individual_acesso', { p_escola_id: escolaId, p_aluno_id: m.aluno_id, p_session_id: academicContext.anoLetivoId, p_tipo: 'certificado' })
+      if (accessError || access?.matricula_id !== m.id) return NextResponse.json({ ok: false, error: 'Matrícula ou elegibilidade divergente no lote.', alunoId: m.aluno_id }, { status: 409 })
+      const { data: docRes, error: emitError } = await supabase.rpc('emitir_documento_final_individual', {
         p_escola_id: escolaId,
         p_aluno_id: m.aluno_id,
         p_ano_letivo: Number(turma.ano_letivo),
         p_tipo_documento: 'certificado',
+        p_session_id: academicContext.anoLetivoId,
+        p_idempotency_key: `certificado-lote:${m.id}`,
       })
-      if (emitError || !docRes?.docId) continue
+      if (emitError || !docRes?.docId) return NextResponse.json({ ok: false, error: 'Existe um certificado pendente de regularização académica ou financeira. Nenhum PDF parcial foi disponibilizado.', alunoId: m.aluno_id }, { status: 409 })
 
-      const { data: row } = await supabase
+      const { data: row, error: rowError } = await supabase
         .from('documentos_emitidos')
         .select('dados_snapshot, hash_validacao')
         .eq('id', docRes.docId)
         .eq('escola_id', escolaId)
         .maybeSingle()
 
-      const snapshot = (row?.dados_snapshot || {}) as Record<string, unknown>
+      if (rowError || !row?.dados_snapshot || row.dados_snapshot.matricula_id !== m.id) return NextResponse.json({ ok: false, error: 'Documento não corresponde à matrícula do lote.' }, { status: 409 })
+      const snapshot = row.dados_snapshot as Record<string, unknown>
       const certificado = await buildCertificadoSnapshot({
         supabase,
         escolaId,

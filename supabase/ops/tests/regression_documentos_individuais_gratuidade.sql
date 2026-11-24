@@ -123,4 +123,50 @@ BEGIN
   END LOOP;
 END;
 $roles_test$;
+-- Price changes must not invalidate a settled service, nor split a cross-channel request.
+UPDATE public.historico_disciplinas SET nota_final=15 WHERE historico_ano_id='00000000-0000-4000-8000-000000007110';
+UPDATE public.servicos_escola SET valor_base=1000,exige_pagamento_antes_de_liberar=true WHERE escola_id='00000000-0000-4000-8000-000000007101' AND codigo='DOC_DECLARACAO_NOTAS';
+SET LOCAL ROLE authenticated;
+DO $cross$
+DECLARE s uuid:='00000000-0000-4000-8000-000000007101'; a uuid:='00000000-0000-4000-8000-000000007105'; y uuid:='00000000-0000-4000-8000-000000007106'; m uuid:='00000000-0000-4000-8000-000000007108'; v jsonb; w jsonb;
+BEGIN
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated','escola_id',s)::text,true);
+  v:=public.aluno_documento_solicitar(s,a,y,m,'declaracao_notas');
+  IF v->>'status' IS DISTINCT FROM 'pending_payment' OR v->>'pagamento_id' IS NULL THEN RAISE EXCEPTION 'PORTAL_NOTES_REQUEST_FAILED %',v; END IF;
+  PERFORM set_config('request.jwt.claims',json_build_object('sub','00000000-0000-4000-8000-000000007103','role','authenticated','escola_id',s)::text,true);
+  w:=public.documento_individual_solicitar(s,a,y,'declaracao_notas');
+  IF w->>'pedido_id' IS DISTINCT FROM v->>'pedido_id' OR w->>'pagamento_intent_id' IS DISTINCT FROM v->>'pagamento_id' THEN RAISE EXCEPTION 'CROSS_CHANNEL_DUPLICATE % %',v,w; END IF;
+END;
+$cross$;
+RESET ROLE;
+UPDATE public.pagamento_intents SET status='settled' WHERE servico_pedido_id IN (SELECT id FROM public.servico_pedidos WHERE escola_id='00000000-0000-4000-8000-000000007101' AND servico_codigo='DOC_DECLARACAO_NOTAS');
+UPDATE public.servico_pedidos SET status='granted' WHERE escola_id='00000000-0000-4000-8000-000000007101' AND servico_codigo='DOC_DECLARACAO_NOTAS';
+UPDATE public.servicos_escola SET valor_base=3000 WHERE escola_id='00000000-0000-4000-8000-000000007101' AND codigo='DOC_DECLARACAO_NOTAS';
+SET LOCAL ROLE authenticated;
+DO $price$
+DECLARE s uuid:='00000000-0000-4000-8000-000000007101'; a uuid:='00000000-0000-4000-8000-000000007105'; y uuid:='00000000-0000-4000-8000-000000007106'; m uuid:='00000000-0000-4000-8000-000000007108'; v jsonb; w jsonb;
+BEGIN
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated','escola_id',s)::text,true);
+  v:=public.aluno_documento_acesso(s,a,y,m,'declaracao_notas');
+  IF v->>'status' IS DISTINCT FROM 'paid' OR (v->>'valor')::numeric<>1000 THEN RAISE EXCEPTION 'PRICE_CHANGE_INVALIDATED_PAYMENT %',v; END IF;
+  v:=public.aluno_emitir_documento_final(s,a,2026,'declaracao_notas');
+  w:=public.aluno_emitir_documento_final(s,a,2026,'declaracao_notas');
+  IF v->>'docId' IS NULL OR v->>'docId' IS DISTINCT FROM w->>'docId' THEN RAISE EXCEPTION 'NOTES_REPRINT_DUPLICATE'; END IF;
+END;
+$price$;
+RESET ROLE;
+INSERT INTO public.servico_pedidos(escola_id,aluno_id,matricula_id,servico_escola_id,status,servico_codigo,servico_nome,valor_cobrado,contexto)
+SELECT s.escola_id,'00000000-0000-4000-8000-000000007105','00000000-0000-4000-8000-000000007108',s.id,'blocked',s.codigo,'Fila teste '||n,0,jsonb_build_object('origem','portal_aluno_documentos')
+FROM public.servicos_escola s CROSS JOIN generate_series(1,65) n WHERE s.escola_id='00000000-0000-4000-8000-000000007101' AND s.codigo='DOC_CERTIFICADO_HABILITACOES';
+SET LOCAL ROLE authenticated;
+DO $queue_test$
+DECLARE v jsonb; w jsonb;
+BEGIN
+ PERFORM set_config('request.jwt.claims',json_build_object('sub','00000000-0000-4000-8000-000000007103','role','authenticated','escola_id','00000000-0000-4000-8000-000000007101')::text,true);
+ v:=public.documentos_aprovacoes_pagina('00000000-0000-4000-8000-000000007101',7,'');
+ w:=public.documentos_aprovacoes_pagina('00000000-0000-4000-8000-000000007101',1,'fila teste 65');
+ IF (v->>'total')::integer<>65 OR jsonb_array_length(v->'items')<>5 OR (w->>'filteredTotal')::integer<>1 THEN RAISE EXCEPTION 'QUEUE_PAGINATION_FAILED % %',v,w; END IF;
+END;
+$queue_test$;
+RESET ROLE;
 ROLLBACK;

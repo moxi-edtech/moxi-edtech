@@ -182,10 +182,10 @@ export const pautasLote = inngest.createFunction(
                 })
                 filePrefix = tipo
               } else if (tipo === "boletim_trimestral") {
-                pdfBuffer = await renderBoletimPdfBuffer({ supabase, escolaId: escola_id, turmaId })
+                pdfBuffer = await renderBoletimPdfBuffer({ supabase, escolaId: escola_id, turmaId, jobId: job_id })
                 filePrefix = "boletim"
               } else {
-                pdfBuffer = await renderCertificadoPdfBuffer({ supabase, escolaId: escola_id, turmaId })
+                pdfBuffer = await renderCertificadoPdfBuffer({ supabase, escolaId: escola_id, turmaId, jobId: job_id })
                 filePrefix = "certificado"
               }
 
@@ -258,7 +258,7 @@ export const pautasLote = inngest.createFunction(
               await supabase.rpc("increment_pautas_lote_job", { p_job_id: job_id, p_success: true, p_failed: false })
               return { turmaId, ok: true, pdfPath, checksum, nominalRows }
             } catch (err) {
-              const message = "Falha ao gerar o documento desta turma"
+              const message = err instanceof Error && err.message.startsWith("DOCUMENT_BATCH_") ? "Emissão incompleta: regularize documentos pendentes da turma e reprocesse o lote." : "Falha ao gerar o documento desta turma"
               await supabase.from("pautas_lote_itens").update({
                 status: "FAILED",
                 error_message: message,

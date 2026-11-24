@@ -41,11 +41,13 @@ test("portal do aluno escolhe a matrícula do ano solicitado", () => {
 });
 
 test("declaração com notas tem página própria vinculada ao histórico exato", () => {
-  const print = src("app/secretaria/documentos/[docId]/notas/print/page.tsx");
+  const print = src("app/secretaria/documentos/_print/DeclaracaoNotasPrintPage.tsx");
   assert.match(print, /doc.tipo !== "declaracao_notas"/);
   assert.match(print, /\.eq\("ano_letivo", ano\)/);
   assert.match(print, /historico.snapshot_status !== "fechado"/);
   assert.match(print, /historico_disciplinas/);
+  assert.match(print, /\.eq\("matricula_id", String\(snapshot\.matricula_id/);
+  assert.match(src("app/aluno/documentos/[docId]/notas/print/page.tsx"), /requireStudentOwnership/);
 });
 
 test("RPC do aluno não faz fallback para ano diferente", () => {
