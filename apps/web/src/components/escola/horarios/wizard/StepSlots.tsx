@@ -261,7 +261,7 @@ export function StepSlots({ escolaId, onComplete, initialTurno, onBusyChange }: 
       </div>
 
       <div className="mt-4 flex justify-end"><Button type="button" tone="gold" onClick={onComplete} disabled={loading||loadError||savingSlot||!turnSlots.some(s=>!s.is_intervalo)}>Concluir configuração</Button></div>
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+      <Dialog open={showAddModal} onOpenChange={open=>{if(!savingSlot)setShowAddModal(open)}}>
         <DialogContent className="sm:max-w-[400px] rounded-3xl">
           <DialogHeader>
               <DialogTitle className="text-2xl font-black text-foreground tracking-tight">Novo Tempo</DialogTitle>
@@ -318,7 +318,7 @@ export function StepSlots({ escolaId, onComplete, initialTurno, onBusyChange }: 
             </div>
 
             <DialogFooter className="mt-6">
-              <Button type="button" variant="ghost" onClick={() => setShowAddModal(false)} className="font-bold">Cancelar</Button>
+              <Button type="button" disabled={savingSlot} variant="ghost" onClick={() => setShowAddModal(false)} className="font-bold">Cancelar</Button>
               <Button type="submit" tone="gold" loading={savingSlot} disabled={newSlotInvalid || Boolean(newSlotConflict) || localConflicts.length > 0} className="font-black px-8">Salvar Tempo</Button>
             </DialogFooter>
           </form>
