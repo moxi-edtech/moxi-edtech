@@ -64,6 +64,8 @@ DO $$ DECLARE f public.fecho_caixa; BEGIN
   RAISE EXCEPTION 'missing justification accepted';
  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  PERFORM public.financeiro_fecho_aprovar(f.escola_id,f.id,'rejected','Corrigir valores');
+ PERFORM public.financeiro_fecho_aprovar(f.escola_id,f.id,'rejected','Corrigir valores');
+ IF (SELECT count(*) FROM public.secretaria_expediente_responsaveis(f.escola_id,f.day_key))<>1 THEN RAISE EXCEPTION 'actor list incorrect'; END IF;
 END $$;
 SELECT set_config('request.jwt.claims','{"role":"authenticated","sub":"20000000-0000-0000-0000-000000000001"}',true);
 DO $$ DECLARE f public.fecho_caixa; d date:=(clock_timestamp() AT TIME ZONE 'Africa/Luanda')::date; BEGIN
@@ -85,6 +87,9 @@ END $$;
 RESET ROLE;
 DO $$ BEGIN
  IF (SELECT count(*) FROM public.outbox_events WHERE event_type='secretaria_expediente_email')<>1 THEN RAISE EXCEPTION 'email queue missing or duplicate'; END IF;
+ IF (SELECT count(*) FROM public.eventos WHERE tipo='financeiro.fecho.rejeitado')<>1 THEN RAISE EXCEPTION 'rejection event duplication'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.notificacoes n JOIN public.eventos e ON e.id=n.evento_id WHERE e.tipo='financeiro.fecho.rejeitado' AND n.destinatario_id='20000000-0000-0000-0000-000000000001') THEN RAISE EXCEPTION 'rejection notification missing'; END IF;
+ IF EXISTS(SELECT 1 FROM public.notificacoes n JOIN public.eventos e ON e.id=n.evento_id WHERE e.tipo='financeiro.fecho.rejeitado' AND n.destinatario_id='20000000-0000-0000-0000-000000000003') THEN RAISE EXCEPTION 'rejection cross tenant'; END IF;
  IF (SELECT count(*) FROM public.eventos WHERE tipo='financeiro.fecho.autorizado')<>1 THEN RAISE EXCEPTION 'approval event duplication'; END IF;
  IF (SELECT count(*) FROM public.eventos WHERE tipo='secretaria.expediente.fechado')<>1 THEN RAISE EXCEPTION 'close event duplication'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.notificacoes n JOIN public.eventos e ON e.id=n.evento_id WHERE e.tipo='financeiro.fecho.autorizado' AND n.destinatario_id='20000000-0000-0000-0000-000000000001') THEN RAISE EXCEPTION 'notification absent'; END IF;
