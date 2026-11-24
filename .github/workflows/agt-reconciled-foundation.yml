@@ -24,4 +24,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: cd apps/web && node --test --import tsx tests/unit/fiscal-decimal.spec.ts tests/unit/agt-certification-plan.spec.ts
-      - run: pnpm -C apps/web typecheck
+      - name: Full web TypeScript check
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: pnpm -C apps/web typecheck
