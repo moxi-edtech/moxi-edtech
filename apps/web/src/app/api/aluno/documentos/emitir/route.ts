@@ -1,3 +1,4 @@
+import { portalDocumentType, DOCUMENT_BLOCK_REASONS } from "@/lib/documentos/portalDocumentPolicy";
 import { checkBoletimAccess, BOLETIM_SERVICE_CODES, BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -5,7 +6,6 @@ import { getAlunoContext } from '@/lib/alunoContext'
 import { resolveBoletimMatricula } from '@/lib/aluno/resolveBoletimMatricula'
 import { AcademicYearContextError } from '@/lib/academic-year/context'
 import { resolveSelectedStudentId } from '@/lib/portalAlunoAuth'
-import { verificarCertificadoElegivel } from '@/lib/documentos/certificadoElegibilidade'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,35 +74,18 @@ export async function POST(req: Request) {
       if (!access.granted) return NextResponse.json({ ok: false, error: 'Pague o boletim de notas e aguarde a confirmação da secretaria.' }, { status: 403 });
       return NextResponse.json({ ok: true, url: `/api/aluno/boletim/pdf?studentId=${encodeURIComponent(alunoId)}${anoLetivoId ? `&ano_letivo_id=${encodeURIComponent(anoLetivoId)}` : ""}` });
     }
-    if (BOLETIM_SERVICE_CODES.some((code) => code === resolvedServiceCode)) {
-      return NextResponse.json({ ok: false, error: 'Este serviço só pode ser emitido como boletim.' }, { status: 400 });
-    }
-    if (resolvedServiceCode === 'DOC_DECLARACAO_NOTAS') {
-      // A declaração oficial com notas exige liquidação específica na Secretaria.
-      return NextResponse.json({ ok: false, error: 'Solicite a declaração oficial de notas à secretaria.' }, { status: 409 });
-    }
-
-    const { data: permission, error: permError } = await supabase
-      .from('servico_pedidos')
-      .select('status')
-      .eq('escola_id', escolaId)
-      .eq('aluno_id', alunoId)
-      .eq('matricula_id', matriculaId)
-      .eq('servico_codigo', resolvedServiceCode)
-      .eq('status', 'granted')
-      .limit(1)
-      .maybeSingle();
-
-    if (permError) throw permError;
-    
-    if (!permission) {
-      return NextResponse.json({ 
-        ok: false, 
-        error: 'Acesso pendente. Confirme o pagamento do serviço para liberar o documento.',
-        next_action: { type: 'pay_service', label: 'Abrir Secretaria Digital', href: '/aluno/documentos' }
-      }, { status: 403 });
-    }
-
+    if (resolvedServiceCode === BOLETIM_SERVICE_CODE) return NextResponse.json({ ok: false, error: 'Este serviço só pode ser emitido como boletim.' }, { status: 400 });
+    const tipoDocumento = portalDocumentType(resolvedServiceCode);
+    if (!tipoDocumento) return NextResponse.json({ ok: false, error: "Documento inválido." }, { status: 400 });
+    const { data: access, error: accessError } = await (supabase as any).rpc("aluno_documento_acesso", {
+      p_escola_id: escolaId, p_aluno_id: alunoId, p_matricula_id: matriculaId,
+      p_session_id: context.anoLetivoId, p_tipo: tipoDocumento,
+    });
+    if (accessError) return NextResponse.json({ ok: false, error: "Não foi possível validar o acesso ao documento." }, { status: 503 });
+    if (access?.granted !== true) return NextResponse.json({
+      ok: false, code: access?.reason ?? access?.status,
+      error: DOCUMENT_BLOCK_REASONS[access?.reason] ?? (access?.status === "approval" ? "Aguarde a aprovação da secretaria." : "O pagamento ainda não foi confirmado."),
+    }, { status: 409 });
     if (resolvedServiceCode === 'DOC_DECLARACAO_FREQUENCIA') {
       const { data: frequencyDoc, error: frequencyError } = await (supabase as any).rpc('aluno_emitir_declaracao_frequencia', {
         p_escola_id: escolaId,
@@ -141,38 +124,18 @@ export async function POST(req: Request) {
       const printType = resolvedServiceCode === 'DOC_CARTAO_ESTUDANTE' ? 'cartao' : 'ficha';
       return NextResponse.json({ ok: true, url: `/aluno/documentos/${(operationalDoc as any).docId}/${printType}/print`, reused: Boolean((operationalDoc as any).reused) });
     }
-    if (resolvedServiceCode === 'DOC_HISTORICO_ESCOLAR' || resolvedServiceCode === 'DOC_CERTIFICADO_HABILITACOES') {
-      // A RPC antiga fazia fallback para outro ano quando não encontrava histórico.
-      const { data: yearHistory, error: yearHistoryError } = await supabase
-        .from('historico_anos').select('id, snapshot_status')
-        .eq('escola_id', escolaId).eq('aluno_id', alunoId)
-        .eq('ano_letivo', anoLetivo).maybeSingle();
-      if (yearHistoryError) return NextResponse.json({ ok: false, error: 'Não foi possível consultar o histórico do ano.' }, { status: 503 });
-      if (!yearHistory || yearHistory.snapshot_status !== 'fechado') {
-        return NextResponse.json({ ok: false, error: 'Conclua o histórico do ano letivo selecionado antes de emitir.' }, { status: 409 });
-      }
-      if (resolvedServiceCode === 'DOC_CERTIFICADO_HABILITACOES') {
-        const elegibilidade = await verificarCertificadoElegivel({
-          supabase, escolaId, alunoId, anoLetivo,
-        });
-        if (!elegibilidade.ok) {
-          return NextResponse.json({
-            ok: false, code: elegibilidade.code, error: elegibilidade.error,
-            next_action: { type: 'contact_secretaria', label: 'Regularizar histórico na secretaria', href: '/aluno/avisos' },
-          }, { status: elegibilidade.code === 'CONSULTA_INDISPONIVEL' ? 503 : 409 });
-        }
-      }
+    if (resolvedServiceCode === 'DOC_HISTORICO_ESCOLAR' || resolvedServiceCode === 'DOC_CERTIFICADO_HABILITACOES' || resolvedServiceCode === 'DOC_DECLARACAO_NOTAS') {
       const { data: finalDoc, error: finalError } = await (supabase as any).rpc('aluno_emitir_documento_final', {
         p_escola_id: escolaId,
         p_aluno_id: alunoId,
         p_ano_letivo: Number(anoLetivo),
-        p_tipo_documento: resolvedServiceCode === 'DOC_HISTORICO_ESCOLAR' ? 'historico' : 'certificado',
+        p_tipo_documento: tipoDocumento,
       });
       if (finalError || !(finalDoc as any)?.docId) {
         const message = finalError?.message?.includes('LEGAL_LOCK') ? 'O histórico anual ainda não foi fechado pela escola.' : 'Não foi possível emitir o documento final.';
         return NextResponse.json({ ok: false, error: message, next_action: { type: 'contact_secretaria', label: 'Falar com a secretaria', href: '/aluno/avisos' } }, { status: 409 });
       }
-      const printType = resolvedServiceCode === 'DOC_HISTORICO_ESCOLAR' ? 'historico' : 'certificado';
+      const printType = tipoDocumento === 'declaracao_notas' ? 'notas' : tipoDocumento;
       return NextResponse.json({ ok: true, url: `/aluno/documentos/${(finalDoc as any).docId}/${printType}/print`, reused: Boolean((finalDoc as any).reused) });
     }
     // ----------------------------------------------------------------------------

@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS public.pagamentos (
   escola_id uuid NOT NULL,
   aluno_id uuid NOT NULL,
   mensalidade_id uuid,
+  pagamento_intent_id uuid,
   valor_pago numeric(12,2) NOT NULL,
   metodo text NOT NULL DEFAULT 'cash',
   status text NOT NULL DEFAULT 'pending',
@@ -115,3 +116,19 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.emitir_documento_final(uuid,uuid,integer,text)
 TO authenticated, service_role;
+
+-- Portal ownership and audit fixtures for the disposable database only.
+ALTER TABLE public.alunos ADD COLUMN IF NOT EXISTS usuario_auth_id uuid;
+ALTER TABLE public.alunos ADD COLUMN IF NOT EXISTS profile_id uuid;
+CREATE TABLE IF NOT EXISTS public.encarregados(id uuid PRIMARY KEY, escola_id uuid NOT NULL, email text);
+CREATE TABLE IF NOT EXISTS public.aluno_encarregados(escola_id uuid NOT NULL, aluno_id uuid NOT NULL, encarregado_id uuid NOT NULL);
+CREATE TABLE IF NOT EXISTS public.audit_logs(escola_id uuid, actor_id uuid, action text, entity text, entity_id text, portal text, details jsonb);
+
+-- Minimal job fixtures used by the service-only lot adapter regression.
+ALTER TABLE public.matriculas ADD COLUMN IF NOT EXISTS turma_id uuid;
+CREATE TABLE IF NOT EXISTS public.turmas(id uuid PRIMARY KEY,escola_id uuid NOT NULL);
+ALTER TABLE public.turmas ADD COLUMN IF NOT EXISTS session_id uuid;
+CREATE TABLE IF NOT EXISTS public.pautas_lote_jobs(id uuid PRIMARY KEY, escola_id uuid,created_by uuid,tipo text,status text,cancel_requested_at timestamptz);
+CREATE TABLE IF NOT EXISTS public.pautas_lote_itens(job_id uuid,turma_id uuid);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_test_pagamentos_intent ON public.pagamentos(pagamento_intent_id) WHERE pagamento_intent_id IS NOT NULL;

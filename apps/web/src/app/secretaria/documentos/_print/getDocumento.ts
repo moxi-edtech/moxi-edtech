@@ -1,6 +1,6 @@
 import "server-only";
 import { requireRoleInSchool } from "@/lib/authz";
-import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { K12_DOCUMENTOS_ROLE_GROUP } from "@/lib/roles";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { resolveAuthorizedStudentIds } from "@/lib/portalAlunoAuth";
@@ -102,11 +102,11 @@ export async function getDocumentoEmitido(
     if (guard.error) return { error: "Sem permissão" } as const;
   }
 
-  if (!opts?.requireStudentOwnership && ["certificado", "historico", "declaracao_notas", "declaracao_frequencia"].includes(doc.tipo)) {
+  if (!opts?.requireStudentOwnership && ["certificado", "historico", "declaracao_notas", "declaracao_frequencia", "cartao_estudante", "ficha_inscricao", "comprovante_matricula", "boletim_trimestral"].includes(doc.tipo)) {
     const authz = await requireRoleInSchool({
       supabase,
       escolaId: doc.escola_id,
-      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
+      roles: [...K12_DOCUMENTOS_ROLE_GROUP],
     });
     if (authz.error) return { error: "Sem permissão" } as const;
   }

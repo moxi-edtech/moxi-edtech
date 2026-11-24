@@ -1,3 +1,4 @@
+import { portalDocumentType, DOCUMENT_BLOCK_REASONS } from "@/lib/documentos/portalDocumentPolicy";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAlunoContext } from "@/lib/alunoContext";
@@ -33,10 +34,6 @@ export async function POST(req: Request) {
     const alunoId = resolveSelectedStudentId({ selectedId: studentId ?? null, authorizedIds, fallbackId: ctx.alunoId });
     if (!alunoId) return NextResponse.json({ ok: false, error: "Educando não autorizado", next_action: { type: "contact_secretaria", label: "Regularizar acesso", href: "/aluno/avisos" } }, { status: 403 });
 
-    if (codigo === "DOC_DECLARACAO_NOTAS") {
-      return NextResponse.json({ ok: false, error: "Solicite a declaração oficial de notas à secretaria. A emissão depende da taxa própria liquidada." }, { status: 409 });
-    }
-
     // Um boletim sem taxa configurada não pode criar um pedido gratuito
     // que mais tarde pareça um pagamento concluído.
     if (codigo === "DOC_BOLETIM_TRIMESTRAL") {
@@ -59,40 +56,21 @@ export async function POST(req: Request) {
       }
     }
 
-    // Serviços cuja política exige pagamento não podem ser solicitados como
-    // gratuitos por falta de tarifa. A mesma regra já se aplica ao boletim.
-    if (codigo !== "DOC_BOLETIM_TRIMESTRAL") {
-      const { data: configuredService, error: configuredServiceError } = await supabase
-        .from("servicos_escola")
-        .select("valor_base, exige_pagamento_antes_de_liberar")
-        .eq("escola_id", escolaId)
-        .eq("codigo", codigo)
-        .eq("ativo", true)
-        .maybeSingle();
-      if (configuredServiceError) {
-        return NextResponse.json({ ok: false, error: "Não foi possível consultar o serviço." }, { status: 503 });
-      }
-      if (configuredService?.exige_pagamento_antes_de_liberar && Number(configuredService.valor_base) <= 0) {
-        return NextResponse.json({
-          ok: false,
-          error: "A escola ainda não definiu a taxa deste documento. Contacta a secretaria.",
-        }, { status: 409 });
-      }
+    const tipo = portalDocumentType(codigo);
+    if (codigo !== "DOC_BOLETIM_TRIMESTRAL" && !tipo) {
+      return NextResponse.json({ ok: false, error: "Documento não disponível no portal." }, { status: 400 });
     }
-
-    // Boletim: contratação atómica com matrícula e session_id explícitos.
-    // Outros documentos mantêm o contrato legado (sem alteração do motor financeiro).
-    const resolved = codigo === "DOC_BOLETIM_TRIMESTRAL"
-      ? await resolveBoletimMatricula(supabase, { escolaId, alunoId, userId: ctx.userId, anoLetivoId, operation: "WRITE" })
-      : null;
+    // Pedidos documentais não alteram o histórico escolar. Apenas o boletim
+    // mantém a restrição de criação de pedidos no ano corrente.
+    const resolved = await resolveBoletimMatricula(supabase, {
+      escolaId, alunoId, userId: ctx.userId, anoLetivoId,
+      operation: codigo === "DOC_BOLETIM_TRIMESTRAL" ? "WRITE" : "READ",
+    });
+    if (!resolved.matricula?.id) return NextResponse.json({ ok: false, error: "Matrícula não encontrada no ano escolhido." }, { status: 409 });
+    const args = { p_escola_id: escolaId, p_aluno_id: alunoId, p_matricula_id: resolved.matricula.id, p_session_id: resolved.context.anoLetivoId };
     const { data, error } = codigo === "DOC_BOLETIM_TRIMESTRAL"
-      ? await (supabase as unknown as { rpc: (name: string, args: Record<string, string>) => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }> }).rpc("aluno_solicitar_boletim_matricula", {
-          p_escola_id: escolaId, p_aluno_id: alunoId,
-          p_matricula_id: resolved!.matricula!.id, p_session_id: resolved!.context.anoLetivoId,
-        })
-      : await supabase.rpc("aluno_solicitar_servico", {
-          p_escola_id: escolaId, p_aluno_id: alunoId, p_servico_codigo: codigo,
-        });
+      ? await (supabase as any).rpc("aluno_solicitar_boletim_matricula", args)
+      : await (supabase as any).rpc("aluno_documento_solicitar", { ...args, p_tipo: tipo });
 
     if (error) {
       console.error("[SolicitarDoc] RPC Error:", error);
@@ -102,6 +80,7 @@ export async function POST(req: Request) {
     if (!data || typeof data !== "object" || Array.isArray(data)) {
       return NextResponse.json({ ok: false, error: "Resposta inválida ao solicitar o serviço." }, { status: 503 });
     }
+    if (data.ok !== true) return NextResponse.json({ ok: false, code: data.reason, error: DOCUMENT_BLOCK_REASONS[data.reason] ?? "Documento indisponível." }, { status: 409 });
     return NextResponse.json({ ...data, next_action: data?.status === "pending_payment" ? { type: "pay_service", label: "Pagar agora", href: "/aluno/documentos" } : data?.status === "granted" ? { type: "download", label: "Descarregar", href: "/aluno/documentos" } : { type: "track_request", label: "Acompanhar pedido", href: "/aluno/documentos" } });
   } catch (error: unknown) {
     if (error instanceof AcademicYearContextError) {

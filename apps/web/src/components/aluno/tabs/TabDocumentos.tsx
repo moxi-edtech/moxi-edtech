@@ -9,7 +9,7 @@ import { PortalStatus } from "@/components/portal/ui/PortalStatus";
 import { PortalAction } from "@/components/portal/ui/PortalAction";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { BOLETIM_SERVICE_CODE, BOLETIM_LEGACY_SERVICE_CODE, isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
+import { BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { formatKwanza } from "@/lib/formatters";
@@ -42,10 +42,12 @@ interface DocumentoCatalogo {
   exige_pagamento_antes_de_liberar: boolean;
   reject_reason?: string | null;
   pagamento_configurado?: boolean;
+  indisponivel_motivo?: string | null;
 }
 
 const DIGITAL_DOCUMENT_CODES = new Set([
   'DOC_DECLARACAO_FREQUENCIA',
+  'DOC_DECLARACAO_NOTAS',
   BOLETIM_SERVICE_CODE,
   'DOC_COMPROVANTE_MATRICULA',
   'DOC_CARTAO_ESTUDANTE',
@@ -64,7 +66,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   const rawServiceCode = searchParams?.get("servico") ?? null;
   // Deep links legados continuam a abrir o único boletim, sem iniciar nova cobrança antiga.
   const requestedService = focusServiceCode ?? rawServiceCode;
-  const serviceCode = requestedService === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : requestedService;
+  const serviceCode = requestedService;
   const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
   const queryParams = new URLSearchParams();
   if (studentId) queryParams.set("studentId", studentId);
@@ -81,7 +83,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   const [selectedDoc, setSelectedDoc] = useState<DocumentoCatalogo | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const visibleDocs = docs.filter((doc) =>
-    doc.codigo !== BOLETIM_LEGACY_SERVICE_CODE && (!serviceCode || doc.codigo === serviceCode)
+    (!serviceCode || doc.codigo === serviceCode)
   );
 
   const fetchCatalogo = useCallback(async (quiet = false) => {
@@ -153,7 +155,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
 
   const handleAction = async (doc: DocumentoCatalogo) => {
     if (doc.pagamento_configurado === false) {
-      error("Taxa não configurada", "A secretaria precisa definir o valor do boletim antes de o aluno fazer o pagamento.");
+      error("Documento indisponível", doc.indisponivel_motivo ?? "A secretaria precisa definir o valor antes de o aluno fazer o pagamento.");
       return;
     }
     if (doc.status === 'granted') {
@@ -164,7 +166,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
          if (academicYearId) nav.set("ano_letivo_id", academicYearId);
          router.push(buildPortalHref(escolaSlug, `/aluno/avisos${nav.size ? `?${nav.toString()}` : ""}`));
        }
-    } else if (doc.status === 'rejected' && isBoletimServiceCode(doc.codigo)) {
+    } else if (doc.status === 'rejected' && doc.pagamento_intent_id) {
       if (!doc.pagamento_intent_id) {
         error("Comprovativo não localizado", "Contacte a secretaria. Não solicite outro boletim nem pague novamente.");
         return;
@@ -220,7 +222,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   const handleDownload = async (doc: DocumentoCatalogo) => {
     setLoading(doc.codigo);
     try {
-      const isBoletim = isBoletimServiceCode(doc.codigo);
+      const isBoletim = doc.codigo === BOLETIM_SERVICE_CODE;
       if (isBoletim) {
         const res = await fetch(`/api/aluno/boletim/pdf${query}`, { cache: "no-store" });
         if (!res.ok) {
@@ -299,7 +301,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                    <div className="flex flex-wrap items-start gap-2">
                      <h3 className="min-w-0 break-words text-sm font-semibold leading-6 text-foreground sm:text-base">{doc.nome}</h3>
                      <span className="inline-flex max-w-full shrink-0 items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-                       {doc.pagamento_configurado === false ? "Taxa por definir" : doc.valor > 0 ? formatKwanza(doc.valor) : "Gratuito"}
+                       {doc.pagamento_configurado === false ? "Indisponível" : doc.valor > 0 ? formatKwanza(doc.valor) : "Gratuito"}
                      </span>
                    </div>
                    {doc.descricao && (
@@ -325,7 +327,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                      <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> A processar
                    </span>
                  ) : doc.pagamento_configurado === false ? (
-                   <p className="text-xs font-medium leading-5 text-amber-800">Taxa ainda não disponível.</p>
+                   <p className="text-xs font-medium leading-5 text-amber-800">{doc.indisponivel_motivo ?? "Taxa ainda não disponível."}</p>
                  ) : (
                    <PortalAction onClick={() => void handleAction(doc)}
                       variant={["pending", "blocked"].includes(doc.status) ? "outline" : "primary"}

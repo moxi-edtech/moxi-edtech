@@ -9,7 +9,7 @@ import { recordAuditServer } from "@/lib/audit";
 import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { HttpError } from "@/lib/errors";
-import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { K12_DOCUMENTOS_ROLE_GROUP } from "@/lib/roles";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import { docPrintUrl } from "@/lib/documentos/printUrl";
 import { verificarCertificadoElegivel } from "@/lib/documentos/certificadoElegibilidade";
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
+      roles: [...K12_DOCUMENTOS_ROLE_GROUP],
     });
     if (authError) return authError;
 
@@ -136,11 +136,12 @@ export async function POST(request: Request) {
 
     // Reemissão / retry de documento existente: nunca gerar nem cobrar outro.
     // A própria impressão mantém autenticação e autorização por escola.
-    const { data: enrollmentForDoc } = await supabase.from("matriculas")
+    const { data: enrollmentForDoc, error: enrollmentError } = await supabase.from("matriculas")
       .select("id").eq("escola_id", escolaId).eq("aluno_id", alunoId)
       .eq("session_id", academicContext!.anoLetivoId)
       .order("created_at", { ascending: false }).order("id", { ascending: false })
       .limit(1).maybeSingle();
+    if (enrollmentError) return NextResponse.json({ ok: false, error: "Não foi possível consultar a matrícula. Tente novamente." }, { status: 503 });
     // Validar notas ANTES de apresentar checkout, cobrar ou reutilizar um
     // certificado anterior. Falha fechada: nunca imprimir um diploma sem pauta.
     if (tipoDocumento === "certificado") {
@@ -211,8 +212,12 @@ export async function POST(request: Request) {
       if (!access?.ok) {
         const motivos: Record<string,string> = {
           SERVICO_NAO_CONFIGURADO: "Configure o serviço em Emolumentos & Serviços.",
-          TAXA_NAO_CONFIGURADA: "Configure uma taxa positiva antes de emitir.",
+          TAXA_NAO_CONFIGURADA: "O serviço exige pagamento, mas não tem taxa definida. Corrija em Emolumentos & Serviços.",
           MATRICULA_NAO_ENCONTRADA: "A matrícula do ano escolhido não foi encontrada.",
+          HISTORICO_INEXISTENTE: "O histórico do ano escolhido não existe.",
+          HISTORICO_ABERTO: "Feche o histórico do ano escolhido antes de emitir.",
+          NOTAS_INEXISTENTES: "O histórico não tem classificações registadas.",
+          NOTAS_INCOMPLETAS: "Regularize as classificações antes de emitir ou cobrar.",
         };
         return NextResponse.json({
           ok: false, code: access?.reason ?? "DOCUMENTO_INDISPONIVEL",
@@ -245,7 +250,7 @@ export async function POST(request: Request) {
     if (access?.granted !== true) {
       return NextResponse.json({
         ok: false, code: "DOCUMENT_PAYMENT_REQUIRED",
-        error: "Documento não emitido. Registe ou valide a taxa deste serviço, ou aguarde a aprovação quando aplicável.",
+        error: "Documento não emitido. Registe ou valide a taxa deste serviço, ou confirme a elegibilidade.",
       }, { status: 409 });
     }
 

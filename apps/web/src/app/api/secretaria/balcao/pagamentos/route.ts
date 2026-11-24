@@ -154,21 +154,20 @@ export async function POST(request: Request) {
       }
       const contextoPedido = asRecord(pedido?.contexto);
       if (!pedido || !intent || !pedido.matricula_id ||
-          contextoPedido.origem !== "documentos_emissao_individual" ||
-          contextoPedido.ano_letivo_id !== payload.ano_letivo_id ||
+          (contextoPedido.ano_letivo_id != null && contextoPedido.ano_letivo_id !== payload.ano_letivo_id) ||
           pedido.servico_codigo !== codigo || intent.servico_pedido_id !== pedido.id ||
           Number(pedido.valor_cobrado) <= 0 ||
           Number(pedido.valor_cobrado) !== payload.valor ||
           Number(intent.amount) !== payload.valor ||
           !["pending_payment", "granted"].includes(pedido.status) ||
-          ["settled", "canceled", "failed"].includes(intent.status)) {
+          ["settled", "canceled", "failed", "pending"].includes(intent.status)) {
         return NextResponse.json({
           ok: false, code: "DOCUMENT_PAYMENT_CONTEXT_MISMATCH",
           error: "Esta cobrança não corresponde ao serviço solicitado. Atualize o estado do documento.",
         }, { status: 409 });
       }
       const { data: matriculaPagamento } = await supabase.from("matriculas")
-        .select("session_id").eq("escola_id", escolaId).eq("id", pedido.matricula_id).maybeSingle();
+        .select("session_id").eq("escola_id", escolaId).eq("aluno_id", payload.aluno_id).eq("id", pedido.matricula_id).maybeSingle();
       if (matriculaPagamento?.session_id !== payload.ano_letivo_id) {
         return NextResponse.json({ ok: false, error: "A cobrança pertence a outro ano letivo." }, { status: 409 });
       }
@@ -201,7 +200,7 @@ export async function POST(request: Request) {
     if (isDocumentoIndividual && !existingPagamento) {
       const { data: previous } = await supabase.from("pagamentos")
         .select("id").eq("escola_id", escolaId)
-        .contains("meta", { pagamento_intent_id: getStringField(meta, "pagamento_intent_id") })
+        .eq("pagamento_intent_id", getStringField(meta, "pagamento_intent_id")!)
         .neq("status", "voided").limit(1).maybeSingle();
       if (previous) {
         return NextResponse.json({

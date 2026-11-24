@@ -17,11 +17,20 @@ type PaymentOrder = {
   valor_cobrado: number | null;
   status: string;
   pagamento_intents: { status: string }[] | null;
+  contexto?: unknown;
 };
+
+function isLegacyBoletimOrder(order: PaymentOrder): boolean {
+  if (order.servico_codigo === BOLETIM_SERVICE_CODE) return true;
+  if (order.servico_codigo !== BOLETIM_LEGACY_SERVICE_CODE) return false;
+  const context = order.contexto && typeof order.contexto === 'object' ? order.contexto as Record<string, unknown> : null;
+  // A new official declaration is not a legacy boletim payment.
+  return context?.origem !== 'documentos_emissao_individual' && context?.origem !== 'portal_aluno_documentos' && context?.tipo_documento !== 'declaracao_notas';
+}
 
 export function isBoletimPaid(orders: PaymentOrder[]): boolean {
   return orders.some((order) =>
-    isBoletimServiceCode(order.servico_codigo) &&
+    isLegacyBoletimOrder(order) &&
     order.status === "granted" &&
     Number(order.valor_cobrado) > 0 &&
     (order.pagamento_intents ?? []).some((intent) => intent.status === "settled")
@@ -34,7 +43,7 @@ export async function checkBoletimAccess(
 ): Promise<{ granted: boolean; error: boolean }> {
   const { data, error } = await supabase
     .from("servico_pedidos")
-    .select("servico_codigo, valor_cobrado, status, pagamento_intents(status)")
+    .select("servico_codigo, valor_cobrado, status, contexto, pagamento_intents(status)")
     .eq("escola_id", scope.escolaId)
     .eq("aluno_id", scope.alunoId)
     .eq("matricula_id", scope.matriculaId)
@@ -67,5 +76,5 @@ export async function checkSpecificDocumentPaid(
     .gt("valor_cobrado", 0)
     .limit(30);
   if (error) return { granted: false, error: true };
-  return { granted: isBoletimPaid((data ?? []) as PaymentOrder[]), error: false };
+  return { granted: (data ?? []).some(order => Number(order.valor_cobrado) > 0 && order.status === 'granted' && (order.pagamento_intents ?? []).some(intent => intent.status === 'settled')), error: false };
 }

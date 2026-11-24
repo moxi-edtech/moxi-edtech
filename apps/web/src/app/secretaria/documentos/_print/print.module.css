@@ -104,3 +104,9 @@
     height: 119.05%;
   }
 }
+
+/* Official paper uses the same neutral ink in light/dark mode and on paper. */
+.notesPrint { color: #0f172a; }
+.notesPrint thead tr { border-color: #cbd5e1; }
+.notesPrint tbody tr { border-color: #e2e8f0; }
+.notesPrint footer > div:first-child { border-color: #94a3b8; }
