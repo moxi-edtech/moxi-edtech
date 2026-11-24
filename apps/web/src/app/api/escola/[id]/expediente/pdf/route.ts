@@ -1,0 +1,107 @@
+import { NextResponse } from "next/server";
+import { PDFDocument, StandardFonts, rgb, type PDFPage } from "pdf-lib";
+import { daySchema, expedienteAccess, todayLuanda } from "@/lib/secretaria/expediente";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+const MAX_ROWS = 10000;
+const MAX_DAYS = 31;
+const fail = (error: string, status: number) => NextResponse.json({ ok: false, error }, { status });
+const dateLabel = (value: string) => value.split("-").reverse().join("/");
+const money = (v: unknown) => new Intl.NumberFormat("pt-AO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v ?? 0)) + " Kz";
+const clock = (value: string) => new Intl.DateTimeFormat("pt-PT", { timeZone: "Africa/Luanda", dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+const entities: Record<string,string> = { alunos:"Alunos", candidaturas:"Candidaturas", matriculas:"Matrículas", pagamentos:"Pagamentos", documentos_emitidos:"Documentos emitidos", servico_pedidos:"Pedidos de serviço", mensalidades:"Propinas", notas:"Notas", financeiro_lancamentos:"Lançamentos financeiros" };
+const actions: Record<string,string> = { CREATE:"Criação", UPDATE:"Alteração", DELETE:"Remoção" };
+
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const access = await expedienteAccess((await params).id);
+    if (!access.ok) return fail("Sem acesso ao expediente.", access.status);
+    const { supabase, escolaId } = access;
+    const url = new URL(req.url);
+    const start = daySchema.safeParse(url.searchParams.get("from") ?? url.searchParams.get("date") ?? todayLuanda());
+    const end = daySchema.safeParse(url.searchParams.get("to") ?? (start.success ? start.data : ""));
+    if (!start.success || !end.success || end.data < start.data || end.data > todayLuanda() || (Date.parse(end.data) - Date.parse(start.data)) / 86400000 >= MAX_DAYS) return fail("Selecione um intervalo de até 31 dias.", 400);
+    const [school, closes, cash] = await Promise.all([
+      supabase.from("escolas").select("nome").eq("id", escolaId).single(),
+      supabase.from("secretaria_expedientes").select("id,day_key,closed_at,closed_by,operation_count,summary").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
+      supabase.from("fecho_caixa").select("day_key,status,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx").eq("escola_id", escolaId).gte("day_key", start.data).lte("day_key", end.data).order("day_key").limit(MAX_DAYS),
+    ]);
+    if (school.error || closes.error || cash.error) return fail("Falha ao consultar os fechos.", 500);
+    if (!closes.data?.length) return fail("Não existem expedientes fechados neste intervalo.", 404);
+    const days = closes.data.map((item: any) => item.day_key);
+    // Bound the export, and fail explicitly instead of silently dropping rows.
+    const rows: any[] = [];
+    let cursor = 0;
+    const watermark = await supabase.from("secretaria_expediente_operacoes").select("id").eq("escola_id", escolaId).in("day_key", days).order("id", { ascending: false }).limit(1).maybeSingle();
+    if (watermark.error) return fail("Falha ao consultar operações.", 500);
+    const maxId = watermark.data?.id ?? 0;
+    while (cursor < maxId) {
+      const page = await supabase.from("secretaria_expediente_operacoes").select("id,day_key,occurred_at,actor_id,actor_role,entity,entity_id,action,is_after_close,detail").eq("escola_id", escolaId).in("day_key", days).gt("id", cursor).lte("id", maxId).order("id").limit(500);
+      if (page.error) return fail("Falha ao consultar operações.", 500);
+      if (!page.data?.length) break;
+      rows.push(...page.data);
+      if (rows.length > MAX_ROWS) return fail("Volume demasiado elevado. Reduza o intervalo de exportação.", 413);
+      cursor = page.data[page.data.length - 1].id;
+    }
+    const actorIds = [...new Set<string>([...rows.map(r => r.actor_id), ...closes.data.map((r: any) => r.closed_by)])];
+    const names = new Map<string,string>();
+    for (let i = 0; i < actorIds.length; i += 100) {
+      const { data } = await supabase.from("profiles").select("user_id,nome").eq("escola_id", escolaId).in("user_id", actorIds.slice(i,i+100));
+      for (const p of data ?? []) names.set(p.user_id, p.nome ?? p.user_id);
+    }
+    const pdf = await PDFDocument.create();
+    pdf.setTitle("Fecho diário da secretaria");
+    pdf.setAuthor("KLASSE");
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+    const safe = (value: unknown) => Array.from(String(value ?? "—")).map(c => { try { font.widthOfTextAtSize(c,10); return c; } catch { return "?"; } }).join("").replace(/[\r\n\t]/g," ");
+    let page: PDFPage;
+    let y = 0;
+    let currentDay = "";
+    const openPage = () => {
+      page = pdf.addPage([595.28,841.89]);
+      y = 805;
+      const name = safe(school.data?.nome ?? "Escola");
+      const nameSize = Math.min(12, 525 / Math.max(1,bold.widthOfTextAtSize(name,1)));
+      page.drawText(name,{x:35,y,font:bold,size:nameSize,color:rgb(.12,.42,.23)});
+      y -= 21;
+      page.drawText("Fecho diário da secretaria | " + dateLabel(currentDay),{x:35,y,font:bold,size:12});
+      y -= 23;
+    };
+    const line = (value: unknown, emphasis = false) => {
+      const f = emphasis ? bold : font;
+      let buffer = "";
+      const emit = () => { if (y < 50) openPage(); page.drawText(buffer,{x:35,y,font:f,size:10}); y -= 15; buffer=""; };
+      for (const c of safe(value)) {
+        if (buffer && f.widthOfTextAtSize(buffer+c,10)>525) emit();
+        buffer+=c;
+      }
+      if(buffer) emit();
+    };
+    const cashByDay = new Map<string,any>(cash.data?.map((c:any)=>[c.day_key,c]) ?? []);
+    for (const close of closes.data) {
+      currentDay = close.day_key;
+      openPage();
+      line("Fechado em "+clock(close.closed_at)+" | Responsável: "+(names.get(close.closed_by)??close.closed_by));
+      line("Registos de atividade no fecho: "+close.operation_count,true);
+      for (const [entity,count] of Object.entries(close.summary ?? {})) line((entities[entity]??entity)+": "+count);
+      const c = cashByDay.get(close.day_key);
+      line("Caixa: "+(c?.status === "approved" ? "Aprovado" : c?.status === "declared" ? "Declarado" : c?.status === "rejected" ? "Rejeitado" : "Sem declaração"),true);
+      if(c) for(const [key,label] of [["cash","Numerário"],["tpa","TPA"],["transfer","Transferências"],["mcx","MCX"]]) line(label+": declarado "+money(c["declared_"+key])+" | sistema "+money(c["system_"+key])+" | diferença "+money(Number(c["declared_"+key])-Number(c["system_"+key])));
+      const dayRows = rows.filter(r=>r.day_key===close.day_key);
+      for (const late of [false,true]) {
+        const filtered = dayRows.filter(r=>r.is_after_close===late);
+        line((late?"Adendos posteriores ao fecho":"Operações até ao fecho")+" ("+filtered.length+")",true);
+        for(const r of filtered){
+          line(clock(r.occurred_at)+" | "+(actions[r.action]??r.action)+" "+(entities[r.entity]??r.entity)+" | "+(names.get(r.actor_id)??r.actor_id));
+          line("Referência: "+r.entity_id+(r.detail?.status?" | Estado: "+r.detail.status:"")+(r.detail?.valor?" | Valor: "+money(r.detail.valor):""));
+        }
+      }
+    }
+    const pages = pdf.getPages();
+    pages.forEach((p,i)=>p.drawText("Gerado por KLASSE | www.klasse.ao | "+(i+1)+"/"+pages.length,{x:35,y:24,font,size:8,color:rgb(.35,.4,.45)}));
+    const bytes = await pdf.save();
+    return new Response(new Uint8Array(bytes), { headers: { "Content-Type":"application/pdf", "Content-Disposition":'attachment; filename="fecho-diario-'+start.data+'-'+end.data+'.pdf"', "Cache-Control":"private, no-store" } });
+  } catch { return fail("Não foi possível gerar o PDF.",500); }
+}
