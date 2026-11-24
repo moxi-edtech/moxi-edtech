@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { Dashboard } from "./Dashboard";
+import ExpedienteDashboardCard from "@/components/secretaria/ExpedienteDashboardCard";
 import DashboardSkeleton from "./DashboardSkeleton";
 import type { DashboardCounts, DashboardRecentes, Plano } from "./types";
 
@@ -122,5 +123,5 @@ export default function SecretariaDashboardPage({ initialCounts = null, initialR
     );
   }
 
-  return <Dashboard counts={counts} recentes={recentes} />;
+  return <>{escolaId && <div className="px-4 pt-4 md:px-6"><ExpedienteDashboardCard escolaId={escolaId} portal="secretaria" /></div>}<Dashboard counts={counts} recentes={recentes} /></>;
 }

@@ -13,6 +13,7 @@ import {
 } from "@/lib/server/whatsappUtility";
 import { resolveSchoolOperatingProfile } from "@/lib/school-profile/resolve-school-profile";
 import { requireFinanceChargeMessages } from "@/lib/school-profile/guards";
+import { sendMail } from "@/lib/mailer";
 import { buildOutboxTransition } from "@/lib/server/outbox-transition";
 
 export const dynamic = "force-dynamic";
@@ -777,6 +778,32 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
 // Operational receipts are handled by the dedicated PostgreSQL pg_cron worker.
 // Do not claim them here: one consumer/locking protocol owns new events.
 
+async function sendExpedienteSummary(admin: NonNullable<ReturnType<typeof getAdminClient>>, event: OutboxEvent) {
+  const closeId = event.payload?.close_id;
+  const recipientId = event.payload?.recipient_id;
+  if(typeof closeId!=="string"||typeof recipientId!=="string")throw new Error("invalid expediente email payload");
+  const key="expediente-email:"+closeId+":"+recipientId;
+  if(event.idempotency_key!==key||event.dedupe_key!==key)throw new Error("invalid expediente email dedupe");
+  const [close, member, profile, config, school] = await Promise.all([
+    admin.from("secretaria_expedientes").select("day_key,operation_count,business_count,human_count,system_count").eq("id",closeId).eq("escola_id",event.escola_id).maybeSingle(),
+    admin.from("escola_users").select("papel").eq("escola_id",event.escola_id).eq("user_id",recipientId).eq("tenant_type","k12").in("papel",["admin","admin_escola","staff_admin","admin_financeiro","admin_secretaria","admin_secretario","diretor"]).maybeSingle(),
+    admin.from("profiles").select("user_id").eq("user_id",recipientId).is("deleted_at",null).limit(1).maybeSingle(),
+    admin.from("secretaria_expediente_config").select("email_summary").eq("escola_id",event.escola_id).maybeSingle(),
+    admin.from("escolas").select("tenant_type").eq("id",event.escola_id).maybeSingle(),
+  ]);
+  if([close,member,profile,config,school].some(r=>r.error))throw new Error("expediente email context unavailable");
+  if(!close.data||!member.data||!profile.data||!config.data?.email_summary||school.data?.tenant_type!=="k12")return;
+  const {data,error}=await admin.auth.admin.getUserById(recipientId);
+  if(error)throw new Error("expediente email identity unavailable");
+  if(!data.user?.email||!data.user.email_confirmed_at)return;
+  const row=close.data;
+  const portal= ["admin_financeiro","admin_secretaria","admin_secretario"].includes(member.data.papel)?"operacoes":"admin";
+  const link="https://app.klasse.ao/escola/"+encodeURIComponent(event.escola_id)+"/"+portal+"/fecho-diario?date="+encodeURIComponent(row.day_key);
+  const text="Expediente de "+row.day_key+" concluído. Registos: "+row.operation_count+" (humanos: "+row.human_count+", automáticos: "+row.system_count+"). Registos de negócio distintos: "+row.business_count+". Consulte: "+link;
+  const result=await sendMail({to:data.user.email,subject:"KLASSE · Fecho diário "+row.day_key,text,html:"<p>"+text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</p>",idempotencyKey:key});
+  if(!result.ok)throw new Error("expediente email delivery failed");
+}
+
 async function runOutboxWorker(req: Request) {
   if (!isAuthorizedJobRequest(req)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
@@ -827,7 +854,8 @@ async function runOutboxWorker(req: Request) {
   const whatsappResults = await processWhatsappNotifications(admin);
   const communicationWhatsappResults = await processCommunicationOutbox(admin);
 
-  const results = [...authResults];
+  const expedienteEmailResults = await processTopic("secretaria_expediente_email", event => sendExpedienteSummary(admin,event));
+  const results = [...authResults,...expedienteEmailResults];
   return NextResponse.json({
     ok: true,
     processed: results.length + whatsappResults.length + communicationWhatsappResults.length,

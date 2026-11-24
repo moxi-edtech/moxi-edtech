@@ -36,7 +36,7 @@ type FechoResponse = {
 
 function normalizeDate(dateParam?: string | null) {
   if (dateParam && DATE_RE.test(dateParam)) return dateParam;
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Africa/Luanda", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
 
 function mapMetodo(metodo: string | null) {
@@ -74,7 +74,7 @@ export async function getFechoCaixaData({
     return { ok: false, error: "Não autenticado" };
   }
 
-  const escolaId = escolaIdParam || await resolveEscolaIdForUser(supabase as any, user.id);
+  const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaIdParam);
   if (!escolaId) {
     return { ok: false, error: "Escola não encontrada" };
   }
@@ -84,6 +84,7 @@ export async function getFechoCaixaData({
     .select("papel")
     .eq("escola_id", escolaId)
     .eq("user_id", user.id)
+    .eq("tenant_type","k12")
     .maybeSingle();
 
   const papel = String((vinc as any)?.papel ?? "").toLowerCase();
@@ -97,6 +98,8 @@ export async function getFechoCaixaData({
   let operadorFilter: string | null = null;
   if (papel === "secretaria") {
     if (operadorScope !== "all") operadorFilter = user.id;
+  } else if (operadorScope === "self" && !operadorId) {
+    operadorFilter = user.id;
   } else if (operadorId) {
     operadorFilter = operadorId;
   }
@@ -107,15 +110,20 @@ export async function getFechoCaixaData({
     .eq("escola_id", escolaId)
     .eq("day_key", dateStr)
     .eq("status", "settled")
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
 
   if (operadorFilter) {
     pagamentosQuery = pagamentosQuery.eq("created_by", operadorFilter);
   }
 
-  const { data: rows, error } = await pagamentosQuery;
-  if (error) {
-    return { ok: false, error: error.message };
+  const rows: any[] = [];
+  for(let offset=0;;offset+=500){
+    const {data:page,error}=await pagamentosQuery.range(offset,offset+499);
+    if(error)return {ok:false,error:error.message};
+    rows.push(...(page??[]));
+    if(rows.length>5000)return {ok:false,error:"Volume elevado. Consulte o fecho consolidado."};
+    if(!page||page.length<500)break;
   }
 
   const alunoIds = Array.from(new Set((rows || []).map((row: any) => row.aluno_id).filter(Boolean)));
@@ -196,6 +204,7 @@ export async function getFechoCaixaData({
         : "Pagamento";
     const hora = row.created_at
       ? new Date(row.created_at).toLocaleTimeString("pt-PT", {
+          timeZone: "Africa/Luanda",
           hour: "2-digit",
           minute: "2-digit",
         })
