@@ -230,6 +230,7 @@ export default function QuickActionsSection({
             href={!action.opensModal ? action.href : undefined}
             disabled={action.disabled}
             disabledReason={action.reason}
+            dashboardCompact={portalBase === "operacoes"}
             variant={action.variant}
           />
         ))}

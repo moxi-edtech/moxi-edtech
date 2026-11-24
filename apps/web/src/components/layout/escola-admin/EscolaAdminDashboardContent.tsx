@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, ArrowRight, Wallet, TrendingUp, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -220,6 +220,7 @@ export default function EscolaAdminDashboardContent({
   const [dynamicPacingTarget, setDynamicPacingTarget] = useState(70);
   const [pricingModalOpen, setPricingModalOpen] = useState(false);
   const [revenueDetailsOpen, setRevenueDetailsOpen] = useState(false);
+  const revenueTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -473,7 +474,6 @@ export default function EscolaAdminDashboardContent({
             {escolaNome && <p className="text-sm font-medium text-muted-foreground">· {escolaNome}</p>}
           </div>}
         </div>
-        {isOperacoes && <button type="button" onClick={handleRefresh} disabled={isRefreshing} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-ring"><RefreshCw className={`h-4 w-4 ${isRefreshing ? "motion-safe:animate-spin" : ""}`} />Atualizar</button>}
       </motion.div>
 
       {/* Na secretaria, contexto e pendências formam uma única região de leitura.
@@ -508,6 +508,8 @@ export default function EscolaAdminDashboardContent({
           escolaId={escolaId}
           operationalSnapshot={operationalSnapshot}
           charts={charts}
+          onRefreshDashboard={handleRefresh}
+          dashboardRefreshing={isRefreshing}
           afterCounters={
             <>
               <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
@@ -519,7 +521,7 @@ export default function EscolaAdminDashboardContent({
                 <section aria-label="Recebido neste mês" className="rounded-xl border border-border bg-card p-4 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-sm font-medium text-muted-foreground">Recebido neste mês (caixa)</h2>
-                    <button type="button" onClick={() => setRevenueDetailsOpen(true)} className="text-sm font-medium text-emerald underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <button ref={revenueTriggerRef} type="button" aria-haspopup="dialog" aria-expanded={revenueDetailsOpen} onClick={() => setRevenueDetailsOpen(true)} className="text-sm font-medium text-emerald underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                       Ver detalhes
                     </button>
                   </div>
@@ -535,9 +537,10 @@ export default function EscolaAdminDashboardContent({
                       </div>
                     </>
                   ) : <p className="mt-2 text-sm text-muted-foreground">Sem previsão definida</p>}
+                  {hasMetaReceita && rawPercentualReceita > 100 && <p className="mt-2 text-xs text-muted-foreground">Caixa acima do previsto; pode incluir dívidas antigas, adiantamentos ou serviços.</p>}
                 </section>
               )}
-              <ModalShell open={revenueDetailsOpen} onClose={() => setRevenueDetailsOpen(false)} title="Detalhes financeiros do mês" description="Recebimentos em caixa e cobrança da competência">
+              <ModalShell open={revenueDetailsOpen} onClose={() => { setRevenueDetailsOpen(false); window.requestAnimationFrame(() => revenueTriggerRef.current?.focus({ preventScroll: true })); }} title="Detalhes financeiros do mês" description="Recebimentos em caixa e cobrança da competência">
                 {revenueDetailsOpen && hasMovimentoReceita && (
                   <dl className="divide-y divide-border rounded-xl border border-border bg-card px-4">
                     {[
@@ -559,7 +562,7 @@ export default function EscolaAdminDashboardContent({
                         <dd className="font-semibold">{percentualCompetencia}%</dd>
                       </div>
                     )}
-                    {isAcimaDaMeta && <div className="py-3 text-sm text-muted-foreground">O caixa pode incluir propinas de meses anteriores ou adiantamentos.</div>}
+                    {hasMetaReceita && rawPercentualReceita > 100 && <div className="py-3 text-sm text-muted-foreground">O caixa pode incluir propinas de meses anteriores, adiantamentos ou serviços.</div>}
                   </dl>
                 )}
               </ModalShell>

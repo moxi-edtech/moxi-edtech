@@ -26,3 +26,30 @@ test("academic context retains blocking and event details and finance does not i
   assert.match(dashboard, /revenueDetailsOpen && hasMovimentoReceita/);
   assert.match(dashboard, /!isOperacoes \|\| radarAlerts.length > 0/);
 });
+
+test("single dashboard refresh and compact cards preserve actions", () => {
+  const dashboard = source("components/layout/escola-admin/EscolaAdminDashboardContent.tsx");
+  const hub = source("components/layout/operacoes/OperacoesPainelHub.tsx");
+  const quick = source("components/layout/escola-admin/QuickActionsSection.tsx");
+  const action = source("components/shared/AcaoRapidaCard.tsx");
+  const expediente = source("components/secretaria/ExpedienteDashboardCard.tsx");
+  assert.match(dashboard, /onRefreshDashboard=\{handleRefresh\}/);
+  assert.doesNotMatch(dashboard, /isOperacoes && <button[^>]*onClick=\{handleRefresh\}/);
+  assert.match(hub, /refresh\(\);\s*onRefreshDashboard\?\.\(\)/);
+  assert.match(hub, /disabled=\{refreshing \|\| dashboardRefreshing\}/);
+  assert.match(hub, /aria-haspopup="dialog"/);
+  assert.match(quick, /dashboardCompact=\{portalBase === "operacoes"\}/);
+  assert.match(expediente, /dashboardCompact=\{portal==="operacoes"\}/);
+  assert.match(action, /ref=\{buttonRef\}/);
+  assert.match(action, /disabled && disabledReason/);
+});
+test("pending and overdue cards use the same active academic year and cash over target is qualified", () => {
+  const data = source("components/layout/escola-admin/EscolaAdminDashboardData.tsx");
+  const kpi = source("components/layout/escola-admin/KpiSection.tsx");
+  const dashboard = source("components/layout/escola-admin/EscolaAdminDashboardContent.tsx");
+  assert.match(data, /mensalidadesPendentes: pagamentosResumo\.pendente/);
+  assert.match(data, /mensalidadesInadimplentes: pagamentosResumo\.inadimplente/);
+  assert.match(kpi, /Não vencidas · ano activo/);
+  assert.match(dashboard, /hasMetaReceita && rawPercentualReceita > 100/);
+  assert.match(dashboard, /dívidas antigas, adiantamentos ou serviços/);
+});

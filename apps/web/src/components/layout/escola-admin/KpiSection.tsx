@@ -144,7 +144,7 @@ export default function KpiSection({
           variant: op.mensalidadesPendentes > 0 ? ("warning" as const) : ("success" as const),
           trend: undefined,
           chartData: undefined,
-          description: "Cobranças por tratar",
+          description: "Não vencidas · ano activo",
         },
         {
           label: "Propinas em atraso",
@@ -154,7 +154,7 @@ export default function KpiSection({
           variant: op.mensalidadesInadimplentes > 0 ? ("warning" as const) : ("success" as const),
           trend: undefined,
           chartData: undefined,
-          description: "Cobrança crítica",
+          description: "Ano activo",
         },
       ]
     : [
@@ -209,7 +209,7 @@ export default function KpiSection({
           variant={kpi.variant}
           trend={kpi.trend}
           chartData={kpi.chartData}
-          description={mode === "operacoes" ? undefined : kpi.description}
+          description={mode === "operacoes" && !kpi.label.startsWith("Propinas") ? undefined : kpi.description}
           compact={mode === "operacoes"}
           responsiveDensity={mode === "admin"}
         />

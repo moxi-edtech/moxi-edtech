@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   Activity,
   ArrowRight,
   BarChart3,
   ClipboardCheck,
+  ChevronRight,
+  RefreshCw,
   FileText,
   Inbox,
   TrendingUp,
@@ -35,17 +37,29 @@ type Props = {
   onlyReopen?: boolean;
   /** Conteúdo entre os contadores e os painéis secundários; mantém um só hub. */
   afterCounters?: ReactNode;
+  onRefreshDashboard?: () => void;
+  dashboardRefreshing?: boolean;
 };
 
 type PainelId = "aulas" | "planos" | "reabertura" | "foco" | "graficos";
 
-export default function OperacoesPainelHub({ escolaId, operationalSnapshot, charts, onlyReopen = false, afterCounters }: Props) {
+export default function OperacoesPainelHub({ escolaId, operationalSnapshot, charts, onlyReopen = false, afterCounters, onRefreshDashboard, dashboardRefreshing = false }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const { summary, authorized, loading, refreshing, error, refresh } = useOperacoesPendencias({ onlyReopen });
   const [aberto, setAberto] = useState<PainelId | null>(null);
 
-  const fechar = () => setAberto(null);
+  const counterTrigger = useRef<HTMLButtonElement | null>(null);
+  const fechar = () => {
+    setAberto(null);
+    const trigger = counterTrigger.current;
+    counterTrigger.current = null;
+    if (trigger) window.requestAnimationFrame(() => trigger.focus({ preventScroll: true }));
+  };
+  const refreshDashboard = () => {
+    refresh();
+    onRefreshDashboard?.();
+  };
 
   const contadores: Array<{
     id: PainelId;
@@ -64,14 +78,16 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
     {
       id: "planos",
       icon: FileText,
-      label: "Planos de aula",
+      label: afterCounters ? "Planos por rever" : "Planos de aula",
       value: summary.planosRevisao,
+      tone: afterCounters && summary.planosRevisao > 0 ? "warning" : "default",
     },
     {
       id: "reabertura",
       icon: ClipboardCheck,
       label: "Reabertura de notas",
       value: summary.reaberturasNotas,
+      tone: afterCounters && summary.reaberturasNotas > 0 ? "warning" : "default",
     },
   ];
 
@@ -95,12 +111,12 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
             )}
             <button
               type="button"
-              onClick={refresh}
-              disabled={refreshing}
+              onClick={refreshDashboard}
+              disabled={refreshing || dashboardRefreshing}
               className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground/80 transition hover:bg-muted disabled:opacity-60"
             >
-              <Activity className={`h-3.5 w-3.5 ${refreshing ? "animate-pulse" : ""}`} />
-              {afterCounters ? "Atualizar pendências" : "Atualizar"}
+              <RefreshCw aria-hidden="true" className={`h-3.5 w-3.5 ${refreshing || dashboardRefreshing ? "motion-safe:animate-spin" : ""}`} />
+              {onRefreshDashboard ? "Atualizar painel" : "Atualizar"}
             </button>
           </div>
         </div>
@@ -108,7 +124,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
         {error ? (
           <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
             <p className="font-semibold">{error}</p>
-            <button type="button" onClick={refresh} className="mt-2 font-bold underline">
+            <button type="button" onClick={refresh} disabled={refreshing} className="mt-2 font-bold underline disabled:opacity-60">
               Tentar novamente
             </button>
           </div>
@@ -116,10 +132,28 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
           <div className={afterCounters ? "operations-daily-grid mt-3 grid gap-3" : "mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4"}>
             {loading
               ? (onlyReopen ? [0] : [0, 1, 2]).map((i) => (
-                  <div key={i} className="h-[104px] animate-pulse rounded-xl border border-border bg-card" />
+                  <div key={i} className={`${afterCounters ? "min-h-[88px]" : "h-[104px]"} motion-safe:animate-pulse rounded-xl border border-border bg-card`} />
                 ))
               : contadores.filter(({ id }) => !onlyReopen || id === "reabertura").map(({ id, icon: Icon, label, value, tone }) => (
-                  <StatCard
+                  afterCounters ? (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-haspopup="dialog"
+                      aria-expanded={aberto === id}
+                      onClick={(event) => { counterTrigger.current = event.currentTarget; setAberto(id); }}
+                      className="group flex min-h-[88px] min-w-0 flex-col justify-between gap-2 rounded-xl border border-border bg-card p-3 text-left shadow-sm transition hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <span className="flex items-start justify-between gap-2 text-sm font-medium text-muted-foreground">
+                        {label}
+                        <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      </span>
+                      <span className="flex items-center justify-between gap-2">
+                        <span className={`text-2xl font-semibold tabular-nums ${tone === "warning" ? "text-amber-700 dark:text-amber-300" : "text-foreground"}`}>{value.toLocaleString("pt-AO")}</span>
+                        <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+                      </span>
+                    </button>
+                  ) : <StatCard
                     key={id}
                     label={label}
                     value={value}
