@@ -14497,6 +14497,8 @@ export type Database = {
           bolsa_integral: boolean
           bolsa_integral_inicio: string | null
           bolsa_integral_motivo: string | null
+          bolsa_parcial_percentagem: number
+          bolsa_parcial_periodos: Json
           created_at: string | null
           data_fecho: string | null
           data_inicio_financeiro: string | null
@@ -14526,6 +14528,8 @@ export type Database = {
           bolsa_integral?: boolean
           bolsa_integral_inicio?: string | null
           bolsa_integral_motivo?: string | null
+          bolsa_parcial_percentagem?: number
+          bolsa_parcial_periodos?: Json
           created_at?: string | null
           data_fecho?: string | null
           data_inicio_financeiro?: string | null
@@ -14555,6 +14559,8 @@ export type Database = {
           bolsa_integral?: boolean
           bolsa_integral_inicio?: string | null
           bolsa_integral_motivo?: string | null
+          bolsa_parcial_percentagem?: number
+          bolsa_parcial_periodos?: Json
           created_at?: string | null
           data_fecho?: string | null
           data_inicio_financeiro?: string | null
