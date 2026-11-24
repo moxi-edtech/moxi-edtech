@@ -11,6 +11,7 @@ test("Operações promotes daily workflows before management indicators without 
   assert.ok(slot.indexOf("<QuickActionsSection") < slot.indexOf("Visão geral da escola"));
   assert.ok(slot.indexOf("Visão geral da escola") < slot.indexOf("Recebido neste mês"));
   assert.match(hub, /\{afterCounters\}/);
+  assert.match(hub, /Aulas por confirmar/);
   assert.match(dashboard, /\{!isOperacoes && <motion.div variants=\{itemVariants\}>\s*<OperacoesPainelHub/);
   assert.equal((hub.match(/useOperacoesPendencias\(\{ onlyReopen \}\)/g) ?? []).length, 1);
 });
@@ -22,6 +23,6 @@ test("academic context retains blocking and event details and finance does not i
   assert.match(banner, /Evento de hoje/);
   assert.match(banner, /estado.evento_hoje_nome/);
   assert.match(dashboard, /Sem previsão definida/);
-  assert.match(dashboard, /revenueDetailsOpen && hasMovimentoReceita && revenueSection/);
+  assert.match(dashboard, /revenueDetailsOpen && hasMovimentoReceita/);
   assert.match(dashboard, /!isOperacoes \|\| radarAlerts.length > 0/);
 });
