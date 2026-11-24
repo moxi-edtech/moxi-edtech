@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { CheckCircle2, FileText, TrendingDown, Wallet, Printer } from "lucide-react";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { formatDate, formatKwanza, monthName } from "@/lib/formatters";
+import { mensalidadeDueState } from "@/lib/aluno/mensalidade-due";
 import type { AlunoNormalizado, DossierMensalidade } from "@/lib/aluno/types";
 import type { AlunoServicoFinanceiro } from "@/lib/financeiro/servicosPagamento";
 import type { DossierRole } from "@/components/aluno/DossierAcoes";
@@ -146,17 +147,11 @@ function MensalidadeRow({
   onMissingRecibo: () => void;
 }) {
   const vencimentoLabel = m.vencimento ? formatDate(m.vencimento) : null;
-  const vencimentoDate = m.vencimento ? new Date(m.vencimento) : null;
-  const today = new Date();
-  const daysDiff = vencimentoDate
-    ? Math.ceil((vencimentoDate.getTime() - today.setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24))
-    : null;
-  const isOverdue = typeof daysDiff === "number" && daysDiff < 0;
-  const vencimentoInfo = vencimentoLabel
-    ? isOverdue
-      ? `Atraso ${Math.abs(daysDiff ?? 0)} dia(s)`
-      : `Vence ${vencimentoLabel}`
-    : null;
+  const { open, days, overdue } = mensalidadeDueState(m);
+  const vencimentoInfo = overdue && days !== null
+    ? `${days} ${days === 1 ? "dia" : "dias"} em atraso`
+    : open && days === 0 ? "Vence hoje" : null;
+  const pagamentoLabel = m.status === "pago" && m.pago_em ? formatDate(m.pago_em) : null;
 
   return (
       <div className="grid gap-3 rounded-xl border border-border p-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto_auto] md:items-center">
@@ -165,19 +160,19 @@ function MensalidadeRow({
           {monthName(m.mes)} {m.ano}
         </p>
         <p className="text-xs text-muted-foreground">
-          {m.vencimento ? `Venc. ${vencimentoLabel}` : "Sem vencimento"}
+          {pagamentoLabel && pagamentoLabel !== "—" ? `Pago em ${pagamentoLabel}` : vencimentoLabel && vencimentoLabel !== "—" ? `Venc. ${vencimentoLabel}` : "Sem vencimento"}
         </p>
       </div>
       <div className="text-right">
         <p className="font-bold text-foreground">{formatKwanza(m.valor)}</p>
-        {m.saldo > 0 && (
+        {open && (
           <p className="text-xs text-rose-600">Saldo pendente: {formatKwanza(m.saldo)}</p>
         )}
       </div>
       <div className="md:justify-self-end text-right">
         <StatusPill status={m.status} variant="financeiro" size="xs" />
         {vencimentoInfo && (
-          <p className={`mt-1 text-[10px] font-semibold ${isOverdue ? "text-rose-600" : "text-muted-foreground"}`}>
+          <p className={`mt-1 text-[10px] font-semibold ${overdue ? "text-rose-600" : "text-muted-foreground"}`}>
             {vencimentoInfo}
           </p>
         )}

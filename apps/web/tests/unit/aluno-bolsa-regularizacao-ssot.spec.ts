@@ -85,3 +85,19 @@ test("bolsa percentual: barra e campo exacto partilham estado; a RPC calcula o v
   assert.match(apiGestao, /klasse_definir_bolsa_parcial/);
   assert.match(apiGestao, /p_percentagem: parsed.data.percentagem/);
 });
+
+
+test("percentual refinado mantém entrada precisa e indica a parcela a pagar", () => {
+  assert.match(gestao, /pointer-events-none absolute inset-x-2\.5 h-1\.5/);
+  assert.match(gestao, /Percentual a pagar/);
+  assert.match(gestao, /aria-pressed=\{taxaValida && taxa === valor\}/);
+  assert.match(gestao, /aria-describedby=\{\x60\$\{percentagemId\}-ajuda\x60\}/);
+});
+
+test("a linha financeira usa o estado de vencimento partilhado e não mostra atraso após liquidar", () => {
+  const row = source("components/aluno/DossierSeccoes.tsx");
+  assert.match(row, /const \{ open, days, overdue \} = mensalidadeDueState\(m\)/);
+  assert.match(row, /const vencimentoInfo = overdue && days !== null/);
+  assert.match(row, /m.status === "pago" && m.pago_em/);
+  assert.match(row, /\{open && \(/);
+});

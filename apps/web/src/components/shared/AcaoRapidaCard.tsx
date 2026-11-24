@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { Lock } from "lucide-react";
 
 type AcaoRapidaCardProps = {
@@ -8,6 +8,8 @@ type AcaoRapidaCardProps = {
   sublabel?: string;
   href?: string;
   onClick?: () => void;
+  buttonRef?: Ref<HTMLButtonElement>;
+  dialogOpen?: boolean;
   disabled?: boolean;
   disabledReason?: string;
   compact?: boolean;
@@ -20,6 +22,8 @@ export default function AcaoRapidaCard({
   sublabel,
   href,
   onClick,
+  buttonRef,
+  dialogOpen,
   disabled = false,
   disabledReason,
   compact = false,
@@ -74,7 +78,7 @@ export default function AcaoRapidaCard({
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="text-left">
+      <button ref={buttonRef} type="button" onClick={onClick} aria-haspopup={dialogOpen !== undefined ? "dialog" : undefined} aria-expanded={dialogOpen} className="text-left">
         {inner}
       </button>
     );

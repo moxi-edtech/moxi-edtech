@@ -274,25 +274,37 @@ export function BolsaIntegralCard({ alunoId, escolaId, anoLetivo }: {
               {parcialAtiva && <label className="flex items-center gap-2 text-sm"><input type="radio" name={`${percentagemId}-tipo`} checked={retirarParcial} onChange={() => { setModalidade("retirar-parcial"); setMesVigencia(""); }} /> Retirar bolsa parcial</label>}
               {matricula.desconto_comercial && <p className="text-xs text-muted-foreground">Existe um desconto comercial nesta matrícula. A bolsa parcial não acumula com outro desconto.</p>}
               {modalidade === "parcial" && (
-                <div className="space-y-3 rounded-xl border border-border bg-background p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <label htmlFor={`${percentagemId}-valor`} className="text-sm font-medium text-foreground">Percentual da bolsa</label>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <input id={`${percentagemId}-valor`} type="number" inputMode="decimal" min="0.01" max="99.99" step="0.01" value={percentagem} disabled={saving} aria-invalid={!taxaValida} aria-describedby={`${percentagemId}-ajuda`} onChange={e => setPercentagem(e.target.value)} className="w-24 rounded-xl border border-border bg-card px-3 py-2 text-right text-sm font-semibold tabular-nums outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20" />
-                      <span aria-hidden="true" className="text-sm text-muted-foreground">%</span>
+                <div className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <label htmlFor={`${percentagemId}-valor`} className="block text-sm font-semibold text-foreground">Percentual da bolsa</label>
+                      <p className="mt-1 text-xs text-muted-foreground">Desconto sobre a propina</p>
+                    </div>
+                    <div className="flex items-baseline gap-1 rounded-xl border border-border bg-background px-3 focus-within:border-klasse-gold focus-within:ring-4 focus-within:ring-klasse-gold/20">
+                      <input id={`${percentagemId}-valor`} type="number" inputMode="decimal" min="0.01" max="99.99" step="0.01" value={percentagem} disabled={saving} aria-invalid={!taxaValida} aria-describedby={`${percentagemId}-ajuda`} onChange={e => setPercentagem(e.target.value)} className="min-h-12 w-[5.5rem] appearance-none bg-transparent text-right font-mono text-2xl font-semibold tabular-nums text-foreground outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]" />
+                      <span aria-hidden="true" className="text-sm font-medium text-muted-foreground">%</span>
                     </div>
                   </div>
-                  <label htmlFor={`${percentagemId}-barra`} className="sr-only">Ajustar percentual da bolsa</label>
-                  <input id={`${percentagemId}-barra`} type="range" min="0.01" max="99.99" step="0.01" value={valorBarra} disabled={saving} aria-valuetext={`${valorBarra.toLocaleString("pt-AO")}%`} onChange={e => setPercentagem(e.target.value)} className="h-11 w-full cursor-pointer accent-klasse-gold focus-visible:rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:cursor-not-allowed" />
-                  <div aria-hidden="true" className="flex justify-between text-xs tabular-nums text-muted-foreground">
-                    <span>0,01%</span><span>25%</span><span>50%</span><span>75%</span><span>99,99%</span>
+                  <div>
+                    <label htmlFor={`${percentagemId}-barra`} className="sr-only">Ajustar percentual da bolsa</label>
+                    <div className="relative flex h-11 items-center">
+                      <div aria-hidden="true" className="pointer-events-none absolute inset-x-2.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-primary" style={{width: `${(valorBarra - 0.01) / 99.98 * 100}%`}} />
+                      </div>
+                      <input id={`${percentagemId}-barra`} type="range" min="0.01" max="99.99" step="0.01" value={valorBarra} disabled={saving} aria-valuetext={`${valorBarra.toLocaleString("pt-AO")}%`} aria-describedby={`${percentagemId}-ajuda`} onChange={e => setPercentagem(e.target.value)} className="relative z-10 h-11 w-full cursor-pointer appearance-none rounded-xl bg-transparent focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:-mt-[7px] [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-primary [&::-webkit-slider-thumb]:bg-card [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-primary [&::-moz-range-thumb]:bg-card [&::-moz-range-thumb]:shadow-sm" />
+                    </div>
+                    <div aria-hidden="true" className="flex justify-between text-xs tabular-nums text-muted-foreground"><span>0,01%</span><span>99,99%</span></div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {[25, 50, 75].map(valor => (
-                      <button key={valor} type="button" disabled={saving} aria-pressed={taxaValida && taxa === valor} onClick={() => setPercentagem(String(valor))} className={`min-h-9 rounded-xl border px-3 py-1.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${taxaValida && taxa === valor ? "border-klasse-gold bg-klasse-gold/10 text-foreground" : "border-border bg-card text-muted-foreground"}`}>{valor}%</button>
-                    ))}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">Valores rápidos</span>
+                    <div role="group" aria-label="Percentuais predefinidos" className="flex flex-wrap gap-1.5">
+                      {[25, 50, 75].map(valor => (
+                        <button key={valor} type="button" disabled={saving} aria-pressed={taxaValida && taxa === valor} onClick={() => setPercentagem(String(valor))} className={`min-h-10 min-w-14 rounded-xl border px-3 text-sm font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-50 ${taxaValida && taxa === valor ? "border-primary bg-primary/5 text-primary" : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{valor}%</button>
+                      ))}
+                    </div>
                   </div>
-                  <p id={`${percentagemId}-ajuda`} className={`text-xs ${taxaValida ? "text-muted-foreground" : "text-destructive"}`}>{taxaValida ? "Arraste a barra ou introduza um valor exacto. Para 100%, selecione bolsa integral." : "Introduza um percentual entre 0,01% e 99,99%, com até duas casas decimais."}</p>
+                  {taxaValida && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-sm"><span className="text-muted-foreground">Percentual a pagar</span><span className="font-mono font-semibold tabular-nums text-foreground">{(100 - taxa).toLocaleString("pt-AO",{maximumFractionDigits:2})}%</span></div>}
+                  <p id={`${percentagemId}-ajuda`} className={`text-xs ${taxaValida ? "text-muted-foreground" : "text-destructive"}`}>{taxaValida ? "Ajuste na barra ou indique um valor exacto. Para 100%, selecione bolsa integral." : "Introduza um percentual entre 0,01% e 99,99%, com até duas casas decimais."}</p>
                 </div>
               )}
             </fieldset>

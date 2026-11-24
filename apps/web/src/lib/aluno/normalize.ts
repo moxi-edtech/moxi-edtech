@@ -11,6 +11,8 @@ import type {
   DossierStatus,
 } from "./types";
 
+import { hasOpenMensalidadeBalance, mensalidadeDueState } from "./mensalidade-due";
+
 const STATUS_ATIVO = new Set(["ativo", "ativa", "active"]);
 
 function isMatriculaAtiva(status?: string | null): boolean {
@@ -33,11 +35,12 @@ function normalizarMensalidade(m: RawDossierMensalidade): DossierMensalidade {
   const saldo = Math.max(0, valor - pago);
 
   const vencimento = m.vencimento ?? m.data_vencimento ?? null;
-  const atrasada = vencimento ? new Date(vencimento) < new Date() : false;
+  const status = (m.status ?? "pendente").toLowerCase().trim();
+  const atrasada = mensalidadeDueState({ status, saldo, vencimento }).overdue;
 
   return {
     id: String(m.id ?? `${ano}-${mes}`),
-    status: (m.status ?? "pendente").toLowerCase(),
+    status,
     mes,
     ano,
     valor,
@@ -120,7 +123,7 @@ export function normalizeDossier(alunoId: string, raw: unknown, selectedYear?: n
     : [];
 
   const mensalidades_pendentes = todasMensalidades.filter(
-    (m) => ["pendente", "pago_parcial"].includes(m.status) && m.saldo > 0
+    (m) => hasOpenMensalidadeBalance(m.status, m.saldo)
   );
   const mensalidades_atrasadas = mensalidades_pendentes.filter((m) => m.atrasada);
 

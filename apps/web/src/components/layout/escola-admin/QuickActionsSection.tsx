@@ -2,7 +2,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { ModalShell } from "@/components/ui/ModalShell";
+import { HorarioDataProvider } from "@/components/escola/horarios/HorarioDataProvider";
+import { Button } from "@/components/ui/Button";
 import { PlusCircle, UserPlus, FileText, Megaphone, Calendar, Table2, Wallet, UploadCloud } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
 import AvisosNovoPage from "@/app/escola/[id]/(portal)/admin/avisos/novo/page";
@@ -11,6 +15,7 @@ import NovoFuncionarioPage from "@/app/escola/[id]/(portal)/funcionarios/novo/pa
 import FuncionariosPage from "@/app/escola/[id]/(portal)/funcionarios/page";
 import ProfessoresPage from "@/app/escola/[id]/(portal)/professores/page";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
+import ExpedienteDashboardCard from "@/components/secretaria/ExpedienteDashboardCard";
 import SecaoLabel from "@/components/shared/SecaoLabel";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
@@ -22,10 +27,17 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 
+const RecebimentosWorkspace = dynamic(() => import("@/components/financeiro/FilaValidacaoPagamentos").then(m => m.FilaValidacaoPagamentos), { ssr: false, loading: () => <WorkspaceLoading /> });
+const HorarioWorkspace = dynamic(() => import("@/components/escola/horarios/HorarioEditor").then(m => m.HorarioEditor), { ssr: false, loading: () => <WorkspaceLoading /> });
+
+function WorkspaceLoading() {
+  return <div role="status" aria-label="A carregar" className="h-40 rounded-xl bg-muted motion-safe:animate-pulse" />;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type QuickAction = {
-  key:      "funcionario" | "nota" | "aviso" | "evento" | "migracao_pautas" | "recebimentos" | "importacoes";
+  key:      "funcionario" | "nota" | "aviso" | "evento" | "migracao_pautas" | "recebimentos" | "importacoes" | "horarios" | "criar_aviso";
   label:    string;
   href:     string;
   icon:     React.ElementType;
@@ -50,6 +62,21 @@ export default function QuickActionsSection({
   const escolaParam = escolaSlug || escolaId;
   const { anoLetivoOk, avaliacaoFrequenciaOk, turmasOk } = setupStatus;
   const [selectedAction, setSelectedAction] = useState<QuickAction | null>(null);
+  const [closeWarning, setCloseWarning] = useState(false);
+  const closeGuardRef = useRef<(() => boolean) | null>(null);
+  const actionTriggerRef = useRef<HTMLElement | null>(null);
+  const operationalModal = selectedAction?.key === "recebimentos" || selectedAction?.key === "horarios";
+  const launchAction = (action: QuickAction) => {
+    actionTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setCloseWarning(false);
+    setSelectedAction(action);
+  };
+  const closeOperationalModal = () => {
+    if (closeGuardRef.current?.()) { setCloseWarning(true); return; }
+    setCloseWarning(false);
+    setSelectedAction(null);
+    window.requestAnimationFrame(() => actionTriggerRef.current?.focus({preventScroll:true}));
+  };
 
   const canLaunchNota = avaliacaoFrequenciaOk && turmasOk;
 
@@ -77,15 +104,17 @@ export default function QuickActionsSection({
           variant: "green",
         },
         {
-          key: "evento",
+          key: "recebimentos",
           label: "Recebimentos",
+          opensModal: true,
           icon: Wallet,
           href: buildPortalHref(escolaParam, "/operacoes/recebimentos"),
           variant: "green",
         },
         {
-          key: "migracao_pautas",
+          key: "horarios",
           label: "Quadro de Horários",
+          opensModal: true,
           icon: Table2,
           href: buildPortalHref(escolaParam, "/operacoes/horarios/quadro"),
           disabled: !turmasOk,
@@ -93,7 +122,7 @@ export default function QuickActionsSection({
           variant: "yellow",
         },
         {
-          key: "recebimentos",
+          key: "criar_aviso",
           label: "Criar Aviso",
           icon: Megaphone,
           href: buildPortalHref(escolaParam, "/operacoes/avisos/novo"),
@@ -190,12 +219,14 @@ export default function QuickActionsSection({
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 min-[1280px]:grid-cols-5">
+        <ExpedienteDashboardCard escolaId={escolaId} portal={portalBase} />
         {actions.map((action) => (
           <AcaoRapidaCard
             key={action.key}
             icon={<action.icon className="h-5 w-5" />}
             label={action.label}
-            onClick={() => action.opensModal && setSelectedAction(action)}
+            onClick={action.opensModal ? () => launchAction(action) : undefined}
+            dialogOpen={action.opensModal ? selectedAction?.key === action.key : undefined}
             href={!action.opensModal ? action.href : undefined}
             disabled={action.disabled}
             disabledReason={action.reason}
@@ -204,7 +235,16 @@ export default function QuickActionsSection({
         ))}
       </div>
 
-      <Sheet open={!!selectedAction} onOpenChange={(open) => !open && setSelectedAction(null)}>
+      <ModalShell open={Boolean(operationalModal)} size="wide"
+        title={selectedAction?.key === "horarios" ? "Quadro de horários" : "Recebimentos"}
+        description={selectedAction?.key === "horarios" ? "Seleccione uma turma para gerir, validar e publicar o horário." : "Conferência e validação de propinas, taxas e serviços."}
+        onClose={closeOperationalModal}
+        footer={closeWarning ? <div role="status" className="flex items-center justify-between gap-3 text-sm"><p>Conclua ou cancele a operação aberta antes de fechar.</p><Button type="button" variant="outline" onClick={() => setCloseWarning(false)}>Continuar</Button></div> : undefined}>
+        {selectedAction?.key === "recebimentos" && <RecebimentosWorkspace key={escolaId} escolaId={escolaId} closeGuardRef={closeGuardRef} />}
+        {selectedAction?.key === "horarios" && <Suspense fallback={<WorkspaceLoading />}><HorarioDataProvider key={escolaId} escolaId={escolaId}><HorarioWorkspace escolaId={escolaId} dashboardModal closeGuardRef={closeGuardRef} /></HorarioDataProvider></Suspense>}
+      </ModalShell>
+
+      <Sheet open={!!selectedAction && !operationalModal} onOpenChange={(open) => !open && setSelectedAction(null)}>
         <SheetContent side="right" className="sm:max-w-3xl overflow-y-auto scrollbar-hide">
           <SheetHeader className="border-b border-border pb-4 mb-4">
             <SheetTitle className="flex items-center gap-2 text-xl font-black tracking-tight">

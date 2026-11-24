@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { useParams, useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Save, WifiOff, Printer, FileDown, Wand2, ArrowLeft, Undo2, Redo2, CheckCircle2, Copy, FileSpreadsheet, History } from "lucide-react";
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
@@ -73,7 +73,7 @@ function formatSlotSaveError(json: any) {
   return json?.error || "Falha ao salvar slots.";
 }
 
-export function HorarioEditor({ escolaId: explicitEscolaId, initialTurmaId, onClose, onUpdated }: { escolaId?: string; initialTurmaId?: string; onClose?: () => void; onUpdated?: () => void } = {}) {
+export function HorarioEditor({ escolaId: explicitEscolaId, initialTurmaId, onClose, onUpdated, dashboardModal = false, closeGuardRef }: { escolaId?: string; initialTurmaId?: string; onClose?: () => void; onUpdated?: () => void; dashboardModal?: boolean; closeGuardRef?: MutableRefObject<(() => boolean) | null> } = {}) {
   const embedded = Boolean(onClose);
   const params = useParams();
   const searchParams = useSearchParams();
@@ -137,6 +137,12 @@ export function HorarioEditor({ escolaId: explicitEscolaId, initialTurmaId, onCl
     new Map<string, { disciplinas: CurriculoDisciplinaItem[]; classes: Array<{ id: string; nome: string }> }>()
   );
 
+  useLayoutEffect(() => {
+    if (!closeGuardRef) return;
+    closeGuardRef.current = () => Boolean(turmaId || showWizard || autoDraftDirty || saving || publishing || validating || autoScheduling || adjustingSlots || generatingContraturno || autoConfiguring || publishingCurriculo || revertingAll || historyLoading || downloadingPdf || setupBusyRef.current || modalClosingRef.current);
+    return () => { closeGuardRef.current = null; };
+  }, [closeGuardRef, turmaId, showWizard, autoDraftDirty, saving, publishing, validating, autoScheduling, adjustingSlots, generatingContraturno, autoConfiguring, publishingCurriculo, revertingAll, historyLoading, downloadingPdf]);
+
   const {
     rawSlots,
     salas,
@@ -176,12 +182,12 @@ export function HorarioEditor({ escolaId: explicitEscolaId, initialTurmaId, onCl
 
   // The workspace opens setup only on explicit action or a configuration deep link.
   useEffect(() => {
-    if (embedded) return;
+    if (embedded || dashboardModal) return;
     if (searchParams?.get("configurar") !== "1") { initialSetupQueryApplied.current=false; return; }
     if (baseLoading || baseError || initialSetupQueryApplied.current || autoDraftDirty || saving || publishing || validating || autoScheduling) return;
     initialSetupQueryApplied.current = true;
     setShowWizard(true);
-  }, [baseLoading, baseError, searchParams, autoDraftDirty, saving, publishing, validating, autoScheduling, embedded]);
+  }, [baseLoading, baseError, searchParams, autoDraftDirty, saving, publishing, validating, autoScheduling, embedded, dashboardModal]);
 
   const openSetup = () => {
     if (saving || publishing || validating || autoScheduling || baseLoading || baseError) return;
@@ -198,7 +204,7 @@ export function HorarioEditor({ escolaId: explicitEscolaId, initialTurmaId, onCl
   const closeSetup = () => {
     if (setupBusyRef.current) return;
     setShowWizard(false);
-    if (!embedded && searchParams?.get("configurar") === "1" && pathname) {
+    if (!embedded && !dashboardModal && searchParams?.get("configurar") === "1" && pathname) {
       const query = new URLSearchParams(searchParams.toString()); query.delete("configurar");
       router.replace(pathname + (query.size ? `?${query.toString()}` : ""), { scroll:false });
     }
@@ -273,14 +279,14 @@ export function HorarioEditor({ escolaId: explicitEscolaId, initialTurmaId, onCl
   }, [escolaId, turmaId]);
 
   useEffect(() => {
-    if (embedded || baseLoading || baseError) return;
+    if (embedded || dashboardModal || baseLoading || baseError) return;
     if (turmas.length === 0) return;
     const turmaIdFromQuery = searchParams?.get("turmaId") ?? null;
     if (!initialQueryApplied.current) {
       initialQueryApplied.current = true;
       if (turmaIdFromQuery && turmas.some((turma) => turma.id === turmaIdFromQuery)) setTurmaId(turmaIdFromQuery);
     }
-  }, [searchParams, turmas, baseLoading, baseError, embedded]);
+  }, [searchParams, turmas, baseLoading, baseError, embedded, dashboardModal]);
 
   const loadCurriculoDisciplinas = useCallback(async (targetCursoId: string, options?: { force?: boolean }) => {
     const cached = curriculoDataCacheRef.current.get(targetCursoId);
@@ -1464,24 +1470,26 @@ export function HorarioEditor({ escolaId: explicitEscolaId, initialTurmaId, onCl
 
   return (
     <>
-      {!embedded && <div className="min-h-screen bg-muted text-foreground font-sans">
-        <div className="mx-auto max-w-7xl p-6">
+      {!embedded && <div className={dashboardModal ? "min-w-0 text-foreground font-sans" : "min-h-screen bg-muted text-foreground font-sans"}>
+        <div className={dashboardModal ? "min-w-0" : "mx-auto max-w-7xl p-6"}>
           <HorariosWorkspace turmas={turmas} loading={baseLoading} error={baseError} onOpen={(id)=>void switchTurma(id)} onRefresh={refreshBaseData} onConfigure={openSetup}/>
         </div>
       </div>}
       {turmaId && <Dialog open={Boolean(turmaId)} onOpenChange={open=>{if(!open)void switchTurma(null)}}>
-        <DialogContent closeButton={false} onCloseAutoFocus={event=>{event.preventDefault();editorTriggerRef.current?.focus()}} onInteractOutside={event=>event.preventDefault()} className="flex h-[92vh] w-[96vw] max-w-[1600px] flex-col gap-0 overflow-hidden rounded-xl border-border bg-card p-0 text-foreground">
-          <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-left">
+        <DialogContent closeButton={false} onCloseAutoFocus={event=>{event.preventDefault();editorTriggerRef.current?.focus({preventScroll:true})}} onInteractOutside={event=>event.preventDefault()} className="flex h-[100dvh] w-screen max-w-[1600px] flex-col gap-0 overflow-hidden rounded-none border-border bg-card p-0 text-foreground sm:h-[96dvh] sm:w-[98vw] sm:rounded-xl">
+          <DialogHeader className="shrink-0 border-b border-border px-3 py-2 text-left sm:px-5 sm:py-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <DialogTitle className="text-xl text-klasse-green">{selectedTurma?.turma_codigo || selectedTurma?.turma_nome || selectedTurma?.nome || "Quadro de horários"}</DialogTitle>
+                <DialogTitle className="break-words text-base text-klasse-green sm:text-xl">{selectedTurma?.turma_codigo || selectedTurma?.turma_nome || selectedTurma?.nome || "Quadro de horários"}</DialogTitle>
                 <DialogDescription className="mt-1">{selectedTurma?.classe?.nome || "Turma"} · {turnoLabel}{selectedTurma?.sala ? " · "+selectedTurma.sala : ""}</DialogDescription>
               </div>
               <Button type="button" variant="outline" disabled={saving||publishing||validating||autoScheduling||adjustingSlots||generatingContraturno||autoConfiguring||publishingCurriculo||revertingAll||historyLoading} onClick={()=>void switchTurma(null)} className="gap-2"><ArrowLeft size={16}/> {embedded ? "Fechar horário" : "Voltar às turmas"}</Button>
             </div>
           </DialogHeader>
-      <header className="shrink-0 border-b border-border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-2 sm:p-4">
+      <details className="mb-3 rounded-xl border border-border bg-card">
+        <summary className="cursor-pointer px-3 py-3 text-sm font-semibold">Ferramentas e estado do horário</summary>
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 px-3 pb-3">
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="outline" size="sm" onClick={openSetup} disabled={saving||publishing||validating||autoScheduling||baseLoading} className="gap-2"><Wand2 size={16}/> Configurar tempos e salas</Button>
             <Select
@@ -1489,7 +1497,8 @@ export function HorarioEditor({ escolaId: explicitEscolaId, initialTurmaId, onCl
               options={turmaOptions}
               disabled={saving || publishing || validating || autoScheduling}
               onChange={(event) => void switchTurma(event.target.value || null)}
-              className="max-w-xs rounded-xl border-border focus:border-amber focus:ring-amber text-foreground"
+              aria-label="Selecionar turma"
+              className="w-full min-w-0 max-w-xs rounded-xl border-border focus:border-amber focus:ring-amber text-foreground"
             />            {selectedTurma?.sala ? (
               <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">
                 {selectedTurma.sala}
@@ -1546,12 +1555,10 @@ export function HorarioEditor({ escolaId: explicitEscolaId, initialTurmaId, onCl
             </div>
           </div>
         </div>
-      </header>
-
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">
+      </details>
         {!baseLoading && !baseError && !selectedTurma && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 p-4 text-sm text-destructive">Esta turma não está disponível no ano lectivo activo. Seleccione uma turma elegível ou feche o editor.</p>}
         {turmaId && (
-          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div className="mb-3 grid grid-cols-3 gap-1.5 sm:gap-3">
             <div className="rounded-xl border border-border bg-card p-4">
               <p className="text-sm text-muted-foreground">Tempos programados</p>
               <p className="mt-1 text-xl font-bold text-foreground">{filledSlots}/{totalSlots}</p>
@@ -1584,6 +1591,7 @@ export function HorarioEditor({ escolaId: explicitEscolaId, initialTurmaId, onCl
           <>
           <div className="mb-3 flex flex-wrap items-center gap-2"><button type="button" disabled={isLoading||!versaoId||!aulas.length||!totalSlots||saving||publishing||validating||autoScheduling||!!turmaError||!!baseError} onClick={()=>setImportOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><FileSpreadsheet size={16}/> Importar Excel</button><button type="button" disabled={isLoading||!versaoId||!aulas.length||!totalSlots||!copyCandidates.length||saving||publishing||validating||autoScheduling||!online} onClick={()=>setCopyOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><Copy size={16}/> Copiar de outra turma</button><button type="button" disabled={isLoading||historyLoading||saving||publishing||validating||autoScheduling} onClick={()=>void openHistory()} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><History size={16}/> Histórico</button><button type="button" disabled={!canPublicar||autoScheduling} onClick={()=>void submitQuadro(grid,"validate")} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-semibold disabled:opacity-40"><CheckCircle2 size={16}/> Validar conflitos</button><button type="button" disabled={!undoStack.length||saving||publishing||validating||autoScheduling} onClick={undoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Undo2 size={16}/> Desfazer</button><button type="button" disabled={!redoStack.length||saving||publishing||validating||autoScheduling} onClick={redoGrid} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40"><Redo2 size={16}/> Refazer</button><button type="button" disabled={!filledSlots||saving||publishing||validating||autoScheduling} onClick={handleClearQuadro} className="rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-40">Limpar edição</button></div>
           <SchedulerBoard
+            externalActions
             key={turmaId}
             diasSemana={DIAS_SEMANA}
             tempos={horariosDisponiveis}
@@ -1812,10 +1820,20 @@ export function HorarioEditor({ escolaId: explicitEscolaId, initialTurmaId, onCl
         )}
 
       </div>
+      <footer className="shrink-0 border-t border-border bg-card px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p role="status" className="text-xs text-muted-foreground">{saving?"A guardar…":publishing?"A publicar…":validating?"A validar…":autoDraftDirty?"Alterações por guardar":hasSavedDraft?"Rascunho guardado":"Sem alterações locais"}</p>
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+            <Button type="button" variant="outline" className="col-span-2 min-h-11 whitespace-normal sm:col-span-1" disabled={!selectedTurma || isLoading || !!baseError || !!turmaError || !!versionError || !versaoId || saving || publishing || validating || autoScheduling} onClick={()=>void handleAutoCompletar()}><Wand2 size={16}/>{autoScheduling?"A gerar…":"Preencher tempos livres"}</Button>
+            <Button type="button" variant="outline" className="min-h-11 whitespace-normal" disabled={!selectedTurma || isLoading || !!baseError || !!turmaError || !!versionError || !versaoId || saving || publishing || validating || autoScheduling} onClick={()=>void handleSalvar(grid)}><Save size={16}/>Guardar rascunho</Button>
+            <Button type="button" tone="gold" className="min-h-11 whitespace-normal" disabled={!canPublicar||autoScheduling} onClick={()=>void handlePublicar(grid)}><CheckCircle2 size={16}/>Publicar horário</Button>
+          </div>
+        </div>
+      </footer>
         </DialogContent>
       </Dialog>}
       {showWizard && <Dialog open={showWizard} onOpenChange={open=>{if(!open)closeSetup()}}>
-        <DialogContent closeButton={false} onCloseAutoFocus={event=>{event.preventDefault();setupTriggerRef.current?.focus()}} onInteractOutside={event=>event.preventDefault()} className="flex max-h-[88vh] w-[92vw] max-w-5xl flex-col gap-0 overflow-hidden rounded-xl bg-card p-0">
+        <DialogContent closeButton={false} onCloseAutoFocus={event=>{event.preventDefault();setupTriggerRef.current?.focus({preventScroll:true})}} onInteractOutside={event=>event.preventDefault()} className="flex max-h-[88vh] w-[92vw] max-w-5xl flex-col gap-0 overflow-hidden rounded-xl bg-card p-0">
           <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-left">
             <div className="flex items-center justify-between gap-3">
               <div><DialogTitle className="text-klasse-green">Configurar tempos e salas</DialogTitle><DialogDescription>Os tempos são partilhados pelas turmas do turno. As salas são opcionais.</DialogDescription></div>
