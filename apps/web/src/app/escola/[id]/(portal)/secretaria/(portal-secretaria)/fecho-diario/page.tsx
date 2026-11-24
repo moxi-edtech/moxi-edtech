@@ -8,5 +8,5 @@ export default async function Page({params,searchParams}:{params:Promise<{id:str
  if(!access.ok)redirect("/redirect");
  const query=daySchema.safeParse((await searchParams).date);
  const date=query.success&&query.data<=todayLuanda()?query.data:todayLuanda();
- return <ExpedienteWorkspace escolaId={access.escolaId} initialDate={date} cashHref={"/escola/"+id+"/secretaria/fecho"}/>;
+ return <ExpedienteWorkspace escolaId={access.escolaId} initialDate={date}/>;
 }
