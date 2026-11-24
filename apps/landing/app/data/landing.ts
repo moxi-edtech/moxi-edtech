@@ -9,7 +9,7 @@ export const navLinks = [
 
 export const hero = {
   eyebrow: 'Gestão escolar em Angola',
-  titleLines: ['Gestão escolar', 'num só sistema.'],
+  titleLines: ['Assuma o controlo total', 'da sua escola hoje.'],
   subtitle:
     'Organize matrículas, propinas, notas e documentos escolares. A direcção, a secretaria e os professores trabalham com a mesma informação.',
   primaryCta: 'Falar no WhatsApp',
