@@ -45,3 +45,25 @@ test("workspace accessible from three dashboards and exports without opening a t
  assert.match(ui,/URL.createObjectURL/);
  assert.doesNotMatch(ui,/window.open/);
 });
+
+test("SQL dollar quoting, automatic origin and cash completeness",()=>{
+ assert.doesNotMatch(sql,/AS \$[^$]|END; \$;/);
+ assert.equal((sql.match(/\$\$/g)||[]).length%2,0);
+ assert.match(sql,/origin IN \('human','service_role'\)/);
+ assert.match(sql,/origin='service_role' AND actor_id IS NULL/);
+ assert.match(sql,/auth.jwt\(\)->>'role',''\) <> 'service_role'/);
+ assert.match(sql,/operation_count=human_count\+system_count/);
+ assert.match(sql,/system_other_count/);
+ assert.match(sql,/declaration_conflict/);
+ assert.match(sql,/variance_requires_justification/);
+ assert.match(sql,/approval_variation=v_variation/);
+ assert.match(sql,/zz_fecho_caixa_lock_payment_day/);
+ assert.match(sql,/'financeiro_pagamento_reversoes'/);
+ assert.match(sql,/'matricula_desistencia_reativacoes'/);
+ assert.match(sql,/'aluno_encarregados'/);
+ const route=src("app/api/financeiro/fecho/declarar/route.ts");
+ assert.doesNotMatch(route,/if \(existing\)/);
+ const pdf=src("app/api/escola/[id]/expediente/pdf/route.ts");
+ assert.match(pdf,/Sistema \(automático\)/);
+ assert.match(pdf,/Meio não classificado/);
+});
