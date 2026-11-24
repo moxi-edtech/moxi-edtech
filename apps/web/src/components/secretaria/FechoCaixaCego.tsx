@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { Banknote, CreditCard, CheckCircle2, AlertTriangle, Loader2, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
-const NOTES = [5000, 2000, 1000, 500, 200, 100];
+const NOTES = [5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
 const format = (value: number) => new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 const inputClass = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20 disabled:opacity-60";
 type Channels = { numerario: number; tpa: number; transferencia: number; mcx: number };
@@ -12,23 +12,26 @@ type ResultadoFecho = { sistema: Channels; declarado: Channels; diferenca_total:
 type Props = {
   onConfirm: (data: { numerario_declarado: number; tpa_declarado: number; transferencia_declarada: number; mcx_declarado: number; detalhe_notas: Record<string, number> }) => Promise<ResultadoFecho>;
   onClose: () => void;
+  completionLabel?:string;
 };
 const CHANNELS = [["numerario", "Numerário"], ["tpa", "TPA"], ["transferencia", "Transferências"], ["mcx", "Multicaixa Express"]] as const;
 
-export default function FechoCaixaCego({ onConfirm, onClose }: Props) {
+export default function FechoCaixaCego({ onConfirm, onClose, completionLabel="Voltar à secretaria" }: Props) {
+  const [cashMode,setCashMode]=useState<"total"|"count">("total");
+  const [cashTotal,setCashTotal]=useState("");
   const [counts, setCounts] = useState<Record<number, string>>({});
   const [digital, setDigital] = useState({ tpa: "", transferencia: "", mcx: "" });
   const [submitting, setSubmitting] = useState(false);
   const pending = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ResultadoFecho | null>(null);
-  const cash = NOTES.reduce((sum, note) => sum + note * Number(counts[note] || 0), 0);
+  const cash = cashMode==="total"?Number(cashTotal||0):NOTES.reduce((sum, note) => sum + note * Number(counts[note] || 0), 0);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending.current || result) return;
     const values = [cash, ...Object.values(digital).map(Number)];
-    if (!values.every(value => Number.isFinite(value) && value >= 0 && value <= 9999999999.99)) {
+    if (!values.every(value => Number.isFinite(value) && value >= 0 && value <= 9999999999.99 && Math.abs(value*100-Math.round(value*100))<0.0001)) {
       setError("Informe valores válidos e não negativos.");
       return;
     }
@@ -41,7 +44,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: Props) {
         tpa_declarado: Number(digital.tpa),
         transferencia_declarada: Number(digital.transferencia),
         mcx_declarado: Number(digital.mcx),
-        detalhe_notas: Object.fromEntries(NOTES.map(note => [String(note), Number(counts[note] || 0)])),
+        detalhe_notas: cashMode==="total"?{}:Object.fromEntries(NOTES.map(note => [String(note), Number(counts[note] || 0)])),
       }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível registar o fecho. Tente novamente.");
@@ -68,15 +71,15 @@ export default function FechoCaixaCego({ onConfirm, onClose }: Props) {
       </div>
       {!!result.outros_count&&<p role="status" className="rounded-xl border border-amber-200 p-3 text-sm">Pagamentos sem meio classificado: {format(result.outros??0)} ({result.outros_count}). A conferência exige justificação.</p>}
       <p className="text-sm text-muted-foreground">Diferença líquida dos quatro meios: <span className="font-mono text-foreground">{format(result.diferenca_total)}</span></p>
-      <Button onClick={onClose}>Voltar à secretaria</Button>
+      <Button onClick={onClose}>{completionLabel}</Button>
     </section>
   );
 
   return (
     <form onSubmit={submit} className="space-y-4" aria-busy={submitting}>
       <section className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold text-foreground"><Banknote className="h-5 w-5 text-klasse-green" /> Numerário</h2><p className="mt-1 text-sm text-muted-foreground">Indique a quantidade de cada nota.</p></div><div className="text-right"><p className="text-xs text-muted-foreground">Total contado</p><p className="font-mono text-xl font-semibold text-foreground">{format(cash)}</p></div></div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{NOTES.map(note => <label key={note} className="space-y-1 rounded-xl border border-border p-3 text-sm"><span className="font-medium">{format(note)}</span><input className={inputClass} inputMode="numeric" pattern="[0-9]*" maxLength={8} placeholder="0" value={counts[note] || ""} disabled={submitting} onChange={event => { if (/^\d*$/.test(event.target.value)) setCounts(prev => ({ ...prev, [note]: event.target.value })); }} /><span className="block text-xs text-muted-foreground">{format(note * Number(counts[note] || 0))}</span></label>)}</div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold text-foreground"><Banknote className="h-5 w-5 text-klasse-green" /> Numerário</h2><p className="mt-1 text-sm text-muted-foreground">Informe o total contado ou utilize a contagem por denominação.</p></div><div className="text-right"><p className="text-xs text-muted-foreground">Total contado</p><p className="font-mono text-xl font-semibold text-foreground">{format(cash)}</p></div></div>
+        <div className="flex flex-wrap gap-2"><Button type="button" variant={cashMode==="total"?"primary":"outline"} disabled={submitting} onClick={()=>setCashMode("total")}>Valor total</Button><Button type="button" variant={cashMode==="count"?"primary":"outline"} disabled={submitting} onClick={()=>setCashMode("count")}>Contar notas e moedas</Button></div>{cashMode==="total"?<label className="block space-y-1 text-sm">Numerário contado (Kz)<input type="number" min="0" max="9999999999.99" step="0.01" inputMode="decimal" className={inputClass} value={cashTotal} placeholder="0,00" disabled={submitting} onChange={e=>setCashTotal(e.target.value)}/></label>:<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{NOTES.map(note => <label key={note} className="space-y-1 rounded-xl border border-border p-3 text-sm"><span className="font-medium">{format(note)}</span><input className={inputClass} inputMode="numeric" pattern="[0-9]*" maxLength={8} placeholder="0" value={counts[note] || ""} disabled={submitting} onChange={event => { if (/^\d*$/.test(event.target.value)) setCounts(prev => ({ ...prev, [note]: event.target.value })); }} /><span className="block text-xs text-muted-foreground">{format(note * Number(counts[note] || 0))}</span></label>)}</div>}
       </section>
       <section className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6">
         <div><h2 className="flex items-center gap-2 font-semibold text-foreground"><CreditCard className="h-5 w-5 text-klasse-green" /> Pagamentos digitais</h2><p className="mt-1 text-sm text-muted-foreground">Informe os totais dos comprovativos. Deixe vazio quando não houver movimento.</p></div>
