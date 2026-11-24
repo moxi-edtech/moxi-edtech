@@ -1112,6 +1112,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
   const [bulkArchiveLoading, setBulkArchiveLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showExport, setShowExport] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const isInitialLoading = loading && items.length === 0;
 
   const isInadimplentesTab = (value: TabStatus) => value === "inadimplentes";
@@ -1305,7 +1306,9 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     URL.revokeObjectURL(url);
   };
 
-  const handleExport = (tipo: "excel" | "pdf") => {
+  const handleExport = async (tipo: "excel" | "pdf") => {
+    if (exporting) return;
+    setExporting(true);
     const params = new URLSearchParams({
       q: debouncedQ,
       status: TAB_TO_STATUS[tab],
@@ -1325,7 +1328,34 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     params.set("all", "1");
     params.set("tipo", tipo);
     setShowExport(false);
-    window.open(`/api/secretaria/alunos/exportar?${params.toString()}`, "_blank");
+    try {
+      const response = await fetch(`/api/secretaria/alunos/exportar?${params.toString()}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(typeof payload?.error === "string"
+          ? payload.error : `Falha na exportação (HTTP ${response.status}).`);
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const filename = disposition.match(/filename="([^"]+)"/)?.[1]
+        ?? `alunos-filtrados-${Date.now()}.${tipo === "excel" ? "xlsx" : "pdf"}`;
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.download = filename;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      success("Exportação concluída", "Lista filtrada descarregada.");
+    } catch (cause) {
+      error("Erro na exportação", cause instanceof Error ? cause.message
+        : "Falha de ligação. Tente novamente.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleBulkArchive = async (reason: string) => {
@@ -1591,13 +1621,15 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                 {showExport && (
                   <div className="absolute right-0 mt-2 w-40 rounded-xl border border-border bg-card shadow-xl p-2 z-20">
                     <button
-                      onClick={() => handleExport("excel")}
+                      disabled={exporting}
+                      onClick={() => void handleExport("excel")}
                       className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted/50"
                     >
                       Excel · todos os filtrados
                     </button>
                     <button
-                      onClick={() => handleExport("pdf")}
+                      disabled={exporting}
+                      onClick={() => void handleExport("pdf")}
                       className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted/50"
                     >
                       PDF · todos os filtrados
