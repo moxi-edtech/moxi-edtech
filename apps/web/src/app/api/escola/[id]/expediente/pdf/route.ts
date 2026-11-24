@@ -10,7 +10,7 @@ const fail = (error: string, status: number) => NextResponse.json({ ok: false, e
 const dateLabel = (value: string) => value.split("-").reverse().join("/");
 const money = (v: unknown) => new Intl.NumberFormat("pt-AO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v ?? 0)) + " Kz";
 const clock = (value: string) => new Intl.DateTimeFormat("pt-PT", { timeZone: "Africa/Luanda", dateStyle: "short", timeStyle: "short" }).format(new Date(value));
-const entities: Record<string,string> = { alunos:"Alunos", candidaturas:"Candidaturas", matriculas:"Matrículas", pagamentos:"Pagamentos", documentos_emitidos:"Documentos emitidos", servico_pedidos:"Pedidos de serviço", mensalidades:"Propinas", notas:"Notas", financeiro_lancamentos:"Lançamentos financeiros" };
+const entities: Record<string,string> = { alunos:"Alunos", candidaturas:"Candidaturas", matriculas:"Matrículas", pagamentos:"Pagamentos", documentos_emitidos:"Documentos emitidos", servico_pedidos:"Pedidos de serviço", mensalidades:"Propinas", notas:"Notas", financeiro_lancamentos:"Lançamentos financeiros", financeiro_estornos:"Estornos", reapreciacao_pedidos:"Reapreciações", frequencias:"Frequências" };
 const actions: Record<string,string> = { CREATE:"Criação", UPDATE:"Alteração", DELETE:"Remoção" };
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
