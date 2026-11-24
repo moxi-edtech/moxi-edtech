@@ -75,7 +75,7 @@ export function OnboardingLeadSection({ scheduleUrl }: OnboardingLeadSectionProp
 
   const whatsappLink = useMemo(() => {
     const message = [
-      'Pedido de onboarding KLASSE',
+      'Pedido de demonstração KLASSE',
       `Escola: ${form.escola || '-'}`,
       `Província: ${form.provincia || '-'}`,
       `Município: ${form.municipio || '-'}`,
@@ -92,12 +92,11 @@ export function OnboardingLeadSection({ scheduleUrl }: OnboardingLeadSectionProp
     <section className="onboarding-lead z section-accent" id="onboarding">
       <div className="container">
         <FadeIn className="onboarding-lead__compact">
-          <div className="sec-eyebrow">Onboarding público</div>
-          <h2 className="sec-title">Ativamos a sua escola em poucos passos</h2>
-          <p className="sec-sub">Fale com a equipa KLASSE e começe com apoio guiado.</p>
+          <h2 className="sec-title">Conheça o KLASSE</h2>
+          <p className="sec-sub">Fale com a nossa equipa sobre a sua escola e a implementação do sistema.</p>
           <div className="onboarding-lead__actions">
             <a className="btn-p" href={whatsappLink} target="_blank" rel="noopener noreferrer">
-              Pedir demo
+              Pedir demonstração
             </a>
             <a className="btn-s" href="https://app.klasse.ao/login" rel="noopener noreferrer">
               Aceder ao sistema
@@ -106,10 +105,9 @@ export function OnboardingLeadSection({ scheduleUrl }: OnboardingLeadSectionProp
         </FadeIn>
 
         <FadeIn className="onboarding-lead__header">
-          <div className="sec-eyebrow">Onboarding público</div>
-          <h2 className="sec-title">Comece o onboarding da sua escola</h2>
+          <h2 className="sec-title">Solicite uma demonstração</h2>
           <p className="sec-sub">
-            Deixe os dados base da escola e a nossa equipa entra em contacto para ativar o sistema.
+            Indique os dados da escola para que a nossa equipa possa entrar em contacto.
           </p>
         </FadeIn>
 
@@ -228,7 +226,7 @@ export function OnboardingLeadSection({ scheduleUrl }: OnboardingLeadSectionProp
 
             <div className="onboarding-lead__actions">
               <button className="btn-p" type="submit">
-                Pedir demo
+                Pedir demonstração
               </button>
               <a className="btn-s" href="https://app.klasse.ao/login" rel="noopener noreferrer">
                 Aceder ao sistema
