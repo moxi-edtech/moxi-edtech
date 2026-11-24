@@ -53,3 +53,13 @@
 
 /* Títulos de páginas partilhados ganham a marca apenas nos portais. */
 .klasse-portal-theme .klasse-dashboard-header-title { color: var(--primary); }
+
+/* Operações: grelhas de trabalho dimensionadas pela largura útil do portal. */
+.operations-daily-grid, .operations-actions-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container (min-width: 560px) {
+  .operations-daily-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .operations-actions-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@container (max-width: 359px) {
+  .operations-daily-grid, .operations-actions-grid { grid-template-columns: minmax(0, 1fr); }
+}

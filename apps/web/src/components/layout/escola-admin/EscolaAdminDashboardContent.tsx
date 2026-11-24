@@ -22,6 +22,7 @@ import { EstadoVazio } from "@/components/harmonia";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import PricingConfigurationModal from "@/components/financeiro/PricingConfigurationModal";
+import { ModalShell } from "@/components/ui/ModalShell";
 
 import type {
   KpiStats,
@@ -218,6 +219,7 @@ export default function EscolaAdminDashboardContent({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dynamicPacingTarget, setDynamicPacingTarget] = useState(70);
   const [pricingModalOpen, setPricingModalOpen] = useState(false);
+  const [revenueDetailsOpen, setRevenueDetailsOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -321,72 +323,8 @@ export default function EscolaAdminDashboardContent({
     });
   }
 
-  return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={containerVariants}
-      className="min-w-0 space-y-5 pb-8 min-[1700px]:space-y-8 min-[1700px]:pb-12" style={isOperacoes ? { containerType: "inline-size" } : undefined}
-    >
-
-      {/* ── 1. HEADER ────────────────────────────────────────────────────────── */}
-      <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black leading-none tracking-tight text-foreground min-[1700px]:text-3xl">
-            {dashboardTitle}
-          </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2 min-[1700px]:flex-nowrap">
-            <p className="text-sm font-medium text-muted-foreground">{saudacao}</p>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald animate-pulse" />
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald">Live</span>
-              </div>
-              <button
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className={`flex items-center justify-center p-1 rounded-full text-muted-foreground hover:text-foreground/80 hover:bg-muted transition-all ${
-                  isRefreshing ? "animate-spin text-emerald" : ""
-                }`}
-                title="Atualizar dados"
-              >
-                <RefreshCw className="h-3 w-3" />
-              </button>
-            </div>
-            {escolaNome && <p className="text-sm font-medium text-muted-foreground">· {escolaNome}</p>}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Na secretaria, contexto e pendências formam uma única região de leitura.
-          Não alteramos os componentes, os links ou o modo Administração. */}
-      <div className={isOperacoes ? "operations-context-grid" : "contents"}>
-        {estadoVital && (
-          <motion.div variants={itemVariants} className="min-w-0">
-            <EstadoVitalBanner estado={estadoVital} />
-          </motion.div>
-        )}
-        <motion.div variants={itemVariants} className="min-w-0">
-          <RadarOperacional
-            alerts={radarAlerts}
-            role={isOperacoes ? "secretaria" : "admin"}
-            variant={isOperacoes ? "compact" : "default"}
-            onAction={handleRadarAction}
-          />
-        </motion.div>
-      </div>
-
-      <PricingConfigurationModal
-        open={pricingModalOpen}
-        escolaId={escolaParam}
-        onClose={closePricingModal}
-      />
-
-      {/* Foco da operação e Fila operacional vivem agora no OperacoesPainelHub,
-          abertos por modal — mantêm-se acessíveis sem pesar na página. */}
-
-      {/* ── 3. KPIs ──────────────────────────────────────────────────────────── */}
-      <motion.div variants={itemVariants}>
+  const kpiSection = (
+    <motion.div variants={itemVariants}>
         <KpiSection
           escolaId={escolaId}
           stats={stats}
@@ -400,10 +338,9 @@ export default function EscolaAdminDashboardContent({
           alunoSeries={charts?.alunosPorMes}
         />
       </motion.div>
-
-      {/* ── 4. DESEMPENHO FINANCEIRO (COMPETÊNCIA E CAIXA) ─────────────────────── */}
-      {hasMovimentoReceita && (
-        <motion.section variants={itemVariants} className="relative min-w-0 overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md min-[1700px]:p-6">
+  );
+  const revenueSection = (
+    <motion.section variants={itemVariants} className="relative min-w-0 overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md min-[1700px]:p-6">
           <div className="relative z-10 mb-5 flex flex-col items-start justify-between gap-4 min-[1700px]:mb-8 min-[1700px]:gap-6 md:flex-row">
             <div className="space-y-4 flex-1">
               <div className="space-y-1">
@@ -497,6 +434,120 @@ export default function EscolaAdminDashboardContent({
             <p>100% Meta Final</p>
           </div>
         </motion.section>
+  );
+
+  return (
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="min-w-0 space-y-5 pb-8 min-[1700px]:space-y-8 min-[1700px]:pb-12" style={isOperacoes ? { containerType: "inline-size" } : undefined}
+    >
+
+      {/* ── 1. HEADER ────────────────────────────────────────────────────────── */}
+      <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className={isOperacoes ? "text-2xl font-semibold tracking-tight text-foreground" : "text-2xl font-black leading-none tracking-tight text-foreground min-[1700px]:text-3xl"}>
+            {isOperacoes ? "Operações" : dashboardTitle}
+          </h1>
+          {isOperacoes ? (
+            <p className="mt-1 text-sm text-muted-foreground">{escolaNome || "Visão geral da escola"}</p>
+          ) : <div className="mt-2 flex flex-wrap items-center gap-2 min-[1700px]:flex-nowrap">
+            <p className="text-sm font-medium text-muted-foreground">{saudacao}</p>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald">Live</span>
+              </div>
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className={`flex items-center justify-center p-1 rounded-full text-muted-foreground hover:text-foreground/80 hover:bg-muted transition-all ${
+                  isRefreshing ? "animate-spin text-emerald" : ""
+                }`}
+                title="Atualizar dados"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </button>
+            </div>
+            {escolaNome && <p className="text-sm font-medium text-muted-foreground">· {escolaNome}</p>}
+          </div>}
+        </div>
+        {isOperacoes && <button type="button" onClick={handleRefresh} disabled={isRefreshing} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-ring"><RefreshCw className={`h-4 w-4 ${isRefreshing ? "motion-safe:animate-spin" : ""}`} />Atualizar</button>}
+      </motion.div>
+
+      {/* Na secretaria, contexto e pendências formam uma única região de leitura.
+          Não alteramos os componentes, os links ou o modo Administração. */}
+      <div className={isOperacoes ? "space-y-3" : "contents"}>
+        {estadoVital && (
+          <motion.div variants={itemVariants} className="min-w-0">
+            <EstadoVitalBanner estado={estadoVital} compact={isOperacoes} calendarHref={isOperacoes ? buildPortalHref(escolaParam, "/operacoes/calendario") : undefined} />
+          </motion.div>
+        )}
+        {(!isOperacoes || radarAlerts.length > 0) && <motion.div variants={itemVariants} className="min-w-0">
+          <RadarOperacional
+            alerts={radarAlerts}
+            role={isOperacoes ? "secretaria" : "admin"}
+            variant={isOperacoes ? "compact" : "default"}
+            onAction={handleRadarAction}
+          />
+        </motion.div>}
+      </div>
+
+      <PricingConfigurationModal
+        open={pricingModalOpen}
+        escolaId={escolaParam}
+        onClose={closePricingModal}
+      />
+
+      {/* Foco da operação e Fila operacional vivem agora no OperacoesPainelHub,
+          abertos por modal — mantêm-se acessíveis sem pesar na página. */}
+
+      {isOperacoes ? (
+        <OperacoesPainelHub
+          escolaId={escolaId}
+          operationalSnapshot={operationalSnapshot}
+          charts={charts}
+          afterCounters={
+            <>
+              <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
+              <section aria-label="Visão geral da escola" className="space-y-3">
+                <h2 className="text-sm font-semibold text-foreground">Visão geral da escola</h2>
+                {kpiSection}
+              </section>
+              {hasMovimentoReceita && (
+                <section aria-label="Recebido neste mês" className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-sm font-medium text-muted-foreground">Recebido neste mês (caixa)</h2>
+                    <button type="button" onClick={() => setRevenueDetailsOpen(true)} className="text-sm font-medium text-emerald underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      Ver detalhes
+                    </button>
+                  </div>
+                  <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{mounted ? moeda.format(realizadoReceita) : "—"}</p>
+                  {hasMetaReceita ? (
+                    <>
+                      <div role="progressbar" aria-label="Recebido em relação ao previsto" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.max(0, Math.min(100, displayPercentualReceita))} aria-valuetext={displayPercentualReceita + "% do previsto"} className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-emerald" style={{ width: Math.max(0, Math.min(100, displayPercentualReceita)) + "%" }} />
+                      </div>
+                      <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+                        <span>{displayPercentualReceita}% do previsto</span>
+                        <span>{mounted ? moeda.format(previstoReceita) : "—"}</span>
+                      </div>
+                    </>
+                  ) : <p className="mt-2 text-sm text-muted-foreground">Sem previsão definida</p>}
+                </section>
+              )}
+              <ModalShell open={revenueDetailsOpen} onClose={() => setRevenueDetailsOpen(false)} title="Detalhes financeiros do mês" description="Recebimentos em caixa e cobrança da competência">
+                {revenueDetailsOpen && hasMovimentoReceita && revenueSection}
+              </ModalShell>
+            </>
+          }
+        />
+      ) : (
+        <>
+          {kpiSection}
+          {hasMovimentoReceita && revenueSection}
+        </>
       )}
 
       {/* ── 5. CHARTS (admin) — em operações abre no hub ─────────────────────── */}
@@ -570,21 +621,21 @@ export default function EscolaAdminDashboardContent({
       )}
 
       {/* ── 7. OPERAÇÃO (só em modo operações) ───────────────────────────────── */}
-      <motion.div variants={itemVariants}>
+      {!isOperacoes && <motion.div variants={itemVariants}>
         <OperacoesPainelHub
           escolaId={escolaId}
           operationalSnapshot={operationalSnapshot}
           charts={charts}
-          onlyReopen={!isOperacoes}
+          onlyReopen
         />
-      </motion.div>
+      </motion.div>}
 
       {/* ── 8. BOTTOM GRID (gestão) ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 min-[1280px]:grid-cols-3 min-[1280px]:items-start min-[1700px]:gap-8">
         <div className="space-y-5 min-[1280px]:col-span-2 min-[1700px]:space-y-8">
-          <motion.div variants={itemVariants}>
+          {!isOperacoes && <motion.div variants={itemVariants}>
             <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
-          </motion.div>
+          </motion.div>}
           <motion.div variants={itemVariants}>
             <NoticesSection escolaId={escolaId} notices={notices} portalBase={portalBase} />
           </motion.div>

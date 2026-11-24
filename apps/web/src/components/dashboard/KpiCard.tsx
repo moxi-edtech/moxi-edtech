@@ -63,6 +63,20 @@ export function KpiCard({
     },
   }[variant];
 
+  if (compact) {
+    const content = (
+      <>
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-sm font-medium text-muted-foreground">{label}</span>
+          <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </div>
+        <span className={`mt-2 block text-2xl font-semibold tabular-nums ${variant === "warning" ? "text-amber-700 dark:text-amber-300" : "text-foreground"}`}>{typeof value === "number" ? value.toLocaleString("pt-AO") : value ?? "—"}</span>
+      </>
+    );
+    const className = "block min-w-0 rounded-xl border border-border bg-card p-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    return href ? <Link href={href} className={className + " hover:border-ring"}>{content}</Link> : <div className={className}>{content}</div>;
+  }
+
   const Content = (
     <>
       <div className="flex items-start justify-between relative z-10">

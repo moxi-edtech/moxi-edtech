@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Activity,
   ArrowRight,
@@ -33,11 +33,13 @@ type Props = {
   charts?: DashboardCharts;
   /** Mostra apenas a fila de decisões, sem replicar os restantes KPIs. */
   onlyReopen?: boolean;
+  /** Conteúdo entre os contadores e os painéis secundários; mantém um só hub. */
+  afterCounters?: ReactNode;
 };
 
 type PainelId = "aulas" | "planos" | "reabertura" | "foco" | "graficos";
 
-export default function OperacoesPainelHub({ escolaId, operationalSnapshot, charts, onlyReopen = false }: Props) {
+export default function OperacoesPainelHub({ escolaId, operationalSnapshot, charts, onlyReopen = false, afterCounters }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
   const { summary, authorized, loading, refreshing, error, refresh } = useOperacoesPendencias({ onlyReopen });
@@ -79,7 +81,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
     <section aria-label={onlyReopen ? "Solicitações académicas" : "Operação"} className="space-y-5 min-[1700px]:space-y-8">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <SecaoLabel>{onlyReopen ? "Solicitações académicas" : "Operação"}</SecaoLabel>
+          {afterCounters ? <h2 className="text-sm font-semibold text-foreground">Acompanhamento diário</h2> : <SecaoLabel>{onlyReopen ? "Solicitações académicas" : "Operação"}</SecaoLabel>}
           <div className="flex items-center gap-2">
             {operationalSnapshot && !onlyReopen && (
               <button
@@ -111,7 +113,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
             </button>
           </div>
         ) : (
-          <div className="mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4">
+          <div className={afterCounters ? "operations-daily-grid mt-3 grid gap-3" : "mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4"}>
             {loading
               ? (onlyReopen ? [0] : [0, 1, 2]).map((i) => (
                   <div key={i} className="h-[104px] animate-pulse rounded-xl border border-border bg-card" />
@@ -131,6 +133,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
       </div>
 
       {!onlyReopen && (<>
+      {afterCounters}
       <div>
         <SecaoLabel>Financeiro</SecaoLabel>
         <div className="mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-4 min-[1700px]:mt-4 min-[1700px]:gap-4">
@@ -142,8 +145,8 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
           />
           <AcaoRapidaCard
             icon={<Wallet className="h-5 w-5" />}
-            label="Recebimentos"
-            sublabel="Validação de pagamentos"
+            label={afterCounters ? "Histórico de recebimentos" : "Recebimentos"}
+            sublabel={afterCounters ? undefined : "Validação de pagamentos"}
             href={buildPortalHref(escolaParam, "/operacoes/recebimentos")}
           />
           <AcaoRapidaCard

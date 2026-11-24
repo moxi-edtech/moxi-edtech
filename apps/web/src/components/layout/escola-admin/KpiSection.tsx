@@ -137,7 +137,7 @@ export default function KpiSection({
           description: "Em circulação",
         },
         {
-          label: "Pendentes",
+          label: "Propinas pendentes",
           value: op.mensalidadesPendentes,
           icon: Wallet,
           href: buildPortalHref(escolaParam, "/operacoes/recebimentos"),
@@ -147,7 +147,7 @@ export default function KpiSection({
           description: "Cobranças por tratar",
         },
         {
-          label: "Em Atraso",
+          label: "Propinas em atraso",
           value: op.mensalidadesInadimplentes,
           icon: UserCheck,
           href: financeRadarHref,
@@ -209,7 +209,7 @@ export default function KpiSection({
           variant={kpi.variant}
           trend={kpi.trend}
           chartData={kpi.chartData}
-          description={kpi.description}
+          description={mode === "operacoes" ? undefined : kpi.description}
           compact={mode === "operacoes"}
           responsiveDensity={mode === "admin"}
         />

@@ -207,8 +207,8 @@ export default function QuickActionsSection({
   };
 
   return (
-    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-      <header className="mb-5">
+    <section className={portalBase === "operacoes" ? "min-w-0" : "rounded-xl border border-border bg-card p-5 shadow-sm"}>
+      {portalBase === "operacoes" ? <h2 className="mb-3 text-sm font-semibold text-foreground">Ações rápidas</h2> : <header className="mb-5">
         <SecaoLabel className="text-emerald">Atalhos do portal</SecaoLabel>
         <div className="mt-1 flex items-center gap-2.5">
           <div className="rounded-lg bg-emerald/10 p-2 text-emerald">
@@ -216,9 +216,9 @@ export default function QuickActionsSection({
           </div>
           <h3 className="text-sm font-bold text-foreground">Ações rápidas</h3>
         </div>
-      </header>
+      </header>}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 min-[1280px]:grid-cols-5">
+      <div className={portalBase === "operacoes" ? "operations-actions-grid grid gap-3" : "grid grid-cols-2 gap-3 sm:grid-cols-3 min-[1280px]:grid-cols-5"}>
         <ExpedienteDashboardCard escolaId={escolaId} portal={portalBase} />
         {actions.map((action) => (
           <AcaoRapidaCard

@@ -1,6 +1,7 @@
 "use client";
 
-import { Calendar, Clock, Activity } from "lucide-react";
+import { Calendar, Clock, Activity, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
 type EstadoVital = {
   escola_id: string;
@@ -14,7 +15,7 @@ type EstadoVital = {
   fase_operacional: 'PRE_INICIO' | 'REGULAR' | 'EXAMES' | 'POS_ENCERRAMENTO';
 };
 
-export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
+export function EstadoVitalBanner({ estado, compact = false, calendarHref }: { estado: EstadoVital | null; compact?: boolean; calendarHref?: string }) {
   if (!estado) return null;
 
   const isExames = estado.fase_operacional === 'EXAMES';
@@ -23,6 +24,33 @@ export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
   const faseLabel = isBoundary
     ? estado.fase_operacional === 'PRE_INICIO' ? 'Pré-início' : 'Encerrado'
     : isExames ? 'Exames' : 'Aulas';
+
+  if (compact) {
+    const periodo = estado.periodo_tipo?.toUpperCase() === "TRIMESTRE" && estado.periodo_numero
+      ? estado.periodo_numero + "º Trimestre"
+      : [estado.periodo_tipo, estado.periodo_numero].filter(Boolean).join(" ") || "Intervalo";
+    return (
+      <section aria-label="Estado académico" className="rounded-xl border border-border bg-card px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <span className="font-medium text-foreground">{estado.ano_ativo ?? "—"} · {periodo}</span>
+            <span className="text-muted-foreground">{isBloqueado && !isBoundary ? "Interrupção" : faseLabel}</span>
+            <span className={isBloqueado ? "font-medium text-rose-600 dark:text-rose-300" : "text-emerald dark:text-emerald-300"}>{isBloqueado ? "Diário bloqueado" : "Diário liberado"}</span>
+          </div>
+          {calendarHref && <Link href={calendarHref} className="inline-flex items-center gap-1 text-xs font-medium text-emerald hover:underline">Calendário académico <ChevronRight className="h-3.5 w-3.5" /></Link>}
+        </div>
+        {estado.evento_hoje_nome && (isBloqueado || isExames ? (
+          <p className="mt-2 text-sm font-medium text-foreground">{estado.evento_hoje_nome}</p>
+        ) : (
+          <details className="mt-2 text-xs text-muted-foreground">
+            <summary className="w-fit cursor-pointer hover:text-foreground">Evento de hoje</summary>
+            <p className="mt-1 break-words">{estado.evento_hoje_nome}</p>
+          </details>
+        ))}
+      </section>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">
