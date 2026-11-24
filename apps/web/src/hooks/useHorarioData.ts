@@ -35,6 +35,7 @@ type BaseDataState = {
     ano_letivo_id?: string | null;
     ano_letivo?: number | null;
     turno?: string | null;
+    horario_status?: "sem_horario" | "rascunho" | "publicado";
     curso?: { nome?: string | null } | null;
     classe?: { nome?: string | null } | null;
   }>;
@@ -53,7 +54,7 @@ type TurmaDataState = {
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
 const BASE_CACHE_TTL_MS = 5 * 60 * 1000;
 
-const getBaseCacheKey = (escolaId: string) => `horarios:base:${escolaId}`;
+const getBaseCacheKey = (escolaId: string) => `horarios:base:v2:${escolaId}`;
 
 export const mapSlots = (slots: SlotApi[]): { slots: SchedulerSlot[]; slotLookup: Record<string, string> } => {
   const grouped = new Map<number, SlotApi[]>();
@@ -182,7 +183,7 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
       fetchJson(`/api/escolas/${escolaId}/horarios/slots`, controller.signal, "no-store"),
       fetchJson(`/api/escolas/${escolaId}/salas`, controller.signal, "no-store"),
       fetchJson(
-        `/api/secretaria/turmas-simples?escola_id=${encodeURIComponent(escolaId)}`,
+        `/api/escolas/${escolaId}/horarios/overview`,
         controller.signal,
         "no-store"
       ),
