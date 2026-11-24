@@ -19,6 +19,11 @@ export async function GET(req: Request, { params }: Context) {
     const date = daySchema.safeParse(url.searchParams.get("date") ?? todayLuanda());
     const cursor = Number(url.searchParams.get("cursor") ?? 0);
     if (!date.success || date.data > todayLuanda() || !Number.isSafeInteger(cursor) || cursor < 0) return json({ ok: false, error: "Filtro inválido." }, 400);
+    if (url.searchParams.get("view") === "summary") {
+      const { data, error } = await access.supabase.from("secretaria_expedientes").select("closed_at,operation_count").eq("escola_id",access.escolaId).eq("day_key",date.data).maybeSingle();
+      if(error) return json({ok:false,error:"Falha ao consultar estado."},500);
+      return json({ok:true,closed:data,canClose:access.canClose});
+    }
     return json({ ok: true, date: date.data, ...await getExpediente(access, date.data, cursor) });
   } catch { return json({ ok: false, error: "Não foi possível consultar o expediente." }, 500); }
 }
