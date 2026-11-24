@@ -22,7 +22,7 @@ const BodySchema = z.object({
       professor_id: z.string().uuid().nullable().optional(),
       sala_id: z.string().uuid().nullable().optional(),
     })
-  ),
+  ).max(500),
   mode: z.enum(['draft', 'publish']).optional(),
 })
 
@@ -91,20 +91,22 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     let quadroQuery = supabase
       .from('quadro_horarios')
-      .select('id, turma_id, disciplina_id, professor_id, sala_id, slot_id, versao_id')
+      .select('id, turma_id, disciplina_id, professor_id, sala_id, slot_id, versao_id', { count: 'exact' })
       .eq('escola_id', escolaIdResolved)
       .eq('versao_id', effectiveVersionId)
       .eq('turma_id', turmaId)
 
     quadroQuery = applyKf2ListInvariants(quadroQuery, {
-      defaultLimit: 50,
+      defaultLimit: 500,
+      maxLimit: 500,
       order: [{ column: 'slot_id', ascending: true }],
     })
 
-    const { data, error } = await quadroQuery
+    const { data, error, count } = await quadroQuery
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
+    if (count === null || count !== (data || []).length) return NextResponse.json({ ok: false, error: 'Horário incompleto. Não é seguro editar esta versão.' }, { status: 409 })
     const response = NextResponse.json({ ok: true, context: academicContext, versao_id: effectiveVersionId, items: data || [] })
     response.headers.set('Server-Timing', `app;dur=${Date.now() - start}`)
     return response
@@ -147,6 +149,20 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       anoLetivoId: academicContext.anoLetivoId,
     })
 
+    const { data: turma, error: turmaError } = await supabase.from('turmas')
+      .select('turno').eq('escola_id', escolaIdResolved).eq('id', parsed.data.turma_id).maybeSingle()
+    if (turmaError || !turma) return NextResponse.json({ ok: false, error: 'Não foi possível validar o turno da turma.' }, { status: 409 })
+    const turn = String(turma.turno ?? '').toUpperCase()
+    const expectedShift = turn === 'M' ? 'matinal' : turn === 'T' ? 'tarde' : turn === 'N' ? 'noite' : null
+    const requestedSlots = Array.from(new Set(parsed.data.items.map((item) => item.slot_id)))
+    if (!expectedShift) return NextResponse.json({ ok: false, error: 'Defina o turno da turma.' }, { status: 409 })
+    if (requestedSlots.length) {
+      const { data: validSlots, error: validSlotsError } = await supabase.from('horario_slots')
+        .select('id').eq('escola_id', escolaIdResolved).eq('turno_id', expectedShift)
+        .eq('is_intervalo', false).in('id', requestedSlots)
+      if (validSlotsError) return NextResponse.json({ ok: false, error: 'Não foi possível validar os tempos.' }, { status: 503 })
+      if ((validSlots || []).length !== requestedSlots.length) return NextResponse.json({ ok: false, error: 'O quadro contém intervalos ou tempos de outro turno.' }, { status: 409 })
+    }
     const { data: previousPublishedVersion, error: previousPublishedError } = await supabase
       .from('horario_versoes')
       .select('id')
@@ -219,7 +235,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .eq('escola_id', escolaIdResolved)
       .eq('turma_id', parsed.data.turma_id)
       .eq('versao_id', sourceVersionId ?? versaoId)
-      .limit(200)
+      .limit(500)
 
     if (previousRowsError) return NextResponse.json({ ok: false, error: 'Não foi possível preservar o horário anterior.' }, { status: 503 })
     const previousBySlot = new Map((previousRows || []).map((row: { slot_id: string; sala_id?: string | null }) => [row.slot_id, row]))
