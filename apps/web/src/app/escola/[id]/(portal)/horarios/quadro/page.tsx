@@ -511,7 +511,6 @@ function QuadroHorariosContent() {
   const horariosDisponiveis = useMemo(() => (slots.length > 0 ? slots : undefined), [slots]);
   const missingLoad = useMemo(() => aulasWithAllocations.filter((aula) => aula.missingLoad), [aulasWithAllocations]);
   const missingLoadCount = missingLoad.length;
-  const canPublicar = true;
   const isLoading = baseLoading || turmaLoading;
   const showOfflineStatus = isMounted && !online;
   const totalDias = useMemo(() => {
@@ -522,11 +521,12 @@ function QuadroHorariosContent() {
     () => (horariosDisponiveis ?? []).filter((slot) => slot.tipo !== "intervalo").length,
     [horariosDisponiveis]
   );
-  const totalSlots = totalDias * temposAulaCount;
+  const totalSlots = Object.entries(slotLookup).filter(([key]) => (horariosDisponiveis ?? []).some((slot) => slot.tipo === "aula" && key.endsWith(`-${slot.id}`))).length;
   const filledSlots = useMemo(
     () => Object.values(grid).filter((value) => Boolean(value)).length,
     [grid]
   );
+  const canPublicar = !isLoading && !baseError && !turmaError && !!versaoId && online && !saving && !publishing && filledSlots > 0;
   const totalCarga = useMemo(
     () => aulasWithAllocations.reduce((acc, aula) => acc + (aula.temposTotal || 0), 0),
     [aulasWithAllocations]
@@ -559,13 +559,13 @@ function QuadroHorariosContent() {
     return "turno";
   }, [selectedTurma?.turno]);
   const disciplinasCompletas = useMemo(
-    () => aulasWithAllocations.filter((aula) => !aula.missingLoad && aula.temposTotal > 0 && aula.temposAlocados >= aula.temposTotal).length,
+    () => aulasWithAllocations.filter((aula) => aula.temposAlocados > 0).length,
     [aulasWithAllocations]
   );
   const disciplinasPendentes = useMemo(
     () =>
       aulasWithAllocations.filter(
-        (aula) => aula.missingLoad || (aula.temposTotal > 0 && aula.temposAlocados < aula.temposTotal)
+        (aula) => aula.missingLoad || aula.temposAlocados !== aula.temposTotal
       ),
     [aulasWithAllocations]
   );
@@ -902,9 +902,13 @@ function QuadroHorariosContent() {
     mode: "draft" | "publish",
     options?: { successTitle?: string; successMessage?: string }
   ): Promise<boolean> => {
-    if (!escolaId || !turmaId || !versaoId) return false;
+    if (!escolaId || !turmaId || !versaoId || isLoading || baseError || turmaError || saving || publishing) return false;
+    if (mode === "publish" && !Object.values(nextGrid).some(Boolean)) {
+      error("Adicione pelo menos uma aula antes de publicar.");
+      return false;
+    }
 
-    const anoLetivoId = selectedTurma?.session_id ?? selectedTurma?.ano_letivo_id ?? null;
+    const anoLetivoId = selectedTurma?.ano_letivo_id ?? selectedTurma?.session_id ?? null;
     if (!anoLetivoId) {
       const message = "Não foi possível identificar o ano letivo desta turma. Recarregue a turma e tente novamente.";
       setSaveError(message);
@@ -938,7 +942,7 @@ function QuadroHorariosContent() {
           slot_id: slotId,
           disciplina_id: disciplinaId as string,
           professor_id: previous?.professor_id ?? null,
-          sala_id: salaId,
+          sala_id: previous?.sala_id ?? salaId,
         };
       });
 
@@ -1033,7 +1037,7 @@ function QuadroHorariosContent() {
           .join(" | ");
         warning(
           "Quadro publicado com pendências",
-          warningDetails || "Revise as cargas horárias quando terminar o primeiro ajuste."
+          warningDetails || "O horário foi publicado. A comparação curricular é informativa."
         );
       }
       success(
@@ -1562,7 +1566,7 @@ function QuadroHorariosContent() {
                 href={slotsHref}
                 className="rounded-full px-4 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
               >
-                Slots
+                Tempos
               </Link>
               <Link
                 href={quadroHref}
@@ -1598,7 +1602,7 @@ function QuadroHorariosContent() {
               className="max-w-xs rounded-xl border-border focus:border-amber focus:ring-amber text-foreground"
             />            {selectedTurma?.sala ? (
               <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">
-                Sala {selectedTurma.sala}
+                {selectedTurma.sala}
               </span>
             ) : null}
           </div>
@@ -1651,19 +1655,92 @@ function QuadroHorariosContent() {
       </header>
 
       <div className="p-6 max-w-7xl mx-auto">
-        {turmaId && excessoCarga > 0 && (
+        {turmaId && (
+          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-sm text-muted-foreground">Tempos programados</p>
+              <p className="mt-1 text-xl font-bold text-foreground">{filledSlots}/{totalSlots}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-sm text-muted-foreground">Disciplinas no quadro</p>
+              <p className="mt-1 text-xl font-bold text-foreground">{disciplinasCompletas}/{aulas.length}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-sm text-muted-foreground">Conflitos detectados</p>
+              <p className={`mt-1 text-xl font-bold ${conflitosCount ? "text-rose-600" : "text-foreground"}`}>{conflitosCount}</p>
+            </div>
+          </div>
+        )}
+        {autoDraftDirty && turmaId && (
+          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="font-semibold">Proposta de distribuição pronta para revisão.</div>
+            <div className="mt-1">Revise o quadro, ajuste manualmente se necessário e só depois salve ou publique.</div>
+            {autoProposalSummary && <div className="mt-2 text-xs font-semibold">{autoProposalSummary.filled} de {autoProposalSummary.total} posições preenchidas{autoProposalSummary.unmet ? ` · ${autoProposalSummary.unmet} pendência(s)` : ""}.</div>}
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => submitQuadro(grid, "draft")}
+                disabled={saving || publishing}
+                className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {saving ? "Salvando..." : "Salvar agora"}
+              </button>
+            </div>
+          </div>
+        )}
+        {!turmaId ? (
+          <div className="flex h-[60vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card">
+            <AlertCircle className="h-10 w-10 text-muted-foreground" />
+            <p className="mt-4 text-sm text-muted-foreground">Selecione uma turma para montar o quadro.</p>
+          </div>
+        ) : (
+          <SchedulerBoard
+            diasSemana={DIAS_SEMANA}
+            tempos={horariosDisponiveis}
+            aulas={aulasWithAllocations}
+            onSalvar={handleSalvar}
+            grid={grid}
+            onGridChange={(next) => {
+              setGrid(() => next);
+              setConflictSlots({});
+              setConflictReasons({});
+              setAutoDraftDirty(true);
+            }}
+            slotLookup={slotLookup}
+            existingAssignments={existingAssignments}
+            conflictSlots={conflictSlots}
+            conflictReasons={conflictReasons}
+            salas={salas}
+            professores={professores}
+            onAssignProfessor={handleAssignProfessor}
+            turmaSala={selectedTurma?.sala ?? null}
+            onAssignTurmaSala={handleAssignTurmaSala}
+            onAutoCompletar={handleAutoCompletar}
+            autoCompleting={autoScheduling}
+            onPublicar={handlePublicar}
+            canPublicar={canPublicar}
+            publishDisabledReason={filledSlots === 0 ? "Adicione pelo menos uma aula." : "Aguarde os dados ou verifique a ligação."}
+            publishing={publishing || saving}
+          />
+        )}
+
+        {turmaId && (
+          <details className="mt-4 rounded-xl border border-border bg-card p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-foreground">Planeamento curricular (opcional)</summary>
+            <p className="mt-2 mb-4 text-sm text-muted-foreground">Os tempos programados são calculados pelo quadro. As referências curriculares não impedem a publicação; só altere o currículo se a escola decidir fazê-lo.</p>
+                    {turmaId && excessoCarga > 0 && (
           <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-            <p className="font-semibold">Carga acima da capacidade do turno</p>
+            <p className="font-semibold">Referência curricular acima da capacidade do turno</p>
             <p className="text-xs text-rose-700 mt-1">
               A carga semanal do curso é {totalCarga} e o turno da {turnoLabel} suporta {totalSlots}.
             </p>
             {allCurriculoAtMed ? (
               <p className="text-xs text-rose-700 mt-1">
-                O currículo já está no padrão MED. A próxima correção é comprimir o mesmo turno antes de qualquer outra saída.
+                O currículo já está no padrão MED. Se a escola pretender cumprir esta referência, pode rever os tempos do turno.
               </p>
             ) : (
               <p className="text-xs text-rose-700 mt-1">
-                Opção 1 (mais provável): reduzir a gordura do currículo para o padrão real do MED.
+                Compare a referência curricular com o horário praticado pela escola antes de efectuar alterações.
               </p>
             )}
             <p className="text-[11px] text-rose-600 mt-2">
@@ -1718,46 +1795,9 @@ function QuadroHorariosContent() {
             )}
           </div>
         )}
-        {turmaId && (
-          <div className="mb-6 grid gap-4 md:grid-cols-5">
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Slots preenchidos</p>
-              <p className="text-2xl font-bold text-foreground mt-2">
-                {filledSlots}/{totalSlots || 0}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {totalDias} dia(s) • {temposAulaCount} tempos/dia
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Disciplinas completas</p>
-              <p className="text-2xl font-bold text-foreground mt-2">
-                {disciplinasCompletas}/{aulas.length}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Meta semanal por disciplina</p>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Pendências de carga</p>
-              <p className="text-2xl font-bold text-amber-600 mt-2">{missingLoadCount}</p>
-              <p className="text-xs text-muted-foreground mt-1">Sem carga definida</p>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Conflitos detectados</p>
-              <p className="text-2xl font-bold text-rose-600 mt-2">{conflitosCount}</p>
-              <p className="text-xs text-muted-foreground mt-1">Professor/Sala</p>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Sobrecarga</p>
-              <p className="text-2xl font-bold text-foreground mt-2">
-                {overloadProfessores.length + overloadSalas.length}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">Professores + salas</p>
-            </div>
-          </div>
-        )}
         {turmaId && disciplinasPendentes.length > 0 && (
           <div className="mb-6 rounded-xl border border-border bg-card p-4 shadow-sm">
-            <p className="text-sm font-semibold text-foreground">Disciplinas pendentes</p>
+            <p className="text-sm font-semibold text-foreground">Comparação com a referência curricular</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {disciplinasPendentes.slice(0, 6).map((disc) => (
                 <span
@@ -1775,7 +1815,7 @@ function QuadroHorariosContent() {
         )}
         {turmaId && (overloadProfessores.length > 0 || overloadSalas.length > 0) && (
           <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-            <p className="font-semibold">Alertas de sobrecarga</p>
+            <p className="font-semibold">Tempos programados por recurso</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {overloadProfessores.map((prof) => (
                 <span
@@ -1799,7 +1839,7 @@ function QuadroHorariosContent() {
         {missingLoadCount > 0 && (
           <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
-            <div className="mt-1">Pode publicar agora e ajustar as cargas depois em poucos cliques.</div>
+            <div className="mt-1">A configuração da carga é opcional para publicar o horário.</div>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
@@ -1807,7 +1847,7 @@ function QuadroHorariosContent() {
                 disabled={autoConfiguring}
                 className="rounded-lg bg-amber px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
               >
-                {autoConfiguring ? "Ajustando..." : "Preencher e redistribuir"}
+                {autoConfiguring ? "Ajustando..." : "Configurar referências e sugerir distribuição"}
               </button>
             </div>
             <div className="mt-3 space-y-2">
@@ -1877,54 +1917,8 @@ function QuadroHorariosContent() {
             </div>
           </div>
         )}
-        {autoDraftDirty && turmaId && (
-          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-            <div className="font-semibold">Proposta de distribuição pronta para revisão.</div>
-            <div className="mt-1">Revise o quadro, ajuste manualmente se necessário e só depois salve ou publique.</div>
-            {autoProposalSummary && <div className="mt-2 text-xs font-semibold">{autoProposalSummary.filled} de {autoProposalSummary.total} posições preenchidas{autoProposalSummary.unmet ? ` · ${autoProposalSummary.unmet} pendência(s)` : ""}.</div>}
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => submitQuadro(grid, "draft")}
-                disabled={saving || publishing}
-                className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
-              >
-                {saving ? "Salvando..." : "Salvar agora"}
-              </button>
-            </div>
-          </div>
-        )}
-        {!turmaId ? (
-          <div className="flex h-[60vh] flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card">
-            <AlertCircle className="h-10 w-10 text-muted-foreground" />
-            <p className="mt-4 text-sm text-muted-foreground">Selecione uma turma para montar o quadro.</p>
-          </div>
-        ) : (
-          <SchedulerBoard
-            diasSemana={DIAS_SEMANA}
-            tempos={horariosDisponiveis}
-            aulas={aulasWithAllocations}
-            onSalvar={handleSalvar}
-            grid={grid}
-            onGridChange={(next) => setGrid(() => next)}
-            slotLookup={slotLookup}
-            existingAssignments={existingAssignments}
-            conflictSlots={conflictSlots}
-            conflictReasons={conflictReasons}
-            salas={salas}
-            professores={professores}
-            onAssignProfessor={handleAssignProfessor}
-            turmaSala={selectedTurma?.sala ?? null}
-            onAssignTurmaSala={handleAssignTurmaSala}
-            onAutoCompletar={handleAutoCompletar}
-            autoCompleting={autoScheduling}
-            onAutoConfigurarCargas={missingLoadCount > 0 ? handleAutoConfigurar : undefined}
-            autoConfiguring={autoConfiguring}
-            onPublicar={handlePublicar}
-            canPublicar={canPublicar}
-            publishDisabledReason={undefined}
-            publishing={publishing}
-          />
+
+          </details>
         )}
 
         {turmaId ? (
