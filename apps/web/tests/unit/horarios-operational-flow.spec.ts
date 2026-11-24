@@ -128,3 +128,26 @@ test("horários: entrada consolidada não cria rascunhos; sugestões mantêm aul
   assert.match(page,/if \(ok\) editGrid\(\{\}\)/);
   assert.match(page,/horario\/pdf\?inline=1/);
 });
+
+test("horários: workspace remains mounted behind the editor and setup dialogs",()=>{
+  const page=readFileSync("src/app/escola/[id]/(portal)/horarios/quadro/page.tsx","utf8");
+  const roster=page.indexOf("<HorariosWorkspace turmas=");
+  const editor=page.indexOf("<Dialog open={Boolean(turmaId)}");
+  const setup=page.indexOf("<Dialog open={showWizard}");
+  assert.ok(roster>=0&&editor>roster&&setup>editor);
+  assert.doesNotMatch(page,/if \(showWizard\) \{\s*return/);
+  assert.doesNotMatch(page,/href=\{slotsHref\}/);
+  assert.match(page,/if \(autoDraftDirty\) \{\s*warning\("Guarde o rascunho primeiro"/);
+  assert.match(page,/if \(setupBusyRef\.current\) return;/);
+  assert.match(page,/onCloseAutoFocus=\{event=>\{event\.preventDefault\(\);editorTriggerRef\.current\?\.focus\(\)\}\}/);
+});
+test("horários: resource and advanced time operations use guarded dialogs",()=>{
+  const board=readFileSync("src/components/escola/horarios/SchedulerBoard.tsx","utf8");
+  const slots=readFileSync("src/components/escola/horarios/wizard/StepSlots.tsx","utf8");
+  assert.match(board,/<Dialog open onOpenChange=\{open=>\{if\(!open&&!saving\)onClose\(\)\}\}/);
+  assert.match(board,/await onAssignProfessor\(assigningProfessor, professorId\) !== false/);
+  assert.match(slots,/<Dialog open=\{advancedOpen\}/);
+  assert.match(slots,/setAdvancedSlots\(slots\.map/);
+  assert.match(slots,/slots\.some\(s=>!updatedIds\.has\(s\.id\)\)/);
+  assert.match(slots,/onBusyChange\?\.\(true\)/);
+});
