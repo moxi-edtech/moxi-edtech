@@ -1,0 +1,1188 @@
+{
+  "date": "2026-11-24",
+  "method": "Git blob SHA-1 on UTF-8 array_to_string(statements, LF). Variants exact, final LF, trim, trim+LF, final semicolon+LF. Token comparisons are conservative diagnostics, not semantic equivalence; no remote SQL archived here.",
+  "source_commits": {
+    "pr137": "efcd8a399f5ac84832d48295037f0cce7096e428",
+    "pr182": "4a875b5ce3b39deee360fdcecf8c5fed9bf71a31",
+    "main": "4e9ef8d6dae5b0f05382ac8ba170ec0d61d8f32b"
+  },
+  "stats": {
+    "EXACT": 37,
+    "TOKEN_MATCH_REVIEW_REQUIRED": 6,
+    "BOUNDARY_NORMALIZED": 15,
+    "FREEZE_EXECUTABLE_TOKENS_MATCH": 1
+  },
+  "rows": [
+    {
+      "version": "20260927135510",
+      "name": "bill_001_005_fiscal_hardening",
+      "remote_blob_sha1": "8623610340e9d2e84c80d0fc9a7a0c5ecc0881e3",
+      "source_137": {
+        "path": "supabase/migrations/20260927135510_bill_001_005_fiscal_hardening.sql",
+        "sha": "8623610340e9d2e84c80d0fc9a7a0c5ecc0881e3"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927135510_bill_001_005_fiscal_hardening.sql",
+        "sha": "8623610340e9d2e84c80d0fc9a7a0c5ecc0881e3"
+      },
+      "matches": [
+        "137:lf",
+        "137:exact",
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:lf",
+        "182:exact",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927135620",
+      "name": "bill_002_event_integrity",
+      "remote_blob_sha1": "5104ae64a9640dfb9d55a4dca358f200f1b43d79",
+      "source_137": {
+        "path": "supabase/migrations/20260927135620_bill_002_event_integrity.sql",
+        "sha": "5104ae64a9640dfb9d55a4dca358f200f1b43d79"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927135620_bill_002_event_integrity.sql",
+        "sha": "5104ae64a9640dfb9d55a4dca358f200f1b43d79"
+      },
+      "matches": [
+        "137:lf",
+        "137:exact",
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:lf",
+        "182:exact",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927140841",
+      "name": "bill_001_003_least_privilege",
+      "remote_blob_sha1": "c31e3438662072cf9b0efd2d768d88b177ae34c7",
+      "source_137": {
+        "path": "supabase/migrations/20260927140841_bill_001_003_least_privilege.sql",
+        "sha": "c31e3438662072cf9b0efd2d768d88b177ae34c7"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927140841_bill_001_003_least_privilege.sql",
+        "sha": "c31e3438662072cf9b0efd2d768d88b177ae34c7"
+      },
+      "matches": [
+        "137:lf",
+        "137:exact",
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:lf",
+        "182:exact",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927141627",
+      "name": "bill_003_004_rpc_lockdown",
+      "remote_blob_sha1": "6906b94f4f392c5b2046f29b9632fb4fa85f5a09",
+      "source_137": {
+        "path": "supabase/migrations/20260927141627_bill_003_004_rpc_lockdown.sql",
+        "sha": "6906b94f4f392c5b2046f29b9632fb4fa85f5a09"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927141627_bill_003_004_rpc_lockdown.sql",
+        "sha": "6906b94f4f392c5b2046f29b9632fb4fa85f5a09"
+      },
+      "matches": [
+        "137:lf",
+        "137:exact",
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:lf",
+        "182:exact",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927143108",
+      "name": "bill_005_enforce_agt_series_db",
+      "remote_blob_sha1": "7bf867b635d9eb90a1b25580780b1faa5bf9db44",
+      "source_137": {
+        "path": "supabase/migrations/20260927143108_bill_005_enforce_agt_series_db.sql",
+        "sha": "7bf867b635d9eb90a1b25580780b1faa5bf9db44"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927143108_bill_005_enforce_agt_series_db.sql",
+        "sha": "7bf867b635d9eb90a1b25580780b1faa5bf9db44"
+      },
+      "matches": [
+        "137:lf",
+        "137:exact",
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:lf",
+        "182:exact",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927145117",
+      "name": "bill_006_agt_submissions",
+      "remote_blob_sha1": "8c926c6266b6f3cb5e2037ff6316f649c40f132d",
+      "source_137": {
+        "path": "supabase/migrations/20260927145117_bill_006_agt_submissions.sql",
+        "sha": "c5d61ef164b99e00789001469c12eb899d2853c4"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927145117_bill_006_agt_submissions.sql",
+        "sha": "c5d61ef164b99e00789001469c12eb899d2853c4"
+      },
+      "matches": [],
+      "classification": "TOKEN_MATCH_REVIEW_REQUIRED"
+    },
+    {
+      "version": "20260927150057",
+      "name": "bill_006_auto_outbox_on_emit",
+      "remote_blob_sha1": "88efa3781e63f293717a6f294a93ef6fd963e10e",
+      "source_137": {
+        "path": "supabase/migrations/20260927150057_bill_006_auto_outbox_on_emit.sql",
+        "sha": "88efa3781e63f293717a6f294a93ef6fd963e10e"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927150057_bill_006_auto_outbox_on_emit.sql",
+        "sha": "88efa3781e63f293717a6f294a93ef6fd963e10e"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927150441",
+      "name": "bill_006_track_receipts_in_outbox",
+      "remote_blob_sha1": "f5d5920e75c260b2e0b469c0cf9d24c5dc8e7d38",
+      "source_137": {
+        "path": "supabase/migrations/20260927150441_bill_006_track_receipts_in_outbox.sql",
+        "sha": "f5d5920e75c260b2e0b469c0cf9d24c5dc8e7d38"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927150441_bill_006_track_receipts_in_outbox.sql",
+        "sha": "f5d5920e75c260b2e0b469c0cf9d24c5dc8e7d38"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927151123",
+      "name": "bill_006_submission_audit_events",
+      "remote_blob_sha1": "d23ae6ca5dc405a86a572d97d0b2aab2e7dfb6b6",
+      "source_137": {
+        "path": "supabase/migrations/20260927151123_bill_006_submission_audit_events.sql",
+        "sha": "cbfebbe3e742bf3420bda7d7da8871177da9ed5b"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927151123_bill_006_submission_audit_events.sql",
+        "sha": "cbfebbe3e742bf3420bda7d7da8871177da9ed5b"
+      },
+      "matches": [],
+      "classification": "TOKEN_MATCH_REVIEW_REQUIRED"
+    },
+    {
+      "version": "20260927153607",
+      "name": "bill_007_payment_allocations_and_ledger_hardening",
+      "remote_blob_sha1": "c1f4dd59cc9e2397d7f38e25c14c74222cd0cae7",
+      "source_137": {
+        "path": "supabase/migrations/20260927153607_bill_007_payment_allocations_and_ledger_hardening.sql",
+        "sha": "f5ea05bb975cd896732e94078174202eb408d6f2"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927153607_bill_007_payment_allocations_and_ledger_hardening.sql",
+        "sha": "f5ea05bb975cd896732e94078174202eb408d6f2"
+      },
+      "matches": [],
+      "classification": "TOKEN_MATCH_REVIEW_REQUIRED"
+    },
+    {
+      "version": "20260927154626",
+      "name": "bill_007_canonical_payment_application",
+      "remote_blob_sha1": "387989f1953705692274f31f58de8557782d52f9",
+      "source_137": {
+        "path": "supabase/migrations/20260927154626_bill_007_canonical_payment_application.sql",
+        "sha": "9210933ca75d9461651f06533515e973631b4568"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927154626_bill_007_canonical_payment_application.sql",
+        "sha": "387989f1953705692274f31f58de8557782d52f9"
+      },
+      "matches": [
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927155157",
+      "name": "bill_007_fiscal_receipt_sources",
+      "remote_blob_sha1": "5cadd7a1e1a5dccffa1505125a2365aa453810b5",
+      "source_137": {
+        "path": "supabase/migrations/20260927155157_bill_007_fiscal_receipt_sources.sql",
+        "sha": "28bdf241dccbe6f58d60fd5948c3a4eb63083c4f"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927155157_bill_007_fiscal_receipt_sources.sql",
+        "sha": "5cadd7a1e1a5dccffa1505125a2365aa453810b5"
+      },
+      "matches": [
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927162049",
+      "name": "bill_007_partial_source_and_legacy_worker_lockdown",
+      "remote_blob_sha1": "39edf91c1648c9703bbe4f29a0331344e1079aa5",
+      "source_137": {
+        "path": "supabase/migrations/20260927162049_bill_007_partial_source_and_legacy_worker_lockdown.sql",
+        "sha": "75241664b2021ce0ef5eb5a50a4431c38b19edda"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927162049_bill_007_partial_source_and_legacy_worker_lockdown.sql",
+        "sha": "75241664b2021ce0ef5eb5a50a4431c38b19edda"
+      },
+      "matches": [],
+      "classification": "TOKEN_MATCH_REVIEW_REQUIRED"
+    },
+    {
+      "version": "20260927163125",
+      "name": "bill_007_legacy_receipt_shutdown_and_intent_bridge",
+      "remote_blob_sha1": "2cefa2f8e51de29d405aa81b2f0d581d9d82c78c",
+      "source_137": {
+        "path": "supabase/migrations/20260927163125_bill_007_legacy_receipt_shutdown_and_intent_bridge.sql",
+        "sha": "3d88c2025c7f14412013a0ea2159d9604a521096"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927163125_bill_007_legacy_receipt_shutdown_and_intent_bridge.sql",
+        "sha": "3d88c2025c7f14412013a0ea2159d9604a521096"
+      },
+      "matches": [],
+      "classification": "TOKEN_MATCH_REVIEW_REQUIRED"
+    },
+    {
+      "version": "20260927163407",
+      "name": "bill_007_multi_invoice_allocation",
+      "remote_blob_sha1": "cd469e5eb748ad0e397f203e049b2f34d89dacd6",
+      "source_137": {
+        "path": "supabase/migrations/20260927163407_bill_007_multi_invoice_allocation.sql",
+        "sha": "7863c85dfafa8e409e3df02bf8e51992ebb712fe"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927163407_bill_007_multi_invoice_allocation.sql",
+        "sha": "cd469e5eb748ad0e397f203e049b2f34d89dacd6"
+      },
+      "matches": [
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927163412",
+      "name": "bill_007_fix_rc_company_aggregation",
+      "remote_blob_sha1": "0f91ff83f2fe28d02cabb3ea70ec4c4f7ef2efe5",
+      "source_137": {
+        "path": "supabase/migrations/20260927163412_bill_007_fix_rc_company_aggregation.sql",
+        "sha": "0f91ff83f2fe28d02cabb3ea70ec4c4f7ef2efe5"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927163412_bill_007_fix_rc_company_aggregation.sql",
+        "sha": "0f91ff83f2fe28d02cabb3ea70ec4c4f7ef2efe5"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927163627",
+      "name": "bill_007_guard_direct_settled_insert",
+      "remote_blob_sha1": "43fe49c321a4ff978225294dab62abc3816962d2",
+      "source_137": {
+        "path": "supabase/migrations/20260927163627_bill_007_guard_direct_settled_insert.sql",
+        "sha": "43fe49c321a4ff978225294dab62abc3816962d2"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927163627_bill_007_guard_direct_settled_insert.sql",
+        "sha": "43fe49c321a4ff978225294dab62abc3816962d2"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927164023",
+      "name": "bill_007_reversal_fiscal_handoff",
+      "remote_blob_sha1": "b055f3620ac74b74bcb59428bc87344a6a55e368",
+      "source_137": {
+        "path": "supabase/migrations/20260927164023_bill_007_reversal_fiscal_handoff.sql",
+        "sha": "b055f3620ac74b74bcb59428bc87344a6a55e368"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927164023_bill_007_reversal_fiscal_handoff.sql",
+        "sha": "b055f3620ac74b74bcb59428bc87344a6a55e368"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927164359",
+      "name": "bill_007_indexes_and_rls_performance",
+      "remote_blob_sha1": "7329eff39367e4931a7d3b6f5a6fd7315ce7bb20",
+      "source_137": {
+        "path": "supabase/migrations/20260927164359_bill_007_indexes_and_rls_performance.sql",
+        "sha": "7329eff39367e4931a7d3b6f5a6fd7315ce7bb20"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927164359_bill_007_indexes_and_rls_performance.sql",
+        "sha": "7329eff39367e4931a7d3b6f5a6fd7315ce7bb20"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927164422",
+      "name": "bill_007_indexes_and_rls_initplan",
+      "remote_blob_sha1": "d0043c7c1cb941911045ea9c941e48e5eb22ea46",
+      "source_137": {
+        "path": "supabase/migrations/20260927164422_bill_007_indexes_and_rls_initplan.sql",
+        "sha": "d0043c7c1cb941911045ea9c941e48e5eb22ea46"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927164422_bill_007_indexes_and_rls_initplan.sql",
+        "sha": "d0043c7c1cb941911045ea9c941e48e5eb22ea46"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927164521",
+      "name": "bill_007_wrapper_security_invoker",
+      "remote_blob_sha1": "ea275793ec304906a281be98517825ce51127eaf",
+      "source_137": {
+        "path": "supabase/migrations/20260927164521_bill_007_wrapper_security_invoker.sql",
+        "sha": "e34e813b12dff9c181eb63dcdf5316dfaaaca4d8"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927164521_bill_007_wrapper_security_invoker.sql",
+        "sha": "e34e813b12dff9c181eb63dcdf5316dfaaaca4d8"
+      },
+      "matches": [
+        "137:lf",
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927164848",
+      "name": "bill_007_student_partial_receipt_guard",
+      "remote_blob_sha1": "9b40469d1e10824848ebf8a61e92b7c07977a376",
+      "source_137": {
+        "path": "supabase/migrations/20260927164848_bill_007_student_partial_receipt_guard.sql",
+        "sha": "c4894926dab495f1a23feb21a6aa577abf236fd4"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927164848_bill_007_student_partial_receipt_guard.sql",
+        "sha": "9b40469d1e10824848ebf8a61e92b7c07977a376"
+      },
+      "matches": [
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927171437",
+      "name": "bill_008_saft_document_signature_chain",
+      "remote_blob_sha1": "262b67a7a07774e78e03c9ece700b4bf54544d1c",
+      "source_137": {
+        "path": "supabase/migrations/20260927171437_bill_008_saft_document_signature_chain.sql",
+        "sha": "262b67a7a07774e78e03c9ece700b4bf54544d1c"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927171437_bill_008_saft_document_signature_chain.sql",
+        "sha": "262b67a7a07774e78e03c9ece700b4bf54544d1c"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927171531",
+      "name": "bill_008_saft_signature_rollout_compatibility",
+      "remote_blob_sha1": "316f8ac0683e34ff028b5168357796c43486f2ca",
+      "source_137": {
+        "path": "supabase/migrations/20260927171531_bill_008_saft_signature_rollout_compatibility.sql",
+        "sha": "316f8ac0683e34ff028b5168357796c43486f2ca"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927171531_bill_008_saft_signature_rollout_compatibility.sql",
+        "sha": "316f8ac0683e34ff028b5168357796c43486f2ca"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927172254",
+      "name": "bill_008_saft_validated_series_boundary",
+      "remote_blob_sha1": "8b4d56c8503d8b6e24400f0e1a7c142b407396fa",
+      "source_137": {
+        "path": "supabase/migrations/20260927172254_bill_008_saft_validated_series_boundary.sql",
+        "sha": "8b4d56c8503d8b6e24400f0e1a7c142b407396fa"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927172254_bill_008_saft_validated_series_boundary.sql",
+        "sha": "8b4d56c8503d8b6e24400f0e1a7c142b407396fa"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927172749",
+      "name": "bill_008_saft_export_evidence_immutability",
+      "remote_blob_sha1": "1f0e94fd490571b3a71e823bdff256602cf17252",
+      "source_137": {
+        "path": "supabase/migrations/20260927172749_bill_008_saft_export_evidence_immutability.sql",
+        "sha": "1f0e94fd490571b3a71e823bdff256602cf17252"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927172749_bill_008_saft_export_evidence_immutability.sql",
+        "sha": "1f0e94fd490571b3a71e823bdff256602cf17252"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927172931",
+      "name": "bill_008_saft_invoice_identity_guard",
+      "remote_blob_sha1": "8d4d767db764e1325160ee5a2d4c826ba91f504c",
+      "source_137": {
+        "path": "supabase/migrations/20260927172931_bill_008_saft_invoice_identity_guard.sql",
+        "sha": "8d4d767db764e1325160ee5a2d4c826ba91f504c"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927172931_bill_008_saft_invoice_identity_guard.sql",
+        "sha": "8d4d767db764e1325160ee5a2d4c826ba91f504c"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927173123",
+      "name": "bill_008_saft_hash_scope_guard",
+      "remote_blob_sha1": "3d80cdba016e5fc80fa0864381eb92e3f35b440e",
+      "source_137": {
+        "path": "supabase/migrations/20260927173123_bill_008_saft_hash_scope_guard.sql",
+        "sha": "3d80cdba016e5fc80fa0864381eb92e3f35b440e"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927173123_bill_008_saft_hash_scope_guard.sql",
+        "sha": "3d80cdba016e5fc80fa0864381eb92e3f35b440e"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927181109",
+      "name": "bill_009_tax_profiles_and_item_semantics",
+      "remote_blob_sha1": "bc40d4e36de917ee3a2d189e5487f391a2a4da5a",
+      "source_137": {
+        "path": "supabase/migrations/20260927181109_bill_009_tax_profiles_and_item_semantics.sql",
+        "sha": "bc40d4e36de917ee3a2d189e5487f391a2a4da5a"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927181109_bill_009_tax_profiles_and_item_semantics.sql",
+        "sha": "bc40d4e36de917ee3a2d189e5487f391a2a4da5a"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927181334",
+      "name": "bill_009_financial_catalog_tax_profiles",
+      "remote_blob_sha1": "8a40aa7cbe4fd33250209b356a2af21eec9abdfe",
+      "source_137": {
+        "path": "supabase/migrations/20260927181334_bill_009_financial_catalog_tax_profiles.sql",
+        "sha": "8a40aa7cbe4fd33250209b356a2af21eec9abdfe"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927181334_bill_009_financial_catalog_tax_profiles.sql",
+        "sha": "8a40aa7cbe4fd33250209b356a2af21eec9abdfe"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927181708",
+      "name": "bill_009_tax_compute_function",
+      "remote_blob_sha1": "9b2fcdda92f9c18ebc3c02dd0124d5c4a26855b3",
+      "source_137": {
+        "path": "supabase/migrations/20260927181708_bill_009_tax_compute_function.sql",
+        "sha": "9b2fcdda92f9c18ebc3c02dd0124d5c4a26855b3"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927181708_bill_009_tax_compute_function.sql",
+        "sha": "9b2fcdda92f9c18ebc3c02dd0124d5c4a26855b3"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927181922",
+      "name": "bill_009_wire_tax_engine_to_emitter",
+      "remote_blob_sha1": "d503081255a460fad8113da396bc64791f4d7df1",
+      "source_137": {
+        "path": "supabase/migrations/20260927181922_bill_009_wire_tax_engine_to_emitter.sql",
+        "sha": "d503081255a460fad8113da396bc64791f4d7df1"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927181922_bill_009_wire_tax_engine_to_emitter.sql",
+        "sha": "d503081255a460fad8113da396bc64791f4d7df1"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927182435",
+      "name": "bill_009_catalog_fiscal_classification",
+      "remote_blob_sha1": "362c589a038e1a5d510158edc1b723b2d9080543",
+      "source_137": {
+        "path": "supabase/migrations/20260927182435_bill_009_catalog_fiscal_classification.sql",
+        "sha": "362c589a038e1a5d510158edc1b723b2d9080543"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927182435_bill_009_catalog_fiscal_classification.sql",
+        "sha": "362c589a038e1a5d510158edc1b723b2d9080543"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927182915",
+      "name": "bill_009_tuition_tax_profile_default",
+      "remote_blob_sha1": "e7f04c00ca530c903ed88ea4980f78565d6a3ea2",
+      "source_137": {
+        "path": "supabase/migrations/20260927182915_bill_009_tuition_tax_profile_default.sql",
+        "sha": "e7f04c00ca530c903ed88ea4980f78565d6a3ea2"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927182915_bill_009_tuition_tax_profile_default.sql",
+        "sha": "e7f04c00ca530c903ed88ea4980f78565d6a3ea2"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927183018",
+      "name": "bill_009_preserve_reserved_agt_invoice_no",
+      "remote_blob_sha1": "5a1c573a2351946f4cc3b90f878b4eba8ce2757c",
+      "source_137": {
+        "path": "supabase/migrations/20260927183018_bill_009_preserve_reserved_agt_invoice_no.sql",
+        "sha": "5a1c573a2351946f4cc3b90f878b4eba8ce2757c"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927183018_bill_009_preserve_reserved_agt_invoice_no.sql",
+        "sha": "5a1c573a2351946f4cc3b90f878b4eba8ce2757c"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927185100",
+      "name": "bill_009_tax_profile_temporal_governance",
+      "remote_blob_sha1": "faba64be4e1742e8ff97aa12da0b67598b230d86",
+      "source_137": {
+        "path": "supabase/migrations/20260927185100_bill_009_tax_profile_temporal_governance.sql",
+        "sha": "4dd7d03953cab7617151ea4493e1bfcea84bb0cf"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927185100_bill_009_tax_profile_temporal_governance.sql",
+        "sha": "4dd7d03953cab7617151ea4493e1bfcea84bb0cf"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927185604",
+      "name": "bill_009_persist_tax_profile_version",
+      "remote_blob_sha1": "1110bae8c23a926690c2a71e72307696f00f99f2",
+      "source_137": {
+        "path": "supabase/migrations/20260927185604_bill_009_persist_tax_profile_version.sql",
+        "sha": "1110bae8c23a926690c2a71e72307696f00f99f2"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927185604_bill_009_persist_tax_profile_version.sql",
+        "sha": "1110bae8c23a926690c2a71e72307696f00f99f2"
+      },
+      "matches": [
+        "137:trim",
+        "137:exact",
+        "182:trim",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927190709",
+      "name": "bill_009_education_vat_eligibility_guard",
+      "remote_blob_sha1": "f11c5268bf6ab01c8b892dd044490ea364d8b5ba",
+      "source_137": {
+        "path": "supabase/migrations/20260927190709_bill_009_education_vat_eligibility_guard.sql",
+        "sha": "ace6f52632de4359b70f64c3a1004e11f7b2e20a"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927190709_bill_009_education_vat_eligibility_guard.sql",
+        "sha": "ace6f52632de4359b70f64c3a1004e11f7b2e20a"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927191357",
+      "name": "bill_009_resolve_education_tax_profile",
+      "remote_blob_sha1": "bf107c06c678a42e2e52bb09ba163b7d46a39d8f",
+      "source_137": {
+        "path": "supabase/migrations/20260927191357_bill_009_resolve_education_tax_profile.sql",
+        "sha": "f0d01b9eae0c4d738f29217b81c9c8fbe964779a"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927191357_bill_009_resolve_education_tax_profile.sql",
+        "sha": "f0d01b9eae0c4d738f29217b81c9c8fbe964779a"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927191520",
+      "name": "bill_009_tax_profile_resolver_server_only",
+      "remote_blob_sha1": "1c5f0b8287c25275fed4bebc318c6d32de35ce24",
+      "source_137": {
+        "path": "supabase/migrations/20260927191520_bill_009_tax_profile_resolver_server_only.sql",
+        "sha": "1c37e4216591f19727ce9c5691d5679c54444616"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927191520_bill_009_tax_profile_resolver_server_only.sql",
+        "sha": "1c37e4216591f19727ce9c5691d5679c54444616"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927192036",
+      "name": "bill_009_vat_regime_governance",
+      "remote_blob_sha1": "bedb581050e5354ba0d69bd647a8fa59678f06a5",
+      "source_137": {
+        "path": "supabase/migrations/20260927192036_bill_009_vat_regime_governance.sql",
+        "sha": "bedb581050e5354ba0d69bd647a8fa59678f06a5"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927192036_bill_009_vat_regime_governance.sql",
+        "sha": "bedb581050e5354ba0d69bd647a8fa59678f06a5"
+      },
+      "matches": [
+        "137:lf",
+        "137:exact",
+        "182:lf",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927194402",
+      "name": "bill_009_remove_implicit_education_tax_profile",
+      "remote_blob_sha1": "124854886a7f013879de684eb58c5499a6adc79a",
+      "source_137": {
+        "path": "supabase/migrations/20260927194402_bill_009_remove_implicit_education_tax_profile.sql",
+        "sha": "df274c6da26a323707d93220d63630600a8f39d4"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927194402_bill_009_remove_implicit_education_tax_profile.sql",
+        "sha": "df274c6da26a323707d93220d63630600a8f39d4"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927195400",
+      "name": "bill_009_school_fiscal_engine_opt_in_gate",
+      "remote_blob_sha1": "47104a4af0ea5d92aef675e279a95dfeb5609e12",
+      "source_137": {
+        "path": "supabase/migrations/20260927195400_bill_009_school_fiscal_engine_opt_in_gate.sql",
+        "sha": "a58d3d7b2c00f558c9aaacb687f39465bff8c678"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927195400_bill_009_school_fiscal_engine_opt_in_gate.sql",
+        "sha": "a58d3d7b2c00f558c9aaacb687f39465bff8c678"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927210453",
+      "name": "bill_010_document_lifecycle_core",
+      "remote_blob_sha1": "44d0db23c760de32f33a935e96803c29d3139ab4",
+      "source_137": {
+        "path": "supabase/migrations/20260927210453_bill_010_document_lifecycle_core.sql",
+        "sha": "22ad238e63b90008b41dbd4e973ce53428e9b57f"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927210453_bill_010_document_lifecycle_core.sql",
+        "sha": "22ad238e63b90008b41dbd4e973ce53428e9b57f"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927211022",
+      "name": "bill_010_document_lifecycle_invariants",
+      "remote_blob_sha1": "e21b3206ed6fd5e286af25ee3dc94f3c06730d8a",
+      "source_137": {
+        "path": "supabase/migrations/20260927211022_bill_010_document_lifecycle_invariants.sql",
+        "sha": "4761c93c58d84ae321462a0e8e2435e354e7224b"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927211022_bill_010_document_lifecycle_invariants.sql",
+        "sha": "4761c93c58d84ae321462a0e8e2435e354e7224b"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927211031",
+      "name": "bill_010_agt_result_backend_guard",
+      "remote_blob_sha1": "db9fa6d5a936721b59beaa8dfe3d46803d31ae52",
+      "source_137": {
+        "path": "supabase/migrations/20260927211031_bill_010_agt_result_backend_guard.sql",
+        "sha": "77a5240ed371ae84c77dae842a2a2246a25dbd14"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927211031_bill_010_agt_result_backend_guard.sql",
+        "sha": "77a5240ed371ae84c77dae842a2a2246a25dbd14"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927211210",
+      "name": "bill_010_agt_lifecycle_event_types",
+      "remote_blob_sha1": "b6114365bec3a2e17604eb3dbffe837fb4c42791",
+      "source_137": {
+        "path": "supabase/migrations/20260927211210_bill_010_agt_lifecycle_event_types.sql",
+        "sha": "d53c191a1326aa1df6cdf79590810131ad2283fd"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927211210_bill_010_agt_lifecycle_event_types.sql",
+        "sha": "d53c191a1326aa1df6cdf79590810131ad2283fd"
+      },
+      "matches": [],
+      "classification": "TOKEN_MATCH_REVIEW_REQUIRED"
+    },
+    {
+      "version": "20260927211445",
+      "name": "bill_010_reconcile_lifecycle_guard",
+      "remote_blob_sha1": "886dc7e41c84dac1e3fd2049f9c2cb13997e9e86",
+      "source_137": {
+        "path": "supabase/migrations/20260927211445_bill_010_reconcile_lifecycle_guard.sql",
+        "sha": "36f8dc2c9fd34b478e9a7bc82357d3a9fa02e65c"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927211445_bill_010_reconcile_lifecycle_guard.sql",
+        "sha": "886dc7e41c84dac1e3fd2049f9c2cb13997e9e86"
+      },
+      "matches": [
+        "182:lf",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927211718",
+      "name": "bill_010_reconcile_document_lifecycle_guards",
+      "remote_blob_sha1": "87a2294b6823e70f2ffae7a5b1eaada8dd8ce240",
+      "source_137": {
+        "path": "supabase/migrations/20260927211718_bill_010_reconcile_document_lifecycle_guards.sql",
+        "sha": "eb793239a57be61ac8e3533e325e6c3c90d24b11"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927211718_bill_010_reconcile_document_lifecycle_guards.sql",
+        "sha": "eb793239a57be61ac8e3533e325e6c3c90d24b11"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927212200",
+      "name": "bill_010_lifecycle_source_alignment",
+      "remote_blob_sha1": "f936e80fd0f2b0870d8155f1618eaff4e36dedeb",
+      "source_137": {
+        "path": "supabase/migrations/20260927212200_bill_010_lifecycle_source_alignment.sql",
+        "sha": "931cd581a60bf3060e9d13011ab46489d0083a81"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927212200_bill_010_lifecycle_source_alignment.sql",
+        "sha": "931cd581a60bf3060e9d13011ab46489d0083a81"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927212211",
+      "name": "bill_010_series_boundary_and_reversal_gate",
+      "remote_blob_sha1": "4825a75079072e3e9223eca063ce73246d038f58",
+      "source_137": {
+        "path": "supabase/migrations/20260927212211_bill_010_series_boundary_and_reversal_gate.sql",
+        "sha": "6c47d32c60f7f03ecefb2f6c9579ba2e9b5370ef"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927212211_bill_010_series_boundary_and_reversal_gate.sql",
+        "sha": "6c47d32c60f7f03ecefb2f6c9579ba2e9b5370ef"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927212653",
+      "name": "bill_010_financial_reversal_after_fiscal_correction",
+      "remote_blob_sha1": "5ec39768e479fb76a5d4f6fd64d4e697defc9df5",
+      "source_137": {
+        "path": "supabase/migrations/20260927212653_bill_010_financial_reversal_after_fiscal_correction.sql",
+        "sha": "42e97385da1c6463887afa108c048de9fd2ebc51"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927212653_bill_010_financial_reversal_after_fiscal_correction.sql",
+        "sha": "42e97385da1c6463887afa108c048de9fd2ebc51"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927213601",
+      "name": "bill_010_lifecycle_reference_indexes",
+      "remote_blob_sha1": "236c919545a70918ff0377c2d991d31628ed2d89",
+      "source_137": {
+        "path": "supabase/migrations/20260927213601_bill_010_lifecycle_reference_indexes.sql",
+        "sha": "8d65ddd3019b6ad157bd56cda6b57eaa129fe5d5"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927213601_bill_010_lifecycle_reference_indexes.sql",
+        "sha": "8d65ddd3019b6ad157bd56cda6b57eaa129fe5d5"
+      },
+      "matches": [
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "BOUNDARY_NORMALIZED"
+    },
+    {
+      "version": "20260927225413",
+      "name": "fiscal_key_custody_primitives",
+      "remote_blob_sha1": "dc9535e40bcea368eb2e4fbdd20ec967a1a1df00",
+      "source_137": {
+        "path": "supabase/migrations/20260927225413_fiscal_key_custody_primitives.sql",
+        "sha": "dc9535e40bcea368eb2e4fbdd20ec967a1a1df00"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927225413_fiscal_key_custody_primitives.sql",
+        "sha": "dc9535e40bcea368eb2e4fbdd20ec967a1a1df00"
+      },
+      "matches": [
+        "137:lf",
+        "137:exact",
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:lf",
+        "182:exact",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927234215",
+      "name": "fiscal_agt_re_document_type",
+      "remote_blob_sha1": "715fc49e5297727b03dbfb0e6a255aebdd9c7697",
+      "source_137": {
+        "path": "supabase/migrations/20260927234215_fiscal_agt_re_document_type.sql",
+        "sha": "715fc49e5297727b03dbfb0e6a255aebdd9c7697"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927234215_fiscal_agt_re_document_type.sql",
+        "sha": "715fc49e5297727b03dbfb0e6a255aebdd9c7697"
+      },
+      "matches": [
+        "137:lf",
+        "137:exact",
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:lf",
+        "182:exact",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927234645",
+      "name": "fiscal_contingency_state_machine",
+      "remote_blob_sha1": "a38df5fcc8414390b241f2423732e2408e745db0",
+      "source_137": {
+        "path": "supabase/migrations/20260927234645_fiscal_contingency_state_machine.sql",
+        "sha": "a38df5fcc8414390b241f2423732e2408e745db0"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927234645_fiscal_contingency_state_machine.sql",
+        "sha": "a38df5fcc8414390b241f2423732e2408e745db0"
+      },
+      "matches": [
+        "137:lf",
+        "137:exact",
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:lf",
+        "182:exact",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260927235044",
+      "name": "fiscal_agt_retry_budget_dlq",
+      "remote_blob_sha1": "8d4804a79114604f28807fc41c3581a93f407ed4",
+      "source_137": {
+        "path": "supabase/migrations/20260927235044_fiscal_agt_retry_budget_dlq.sql",
+        "sha": "8d4804a79114604f28807fc41c3581a93f407ed4"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260927235044_fiscal_agt_retry_budget_dlq.sql",
+        "sha": "8d4804a79114604f28807fc41c3581a93f407ed4"
+      },
+      "matches": [
+        "137:lf",
+        "137:exact",
+        "182:lf",
+        "182:exact"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20260928000122",
+      "name": "fiscal_origin_idempotency_race_guard",
+      "remote_blob_sha1": "816b31e6af0c19b147c06f40ee2204388816f12b",
+      "source_137": {
+        "path": "supabase/migrations/20260928000122_fiscal_origin_idempotency_race_guard.sql",
+        "sha": "816b31e6af0c19b147c06f40ee2204388816f12b"
+      },
+      "source_182": {
+        "path": "supabase/migrations/20260928000122_fiscal_origin_idempotency_race_guard.sql",
+        "sha": "816b31e6af0c19b147c06f40ee2204388816f12b"
+      },
+      "matches": [
+        "137:lf",
+        "137:exact",
+        "137:trim_lf",
+        "137:semicolon_lf",
+        "182:lf",
+        "182:exact",
+        "182:trim_lf",
+        "182:semicolon_lf"
+      ],
+      "classification": "EXACT"
+    },
+    {
+      "version": "20261026105253",
+      "name": "freeze_unhomologated_fiscal_issuance_20261026",
+      "remote_blob_sha1": "ee4ddd3a4a48ea5eb7724bd13c90d98e3b94c958",
+      "source_137": null,
+      "source_182": null,
+      "matches": [],
+      "classification": "FREEZE_EXECUTABLE_TOKENS_MATCH",
+      "main_alias": {
+        "path": "supabase/migrations/20271026121500_freeze_unhomologated_fiscal_issuance.sql",
+        "sha": "7e6fb177d22702aa2b4879be1218a7115976c3c1"
+      }
+    }
+  ]
+}
