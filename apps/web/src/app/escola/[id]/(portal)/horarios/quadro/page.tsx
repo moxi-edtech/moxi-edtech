@@ -108,6 +108,8 @@ function QuadroHorariosContent() {
 
   const [showWizard, setShowWizard] = useState(false);
   const [versaoId, setVersaoId] = useState<string | null>(null);
+  const [hasSavedDraft, setHasSavedDraft] = useState(false);
+  const [versionError, setVersionError] = useState<string | null>(null);
   const [horarioStatus, setHorarioStatus] = useState<TimetablePublicationState>("sem_horario");
   const [turmaId, setTurmaId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -243,49 +245,28 @@ function QuadroHorariosContent() {
     if (!escolaId || !turmaId) return;
     setHorarioStatus("sem_horario");
     const key = `horarios:versao:${escolaId}:${turmaId}`;
-    const stored = typeof window !== "undefined" ? window.sessionStorage.getItem(key) : null;
-    if (stored) {
-      setVersaoId(stored);
-    }
-
+    setVersaoId(null);
+    setVersionError(null);
+    setHasSavedDraft(false);
     let active = true;
-    fetch(`/api/secretaria/turmas/${turmaId}/horario/versao?escola_id=${encodeURIComponent(escolaId)}`)
-      .then((res) => res.json())
-      .then((json) => {
+    fetch(`/api/secretaria/turmas/${turmaId}/horario/versao?escola_id=${encodeURIComponent(escolaId)}`, { cache: "no-store" })
+      .then(async (res) => {
+        const json = await res.json();
         if (!active) return;
-        const versaoPreferida = json?.versao_publicada_id || json?.versao_id;
-        if (json?.ok && ["sem_horario", "rascunho", "publicado"].includes(json.horario_status)) {
+        if (!res.ok || !json?.ok) throw new Error(json?.error || "Não foi possível consultar o horário.");
+        const versaoPreferida = json.versao_edicao_id ?? json.versao_publicada_id ?? json.versao_id;
+        if (["sem_horario", "rascunho", "publicado"].includes(json.horario_status)) {
           setHorarioStatus(json.horario_status as TimetablePublicationState);
         }
-        if (json?.ok && versaoPreferida) {
-          if (typeof window !== "undefined") {
-            window.sessionStorage.setItem(key, versaoPreferida);
-          }
+        setHasSavedDraft(Boolean(json.tem_rascunho_nao_publicado));
+        if (versaoPreferida) {
+          window.sessionStorage.setItem(key, versaoPreferida);
           setVersaoId(versaoPreferida);
-          return;
         }
-        if (stored) {
-          return;
-        }
-        if (typeof window !== "undefined") {
-          window.sessionStorage.removeItem(key);
-        }
-        const next = crypto.randomUUID();
-        if (typeof window !== "undefined") {
-          window.sessionStorage.setItem(key, next);
-        }
-        setVersaoId(next);
       })
-      .catch(() => {
+      .catch((err) => {
         if (!active) return;
-        if (typeof window !== "undefined") {
-          window.sessionStorage.removeItem(key);
-        }
-        const next = crypto.randomUUID();
-        if (typeof window !== "undefined") {
-          window.sessionStorage.setItem(key, next);
-        }
-        setVersaoId(next);
+        setVersionError(err instanceof Error ? err.message : "Não foi possível consultar o horário.");
       });
 
     return () => {
@@ -526,7 +507,7 @@ function QuadroHorariosContent() {
     () => Object.values(grid).filter((value) => Boolean(value)).length,
     [grid]
   );
-  const canPublicar = !isLoading && !baseError && !turmaError && !!versaoId && online && !saving && !publishing && filledSlots > 0;
+  const canPublicar = !isLoading && !baseError && !turmaError && !versionError && !!versaoId && online && !saving && !publishing && filledSlots > 0;
   const totalCarga = useMemo(
     () => aulasWithAllocations.reduce((acc, aula) => acc + (aula.temposTotal || 0), 0),
     [aulasWithAllocations]
@@ -902,7 +883,7 @@ function QuadroHorariosContent() {
     mode: "draft" | "publish",
     options?: { successTitle?: string; successMessage?: string }
   ): Promise<boolean> => {
-    if (!escolaId || !turmaId || !versaoId || isLoading || baseError || turmaError || saving || publishing) return false;
+    if (!escolaId || !turmaId || !versaoId || isLoading || baseError || turmaError || versionError || saving || publishing) return false;
     if (mode === "publish" && !Object.values(nextGrid).some(Boolean)) {
       error("Adicione pelo menos uma aula antes de publicar.");
       return false;
@@ -1023,7 +1004,13 @@ function QuadroHorariosContent() {
       setConflictSlots({});
       setConflictReasons({});
       setAutoDraftDirty(false);
-      setHorarioStatus(mode === "publish" ? "publicado" : "rascunho");
+      const persistedVersion = json?.versao_id;
+      if (typeof persistedVersion === "string") {
+        setVersaoId(persistedVersion);
+        window.sessionStorage.setItem(`horarios:versao:${escolaId}:${turmaId}`, persistedVersion);
+      }
+      setHasSavedDraft(mode === "draft" && horarioStatus === "publicado");
+      setHorarioStatus(mode === "publish" || horarioStatus === "publicado" ? "publicado" : "rascunho");
       setAutoProposalSummary(null);
       if (mode === "publish" && Array.isArray(json?.warnings) && json.warnings.length > 0) {
         const publishWarnings = json.warnings as PublishWarning[];
@@ -1045,7 +1032,7 @@ function QuadroHorariosContent() {
         options?.successMessage
           ?? (mode === "publish"
             ? "Horário disponível para consulta."
-            : "Você pode ajustar a distribuição a qualquer momento.")
+            : "Rascunho guardado. O horário publicado não foi alterado.")
       );
       return true;
     } catch (err) {
@@ -1606,6 +1593,8 @@ function QuadroHorariosContent() {
                 setConflictSlots({});
                 setConflictReasons({});
                 setVersaoId(null);
+                setHasSavedDraft(false);
+                setVersionError(null);
                 setTurmaId(nextTurmaId);
               }}
               className="max-w-xs rounded-xl border-border focus:border-amber focus:ring-amber text-foreground"
@@ -1647,6 +1636,8 @@ function QuadroHorariosContent() {
             ) : null}
             {baseError ? <span className="text-xs text-rose-600">{baseError}</span> : null}
             {turmaError ? <span className="text-xs text-rose-600">{turmaError}</span> : null}
+            {versionError ? <span role="alert" className="text-xs text-rose-600">{versionError}</span> : null}
+            {hasSavedDraft && <span className="text-xs font-semibold text-muted-foreground">Rascunho guardado · aguarda publicação</span>}
             {turmaId && (
               <span role="status" className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-foreground">
                 {timetableStateLabels[horarioStatus]}
