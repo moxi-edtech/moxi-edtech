@@ -12,6 +12,7 @@ REVOKE ALL ON FUNCTION public.fecho_diario_has_role(uuid,text[]) FROM PUBLIC,ano
 GRANT EXECUTE ON FUNCTION public.fecho_diario_has_role(uuid,text[]) TO authenticated;
 
 -- Financial writes only via RPC; existing reads limited to authorized school roles.
+ALTER TABLE public.fecho_caixa ADD COLUMN system_other numeric(14,2) NOT NULL DEFAULT 0, ADD COLUMN system_other_count bigint NOT NULL DEFAULT 0 CHECK(system_other_count>=0);
 REVOKE ALL ON public.fecho_caixa FROM PUBLIC,anon,authenticated;
 GRANT SELECT ON public.fecho_caixa TO authenticated;
 DROP POLICY IF EXISTS fecho_select ON public.fecho_caixa;
@@ -24,17 +25,20 @@ CREATE POLICY fecho_select ON public.fecho_caixa FOR SELECT TO authenticated USI
 CREATE OR REPLACE FUNCTION public.financeiro_fecho_declarar_e_snapshot(p_escola_id uuid,p_day_key date,p_cash numeric,p_tpa numeric,p_transfer numeric,p_mcx numeric)
 RETURNS public.fecho_caixa LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
-DECLARE v_row public.fecho_caixa%ROWTYPE; v_cash numeric; v_tpa numeric; v_transfer numeric; v_mcx numeric;
+DECLARE v_row public.fecho_caixa%ROWTYPE; v_cash numeric; v_tpa numeric; v_transfer numeric; v_mcx numeric; v_other numeric; v_other_count bigint;
 BEGIN
  IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['secretaria','secretaria_financeiro','financeiro','admin_financeiro','admin','admin_escola','staff_admin','admin_secretaria','admin_secretario']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
  IF p_day_key IS NULL OR p_day_key>(clock_timestamp() AT TIME ZONE 'Africa/Luanda')::date OR EXISTS(SELECT 1 FROM unnest(ARRAY[p_cash,p_tpa,p_transfer,p_mcx]) v WHERE v IS NULL OR v<0 OR v>9999999999.99 OR v<>round(v,2)) THEN RAISE EXCEPTION 'invalid_declaration' USING ERRCODE='22023'; END IF;
  PERFORM pg_advisory_xact_lock(hashtextextended('cash-close:'||p_escola_id::text||':'||p_day_key::text,0));
  SELECT * INTO v_row FROM public.fecho_caixa WHERE escola_id=p_escola_id AND day_key=p_day_key;
- IF FOUND THEN RETURN v_row; END IF;
- SELECT coalesce(sum(valor_pago) FILTER(WHERE metodo='cash'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo='tpa'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo='transfer'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo='mcx'),0)
- INTO v_cash,v_tpa,v_transfer,v_mcx FROM public.pagamentos WHERE escola_id=p_escola_id AND day_key=p_day_key AND status='settled';
- INSERT INTO public.fecho_caixa(escola_id,day_key,operador_id,data_fecho,status,declared_by,declared_at,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_calculated_at,valor_declarado_especie,valor_declarado_tpa,valor_declarado_transferencia,valor_sistema_especie,valor_sistema_tpa,valor_sistema_transferencia,diferenca_especie,diferenca_tpa,diferenca_transferencia)
- VALUES(p_escola_id,p_day_key,auth.uid(),p_day_key,'declared',auth.uid(),clock_timestamp(),p_cash,p_tpa,p_transfer,p_mcx,v_cash,v_tpa,v_transfer,v_mcx,clock_timestamp(),p_cash,p_tpa,p_transfer,v_cash,v_tpa,v_transfer,p_cash-v_cash,p_tpa-v_tpa,p_transfer-v_transfer)
+ IF FOUND THEN
+  IF (v_row.declared_cash,v_row.declared_tpa,v_row.declared_transfer,v_row.declared_mcx) IS DISTINCT FROM (p_cash,p_tpa,p_transfer,p_mcx) THEN RAISE EXCEPTION 'declaration_conflict' USING ERRCODE='23505'; END IF;
+  RETURN v_row;
+ END IF;
+ SELECT coalesce(sum(valor_pago) FILTER(WHERE metodo='cash'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo='tpa'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo='transfer'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo IN ('mcx','kwik','kiwk')),0),coalesce(sum(valor_pago) FILTER(WHERE metodo IS NULL OR metodo NOT IN ('cash','tpa','transfer','mcx','kwik','kiwk')),0),count(*) FILTER(WHERE metodo IS NULL OR metodo NOT IN ('cash','tpa','transfer','mcx','kwik','kiwk'))
+ INTO v_cash,v_tpa,v_transfer,v_mcx,v_other,v_other_count FROM public.pagamentos WHERE escola_id=p_escola_id AND day_key=p_day_key AND status='settled';
+ INSERT INTO public.fecho_caixa(escola_id,day_key,operador_id,data_fecho,status,declared_by,declared_at,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_other,system_other_count,system_calculated_at,valor_declarado_especie,valor_declarado_tpa,valor_declarado_transferencia,valor_sistema_especie,valor_sistema_tpa,valor_sistema_transferencia,diferenca_especie,diferenca_tpa,diferenca_transferencia)
+ VALUES(p_escola_id,p_day_key,auth.uid(),p_day_key,'declared',auth.uid(),clock_timestamp(),p_cash,p_tpa,p_transfer,p_mcx,v_cash,v_tpa,v_transfer,v_mcx,v_other,v_other_count,clock_timestamp(),p_cash,p_tpa,p_transfer,v_cash,v_tpa,v_transfer,p_cash-v_cash,p_tpa-v_tpa,p_transfer-v_transfer)
  RETURNING * INTO v_row;
  INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details) VALUES(p_escola_id,auth.uid(),'FECHO_DECLARADO','fecho_caixa',v_row.id::text,'financeiro',jsonb_build_object('day_key',p_day_key));
  RETURN v_row;
@@ -50,6 +54,7 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'fecho_not_found'; END IF;
  IF v_row.declared_by=auth.uid() THEN RAISE EXCEPTION 'self_approval_not_allowed' USING ERRCODE='42501'; END IF;
  IF v_row.status=p_aprovacao THEN RETURN v_row; END IF;
+ IF p_aprovacao='approved' AND (v_row.system_other_count>0 OR (v_row.declared_cash,v_row.declared_tpa,v_row.declared_transfer,v_row.declared_mcx) IS DISTINCT FROM (v_row.system_cash,v_row.system_tpa,v_row.system_transfer,v_row.system_mcx)) AND nullif(trim(p_justificativa),'') IS NULL THEN RAISE EXCEPTION 'variance_requires_justification' USING ERRCODE='22023'; END IF;
  IF v_row.status<>'declared' THEN RAISE EXCEPTION 'fecho_already_processed'; END IF;
  UPDATE public.fecho_caixa SET status=p_aprovacao,approved_by=auth.uid(),approved_at=clock_timestamp(),approval_note=p_justificativa,aprovado_por=auth.uid(),aprovado_em=clock_timestamp(),observacao_aprovador=p_justificativa,updated_at=clock_timestamp()
  WHERE id=v_row.id RETURNING * INTO v_row;
@@ -73,6 +78,28 @@ AS $$ DECLARE v public.fecho_caixa; BEGIN
 END; $$;
 REVOKE ALL ON FUNCTION public.financeiro_fecho_declarar_e_snapshot(uuid,date,numeric,numeric,numeric,numeric),public.financeiro_fecho_aprovar(uuid,uuid,text,text,jsonb),public.declarar_fecho_caixa(uuid,numeric,numeric,numeric),public.aprovar_fecho_caixa(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.financeiro_fecho_declarar_e_snapshot(uuid,date,numeric,numeric,numeric,numeric),public.financeiro_fecho_aprovar(uuid,uuid,text,text,jsonb),public.declarar_fecho_caixa(uuid,numeric,numeric,numeric),public.aprovar_fecho_caixa(uuid) TO authenticated;
+
+-- Serialize payment mutations with cash declaration for their financial day(s).
+CREATE OR REPLACE FUNCTION public.fecho_caixa_lock_payment_day()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $$
+DECLARE k bigint; keys bigint[]:=ARRAY[]::bigint[];
+BEGIN
+ IF TG_OP<>'INSERT' AND OLD.escola_id IS NOT NULL AND OLD.day_key IS NOT NULL THEN
+  keys:=array_append(keys,hashtextextended('cash-close:'||OLD.escola_id::text||':'||OLD.day_key::text,0));
+ END IF;
+ IF TG_OP<>'DELETE' AND NEW.escola_id IS NOT NULL AND NEW.day_key IS NOT NULL THEN
+  keys:=array_append(keys,hashtextextended('cash-close:'||NEW.escola_id::text||':'||NEW.day_key::text,0));
+ END IF;
+ FOR k IN SELECT DISTINCT x FROM unnest(keys) x ORDER BY x LOOP
+  PERFORM pg_advisory_xact_lock_shared(k);
+ END LOOP;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+ RETURN NEW;
+END; $$;
+REVOKE ALL ON FUNCTION public.fecho_caixa_lock_payment_day() FROM PUBLIC,anon,authenticated;
+-- Ordered after existing BEFORE defaults to use canonical school/day values.
+CREATE TRIGGER zz_fecho_caixa_lock_payment_day BEFORE INSERT OR UPDATE OR DELETE ON public.pagamentos FOR EACH ROW EXECUTE FUNCTION public.fecho_caixa_lock_payment_day();
 
 CREATE TABLE public.secretaria_expediente_meta (
  singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),
