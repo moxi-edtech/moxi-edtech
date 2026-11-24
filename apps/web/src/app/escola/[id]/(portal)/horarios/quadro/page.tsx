@@ -9,7 +9,7 @@ import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settin
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { timetableStateLabels, type TimetablePublicationState } from "@/lib/horarios/timetable-publication-state";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
-import { useHorarioTurmaData } from "@/hooks/useHorarioData";
+import { mapSlots, useHorarioTurmaData } from "@/hooks/useHorarioData";
 import { useHorarioDataContext } from "@/components/escola/horarios/HorarioDataProvider";
 import { Spinner } from "@/components/ui/Spinner";
 import { Select } from "@/components/ui/Select";
@@ -141,8 +141,7 @@ function QuadroHorariosContent() {
   );
 
   const {
-    slots,
-    slotLookup,
+    rawSlots,
     salas,
     turmas,
     loading: baseLoading,
@@ -152,6 +151,17 @@ function QuadroHorariosContent() {
     setRawSlots,
     refreshBaseData,
   } = useHorarioDataContext();
+
+  const selectedTurma = useMemo(
+    () => turmas.find((turma) => turma.id === turmaId) || null,
+    [turmaId, turmas]
+  );
+  const selectedTurno = selectedTurma?.turno?.toUpperCase();
+  const turnoId = selectedTurno === "M" ? "matinal" : selectedTurno === "T" ? "tarde" : selectedTurno === "N" ? "noite" : null;
+  const { slots, slotLookup } = useMemo(
+    () => mapSlots(turnoId ? rawSlots.filter((slot) => slot.turno_id === turnoId) : []),
+    [rawSlots, turnoId]
+  );
 
   const {
     aulas,
@@ -177,7 +187,7 @@ function QuadroHorariosContent() {
 
   // Mostrar wizard se não houver salas ou slots (e não estiver carregando)
   useEffect(() => {
-    if (isMounted && !baseLoading && (salas.length === 0 || slots.length === 0)) {
+    if (isMounted && !baseLoading && (rawSlots.length === 0)) {
       const skipKey = `horarios:wizard-skipped:${escolaId}`;
       const wasSkipped = typeof window !== "undefined" ? window.sessionStorage.getItem(skipKey) : null;
       if (!wasSkipped) {
@@ -445,10 +455,7 @@ function QuadroHorariosContent() {
     ];
   }, [turmas]);
 
-  const selectedTurma = useMemo(
-    () => turmas.find((turma) => turma.id === turmaId) || null,
-    [turmaId, turmas]
-  );
+
 
   const loadCurriculoStatus = useCallback(async () => {
     if (!escolaParam) return [] as CurriculoStatusItem[];
@@ -883,7 +890,11 @@ function QuadroHorariosContent() {
     mode: "draft" | "publish",
     options?: { successTitle?: string; successMessage?: string }
   ): Promise<boolean> => {
-    if (!escolaId || !turmaId || !versaoId || isLoading || baseError || turmaError || versionError || saving || publishing) return false;
+    if (!escolaId || !turmaId || !versaoId || isLoading || baseError || turmaError || versionError || saving || publishing || !turnoId || !Object.keys(slotLookup).length) return false;
+    if (Object.entries(nextGrid).some(([key, id]) => id && !slotLookup[key])) {
+      error("Existem aulas fora dos tempos configurados. Recarregue antes de guardar.");
+      return false;
+    }
     if (mode === "publish" && !Object.values(nextGrid).some(Boolean)) {
       error("Adicione pelo menos uma aula antes de publicar.");
       return false;
@@ -1669,6 +1680,12 @@ function QuadroHorariosContent() {
               <p className="text-sm text-muted-foreground">Conflitos detectados</p>
               <p className={`mt-1 text-xl font-bold ${conflitosCount ? "text-rose-600" : "text-foreground"}`}>{conflitosCount}</p>
             </div>
+          </div>
+        )}
+        {turmaId && !isLoading && !Object.keys(slotLookup).length && (
+          <div className="mb-4 rounded-xl border border-border bg-card p-4 text-sm">
+            <p className="font-semibold">Ainda não existem tempos para o turno desta turma.</p>
+            <Link href={slotsHref} className="mt-2 inline-block font-semibold underline">Configurar tempos do turno</Link>
           </div>
         )}
         {autoDraftDirty && turmaId && (
