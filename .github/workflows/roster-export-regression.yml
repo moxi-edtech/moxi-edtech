@@ -19,6 +19,14 @@ on:
       - 'apps/web/src/components/secretaria/TurmaDetailClient.tsx'
       - 'apps/web/src/components/secretaria/TurmasListClient.tsx'
       - 'apps/web/tests/unit/roster-export-*.spec.ts'
+      - 'apps/web/tests/unit/alunos-export-filtered.spec.ts'
+      - 'apps/web/src/lib/services/alunos.service.ts'
+      - 'apps/web/src/lib/services/alunosExportPdfContext.server.ts'
+      - 'apps/web/src/lib/services/alunosExport.server.ts'
+      - 'apps/web/src/app/api/secretaria/alunos/exportar/**'
+      - 'apps/web/src/app/api/escolas/**/admin/alunos/exportar/**'
+      - 'apps/web/src/components/escola-admin/AlunosListClient.tsx'
+      - 'apps/web/src/components/secretaria/AlunosSecretariaPage.tsx'
       - '.github/workflows/roster-export-regression.yml'
   workflow_dispatch:
 
@@ -42,6 +50,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Testes de inclusão por sessão e estados
         run: pnpm -C apps/web exec node --import tsx --test tests/unit/roster-export-*.spec.ts tests/unit/current-year-roster-backend.spec.ts
+      - name: Exportação filtrada · turma/classe/turno/bolsa + segurança de tenant
+        run: pnpm -C apps/web exec node --import tsx --test tests/unit/alunos-export-filtered.spec.ts
       - name: Instalar ferramentas de inspeção do PDF
         run: |
           sudo apt-get update -qq
