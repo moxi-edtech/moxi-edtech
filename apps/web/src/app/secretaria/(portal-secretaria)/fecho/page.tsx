@@ -49,7 +49,7 @@ export default function SecretariaFechoPage() {
     const declarado = { numerario: Number(data.declared_cash), tpa: Number(data.declared_tpa), transferencia: Number(data.declared_transfer), mcx: Number(data.declared_mcx) };
     const differences = (Object.keys(sistema) as (keyof typeof sistema)[]).map(key => Math.round(declarado[key] * 100) - Math.round(sistema[key] * 100));
     success(json.idempotent ? "Fecho já registado." : "Fecho declarado.", "Consulte o resultado da declaração.");
-    return { sistema, declarado, diferenca_total: differences.reduce((sum, value) => sum + value, 0) / 100, status: differences.every(value => value === 0) ? "MATCH" : "DIVERGENT" } as const;
+    return { sistema, declarado, diferenca_total: differences.reduce((sum, value) => sum + value, 0) / 100, outros: Number(data.system_other??0), outros_count: Number(data.system_other_count??0), status: differences.every(value => value === 0) && Number(data.system_other_count??0)===0 ? "MATCH" : "DIVERGENT" } as const;
   };
 
   return (
