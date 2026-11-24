@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const payloadSchema = z.object({
+  escolaId: z.string().min(1).optional(),
   fecho_id: z.string().uuid(),
   aprovacao: z.enum(["approved", "rejected"]),
   justificativa: z.string().trim().min(1).max(255).optional(),
@@ -34,7 +35,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const body = await request.json().catch(() => null);
+    const parsed = payloadSchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ ok: false, error: "Dados de aprovação inválidos" }, { status: 400 });
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, parsed.data.escolaId);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
     }
@@ -48,19 +52,10 @@ export async function POST(request: Request) {
       .maybeSingle();
     const actorRole = (roleRow as { role?: string | null } | null)?.role ?? null;
 
-    const body = await request.json().catch(() => null);
-    const parsed = payloadSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { ok: false, error: parsed.error.issues?.[0]?.message || "Payload inválido" },
-        { status: 400 }
-      );
-    }
-
     const desiredStatus = parsed.data.aprovacao === "approved" ? "approved" : "rejected";
     const { data: existing } = await supabase
       .from("fecho_caixa")
-      .select("id, status, escola_id, approved_by, approved_at")
+      .select("id, status, escola_id, day_key, approved_by, approved_at, declared_cash, declared_tpa, declared_transfer, declared_mcx, system_cash, system_tpa, system_transfer, system_mcx")
       .eq("escola_id", escolaId)
       .eq("id", parsed.data.fecho_id)
       .maybeSingle();
