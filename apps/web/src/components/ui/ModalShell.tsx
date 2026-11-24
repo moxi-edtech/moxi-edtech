@@ -33,6 +33,7 @@ export function ModalShell({
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
       <DialogContent
+        layout="viewport"
         closeButton={false}
         overlayClassName="bg-black/40"
         onPointerDownOutside={(event) => event.preventDefault()}
@@ -42,11 +43,11 @@ export function ModalShell({
             event.preventDefault();
           }
         }}
-        className="fixed inset-0 left-0 top-0 z-50 flex h-[100dvh] w-full max-h-none max-w-none !transform-none !animate-none items-center justify-center gap-0 border-0 bg-transparent p-4 shadow-none sm:p-6"
+        className="gap-0 border-0 bg-transparent p-4 shadow-none sm:p-6"
       >
         <section
           className={[
-            "flex w-full max-h-[calc(100dvh-2rem)] min-h-0 flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-card shadow-xl",
+            "flex w-full max-h-full min-h-0 flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-card shadow-xl",
             size === "wide" ? "max-w-7xl" : "max-w-3xl",
           ].join(" ")}
         >
