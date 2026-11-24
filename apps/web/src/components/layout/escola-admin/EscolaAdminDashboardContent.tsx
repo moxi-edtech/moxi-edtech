@@ -2,7 +2,6 @@
 "use client";
 
 import Link from "next/link";
-import ExpedienteDashboardCard from "@/components/secretaria/ExpedienteDashboardCard";
 import { useEffect, useState } from "react";
 import { AlertCircle, ArrowRight, Wallet, TrendingUp, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
@@ -358,8 +357,6 @@ export default function EscolaAdminDashboardContent({
           </div>
         </div>
       </motion.div>
-
-      <ExpedienteDashboardCard escolaId={escolaId} portal={isOperacoes ? "operacoes" : "admin"} />
 
       {/* Na secretaria, contexto e pendências formam uma única região de leitura.
           Não alteramos os componentes, os links ou o modo Administração. */}
