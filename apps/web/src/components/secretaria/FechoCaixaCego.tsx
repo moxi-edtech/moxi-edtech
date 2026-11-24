@@ -8,7 +8,7 @@ const NOTES = [5000, 2000, 1000, 500, 200, 100];
 const format = (value: number) => new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 const inputClass = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20 disabled:opacity-60";
 type Channels = { numerario: number; tpa: number; transferencia: number; mcx: number };
-type ResultadoFecho = { sistema: Channels; declarado: Channels; diferenca_total: number; status: "MATCH" | "DIVERGENT" };
+type ResultadoFecho = { sistema: Channels; declarado: Channels; diferenca_total: number; outros?: number; outros_count?: number; status: "MATCH" | "DIVERGENT" };
 type Props = {
   onConfirm: (data: { numerario_declarado: number; tpa_declarado: number; transferencia_declarada: number; mcx_declarado: number; detalhe_notas: Record<string, number> }) => Promise<ResultadoFecho>;
   onClose: () => void;
@@ -66,7 +66,8 @@ export default function FechoCaixaCego({ onConfirm, onClose }: Props) {
           })}</tbody>
         </table>
       </div>
-      <p className="text-sm text-muted-foreground">Diferença líquida: <span className="font-mono text-foreground">{format(result.diferenca_total)}</span></p>
+      {!!result.outros_count&&<p role="status" className="rounded-xl border border-amber-200 p-3 text-sm">Pagamentos sem meio classificado: {format(result.outros??0)} ({result.outros_count}). A conferência exige justificação.</p>}
+      <p className="text-sm text-muted-foreground">Diferença líquida dos quatro meios: <span className="font-mono text-foreground">{format(result.diferenca_total)}</span></p>
       <Button onClick={onClose}>Voltar à secretaria</Button>
     </section>
   );
