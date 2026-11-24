@@ -1,10 +1,19 @@
 name: Horários · PostgreSQL 17
+concurrency:
+  group: horarios-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 on:
   pull_request:
     paths:
       - 'docs/engineering/horarios-publication-guard.proposed.sql'
       - 'supabase/ops/tests/horarios_pg17_*'
       - '.github/workflows/horarios-pg17.yml'
+      - 'apps/web/src/components/escola/horarios/**'
+      - 'apps/web/src/lib/horarios/**'
+      - 'apps/web/src/hooks/useHorarioData.ts'
+      - 'apps/web/src/app/api/escolas/**/horarios/**'
+      - 'apps/web/src/app/escola/**/horarios/**'
+      - 'apps/web/tests/unit/horarios-operational-flow.spec.ts'
   workflow_dispatch:
 permissions:
   contents: read
@@ -92,3 +101,27 @@ jobs:
             THEN RAISE EXCEPTION 'concurrent publication lost atomicity'; END IF;
           END $$;
           SQL
+
+  web:
+    name: Horários · contratos UX e TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Testar contratos de horários
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/horarios-operational-flow.spec.ts tests/unit/audit-timetable-independent-teachers.spec.ts
+      - name: Typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: pnpm -C apps/web typecheck
