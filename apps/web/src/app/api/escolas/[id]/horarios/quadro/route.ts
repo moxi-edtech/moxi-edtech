@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { resourceConflicts, slotsOverlap, type LessonSlot } from '@/lib/horarios/temporal-conflicts'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
@@ -156,12 +157,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const expectedShift = turn === 'M' ? 'matinal' : turn === 'T' ? 'tarde' : turn === 'N' ? 'noite' : null
     const requestedSlots = Array.from(new Set(parsed.data.items.map((item) => item.slot_id)))
     if (!expectedShift) return NextResponse.json({ ok: false, error: 'Defina o turno da turma.' }, { status: 409 })
+    let requestedSlotTimes: LessonSlot[] = []
     if (requestedSlots.length) {
       const { data: validSlots, error: validSlotsError } = await supabase.from('horario_slots')
-        .select('id').eq('escola_id', escolaIdResolved).eq('turno_id', expectedShift)
-        .eq('is_intervalo', false).in('id', requestedSlots)
+        .select('id, dia_semana, inicio, fim').eq('escola_id', escolaIdResolved).eq('turno_id', expectedShift)
+        .or('is_intervalo.is.null,is_intervalo.eq.false').in('id', requestedSlots)
       if (validSlotsError) return NextResponse.json({ ok: false, error: 'Não foi possível validar os tempos.' }, { status: 503 })
-      if ((validSlots || []).length !== requestedSlots.length) return NextResponse.json({ ok: false, error: 'O quadro contém intervalos ou tempos de outro turno.' }, { status: 409 })
+      requestedSlotTimes = (validSlots || []) as LessonSlot[]
+      if (requestedSlotTimes.length !== requestedSlots.length) return NextResponse.json({ ok: false, error: 'O quadro contém intervalos ou tempos de outro turno.' }, { status: 409 })
     }
     const { data: previousPublishedVersion, error: previousPublishedError } = await supabase
       .from('horario_versoes')
@@ -251,7 +254,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       versao_id: versaoId,
     }))
 
-    const slotIds = Array.from(new Set(payload.map((item) => item.slot_id)))
     const professorIds = Array.from(new Set(payload.map((item) => item.professor_id).filter(Boolean)))
     const salaIds = Array.from(new Set(payload.map((item) => item.sala_id).filter(Boolean)))
     const publishWarnings: PublishWarning[] = []
@@ -277,66 +279,43 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
     }
 
-    if (mode === 'publish') {
-      // Scope conflicts to the selected academic year and other turmas.
-      const { data: otherTurmas, error: otherTurmasError } = await supabase
-        .from('turmas')
-        .select('id')
-        .eq('escola_id', escolaIdResolved)
-        .eq('ano_letivo_id', academicContext.anoLetivoId)
-        .neq('id', parsed.data.turma_id)
-      if (otherTurmasError) {
-        return NextResponse.json({ ok: false, error: 'Não foi possível validar conflitos. Tente novamente.' }, { status: 503 })
+    if (mode === 'publish' && (professorIds.length > 0 || salaIds.length > 0)) {
+      const { data: allSlots, count: allSlotCount, error: slotsError } = await supabase.from('horario_slots')
+        .select('id, dia_semana, inicio, fim', { count: 'exact' }).eq('escola_id', escolaIdResolved)
+        .order('id').limit(500)
+      if (slotsError || allSlotCount !== (allSlots || []).length) {
+        return NextResponse.json({ ok: false, error: 'Não foi possível validar todos os tempos da escola.' }, { status: 503 })
       }
-
-      const otherTurmaIds = (otherTurmas || []).map((row: { id: string }) => row.id)
-      if (otherTurmaIds.length > 0 && slotIds.length > 0) {
-        const { data: publishedVersions, error: publishedError } = await supabase
-          .from('horario_versoes')
-          .select('id')
-          .eq('escola_id', escolaIdResolved)
-          .eq('status', 'publicada')
-          .in('turma_id', otherTurmaIds)
-        if (publishedError) {
-          return NextResponse.json({ ok: false, error: 'Não foi possível validar conflitos. Tente novamente.' }, { status: 503 })
+      const temporalSlots = (allSlots || []) as LessonSlot[]
+      const overlapping = temporalSlots.filter((slot) => requestedSlotTimes.some((requested) => slotsOverlap(requested, slot)))
+      const overlappingIds = overlapping.map((slot) => slot.id)
+      const slotMap = new Map(temporalSlots.map((slot) => [slot.id, slot]))
+      const { data: otherTurmas, count: otherCount, error: otherError } = await supabase
+        .from('turmas').select('id', { count: 'exact' })
+        .eq('escola_id', escolaIdResolved).eq('ano_letivo_id', academicContext.anoLetivoId)
+        .neq('id', parsed.data.turma_id).order('id').limit(1000)
+      if (otherError || otherCount !== (otherTurmas || []).length) {
+        return NextResponse.json({ ok: false, error: 'Não foi possível validar todos os horários concorrentes.' }, { status: 503 })
+      }
+      // Bounded batches avoid oversized URL filters and detect incomplete results.
+      const otherIds = (otherTurmas || []).map((row: { id: string }) => row.id)
+      for (let start = 0; start < otherIds.length; start += 50) {
+        const { data: versions, count: versionCount, error: versionError } = await supabase.from('horario_versoes')
+          .select('id', { count: 'exact' }).eq('escola_id', escolaIdResolved)
+          .eq('status', 'publicada').in('turma_id', otherIds.slice(start, start + 50))
+        if (versionError || versionCount !== (versions || []).length) {
+          return NextResponse.json({ ok: false, error: 'Não foi possível validar as versões publicadas.' }, { status: 503 })
         }
-        const publishedVersionIds = (publishedVersions || []).map((row: { id: string }) => row.id)
-        const expectedBySlot = new Map(payload.map((item) => [item.slot_id, item]))
-
-        if (professorIds.length > 0 && publishedVersionIds.length > 0) {
-          const { data: profConflicts, error: professorError } = await supabase
-            .from('quadro_horarios')
-            .select('slot_id, professor_id')
-            .eq('escola_id', escolaIdResolved)
-            .in('slot_id', slotIds)
-            .in('professor_id', professorIds as string[])
-            .in('versao_id', publishedVersionIds)
-          if (professorError) {
-            return NextResponse.json({ ok: false, error: 'Não foi possível validar professores. Tente novamente.' }, { status: 503 })
+        const ids = (versions || []).map((row: { id: string }) => row.id)
+        if (!ids.length || !overlappingIds.length) continue
+        for (let index = 0; index < overlappingIds.length; index += 50) {
+          const { data: existing, count: existingCount, error: existingError } = await supabase.from('quadro_horarios')
+            .select('slot_id, professor_id, sala_id', { count: 'exact' }).eq('escola_id', escolaIdResolved)
+            .in('versao_id', ids).in('slot_id', overlappingIds.slice(index, index + 50)).limit(1000)
+          if (existingError || existingCount !== (existing || []).length) {
+            return NextResponse.json({ ok: false, error: 'Não foi possível validar todos os conflitos.' }, { status: 503 })
           }
-          for (const row of profConflicts || []) {
-            if (expectedBySlot.get(row.slot_id)?.professor_id === row.professor_id) {
-              conflicts.push({ slot_id: row.slot_id, professor_id: row.professor_id, kind: 'professor' })
-            }
-          }
-        }
-
-        if (salaIds.length > 0 && publishedVersionIds.length > 0) {
-          const { data: salaConflicts, error: salaError } = await supabase
-            .from('quadro_horarios')
-            .select('slot_id, sala_id')
-            .eq('escola_id', escolaIdResolved)
-            .in('slot_id', slotIds)
-            .in('sala_id', salaIds as string[])
-            .in('versao_id', publishedVersionIds)
-          if (salaError) {
-            return NextResponse.json({ ok: false, error: 'Não foi possível validar salas. Tente novamente.' }, { status: 503 })
-          }
-          for (const row of salaConflicts || []) {
-            if (expectedBySlot.get(row.slot_id)?.sala_id === row.sala_id) {
-              conflicts.push({ slot_id: row.slot_id, sala_id: row.sala_id, kind: 'sala' })
-            }
-          }
+          conflicts.push(...resourceConflicts(payload, existing || [], slotMap))
         }
       }
     }
