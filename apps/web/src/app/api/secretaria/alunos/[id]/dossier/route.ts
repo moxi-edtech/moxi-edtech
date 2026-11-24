@@ -7,6 +7,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { loadAlunoDossierData } from "@/lib/aluno/load-dossier-data";
 import { canCorrigirNomeAluno } from "@/lib/aluno/nome-permissions";
+import { canManageBolsa } from "@/lib/aluno/bolsa-permissions";
 import { carregarCicloVidaAluno } from "@/lib/matriculas/load-student-lifecycle";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: alunoId } = await params;
@@ -30,7 +31,11 @@ export async function GET(
 
   // The operator's school comes from their authenticated membership, not
   // from an arbitrary client query parameter.
-  const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+  const requestedEscolaId = new URL(request.url).searchParams.get("escola_id");
+  if (requestedEscolaId && !z.string().uuid().safeParse(requestedEscolaId).success) {
+    return NextResponse.json({ ok: false, error: "Escola inválida." }, { status: 400 });
+  }
+  const escolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
   if (!escolaId) {
     return NextResponse.json({ ok: false, error: "Escola não identificada." }, { status: 403 });
   }
@@ -74,16 +79,21 @@ export async function GET(
     if (!result) {
       return NextResponse.json({ ok: false, error: "Ficha integral indisponível." }, { status: 404 });
     }
-    const { data: member } = await supabase
+    const { data: member, error: memberError } = await supabase
       .from("escola_users")
       .select("papel")
       .eq("escola_id", escolaId)
       .eq("user_id", user.id)
       .maybeSingle();
-    const canEditNome = Boolean(aluno) && canCorrigirNomeAluno(member?.papel);
+    const canEditNome = !memberError && Boolean(aluno) && canCorrigirNomeAluno(member?.papel);
+    // O comando da bolsa só aparece quando o aluno é da escola do utilizador.
+    // Sem vínculo verificado, não anunciar uma ação que a RPC vai rejeitar.
+    const canManageBolsaForStudent = !memberError && Boolean(aluno)
+      && result.aluno.perfil.escola_id === escolaId
+      && canManageBolsa(member?.papel);
     const cicloVida = await carregarCicloVidaAluno(supabase, escolaId, alunoId).catch(() => null);
     return NextResponse.json(
-      { ok: true, ...result, canEditNome, cicloVida, cicloVidaIndisponivel: cicloVida === null },
+      { ok: true, ...result, canEditNome, canManageBolsa: canManageBolsaForStudent, cicloVida, cicloVidaIndisponivel: cicloVida === null },
       { headers: { "Cache-Control": "private, no-store, max-age=0" } },
     );
   } catch {

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { canCorrigirNomeAluno } from "@/lib/aluno/nome-permissions";
+import { canManageBolsa } from "@/lib/aluno/bolsa-permissions";
 import { AcoesRapidasBalcao } from "@/components/secretaria/AcoesRapidasBalcao";
 import { CurrentYearEnrollmentPanel } from "@/components/aluno/CurrentYearEnrollmentPanel";
 import { canConfirmarDesistencia } from "@/lib/matriculas/desistencia-permissions";
@@ -45,9 +46,8 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
   const canEditNome = canCorrigirNomeAluno(member?.papel) && aluno.perfil.escola_id === resolvedEscolaId;
   const canManageDesistencia = canConfirmarDesistencia(member?.papel)
     && aluno.perfil.escola_id === resolvedEscolaId;
-  const canManageBolsa = ["admin", "admin_escola", "admin_financeiro", "admin_secretaria",
-    "admin_secretario", "secretaria", "financeiro", "diretor", "staff_admin"]
-    .includes(member?.papel ?? "") && aluno.perfil.escola_id === resolvedEscolaId;
+  const canManageBolsaForStudent = canManageBolsa(member?.papel)
+    && aluno.perfil.escola_id === resolvedEscolaId;
 
   return (
     <div className={workspace ? "min-w-0" : embedded ? "bg-muted" : "min-h-screen bg-muted"}>
@@ -59,7 +59,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
           slotPerfil={(
             <div className="space-y-5">
               <DossierPerfilSection aluno={aluno} canEditNome={canEditNome} />
-              {canManageBolsa && <BolsaIntegralCard alunoId={alunoId} escolaId={resolvedEscolaId}
+              {canManageBolsaForStudent && <BolsaIntegralCard alunoId={alunoId} escolaId={resolvedEscolaId}
                 anoLetivo={selectedYear ?? undefined} />}
               <CurrentYearEnrollmentPanel alunoId={alunoId} escolaId={resolvedEscolaId}
                 alunoNome={aluno.perfil.nome} canManageDesistencia={canManageDesistencia} />
@@ -69,7 +69,7 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role, selecte
             alunoNome={aluno.perfil.nome} canManageDesistencia={canManageDesistencia} />}
           slotFinanceiro={(
             <div className="space-y-5">
-              {canManageBolsa && <BolsaIntegralCard alunoId={alunoId} escolaId={resolvedEscolaId}
+              {canManageBolsaForStudent && <BolsaIntegralCard alunoId={alunoId} escolaId={resolvedEscolaId}
                 anoLetivo={selectedYear ?? undefined} />}
               <DossierFinanceiroSection aluno={aluno} role={role} escolaId={resolvedEscolaId} servicos={servicos} />
             </div>
