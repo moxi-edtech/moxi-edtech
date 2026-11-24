@@ -1,7 +1,7 @@
 "use client";
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
-import { useMemo } from "react";
+
 import { useRouter } from "next/navigation";
 import FechoCaixaCego from "@/components/secretaria/FechoCaixaCego";
 import { useToast } from "@/components/feedback/FeedbackSystem";
@@ -10,7 +10,7 @@ import { DashboardHeader } from "@/components/layout/DashboardHeader";
 export default function SecretariaFechoPage() {
   const router = useRouter();
   const { success } = useToast();
-  const dayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
 
   const handleConfirm = async (declaracao: {
     numerario_declarado: number;
@@ -19,9 +19,10 @@ export default function SecretariaFechoPage() {
     mcx_declarado: number;
     detalhe_notas: Record<string, number>;
   }) => {
+    const dayKey = new Intl.DateTimeFormat("sv-SE", { timeZone: "Africa/Luanda", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const response = await fetch("/api/financeiro/fecho/declarar", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Idempotency-Key": `fecho-${dayKey}` },
       body: JSON.stringify({
         day_key: dayKey,
         declared: {
@@ -39,35 +40,23 @@ export default function SecretariaFechoPage() {
       throw new Error(json?.error || "Falha ao declarar fecho.");
     }
 
-    const data = json.data || {};
-    const sistema = {
-      numerario: Number(data.system_cash ?? 0),
-      tpa: Number(data.system_tpa ?? 0),
-      transferencia: Number(data.system_transfer ?? 0),
-      mcx: Number(data.system_mcx ?? 0),
-    };
-
-    const declaradoTotal =
-      declaracao.numerario_declarado +
-      declaracao.tpa_declarado +
-      declaracao.transferencia_declarada +
-      declaracao.mcx_declarado;
-    const sistemaTotal = sistema.numerario + sistema.tpa + sistema.transferencia + sistema.mcx;
-    const diferencaTotal = declaradoTotal - sistemaTotal;
-
-    success("Fecho declarado.", "Aguardando aprovação do financeiro.");
-
-    return {
-      sistema,
-      diferenca_total: diferencaTotal,
-      status: diferencaTotal === 0 ? "MATCH" : "DIVERGENT",
-    } as const;
+    const data = json.data;
+    const fields = ["cash", "tpa", "transfer", "mcx"] as const;
+    if (!data || fields.some(key => data["system_" + key] == null || data["declared_" + key] == null || !Number.isFinite(Number(data["system_" + key])) || !Number.isFinite(Number(data["declared_" + key])))) {
+      throw new Error("Não foi possível carregar os valores registados do fecho.");
+    }
+    const sistema = { numerario: Number(data.system_cash), tpa: Number(data.system_tpa), transferencia: Number(data.system_transfer), mcx: Number(data.system_mcx) };
+    const declarado = { numerario: Number(data.declared_cash), tpa: Number(data.declared_tpa), transferencia: Number(data.declared_transfer), mcx: Number(data.declared_mcx) };
+    const differences = (Object.keys(sistema) as (keyof typeof sistema)[]).map(key => Math.round(declarado[key] * 100) - Math.round(sistema[key] * 100));
+    success(json.idempotent ? "Fecho já registado." : "Fecho declarado.", "Consulte o resultado da declaração.");
+    return { sistema, declarado, diferenca_total: differences.reduce((sum, value) => sum + value, 0) / 100, status: differences.every(value => value === 0) ? "MATCH" : "DIVERGENT" } as const;
   };
 
   return (
     <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
       <DashboardHeader
-        title="Fecho de Caixa (Secretaria)"
+        title="Fecho de caixa"
+        description="Registe os valores do expediente para conferência financeira."
         breadcrumbs={[
           { label: "Início", href: "/" },
           { label: "Secretaria", href: "/secretaria" },
@@ -76,7 +65,7 @@ export default function SecretariaFechoPage() {
       />
       <FechoCaixaCego
         onConfirm={handleConfirm}
-        onClose={() => router.back()}
+        onClose={() => router.push("/secretaria")}
       />
     </div>
   );
