@@ -75,12 +75,14 @@ test("contextual history, supervision and cash experience",()=>{
  const cash=src("components/secretaria/FechoCaixaCego.tsx");
  const access=src("lib/secretaria/expediente.ts");
  const api=src("app/api/escola/[id]/expediente/route.ts");
- assert.match(ui,/Concluir o expediente/);
+ assert.match(ui,/Expediente de hoje/);
  assert.match(ui,/Encerrar sem declaração de caixa/);
  assert.match(ui,/Detalhes técnicos/);
  assert.match(ui,/student_name/);
  assert.match(history,/Caixas por validar/);
- assert.match(history,/data.pendingCount>data.pending.length/);
+ assert.match(history,/loadQueue\("declared"\)/);
+ assert.match(history,/loadQueue\("rejected"\)/);
+ assert.match(access,/\.gt\("day_key",after\)/);
  assert.match(cash,/Contar notas e moedas/);
  assert.match(cash,/Numerário contado/);
  assert.match(access,/day>captureDay/);
@@ -88,4 +90,26 @@ test("contextual history, supervision and cash experience",()=>{
  assert.match(access,/secretaria_expediente_responsaveis/);
  assert.match(api,/view==="supervision"&&!access.canSupervise/);
  assert.match(api,/30\*86400000/);
+});
+
+
+test("activity filters do not refresh detail state and report types are explicit",()=>{
+ const ui=src("components/secretaria/ExpedienteWorkspace.tsx");
+ const api=src("app/api/escola/[id]/expediente/route.ts");
+ const pdf=src("app/api/escola/[id]/expediente/pdf/route.ts");
+ const cash=src("components/secretaria/FechoCaixaCego.tsx");
+ const history=src("components/secretaria/ExpedienteHistory.tsx");
+ assert.match(ui,/view=detail&date=/);
+ assert.match(ui,/\},\[endpoint,date,revision\]\);/);
+ assert.match(ui,/view=activity&date=/);
+ assert.match(ui,/activityRetry\]\);/);
+ assert.match(ui,/declared_by_name/);
+ assert.match(ui,/approved_by_name/);
+ assert.match(ui,/ModalShell open=\{exportOpen\}/);
+ assert.match(ui,/ModalShell open=\{settings\}/);
+ assert.match(cash,/values.every\(value=>value===0\)&&!zeroConfirmed/);
+ assert.match(history,/onSelect\(item.date,"cash"\)/);
+ assert.match(api,/state.data==="declared"&&!access.canSupervise/);
+ assert.match(pdf,/const detailed=format==="detail"/);
+ assert.match(pdf,/if\(!detailed\)\{line\("Adendos posteriores ao fecho/);
 });
