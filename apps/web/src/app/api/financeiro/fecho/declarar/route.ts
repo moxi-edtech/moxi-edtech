@@ -3,17 +3,19 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
+import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { roleMatchesAllowedRoles } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const payloadSchema = z.object({
-  day_key: z.string().min(10),
+  day_key: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const date = new Date(value + "T00:00:00Z"); return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value; }, "Data inválida"),
   declared: z.object({
-    cash: z.number().nonnegative(),
-    tpa: z.number().nonnegative(),
-    transfer: z.number().nonnegative(),
-    mcx: z.number().nonnegative(),
+    cash: z.number().finite().nonnegative().max(999999999999.99),
+    tpa: z.number().finite().nonnegative().max(999999999999.99),
+    transfer: z.number().finite().nonnegative().max(999999999999.99),
+    mcx: z.number().finite().nonnegative().max(999999999999.99),
   }),
 });
 
@@ -42,6 +44,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
     }
 
+    const { data: membership, error: membershipError } = await supabase.from("escola_users").select("papel").eq("escola_id", escolaId).eq("user_id", user.id).maybeSingle();
+    if (membershipError || !roleMatchesAllowedRoles(String(membership?.papel ?? ""), [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP], "k12")) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
+
     const body = await request.json().catch(() => null);
     const parsed = payloadSchema.safeParse(body);
     if (!parsed.success) {
@@ -53,12 +60,13 @@ export async function POST(request: Request) {
 
     const { day_key, declared } = parsed.data;
 
-    const { data: existing } = await supabase
+    const { data: existing, error: existingError } = await supabase
       .from("fecho_caixa")
-      .select("id, escola_id, day_key, status, declared_by, declared_at")
+      .select("id, escola_id, day_key, status, declared_by, declared_at, declared_cash, declared_tpa, declared_transfer, declared_mcx, system_cash, system_tpa, system_transfer, system_mcx")
       .eq("escola_id", escolaId)
       .eq("day_key", day_key)
       .maybeSingle();
+    if (existingError) return NextResponse.json({ ok: false, error: "Não foi possível consultar o fecho." }, { status: 500 });
     if (existing) {
       return NextResponse.json({ ok: true, data: existing, idempotent: true });
     }
@@ -76,7 +84,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    recordAuditServer({
+    await recordAuditServer({
       escolaId,
       portal: "financeiro",
       acao: "FECHO_DECLARADO",
