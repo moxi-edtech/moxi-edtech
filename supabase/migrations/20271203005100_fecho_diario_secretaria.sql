@@ -1,0 +1,200 @@
+BEGIN;
+-- Canonical scope: one financial declaration and one operational close per school/day.
+CREATE OR REPLACE FUNCTION public.fecho_diario_has_role(p_escola_id uuid, p_roles text[])
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+ SELECT auth.uid() IS NOT NULL AND EXISTS (
+ SELECT 1 FROM public.escola_users e WHERE e.escola_id=p_escola_id
+ AND e.user_id=auth.uid() AND e.tenant_type='k12' AND e.papel=ANY(p_roles)
+ );
+$$;
+REVOKE ALL ON FUNCTION public.fecho_diario_has_role(uuid,text[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.fecho_diario_has_role(uuid,text[]) TO authenticated;
+
+-- Financial writes only via RPC; existing reads limited to authorized school roles.
+REVOKE ALL ON public.fecho_caixa FROM PUBLIC,anon,authenticated;
+GRANT SELECT ON public.fecho_caixa TO authenticated;
+DROP POLICY IF EXISTS fecho_select ON public.fecho_caixa;
+DROP POLICY IF EXISTS fecho_declare_secretaria ON public.fecho_caixa;
+DROP POLICY IF EXISTS fecho_update_unified ON public.fecho_caixa;
+CREATE POLICY fecho_select ON public.fecho_caixa FOR SELECT TO authenticated USING (
+ public.fecho_diario_has_role(escola_id,ARRAY['secretaria','admin_secretaria','admin_secretario','secretaria_financeiro','financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor'])
+);
+
+CREATE OR REPLACE FUNCTION public.financeiro_fecho_declarar_e_snapshot(p_escola_id uuid,p_day_key date,p_cash numeric,p_tpa numeric,p_transfer numeric,p_mcx numeric)
+RETURNS public.fecho_caixa LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE v_row public.fecho_caixa%ROWTYPE; v_cash numeric; v_tpa numeric; v_transfer numeric; v_mcx numeric;
+BEGIN
+ IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['secretaria','secretaria_financeiro','financeiro','admin_financeiro','admin','admin_escola','staff_admin','admin_secretaria','admin_secretario']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
+ IF p_day_key IS NULL OR p_day_key>(clock_timestamp() AT TIME ZONE 'Africa/Luanda')::date OR EXISTS(SELECT 1 FROM unnest(ARRAY[p_cash,p_tpa,p_transfer,p_mcx]) v WHERE v IS NULL OR v<0 OR v>9999999999.99 OR v<>round(v,2)) THEN RAISE EXCEPTION 'invalid_declaration' USING ERRCODE='22023'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('cash-close:'||p_escola_id::text||':'||p_day_key::text,0));
+ SELECT * INTO v_row FROM public.fecho_caixa WHERE escola_id=p_escola_id AND day_key=p_day_key;
+ IF FOUND THEN RETURN v_row; END IF;
+ SELECT coalesce(sum(valor_pago) FILTER(WHERE metodo='cash'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo='tpa'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo='transfer'),0),coalesce(sum(valor_pago) FILTER(WHERE metodo='mcx'),0)
+ INTO v_cash,v_tpa,v_transfer,v_mcx FROM public.pagamentos WHERE escola_id=p_escola_id AND day_key=p_day_key AND status='settled';
+ INSERT INTO public.fecho_caixa(escola_id,day_key,operador_id,data_fecho,status,declared_by,declared_at,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_calculated_at,valor_declarado_especie,valor_declarado_tpa,valor_declarado_transferencia,valor_sistema_especie,valor_sistema_tpa,valor_sistema_transferencia,diferenca_especie,diferenca_tpa,diferenca_transferencia)
+ VALUES(p_escola_id,p_day_key,auth.uid(),p_day_key,'declared',auth.uid(),clock_timestamp(),p_cash,p_tpa,p_transfer,p_mcx,v_cash,v_tpa,v_transfer,v_mcx,clock_timestamp(),p_cash,p_tpa,p_transfer,v_cash,v_tpa,v_transfer,p_cash-v_cash,p_tpa-v_tpa,p_transfer-v_transfer)
+ RETURNING * INTO v_row;
+ INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details) VALUES(p_escola_id,auth.uid(),'FECHO_DECLARADO','fecho_caixa',v_row.id::text,'financeiro',jsonb_build_object('day_key',p_day_key));
+ RETURN v_row;
+END; $$;
+CREATE OR REPLACE FUNCTION public.financeiro_fecho_aprovar(p_escola_id uuid,p_fecho_id uuid,p_aprovacao text,p_justificativa text DEFAULT NULL,p_aprovacao_meta jsonb DEFAULT '{}'::jsonb)
+RETURNS public.fecho_caixa LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE v_row public.fecho_caixa%ROWTYPE;
+BEGIN
+ IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
+ IF p_aprovacao IS NULL OR p_aprovacao NOT IN ('approved','rejected') OR (p_aprovacao='rejected' AND nullif(trim(p_justificativa),'') IS NULL) THEN RAISE EXCEPTION 'invalid_decision' USING ERRCODE='22023'; END IF;
+ SELECT * INTO v_row FROM public.fecho_caixa WHERE escola_id=p_escola_id AND id=p_fecho_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'fecho_not_found'; END IF;
+ IF v_row.declared_by=auth.uid() THEN RAISE EXCEPTION 'self_approval_not_allowed' USING ERRCODE='42501'; END IF;
+ IF v_row.status=p_aprovacao THEN RETURN v_row; END IF;
+ IF v_row.status<>'declared' THEN RAISE EXCEPTION 'fecho_already_processed'; END IF;
+ UPDATE public.fecho_caixa SET status=p_aprovacao,approved_by=auth.uid(),approved_at=clock_timestamp(),approval_note=p_justificativa,aprovado_por=auth.uid(),aprovado_em=clock_timestamp(),observacao_aprovador=p_justificativa,updated_at=clock_timestamp()
+ WHERE id=v_row.id RETURNING * INTO v_row;
+ INSERT INTO public.audit_logs(escola_id,actor_id,action,entity,entity_id,portal,details) VALUES(p_escola_id,auth.uid(),'FECHO_APROVADO','fecho_caixa',v_row.id::text,'financeiro',jsonb_build_object('status',p_aprovacao));
+ RETURN v_row;
+END; $$;
+-- Legacy signatures remain available, with the same authorization and transitions.
+CREATE OR REPLACE FUNCTION public.declarar_fecho_caixa(p_escola_id uuid,p_valor_declarado_especie numeric,p_valor_declarado_tpa numeric,p_valor_declarado_transferencia numeric)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
+AS $$ DECLARE v public.fecho_caixa; BEGIN
+ v:=public.financeiro_fecho_declarar_e_snapshot(p_escola_id,(clock_timestamp() AT TIME ZONE 'Africa/Luanda')::date,p_valor_declarado_especie,p_valor_declarado_tpa,p_valor_declarado_transferencia,0);
+ RETURN jsonb_build_object('ok',true,'fecho_id',v.id);
+END; $$;
+CREATE OR REPLACE FUNCTION public.aprovar_fecho_caixa(p_fecho_caixa_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
+AS $$ DECLARE v public.fecho_caixa; BEGIN
+ SELECT * INTO v FROM public.fecho_caixa WHERE id=p_fecho_caixa_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'fecho_not_found'; END IF;
+ v:=public.financeiro_fecho_aprovar(v.escola_id,v.id,'approved');
+ RETURN jsonb_build_object('ok',true,'fecho_id',v.id);
+END; $$;
+REVOKE ALL ON FUNCTION public.financeiro_fecho_declarar_e_snapshot(uuid,date,numeric,numeric,numeric,numeric),public.financeiro_fecho_aprovar(uuid,uuid,text,text,jsonb),public.declarar_fecho_caixa(uuid,numeric,numeric,numeric),public.aprovar_fecho_caixa(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.financeiro_fecho_declarar_e_snapshot(uuid,date,numeric,numeric,numeric,numeric),public.financeiro_fecho_aprovar(uuid,uuid,text,text,jsonb),public.declarar_fecho_caixa(uuid,numeric,numeric,numeric),public.aprovar_fecho_caixa(uuid) TO authenticated;
+
+CREATE TABLE public.secretaria_expedientes (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), escola_id uuid NOT NULL REFERENCES public.escolas(id),
+ day_key date NOT NULL, closed_at timestamptz NOT NULL, closed_by uuid NOT NULL,
+ operation_count bigint NOT NULL CHECK(operation_count>=0), summary jsonb NOT NULL,
+ UNIQUE(escola_id,day_key)
+);
+CREATE TABLE public.secretaria_expediente_operacoes (
+ id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, escola_id uuid NOT NULL REFERENCES public.escolas(id),
+ day_key date NOT NULL, occurred_at timestamptz NOT NULL, actor_id uuid NOT NULL, actor_role text NOT NULL,
+ entity text NOT NULL, entity_id text NOT NULL, action text NOT NULL,
+ is_after_close boolean NOT NULL, detail jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE INDEX secretaria_expediente_operacoes_day_idx ON public.secretaria_expediente_operacoes(escola_id,day_key,id);
+CREATE TABLE public.secretaria_expediente_config (
+ escola_id uuid PRIMARY KEY REFERENCES public.escolas(id), close_time time NOT NULL DEFAULT '17:00',
+ reminder_minutes integer NOT NULL DEFAULT 30 CHECK(reminder_minutes BETWEEN 0 AND 180),
+ weekdays integer[] NOT NULL DEFAULT ARRAY[1,2,3,4,5] CHECK(cardinality(weekdays)>0 AND weekdays <@ ARRAY[1,2,3,4,5,6,7]),
+ enabled boolean NOT NULL DEFAULT true
+);
+CREATE TABLE public.secretaria_expediente_reminders (
+ escola_id uuid NOT NULL REFERENCES public.escolas(id), day_key date NOT NULL, PRIMARY KEY(escola_id,day_key)
+);
+ALTER TABLE public.secretaria_expedientes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.secretaria_expediente_operacoes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.secretaria_expediente_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.secretaria_expediente_reminders ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.secretaria_expedientes,public.secretaria_expediente_operacoes,public.secretaria_expediente_config,public.secretaria_expediente_reminders FROM PUBLIC,anon,authenticated;
+GRANT SELECT ON public.secretaria_expedientes,public.secretaria_expediente_operacoes,public.secretaria_expediente_config TO authenticated;
+CREATE POLICY expediente_read ON public.secretaria_expedientes FOR SELECT TO authenticated USING(public.fecho_diario_has_role(escola_id,ARRAY['secretaria','admin_secretaria','admin_secretario','secretaria_financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']));
+CREATE POLICY expediente_operations_read ON public.secretaria_expediente_operacoes FOR SELECT TO authenticated USING(public.fecho_diario_has_role(escola_id,ARRAY['secretaria','admin_secretaria','admin_secretario','secretaria_financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']));
+CREATE POLICY expediente_config_read ON public.secretaria_expediente_config FOR SELECT TO authenticated USING(public.fecho_diario_has_role(escola_id,ARRAY['secretaria','admin_secretaria','admin_secretario','secretaria_financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']));
+
+-- Capture authoritative row mutations; never trust caller-supplied audit actor or arbitrary JSON.
+CREATE OR REPLACE FUNCTION public.capture_secretaria_expediente_operation()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE v_actor uuid:=auth.uid(); v_role text; v_row jsonb; v_old jsonb; v_school uuid; v_at timestamptz; v_day date; v_late boolean; v_action text; v_detail jsonb;
+BEGIN
+ IF v_actor IS NULL THEN RETURN NULL; END IF;
+ v_row:=CASE WHEN TG_OP='DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+ v_old:=CASE WHEN TG_OP='UPDATE' THEN to_jsonb(OLD) ELSE '{}'::jsonb END;
+ IF TG_OP='UPDATE' AND (v_row-'updated_at'-'updated_by'-'print_count'-'last_printed_at'-'status_fiscal'-'fiscal_error') IS NOT DISTINCT FROM (v_old-'updated_at'-'updated_by'-'print_count'-'last_printed_at'-'status_fiscal'-'fiscal_error') THEN RETURN NULL; END IF;
+ v_school:=(v_row->>'escola_id')::uuid;
+ IF v_school IS NULL OR v_row->>'id' IS NULL THEN RETURN NULL; END IF;
+ SELECT papel INTO v_role FROM public.escola_users WHERE escola_id=v_school AND user_id=v_actor AND tenant_type='k12' AND papel IN ('secretaria','secretaria_financeiro','admin_secretaria','admin_secretario','admin_financeiro','admin','admin_escola','staff_admin') ORDER BY papel LIMIT 1;
+ IF NOT FOUND THEN RETURN NULL; END IF;
+ v_at:=clock_timestamp(); v_day:=(v_at AT TIME ZONE 'Africa/Luanda')::date;
+ PERFORM pg_advisory_xact_lock_shared(hashtextextended('secretaria-close:'||v_school::text||':'||v_day::text,0));
+ v_at:=clock_timestamp();
+ SELECT EXISTS(SELECT 1 FROM public.secretaria_expedientes WHERE escola_id=v_school AND day_key=v_day) INTO v_late;
+ v_action:=CASE WHEN TG_OP='INSERT' THEN 'CREATE' WHEN TG_OP='DELETE' THEN 'DELETE' ELSE 'UPDATE' END;
+ v_detail:=jsonb_strip_nulls(jsonb_build_object('aluno_id',v_row->>'aluno_id','matricula_id',v_row->>'matricula_id','status_anterior',v_old->>'status','status',v_row->>'status','tipo',v_row->>'tipo','valor',CASE WHEN TG_TABLE_NAME='pagamentos' THEN v_row->>'valor_pago' END,'metodo',CASE WHEN TG_TABLE_NAME='pagamentos' THEN v_row->>'metodo' END));
+ INSERT INTO public.secretaria_expediente_operacoes(escola_id,day_key,occurred_at,actor_id,actor_role,entity,entity_id,action,is_after_close,detail)
+ VALUES(v_school,v_day,v_at,v_actor,v_role,TG_TABLE_NAME,v_row->>'id',v_action,v_late,v_detail);
+ RETURN NULL;
+END; $$;
+REVOKE ALL ON FUNCTION public.capture_secretaria_expediente_operation() FROM PUBLIC,anon,authenticated;
+DO $$ DECLARE t text; BEGIN
+ FOREACH t IN ARRAY ARRAY['alunos','candidaturas','matriculas','pagamentos','documentos_emitidos','servico_pedidos','mensalidades','notas','financeiro_lancamentos'] LOOP
+ EXECUTE format('CREATE TRIGGER trg_secretaria_expediente_operation AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.capture_secretaria_expediente_operation()',t);
+ END LOOP;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.secretaria_fechar_expediente(p_escola_id uuid,p_day_key date)
+RETURNS public.secretaria_expedientes LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $$
+DECLARE v public.secretaria_expedientes; v_summary jsonb; v_count bigint; v_event uuid;
+BEGIN
+ IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['secretaria','secretaria_financeiro','admin_secretaria','admin_secretario','admin_financeiro','admin','admin_escola','staff_admin']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
+ IF p_day_key IS NULL OR p_day_key>(clock_timestamp() AT TIME ZONE 'Africa/Luanda')::date THEN RAISE EXCEPTION 'invalid_day' USING ERRCODE='22023'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('secretaria-close:'||p_escola_id::text||':'||p_day_key::text,0));
+ SELECT * INTO v FROM public.secretaria_expedientes WHERE escola_id=p_escola_id AND day_key=p_day_key;
+ IF FOUND THEN RETURN v; END IF;
+ SELECT coalesce(jsonb_object_agg(entity,n),'{}'::jsonb),coalesce(sum(n),0) INTO v_summary,v_count FROM (
+ SELECT entity,count(*) n FROM public.secretaria_expediente_operacoes WHERE escola_id=p_escola_id AND day_key=p_day_key AND NOT is_after_close GROUP BY entity
+ ) s;
+ INSERT INTO public.secretaria_expedientes(escola_id,day_key,closed_at,closed_by,operation_count,summary) VALUES(p_escola_id,p_day_key,clock_timestamp(),auth.uid(),v_count,v_summary) RETURNING * INTO v;
+ INSERT INTO public.eventos(escola_id,tipo,actor_id,entidade_tipo,entidade_id,payload) VALUES(p_escola_id,'secretaria.expediente.fechado',auth.uid(),'secretaria_expedientes',v.id,jsonb_build_object('day_key',p_day_key,'operation_count',v_count)) RETURNING id INTO v_event;
+ INSERT INTO public.notificacoes(escola_id,evento_id,destinatario_id,titulo,corpo,prioridade,action_label,action_url,gatilho,tipo,agrupamento_chave)
+ SELECT DISTINCT p_escola_id,v_event,e.user_id,'Expediente concluído',p_day_key::text||' · '||v_count::text||' registos de atividade','info'::public.notificacao_prioridade,'Consultar fecho','/escola/'||p_escola_id::text||'/operacoes/fecho-diario?date='||p_day_key::text,'S','I','expediente:'||v.id::text
+ FROM public.escola_users e WHERE e.escola_id=p_escola_id AND e.tenant_type='k12' AND e.papel IN ('admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria','admin_secretario','diretor') AND EXISTS(SELECT 1 FROM public.profiles p WHERE p.user_id=e.user_id AND p.deleted_at IS NULL)
+ ON CONFLICT(evento_id,destinatario_id) DO NOTHING;
+ RETURN v;
+END; $$;
+REVOKE ALL ON FUNCTION public.secretaria_fechar_expediente(uuid,date) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.secretaria_fechar_expediente(uuid,date) TO authenticated;
+CREATE OR REPLACE FUNCTION public.secretaria_configurar_expediente(p_escola_id uuid,p_close_time time,p_reminder_minutes integer,p_weekdays integer[],p_enabled boolean)
+RETURNS public.secretaria_expediente_config LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $$ DECLARE v public.secretaria_expediente_config; BEGIN
+ IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['admin','admin_escola','staff_admin','admin_financeiro','admin_secretaria','admin_secretario','diretor']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
+ INSERT INTO public.secretaria_expediente_config VALUES(p_escola_id,p_close_time,p_reminder_minutes,p_weekdays,p_enabled)
+ ON CONFLICT(escola_id) DO UPDATE SET close_time=excluded.close_time,reminder_minutes=excluded.reminder_minutes,weekdays=excluded.weekdays,enabled=excluded.enabled RETURNING * INTO v;
+ RETURN v;
+END; $$;
+REVOKE ALL ON FUNCTION public.secretaria_configurar_expediente(uuid,time,integer,integer[],boolean) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.secretaria_configurar_expediente(uuid,time,integer,integer[],boolean) TO authenticated;
+-- Opt-in per school configuration; one durable reminder per day, no polling clients.
+CREATE OR REPLACE FUNCTION public.secretaria_enviar_lembretes_expediente()
+RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $$
+DECLARE c record; v_now timestamp:=clock_timestamp() AT TIME ZONE 'Africa/Luanda'; v_day date:=v_now::date; v_event uuid; v_n integer:=0;
+BEGIN
+ FOR c IN SELECT * FROM public.secretaria_expediente_config x WHERE x.enabled AND extract(isodow FROM v_now)::integer=ANY(x.weekdays)
+ AND v_now >= v_day+x.close_time-make_interval(mins=>x.reminder_minutes) AND v_now < v_day+x.close_time+interval '1 hour'
+ AND NOT EXISTS(SELECT 1 FROM public.secretaria_expedientes f WHERE f.escola_id=x.escola_id AND f.day_key=v_day)
+ AND NOT EXISTS(SELECT 1 FROM public.secretaria_expediente_reminders r WHERE r.escola_id=x.escola_id AND r.day_key=v_day)
+ LOOP
+ PERFORM pg_advisory_xact_lock(hashtextextended('secretaria-close:'||c.escola_id::text||':'||v_day::text,0));
+ IF EXISTS(SELECT 1 FROM public.secretaria_expedientes WHERE escola_id=c.escola_id AND day_key=v_day) THEN CONTINUE; END IF;
+ INSERT INTO public.secretaria_expediente_reminders VALUES(c.escola_id,v_day) ON CONFLICT DO NOTHING;
+ IF NOT FOUND THEN CONTINUE; END IF;
+ INSERT INTO public.eventos(escola_id,tipo,payload,entidade_tipo) VALUES(c.escola_id,'secretaria.expediente.lembrete',jsonb_build_object('day_key',v_day),'secretaria_expedientes') RETURNING id INTO v_event;
+ INSERT INTO public.notificacoes(escola_id,evento_id,destinatario_id,titulo,corpo,prioridade,action_label,action_url,gatilho,tipo,agrupamento_chave)
+ SELECT DISTINCT c.escola_id,v_event,e.user_id,'Fecho do expediente','O expediente de hoje ainda está por fechar.','aviso'::public.notificacao_prioridade,'Fechar expediente','/escola/'||c.escola_id::text||'/operacoes/fecho-diario?date='||v_day::text,'S','A','expediente-lembrete:'||v_day::text
+ FROM public.escola_users e WHERE e.escola_id=c.escola_id AND e.tenant_type='k12' AND e.papel IN ('secretaria','secretaria_financeiro','admin_secretaria','admin_secretario','admin_financeiro') AND EXISTS(SELECT 1 FROM public.profiles p WHERE p.user_id=e.user_id AND p.deleted_at IS NULL)
+ ON CONFLICT(evento_id,destinatario_id) DO NOTHING;
+ v_n:=v_n+1;
+ END LOOP;
+ RETURN v_n;
+END; $$;
+REVOKE ALL ON FUNCTION public.secretaria_enviar_lembretes_expediente() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.secretaria_enviar_lembretes_expediente() TO service_role;
+SELECT cron.schedule('secretaria-expediente-reminder','*/15 * * * *','SELECT public.secretaria_enviar_lembretes_expediente();');
+COMMIT;
