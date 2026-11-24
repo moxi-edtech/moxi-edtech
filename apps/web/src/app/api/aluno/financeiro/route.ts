@@ -179,7 +179,7 @@ export async function GET(request: Request) {
       ano_letivo_atual: anoAtivo?.ano ?? null,
       bolsas: (matriculasBolsa ?? []).map(m => ({
         ano_letivo: m.ano_letivo,
-        vigencia_inicio: m.bolsa_integral ? m.bolsa_integral_inicio : (Array.isArray(m.bolsa_parcial_periodos) ? (m.bolsa_parcial_periodos.at(-1) as { inicio?: string } | undefined)?.inicio ?? null : null),
+        vigencia_inicio: m.bolsa_integral ? m.bolsa_integral_inicio : (Array.isArray(m.bolsa_parcial_periodos) ? (m.bolsa_parcial_periodos[m.bolsa_parcial_periodos.length - 1] as { inicio?: string } | undefined)?.inicio ?? null : null),
         percentagem: m.bolsa_integral ? 100 : Number(m.bolsa_parcial_percentagem),
       })),
       servicos,
