@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { Banknote, CreditCard, CheckCircle2, AlertTriangle, Loader2, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
-const NOTES = [5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
+const NOTES = [5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05];
 const format = (value: number) => new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 const inputClass = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20 disabled:opacity-60";
 type Channels = { numerario: number; tpa: number; transferencia: number; mcx: number };
@@ -25,7 +25,7 @@ export default function FechoCaixaCego({ onConfirm, onClose, completionLabel="Vo
   const pending = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ResultadoFecho | null>(null);
-  const cash = cashMode==="total"?Number(cashTotal||0):NOTES.reduce((sum, note) => sum + note * Number(counts[note] || 0), 0);
+  const cash = cashMode==="total"?Number(cashTotal||0):NOTES.reduce((sum, note) => sum + Math.round(note*100) * Number(counts[note] || 0), 0)/100;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -79,7 +79,7 @@ export default function FechoCaixaCego({ onConfirm, onClose, completionLabel="Vo
     <form onSubmit={submit} className="space-y-4" aria-busy={submitting}>
       <section className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold text-foreground"><Banknote className="h-5 w-5 text-klasse-green" /> Numerário</h2><p className="mt-1 text-sm text-muted-foreground">Informe o total contado ou utilize a contagem por denominação.</p></div><div className="text-right"><p className="text-xs text-muted-foreground">Total contado</p><p className="font-mono text-xl font-semibold text-foreground">{format(cash)}</p></div></div>
-        <div className="flex flex-wrap gap-2"><Button type="button" variant={cashMode==="total"?"primary":"outline"} disabled={submitting} onClick={()=>setCashMode("total")}>Valor total</Button><Button type="button" variant={cashMode==="count"?"primary":"outline"} disabled={submitting} onClick={()=>setCashMode("count")}>Contar notas e moedas</Button></div>{cashMode==="total"?<label className="block space-y-1 text-sm">Numerário contado (Kz)<input type="number" min="0" max="9999999999.99" step="0.01" inputMode="decimal" className={inputClass} value={cashTotal} placeholder="0,00" disabled={submitting} onChange={e=>setCashTotal(e.target.value)}/></label>:<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{NOTES.map(note => <label key={note} className="space-y-1 rounded-xl border border-border p-3 text-sm"><span className="font-medium">{format(note)}</span><input className={inputClass} inputMode="numeric" pattern="[0-9]*" maxLength={8} placeholder="0" value={counts[note] || ""} disabled={submitting} onChange={event => { if (/^\d*$/.test(event.target.value)) setCounts(prev => ({ ...prev, [note]: event.target.value })); }} /><span className="block text-xs text-muted-foreground">{format(note * Number(counts[note] || 0))}</span></label>)}</div>}
+        <div className="flex flex-wrap gap-2"><Button type="button" aria-pressed={cashMode==="total"} variant={cashMode==="total"?"default":"outline"} disabled={submitting} onClick={()=>setCashMode("total")}>Valor total</Button><Button type="button" aria-pressed={cashMode==="count"} variant={cashMode==="count"?"default":"outline"} disabled={submitting} onClick={()=>setCashMode("count")}>Contar notas e moedas</Button></div>{cashMode==="total"?<label className="block space-y-1 text-sm">Numerário contado (Kz)<input type="number" min="0" max="9999999999.99" step="0.01" inputMode="decimal" className={inputClass} value={cashTotal} placeholder="0,00" disabled={submitting} onChange={e=>setCashTotal(e.target.value)}/></label>:<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{NOTES.map(note => <label key={note} className="space-y-1 rounded-xl border border-border p-3 text-sm"><span className="font-medium">{format(note)}</span><input className={inputClass} inputMode="numeric" pattern="[0-9]*" maxLength={8} placeholder="0" value={counts[note] || ""} disabled={submitting} onChange={event => { if (/^\d*$/.test(event.target.value)) setCounts(prev => ({ ...prev, [note]: event.target.value })); }} /><span className="block text-xs text-muted-foreground">{format(note * Number(counts[note] || 0))}</span></label>)}</div>}
       </section>
       <section className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6">
         <div><h2 className="flex items-center gap-2 font-semibold text-foreground"><CreditCard className="h-5 w-5 text-klasse-green" /> Pagamentos digitais</h2><p className="mt-1 text-sm text-muted-foreground">Informe os totais dos comprovativos. Deixe vazio quando não houver movimento.</p></div>
@@ -91,7 +91,7 @@ export default function FechoCaixaCego({ onConfirm, onClose, completionLabel="Vo
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" disabled={submitting} onClick={onClose} className="border border-border bg-card text-foreground">Cancelar</Button>
-        <Button type="submit" disabled={submitting} className="bg-klasse-gold text-klasse-gold-900 hover:brightness-95">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}{submitting ? "A registar..." : "Declarar fecho"}</Button>
+        <Button type="submit" disabled={submitting} className="bg-klasse-gold text-white hover:brightness-95">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}{submitting ? "A registar..." : "Declarar fecho"}</Button>
       </div>
     </form>
   );
