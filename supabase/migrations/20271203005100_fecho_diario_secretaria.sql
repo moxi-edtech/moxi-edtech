@@ -45,7 +45,7 @@ AS $$
 DECLARE v_row public.fecho_caixa%ROWTYPE;
 BEGIN
  IF NOT public.fecho_diario_has_role(p_escola_id,ARRAY['financeiro','admin_financeiro','admin','admin_escola','staff_admin','diretor']) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
- IF p_aprovacao IS NULL OR p_aprovacao NOT IN ('approved','rejected') OR (p_aprovacao='rejected' AND nullif(trim(p_justificativa),'') IS NULL) THEN RAISE EXCEPTION 'invalid_decision' USING ERRCODE='22023'; END IF;
+ IF p_aprovacao IS NULL OR p_aprovacao NOT IN ('approved','rejected') OR length(coalesce(p_justificativa,''))>255 OR (p_aprovacao='rejected' AND nullif(trim(p_justificativa),'') IS NULL) THEN RAISE EXCEPTION 'invalid_decision' USING ERRCODE='22023'; END IF;
  SELECT * INTO v_row FROM public.fecho_caixa WHERE escola_id=p_escola_id AND id=p_fecho_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'fecho_not_found'; END IF;
  IF v_row.declared_by=auth.uid() THEN RAISE EXCEPTION 'self_approval_not_allowed' USING ERRCODE='42501'; END IF;
@@ -75,26 +75,26 @@ REVOKE ALL ON FUNCTION public.financeiro_fecho_declarar_e_snapshot(uuid,date,num
 GRANT EXECUTE ON FUNCTION public.financeiro_fecho_declarar_e_snapshot(uuid,date,numeric,numeric,numeric,numeric),public.financeiro_fecho_aprovar(uuid,uuid,text,text,jsonb),public.declarar_fecho_caixa(uuid,numeric,numeric,numeric),public.aprovar_fecho_caixa(uuid) TO authenticated;
 
 CREATE TABLE public.secretaria_expedientes (
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(), escola_id uuid NOT NULL REFERENCES public.escolas(id),
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), escola_id uuid NOT NULL REFERENCES public.escolas(id) ON DELETE CASCADE,
  day_key date NOT NULL, closed_at timestamptz NOT NULL, closed_by uuid NOT NULL,
  operation_count bigint NOT NULL CHECK(operation_count>=0), summary jsonb NOT NULL,
  UNIQUE(escola_id,day_key)
 );
 CREATE TABLE public.secretaria_expediente_operacoes (
- id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, escola_id uuid NOT NULL REFERENCES public.escolas(id),
+ id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, escola_id uuid NOT NULL REFERENCES public.escolas(id) ON DELETE CASCADE,
  day_key date NOT NULL, occurred_at timestamptz NOT NULL, actor_id uuid NOT NULL, actor_role text NOT NULL,
  entity text NOT NULL, entity_id text NOT NULL, action text NOT NULL,
  is_after_close boolean NOT NULL, detail jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 CREATE INDEX secretaria_expediente_operacoes_day_idx ON public.secretaria_expediente_operacoes(escola_id,day_key,id);
 CREATE TABLE public.secretaria_expediente_config (
- escola_id uuid PRIMARY KEY REFERENCES public.escolas(id), close_time time NOT NULL DEFAULT '17:00',
+ escola_id uuid PRIMARY KEY REFERENCES public.escolas(id) ON DELETE CASCADE, close_time time NOT NULL DEFAULT '17:00',
  reminder_minutes integer NOT NULL DEFAULT 30 CHECK(reminder_minutes BETWEEN 0 AND 180),
  weekdays integer[] NOT NULL DEFAULT ARRAY[1,2,3,4,5] CHECK(cardinality(weekdays)>0 AND weekdays <@ ARRAY[1,2,3,4,5,6,7]),
  enabled boolean NOT NULL DEFAULT true
 );
 CREATE TABLE public.secretaria_expediente_reminders (
- escola_id uuid NOT NULL REFERENCES public.escolas(id), day_key date NOT NULL, PRIMARY KEY(escola_id,day_key)
+ escola_id uuid NOT NULL REFERENCES public.escolas(id) ON DELETE CASCADE, day_key date NOT NULL, PRIMARY KEY(escola_id,day_key)
 );
 ALTER TABLE public.secretaria_expedientes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.secretaria_expediente_operacoes ENABLE ROW LEVEL SECURITY;
@@ -110,7 +110,7 @@ CREATE POLICY expediente_config_read ON public.secretaria_expediente_config FOR 
 CREATE OR REPLACE FUNCTION public.capture_secretaria_expediente_operation()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
-DECLARE v_actor uuid:=auth.uid(); v_role text; v_row jsonb; v_old jsonb; v_school uuid; v_at timestamptz; v_day date; v_late boolean; v_action text; v_detail jsonb;
+DECLARE v_actor uuid:=auth.uid(); v_role text; v_row jsonb; v_old jsonb; v_school uuid; v_at timestamptz; v_day date; v_late boolean; v_action text; v_detail jsonb; v_entity text:=coalesce(TG_ARGV[0],TG_TABLE_NAME);
 BEGIN
  IF v_actor IS NULL THEN RETURN NULL; END IF;
  v_row:=CASE WHEN TG_OP='DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
@@ -130,15 +130,15 @@ BEGIN
  END IF;
  SELECT EXISTS(SELECT 1 FROM public.secretaria_expedientes WHERE escola_id=v_school AND day_key=v_day) INTO v_late;
  v_action:=CASE WHEN TG_OP='INSERT' THEN 'CREATE' WHEN TG_OP='DELETE' THEN 'DELETE' ELSE 'UPDATE' END;
- v_detail:=jsonb_strip_nulls(jsonb_build_object('aluno_id',v_row->>'aluno_id','matricula_id',v_row->>'matricula_id','status_anterior',coalesce(v_old->>'status',v_old->>'estado'),'status',coalesce(v_row->>'status',v_row->>'estado'),'tipo',v_row->>'tipo','valor',CASE WHEN TG_TABLE_NAME='pagamentos' THEN v_row->>'valor_pago' WHEN TG_TABLE_NAME='financeiro_estornos' THEN v_row->>'valor' END,'metodo',CASE WHEN TG_TABLE_NAME='pagamentos' THEN v_row->>'metodo' END));
+ v_detail:=jsonb_strip_nulls(jsonb_build_object('aluno_id',v_row->>'aluno_id','matricula_id',v_row->>'matricula_id','status_anterior',coalesce(v_old->>'status',v_old->>'estado'),'status',coalesce(v_row->>'status',v_row->>'estado'),'tipo',v_row->>'tipo','valor',CASE WHEN v_entity='pagamentos' THEN v_row->>'valor_pago' WHEN v_entity='financeiro_estornos' THEN v_row->>'valor' END,'metodo',CASE WHEN v_entity='pagamentos' THEN v_row->>'metodo' END));
  INSERT INTO public.secretaria_expediente_operacoes(escola_id,day_key,occurred_at,actor_id,actor_role,entity,entity_id,action,is_after_close,detail)
- VALUES(v_school,v_day,v_at,v_actor,v_role,TG_TABLE_NAME,v_row->>'id',v_action,v_late,v_detail);
+ VALUES(v_school,v_day,v_at,v_actor,v_role,v_entity,v_row->>'id',v_action,v_late,v_detail);
  RETURN NULL;
 END; $$;
 REVOKE ALL ON FUNCTION public.capture_secretaria_expediente_operation() FROM PUBLIC,anon,authenticated;
 DO $$ DECLARE t text; BEGIN
  FOREACH t IN ARRAY ARRAY['alunos','candidaturas','matriculas','pagamentos','documentos_emitidos','servico_pedidos','mensalidades','notas','financeiro_lancamentos','financeiro_estornos','reapreciacao_pedidos','frequencias'] LOOP
- EXECUTE format('CREATE TRIGGER trg_secretaria_expediente_operation AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.capture_secretaria_expediente_operation()',t);
+ EXECUTE format('CREATE TRIGGER trg_secretaria_expediente_operation AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.capture_secretaria_expediente_operation(%L)',t,t);
  END LOOP;
 END; $$;
 
