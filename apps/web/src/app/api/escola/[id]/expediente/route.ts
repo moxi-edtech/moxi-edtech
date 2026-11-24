@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { daySchema, expedienteAccess, getExpediente, getExpedienteHistory, todayLuanda } from "@/lib/secretaria/expediente";
+import { daySchema, expedienteAccess, getExpediente, getExpedienteHistory, getExpedienteDetail, getExpedienteActivity, todayLuanda } from "@/lib/secretaria/expediente";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,6 +20,7 @@ export async function GET(req: Request, { params }: Context) {
     const cursor = Number(url.searchParams.get("cursor") ?? 0);
     if (!date.success || date.data > todayLuanda() || !Number.isSafeInteger(cursor) || cursor < 0) return json({ ok: false, error: "Filtro inválido." }, 400);
     const view=url.searchParams.get("view");
+    if(view==="detail")return json({ok:true,date:date.data,...await getExpedienteDetail(access,date.data)});
     if(view==="history"||view==="supervision"){
       if(view==="supervision"&&!access.canSupervise)return json({ok:false,error:"Sem acesso à supervisão."},403);
       const end=daySchema.safeParse(url.searchParams.get("to")??todayLuanda());
@@ -36,7 +37,9 @@ export async function GET(req: Request, { params }: Context) {
     }
     const filters=z.object({entity:z.string().regex(/^[a-z_]{1,64}$/).optional(),actor:z.union([z.literal("system"),z.string().uuid()]).optional(),late:z.enum(["1","0"]).optional()}).safeParse({entity:url.searchParams.get("entity")??undefined,actor:url.searchParams.get("actor")??undefined,late:url.searchParams.get("late")??undefined});
     if(!filters.success)return json({ok:false,error:"Filtro inválido."},400);
-    return json({ ok: true, date: date.data, ...await getExpediente(access, date.data, cursor,{entity:filters.data.entity,actor:filters.data.actor,late:filters.data.late==="1"}) });
+    const query={entity:filters.data.entity,actor:filters.data.actor,late:filters.data.late==="1"};
+    if(view==="activity")return json({ok:true,date:date.data,...await getExpedienteActivity(access,date.data,cursor,query)});
+    return json({ok:true,date:date.data,...await getExpediente(access,date.data,cursor,query)});
   } catch { return json({ ok: false, error: "Não foi possível consultar o expediente." }, 500); }
 }
 export async function POST(req: Request, { params }: Context) {
