@@ -4,7 +4,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
-import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { K12_DOCUMENTOS_ROLE_GROUP } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,7 +31,7 @@ async function authorize() {
   if (!auth.user) return { supabase, error: NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }) };
   const escolaId = await resolveEscolaIdForUser(supabase, auth.user.id);
   if (!escolaId) return { supabase, error: NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 }) };
-  const authz = await requireRoleInSchool({ supabase, escolaId, roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP] });
+  const authz = await requireRoleInSchool({ supabase, escolaId, roles: [...K12_DOCUMENTOS_ROLE_GROUP] });
   if (authz.error) return { supabase, error: authz.error };
   return { supabase, user: auth.user, escolaId, error: null };
 }

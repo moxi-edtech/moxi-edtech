@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRoleInSchool } from "@/lib/authz";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { K12_DOCUMENTOS_ROLE_GROUP } from "@/lib/roles";
 import { docPrintUrl, TIPOS_DOCUMENTO_EMITIVEL } from "@/lib/documentos/printUrl";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     if (!auth.user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const escolaId = await resolveEscolaIdForUser(supabase, auth.user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
-    const authz = await requireRoleInSchool({ supabase, escolaId, roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP] });
+    const authz = await requireRoleInSchool({ supabase, escolaId, roles: [...K12_DOCUMENTOS_ROLE_GROUP] });
     if (authz.error) return authz.error;
     const params = new URL(request.url).searchParams;
     const page = Number(params.get("page") ?? 1);

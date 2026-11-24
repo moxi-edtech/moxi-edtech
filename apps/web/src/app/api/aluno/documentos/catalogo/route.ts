@@ -1,3 +1,4 @@
+import { portalDocumentType, DOCUMENT_BLOCK_REASONS } from "@/lib/documentos/portalDocumentPolicy";
 import { isBoletimPaid, BOLETIM_SERVICE_CODE, isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
     if (!selectedId) return NextResponse.json({ ok: false, error: "Nenhum educando autorizado encontrado", next_action: { type: "contact_secretaria", label: "Regularizar acesso", href: "/aluno/avisos" } }, { status: 403 });
 
     const { escolaId } = ctx;
-    const { matricula } = await resolveBoletimMatricula(supabase, {
+    const { matricula, context } = await resolveBoletimMatricula(supabase, {
       escolaId, alunoId: selectedId, userId: ctx.userId,
       anoLetivoId: new URL(request.url).searchParams.get("ano_letivo_id"),
     });
@@ -47,6 +48,11 @@ export async function GET(request: Request) {
       .order("nome", { ascending: true });
 
     if (catError) throw catError;
+    const { data: policy, error: policyError } = await (supabase as any).rpc('aluno_documento_acesso', {
+      p_escola_id: escolaId, p_aluno_id: selectedId, p_matricula_id: matricula.id,
+      p_session_id: context.anoLetivoId, p_tipo: null,
+    });
+    if (policyError || !policy) return NextResponse.json({ ok: false, error: 'Não foi possível verificar os documentos.' }, { status: 503 });
 
     // 2. Buscar pedidos e intenções
     const { data: pedidos, error: pedError } = await supabase
@@ -100,19 +106,29 @@ export async function GET(request: Request) {
       if (isBoletimServiceCode(item.codigo) && status === "granted" && !boletimPago) {
         status = "pending";
       }
+      const tipo = portalDocumentType(item.codigo);
+      const decision = tipo ? policy[tipo] : null;
+      if (tipo) {
+        if (!decision?.ok) status = 'available';
+        else if (decision.granted === true) status = 'granted';
+        else if (decision.status === 'approval') status = decision.pedido_id ? 'blocked' : 'available';
+        else if (decision.status === 'verification') status = 'pending';
+        else if (decision.status === 'pending_payment') status = decision.pagamento_intent_id ? 'pending_payment' : 'available';
+      }
       const metadata = intent?.meta && typeof intent.meta === "object" && !Array.isArray(intent.meta)
         ? intent.meta : null;
       return {
         ...item,
-        pedido_id: pedido?.id ?? null,
-        pagamento_intent_id: intent?.id ?? null,
+        pedido_id: tipo ? decision?.pedido_id ?? null : pedido?.id ?? null,
+        pagamento_intent_id: tipo ? decision?.pagamento_intent_id ?? null : intent?.id ?? null,
+        indisponivel_motivo: tipo && !decision?.ok ? DOCUMENT_BLOCK_REASONS[decision?.reason] ?? 'Documento indisponível.' : null,
         status,
         valor: item.codigo === BOLETIM_SERVICE_CODE && boletimPago
           ? pedidoBoletimPago?.valor_cobrado ?? item.valor_base
           : pedido?.valor_cobrado ?? item.valor_base,
         // Uma taxa de 0 Kz não significa automaticamente gratuidade:
         // há escolas com pagamento obrigatório ainda sem preço configurado.
-        pagamento_configurado: Number(pedido?.valor_cobrado ?? item.valor_base) > 0 ||
+        pagamento_configurado: tipo ? decision?.ok === true : Number(pedido?.valor_cobrado ?? item.valor_base) > 0 ||
           (!item.exige_pagamento_antes_de_liberar && !isBoletimServiceCode(item.codigo)) ||
           (isBoletimServiceCode(item.codigo) && boletimPago) ||
           (status === "granted" && !isBoletimServiceCode(item.codigo)),

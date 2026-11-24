@@ -115,3 +115,10 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.emitir_documento_final(uuid,uuid,integer,text)
 TO authenticated, service_role;
+
+-- Portal ownership and audit fixtures for the disposable database only.
+ALTER TABLE public.alunos ADD COLUMN IF NOT EXISTS usuario_auth_id uuid;
+ALTER TABLE public.alunos ADD COLUMN IF NOT EXISTS profile_id uuid;
+CREATE TABLE IF NOT EXISTS public.encarregados(id uuid PRIMARY KEY, escola_id uuid NOT NULL, email text);
+CREATE TABLE IF NOT EXISTS public.aluno_encarregados(escola_id uuid NOT NULL, aluno_id uuid NOT NULL, encarregado_id uuid NOT NULL);
+CREATE TABLE IF NOT EXISTS public.audit_logs(escola_id uuid, actor_id uuid, action text, entity text, entity_id text, portal text, details jsonb);

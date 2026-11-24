@@ -13,6 +13,7 @@ INSERT INTO public.servicos_escola(escola_id,codigo,nome,valor_base,exige_pagame
  ('00000000-0000-4000-8000-000000007101','DOC_CERTIFICADO_HABILITACOES','Certificado',0,false,true),
  ('00000000-0000-4000-8000-000000007101','DOC_DECLARACAO_FREQUENCIA','Declaração simples',0,true,false),
  ('00000000-0000-4000-8000-000000007101','DOC_BOLETIM_TRIMESTRAL','Boletim',0,false,false);
+UPDATE public.alunos SET usuario_auth_id='00000000-0000-4000-8000-000000007105' WHERE id='00000000-0000-4000-8000-000000007105';
 SET LOCAL ROLE authenticated;
 DO $$
 DECLARE s uuid := '00000000-0000-4000-8000-000000007101'; a uuid := '00000000-0000-4000-8000-000000007105'; y uuid := '00000000-0000-4000-8000-000000007106'; v jsonb; w jsonb;
@@ -55,8 +56,8 @@ RESET ROLE;
 DO $$
 DECLARE v_id uuid;
 BEGIN
- IF has_function_privilege('authenticated','public._documento_individual_politica(uuid,uuid,uuid,text,uuid)','EXECUTE')
- OR has_function_privilege('anon','public._documento_individual_politica(uuid,uuid,uuid,text,uuid)','EXECUTE')
+ IF has_function_privilege('authenticated','public._documento_individual_politica(uuid,uuid,uuid,text,uuid,boolean)','EXECUTE')
+ OR has_function_privilege('anon','public._documento_individual_politica(uuid,uuid,uuid,text,uuid,boolean)','EXECUTE')
  THEN RAISE EXCEPTION 'PRIVATE_POLICY_EXPOSED'; END IF;
  IF NOT EXISTS (SELECT 1 FROM public.documentos_emitidos WHERE escola_id='00000000-0000-4000-8000-000000007101' AND tipo::text='certificado') THEN RAISE EXCEPTION 'STAFF_PERSISTENCE_FAILED'; END IF;
  BEGIN
@@ -68,4 +69,38 @@ BEGIN
  END;
 END;
 $$;
+-- Portal must request the exact closed year and never get the staff exemption.
+SET LOCAL ROLE authenticated;
+DO $portaltest$
+DECLARE s uuid := '00000000-0000-4000-8000-000000007101'; a uuid := '00000000-0000-4000-8000-000000007105'; y uuid := '00000000-0000-4000-8000-000000007106'; m uuid := '00000000-0000-4000-8000-000000007108'; v jsonb; w jsonb;
+BEGIN
+  PERFORM set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated','escola_id',s)::text,true);
+  v:=public.aluno_documento_acesso(s,a,y,m,'certificado');
+  IF v->>'status' IS DISTINCT FROM 'approval' THEN RAISE EXCEPTION 'PORTAL_APPROVAL_BYPASS: %',v; END IF;
+  v:=public.aluno_documento_solicitar(s,a,y,m,'certificado');
+  w:=public.aluno_documento_solicitar(s,a,y,m,'certificado');
+  IF v->>'status' IS DISTINCT FROM 'blocked' OR v->>'pedido_id' IS NULL OR v->>'pedido_id' IS DISTINCT FROM w->>'pedido_id' THEN RAISE EXCEPTION 'PORTAL_REQUEST_NOT_IDEMPOTENT: % %',v,w; END IF;
+  BEGIN
+    PERFORM public.aluno_documento_acesso(s,a,'00000000-0000-4000-8000-000000007999',m,'certificado');
+    RAISE EXCEPTION 'PORTAL_CROSS_YEAR_BYPASS';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN
+    PERFORM public.aluno_documento_acesso(s,'00000000-0000-4000-8000-000000007999',y,m,'certificado');
+    RAISE EXCEPTION 'PORTAL_OTHER_STUDENT_BYPASS';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END;
+$portaltest$;
+RESET ROLE;
+UPDATE public.historico_disciplinas SET nota_final=NULL WHERE historico_ano_id='00000000-0000-4000-8000-000000007110';
+UPDATE public.servicos_escola SET valor_base=1000, exige_pagamento_antes_de_liberar=true WHERE escola_id='00000000-0000-4000-8000-000000007101' AND codigo='DOC_DECLARACAO_NOTAS';
+SET LOCAL ROLE authenticated;
+DO $notastest$
+DECLARE v jsonb;
+BEGIN
+  PERFORM set_config('request.jwt.claims',json_build_object('sub','00000000-0000-4000-8000-000000007103','role','authenticated','escola_id','00000000-0000-4000-8000-000000007101')::text,true);
+  v:=public.documento_individual_solicitar('00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007105','00000000-0000-4000-8000-000000007106','declaracao_notas');
+  IF v->>'reason' IS DISTINCT FROM 'NOTAS_INCOMPLETAS' OR v->>'pagamento_intent_id' IS NOT NULL THEN RAISE EXCEPTION 'NOTES_CHARGED_BEFORE_ELIGIBILITY: %',v; END IF;
+END;
+$notastest$;
+RESET ROLE;
 ROLLBACK;

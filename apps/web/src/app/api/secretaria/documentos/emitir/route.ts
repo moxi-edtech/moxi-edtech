@@ -9,7 +9,7 @@ import { recordAuditServer } from "@/lib/audit";
 import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
 import { requireFeature } from "@/lib/plan/requireFeature";
 import { HttpError } from "@/lib/errors";
-import { K12_SECRETARIA_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+import { K12_DOCUMENTOS_ROLE_GROUP } from "@/lib/roles";
 import { AcademicYearContextError, resolveAcademicYearContext } from "@/lib/academic-year/context";
 import { docPrintUrl } from "@/lib/documentos/printUrl";
 import { verificarCertificadoElegivel } from "@/lib/documentos/certificadoElegibilidade";
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
     const { error: authError } = await requireRoleInSchool({
       supabase,
       escolaId,
-      roles: [...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP],
+      roles: [...K12_DOCUMENTOS_ROLE_GROUP],
     });
     if (authError) return authError;
 
@@ -214,6 +214,10 @@ export async function POST(request: Request) {
           SERVICO_NAO_CONFIGURADO: "Configure o serviço em Emolumentos & Serviços.",
           TAXA_NAO_CONFIGURADA: "O serviço exige pagamento, mas não tem taxa definida. Corrija em Emolumentos & Serviços.",
           MATRICULA_NAO_ENCONTRADA: "A matrícula do ano escolhido não foi encontrada.",
+          HISTORICO_INEXISTENTE: "O histórico do ano escolhido não existe.",
+          HISTORICO_ABERTO: "Feche o histórico do ano escolhido antes de emitir.",
+          NOTAS_INEXISTENTES: "O histórico não tem classificações registadas.",
+          NOTAS_INCOMPLETAS: "Regularize as classificações antes de emitir ou cobrar.",
         };
         return NextResponse.json({
           ok: false, code: access?.reason ?? "DOCUMENTO_INDISPONIVEL",

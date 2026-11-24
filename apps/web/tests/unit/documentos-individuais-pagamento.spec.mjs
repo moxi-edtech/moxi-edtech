@@ -119,3 +119,22 @@ test("Central usa só a decisão canónica e apresenta ações de emissão, paga
   assert.match(fix, /NOT v_administrativo AND v_serv.exige_aprovacao/);
   assert.match(fix, /public.safe_auth_uid\(\) IS NOT NULL/);
 });
+
+test("portal documental consulta a política única com matrícula e ano explícitos", () => {
+  const solicitar = src("app/api/aluno/documentos/solicitar/route.ts");
+  const emitir = src("app/api/aluno/documentos/emitir/route.ts");
+  const catalogo = src("app/api/aluno/documentos/catalogo/route.ts");
+  assert.match(solicitar, /rpc\("aluno_documento_solicitar"/);
+  assert.doesNotMatch(solicitar, /rpc\("aluno_solicitar_servico"/);
+  assert.match(solicitar, /p_matricula_id: resolved\.matricula\.id/);
+  assert.match(solicitar, /p_session_id: resolved\.context\.anoLetivoId/);
+  assert.match(emitir, /rpc\("aluno_documento_acesso"/);
+  assert.doesNotMatch(emitir, /\.from\('servico_pedidos'\)/);
+  assert.match(catalogo, /rpc\('aluno_documento_acesso'/);
+  const policy = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271203004000_documentos_individuais_gratuidade_ssot.sql"), "utf8");
+  assert.match(policy, /p_tipo IN \('certificado','declaracao_notas','historico'\)/);
+  assert.match(policy, /NOT p_portal AND coalesce/);
+  assert.match(policy, /public\._aluno_documento_autorizar/);
+  assert.match(policy, /DOCUMENT_EXPLICIT_YEAR_REQUIRED/);
+  assert.match(policy, /'admin_secretaria','diretor'/);
+});

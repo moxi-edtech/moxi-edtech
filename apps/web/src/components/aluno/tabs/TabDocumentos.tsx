@@ -42,6 +42,7 @@ interface DocumentoCatalogo {
   exige_pagamento_antes_de_liberar: boolean;
   reject_reason?: string | null;
   pagamento_configurado?: boolean;
+  indisponivel_motivo?: string | null;
 }
 
 const DIGITAL_DOCUMENT_CODES = new Set([
@@ -153,7 +154,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
 
   const handleAction = async (doc: DocumentoCatalogo) => {
     if (doc.pagamento_configurado === false) {
-      error("Taxa não configurada", "A secretaria precisa definir o valor do boletim antes de o aluno fazer o pagamento.");
+      error("Documento indisponível", doc.indisponivel_motivo ?? "A secretaria precisa definir o valor antes de o aluno fazer o pagamento.");
       return;
     }
     if (doc.status === 'granted') {
