@@ -121,6 +121,7 @@ BEGIN
   WHERE p.escola_id=p_escola_id AND p.aluno_id=p_aluno_id AND p.matricula_id=v_matricula
     AND p.servico_codigo=v_codigo AND p.status IN ('granted','pending_payment','blocked')
     AND (p.valor_cobrado>0 OR NOT v_exige_pagamento)
+    AND (p_tipo <> 'declaracao_notas' OR p.contexto->>'origem' IN ('documentos_emissao_individual','portal_aluno_documentos') OR p.contexto->>'tipo_documento'='declaracao_notas')
   ORDER BY CASE WHEN p.status='granted' AND p.valor_cobrado>0 AND EXISTS (
     SELECT 1 FROM public.pagamento_intents i
     WHERE i.escola_id=p.escola_id AND i.aluno_id=p.aluno_id AND i.servico_pedido_id=p.id
@@ -128,7 +129,7 @@ BEGIN
         EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p.escola_id AND pg.aluno_id=p.aluno_id
           AND pg.status='settled' AND pg.valor_pago>=p.valor_cobrado
           AND pg.meta->>'pagamento_intent_id'=i.id::text AND pg.meta->>'pedido_id'=p.id::text)
-        OR (p.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND i.status='settled')
+        OR (p.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND i.status='settled' AND NOT EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p.escola_id AND pg.aluno_id=p.aluno_id AND pg.meta->>'pagamento_intent_id'=i.id::text AND pg.meta->>'pedido_id'=p.id::text))
       )
   ) THEN 0 WHEN p.status='pending_payment' THEN 1 WHEN p.status='granted' THEN 2 ELSE 3 END,
   p.created_at DESC,p.id DESC LIMIT 1;
@@ -140,14 +141,14 @@ BEGIN
       EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p_escola_id AND pg.aluno_id=p_aluno_id
         AND pg.status='settled' AND pg.valor_pago>=v_pedido.valor_cobrado
         AND pg.meta->>'pagamento_intent_id'=i.id::text AND pg.meta->>'pedido_id'=v_pedido.id::text)
-      OR (v_pedido.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND i.status='settled')
+      OR (v_pedido.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND i.status='settled' AND NOT EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=v_pedido.escola_id AND pg.aluno_id=v_pedido.aluno_id AND pg.meta->>'pagamento_intent_id'=i.id::text AND pg.meta->>'pedido_id'=v_pedido.id::text))
     ) THEN 0 ELSE 1 END,i.created_at DESC,i.id DESC LIMIT 1;
     v_pago := coalesce(v_pedido.status='granted' AND v_pedido.valor_cobrado>0
       AND v_intent.amount>=v_pedido.valor_cobrado AND (
         EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=p_escola_id AND pg.aluno_id=p_aluno_id
           AND pg.status='settled' AND pg.valor_pago>=v_pedido.valor_cobrado
           AND pg.meta->>'pagamento_intent_id'=v_intent.id::text AND pg.meta->>'pedido_id'=v_pedido.id::text)
-        OR (v_pedido.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND v_intent.status='settled')
+        OR (v_pedido.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual' AND v_intent.status='settled' AND NOT EXISTS (SELECT 1 FROM public.pagamentos pg WHERE pg.escola_id=v_pedido.escola_id AND pg.aluno_id=v_pedido.aluno_id AND pg.meta->>'pagamento_intent_id'=v_intent.id::text AND pg.meta->>'pedido_id'=v_pedido.id::text))
       ),false);
   END IF;
   IF v_pago THEN v_exige_pagamento:=true; END IF;
@@ -428,7 +429,7 @@ $roles$;
 
 CREATE OR REPLACE FUNCTION public.documentos_aprovacoes_pagina(p_escola_id uuid,p_page integer,p_query text DEFAULT '')
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO '' AS $queue$
-DECLARE v_total bigint; v_filtered bigint; v_items jsonb; v_query text := lower(btrim(coalesce(p_query,'')));
+DECLARE v_total bigint; v_filtered bigint; v_items jsonb; v_query text := translate(lower(btrim(coalesce(p_query,''))),'áàâãäéèêëíìîïóòôõöúùûüçñ','aaaaaeeeeiiiiooooouuuucn');
 BEGIN
   IF public.safe_auth_uid() IS NULL OR public.current_tenant_escola_id() IS DISTINCT FROM p_escola_id
     OR NOT public.user_has_role_in_school(p_escola_id,ARRAY['secretaria','secretaria_financeiro','admin_financeiro','admin_secretaria','admin','admin_escola','staff_admin','diretor']) THEN
@@ -439,8 +440,11 @@ BEGIN
     SELECT p.id,p.aluno_id,p.matricula_id,p.servico_codigo,p.servico_nome,p.valor_cobrado,p.created_at,
       to_jsonb(p)->>'reason_detail' AS reason_detail,
       jsonb_build_object('nome',a.nome,'nome_completo',to_jsonb(a)->>'nome_completo','numero_processo',to_jsonb(a)->>'numero_processo') AS aluno,
-      lower(concat_ws(' ',a.nome,to_jsonb(a)->>'nome_completo',to_jsonb(a)->>'numero_processo',p.servico_nome,p.servico_codigo)) AS search_text
+      y.ano AS ano_letivo,
+      translate(lower(concat_ws(' ',a.nome,to_jsonb(a)->>'nome_completo',to_jsonb(a)->>'numero_processo',p.servico_nome,p.servico_codigo,y.ano::text)),'áàâãäéèêëíìîïóòôõöúùûüçñ','aaaaaeeeeiiiiooooouuuucn') AS search_text
     FROM public.servico_pedidos p LEFT JOIN public.alunos a ON a.id=p.aluno_id AND a.escola_id=p.escola_id
+    LEFT JOIN public.matriculas m ON m.id=p.matricula_id AND m.escola_id=p.escola_id AND m.aluno_id=p.aluno_id
+    LEFT JOIN public.anos_letivos y ON y.id=m.session_id AND y.escola_id=p.escola_id
     WHERE p.escola_id=p_escola_id AND p.status='blocked' AND p.valor_cobrado=0
       AND p.contexto->>'origem' IS DISTINCT FROM 'documentos_emissao_individual'
       AND p.servico_codigo IN ('DOC_DECLARACAO_FREQUENCIA','DOC_DECLARACAO_NOTAS','DOC_COMPROVANTE_MATRICULA','DOC_CARTAO_ESTUDANTE','DOC_FICHA_INSCRICAO','DOC_HISTORICO_ESCOLAR','DOC_CERTIFICADO_HABILITACOES')

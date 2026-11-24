@@ -169,4 +169,30 @@ BEGIN
 END;
 $queue_test$;
 RESET ROLE;
+-- Lote service_role only: the same persisted certificate is reused, and the
+-- actor is derived from the job, not from a caller-supplied escola or aluno.
+INSERT INTO public.turmas(id,escola_id,session_id) VALUES ('00000000-0000-4000-8000-000000007120','00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007106');
+UPDATE public.matriculas SET turma_id='00000000-0000-4000-8000-000000007120' WHERE id='00000000-0000-4000-8000-000000007108';
+INSERT INTO public.pautas_lote_jobs(id,escola_id,created_by,tipo,status) VALUES ('00000000-0000-4000-8000-000000007121','00000000-0000-4000-8000-000000007101','00000000-0000-4000-8000-000000007103','certificado','PROCESSING');
+INSERT INTO public.pautas_lote_itens(job_id,turma_id) VALUES ('00000000-0000-4000-8000-000000007121','00000000-0000-4000-8000-000000007120');
+DO $workergrant$
+BEGIN
+ IF has_function_privilege('authenticated','public.documento_final_lote_item(uuid,uuid,uuid,text)','EXECUTE') OR has_function_privilege('anon','public.documento_final_lote_item(uuid,uuid,uuid,text)','EXECUTE') THEN RAISE EXCEPTION 'WORKER_RPC_EXPOSED'; END IF;
+END;
+$workergrant$;
+SET LOCAL ROLE service_role;
+DO $worker$
+DECLARE v jsonb; w jsonb;
+BEGIN
+ PERFORM set_config('request.jwt.claims',json_build_object('role','service_role')::text,true);
+ v:=public.documento_final_lote_item('00000000-0000-4000-8000-000000007121','00000000-0000-4000-8000-000000007120','00000000-0000-4000-8000-000000007108','certificado');
+ w:=public.documento_final_lote_item('00000000-0000-4000-8000-000000007121','00000000-0000-4000-8000-000000007120','00000000-0000-4000-8000-000000007108','certificado');
+ IF v->>'docId' IS NULL OR v->>'docId' IS DISTINCT FROM w->>'docId' OR (v->>'reused')::boolean IS DISTINCT FROM true THEN RAISE EXCEPTION 'BATCH_DUPLICATE_OR_MISSING'; END IF;
+ BEGIN
+   PERFORM public.documento_final_lote_item('00000000-0000-4000-8000-000000007121','00000000-0000-4000-8000-000000007999','00000000-0000-4000-8000-000000007108','certificado');
+   RAISE EXCEPTION 'BATCH_WRONG_TURMA_ALLOWED';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END;
+$worker$;
+RESET ROLE;
 ROLLBACK;

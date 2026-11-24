@@ -140,3 +140,21 @@ test("portal documental consulta a política única com matrícula e ano explíc
   const roles = src('lib/roles.ts');
   assert.match(roles, /K12_DOCUMENTOS_ROLE_GROUP = \[[\s\S]*?'admin_secretaria',[\s\S]*?'diretor'/);
 });
+
+test("fila integral e lote usam escopo e reemissão canónicos", () => {
+ const queue = src("components/secretaria/DocumentosAprovacoesQueue.tsx");
+ const api = src("app/api/secretaria/documentos/aprovacoes/route.ts");
+ const batch = src("lib/documentos/oficiaisBatchServer.tsx");
+ const worker = src("inngest/functions/pautas-lote.ts");
+ assert.match(queue, /filteredTotal/);
+ assert.match(api, /documentos_aprovacoes_pagina/);
+ assert.doesNotMatch(api, /\.limit\(50\)/);
+ assert.match(batch, /documento_final_lote_item/);
+ assert.doesNotMatch(batch, /if \(emitError \|\| !docRes\?\.docId\) continue/);
+ assert.match(worker, /jobId: job_id/);
+ const policy = readFileSync(resolve(process.cwd(), "../../supabase/migrations/20271203004000_documentos_individuais_gratuidade_ssot.sql"), "utf8");
+ assert.doesNotMatch(policy, /v_pedido\.valor_cobrado >= v_serv\.valor_base/);
+ assert.match(policy, /REVOKE ALL ON FUNCTION public\.documento_final_lote_item[^\n]+FROM PUBLIC,anon,authenticated/);
+ assert.match(policy, /public\._documento_final_persistir/);
+ assert.match(src("app/aluno/documentos/[docId]/notas/print/page.tsx"), /requireStudentOwnership/);
+});

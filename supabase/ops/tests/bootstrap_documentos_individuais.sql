@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs(escola_id uuid, actor_id uuid, acti
 
 -- Minimal job fixtures used by the service-only lot adapter regression.
 ALTER TABLE public.matriculas ADD COLUMN IF NOT EXISTS turma_id uuid;
+CREATE TABLE IF NOT EXISTS public.turmas(id uuid PRIMARY KEY,escola_id uuid NOT NULL);
 ALTER TABLE public.turmas ADD COLUMN IF NOT EXISTS session_id uuid;
 CREATE TABLE IF NOT EXISTS public.pautas_lote_jobs(id uuid PRIMARY KEY, escola_id uuid,created_by uuid,tipo text,status text,cancel_requested_at timestamptz);
 CREATE TABLE IF NOT EXISTS public.pautas_lote_itens(job_id uuid,turma_id uuid);

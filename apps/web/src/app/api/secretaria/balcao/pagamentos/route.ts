@@ -160,7 +160,7 @@ export async function POST(request: Request) {
           Number(pedido.valor_cobrado) !== payload.valor ||
           Number(intent.amount) !== payload.valor ||
           !["pending_payment", "granted"].includes(pedido.status) ||
-          ["settled", "canceled", "failed"].includes(intent.status)) {
+          ["settled", "canceled", "failed", "pending"].includes(intent.status)) {
         return NextResponse.json({
           ok: false, code: "DOCUMENT_PAYMENT_CONTEXT_MISMATCH",
           error: "Esta cobrança não corresponde ao serviço solicitado. Atualize o estado do documento.",

@@ -17,6 +17,7 @@ type Approval = {
   servico_codigo: string;
   servico_nome: string;
   created_at: string;
+  ano_letivo?: number | null;
   reason_detail?: string | null;
   aluno?: { nome?: string | null; nome_completo?: string | null; numero_processo?: string | null } | null;
 };
@@ -157,7 +158,7 @@ export default function DocumentosAprovacoesQueue({ onCountChange }: { onCountCh
                       <h3 className="break-words font-semibold">{item.servico_nome}</h3>
                     </div>
                     <p className="break-words text-sm text-foreground">{nome}{item.aluno?.numero_processo ? ` · Processo ${item.aluno.numero_processo}` : ""}</p>
-                    <p className="text-xs text-muted-foreground">Solicitado em {formatDateTime(item.created_at)}</p>
+                    <p className="text-xs text-muted-foreground">{item.ano_letivo ? `${item.ano_letivo}/${item.ano_letivo + 1} · ` : ""}Solicitado em {formatDateTime(item.created_at)}</p>
                     {item.reason_detail && <p className="break-words text-xs text-muted-foreground">{item.reason_detail}</p>}
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-0 sm:shrink-0">
