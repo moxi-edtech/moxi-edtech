@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { CalendarClock, CheckCircle2, Search, Pencil, Plus, RotateCcw } from "lucide-react";
+import { CalendarClock, CheckCircle2, Search, Pencil, Plus, RotateCcw, Settings } from "lucide-react";
 import { type TimetablePublicationState } from "@/lib/horarios/timetable-publication-state";
 
 type Turma = {
@@ -13,8 +13,8 @@ type Turma = {
 const turnos: Record<string,string> = { M: "Manhã", T: "Tarde", N: "Noite" };
 const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const turmaLabel = (t: Turma) => t.turma_codigo || t.turma_nome || t.nome || "Turma";
-export function HorariosWorkspace({turmas, onOpen, onRefresh, loading, error}: {
-  turmas: Turma[]; onOpen: (id: string) => void; onRefresh: () => void; loading: boolean; error: string | null;
+export function HorariosWorkspace({turmas, onOpen, onRefresh, onConfigure, loading, error}: {
+  turmas: Turma[]; onOpen: (id: string) => void; onRefresh: () => void; onConfigure?: () => void; loading: boolean; error: string | null;
 }) {
   const [search,setSearch] = useState("");
   const [turno,setTurno] = useState("");
@@ -33,7 +33,7 @@ export function HorariosWorkspace({turmas, onOpen, onRefresh, loading, error}: {
   return <section className="space-y-5 font-sora">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h1 className="text-xl font-semibold text-klasse-green">Horários das turmas</h1><p className="text-sm text-muted-foreground">Ano lectivo activo · monte, reveja e publique os horários.</p></div>
-      <button type="button" onClick={onRefresh} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-50"><RotateCcw size={16}/> Actualizar</button>
+      <div className="flex flex-wrap gap-2">{onConfigure&&<Button type="button" tone="gold" onClick={onConfigure} disabled={loading}><Settings size={16}/> Configurar tempos e salas</Button>}<button type="button" onClick={onRefresh} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm disabled:opacity-50"><RotateCcw size={16}/> Actualizar</button></div>
     </div>
     {error ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error} <button type="button" onClick={onRefresh} className="font-semibold underline">Tentar novamente</button></div> : loading ? <div role="status" className="rounded-xl border border-border bg-card p-6 text-sm">A carregar turmas…</div> : <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
