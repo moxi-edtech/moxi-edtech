@@ -177,9 +177,12 @@ test("horários: compact viewport uses a day editor with shared grid and persist
  assert.match(board,/slotLookup\?\.\[key\]\?/);
  assert.match(board,/onChange=\{event=>handleSelectSlot\(key,event.target.value\|\|null\)\}/);
  assert.match(board,/min-h-11 w-full min-w-0/);
- assert.match(board,/conflictReasons\[key\].join/);
+ assert.match(board,/\(conflictReasons\[key\] \?\? \[\]\).join/);
  assert.match(editor,/h-\[100dvh\] w-screen/);
  assert.match(editor,/<SchedulerBoard\s+externalActions/);
  assert.match(editor,/<footer className="shrink-0[\s\S]*?onClick=\{\(\)=>void handleSalvar\(grid\)\}[\s\S]*?onClick=\{\(\)=>void handlePublicar\(grid\)\}/);
  assert.match(editor,/aria-label="Selecionar turma"/);
+ const workspace=readFileSync("src/components/escola/horarios/HorariosWorkspace.tsx","utf8");
+ assert.match(workspace,/space-y-2 p-2 md:hidden/);
+ assert.match(workspace,/hidden overflow-x-auto md:block/);
 });
