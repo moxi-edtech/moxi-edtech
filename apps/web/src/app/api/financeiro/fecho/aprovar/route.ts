@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { dispatchFinanceiroNotificacao } from "@/lib/notificacoes/dispatchFinanceiroNotificacao";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,7 +11,7 @@ const payloadSchema = z.object({
   fecho_id: z.string().uuid(),
   aprovacao: z.enum(["approved", "rejected"]),
   justificativa: z.string().trim().min(1).max(255).optional(),
-  meta: z.record(z.any()).optional(),
+  meta: z.object({ expected_revision: z.number().int().positive() }).optional(),
 });
 
 export async function POST(request: Request) {
@@ -45,15 +44,6 @@ export async function POST(request: Request) {
 
     const {data: memberships,error: membershipError}=await supabase.from("escola_users").select("papel").eq("escola_id",escolaId).eq("user_id",user.id).eq("tenant_type","k12").in("papel",["financeiro","admin_financeiro","admin","admin_escola","staff_admin","diretor"]).limit(1);
     if(membershipError||!memberships?.length)return NextResponse.json({ok:false,error:"Sem permissão para decidir o fecho."},{status:403});
-    const actorRole=memberships[0].papel;
-
-    const { data: existing } = await supabase
-      .from("fecho_caixa")
-      .select("id, status, escola_id, day_key, approved_by, approved_at, declared_cash, declared_tpa, declared_transfer, declared_mcx, system_cash, system_tpa, system_transfer, system_mcx")
-      .eq("escola_id", escolaId)
-      .eq("id", parsed.data.fecho_id)
-      .maybeSingle();
-
     const { data, error } = await supabase.rpc("financeiro_fecho_aprovar", {
       p_escola_id: escolaId,
       p_fecho_id: parsed.data.fecho_id,
@@ -63,26 +53,9 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message.includes("variance_requires_justification") ? "Existem divergências ou movimentos posteriores à declaração. Informe uma justificação." : "Não foi possível decidir o fecho." }, { status: error.code === "42501" ? 403 : error.code === "22023" ? 400 : 409 });
+      return NextResponse.json({ ok: false, error: error.message.includes("stale_revision") ? "Esta versão já foi substituída. Atualize a página." : error.message.includes("variance_requires_justification") ? "Existem divergências ou movimentos posteriores à declaração. Informe uma justificação." : "Não foi possível decidir o fecho." }, { status: error.code === "42501" ? 403 : error.code === "22023" ? 400 : 409 });
     }
 
-    if (parsed.data.aprovacao === "approved" && existing?.status !== "approved") {
-      const { data: escolaRow } = await supabase
-        .from("escolas")
-        .select("slug")
-        .eq("id", escolaId)
-        .maybeSingle();
-      const escolaParam = escolaRow?.slug ? String(escolaRow.slug) : escolaId;
-
-      await dispatchFinanceiroNotificacao({
-        escolaId,
-        key: "FECHO_AUTORIZADO",
-        params: { actionUrl: `/escola/${escolaParam}/financeiro/fecho` },
-        actorId: user.id,
-        actorRole: actorRole ?? "admin",
-        agrupamentoTTLHoras: 12,
-      }).catch(() => null);
-    }
 
     return NextResponse.json({ ok: true, data });
   } catch (e) {
