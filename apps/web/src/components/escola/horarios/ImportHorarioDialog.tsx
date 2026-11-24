@@ -1,5 +1,6 @@
 "use client";
 import {useState} from "react";
+import { Button } from "@/components/ui/Button";
 import {FileSpreadsheet, Download, Upload, Check} from "lucide-react";
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription,DialogFooter} from "@/components/ui/dialog";
 import {buildImportTemplate,parseTimetableMatrix,type ImportSlot,type ImportDiscipline} from "@/lib/horarios/import-matrix";
@@ -50,6 +51,6 @@ export function ImportHorarioDialog({open,onClose,onApply,slots,disciplines}:{
       {result.errors.length>0?<><p className="text-red-700">{result.errors.length} problema(s) — corrija o ficheiro antes de continuar.</p>{result.errors.slice(0,30).map((e,i)=><p key={i} className="text-red-700">{e}</p>)}</>:<p className="text-muted-foreground">A importação substituirá apenas a distribuição em edição. Professores e salas não serão importados; pode desfazer antes de guardar.</p>}
       {!result.errors.length&&Object.entries(result.grid).map(([key,id])=><div key={key} className="flex justify-between border-b border-border py-1"><span>{key}</span><span>{disciplines.find(d=>d.id===id)?.disciplina}</span></div>)}
     </div>}
-    <DialogFooter><button type="button" onClick={onClose} disabled={loading} className="rounded-xl border border-border px-3 py-2 text-sm">Cancelar</button><button type="button" disabled={loading||!result?.count||!!result.errors.length} onClick={()=>{if(result?.count&&!result.errors.length){onApply(result.grid);onClose()}}} className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"><Check size={16}/> Aplicar ao rascunho</button></DialogFooter>
+    <DialogFooter><button type="button" onClick={onClose} disabled={loading} className="rounded-xl border border-border px-3 py-2 text-sm">Cancelar</button><Button type="button" tone="gold" disabled={loading||!result?.count||!!result.errors.length} onClick={()=>{if(result?.count&&!result.errors.length){onApply(result.grid);onClose()}}} className="gap-2"><Check size={16}/> Aplicar ao rascunho</Button></DialogFooter>
   </DialogContent></Dialog>
 }
