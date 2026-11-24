@@ -24,7 +24,7 @@ const BodySchema = z.object({
       sala_id: z.string().uuid().nullable().optional(),
     })
   ).max(500),
-  mode: z.enum(['draft', 'publish']).optional(),
+  mode: z.enum(['draft', 'publish', 'validate']).optional(),
 })
 
 type PublishWarning = {
@@ -178,7 +178,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     if (previousPublishedError) return NextResponse.json({ ok: false, error: 'Não foi possível consultar a versão publicada.' }, { status: 503 })
     const mode = parsed.data.mode ?? 'draft'
-    if (mode === 'publish' && parsed.data.items.length === 0) {
+    if (mode !== 'draft' && parsed.data.items.length === 0) {
       return NextResponse.json({ ok: false, error: 'Adicione pelo menos uma aula antes de publicar.' }, { status: 400 })
     }
     const emitObs = (status: 'success' | 'error', httpStatus: number, details: Record<string, unknown> = {}) =>
@@ -217,28 +217,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
       sourceStatus = sourceVersion.status
     }
-    // Keep the old publication available while editing or validating its replacement.
-    const { data: versionIdFromDb, error: ensureVersionError } = await supabase.rpc('ensure_horario_versao', {
-      p_escola_id: escolaIdResolved,
-      p_turma_id: parsed.data.turma_id,
-      p_versao_id: sourceStatus === 'draft' ? sourceVersionId : null,
-      p_status: 'draft',
-    })
-
-    if (ensureVersionError || !versionIdFromDb) {
-      emitObs('error', 400, { error_code: 'ENSURE_VERSION_FAILED' })
-      return NextResponse.json({ ok: false, error: ensureVersionError?.message || 'Falha ao garantir versão' }, { status: 400 })
-    }
-
-    let versaoId = String(versionIdFromDb)
-
-    const { data: previousRows, error: previousRowsError } = await supabase
+    const { data: previousRows, error: previousRowsError } = sourceVersionId ? await supabase
       .from('quadro_horarios')
       .select('slot_id, disciplina_id, professor_id, sala_id, versao_id')
       .eq('escola_id', escolaIdResolved)
       .eq('turma_id', parsed.data.turma_id)
-      .eq('versao_id', sourceVersionId ?? versaoId)
-      .limit(500)
+      .eq('versao_id', sourceVersionId)
+      .limit(500) : { data: [], error: null }
 
     if (previousRowsError) return NextResponse.json({ ok: false, error: 'Não foi possível preservar o horário anterior.' }, { status: 503 })
     const previousBySlot = new Map((previousRows || []).map((row: { slot_id: string; sala_id?: string | null }) => [row.slot_id, row]))
@@ -251,7 +236,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       // apagar uma sala já persistida; null explícito continua a removê-la.
       sala_id: item.sala_id === undefined ? (previousBySlot.get(item.slot_id)?.sala_id ?? null) : item.sala_id,
       slot_id: item.slot_id,
-      versao_id: versaoId,
     }))
 
     const professorIds = Array.from(new Set(payload.map((item) => item.professor_id).filter(Boolean)))
@@ -279,7 +263,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
     }
 
-    if (mode === 'publish' && (professorIds.length > 0 || salaIds.length > 0)) {
+    if (mode !== 'draft' && (professorIds.length > 0 || salaIds.length > 0)) {
       const { data: allSlots, count: allSlotCount, error: slotsError } = await supabase.from('horario_slots')
         .select('id, dia_semana, inicio, fim', { count: 'exact' }).eq('escola_id', escolaIdResolved)
         .order('id').limit(500)
@@ -321,14 +305,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (conflicts.length > 0) {
-      emitObs('error', 409, { error_code: 'HORARIO_CONFLICT', conflicts_count: conflicts.length })
+      if (mode !== 'validate') emitObs('error', 409, { error_code: 'HORARIO_CONFLICT', conflicts_count: conflicts.length })
       return NextResponse.json(
         { ok: false, error: 'Conflito de horário detectado', conflicts },
         { status: 409 }
       )
     }
 
-    if (mode === 'publish') {
+    if (mode !== 'draft') {
       const { data: cargas, error: cargasError } = await supabase
         .from('turma_disciplinas')
         .select(
@@ -338,10 +322,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         .eq('turma_id', parsed.data.turma_id)
 
       if (cargasError) {
-        emitObs('error', 400, { error_code: 'LOAD_TURMA_DISCIPLINAS_FAILED' })
+        if (mode !== 'validate') emitObs('error', 400, { error_code: 'LOAD_TURMA_DISCIPLINAS_FAILED' })
         return NextResponse.json({ ok: false, error: cargasError.message }, { status: 400 })
       }
 
+      const allowedDisciplines = new Set((cargas || []).flatMap((row: any) => { const matrix = Array.isArray(row.curso_matriz) ? row.curso_matriz[0] : row.curso_matriz; return matrix?.disciplina_id && (row.entra_no_horario ?? matrix.entra_no_horario ?? true) ? [matrix.disciplina_id] : [] }))
+      if (payload.some(item => !allowedDisciplines.has(item.disciplina_id))) return NextResponse.json({ ok: false, error: 'O quadro contém disciplinas que não pertencem ao horário da turma.' }, { status: 409 })
       const disciplinaCounts: Record<string, number> = {}
       for (const item of parsed.data.items) {
         disciplinaCounts[item.disciplina_id] = (disciplinaCounts[item.disciplina_id] || 0) + 1
@@ -390,11 +376,30 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
     }
 
+    if (mode === 'validate') {
+      return NextResponse.json({ ok: true, validated: true, warnings: publishWarnings, conflicts: [] }, { headers: { 'Cache-Control': 'no-store' } })
+    }
+
+    // Keep the old publication available while editing or validating its replacement.
+    const { data: versionIdFromDb, error: ensureVersionError } = await supabase.rpc('ensure_horario_versao', {
+      p_escola_id: escolaIdResolved,
+      p_turma_id: parsed.data.turma_id,
+      p_versao_id: sourceStatus === 'draft' ? sourceVersionId : null,
+      p_status: 'draft',
+    })
+
+    if (ensureVersionError || !versionIdFromDb) {
+      emitObs('error', 400, { error_code: 'ENSURE_VERSION_FAILED' })
+      return NextResponse.json({ ok: false, error: ensureVersionError?.message || 'Falha ao garantir versão' }, { status: 400 })
+    }
+
+    let versaoId = String(versionIdFromDb)
+
     const { data: upsertResult, error: upsertError } = await supabase.rpc('upsert_quadro_horarios_versao_atomic', {
       p_escola_id: escolaIdResolved,
       p_turma_id: parsed.data.turma_id,
       p_versao_id: versaoId,
-      p_items: payload,
+      p_items: payload.map(item => ({ ...item, versao_id: versaoId })),
       p_publish: mode === 'publish',
     })
 
