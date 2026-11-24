@@ -28,9 +28,11 @@ export async function GET(req: Request, { params }: Context) {
       return json({ok:true,...await getExpedienteHistory(access,start.data,end.data)});
     }
     if (view === "summary") {
-      const [close,cash]=await Promise.all([access.supabase.from("secretaria_expedientes").select("closed_at,operation_count").eq("escola_id",access.escolaId).eq("day_key",date.data).maybeSingle(),access.supabase.from("fecho_caixa").select("status").eq("escola_id",access.escolaId).eq("day_key",date.data).maybeSingle()]);
-      if(close.error||cash.error)return json({ok:false,error:"Falha ao consultar estado."},500);
-      return json({ok:true,closed:close.data,cashStatus:cash.data?.status??null,canClose:access.canClose});
+      const dashboardScope=url.searchParams.get("scope");
+      const supervisor=dashboardScope==="supervision"&&access.canSupervise;
+      const [close,cash,pending,rejected]=await Promise.all([access.supabase.from("secretaria_expedientes").select("closed_at,operation_count").eq("escola_id",access.escolaId).eq("day_key",date.data).maybeSingle(),access.supabase.from("fecho_caixa").select("status").eq("escola_id",access.escolaId).eq("day_key",date.data).maybeSingle(),supervisor?access.supabase.from("fecho_caixa").select("id",{count:"exact",head:true}).eq("escola_id",access.escolaId).eq("status","declared"):Promise.resolve({count:null,error:null}),access.supabase.from("fecho_caixa").select("id",{count:"exact",head:true}).eq("escola_id",access.escolaId).eq("status","rejected")]);
+      if(close.error||cash.error||pending.error||rejected.error)return json({ok:false,error:"Falha ao consultar estado."},500);
+      return json({ok:true,closed:close.data,cashStatus:cash.data?.status??null,pendingCount:pending.count,rejectedCount:rejected.count??0,canClose:access.canClose});
     }
     const filters=z.object({entity:z.string().regex(/^[a-z_]{1,64}$/).optional(),actor:z.union([z.literal("system"),z.string().uuid()]).optional(),late:z.enum(["1","0"]).optional()}).safeParse({entity:url.searchParams.get("entity")??undefined,actor:url.searchParams.get("actor")??undefined,late:url.searchParams.get("late")??undefined});
     if(!filters.success)return json({ok:false,error:"Filtro inválido."},400);
