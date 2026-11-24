@@ -61,6 +61,8 @@ type FechoDeclaracao = {
   system_tpa: number | null;
   system_transfer: number | null;
   system_mcx: number | null;
+  system_other?: number | null;
+  system_other_count?: number | null;
 };
 
 const formatKz = (value: number) =>
@@ -327,6 +329,7 @@ export default function FechoCaixaPage() {
               <div>TPA: {formatKz(Number(fechoResult.system_tpa ?? 0))}</div>
               <div>Transfer: {formatKz(Number(fechoResult.system_transfer ?? 0))}</div>
               <div>MCX: {formatKz(Number(fechoResult.system_mcx ?? 0))}</div>
+              {Number(fechoResult.system_other_count??0)>0&&<div className="text-amber-700">Não classificado: {formatKz(Number(fechoResult.system_other??0))} ({fechoResult.system_other_count} pagamentos)</div>}
             </div>
             <div className="text-sm text-muted-foreground">Estado: {fechoResult.status === "approved" ? "Aprovado" : fechoResult.status === "rejected" ? "Rejeitado" : fechoResult.status === "declared" ? "A aguardar aprovação" : "Por declarar"}</div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-sm text-muted-foreground">{(["cash", "tpa", "transfer", "mcx"] as const).map((key, i) => <div key={key}>{["Numerário", "TPA", "Transferências", "MCX"][i]} declarado: {formatKz(Number(fechoResult[`declared_${key}`] ?? 0))}</div>)}</div>
