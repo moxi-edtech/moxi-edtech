@@ -18,22 +18,22 @@ export function AudienceSection() {
 
   const problems = [
     {
-      title: 'Secretaria presa ao papel e Excel',
+      title: 'Registos dispersos',
       description:
         'Matrículas, notas e propinas em processos manuais geram atraso, erros e retrabalho diário.',
     },
     {
-      title: 'Encarregados sem visibilidade',
+      title: 'Informação para os encarregados',
       description:
-        'A secretaria vira call center para responder sobre notas, faltas e pagamentos que já deviam estar no portal.',
+        'A secretaria recebe pedidos frequentes de informação sobre notas, faltas e pagamentos.',
     },
     {
-      title: 'Documentos MED demorados',
+      title: 'Emissão de documentos escolares',
       description:
         'Declarações e pautas ainda dependem de fila, papel e assinatura presencial para tarefas que podiam sair em minutos.',
     },
     {
-      title: 'Risco de incumprimento regulatório',
+      title: 'Histórico escolar',
       description:
         'Sem histórico digital fiável, a escola fica mais exposta em auditorias e exigências do MED.',
     },
@@ -46,13 +46,12 @@ export function AudienceSection() {
       <div className="container">
         <div className="audience-layout">
           <FadeIn direction="right">
-            <div className="sec-eyebrow">Para quem é</div>
             <h2 className="sec-title">
               Se estes problemas já são da <span className="audience-escola">sua escola</span>, o{' '}
               <span className="audience-klasse">KLASSE</span> é para si.
             </h2>
             <p className="sec-sub">
-              Escolas privadas que já cresceram e precisam de operação organizada, dados fiáveis e visão diária da gestão.
+              O KLASSE foi concebido para a realidade administrativa e académica das escolas angolanas.
             </p>
           </FadeIn>
 
