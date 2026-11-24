@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { operationalCardTone, operationalCardIconClasses } from "@/lib/ui/operational-card-tone";
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { TrendingUp, TrendingDown, ArrowRight, ChevronRight } from "lucide-react";
@@ -64,16 +65,18 @@ export function KpiCard({
   }[variant];
 
   if (compact) {
+    const unavailable = value == null || (typeof value === "number" && !Number.isFinite(value));
+    const tone = operationalCardTone({ unavailable, needsAttention: variant === "warning" });
     const content = (
       <>
         <div className="flex items-start justify-between gap-2">
           <span className="text-sm font-medium text-muted-foreground">{label}</span>
-          <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300">
+          <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${operationalCardIconClasses[tone]}`}>
             <Icon className="h-4 w-4" />
           </span>
         </div>
         <div className="mt-2 flex items-center justify-between gap-2">
-          <span className={`text-2xl font-semibold tabular-nums ${variant === "warning" ? "text-amber-700 dark:text-amber-300" : "text-foreground"}`}>{typeof value === "number" ? value.toLocaleString("pt-AO") : value ?? "—"}</span>
+          <span className={`text-2xl font-semibold tabular-nums ${tone === "attention" ? "text-amber-700 dark:text-amber-300" : "text-foreground"}`}>{unavailable ? "—" : typeof value === "number" ? value.toLocaleString("pt-AO") : value}</span>
           {href && <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />}
         </div>
         {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}

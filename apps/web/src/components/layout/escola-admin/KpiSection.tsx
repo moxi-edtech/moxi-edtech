@@ -122,7 +122,7 @@ export default function KpiSection({
           value: s.alunos,
           icon: Users,
           href: portalHref("alunos"),
-          variant: turmasOk ? ("brand" as const) : ("warning" as const),
+          variant: "brand" as const,
           trend: undefined,
           chartData: undefined,
           description: undefined,

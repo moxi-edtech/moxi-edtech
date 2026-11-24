@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
+import { operationalCardTone, operationalCardIconClasses } from "@/lib/ui/operational-card-tone";
 import {
   Activity,
   ArrowRight,
@@ -146,7 +147,7 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
                     >
                       <span className="flex items-start justify-between gap-2 text-sm font-medium text-muted-foreground">
                         {label}
-                        <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300">
+                        <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${operationalCardIconClasses[operationalCardTone({ needsAttention: value > 0 })]}`}>
                           <Icon className="h-4 w-4" />
                         </span>
                       </span>

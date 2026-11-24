@@ -21,3 +21,9 @@
 - Ícones funcionais dos cards compactos de acompanhamento, indicadores e atalhos voltam ao padrão verde do design system (`bg-emerald/10 text-emerald dark:text-emerald-300`). Estados de alerta mantêm o valor em âmbar; ícone de bloqueio mantém estilo neutro.
 - Ações rápidas de Operações: Fecho diário, Recebimentos, Quadro de Horários e Criar Aviso. Nova matrícula, Nova admissão e Importar Alunos deixam apenas esta superfície; não se removem rotas, permissões nem fluxos de outros portais.
 - Quatro atalhos em 4/2/1 colunas conforme largura útil; sem fila de três com cartão isolado. CI e homologação visual pendentes.
+
+## Regra contextual dos ícones compactos
+
+- Verde: estado normal ou ação disponível. Dourado/âmbar: pendência confirmada (aulas, planos, reaberturas, propinas e fechos por validar ou regularizar). Cinzento: ação bloqueada ou indicador sem dados. Precedência do estado indisponível; números e rótulos continuam a transmitir o significado sem depender só da cor.
+- A cor é derivada dos contadores já existentes, sem novas consultas. Atalhos sem contadores próprios ficam verdes; não se usa a variante estática amarela para simular pendências. Indicador de alunos não sinaliza falta de turmas como se fosse uma pendência de alunos.
+- Regra partilhada em `operational-card-tone.ts`, com testes dos estados normal, atenção e indisponível; variantes não compactas preservadas. CI e homologação visual pendentes.

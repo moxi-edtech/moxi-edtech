@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { operationalCardTone, operationalCardIconClasses } from "../../src/lib/ui/operational-card-tone";
 
 const source = (path: string) => readFileSync(new URL("../../src/" + path, import.meta.url), "utf8");
 
@@ -77,10 +78,25 @@ test("Operações restores branded green icon containers and only four daily sho
   assert.match(quick, /<ExpedienteDashboardCard escolaId=\{escolaId\} portal=\{portalBase\}/);
   assert.match(quick, /Novo Funcionário/);
   assert.match(quick, /Lançar Nota/);
-  const green = /bg-emerald\/10 text-emerald dark:text-emerald-300/;
-  assert.match(action.slice(action.indexOf("if (dashboardCompact)"), action.indexOf("const inner =")), green);
-  assert.match(action, /disabled \? "bg-muted text-muted-foreground" : "bg-emerald\/10 text-emerald dark:text-emerald-300"/);
-  assert.match(kpi.slice(kpi.indexOf("if (compact)"), kpi.indexOf("const Content =")), green);
-  assert.match(hub, /rounded-xl bg-emerald\/10 text-emerald dark:text-emerald-300/);
+  assert.match(action, /operationalCardTone\(\{ unavailable: disabled, needsAttention \}\)/);
+  assert.match(action, /operationalCardIconClasses\[tone\]/);
+  assert.match(kpi, /operationalCardTone\(\{ unavailable, needsAttention: variant === "warning" \}\)/);
+  assert.match(hub, /operationalCardTone\(\{ needsAttention: value > 0 \}\)/);
   assert.doesNotMatch(css, /\.operations-actions-grid \{ grid-template-columns: repeat\(3,/);
+});
+
+test("operational icon semantics are contextual, not decorative", () => {
+  assert.equal(operationalCardTone(), "normal");
+  assert.equal(operationalCardTone({ needsAttention: 0 > 0 }), "normal");
+  assert.equal(operationalCardTone({ needsAttention: 3 > 0 }), "attention");
+  assert.equal(operationalCardTone({ unavailable: true }), "neutral");
+  assert.equal(operationalCardTone({ unavailable: true, needsAttention: true }), "neutral");
+  assert.match(operationalCardIconClasses.normal, /bg-emerald\/10 text-emerald/);
+  assert.match(operationalCardIconClasses.attention, /bg-amber\/15 text-amber-700/);
+  assert.match(operationalCardIconClasses.neutral, /bg-muted text-muted-foreground/);
+  const expediente = source("components/secretaria/ExpedienteDashboardCard.tsx");
+  assert.match(expediente, /needsAttention=\{portal==="operacoes" && \(\(summary\?\.pendingCount\?\?0\)>0 \|\| \(summary\?\.rejectedCount\?\?0\)>0\)\}/);
+  const kpi = source("components/layout/escola-admin/KpiSection.tsx");
+  assert.match(kpi, /op\.mensalidadesPendentes > 0 \? \("warning"/);
+  assert.match(kpi, /op\.mensalidadesInadimplentes > 0 \? \("warning"/);
 });
