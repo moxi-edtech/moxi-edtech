@@ -11,11 +11,12 @@ export const revalidate = 0;
 const updateSchema = z.object({
   matricula_id: z.string().uuid(),
   bolseiro: z.boolean(),
+  percentagem: z.number().min(0).max(99.99).multipleOf(0.01).optional(),
   motivo: z.string().trim().max(160).nullable().optional(),
   vigencia_inicio: z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])-01$/).nullable().optional(),
   regularizacao_retroativa: z.boolean().optional(),
   justificativa: z.string().trim().max(500).nullable().optional(),
-});
+}).refine(v => v.percentagem === undefined || v.bolseiro === (v.percentagem > 0));
 
 async function contexto(req: Request, id: string) {
   if (!z.string().uuid().safeParse(id).success) {
@@ -56,7 +57,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   let query = ctx.supabase!
     .from("matriculas")
-    .select("id, turma_id, ano_letivo, status, bolsa_integral, bolsa_integral_motivo, bolsa_integral_inicio, percentagem_desconto, motivo_desconto")
+    .select("id, turma_id, ano_letivo, status, bolsa_integral, bolsa_integral_motivo, bolsa_integral_inicio, percentagem_desconto, motivo_desconto, bolsa_parcial_percentagem, bolsa_parcial_periodos")
     .eq("escola_id", ctx.escolaId)
     .eq("aluno_id", id)
     .order("ano_letivo", { ascending: false })
@@ -74,12 +75,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   // Renovação anual exige nova decisão: benefício anterior é apenas contexto.
   const { data: anteriores, error: anterioresError } = await ctx.supabase!
     .from("matriculas")
-    .select("ano_letivo,bolsa_integral,percentagem_desconto,motivo_desconto")
+    .select("ano_letivo,bolsa_integral,percentagem_desconto,motivo_desconto,bolsa_parcial_percentagem")
     .eq("escola_id",ctx.escolaId).eq("aluno_id",id)
     .lt("ano_letivo",atual.ano_letivo)
     .order("ano_letivo",{ascending:false}).limit(20);
   if (anterioresError) return NextResponse.json({ok:false,error:"Falha a consultar histórico da bolsa"},{status:500});
-  const bolsaAnterior = (anteriores ?? []).find((m: any) => Boolean(m.bolsa_integral ||
+  const bolsaAnterior = (anteriores ?? []).find((m: any) => Boolean(m.bolsa_integral || Number(m.bolsa_parcial_percentagem ?? 0) > 0 ||
     (Number(m.percentagem_desconto ?? 0) === 100 && /bolsa/i.test(m.motivo_desconto ?? ""))));
 
   const { data: ano, error: anoError } = await ctx.supabase!
@@ -89,7 +90,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (anoError) return NextResponse.json({ok:false,error:"Não foi possível consultar o ano letivo"},{status:500});
   const { data: cobrancas, error: cobrancasError } = await ctx.supabase!
     .from("mensalidades")
-    .select("id,matricula_id,turma_id,ano_referencia,mes_referencia,valor_pago_total,valor_previsto,valor,valor_original,status,bolsa_isencao_integral,fiscal_documento_id,status_fiscal")
+    .select("id,matricula_id,turma_id,ano_referencia,mes_referencia,valor_pago_total,valor_previsto,valor,valor_original,desconto_aplicado,data_vencimento,status,bolsa_isencao_integral,fiscal_documento_id,status_fiscal")
     .eq("escola_id",ctx.escolaId).eq("aluno_id",id)
     .eq("ano_letivo",String(atual.ano_letivo)).limit(300);
   if (cobrancasError) return NextResponse.json({ok:false,error:"Não foi possível consultar propinas"},{status:500});
@@ -110,7 +111,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .eq("escola_id", ctx.escolaId)
       .eq("entity", "matriculas")
       .eq("entity_id", atual.id)
-      .in("action", ["BOLSA_INTEGRAL_ATUALIZADA", "BOLSA_INTEGRAL_NA_MATRICULA"])
+      .in("action", ["BOLSA_INTEGRAL_ATUALIZADA", "BOLSA_INTEGRAL_NA_MATRICULA", "BOLSA_PARCIAL_ATUALIZADA"])
       .order("created_at", { ascending: false }).limit(20),
   ]);
   if (pagamentosResult.error || documentosResult.error) {
@@ -126,6 +127,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const comDocumento = new Set((documentosResult.data ?? []).map((row: any) => row.mensalidade_id));
   const cobrancasDaMatricula = (cobrancas ?? [])
     .filter((me: any) => me.matricula_id === atual.id || (!me.matricula_id && me.turma_id === atual.turma_id));
+  const periodosParciais: Array<{ inicio: string; percentagem: number; motivo: string | null }> = Array.isArray(atual.bolsa_parcial_periodos) ? atual.bolsa_parcial_periodos : [];
   const previsao = cobrancasDaMatricula
     .filter((me: any) => Number.isInteger(me.ano_referencia) && me.mes_referencia >= 1 && me.mes_referencia <= 12)
     .map((me: any) => {
@@ -141,7 +143,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         (me.status_fiscal && me.status_fiscal !== "pending") ||
         pagamentos.some(pg => pg.fiscal_documento_id ||
           (pg.status_fiscal && pg.status_fiscal !== "pending")));
+      const competenciaParcial = String(me.data_vencimento ?? "").slice(0,7);
+      const anterior = [...periodosParciais].reverse().find(p => p.inicio.slice(0,7) <= competenciaParcial)?.percentagem ?? 0;
+      const bruto = Number(me.valor_original ?? 0);
+      const esperado = Math.max(1, Math.round(bruto * (100 - anterior))) / 100;
+      const parcialElegivel = ["pendente", "atrasado"].includes(me.status) && !temPagamento && !temFiscal &&
+        bruto >= 0.01 && Math.round(Number(me.valor_previsto ?? me.valor) * 100) === Math.round(esperado * 100) &&
+        Math.round(Number(me.desconto_aplicado ?? 0) * 100) === Math.round((bruto - esperado) * 100);
       return {
+        competencia_parcial: competenciaParcial,
+        parcial_elegivel: parcialElegivel,
+        percentual_anterior: anterior,
         competencia: `${me.ano_referencia}-${String(me.mes_referencia).padStart(2, "0")}`,
         valor_aberto: Math.max(0, Number(me.valor_previsto ?? me.valor ?? 0) - Number(me.valor_pago_total ?? 0)),
         valor_original: Math.max(0, Number(me.valor_original ?? me.valor_previsto ?? me.valor ?? 0)),
@@ -173,6 +185,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         (Number(atual.percentagem_desconto ?? 0) >= 100 &&
          /bolsa/i.test(atual.motivo_desconto ?? ""))),
       bolsa_integral: Boolean(atual.bolsa_integral),
+      bolsa_parcial_percentagem: Number(atual.bolsa_parcial_percentagem ?? 0),
+      bolsa_parcial_inicio: periodosParciais.at(-1)?.inicio ?? null,
+      bolsa_parcial_motivo: periodosParciais.at(-1)?.motivo ?? null,
+      desconto_comercial: Number(atual.percentagem_desconto ?? 0) !== 0 && !atual.bolsa_integral,
       isencao_outra_politica: Boolean(!atual.bolsa_integral &&
         Number(atual.percentagem_desconto ?? 0) >= 100 &&
         !/bolsa/i.test(atual.motivo_desconto ?? "")),
@@ -187,6 +203,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       historico: historicoResult.error ? null : (historicoResult.data ?? []).map((evento: any) => ({
         em: evento.created_at,
         acao: evento.action,
+        percentagem: evento.details?.percentagem ?? null,
         inicio: evento.details?.vigencia_inicio ?? null,
         motivo: evento.details?.motivo ?? null,
         justificativa: evento.details?.justificativa_retroativa ?? null,
@@ -207,11 +224,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const parsed = updateSchema.safeParse(json);
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Dados da bolsa inválidos" }, { status: 400 });
 
-  const { data, error } = await ctx.supabase!.rpc("klasse_definir_bolsa_integral", {
+  const parcial = parsed.data.percentagem !== undefined;
+  const { data, error } = await ctx.supabase!.rpc(parcial ? "klasse_definir_bolsa_parcial" : "klasse_definir_bolsa_integral", {
     p_escola_id: ctx.escolaId,
     p_aluno_id: id,
     p_matricula_id: parsed.data.matricula_id,
-    p_bolseiro: parsed.data.bolseiro,
+    ...(parcial ? { p_percentagem: parsed.data.percentagem } : { p_bolseiro: parsed.data.bolseiro }),
     p_motivo: parsed.data.motivo ?? null,
     p_vigencia_inicio: parsed.data.vigencia_inicio ?? null,
     p_regularizacao_retroativa: parsed.data.regularizacao_retroativa ?? false,
@@ -220,7 +238,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (error || !data?.ok) {
     const code = error?.code;
     return NextResponse.json(
-      { ok: false, error: code === "42501" ? "Sem permissão para gerir bolsas" : code === "P0002" ? "Matrícula não encontrada" : code === "23514" ? "Vigência ou justificação inválida. Confirme o início da bolsa e a regularização." : "Não foi possível atualizar a bolsa" },
+      { ok: false, error: code === "42501" ? "Sem permissão para gerir bolsas" : code === "P0002" ? "Matrícula não encontrada" : code === "23514" ? "Percentagem, vigência ou benefício incompatível. Confirme os dados da bolsa e a regularização." : "Não foi possível atualizar a bolsa" },
       { status: code === "42501" ? 403 : code === "P0002" ? 404 : 409 },
     );
   }
