@@ -10,10 +10,10 @@ function excerpt(block:Bloco){
  return chars.length>64?chars.slice(0,64).join("")+"…":normalized||"Sem enunciado";
 }
 function Row({block,index,total,disabled,onMove}:{block:Bloco;index:number;total:number;disabled:boolean;onMove:(from:number,to:number)=>void}){
- const drag=useDraggable({id:"drag-"+index,data:{index},disabled});
- const drop=useDroppable({id:"drop-"+index,data:{index},disabled});
- return <li ref={drop.setNodeRef} data-testid={"prova-order-row-"+index} className={"flex min-w-0 items-center gap-2 rounded-xl border bg-card p-2 sm:gap-3 sm:p-3 "+(drop.isOver?"border-klasse-gold ring-1 ring-klasse-gold/25":"border-border")+(drag.isDragging?" opacity-40":"")}>
-  <button ref={drag.setNodeRef} type="button" {...drag.listeners} {...drag.attributes} aria-label={"Arrastar bloco "+(index+1)} disabled={disabled} className="flex min-h-11 w-11 shrink-0 touch-none cursor-grab items-center justify-center rounded-xl text-muted-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 active:cursor-grabbing disabled:opacity-50"><GripVertical className="size-5"/></button>
+ const {setNodeRef:setDragRef,attributes,listeners,isDragging}=useDraggable({id:"drag-"+index,data:{index},disabled});
+ const {setNodeRef:setDropRef,isOver}=useDroppable({id:"drop-"+index,data:{index},disabled});
+ return <li ref={setDropRef} data-testid={"prova-order-row-"+index} className={"flex min-w-0 items-center gap-2 rounded-xl border bg-card p-2 sm:gap-3 sm:p-3 "+(isOver?"border-klasse-gold ring-1 ring-klasse-gold/25":"border-border")+(isDragging?" opacity-40":"")}>
+  <button ref={setDragRef} type="button" {...listeners} {...attributes} aria-label={"Arrastar bloco "+(index+1)} disabled={disabled} className="flex min-h-11 w-11 shrink-0 touch-none cursor-grab items-center justify-center rounded-xl text-muted-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 active:cursor-grabbing disabled:opacity-50"><GripVertical className="size-5"/></button>
   <span className="w-7 shrink-0 text-center text-sm font-semibold tabular-nums text-klasse-green dark:text-foreground">{index+1}</span>
   <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{excerpt(block)}</p><p className="truncate text-xs text-muted-foreground">{tipos[block.tipo]}</p></div>
   <label className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground"><span className="hidden sm:inline">Posição</span><select aria-label={"Posição do bloco "+(index+1)} value={index} disabled={disabled} className="min-h-11 w-14 rounded-xl border border-border bg-background px-1 text-sm focus:outline-none focus:ring-4 focus:ring-klasse-gold/20" onChange={e=>onMove(index,Number(e.target.value))}>{Array.from({length:total},(_,i)=><option key={i} value={i}>{i+1}</option>)}</select></label>
