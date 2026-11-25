@@ -1,4 +1,4 @@
-export const PROVA_FOOTER="Gerado pelo KLASSE · Sistema de Gestão Escolar · www.klasse.ao";
+export const PROVA_FOOTER="Gerado pelo KLASSE · www.klasse.ao";
 export const MAX_LOGO_BYTES=2*1024*1024;
 
 /** Image-mode only, never inject raw SVG, HTML or remote URLs into the print document. */
