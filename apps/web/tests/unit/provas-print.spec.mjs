@@ -114,3 +114,25 @@ test("distribution query rejects unbounded, duplicate or incompatible selections
  q.set("turmas",turma);q.set("matricula",id);q.set("offset","40");assert.equal(parseDistribution(q).success,false);
  q.set("offset","0");q.set("versao","0");assert.equal(parseDistribution(q).success,false);
 });
+
+test("portal entry points share the server-authorized central and retain tenant routes", async()=>{
+ const {readFile}=await import("node:fs/promises");
+ const read=path=>readFile(new URL("../../src/"+path,import.meta.url),"utf8");
+ const [secretaria,operacoes,professor,central,nav,quick,teacher,legacy]=await Promise.all([
+  read("app/escola/[id]/(portal)/secretaria/(portal-secretaria)/provas/page.tsx"),
+  read("app/escola/[id]/(portal)/operacoes/provas/page.tsx"),
+  read("app/escola/[id]/professor/provas/page.tsx"),
+  read("components/provas/ProvasPortalPage.tsx"),
+  read("lib/sidebarNav.ts"),read("app/secretaria/(portal-secretaria)/Dashboard.tsx"),read("app/professor/page.tsx"),read("components/secretaria/SecretariaDocumentosWorkspace.tsx")
+ ]);
+ assert.match(secretaria,/ProvasPortalPage.*portal="secretaria"/s);
+ assert.match(operacoes,/ProvasPortalPage.*portal="operacoes"/s);
+ assert.match(professor,/provaAccess/);
+ assert.match(central,/!access\.ok\|\|!access\.distribute/);
+ assert.match(central,/portal==="secretaria"\|\|!access\.admin/);
+ assert.match(nav,/operacoes\/provas/);
+ assert.match(quick,/buildPortalHref\(escolaParam, "\/secretaria\/provas"\)/);
+ assert.match(teacher,/professorHref\("\/professor\/provas"\)/);
+ assert.match(legacy,/buildContextualPortalHref/);
+ assert.doesNotMatch(legacy,/<ProvasWorkspace/);
+});

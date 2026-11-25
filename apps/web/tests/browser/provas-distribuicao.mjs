@@ -22,13 +22,17 @@ try{
     const total=q.has("matricula")?1:turmas.filter(t=>selected.includes(t.id)).reduce((n,t)=>n+t.total,0);
     return reply({items:mode==="turmas"?turmas:mode==="alunos"?[aluno]:[],total:mode==="turmas"?72:total,offset:0,limit:Number(q.get("limit")??40),snapshot});
    }
+   assert.equal(q.get("aprovadas"),"1","secretary central requests only approved proofs");
    if(q.has("prova"))return reply({prova});
-   return reply({provas:[prova],escola:"Escola de teste",permissions:{author:false,admin:false,distribute:true,userId:"10000000-0000-4000-8000-000000000004"}});
+   return reply({provas:[prova],escola:"Escola de teste",permissions:{author:true,admin:true,distribute:true,userId:"10000000-0000-4000-8000-000000000004"}});
   });
-  await page.goto("http://127.0.0.1:6006/provas.html");
+  await page.goto("http://127.0.0.1:6006/provas.html?portal=secretaria");
+  await page.getByRole("heading",{name:"Central de impressão de provas"}).waitFor();
   await page.getByRole("button",{name:"Imprimir",exact:true}).click();
   const dialog=page.getByRole("dialog");
   await dialog.getByRole("link",{name:"Abrir folha para impressão"}).waitFor();
+  assert.equal(await page.getByRole("button",{name:"Nova prova",exact:true}).count(),0,"print-only hides authoring even for admin");
+  assert.equal(await dialog.getByRole("button",{name:"Aprovar prova",exact:true}).count(),0);
   await dialog.getByRole("radio",{name:/^Por turma/}).check();
   await dialog.getByRole("checkbox",{name:/8ª A/}).check();
   await dialog.getByRole("checkbox",{name:/8ª B/}).check();
