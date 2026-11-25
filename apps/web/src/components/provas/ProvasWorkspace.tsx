@@ -1,11 +1,12 @@
 "use client";
 import { useEffect,useRef,useState } from "react";
 import dynamic from "next/dynamic";
-import { ArrowDown,ArrowUp,ClipboardList,Copy,Eye,Pencil,Plus,Printer,Trash2 } from "lucide-react";
+import { ArrowDown,ArrowUp,ClipboardList,Copy,Eye,Pencil,Plus,Printer,Trash2,Minus,ChevronDown,ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { estados,tipos,provaWriteSchema,type Bloco,type Prova,type ProvaInput,type ProvaResumo,type AnoProva,type ContextoProva } from "@/lib/provas/schema";
 import { provaHtml } from "@/lib/provas/print";
+import { PROVA_PAPER,respostaLayout } from "@/lib/provas/layout";
 const RichQuestionEditor=dynamic(()=>import("./RichQuestionEditor"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar editor...</p>});
 const input="w-full min-w-0 max-w-full min-h-11 rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold";
 const fresh=():ProvaInput=>({ano_letivo_id:"",curso_matriz_id:"",titulo:"Prova",classe:"",disciplina:"",ano_lectivo:"",trimestre:1,duracao:90,serie:"A",conteudo:[{tipo:"discursiva",texto:"",linhas:3}]});
@@ -23,6 +24,7 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
  const [selected,setSelected]=useState<Prova|null>(null),[form,setForm]=useState<ProvaInput|null>(null),[preview,setPreview]=useState(false),[dirty,setDirty]=useState(false),[discard,setDiscard]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [confirm,setConfirm]=useState<Action|null>(null);
  const [richIndex,setRichIndex]=useState<number|null>(null);
+ const [headerExpanded,setHeaderExpanded]=useState(true);
  const [anos,setAnos]=useState<AnoProva[]>([]),[contextos,setContextos]=useState<ContextoProva[]>([]);
  const [anosLoading,setAnosLoading]=useState(false),[contextLoading,setContextLoading]=useState(false);
  const [anosError,setAnosError]=useState(""),[contextError,setContextError]=useState(""),[contextRetry,setContextRetry]=useState(0);
@@ -57,11 +59,11 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
  function patch(index:number,part:Partial<Bloco>){setForm(p=>p?{...p,conteudo:p.conteudo.map((b,i)=>i===index?{...b,...part}:b)}:p);setDirty(true);setError("");}
  function move(index:number,step:number){if(!form||richIndex!==null)return;const blocks=[...form.conteudo],to=index+step;if(to<0||to>=blocks.length)return;[blocks[index],blocks[to]]=[blocks[to],blocks[index]];change("conteudo",blocks);}
  function close(force=false){if(locked.current)return;if((dirty||richIndex!==null)&&!force){setDiscard(true);return;}setRichIndex(null);setForm(null);setSelected(null);setDirty(false);setDiscard(false);setConfirm(null);setError("");}
- function create(){if(locked.current)return;setRichIndex(null);setSelected(null);setForm(fresh());setDirty(false);setPreview(false);setError("");setNotice("");}
+ function create(){if(locked.current)return;setRichIndex(null);setSelected(null);setForm(fresh());setHeaderExpanded(true);setDirty(false);setPreview(false);setError("");setNotice("");}
  async function open(id:string){
   if(locked.current)return;locked.current=true;setBusy(true);setListError("");setNotice("");
   const c=new AbortController();request.current=c;
-  try{const b=await response(await fetch(endpoint+"?prova="+encodeURIComponent(id),{cache:"no-store",signal:c.signal}));if(c.signal.aborted)return;setRichIndex(null);setSelected(b.prova);setForm(editable(b.prova));setDirty(false);setPreview(b.prova.estado!=="rascunho"||!permissions?.author);setError("");}
+  try{const b=await response(await fetch(endpoint+"?prova="+encodeURIComponent(id),{cache:"no-store",signal:c.signal}));if(c.signal.aborted)return;setRichIndex(null);setSelected(b.prova);setForm(editable(b.prova));setHeaderExpanded(true);setDirty(false);setPreview(b.prova.estado!=="rascunho"||!permissions?.author);setError("");}
   catch(e){if(!c.signal.aborted)setListError(e instanceof Error?e.message:"Erro ao abrir a prova.");}
   finally{if(request.current===c){request.current=null;locked.current=false;setBusy(false);}}
  }
@@ -119,17 +121,22 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
        {printHref&&<Button asChild tone="gold"><a href={printHref} target="_blank" rel="noopener noreferrer"><Printer className="h-4 w-4"/> Imprimir prova</a></Button>}
      </div>}
     </div>:undefined}>
-   {form&&(preview||!canEdit?<iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada"})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/>:
+   {form&&(preview||!canEdit?<div className="min-w-0 space-y-2"><p className="text-xs text-muted-foreground">Em ecrãs pequenos, a leitura adapta-se à largura. A impressão mantém as margens A4 e os espaços em milímetros.</p><iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada"})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/></div>:
    <div className="min-w-0 space-y-5 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
-    <fieldset disabled={busy||Boolean(confirm)||discard} className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-     <label className="grid min-w-0 gap-1 text-sm">Ano lectivo<select className={input} value={selectedYear} disabled={anosLoading||richIndex!==null} onChange={e=>selectYear(e.target.value)}><option value="">Seleccione o ano</option>{selectedYear&&!anos.some(a=>a.id===selectedYear)&&<option value={selectedYear}>{form.ano_lectivo} (indisponível)</option>}{anos.map(a=><option key={a.id} value={a.id}>{a.label}{a.ativo?" · Actual":""}</option>)}</select></label>
-     <label className="grid gap-1 text-sm sm:col-span-2">Classe e disciplina<select className={input} value={form.curso_matriz_id} disabled={!selectedYear||contextLoading||richIndex!==null} onChange={e=>selectMatrix(e.target.value)}><option value="">{contextLoading?"A carregar disciplinas...":"Seleccione a disciplina"}</option>{form.curso_matriz_id&&!matrixOptions.some(o=>o.curso_matriz_id===form.curso_matriz_id)&&<option value={form.curso_matriz_id}>{form.classe} · {form.disciplina} (indisponível)</option>}{matrixOptions.map(o=><option key={o.curso_matriz_id} value={o.curso_matriz_id}>{o.curso} · {o.classe} · {o.disciplina}</option>)}</select></label>
-     <label className="grid gap-1 text-sm">Trimestre<select className={input} value={form.trimestre} disabled={!form.curso_matriz_id||!periodOptions.length||richIndex!==null} onChange={e=>change("trimestre",Number(e.target.value))}>{!periodOptions.includes(form.trimestre)&&<option value={form.trimestre}>{form.trimestre}.º trimestre (indisponível)</option>}{periodOptions.map(v=><option key={v} value={v}>{v}.º trimestre</option>)}</select></label>
+    <div className="rounded-xl border border-border p-3 sm:p-4">
+    <Button type="button" variant="ghost" className="h-auto w-full justify-between whitespace-normal px-0 text-left" aria-expanded={headerExpanded} aria-controls="provas-header-fields" onClick={()=>setHeaderExpanded(v=>!v)}>
+      <span className="min-w-0"><span className="block font-semibold">Cabeçalho da prova</span>{!headerExpanded&&<span className="block break-words text-xs font-normal text-muted-foreground">{form.disciplina?form.classe+" · "+form.disciplina+" · "+form.trimestre+".º trimestre":"Complete o contexto académico"}</span>}</span>{headerExpanded?<ChevronUp/>:<ChevronDown/>}
+    </Button>
+    <fieldset id="provas-header-fields" hidden={!headerExpanded} disabled={busy||Boolean(confirm)||discard} className={headerExpanded?"mt-3 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4":"hidden"}>
+     <label className="grid min-w-0 gap-1 text-sm">Ano lectivo<select aria-label="Ano lectivo" className={input} value={selectedYear} disabled={anosLoading||richIndex!==null} onChange={e=>selectYear(e.target.value)}><option value="">Seleccione o ano</option>{selectedYear&&!anos.some(a=>a.id===selectedYear)&&<option value={selectedYear}>{form.ano_lectivo} (indisponível)</option>}{anos.map(a=><option key={a.id} value={a.id}>{a.label}{a.ativo?" · Actual":""}</option>)}</select></label>
+     <label className="grid gap-1 text-sm sm:col-span-2">Classe e disciplina<select aria-label="Classe e disciplina" className={input} value={form.curso_matriz_id} disabled={!selectedYear||contextLoading||richIndex!==null} onChange={e=>selectMatrix(e.target.value)}><option value="">{contextLoading?"A carregar disciplinas...":"Seleccione a disciplina"}</option>{form.curso_matriz_id&&!matrixOptions.some(o=>o.curso_matriz_id===form.curso_matriz_id)&&<option value={form.curso_matriz_id}>{form.classe} · {form.disciplina} (indisponível)</option>}{matrixOptions.map(o=><option key={o.curso_matriz_id} value={o.curso_matriz_id}>{o.curso} · {o.classe} · {o.disciplina}</option>)}</select></label>
+     <label className="grid gap-1 text-sm">Trimestre<select aria-label="Trimestre" className={input} value={form.trimestre} disabled={!form.curso_matriz_id||!periodOptions.length||richIndex!==null} onChange={e=>change("trimestre",Number(e.target.value))}>{!periodOptions.includes(form.trimestre)&&<option value={form.trimestre}>{form.trimestre}.º trimestre (indisponível)</option>}{periodOptions.map(v=><option key={v} value={v}>{v}.º trimestre</option>)}</select></label>
      {([ "titulo","serie"] as const).map(key=><label key={key} className="grid gap-1 text-sm">{key==="titulo"?"Título":"Série"}<input className={input} value={form[key]} onChange={e=>change(key,e.target.value)} maxLength={key==="titulo"?160:20}/></label>)}
      {(anosError||contextError)&&<div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive sm:col-span-2 lg:col-span-4">{anosError||contextError}<Button type="button" size="sm" variant="outline" onClick={()=>setContextRetry(v=>v+1)}>Tentar novamente</Button></div>}
      {!contextLoading&&!contextError&&selectedYear&&yearOptions.length===0&&<p role="status" className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-4">Não existem disciplinas publicadas e autorizadas neste ano. Consulte a Direção.</p>}
      <label className="grid gap-1 text-sm">Duração (min.)<input type="number" min={1} max={480} className={input} value={form.duracao||""} onChange={e=>change("duracao",Number(e.target.value))}/></label>
     </fieldset>
+    </div>
     <fieldset disabled={busy||Boolean(confirm)||discard} className="min-w-0 space-y-3">
      <legend className="mb-3 text-sm font-semibold">Enunciado e perguntas</legend>
      {form.conteudo.map((block,index)=><div key={index} className="min-w-0 space-y-3 rounded-xl border border-border p-3 sm:p-4">
@@ -142,7 +149,18 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
         <Button type="button" id={"provas-rich-"+index} size="sm" variant="outline" className="w-full sm:w-auto" disabled={richIndex!==null} onClick={e=>{richTrigger.current=e.currentTarget;setRichIndex(index);}}><Pencil/> {block.rich?"Editar conteúdo formatado":"Formatar / inserir fórmulas"}</Button>
        </div>}
 
-      {!["grupo","texto"].includes(block.tipo)&&<div className="flex flex-wrap items-center gap-3"><label className="flex items-center gap-2 text-sm">Linhas para resposta<input type="number" min={0} max={20} value={block.linhas} className={input+" max-w-24"} onChange={e=>patch(index,{linhas:Number(e.target.value)})}/></label>{!block.rich&&richIndex===null&&["calculo","discursiva","alinea"].includes(block.tipo)&&<div className="flex flex-wrap gap-1">{["²","³","√","×","÷","π","½","¼","≤","≥","∪","∩"].map(symbol=><button key={symbol} type="button" aria-label={"Adicionar "+symbol} className="min-h-11 min-w-11 rounded-xl border border-border px-2 py-1 text-base hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" disabled={block.texto.length>=3000} onClick={()=>patch(index,{texto:block.texto+symbol})}>{symbol}</button>)}</div>}</div>}
+      {!["grupo","texto"].includes(block.tipo)&&<div className="min-w-0 space-y-3 border-t border-border pt-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2"><span className="text-sm font-medium">Espaço para resposta</span><span className="text-xs tabular-nums text-muted-foreground">{respostaLayout(block.tipo,block.linhas).kind==="none"?"Sem espaço adicional":respostaLayout(block.tipo,block.linhas).kind==="box"?"Área livre · "+(respostaLayout(block.tipo,block.linhas).heightMm/10).toFixed(1).replace(".",",")+" cm":block.linhas+" linha(s) · "+(respostaLayout(block.tipo,block.linhas).heightMm/10).toFixed(1).replace(".",",")+" cm"}</span></div>
+        <div className="flex flex-wrap gap-2" role="group" aria-label={"Espaço da resposta "+(index+1)}>
+         {([0,3,6,10] as const).map(n=><Button key={n} type="button" size="sm" variant={block.linhas===n?"secondary":"outline"} aria-pressed={block.linhas===n} className="flex-1 sm:flex-none" onClick={()=>patch(index,{linhas:n})}>{n===0?"Nenhum":n===3?"Curto":n===6?"Médio":"Longo"}</Button>)}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+         <Button type="button" size="sm" variant="outline" aria-label={"Diminuir espaço da resposta "+(index+1)} className="min-w-11" disabled={block.linhas<=0} onClick={()=>patch(index,{linhas:Math.max(0,block.linhas-1)})}><Minus/></Button>
+         <label className="flex min-w-0 items-center gap-2 text-sm"><input type="number" inputMode="numeric" min={0} max={PROVA_PAPER.maxLines} aria-label={"Linhas para resposta "+(index+1)} value={block.linhas} className={input+" w-20 text-center"} onChange={e=>patch(index,{linhas:Math.max(0,Math.min(PROVA_PAPER.maxLines,Math.trunc(Number(e.target.value)||0)))})}/><span>{["calculo","desenho"].includes(block.tipo)?"unidades de altura":"linhas"}</span></label>
+         <Button type="button" size="sm" variant="outline" aria-label={"Aumentar espaço da resposta "+(index+1)} className="min-w-11" disabled={block.linhas>=PROVA_PAPER.maxLines} onClick={()=>patch(index,{linhas:Math.min(PROVA_PAPER.maxLines,block.linhas+1)})}><Plus/></Button>
+        </div>
+        {!block.rich&&richIndex===null&&["calculo","discursiva","alinea"].includes(block.tipo)&&<div className="flex flex-wrap gap-1">{["²","³","√","×","÷","π","½","¼","≤","≥","∪","∩"].map(symbol=><button key={symbol} type="button" aria-label={"Adicionar "+symbol} className="min-h-11 min-w-11 rounded-xl border border-border px-2 py-1 text-base hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" disabled={block.texto.length>=3000} onClick={()=>patch(index,{texto:block.texto+symbol})}>{symbol}</button>)}</div>}
+      </div>}
      </div>)}
      <Button variant="outline" className="w-full sm:w-auto" disabled={richIndex!==null||form.conteudo.length>=80} onClick={()=>{const index=form.conteudo.length;change("conteudo",[...form.conteudo,{tipo:"discursiva",texto:"",linhas:3}]);requestAnimationFrame(()=>document.getElementById("provas-block-"+index)?.focus());}}><Plus/> Adicionar bloco</Button>
     </fieldset>
