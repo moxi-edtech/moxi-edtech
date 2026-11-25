@@ -319,3 +319,14 @@ test("cotação decimal exacta e escalas académicas",()=>{
  assert.equal(cotacaoStatus([q(undefined)],0).ready,true);
  assert.equal(cotacaoStatus([q(1)],0).ready,false);
 });
+
+test("standalone generic sheet has manual identification, blank writing lines and no synthetic assessment",()=>{
+ const {folhaGenericaHtml}=require("../../src/lib/provas/print.ts");
+ const html=folhaGenericaHtml("Escola <teste>",{nonce:"fixed-nonce"});
+ assert.match(html,/Escola &lt;teste&gt;/);
+ assert.match(html,/Folha de prova/);
+ for(const label of ["Nome do aluno:","Disciplina:","Classe:","Turma:","Tipo de prova:","Data:","Classificação:"])assert.ok(html.includes(label));
+ assert.equal((html.match(/class="linha"/g)||[]).length,18);
+ assert.doesNotMatch(html,/class="questao|Duração: 1 min|Série A|RASCUNHO/);
+ assert.match(html,/<script nonce="fixed-nonce">/);
+});

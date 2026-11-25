@@ -30,6 +30,9 @@ try{
   await page.goto("http://127.0.0.1:6006/provas.html?portal=secretaria"+(modal?"&modal=1":""));
   if(modal)await page.getByRole("button",{name:"Abrir central de provas"}).click();
   await page.getByRole("heading",{name:"Central de impressão de provas"}).waitFor();
+  const generic=page.getByRole("link",{name:"Imprimir folha genérica",exact:true});
+  await generic.waitFor();
+  assert.equal(new URL(await generic.getAttribute("href"),page.url()).search,"?modo=folha_generica");
   await page.getByRole("button",{name:"Imprimir",exact:true}).click();
   const dialog=page.getByRole("dialog");
   await dialog.getByRole("link",{name:"Abrir folha para impressão"}).waitFor();
@@ -93,4 +96,13 @@ try{
  await adminDialog.getByRole("button",{name:"Aprovar prova"}).waitFor();
  assert.equal(await adminDialog.getByRole("button",{name:"Devolver",exact:true}).isVisible(),true);
  await adminPage.close();
+ const empty=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+ await empty.route("**/api/escola/**/provas**",route=>route.fulfill({json:{provas:[],escola:"Escola de teste",permissions:{author:false,admin:false,distribute:true,userId:"10000000-0000-4000-8000-000000000004"}}}));
+ await empty.goto("http://127.0.0.1:6006/provas.html?portal=secretaria&modal=1");
+ await empty.getByRole("button",{name:"Abrir central de provas"}).click();
+ await empty.getByText("Nenhuma prova aprovada.",{exact:true}).waitFor();
+ const blank=empty.getByRole("link",{name:"Imprimir folha genérica",exact:true});await blank.waitFor();
+ assert.equal(new URL(await blank.getAttribute("href"),empty.url()).search,"?modo=folha_generica");
+ assert.equal(await empty.getByRole("button",{name:"Nova prova",exact:true}).count(),0);
+ await empty.close();
 }finally{await browser.close();}
