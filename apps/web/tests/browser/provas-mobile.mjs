@@ -59,7 +59,15 @@ try{
    await dialog.getByRole("button",{name:"Cabeçalho da prova"}).click();
    assert.equal(await dialog.getByRole("button",{name:/Cabeçalho da prova/}).getAttribute("aria-expanded"),"false");
   }
-  await dialog.getByRole("group",{name:"Espaço da resposta 1"}).getByRole("button",{name:"Médio",exact:true}).click();
+  if(width<640){
+   assert.equal(await dialog.getByRole("button",{name:"Médio",exact:true}).isVisible(),false);
+   assert.equal(await dialog.getByRole("button",{name:"Subir bloco 1"}).isVisible(),false);
+   assert.equal(await dialog.getByRole("button",{name:"Adicionar √",exact:true}).isVisible(),false);
+   await dialog.getByText("Símbolos matemáticos",{exact:true}).click();
+   assert.equal(await dialog.getByRole("button",{name:"Adicionar √",exact:true}).isVisible(),true);
+   await dialog.getByText("Símbolos matemáticos",{exact:true}).click();
+   await dialog.getByRole("spinbutton",{name:"Linhas para resposta 1"}).fill("6");
+  }else await dialog.getByRole("group",{name:"Espaço da resposta 1"}).getByRole("button",{name:"Médio",exact:true}).click();
   await dialog.getByRole("button",{name:"Aumentar espaço da resposta 1"}).click();
   assert.equal(await dialog.getByRole("spinbutton",{name:"Linhas para resposta 1"}).inputValue(),"7");
   await noOverflow(page,"editor "+width);
@@ -107,12 +115,16 @@ try{
    await dialog.getByRole("button",{name:"Ir para bloco 1"}).click();
    await dialog.getByRole("button",{name:"Ir para bloco 2"}).click();
    assert.equal(await dialog.getByLabel("Cotação da pergunta 2").inputValue(),"1.25");
+   assert.equal(await dialog.getByRole("button",{name:"Subir bloco 2"}).isVisible(),false);
+   await dialog.getByText("Opções da pergunta",{exact:true}).click();
    await dialog.getByRole("button",{name:"Subir bloco 2"}).click();
    assert.equal(await dialog.getByLabel("Tipo do bloco 1",{exact:true}).inputValue(),"escolha");
+   await dialog.getByText("Opções da pergunta",{exact:true}).click();
    await dialog.getByRole("button",{name:"Descer bloco 1"}).click();
    assert.equal(await dialog.getByLabel("Tipo do bloco 2",{exact:true}).inputValue(),"escolha");
-   await dialog.getByRole("button",{name:"Nova pergunta",exact:true}).click();
+   await dialog.getByRole("button",{name:"Adicionar pergunta",exact:true}).click();
    assert.equal(await dialog.getByLabel("Tipo do bloco 3",{exact:true}).inputValue(),"discursiva");
+   await dialog.getByText("Opções da pergunta",{exact:true}).click();
    await dialog.getByRole("button",{name:"Remover bloco 3"}).click();
    assert.equal(await dialog.getByLabel("Alternativa D da pergunta 2").inputValue(),"Pascal");
    await noOverflow(page,"single question "+width);
