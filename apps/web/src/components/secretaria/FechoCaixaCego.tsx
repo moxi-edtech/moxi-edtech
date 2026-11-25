@@ -13,10 +13,12 @@ type Props = {
   onConfirm: (data: { numerario_declarado: number; tpa_declarado: number; transferencia_declarada: number; mcx_declarado: number; detalhe_notas: Record<string, number> }) => Promise<ResultadoFecho>;
   onClose: () => void;
   completionLabel?:string;
+  compact?:boolean;
+  onCompleted?:()=>void;
 };
 const CHANNELS = [["numerario", "Numerário"], ["tpa", "TPA"], ["transferencia", "Transferências"], ["mcx", "Multicaixa Express"]] as const;
 
-export default function FechoCaixaCego({ onConfirm, onClose, completionLabel="Voltar à secretaria" }: Props) {
+export default function FechoCaixaCego({ onConfirm, onClose, completionLabel="Voltar à secretaria", compact=false, onCompleted }: Props) {
   const [cashMode,setCashMode]=useState<"total"|"count">("total");
   const [cashTotal,setCashTotal]=useState("");
   const [counts, setCounts] = useState<Record<number, string>>({});
@@ -57,12 +59,13 @@ export default function FechoCaixaCego({ onConfirm, onClose, completionLabel="Vo
   }
 
   if (result) return (
-    <section className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6">
+    <section className={compact?"space-y-4":"space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6"}>
       <div role="status" className="flex items-start gap-3">
         {result.status === "MATCH" ? <CheckCircle2 className="h-5 w-5 text-klasse-green" /> : <AlertTriangle className="h-5 w-5 text-red-600" />}
         <div><h2 className="font-semibold text-foreground">{result.status === "MATCH" ? "Fecho sem divergências" : "Fecho com divergências"}</h2><p className="text-sm text-muted-foreground">Declaração registada. Consulte os valores por meio de pagamento.</p></div>
       </div>
-      <div className="overflow-x-auto">
+      <details open={!compact||result.status==="DIVERGENT"} className="text-sm"><summary className="cursor-pointer font-medium">Valores por meio de pagamento</summary>
+      <div className="mt-3 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-border text-muted-foreground"><tr><th scope="col" className="p-2 text-left">Meio</th><th scope="col" className="p-2 text-right">Declarado</th><th scope="col" className="p-2 text-right">Sistema</th><th scope="col" className="p-2 text-right">Diferença</th></tr></thead>
           <tbody className="divide-y divide-border">{CHANNELS.map(([key, label]) => {
@@ -70,21 +73,21 @@ export default function FechoCaixaCego({ onConfirm, onClose, completionLabel="Vo
             return <tr key={key}><th scope="row" className="p-2 text-left font-medium">{label}</th><td className="p-2 text-right font-mono">{format(result.declarado[key])}</td><td className="p-2 text-right font-mono">{format(result.sistema[key])}</td><td className={`p-2 text-right font-mono ${delta !== 0 ? "text-red-600" : "text-foreground"}`}>{format(delta)}</td></tr>;
           })}</tbody>
         </table>
-      </div>
+      </div></details>
       {!!result.outros_count&&<p role="status" className="rounded-xl border border-amber-200 p-3 text-sm">Pagamentos sem meio classificado: {format(result.outros??0)} ({result.outros_count}). A conferência exige justificação.</p>}
       <p className="text-sm text-muted-foreground">Diferença líquida dos quatro meios: <span className="font-mono text-foreground">{format(result.diferenca_total)}</span></p>
-      <Button onClick={onClose}>{completionLabel}</Button>
+      <Button tone="gold" onClick={()=>{onClose();onCompleted?.();}}>{completionLabel}</Button>
     </section>
   );
 
   return (
-    <form onSubmit={submit} className="space-y-4" aria-busy={submitting}>
-      <section className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold text-foreground"><Banknote className="h-5 w-5 text-klasse-green" /> Numerário</h2><p className="mt-1 text-sm text-muted-foreground">Informe o total contado ou utilize a contagem por denominação.</p></div><div className="text-right"><p className="text-xs text-muted-foreground">Total contado</p><p className="font-mono text-xl font-semibold text-foreground">{format(cash)}</p></div></div>
+    <form onSubmit={submit} className={compact?"space-y-5":"space-y-4"} aria-busy={submitting}>
+      <section className={compact?"space-y-3":"space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6"}>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold text-foreground"><Banknote className="h-5 w-5 text-klasse-green" /> Numerário</h2>{!compact&&<p className="mt-1 text-sm text-muted-foreground">Informe o total contado ou utilize a contagem por denominação.</p>}</div>{(!compact||cashMode==="count")&&<div className="text-right"><p className="text-xs text-muted-foreground">Total contado</p><p className="font-mono text-xl font-semibold text-foreground">{format(cash)}</p></div>}</div>
         <div className="flex flex-wrap gap-2"><Button type="button" aria-pressed={cashMode==="total"} variant={cashMode==="total"?"default":"outline"} disabled={submitting} onClick={()=>{setCashMode("total");setZeroConfirmed(false);}}>Valor total</Button><Button type="button" aria-pressed={cashMode==="count"} variant={cashMode==="count"?"default":"outline"} disabled={submitting} onClick={()=>{setCashMode("count");setZeroConfirmed(false);}}>Contar notas e moedas</Button></div>{cashMode==="total"?<label className="block space-y-1 text-sm">Numerário contado (Kz)<input type="number" min="0" max="9999999999.99" step="0.01" inputMode="decimal" className={inputClass} value={cashTotal} placeholder="0,00" disabled={submitting} onChange={e=>{setCashTotal(e.target.value);setZeroConfirmed(false);}}/></label>:<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{NOTES.map(note => <label key={note} className="space-y-1 rounded-xl border border-border p-3 text-sm"><span className="font-medium">{format(note)}</span><input className={inputClass} inputMode="numeric" pattern="[0-9]*" maxLength={8} placeholder="0" value={counts[note] || ""} disabled={submitting} onChange={event => { if (/^\d*$/.test(event.target.value)) {setCounts(prev => ({ ...prev, [note]: event.target.value }));setZeroConfirmed(false);} }} /><span className="block text-xs text-muted-foreground">{format(note * Number(counts[note] || 0))}</span></label>)}</div>}
       </section>
-      <section className="space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6">
-        <div><h2 className="flex items-center gap-2 font-semibold text-foreground"><CreditCard className="h-5 w-5 text-klasse-green" /> Pagamentos digitais</h2><p className="mt-1 text-sm text-muted-foreground">Informe os totais dos comprovativos. Deixe vazio quando não houver movimento.</p></div>
+      <section className={compact?"space-y-3 border-t border-border pt-4":"space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6"}>
+        <div><h2 className="flex items-center gap-2 font-semibold text-foreground"><CreditCard className="h-5 w-5 text-klasse-green" /> Pagamentos digitais</h2><p className="mt-1 text-xs text-muted-foreground">Deixe vazio se não houve movimento.</p></div>
         <div className="grid gap-3 sm:grid-cols-3">{CHANNELS.slice(1).map(([key, label]) => {
           const channel = key as keyof typeof digital;
           return <label key={channel} className="space-y-1 text-sm"><span className="font-medium">{label} (Kz)</span><input type="number" min="0" max="9999999999.99" step="0.01" inputMode="decimal" className={inputClass} value={digital[channel]} placeholder="0,00" disabled={submitting} onChange={event=>{setDigital(prev=>({...prev,[channel]:event.target.value}));setZeroConfirmed(false);}} /></label>;
@@ -93,7 +96,7 @@ export default function FechoCaixaCego({ onConfirm, onClose, completionLabel="Vo
       {cash===0&&Object.values(digital).every(v=>Number(v)===0)&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={zeroConfirmed} disabled={submitting} onChange={e=>setZeroConfirmed(e.target.checked)}/> Confirmo que não houve movimento financeiro.</label>}
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <div className="flex flex-wrap justify-end gap-2">
-        <Button type="button" disabled={submitting} onClick={onClose} className="border border-border bg-card text-foreground">Cancelar</Button>
+        <Button type="button" disabled={submitting} onClick={onClose} variant="outline">Cancelar</Button>
         <Button type="submit" disabled={submitting} tone="gold">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}{submitting ? "A registar..." : "Declarar fecho"}</Button>
       </div>
     </form>
