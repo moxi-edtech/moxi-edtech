@@ -300,6 +300,7 @@ test("formula recovery is lossless for all model examples and canonical composit
  assert.equal(updateFormulaValues(complex,["3","2","7","16"]),complex);
  assert.equal(updateFormulaValues(complex,["4","3","8","25"]),"\\frac{4x^{3}+8}{\\sqrt{25}}");
  assert.equal(updateFormulaValues("x^2+3",["12","4"]),"x^{12}+4");
+ assert.equal(updateFormulaValues("x^ 2+3",["12","4"]),"x^ {12}+4");
  assert.equal(updateFormulaValues(complex,["3","2","7","\\htmlClass"]),null);
  assert.deepEqual(formulaValueSlots("\\frac12"),[]);
  assert.deepEqual(formulaValueSlots("\\text{2026}+2").map(s=>s.value),["2"]);

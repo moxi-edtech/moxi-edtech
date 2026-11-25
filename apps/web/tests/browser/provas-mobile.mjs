@@ -169,6 +169,7 @@ try{
   assert.match(await first.innerText(),/Calcula a soma/);
   assert.match(await second.innerText(),/Qual é a unidade/);
   await order.getByLabel("Posição do bloco 2").selectOption("0");
+  await first.getByText(/Qual é a unidade/).waitFor();
   assert.match(await first.innerText(),/Qual é a unidade/);
   if(width>=640){
    const handle=order.getByRole("button",{name:"Arrastar bloco 1"});const from=await handle.boundingBox(),to=await second.boundingBox();

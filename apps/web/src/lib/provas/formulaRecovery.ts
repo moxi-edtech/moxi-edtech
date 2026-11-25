@@ -118,7 +118,10 @@ export function formulaValueSlots(source:string):FormulaValueSlot[]{
    continue;
   }
   if(/\d/.test(source[i])){
-   const script=i>0&&["^","_"].includes(source[i-1]);
+   let previous=i-1;while(previous>=0&&source[previous]===" ")previous--;
+   const script=previous>=0&&["^","_"].includes(source[previous]);
+   // Decimal literals with omitted leading zero are left intact rather than risk a second decimal point.
+   if(source[i-1]==="."){i+=source.slice(i).match(/^\d+/)?.[0].length??1;continue;}
    const value=script?source[i]:source.slice(i).match(/^\d+(?:\.\d+)?/)?.[0]??source[i];
    if(value.length<=16)slots.push({start:i,end:i+value.length,value,singleScript:script});
    i+=value.length;continue;

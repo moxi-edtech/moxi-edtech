@@ -20,6 +20,9 @@ function Row({block,index,total,disabled,onMove}:{block:Bloco;index:number;total
  </li>;
 }
 export default function ProvasOrderPanel({blocks,disabled,onMove}:{blocks:readonly Bloco[];disabled:boolean;onMove:(from:number,to:number)=>void}){
+ // The organizer only reorders existing block objects. Keep row identity across moves
+ // so native selects follow their block instead of reusing a different block’s DOM state.
+ const [rowKeys]=useState(()=>new Map(blocks.map((block,index)=>[block,index])));
  const [dragIndex,setDragIndex]=useState<number|null>(null);
  const [announcement,setAnnouncement]=useState("");
  const sensors=useSensors(useSensor(PointerSensor,{activationConstraint:{distance:6}}));
@@ -37,7 +40,7 @@ export default function ProvasOrderPanel({blocks,disabled,onMove}:{blocks:readon
   <div><h3 className="text-base font-semibold text-klasse-green dark:text-foreground">Organizar perguntas</h3><p className="text-sm text-muted-foreground">Arraste para alterar a ordem ou escolha a posição.</p></div>
   {blocks.some(b=>b.tipo==="grupo"||b.tipo==="texto"||b.tipo==="alinea")&&<p className="text-xs text-muted-foreground">Grupos, textos de apoio e alíneas também podem ser movidos. Confira a sequência na pré-visualização.</p>}
   <DndContext id="provas-order" sensors={sensors} collisionDetection={closestCenter} onDragStart={e=>setDragIndex(typeof e.active.data.current?.index==="number"?e.active.data.current.index:null)} onDragEnd={finish} onDragCancel={()=>setDragIndex(null)}>
-   <ol aria-label="Ordem dos blocos" className="min-w-0 space-y-2">{blocks.map((block,index)=><Row key={index} block={block} index={index} total={blocks.length} disabled={disabled||blocks.length<2} onMove={move}/>)}</ol>
+   <ol aria-label="Ordem dos blocos" className="min-w-0 space-y-2">{blocks.map((block,index)=><Row key={rowKeys.get(block)??index} block={block} index={index} total={blocks.length} disabled={disabled||blocks.length<2} onMove={move}/>)}</ol>
    <DragOverlay dropAnimation={null}>{dragIndex!==null&&blocks[dragIndex]?<div className="max-w-[280px] truncate rounded-xl border border-klasse-gold bg-card p-3 text-sm font-medium shadow-sm">{excerpt(blocks[dragIndex])}</div>:null}</DragOverlay>
   </DndContext>
   <p role="status" className="sr-only">{announcement}</p>
