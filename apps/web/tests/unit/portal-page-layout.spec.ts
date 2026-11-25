@@ -58,7 +58,6 @@ test("principal operational pages use the same inset", () => {
     "components/secretaria/ClassesListClient.tsx",
     "components/secretaria/SecretariaDocumentosWorkspace.tsx",
     "components/academico/CalendarioAvaliacoesClient.tsx",
-    "app/escola/[id]/(portal)/financeiro/controle-caixa/page.tsx",
     "app/escola/[id]/(portal)/financeiro/recebimentos/page.tsx",
     "app/escola/[id]/(portal)/financeiro/cobrancas/page.tsx",
     "app/escola/[id]/(portal)/financeiro/radar/page.tsx",
