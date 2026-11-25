@@ -1,6 +1,6 @@
 # BILL-001 — evidence 2026-11-24
 
-Status: LIVE CATALOG PASS (direct table mutation); isolated PostgreSQL 17 regression added, CI pending. Not full DB replay, not AGT homologation. No data, migration, grant, feature flag or fiscal document changed in production.
+Status: LIVE CATALOG PASS (direct table mutation); isolated PostgreSQL 17 regression PASS on 790bc742 (see consolidated evidence below). Not full DB replay, not AGT homologation. No data, migration, grant, feature flag or fiscal document changed in production.
 
 ## Provenance
 Manifest: [59 versions](evidence/migration-provenance-20261124.json). 37 exact Git blob hashes, 15 boundary-normalized matches, six equal token sequences (heuristic, require parser/object review), one freeze with same executable token sequence and distinct version/comment text. PR #182 contains source-complete 20260927211445, unlike placeholder in #137. Never import all historical migrations or write migration ledger from this evidence. Full object/ACL equivalence and replay remain gates #308/#440.
@@ -15,7 +15,10 @@ Manifest: [59 versions](evidence/migration-provenance-20261124.json). 37 exact G
 - Function search uses SQL text heuristic, not proof of absence of indirect/dynamic writers.
 
 ## Reproducibility
-supabase/ops/tests/bill001-live-catalog.sql: read-only fail-closed catalog assertions, no RPC invocation. supabase/ops/tests/bill001-immutability-fixture.sql: isolated PG17 fixture, uses two verified historical function bodies, synthetic records and role ACLs; tests signed/pending/closed status, future-column guard, SAF-T prerequisite and four forbidden DML operations for three roles. No real signatures, no network, no production secrets. Does not reproduce all live triggers, tenant/RLS policy, lifecycle RPCs or dependencies; does not prove actual full schema mutation behavior. CI job Fiscal BILL-001 isolated PostgreSQL 17 must pass; full replay/negative suite remains separate.
+supabase/ops/tests/bill001-live-catalog.sql: read-only fail-closed catalog assertions, no RPC invocation. supabase/ops/tests/bill001-immutability-fixture.sql: isolated PG17 fixture, uses two verified historical function bodies, synthetic records and role ACLs; tests signed/pending/closed status, future-column guard, SAF-T prerequisite and four forbidden DML operations for three roles. No real signatures, no network, no production secrets. Does not reproduce all live triggers, tenant/RLS policy, lifecycle RPCs or dependencies; does not prove actual full schema mutation behavior. CI job Fiscal BILL-001 isolated PostgreSQL 17 passed on 790bc742; full replay/negative suite remains separate.
 
 ## Remaining acceptance
 Complete six token-only source comparisons with a PostgreSQL-aware parser/statement and final object definitions, resolve freeze version lineage without replay, run complete migration replay and actual schema negative tests, reconcile indirect writers and approve the freeze. Keep #440 and #308 open; do not activate any school before AGT acceptance and distinct authorization.
+
+## Consolidated status
+[Single certification tracker](AGT_RECONCILIACAO_20261124.md) — authoritative roadmap and pinned 13/13 CI evidence at `790bc74233227af49bef40a57063ca9bcf6fa64a`. This report remains a technical annex; no production activation authorized.
