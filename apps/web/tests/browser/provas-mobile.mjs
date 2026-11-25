@@ -86,10 +86,38 @@ try{
   await page.screenshot({path:"apps/web/visual-evidence/provas/formula-"+width+".png"});
   await dialog.getByRole("button",{name:"Inserir fórmula"}).click();
   await dialog.getByRole("button",{name:"Concluir edição"}).click();
-  await dialog.getByRole("button",{name:"Escolha múltipla",exact:false}).click();
+  if(width<640){
+   await dialog.getByRole("button",{name:"Adicionar pergunta",exact:true}).click();
+   assert.equal(await dialog.getByRole("status").filter({hasText:"Pergunta 2 de 2"}).isVisible(),true);
+   assert.equal(await dialog.getByLabel("Tipo do bloco 1",{exact:true}).count(),0,"only active question is mounted");
+   await dialog.getByLabel("Tipo do bloco 2",{exact:true}).selectOption("escolha");
+  }else{
+   await dialog.getByRole("button",{name:"Escolha múltipla",exact:false}).click();
+   assert.equal(await dialog.getByLabel("Tipo do bloco 1",{exact:true}).isVisible(),true,"desktop retains continuous editing");
+  }
   await dialog.getByLabel("Enunciado 2",{exact:true}).fill("Qual é a unidade de energia?");
   for(const [i,value] of ["Joule","Watt","Newton","Pascal"].entries())await dialog.getByLabel("Alternativa "+String.fromCharCode(65+i)+" da pergunta 2",{exact:true}).fill(value);
   await dialog.getByLabel("Cotação da pergunta 2").fill("1.25");
+  if(width<640){
+   await dialog.getByRole("button",{name:"Anterior",exact:true}).click();
+   assert.equal(await dialog.getByRole("spinbutton",{name:"Linhas para resposta 1"}).inputValue(),"7");
+   assert.equal(await dialog.getByLabel("Enunciado 2",{exact:true}).count(),0);
+   await dialog.getByRole("button",{name:"Próxima",exact:true}).click();
+   assert.equal(await dialog.getByLabel("Alternativa A da pergunta 2").inputValue(),"Joule");
+   await dialog.getByRole("button",{name:"Ir para bloco 1"}).click();
+   await dialog.getByRole("button",{name:"Ir para bloco 2"}).click();
+   assert.equal(await dialog.getByLabel("Cotação da pergunta 2").inputValue(),"1.25");
+   await dialog.getByRole("button",{name:"Subir bloco 2"}).click();
+   assert.equal(await dialog.getByLabel("Tipo do bloco 1",{exact:true}).inputValue(),"escolha");
+   await dialog.getByRole("button",{name:"Descer bloco 1"}).click();
+   assert.equal(await dialog.getByLabel("Tipo do bloco 2",{exact:true}).inputValue(),"escolha");
+   await dialog.getByRole("button",{name:"Nova pergunta",exact:true}).click();
+   assert.equal(await dialog.getByLabel("Tipo do bloco 3",{exact:true}).inputValue(),"discursiva");
+   await dialog.getByRole("button",{name:"Remover bloco 3"}).click();
+   assert.equal(await dialog.getByLabel("Alternativa D da pergunta 2").inputValue(),"Pascal");
+   await noOverflow(page,"single question "+width);
+   await page.screenshot({path:"apps/web/visual-evidence/provas/pergunta-individual-"+width+".png"});
+  }
   await dialog.getByRole("button",{name:"Pré-visualizar"}).click();
   const preview=dialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
   await preview.locator("math").waitFor();
@@ -99,6 +127,7 @@ try{
   assert.match(await preview.locator(".cotacao").innerText(),/1,25/);
   await noOverflow(page,"preview "+width);
   await dialog.getByRole("button",{name:"Editar",exact:true}).click();
+  if(width<640)assert.equal(await dialog.getByLabel("Alternativa B da pergunta 2").inputValue(),"Watt","preview returns to active block");
   await dialog.getByRole("button",{name:"Guardar rascunho"}).click();
   await dialog.getByRole("status").filter({hasText:"Prova guardada."}).waitFor();
   await dialog.getByRole("button",{name:"Fechar",exact:true}).click();

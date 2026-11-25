@@ -74,7 +74,8 @@ test("Operações preserves branded green icon containers and exactly five daily
   const list = quick.match(/const actions: QuickAction\[\] = portalBase === "operacoes"\s*\? \[([\s\S]*?)\]\s*:\s*\[/);
   assert.ok(list);
   assert.deepEqual([...list[1].matchAll(/key: "([^"]+)"/g)].map((match) => match[1]), ["recebimentos", "horarios", "provas", "criar_aviso"]);
-  assert.match(list[1], /key: "provas",\s*label: "Central de provas",\s*icon: ClipboardCheck,\s*href: buildPortalHref\(escolaParam, "\/operacoes\/provas"\)/);
+  assert.match(list[1], /key: "provas",\s*label: "Central de provas",\s*opensModal: true,\s*icon: ClipboardCheck,\s*href: buildPortalHref\(escolaParam, "\/operacoes\/provas"\)/);
+  assert.match(quick, /selectedAction\?\.key === "provas" && <ProvasModal/);
   assert.doesNotMatch(list[1], /Nova Matrícula|Nova Admissão|Importar Alunos/);
   assert.match(quick, /<ExpedienteDashboardCard escolaId=\{escolaId\} portal=\{portalBase\}/);
   assert.match(quick, /Novo Funcionário/);
