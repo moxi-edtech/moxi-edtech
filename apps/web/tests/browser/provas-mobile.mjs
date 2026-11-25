@@ -197,9 +197,12 @@ try{
   const first=order.getByTestId("prova-order-row-0"),second=order.getByTestId("prova-order-row-1");
   assert.match(await first.innerText(),/Calcula a soma/);
   assert.match(await second.innerText(),/Qual é a unidade/);
-  await order.getByLabel("Posição do bloco 2").selectOption("0");
+  assert.equal(await order.getByLabel("Posição do bloco 2").inputValue(),"1");
+   await order.getByLabel("Posição do bloco 2").selectOption("0");
   await first.getByText(/Qual é a unidade/).waitFor();
   assert.match(await first.innerText(),/Qual é a unidade/);
+   assert.equal(await order.getByLabel("Posição do bloco 1").inputValue(),"0");
+   assert.equal(await order.getByLabel("Posição do bloco 2").inputValue(),"1");
   if(width>=640){
    const handle=order.getByRole("button",{name:"Arrastar bloco 1"});const from=await handle.boundingBox(),to=await second.boundingBox();
    assert.ok(from&&to);
@@ -221,7 +224,12 @@ try{
    await first.getByText(/Calcula a soma/).waitFor();
   }else{
    await order.getByLabel("Posição do bloco 1").selectOption("1");
-   await first.getByText(/Calcula a soma/).waitFor();
+    await first.getByText(/Calcula a soma/).waitFor();
+    assert.equal(await order.getByLabel("Posição do bloco 2").inputValue(),"1");
+    await order.getByLabel("Posição do bloco 1").selectOption("1");
+    await first.getByText(/Qual é a unidade/).waitFor();
+    await order.getByLabel("Posição do bloco 1").selectOption("1");
+    await first.getByText(/Calcula a soma/).waitFor();
   }
   await second.getByText(/Qual é a unidade/).waitFor();
   assert.match(await second.innerText(),/Qual é a unidade/);
