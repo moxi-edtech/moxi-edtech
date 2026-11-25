@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { CalendarClock, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 
 type Petition = {
@@ -94,7 +95,6 @@ export function TabFaltas() {
     <section className="space-y-4" aria-labelledby="aluno-faltas-heading" data-testid="aluno-faltas">
       <header className="space-y-1">
         <h2 id="aluno-faltas-heading" className="text-xl font-semibold text-foreground">As minhas faltas</h2>
-        <p className="text-sm text-muted-foreground">Consulta as faltas registadas e acompanha os pedidos de justificação.</p>
         {safeData?.context?.anoLetivoLabel && <p className="text-xs text-muted-foreground">Ano letivo {safeData.context.anoLetivoLabel}</p>}
       </header>
       {loading && <p role="status" className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">A carregar a assiduidade…</p>}
@@ -104,15 +104,10 @@ export function TabFaltas() {
       </div>}
       {safeData && (
         <>
-          <div className="grid grid-cols-3 gap-2" aria-label="Resumo de assiduidade">
-            {[
-              { label: "Faltas", count: safeData.resumo.faltas },
-              { label: "Presenças", count: safeData.resumo.presencas },
-              { label: "Atrasos", count: safeData.resumo.atrasos },
-            ].map((stat) => <div key={stat.label} className="min-w-0 rounded-xl border border-border bg-card p-3">
-              <p className="text-2xl font-semibold tabular-nums text-foreground">{stat.count}</p>
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
-            </div>)}
+          <div className="grid gap-2 md:grid-cols-3" aria-label="Resumo de assiduidade">
+            <AcaoRapidaCard dashboardCompact mobileCompact emphasizeSublabel label="Faltas" icon={<CalendarClock />} sublabel={String(safeData.resumo.faltas)} needsAttention={safeData.resumo.faltas > 0} />
+            <AcaoRapidaCard dashboardCompact mobileCompact emphasizeSublabel label="Presenças" icon={<CheckCircle2 />} sublabel={String(safeData.resumo.presencas)} />
+            <AcaoRapidaCard dashboardCompact mobileCompact emphasizeSublabel label="Atrasos" icon={<AlertTriangle />} sublabel={String(safeData.resumo.atrasos)} needsAttention={safeData.resumo.atrasos > 0} />
           </div>
           {!safeData.can_submit && safeData.resumo.faltas > 0 && <p role="status" className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
             {safeData.context?.mode === "HISTORICAL_READ"

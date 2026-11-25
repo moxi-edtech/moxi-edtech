@@ -82,9 +82,6 @@ export default function AlunoAtividadesPage() {
     <div className="min-w-0 space-y-5 pb-4">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Actividades</h1>
-        <p className="text-sm text-muted-foreground">
-          Consulta as tarefas, começa uma actividade ou retoma um rascunho.
-        </p>
       </header>
 
       {/* LISTAGEM DE ACTIVIDADES */}
@@ -95,9 +92,9 @@ export default function AlunoAtividadesPage() {
           ))}
         </div>
       ) : atividades.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center space-y-3">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-            <Sparkles className="w-6 h-6" />
+        <div className="rounded-xl border border-dashed border-border bg-card p-4 text-center space-y-2">
+          <div className="w-8 h-8 rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300 flex items-center justify-center mx-auto">
+            <Sparkles className="w-4 h-4" />
           </div>
           <h3 className="text-base font-semibold text-foreground">Nenhuma actividade pendente</h3>
           <p className="text-xs font-medium text-muted-foreground max-w-sm mx-auto">
@@ -118,38 +115,38 @@ export default function AlunoAtividadesPage() {
             return (
               <div
                 key={act.id}
-                className="group relative space-y-3 overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-klasse-gold/40"
+                className="group relative min-w-0 space-y-2 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4 transition-colors hover:border-klasse-gold/40"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-muted text-foreground font-mono">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-muted text-foreground font-mono">
                         {act.tipo}
                       </span>
 
                       {isSubmetida ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <CheckCircle2 size={12} />
                           Submetida ({entrega?.nota !== null && entrega?.nota !== undefined ? `${entrega.nota} pts` : "Aguarda Correção"})
                         </span>
                       ) : isIniciada ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase bg-amber-50 text-amber-800 border border-amber-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                           <Clock size={12} />
-                          Em Andamento (Rascunho)
+                          Rascunho
                         </span>
                       ) : isExpirado ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                           <AlertCircle size={12} />
-                          Prazo Terminado
+                          Prazo terminado
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                           Pendente
                         </span>
                       )}
                     </div>
 
-                    <h3 className="font-semibold text-foreground text-base group-hover:text-primary transition-colors">
+                    <h3 className="break-words font-semibold text-foreground text-base group-hover:text-primary transition-colors">
                       {act.titulo}
                     </h3>
                     {act.instrucoes && (
@@ -186,7 +183,7 @@ export default function AlunoAtividadesPage() {
 
                 <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-muted-foreground pt-1 border-t border-border">
                   <span>{numQuestoes} {numQuestoes === 1 ? "Questão" : "Questões"}</span>
-                  <span>Pontuação Máx: {act.nota_maxima} pts</span>
+                  <span>Máximo: {act.nota_maxima} pts</span>
                   {prazoDate && (
                     <span className="font-mono text-amber-700">
                       Prazo: {prazoDate.toLocaleDateString()} às {prazoDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

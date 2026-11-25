@@ -164,7 +164,7 @@ export default function AlunoAtividadeRunnerPage({
 
   if (!activity) {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center space-y-3">
+      <div className="rounded-xl border border-dashed border-border bg-card p-4 text-center space-y-2">
         <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
         <h3 className="text-base font-semibold text-foreground">Actividade Indisponível</h3>
         <Link href={href("/aluno/atividades")} className="inline-block text-xs font-bold text-emerald-600">
@@ -216,24 +216,24 @@ export default function AlunoAtividadeRunnerPage({
       )}
 
       {/* HEADER DA ACTIVIDADE */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-3">
+      <div className="rounded-xl border border-border bg-card p-3 shadow-sm space-y-3 sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold  bg-muted text-foreground font-mono">
             {activity.tipo}
           </span>
 
           {isSubmetida ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <CheckCircle2 size={14} />
               Entregue ({entrega?.nota !== null && entrega?.nota !== undefined ? `${entrega.nota} pts` : "Em Avaliação"})
             </span>
           ) : isExpirado ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold uppercase bg-rose-50 text-rose-700 border border-rose-200">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
               <AlertCircle size={14} />
               Prazo Expirado
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold uppercase bg-amber-50 text-amber-800 border border-amber-200">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
               <Clock size={14} />
               Rascunho em Andamento
             </span>
@@ -283,7 +283,7 @@ export default function AlunoAtividadeRunnerPage({
           return (
             <div
               key={q.id || idx}
-              className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-3"
+              className="rounded-xl border border-border bg-card p-3 shadow-sm space-y-3 sm:p-4"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-primary font-mono">

@@ -15,6 +15,11 @@ type AcaoRapidaCardProps = {
   disabledReason?: string;
   compact?: boolean;
   dashboardCompact?: boolean;
+  /** Same dashboard card with reduced spacing for the student mobile portal. */
+  mobileCompact?: boolean;
+  emphasizeSublabel?: boolean;
+  /** Missing data is not a disabled destination. */
+  unavailable?: boolean;
   /** A confirmed operational pending item, independent of the legacy static variant. */
   needsAttention?: boolean;
   variant?: "green" | "yellow";
@@ -32,6 +37,9 @@ export default function AcaoRapidaCard({
   disabledReason,
   compact = false,
   dashboardCompact = false,
+  mobileCompact = false,
+  emphasizeSublabel = false,
+  unavailable = false,
   needsAttention = false,
   variant = "green",
 }: AcaoRapidaCardProps) {
@@ -40,8 +48,10 @@ export default function AcaoRapidaCard({
     : "bg-emerald/10 text-emerald dark:text-emerald-300";
 
   if (dashboardCompact) {
-    const tone = operationalCardTone({ unavailable: disabled, needsAttention });
-    const className = "group flex h-full min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    const tone = operationalCardTone({ unavailable: disabled || unavailable, needsAttention });
+    const className = (mobileCompact
+      ? "group flex h-full min-h-16 w-full min-w-0 items-center gap-2.5 rounded-xl border border-border bg-card p-3 text-left shadow-sm"
+      : "group flex h-full min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-sm") + " transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
     const content = (
       <>
         <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl [&>svg]:size-4 ${operationalCardIconClasses[tone]}`}>
@@ -49,7 +59,7 @@ export default function AcaoRapidaCard({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-medium leading-snug text-foreground">{label}</span>
-          {sublabel && <span className="mt-1 block text-xs leading-snug text-muted-foreground">{sublabel}</span>}
+          {sublabel && <span className={`mt-1 block break-words leading-snug ${emphasizeSublabel ? "text-base font-semibold tabular-nums text-foreground" : "text-xs text-muted-foreground"}`}>{sublabel}</span>}
           {disabled && disabledReason && <span className="mt-1 block text-xs leading-snug text-muted-foreground">{disabledReason}</span>}
         </span>
         {!disabled && (href || onClick) && <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />}

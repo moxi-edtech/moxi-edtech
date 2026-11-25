@@ -34,7 +34,6 @@ export function TabNotificacoes() {
     <section className="space-y-4" aria-labelledby="aluno-avisos-title">
       <div className="space-y-1">
         <h1 id="aluno-avisos-title" className="text-2xl font-semibold tracking-tight text-primary">Avisos</h1>
-        <p className="text-sm text-muted-foreground">Mensagens e novidades da tua escola.</p>
       </div>
       {loading ? (
         <p role="status" className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">A carregar avisos…</p>
@@ -42,7 +41,7 @@ export function TabNotificacoes() {
         <div role="alert" className="rounded-xl border border-border bg-card p-4">
           <p className="text-sm font-semibold text-foreground">Não foi possível consultar os avisos.</p>
           <button type="button" onClick={() => setRetry(v => v + 1)}
-            className="mt-3 min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-primary hover:bg-muted">
+            className="mt-3 min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-primary hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
             Tentar novamente
           </button>
         </div>
@@ -54,12 +53,15 @@ export function TabNotificacoes() {
       ) : (
         <div className="space-y-2">
           {items.map(a => (
-            <article key={a.id} className="rounded-xl border border-border bg-card p-4">
+            <article key={a.id} className="flex min-w-0 items-start gap-3 rounded-xl border border-border bg-card p-3 sm:p-4">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300"><Bell className="h-4 w-4" aria-hidden="true" /></span>
+              <div className="min-w-0 flex-1 break-words">
               <h2 className="text-sm font-semibold text-foreground">{a.titulo}</h2>
               {a.resumo && <p className="mt-2 text-sm text-muted-foreground">{a.resumo}</p>}
               <p className="mt-2 text-xs text-muted-foreground">
                 {[a.origem, a.data && !Number.isNaN(Date.parse(a.data)) ? new Date(a.data).toLocaleDateString("pt-AO") : ""].filter(Boolean).join(" · ")}
               </p>
+              </div>
             </article>
           ))}
         </div>
