@@ -4,17 +4,14 @@ import dynamic from "next/dynamic";
 import { ArrowDown,ArrowUp,ClipboardList,Copy,Eye,Pencil,Plus,Printer,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { estados,tipos,provaSchema,type Bloco,type Prova,type ProvaInput,type ProvaResumo } from "@/lib/provas/schema";
+import { estados,tipos,provaSchema,type Bloco,type Prova,type ProvaInput,type ProvaResumo,type AnoProva,type ContextoProva } from "@/lib/provas/schema";
 import { provaHtml } from "@/lib/provas/print";
 const RichQuestionEditor=dynamic(()=>import("./RichQuestionEditor"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar editor...</p>});
 const input="w-full min-w-0 rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold";
-const fresh=():ProvaInput=>{
- const date=new Date(),year=Number(new Intl.DateTimeFormat("en",{timeZone:"Africa/Luanda",year:"numeric"}).format(date)),month=Number(new Intl.DateTimeFormat("en",{timeZone:"Africa/Luanda",month:"numeric"}).format(date)),start=month>=9?year:year-1;
- return {titulo:"Prova",classe:"",disciplina:"",ano_lectivo:start+"/"+(start+1),trimestre:1,duracao:90,serie:"A",conteudo:[{tipo:"discursiva",texto:"",linhas:3}]};
-};
+const fresh=():ProvaInput=>({ano_letivo_id:"",curso_matriz_id:"",titulo:"Prova",classe:"",disciplina:"",ano_lectivo:"",trimestre:1,duracao:90,serie:"A",conteudo:[{tipo:"discursiva",texto:"",linhas:3}]});
 function editable(p:Prova):ProvaInput {
- const {titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo}=p;
- return {titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo};
+ const {ano_letivo_id,curso_matriz_id,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo}=p;
+ return {ano_letivo_id,curso_matriz_id,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo};
 }
 type Permissions={author:boolean;admin:boolean;userId:string};
 type Action="submeter"|"aprovar"|"devolver"|"arquivar"|"duplicar";
@@ -26,6 +23,24 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
  const [selected,setSelected]=useState<Prova|null>(null),[form,setForm]=useState<ProvaInput|null>(null),[preview,setPreview]=useState(false),[dirty,setDirty]=useState(false),[discard,setDiscard]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [confirm,setConfirm]=useState<Action|null>(null);
  const [richIndex,setRichIndex]=useState<number|null>(null);
+ const [anos,setAnos]=useState<AnoProva[]>([]),[contextos,setContextos]=useState<ContextoProva[]>([]);
+ const [anosLoading,setAnosLoading]=useState(false),[contextLoading,setContextLoading]=useState(false);
+ const [anosError,setAnosError]=useState(""),[contextError,setContextError]=useState(""),[contextRetry,setContextRetry]=useState(0);
+ const selectedYear=form?.ano_letivo_id??"";
+ const editing=Boolean(form&&permissions?.author&&(!selected||selected.estado==="rascunho"&&(permissions.admin||selected.autor_id===permissions.userId)));
+ useEffect(()=>{
+  if(!editing)return;
+  const c=new AbortController();setAnosLoading(true);setAnosError("");setAnos([]);
+  fetch(endpoint+"?contexto=1",{cache:"no-store",signal:c.signal}).then(response).then(b=>{if(!c.signal.aborted)setAnos(b.items);}).catch(e=>{if(!c.signal.aborted)setAnosError(e.message);}).finally(()=>{if(!c.signal.aborted)setAnosLoading(false);});
+  return()=>c.abort();
+ },[endpoint,editing,contextRetry]);
+ useEffect(()=>{
+  setContextos([]);setContextError("");setContextLoading(false);
+  if(!editing||!selectedYear)return;
+  const c=new AbortController();setContextLoading(true);
+  fetch(endpoint+"?contexto=1&ano="+encodeURIComponent(selectedYear),{cache:"no-store",signal:c.signal}).then(response).then(b=>{if(!c.signal.aborted)setContextos(b.items);}).catch(e=>{if(!c.signal.aborted)setContextError(e.message);}).finally(()=>{if(!c.signal.aborted)setContextLoading(false);});
+  return()=>c.abort();
+ },[endpoint,editing,selectedYear,contextRetry]);
  const locked=useRef(false),request=useRef<AbortController|null>(null);
  useEffect(()=>{
   const c=new AbortController();setLoading(true);setListError("");
@@ -65,6 +80,18 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
  const canEdit=Boolean(permissions?.author&&(!selected||selected.estado==="rascunho"&&(permissions.admin||selected.autor_id===permissions.userId)));
  const canManage=Boolean(selected&&permissions?.author&&(permissions.admin||selected.autor_id===permissions.userId));
  const printHref=selected?.estado==="aprovada"?endpoint+"/print?prova="+encodeURIComponent(selected.id):null;
+ const yearOptions=contextos.filter(o=>o.ano_letivo_id===selectedYear);
+ const matrixOptions=Array.from(new Map(yearOptions.map(o=>[o.curso_matriz_id,o])).values());
+ const periodOptions=yearOptions.filter(o=>o.curso_matriz_id===form?.curso_matriz_id).map(o=>o.trimestre);
+ const contextReady=Boolean(form&&yearOptions.some(o=>o.curso_matriz_id===form.curso_matriz_id&&o.trimestre===form.trimestre));
+ function selectYear(id:string){
+  const year=anos.find(a=>a.id===id);setContextos([]);
+  setForm(p=>p?{...p,ano_letivo_id:id,ano_lectivo:year?.label??"",curso_matriz_id:"",classe:"",disciplina:"",trimestre:1}:p);setDirty(true);setError("");
+ }
+ function selectMatrix(id:string){
+  const option=matrixOptions.find(o=>o.curso_matriz_id===id);
+  setForm(p=>p?{...p,curso_matriz_id:id,classe:option?.classe??"",disciplina:option?.disciplina??"",ano_lectivo:option?.ano_lectivo??p.ano_lectivo,trimestre:option?.trimestre??1}:p);setDirty(true);setError("");
+ }
  const actionLabels:Record<Action,string>={submeter:"Enviar para revisão",aprovar:"Aprovar prova",devolver:"Devolver para edição",arquivar:"Arquivar",duplicar:"Duplicar"};
  return <section className="space-y-5">
   <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold text-foreground">Provas e impressos pedagógicos</h2><p className="text-sm text-muted-foreground">{permissions?.author?"Elabore, reveja e imprima avaliações.":"Consulte e imprima as provas aprovadas."}</p></div>{permissions?.author&&<Button tone="gold" disabled={busy||loading} onClick={create}><Plus/> Nova prova</Button>}</div>
@@ -79,8 +106,8 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
      {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}{notice&&<p role="status" className="text-sm text-klasse-green">{notice}</p>}
      {discard?<div className="flex flex-wrap items-center gap-2"><p className="mr-auto text-sm">Descartar as alterações não guardadas?</p><Button variant="outline" onClick={()=>setDiscard(false)}>Continuar edição</Button><Button variant="destructive" onClick={()=>close(true)}>Descartar</Button></div>:confirm?<div className="flex flex-wrap items-center gap-2"><p className="mr-auto text-sm">Confirmar: {actionLabels[confirm]}?</p><Button variant="outline" onClick={()=>setConfirm(null)}>Cancelar</Button><Button tone="gold" disabled={busy} onClick={()=>mutate(confirm)}>Confirmar</Button></div>:<div className="flex flex-wrap items-center justify-end gap-2">
        {canEdit&&<Button variant="outline" disabled={busy||richIndex!==null} onClick={()=>setPreview(v=>!v)}>{preview?<Pencil/>:<Eye/>}{preview?"Editar":"Pré-visualizar"}</Button>}
-       {canEdit&&(!selected||dirty)&&<Button tone="gold" disabled={busy||richIndex!==null} onClick={()=>mutate(selected?"guardar":"criar")}>Guardar rascunho</Button>}
-       {canManage&&selected&&!dirty&&selected.estado==="rascunho"&&<Button tone="gold" disabled={busy||richIndex!==null} onClick={()=>setConfirm("submeter")}>Enviar para revisão</Button>}
+       {canEdit&&(!selected||dirty)&&<Button tone="gold" disabled={busy||richIndex!==null||!contextReady||contextLoading} onClick={()=>mutate(selected?"guardar":"criar")}>Guardar rascunho</Button>}
+       {canManage&&selected&&!dirty&&selected.estado==="rascunho"&&<Button tone="gold" disabled={busy||richIndex!==null||!contextReady||contextLoading} onClick={()=>setConfirm("submeter")}>Enviar para revisão</Button>}
        {permissions?.admin&&selected?.estado==="em_revisao"&&<><Button variant="outline" disabled={busy} onClick={()=>setConfirm("devolver")}>Devolver</Button><Button tone="gold" disabled={busy} onClick={()=>setConfirm("aprovar")}>Aprovar prova</Button></>}
        {canManage&&selected&&!dirty&&<Button variant="ghost" disabled={busy||richIndex!==null} onClick={()=>setConfirm("duplicar")}><Copy/> Duplicar</Button>}
        {canManage&&selected&&!dirty&&(selected.estado==="rascunho"||permissions?.admin&&selected.estado==="aprovada")&&<Button variant="ghost" disabled={busy||richIndex!==null} onClick={()=>setConfirm("arquivar")}>Arquivar</Button>}
@@ -90,8 +117,12 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
    {form&&(preview||!canEdit?<iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada"})} className="h-[65vh] w-full rounded-xl border border-border bg-background"/>:
    <div className="space-y-6">
     <fieldset disabled={busy||Boolean(confirm)||discard} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-     {(["titulo","classe","disciplina","ano_lectivo","serie"] as const).map(key=><label key={key} className="grid gap-1 text-sm">{({titulo:"Título",classe:"Classe",disciplina:"Disciplina",ano_lectivo:"Ano lectivo",serie:"Série"})[key]}<input className={input} value={form[key]} onChange={e=>change(key,e.target.value)} maxLength={({titulo:160,classe:80,disciplina:120,ano_lectivo:9,serie:20})[key]}/></label>)}
-     <label className="grid gap-1 text-sm">Trimestre<select className={input} value={form.trimestre} onChange={e=>change("trimestre",Number(e.target.value))}>{[1,2,3].map(v=><option key={v} value={v}>{v}.º trimestre</option>)}</select></label>
+     <label className="grid gap-1 text-sm">Ano lectivo<select className={input} value={selectedYear} disabled={anosLoading||richIndex!==null} onChange={e=>selectYear(e.target.value)}><option value="">Seleccione o ano</option>{selectedYear&&!anos.some(a=>a.id===selectedYear)&&<option value={selectedYear}>{form.ano_lectivo} (indisponível)</option>}{anos.map(a=><option key={a.id} value={a.id}>{a.label}{a.ativo?" · Actual":""}</option>)}</select></label>
+     <label className="grid gap-1 text-sm sm:col-span-2">Classe e disciplina<select className={input} value={form.curso_matriz_id} disabled={!selectedYear||contextLoading||richIndex!==null} onChange={e=>selectMatrix(e.target.value)}><option value="">{contextLoading?"A carregar disciplinas...":"Seleccione a disciplina"}</option>{form.curso_matriz_id&&!matrixOptions.some(o=>o.curso_matriz_id===form.curso_matriz_id)&&<option value={form.curso_matriz_id}>{form.classe} · {form.disciplina} (indisponível)</option>}{matrixOptions.map(o=><option key={o.curso_matriz_id} value={o.curso_matriz_id}>{o.curso} · {o.classe} · {o.disciplina}</option>)}</select></label>
+     <label className="grid gap-1 text-sm">Trimestre<select className={input} value={form.trimestre} disabled={!form.curso_matriz_id||!periodOptions.length||richIndex!==null} onChange={e=>change("trimestre",Number(e.target.value))}>{!periodOptions.includes(form.trimestre)&&<option value={form.trimestre}>{form.trimestre}.º trimestre (indisponível)</option>}{periodOptions.map(v=><option key={v} value={v}>{v}.º trimestre</option>)}</select></label>
+     {([ "titulo","serie"] as const).map(key=><label key={key} className="grid gap-1 text-sm">{key==="titulo"?"Título":"Série"}<input className={input} value={form[key]} onChange={e=>change(key,e.target.value)} maxLength={key==="titulo"?160:20}/></label>)}
+     {(anosError||contextError)&&<div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive sm:col-span-2 lg:col-span-4">{anosError||contextError}<Button type="button" size="sm" variant="outline" onClick={()=>setContextRetry(v=>v+1)}>Tentar novamente</Button></div>}
+     {!contextLoading&&!contextError&&selectedYear&&yearOptions.length===0&&<p role="status" className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-4">Não existem disciplinas publicadas e autorizadas neste ano. Consulte a Direção.</p>}
      <label className="grid gap-1 text-sm">Duração (min.)<input type="number" min={1} max={480} className={input} value={form.duracao||""} onChange={e=>change("duracao",Number(e.target.value))}/></label>
     </fieldset>
     <fieldset disabled={busy||Boolean(confirm)||discard} className="space-y-3">
