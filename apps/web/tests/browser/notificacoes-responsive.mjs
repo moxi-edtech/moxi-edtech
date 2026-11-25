@@ -25,7 +25,6 @@ try{
   assert.equal(await panel.getByRole("listitem").count(),20);
   const read=panel.getByRole("button",{name:/Avaliação disponível/});
   await read.click();
-  await trigger.getAttribute("aria-expanded"); // actual component remains open after read
   await panel.getByText("19 por ler",{exact:true}).waitFor();
   await panel.getByRole("button",{name:"Marcar todas como lidas",exact:true}).click();
   await panel.getByText("19 por ler",{exact:true}).waitFor({state:"hidden"});
