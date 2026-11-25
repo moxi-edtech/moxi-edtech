@@ -54,3 +54,25 @@ jobs:
           version: 9.15.9
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm exec tsx --test apps/web/tests/unit/provas-print.spec.mjs
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Audit new editor dependency graph
+        run: |
+          pnpm --filter web list --prod --depth Infinity --json > /tmp/provas-deps.json
+          set +e
+          pnpm audit --prod --json > /tmp/provas-audit.json
+          audit_exit=$?
+          set -e
+          node scripts/audit-provas-dependencies.mjs /tmp/provas-deps.json /tmp/provas-audit.json "$audit_exit"
