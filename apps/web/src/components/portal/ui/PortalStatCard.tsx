@@ -34,7 +34,7 @@ export function PortalStatCard({
       </span>
     </>
   );
-  const styles = `flex min-h-24 min-w-0 flex-col items-start justify-between gap-1.5 rounded-xl border px-2.5 py-2.5 text-left sm:px-4 ${palette.surface} ${href ? "transition-colors hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" : ""} ${className}`;
+  const styles = `flex min-h-24 min-w-0 flex-col items-start justify-between gap-1.5 rounded-xl border text-left sm:px-4 ${tone === "neutral" ? "px-3 py-3" : "px-2.5 py-2.5"} ${palette.surface} ${href ? "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" : ""} ${href ? (tone === "neutral" ? "hover:bg-muted" : "hover:brightness-95") : ""} ${className}`;
   if (href) return <Link href={href} className={styles} aria-label={accessibleLabel}>{contents}</Link>;
   return <div className={styles} aria-label={accessibleLabel}>{contents}</div>;
 }

@@ -93,7 +93,6 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
             <div className="mb-3 flex items-start justify-between gap-3 border-b border-border pb-3">
               <div>
                 <h2 id="aluno-mais-titulo" className="text-base font-semibold text-primary">Outras áreas</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">Aceder aos restantes serviços do aluno</p>
               </div>
               <button
                 type="button"
@@ -137,7 +136,7 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Navegação do portal do aluno"
       >
-        <div className="mx-auto grid w-full max-w-[1200px] grid-cols-5 gap-0.5 px-1 py-1.5 sm:gap-1 sm:px-2">
+        <div className="mx-auto grid w-full max-w-[1200px] grid-cols-5 gap-0.5 px-1 py-1 sm:gap-1 sm:px-2">
           {mainItems.map((item) => {
             const { href, label, icon: Icon, badge } = item;
             const active = matchesRoute(item, activePath);

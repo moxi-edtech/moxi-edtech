@@ -66,3 +66,21 @@ test("dashboards não apresentam progresso fictício", async () => {
   assert.match(home, /mediaNotas === null/);
   assert.doesNotMatch(home, /\+0\.2|Meta: 90%/);
 });
+
+test("portal do aluno compacta cabeçalho, dashboard e notas sem perder ações", async () => {
+  const [header, dashboard, grid, notas, layout] = await Promise.all([
+    read("components/aluno/layout/AlunoHeader.tsx"),
+    read("components/aluno/dashboard/DashboardLoader.tsx"),
+    read("components/aluno/academico/BoletimGradeGrid.tsx"),
+    read("components/aluno/tabs/TabNotas.tsx"),
+    read("app/(portal-aluno)/aluno/AlunoLayoutClient.tsx"),
+  ]);
+  assert.match(header, /<details className="group relative">/);
+  assert.match(header, /<SignOutButton/);
+  assert.match(dashboard, /tone="info"/);
+  assert.doesNotMatch(dashboard, /O que precisas de saber hoje|id="school-links"/);
+  assert.match(dashboard, /status_financeiro\.pendentes > 0/);
+  assert.match(grid, /disabled=\{locked \|\| downloading \|\| !canDownloadOfficial\}/);
+  assert.doesNotMatch(notas, /embedded && academicYear !== null/);
+  assert.match(layout, /pb-\[calc\(88px\+env\(safe-area-inset-bottom\)\)\]/);
+});
