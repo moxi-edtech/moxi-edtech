@@ -22,7 +22,7 @@ try{
    const reply=body=>route.fulfill({json:body});
    if(req.method()==="POST"){
     const data=req.postDataJSON();
-    assert.equal(data.dados.ano_letivo_id,year);assert.equal(data.dados.curso_matriz_id,matrix);
+    assert.equal(data.dados.ano_letivo_id,year);assert.equal(data.dados.curso_matriz_id,matrix);assert.equal(data.dados.conteudo[0].linhas,7);
     assert.ok(data.dados.conteudo[0].rich.segments.some(s=>s.kind==="math"&&s.latex==="2+3"));
     saved={...base,...data.dados,id:"30000000-0000-4000-8000-000000000002",estado:"rascunho",versao:1};
     return reply({prova:saved});
@@ -38,9 +38,15 @@ try{
   await page.screenshot({path:"apps/web/visual-evidence/provas/list-"+width+".png"});
   await create.click();
   const dialog=page.getByRole("dialog");await dialog.waitFor();
+  await dialog.getByRole("combobox",{name:"Ano lectivo",exact:true}).waitFor();
   await dialog.getByLabel("Ano lectivo",{exact:true}).selectOption(year);
   await dialog.getByLabel("Classe e disciplina").selectOption(matrix);
   await dialog.getByLabel("Enunciado 1",{exact:true}).fill("Calcula a soma.");
+  await dialog.getByRole("button",{name:"Cabeçalho da prova"}).click();
+  assert.equal(await dialog.getByRole("button",{name:/Cabeçalho da prova/}).getAttribute("aria-expanded"),"false");
+  await dialog.getByRole("group",{name:"Espaço da resposta 1"}).getByRole("button",{name:"Médio",exact:true}).click();
+  await dialog.getByRole("button",{name:"Aumentar espaço da resposta 1"}).click();
+  assert.equal(await dialog.getByRole("spinbutton",{name:"Linhas para resposta 1"}).inputValue(),"7");
   await noOverflow(page,"editor "+width);
   if(width<640){
    const box=await dialog.getByRole("button",{name:"Guardar rascunho"}).boundingBox();
@@ -68,6 +74,7 @@ try{
   await dialog.getByRole("button",{name:"Pré-visualizar"}).click();
   const preview=dialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
   await preview.locator("math").waitFor();
+  assert.equal(await preview.locator(".linha").count(),7);
   await noOverflow(page,"preview "+width);
   await dialog.getByRole("button",{name:"Editar",exact:true}).click();
   await dialog.getByRole("button",{name:"Guardar rascunho"}).click();
