@@ -66,7 +66,20 @@ try{
   if(width<640){
    assert.equal(await dialog.getByLabel("Enunciado 1",{exact:true}).isVisible(),false);
    await dialog.getByRole("button",{name:"Perguntas",exact:true}).click();
-   await dialog.getByLabel("Enunciado 1",{exact:true}).fill("Calcula a soma.");
+   const plain=dialog.getByLabel("Enunciado 1",{exact:true});
+   await plain.fill("Calcula a soma.");
+   await page.evaluate(()=>{const vv=window.visualViewport;Object.defineProperty(vv,"height",{configurable:true,value:Math.max(220,vv.height-270)});vv.dispatchEvent(new Event("resize"));});
+   await page.waitForFunction(()=>document.querySelector("[role=dialog]")?.getAttribute("data-keyboard-open")==="true");
+   assert.equal(await dialog.locator("[data-modal-footer]").count(),0);
+   assert.equal(await dialog.getByLabel("Etapas de elaboração").isVisible(),false);
+   await plain.fill("Calcula a soma.\n"+"Linha longa para testar escrita.\n".repeat(35));
+   await plain.evaluate(el=>el.setSelectionRange(el.value.length,el.value.length));
+   await page.waitForFunction(()=>{const el=document.activeElement,body=document.querySelector("[data-modal-scroll]");if(!(el instanceof HTMLTextAreaElement)||!body)return false;const a=el.getBoundingClientRect(),b=body.getBoundingClientRect();return a.top>=b.top-2&&a.bottom<=b.bottom+2;});
+   await plain.fill("Calcula a soma.");
+   await dialog.getByRole("button",{name:"Concluir escrita",exact:true}).click();
+   await page.evaluate(()=>{const vv=window.visualViewport;Reflect.deleteProperty(vv,"height");vv.dispatchEvent(new Event("resize"));});
+   await page.waitForFunction(()=>document.querySelector("[role=dialog]")?.getAttribute("data-keyboard-open")==="false");
+   assert.equal(await plain.inputValue(),"Calcula a soma.");
    await dialog.getByRole("button",{name:"Cabeçalho",exact:true}).click();
    if(!await dialog.getByLabel("Apresentação da folha").isVisible())await dialog.getByText(/Opções avançadas/).click();
    assert.equal(await dialog.getByLabel("Apresentação da folha").inputValue(),"espacosa");
@@ -180,6 +193,16 @@ try{
   }
   await dialog.getByLabel("Enunciado 2",{exact:true}).fill("Qual é a unidade de energia?");
   for(const [i,value] of ["Joule","Watt","Newton","Pascal"].entries())await dialog.getByLabel("Alternativa "+String.fromCharCode(65+i)+" da pergunta 2",{exact:true}).fill(value);
+  if(width<640){
+   const alternative=dialog.getByLabel("Alternativa D da pergunta 2",{exact:true});
+   await alternative.focus();
+   await page.evaluate(()=>{const vv=window.visualViewport;Object.defineProperty(vv,"height",{configurable:true,value:Math.max(220,vv.height-270)});vv.dispatchEvent(new Event("resize"));});
+   await page.waitForFunction(()=>document.querySelector("[role=dialog]")?.getAttribute("data-keyboard-open")==="true");
+   await page.waitForFunction(()=>{const el=document.activeElement,b=document.querySelector("[data-modal-scroll]")?.getBoundingClientRect(),a=el?.getBoundingClientRect();return a&&b&&a.top>=b.top-2&&a.bottom<=b.bottom+2;});
+   assert.equal(await alternative.inputValue(),"Pascal");
+   await page.evaluate(()=>{const vv=window.visualViewport;Reflect.deleteProperty(vv,"height");vv.dispatchEvent(new Event("resize"));});
+   await page.waitForFunction(()=>document.querySelector("[role=dialog]")?.getAttribute("data-keyboard-open")==="false");
+  }
   await dialog.getByLabel("Cotação da pergunta 2").fill("21,5");
   assert.match(await dialog.innerText(),/Excesso de 1,5 valores/);
   await dialog.getByLabel("Cotação da pergunta 2").fill("1,25");
@@ -198,8 +221,22 @@ try{
    assert.equal(await dialog.getByLabel("Tipo do bloco 3",{exact:true}).inputValue(),"discursiva");
    await dialog.getByLabel("Tipo do bloco 3",{exact:true}).selectOption("calculo");
    await dialog.getByRole("button",{name:"Inserir fórmula",exact:true}).click();
-   await dialog.getByRole("region",{name:"Editor matemático"}).waitFor();
-   await dialog.getByRole("button",{name:"Cancelar",exact:true}).click();
+   const modular=dialog.getByRole("region",{name:"Editor matemático"});await modular.waitFor();
+   await modular.getByRole("button",{name:"Operações com fracções",exact:true}).click();
+   await modular.getByLabel("Numerador do termo 1",{exact:true}).fill("5");
+   await modular.getByRole("button",{name:"Alterar operador do componente 2",exact:true}).click();
+   await modular.getByRole("button",{name:"Operador × do componente 2",exact:true}).click();
+   await modular.getByRole("button",{name:"Fracção",exact:true}).click();
+   await modular.getByLabel("Numerador do termo 3",{exact:true}).fill("7");
+   await modular.getByRole("button",{name:"Terminar com =",exact:true}).click();
+   const live=modular.getByLabel("Pré-visualização da expressão");
+   assert.equal(await live.locator("mfrac").count(),3);
+   assert.match(await live.locator("annotation").innerText(),/\\times/);
+   assert.ok((await live.locator("annotation").innerText()).endsWith("="));
+   await modular.getByRole("button",{name:"Agrupar termos",exact:true}).click();
+   await modular.getByRole("button",{name:"Terminar grupo neste termo",exact:true}).first().click();
+   assert.ok((await live.locator("annotation").innerText()).startsWith("("));
+   await modular.getByRole("button",{name:"Cancelar",exact:true}).click();
    await dialog.getByRole("button",{name:"Concluir edição",exact:true}).click();
    await dialog.getByText("Opções da pergunta",{exact:true}).click();
    await dialog.getByRole("button",{name:"Remover bloco 3"}).click();
