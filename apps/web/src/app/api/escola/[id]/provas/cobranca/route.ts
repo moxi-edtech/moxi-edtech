@@ -18,24 +18,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const query = new URL(req.url).searchParams;
   const parsed = parseDistribution(query);
-  if (!parsed.success || parsed.data.modo !== "imprimir" || !parsed.data.matricula ||
-      parsed.data.turmas.length !== 1 || parsed.data.offset !== 0) {
-    return json({ error: "Seleccione uma prova aprovada, uma turma e uma matrícula." }, 400);
+  if (!parsed.success || parsed.data.modo !== "imprimir" || parsed.data.offset !== 0) {
+    return json({ error: "Seleccione uma prova aprovada e os destinatários." }, 400);
   }
   const selection = parsed.data;
-  const result = await access.db.rpc("provas_destinatarios", rpcArgs(access.escolaId, selection));
+  const result = await access.db.rpc("provas_destinatarios", { ...rpcArgs(access.escolaId, selection), p_limit: 1 });
   if (result.error) {
     const error = distributionError(result.error);
     return json({ error: error.message }, error.status);
   }
   const distribution = distributionResult.safeParse(result.data);
-  if (!distribution.success || distribution.data.total !== 1 || distribution.data.items.length !== 1) {
+  if (!distribution.success || distribution.data.total < 1 || distribution.data.items.length !== 1 ||
+      (selection.matricula !== null && distribution.data.total !== 1)) {
     return json({ error: "Destinatário inválido." }, 409);
   }
   const recipient = recipientSchema.safeParse(distribution.data.items[0]);
-  if (!recipient.success || recipient.data.matricula_id !== selection.matricula ||
-      recipient.data.turma_id !== selection.turmas[0]) {
+  if (!recipient.success || !selection.turmas.includes(recipient.data.turma_id) ||
+      (selection.matricula !== null && recipient.data.matricula_id !== selection.matricula)) {
     return json({ error: "Destinatário inválido." }, 409);
+  }
+  const expectedSnapshot = query.get("snapshot");
+  if (expectedSnapshot !== null && expectedSnapshot !== distribution.data.snapshot) {
+    return json({ error: "A selecção mudou. Actualize os destinatários." }, 409);
   }
   const { data: price, error: priceError } = await access.db.from("servicos_escola")
     .select("valor_base")
@@ -47,14 +51,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const amount = typeof price?.valor_base === "number" ? price.valor_base : NaN;
   const cents = Math.round(amount * 100);
-  const configured = Number.isFinite(amount) && amount > 0 &&
+  const total = distribution.data.total;
+  const configured = Number.isFinite(amount) && amount > 0 && Number.isSafeInteger(cents * total) &&
     Number.isSafeInteger(cents) && Math.abs(amount * 100 - cents) < 0.000001;
   return json({
     ok: true,
     prova_id: selection.prova,
     versao: selection.versao,
     matricula_id: selection.matricula,
-    turma_id: selection.turmas[0],
+    turma_id: selection.turmas.length === 1 ? selection.turmas[0] : null,
+    turma_ids: selection.turmas,
+    quantidade: total,
+    total_estimado_centimos: configured ? cents * total : null,
     snapshot: distribution.data.snapshot,
     servico_codigo: serviceCode,
     moeda: "AOA",
