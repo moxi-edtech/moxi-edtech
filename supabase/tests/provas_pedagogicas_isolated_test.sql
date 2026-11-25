@@ -1,13 +1,31 @@
 \set ON_ERROR_STOP on
 BEGIN;
+-- Exercise the real SQL resolver adapter with synthetic canonical regimes.
+DO $scale_test$
+DECLARE sch uuid:='00000000-0000-4000-8000-000000000001'; yr uuid:='20000000-0000-4000-8000-000000000001'; mx uuid:='70000000-0000-4000-8000-000000000001';
+BEGIN
+ IF provas_private.provas_cotacao_max(sch,yr,mx,1) IS DISTINCT FROM 2000 THEN RAISE EXCEPTION 'secondary scale'; END IF;
+ UPDATE public.turmas SET fixture_escala='quantitativa_primario';
+ IF provas_private.provas_cotacao_max(sch,yr,mx,1) IS DISTINCT FROM 1000 THEN RAISE EXCEPTION 'primary scale'; END IF;
+ UPDATE public.turmas SET fixture_escala='quantitativa_secundario' WHERE id='80000000-0000-4000-8000-000000000002';
+ IF provas_private.provas_cotacao_max(sch,yr,mx,1) IS NOT NULL THEN RAISE EXCEPTION 'mixed scale accepted'; END IF;
+ UPDATE public.turmas SET fixture_escala='qualitativa';
+ IF provas_private.provas_cotacao_max(sch,yr,mx,1) IS DISTINCT FROM 0 THEN RAISE EXCEPTION 'qualitative scale'; END IF;
+ UPDATE public.turmas SET fixture_escala=NULL WHERE id='80000000-0000-4000-8000-000000000002';
+ IF provas_private.provas_cotacao_max(sch,yr,mx,1) IS NOT NULL THEN RAISE EXCEPTION 'unknown scale accepted'; END IF;
+ IF provas_private.provas_cotacao_max('00000000-0000-4000-8000-000000000002',yr,mx,1) IS NOT NULL THEN RAISE EXCEPTION 'cross tenant scale accepted'; END IF;
+ UPDATE public.turmas SET fixture_escala='quantitativa_secundario';
+END;
+$scale_test$;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
 DO $$
-DECLARE r public.provas_pedagogicas; v_bad jsonb;
+DECLARE r public.provas_pedagogicas; attempt public.provas_pedagogicas; v_bad jsonb; wrong_cent integer;
  v_school uuid:='00000000-0000-4000-8000-000000000001';
  v_data jsonb:='{"ano_letivo_id":"20000000-0000-4000-8000-000000000001","curso_matriz_id":"70000000-0000-4000-8000-000000000001","tipo_prova":"recurso","titulo":"Prova","classe":"8ª","disciplina":"Física","ano_lectivo":"2026/2027","trimestre":1,"duracao":90,"serie":"A","conteudo":[{"tipo":"discursiva","texto":"Questão confidencial","linhas":3}]}';
 BEGIN
  IF jsonb_array_length(public.provas_contexto(v_school,'20000000-0000-4000-8000-000000000001'))<>2 THEN RAISE EXCEPTION 'teacher context leaked or missing'; END IF;
+ IF (public.provas_contexto(v_school,'20000000-0000-4000-8000-000000000001')->0->>'cotacao_max_cent')::integer IS DISTINCT FROM 2000 THEN RAISE EXCEPTION 'scale unavailable'; END IF;
  BEGIN
    PERFORM public.provas_mutar(v_school,NULL,NULL,'criar',jsonb_set(v_data,'{curso_matriz_id}','"70000000-0000-4000-8000-000000000002"'));
    RAISE EXCEPTION 'unassigned discipline accepted';
@@ -80,6 +98,22 @@ BEGIN
    RAISE EXCEPTION 'null presentation accepted';
  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  v_data:=v_data||'{"apresentacao":"espacosa"}'::jsonb;
+ BEGIN
+   PERFORM public.provas_mutar(v_school,r.id,r.versao,'submeter',NULL);
+   RAISE EXCEPTION 'missing cotacao accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN
+   IF SQLERRM<>'invalid_exam_cotacao' THEN RAISE; END IF;
+ END;
+ FOREACH wrong_cent IN ARRAY ARRAY[1000,1900] LOOP
+  BEGIN
+   attempt:=public.provas_mutar(v_school,r.id,r.versao,'guardar',jsonb_set(v_data,'{conteudo,0,cotacao_cent}',to_jsonb(wrong_cent)));
+   PERFORM public.provas_mutar(v_school,attempt.id,attempt.versao,'submeter',NULL);
+   RAISE EXCEPTION 'incorrect total accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN
+   IF SQLERRM<>'invalid_exam_cotacao' THEN RAISE; END IF;
+  END;
+ END LOOP;
+ v_data:=jsonb_set(v_data,'{conteudo,0,cotacao_cent}','1875');
  r:=public.provas_mutar(v_school,r.id,r.versao,'guardar',v_data);
  IF r.apresentacao<>'espacosa' THEN RAISE EXCEPTION 'presentation persistence failed'; END IF;
  IF r.conteudo->1 IS DISTINCT FROM v_data->'conteudo'->1 THEN RAISE EXCEPTION 'structured question persistence failed'; END IF;

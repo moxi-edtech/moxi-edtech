@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { provaAccess } from "@/lib/provas/access";
-import { provaHtml } from "@/lib/provas/print";
+import { provaHtml,folhaGenericaHtml } from "@/lib/provas/print";
 import { provaSchema } from "@/lib/provas/schema";
 import { loadProvaLogo } from "@/lib/provas/loadLogo";
 import { parseDistribution,distributionError,distributionResult,rpcArgs,recipientSchema,type PrintRecipient } from "@/lib/provas/distribution";
@@ -9,12 +9,26 @@ export const dynamic="force-dynamic";
 export const runtime="nodejs";
 const headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow"};
 const fail=(message:string,status:number)=>new Response(message,{status,headers:{...headers,"Content-Type":"text/plain; charset=utf-8"}});
+function printResponse(html:string,nonce:string){
+ return new Response(html,{headers:{...headers,"Content-Type":"text/html; charset=utf-8","Content-Security-Policy":"default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'nonce-"+nonce+"'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}});
+}
 export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
  const access=await provaAccess((await params).id);
  if(!access.ok)return fail("Acesso não autorizado.",access.status);
  const q=new URL(req.url).searchParams,id=q.get("prova");
- if(!z.string().uuid().safeParse(id).success)return fail("Identificador inválido.",400);
  const mode=q.get("modo");
+ if(mode==="folha_generica"){
+  // No recipient, assessment or client-provided school data may enter this path.
+  if(Array.from(q.keys()).length!==1)return fail("Selecção inválida.",400);
+  if(!access.author&&!access.distribute)return fail("Acesso não autorizado.",403);
+  const school=await access.db.from("escolas").select("nome,logo_url").eq("id",access.escolaId).maybeSingle();
+  if(school.error)return fail("Não foi possível gerar a folha.",500);
+  if(!school.data)return fail("Escola não encontrada.",404);
+  const nonce=randomUUID();
+  const logo=await loadProvaLogo(school.data.logo_url,access.escolaId);
+  return printResponse(folhaGenericaHtml(school.data.nome,{nonce,logo}),nonce);
+ }
+ if(!z.string().uuid().safeParse(id).success)return fail("Identificador inválido.",400);
  if(mode!==null&&mode!=="imprimir")return fail("Modalidade inválida.",400);
  let recipients:PrintRecipient[]|undefined;
  let distributionVersion:number|undefined;
@@ -47,5 +61,5 @@ export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
  const logo=await loadProvaLogo(school.data.logo_url,access.escolaId);
  const html=provaHtml(parsed.data,school.data.nome,{nonce,recipients,logo,includeName:q.get("nome")!=="0"});
  if(Buffer.byteLength(html,"utf8")>4*1024*1024)return fail("O lote ultrapassa o limite de impressão. Seleccione um tamanho de lote menor.",413);
- return new Response(html,{headers:{...headers,"Content-Type":"text/html; charset=utf-8","Content-Security-Policy":"default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'nonce-"+nonce+"'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}});
+ return printResponse(html,nonce);
 }

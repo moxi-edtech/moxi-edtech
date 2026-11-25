@@ -248,3 +248,107 @@ test("institutional monochrome composition uses school identity, bold numbers, a
  assert.match(wide,/class="alternativas"/);
  assert.doesNotMatch(wide,/class="alternativas duas-colunas"/);
 });
+
+test("editable formula models produce only validated mathematical expressions",()=>{
+ const {formulaModels,modelExpression,completeExpression}=require("../../src/lib/provas/formulaModels.ts");
+ for(const model of formulaModels){
+  const value=modelExpression(model.id,model.fields.map(f=>f.example));
+  assert.equal(value,model.sample,model.id);
+  assert.equal(completeExpression(value),true,model.id);
+ }
+ assert.equal(modelExpression("equacao",["2","-5","15"]),"2x-5=15");
+ assert.equal(modelExpression("potencia",["-2","3"]),"(-2)^{3}");
+ assert.equal(modelExpression("fracao",["3,5","2"]),"\\frac{3.5}{2}");
+ assert.equal(modelExpression("fracao",["\\htmlClass{evil}","2"]),null);
+ assert.equal(modelExpression("fracao",["","2"]),null);
+ assert.equal(completeExpression("\\frac{}{5}"),false);
+ assert.equal(completeExpression("\\placeholder{}+3"),false);
+ assert.equal(completeExpression("2+3"),true);
+});
+
+test("mobile composition preserves math notation and rejects unsafe/incomplete components",()=>{
+ const {composeExpression,modelExpression}=require("../../src/lib/provas/formulaModels.ts");
+ const parts=[{id:1,operator:"+",model:"fracao",values:["7","5"]},{id:2,operator:"+",model:"potencia",values:["2","3"]}];
+ assert.equal(composeExpression(parts),"\\frac{7}{5}+2^{3}");
+ assert.equal(composeExpression([{id:1,operator:"+",existing:"\\sqrt{25}"},parts[1]]),"\\sqrt{25}+2^{3}");
+ assert.equal(composeExpression([{...parts[0],values:["","5"]}]),null);
+ assert.equal(composeExpression(Array.from({length:13},(_,i)=>({...parts[0],id:i}))),null);
+ assert.equal(modelExpression("fracao_algebrica",["3","\\htmlClass","2","5"]),null);
+ const html=provaHtml({...base,conteudo:[{tipo:"calculo",texto:composeExpression(parts),linhas:6,rich:{version:1,segments:[{kind:"math",latex:composeExpression(parts)}]}}]},"Curtume");
+ assert.match(html,/<mfrac>/);
+ assert.match(html,/<msup>/);
+});
+
+test("formula recovery is lossless for all model examples and canonical compositions",()=>{
+ const {formulaModels,modelExpression,composeExpression}=require("../../src/lib/provas/formulaModels.ts");
+ const {recoverFormulaParts,formulaValueSlots,updateFormulaValues}=require("../../src/lib/provas/formulaRecovery.ts");
+ for(const model of formulaModels){
+  const source=modelExpression(model.id,model.fields.map(f=>f.example));
+  const parts=recoverFormulaParts(source);
+  assert.ok(parts.every(p=>"model" in p),model.id);
+  assert.equal(composeExpression(parts),source,model.id);
+ }
+ const source="\\frac{7}{5}+\\sqrt{25}-2^{3}";
+ const recovered=recoverFormulaParts(source);
+ assert.equal(recovered.length,3);
+ assert.deepEqual(recovered.map(p=>p.model),["fracao","raiz","potencia"]);
+ assert.equal(composeExpression(recovered),source);
+ assert.equal(composeExpression(recovered.map((p,i)=>i===0?{...p,values:["8","5"]}:p)),"\\frac{8}{5}+\\sqrt{25}-2^{3}");
+ const complex="\\frac{3x^{2}+7}{\\sqrt{16}}";
+ assert.equal(composeExpression(recoverFormulaParts(complex)),complex);
+ assert.deepEqual(formulaValueSlots(complex).map(s=>s.value),["3","2","7","16"]);
+ assert.equal(updateFormulaValues(complex,["3","2","7","16"]),complex);
+ assert.equal(updateFormulaValues(complex,["4","3","8","25"]),"\\frac{4x^{3}+8}{\\sqrt{25}}");
+ assert.equal(updateFormulaValues("x^2+3",["12","4"]),"x^{12}+4");
+ assert.equal(updateFormulaValues("x^ 2+3",["12","4"]),"x^ {12}+4");
+ assert.equal(updateFormulaValues(complex,["3","2","7","\\htmlClass"]),null);
+ assert.deepEqual(formulaValueSlots("\\frac12"),[]);
+ assert.deepEqual(formulaValueSlots("\\text{2026}+2").map(s=>s.value),["2"]);
+});
+
+const {parseCotacao,cotacaoStatus}=require("../../src/lib/provas/cotacao.ts");
+test("cotação decimal exacta e escalas académicas",()=>{
+ assert.equal(parseCotacao("2,1"),210);assert.equal(parseCotacao("2.5"),250);assert.equal(parseCotacao("0,75"),75);assert.equal(parseCotacao("2,111"),undefined);
+ const q=cent=>({tipo:"discursiva",texto:"Q",linhas:1,cotacao_cent:cent});
+ assert.equal(cotacaoStatus([q(210),q(790),{tipo:"grupo",texto:"G",linhas:0}],1000).ready,true);
+ assert.equal(cotacaoStatus([q(210),q(790)],2000).ready,false);
+ assert.equal(cotacaoStatus([q(1100)],1000).ready,false);
+ assert.equal(cotacaoStatus([q(1000),q(undefined)],1000).ready,false);
+ assert.equal(cotacaoStatus([q(1000),q(0)],1000).ready,false);
+ assert.equal(cotacaoStatus([q(1000)],null).ready,false);
+ assert.equal(cotacaoStatus([q(undefined)],0).ready,true);
+ assert.equal(cotacaoStatus([q(1)],0).ready,false);
+});
+
+test("standalone generic sheet has manual identification, blank writing lines and no synthetic assessment",()=>{
+ const {folhaGenericaHtml}=require("../../src/lib/provas/print.ts");
+ const html=folhaGenericaHtml("Escola <teste>",{nonce:"fixed-nonce"});
+ assert.match(html,/Escola &lt;teste&gt;/);
+ assert.match(html,/Folha de prova/);
+ for(const label of ["Nome do aluno:","Disciplina:","Classe:","Turma:","Tipo de prova:","Data:","Classificação:"])assert.ok(html.includes(label));
+ assert.equal((html.match(/class="linha"/g)||[]).length,18);
+ assert.doesNotMatch(html,/class="questao|Duração: 1 min|Série A|RASCUNHO/);
+ assert.match(html,/<script nonce="fixed-nonce">/);
+});
+
+test("standard proof titles are automatic; custom and legacy titles are preserved",()=>{
+ const {provaDisplayTitle,provaSubtitle,tituloAoMudarTipo,tiposProva}=require("../../src/lib/provas/schema.ts");
+ for(const [type,label] of Object.entries(tiposProva)){
+  if(type==="outro")continue;
+  const p={...base,tipo_prova:type,titulo:label};
+  assert.equal(provaDisplayTitle(p),label+" de Física");
+  assert.equal(provaSubtitle(p),null);
+  assert.match(provaHtml(p,"Escola"),new RegExp('<h2 class="title">'+label+' de Física</h2>'));
+  assert.doesNotMatch(provaHtml(p,"Escola"),/<p class="subtitle">/);
+ }
+ const legacy={...base,tipo_prova:"trimestral",titulo:"Avaliação de recuperação"};
+ assert.equal(provaSubtitle(legacy),"Avaliação de recuperação");
+ assert.equal(tituloAoMudarTipo(legacy,"recurso"),legacy.titulo);
+ assert.match(provaHtml(legacy,"Escola"),/<p class="subtitle">Avaliação de recuperação<\/p>/);
+ assert.equal(tituloAoMudarTipo({...legacy,titulo:"Prova Trimestral"},"recurso"),"Exame de Recurso");
+ assert.equal(tituloAoMudarTipo(legacy,"outro"),"");
+ const custom={...legacy,tipo_prova:"outro",titulo:"Avaliação especial"};
+ assert.equal(provaDisplayTitle(custom),"Avaliação especial de Física");
+ assert.equal(tituloAoMudarTipo(custom,"trimestral"),"Prova Trimestral");
+ assert.equal(provaDisplayTitle({...base,tipo_prova:undefined}),"Prova — Física");
+});

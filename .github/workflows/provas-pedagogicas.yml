@@ -56,6 +56,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_isolated_setup.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204001000_provas_pedagogicas.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204021000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204022000_provas_pedagogicas.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_isolated_test.sql
   print:
     runs-on: ubuntu-latest
@@ -94,7 +95,7 @@ jobs:
 
   browser-print:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -110,7 +111,7 @@ jobs:
         run: |
           mkdir -p /tmp/klasse-provas-browser
           npm --prefix /tmp/klasse-provas-browser install --no-save --ignore-scripts @playwright/test@1.57.0 vite@6.4.0
-          /tmp/klasse-provas-browser/node_modules/.bin/playwright install --with-deps chromium
+          /tmp/klasse-provas-browser/node_modules/.bin/playwright install --with-deps chromium webkit
       - name: Install PDF bounds verifier (CI only)
         run: command -v pdftotext >/dev/null || (sudo apt-get update && sudo apt-get install -y poppler-utils)
       - name: A4 document and MathML browser smoke
@@ -129,6 +130,11 @@ jobs:
       - name: Mobile teacher flow and accessible input smoke
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
+        run: node apps/web/tests/browser/provas-mobile.mjs
+      - name: WebKit mobile formula and model smoke (Safari engine)
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
+          PROVAS_BROWSER: webkit
         run: node apps/web/tests/browser/provas-mobile.mjs
       - name: Secretary distribution smoke
         env:

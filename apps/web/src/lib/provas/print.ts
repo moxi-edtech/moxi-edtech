@@ -1,4 +1,4 @@
-import { tiposProva, type Bloco, type ProvaPrintInput } from "./schema";
+import { provaDisplayTitle,provaSubtitle, type Bloco, type ProvaPrintInput } from "./schema";
 import type { PrintRecipient } from "./distribution";
 import { formatClasseProva, turmaProvaLabels } from "./academicLabels";
 import { mathMarkup } from "./math";
@@ -18,9 +18,9 @@ export function blocoHtml(b:Bloco):string{
   return text;
  }).join("");
 }
-export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:string;draft?:boolean;recipients?:readonly PrintRecipient[];includeName?:boolean;logo?:string|null}={}){
+export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:string;draft?:boolean;recipients?:readonly PrintRecipient[];includeName?:boolean;logo?:string|null;blankSheet?:boolean}={}){
  let number=0,letter=0;
- const blocks=prova.conteudo.map(b=>{
+ const blocks=options.blankSheet?'<section class="blank-writing" aria-label="Espaço para respostas">'+Array.from({length:18},()=>'<div class="linha"></div>').join("")+'</section>':prova.conteudo.map(b=>{
    if(b.tipo==="grupo"){number=0;letter=0;return '<h3>'+blocoHtml(b)+'</h3>';}
    if(b.tipo==="texto")return '<div class="apoio">'+blocoHtml(b)+'</div>';
    const prefix=b.tipo==="alinea"?String.fromCharCode(97+(letter++%26))+')':String(++number)+'.';
@@ -43,20 +43,21 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
  const spacing=COMPOSICAO[composition];
  const logoDefs=logo?'<svg class="logo-defs" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true"><defs><symbol id="prova-school-logo" viewBox="0 0 100 100"><image width="100" height="100" preserveAspectRatio="xMidYMid meet" href="'+esc(logo)+'"/></symbol></defs></svg>':'';
  const logoMark=logo?'<svg class="school-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Logótipo da escola"><use href="#prova-school-logo"/></svg>':'';
- const type=prova.tipo_prova?tiposProva[prova.tipo_prova]:null;
- const documentTitle=type?type+" de "+prova.disciplina:prova.titulo+" — "+prova.disciplina;
+ const documentTitle=provaDisplayTitle(prova);
+ const subtitle=provaSubtitle(prova);
  const showTrim=!prova.tipo_prova||["professor","trimestral","segunda_chamada","diagnostica","outro"].includes(prova.tipo_prova);
  const header=(recipient:PrintRecipient|null)=>{
+   if(options.blankSheet)return '<header class="cabecalho"><div class="institution">'+logoMark+'<h1 class="school">'+esc(escola)+'</h1><p class="school-year">Ano lectivo: ____________</p></div><h2 class="title">Folha de prova</h2><div class="student"><span>Nome do aluno:</span><span class="student-line"></span></div><div class="meta distribution-meta"><span>Disciplina: ____________________</span><span>Classe: ______</span><span>Turma: ______</span></div><div class="meta distribution-meta"><span>Tipo de prova: ____________________</span><span>Trimestre: ____</span><span>Data: ____/____/______</span></div><div class="meta distribution-meta"><span>N.º de chamada: ____</span><span>Turno: ______</span><span>Sala: ______</span><span>Classificação: ______</span></div></header>';
    const named=options.includeName!==false?recipient:null;
    const student=named?'<strong class="student-name">'+esc(named.nome)+'</strong>':'<span class="student-line"></span>';
    const labels=recipient?turmaProvaLabels(prova.classe,{nome:recipient.turma,letra:recipient.letra,turno:recipient.turno,curso:recipient.curso}):null;
-   const turma=labels?'<span>'+esc(labels.turma)+'</span>'+(labels.turno?'<span>Turno: '+esc(labels.turno)+'</span>':''):'';
+   const turma=labels?'<span>'+esc(labels.turma)+'</span>'+(labels.turno?'<span>Turno: '+esc(labels.turno)+'</span>':''):'<span>Turma: ______</span><span>Turno: ______</span>';
    const course=labels?.curso?'<span>Curso: '+esc(labels.curso)+'</span>':'';
    const room=recipient?.sala?'<span>Sala da turma: '+esc(recipient.sala)+'</span>':'<span>Sala nº ______</span>';
    const process=named&&named.numero_processo?'<span>N.º de processo: '+esc(named.numero_processo)+'</span>':'';
    const call=named&&named.numero_chamada!==null?'<span>N.º de chamada: '+esc(named.numero_chamada)+'</span>':'';
    return '<header class="cabecalho"><div class="institution">'+logoMark+'<h1 class="school">'+esc(escola)+'</h1><p class="school-year">Ano lectivo: '+esc(prova.ano_lectivo)+'</p></div>'+
-    '<h2 class="title">'+esc(documentTitle)+'</h2>'+(type&&prova.titulo.trim()!=="Prova"&&prova.titulo.trim()!==type?'<p class="subtitle">'+esc(prova.titulo)+'</p>':'')+
+    '<h2 class="title">'+esc(documentTitle)+'</h2>'+(subtitle?'<p class="subtitle">'+esc(subtitle)+'</p>':'')+
     '<div class="meta academic-meta"><span>'+esc(formatClasseProva(prova.classe))+'</span>'+(showTrim?'<span>'+tr+' Trimestre</span>':'')+'<span>Série '+esc(prova.serie)+'</span><span>Duração: '+esc(prova.duracao)+' min.</span></div><div class="meta distribution-meta">'+turma+room+course+'</div><div class="student"><span>Nome do aluno:</span>'+student+'</div>'+(process||call?'<div class="meta student-meta">'+process+call+'</div>':'')+'</header>';
  };
  const controls=options.nonce?'<div class="controls"><button id="print">Imprimir / Guardar PDF</button><span>Use papel A4. '+(options.recipients?esc(recipients.length)+' prova(s) neste lote. Imprima uma cópia do lote.':'Defina o número de cópias na impressora.')+'</span></div><script nonce="'+esc(options.nonce)+'">document.getElementById("print").addEventListener("click",()=>window.print());</script>':"";
@@ -94,4 +95,9 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
  @media screen and (max-width:600px){.paper{min-height:0;margin:0 auto;padding:16px 12px}.meta{gap:6px}.school{font-size:12pt}.title{font-size:13pt}.student{flex-wrap:wrap}.student-line{min-width:50px}.alternativas.duas-colunas{grid-template-columns:1fr}}
  @media print{body{background:#fff}.paper{display:block;width:auto;margin:0;padding:0;max-width:none;min-height:0}.screen-footer{display:none}.controls{display:none}.paper+.paper{break-before:page;page-break-before:always}}`+
  '</style></head><body>'+controls+logoDefs+'<main>'+sheets+'</main></body></html>';
+}
+
+/** Independent writing sheet: no assessment, enrollment or academic snapshot is persisted. */
+export function folhaGenericaHtml(escola:string,options:{nonce?:string;logo?:string|null}={}){
+ return provaHtml({titulo:"Folha de prova",classe:"",disciplina:"",ano_lectivo:"",trimestre:1,duracao:1,serie:"",conteudo:[]},escola,{...options,blankSheet:true});
 }
