@@ -2,17 +2,25 @@ import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { Landmark, LockKeyhole } from "lucide-react";
 import { InstantWorkspaceTabs } from "@/components/financeiro/InstantWorkspaceTabs";
 import ConciliacaoPage from "../conciliacao/page";
-import FechoCaixaPage from "../fecho/page";
+import ExpedienteWorkspace from "@/components/secretaria/ExpedienteWorkspace";
+import { daySchema, expedienteAccess, todayLuanda } from "@/lib/secretaria/expediente";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function ControleCaixaPage({
+  params,
   searchParams,
 }: {
-  searchParams?: Promise<{ vista?: "conciliacao" | "fecho" }>;
+  params: Promise<{id:string}>;
+  searchParams?: Promise<{ vista?: "conciliacao" | "fecho"; date?: string }>;
 }) {
   const query = (await searchParams) ?? {};
+  const access = await expedienteAccess((await params).id);
+  if (!access.ok) redirect("/redirect");
+  const parsed = daySchema.safeParse(query.date);
+  const date = parsed.success && parsed.data <= todayLuanda() ? parsed.data : todayLuanda();
   const vista = query.vista === "fecho" ? "fecho" : "conciliacao";
 
   return (
@@ -41,7 +49,7 @@ export default async function ControleCaixaPage({
             id: "fecho",
             label: "Fecho diário",
             icon: <LockKeyhole className="h-4 w-4" />,
-            content: <FechoCaixaPage />,
+            content: <ExpedienteWorkspace escolaId={access.escolaId} initialDate={date} portal="financeiro" embedded />,
           },
         ]}
       />
