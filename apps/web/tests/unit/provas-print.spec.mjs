@@ -352,3 +352,14 @@ test("standard proof titles are automatic; custom and legacy titles are preserve
  assert.equal(tituloAoMudarTipo(custom,"trimestral"),"Prova Trimestral");
  assert.equal(provaDisplayTitle({...base,tipo_prova:undefined}),"Prova — Física");
 });
+
+test("structure blocks do not consume question numbers or answer spaces",()=>{
+ const {blockNumbering,questionTypes,structureTypes,questionTemplate,suggestedTypes}=require("../../src/lib/provas/questionTemplates.ts");
+ const blocks=["grupo","texto","discursiva","alinea","texto","alinea","discursiva","grupo","texto","discursiva"].map((tipo,i)=>({...questionTemplate(tipo),texto:"Bloco "+i,linhas:0}));
+ assert.deepEqual(blockNumbering(blocks).map(x=>x.prefix),[null,null,"1.","a)",null,"b)","2.",null,null,"1."]);
+ assert.ok(structureTypes.every(x=>!questionTypes.includes(x)&&!suggestedTypes("Português").includes(x)));
+ const html=provaHtml({...base,conteudo:blocks},"Escola");
+ assert.deepEqual([...html.matchAll(/class="question-number">([^<]+)/g)].map(x=>x[1]),["1.","a)","b)","2.","1."]);
+ assert.equal((html.match(/class="apoio"/g)||[]).length,3);
+ assert.equal((html.match(/class="cotacao"/g)||[]).length,0);
+});

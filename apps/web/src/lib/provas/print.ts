@@ -4,7 +4,7 @@ import { formatClasseProva, turmaProvaLabels } from "./academicLabels";
 import { mathMarkup } from "./math";
 import { PROVA_FOOTER,safeLogoData } from "./branding";
 import { PROVA_PAPER as P,respostaLayout,chooseComposicao,COMPOSICAO,alternativesInColumns } from "./layout";
-import { formatCotacao } from "./questionTemplates";
+import { formatCotacao,blockNumbering } from "./questionTemplates";
 const esc=(s:unknown)=>String(s??"").replace(/[&<>"']/g,c=>(({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"} as Record<string,string>)[c]!));
 export function blocoHtml(b:Bloco):string{
  if(!b.rich)return esc(b.texto);
@@ -19,12 +19,11 @@ export function blocoHtml(b:Bloco):string{
  }).join("");
 }
 export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:string;draft?:boolean;recipients?:readonly PrintRecipient[];includeName?:boolean;logo?:string|null;blankSheet?:boolean}={}){
- let number=0,letter=0;
- const blocks=options.blankSheet?'<section class="blank-writing" aria-label="Espaço para respostas">'+Array.from({length:18},()=>'<div class="linha"></div>').join("")+'</section>':prova.conteudo.map(b=>{
-   if(b.tipo==="grupo"){number=0;letter=0;return '<h3>'+blocoHtml(b)+'</h3>';}
+ const numbering=blockNumbering(prova.conteudo);
+ const blocks=options.blankSheet?'<section class="blank-writing" aria-label="Espaço para respostas">'+Array.from({length:18},()=>'<div class="linha"></div>').join("")+'</section>':prova.conteudo.map((b,index)=>{
+   if(b.tipo==="grupo"){return '<h3>'+blocoHtml(b)+'</h3>';}
    if(b.tipo==="texto")return '<div class="apoio">'+blocoHtml(b)+'</div>';
-   const prefix=b.tipo==="alinea"?String.fromCharCode(97+(letter++%26))+')':String(++number)+'.';
-   if(b.tipo!=="alinea")letter=0;
+   const prefix=numbering[index].prefix;
    const suffix=b.tipo==="verdadeiro_falso"?'<span class="vf" aria-label="Verdadeiro ou falso">( &nbsp; ) V &nbsp; ( &nbsp; ) F</span>':"";
    const cotacao=b.cotacao_cent===undefined?"":'<span class="cotacao">('+esc(formatCotacao(b.cotacao_cent))+' val.)</span>';
    const alternatives=b.tipo==="escolha"&&b.alternativas?'<ol class="alternativas'+(alternativesInColumns(b.alternativas)?' duas-colunas':'')+'">'+b.alternativas.map((a,i)=>'<li><span class="opcao">□ '+String.fromCharCode(65+i)+') </span>'+esc(a)+'</li>').join("")+'</ol>':"";
