@@ -43,6 +43,7 @@ type Props = {
   mode?:                "admin" | "operacoes";
   escolaNome?:          string;
   anoLetivo?:           string;
+  academicYearId?:      string | null;
   loading?:             boolean;
   error?:               string | null;
   notices?:             Aviso[];
@@ -197,6 +198,7 @@ export default function EscolaAdminDashboardContent({
   mode = "admin",
   escolaNome,
   anoLetivo,
+  academicYearId,
   loading,
   error,
   notices = [],
@@ -334,6 +336,7 @@ export default function EscolaAdminDashboardContent({
           error={error}
           setupStatus={setupStatus}
           operationalSnapshot={operationalSnapshot}
+          academicYearId={academicYearId}
           financeiroHref={financeiroHref}
           portalBase={portalBase}
           alunoSeries={charts?.alunosPorMes}
