@@ -19,7 +19,9 @@ test("only the reviewed curriculum-assessment guard may change installation SQL"
 });
 
 test("allows only audited enrollment and historical evidence migrations", () => {
-  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 81);
+  // 81 previously audited migrations + the exact PR #477 operational receipt SSOT.
+  assert.equal(LIFECYCLE_MIGRATION_ALLOWLIST.size, 82);
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has("20271204020000_operational_receipt_batch_ssot.sql"));
   const reativacao = "20271119093000_matricula_desistencia_reativacao_v2.sql";
   assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(reativacao));
   assert.deepEqual(checkFiscalAndSchemaScope(["supabase/migrations/" + reativacao]), []);
