@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Banknote, Building2, CreditCard, User, Wallet } from "lucide-react";
+import Link from "next/link";
+import { Banknote, Building2, CreditCard, Printer, User, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 type Scope = "self" | "all";
@@ -62,7 +63,7 @@ export default function FechoMovimentacoes({ escolaId, date, revision, enabled, 
     {children}
     {report && <>
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3"><h3 className="text-sm font-semibold">Extrato de movimentações</h3><span className="text-xs text-muted-foreground">{report.items.length} registos</span></div>
+        <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3"><h3 className="text-sm font-semibold">Extrato de movimentações</h3><div className="flex flex-wrap items-center gap-3"><span className="text-xs text-muted-foreground">{report.items.length} registos</span><Link className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-medium hover:bg-muted" href={"/escola/"+encodeURIComponent(escolaId)+"/financeiro/fecho/print?"+new URLSearchParams({date,operador_scope:scope})}><Printer className="h-4 w-4"/> Imprimir resumo</Link></div></div>
         <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{["Hora","Aluno / responsável","Descrição","Método","Operador","Valor"].map(h=><th key={h} scope="col" className={"whitespace-nowrap px-4 py-3 "+(h==="Valor"?"text-right":"")}>{h}</th>)}</tr></thead>
           <tbody className="divide-y divide-border">{report.items.slice(0,limit).map(row=><tr key={row.id} className="hover:bg-muted/40"><td className="px-4 py-3 font-mono text-xs">{row.hora}</td><td className="px-4 py-3 font-medium">{row.aluno}</td><td className="px-4 py-3 text-muted-foreground">{row.descricao}</td><td className="px-4 py-3"><span className="whitespace-nowrap rounded-full bg-muted px-2 py-1 text-xs">{labels[row.metodo]??row.metodo}</span></td><td className="px-4 py-3 text-muted-foreground">{row.operador}</td><td className="whitespace-nowrap px-4 py-3 text-right font-mono tabular-nums">{money(row.valor)}</td></tr>)}
           {!report.items.length&&<tr><td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">Nenhuma movimentação para a data e o âmbito selecionados.</td></tr>}</tbody></table></div>
