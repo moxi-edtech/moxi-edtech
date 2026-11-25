@@ -81,10 +81,10 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
        {permissions?.admin&&selected?.estado==="em_revisao"&&<><Button variant="outline" disabled={busy} onClick={()=>setConfirm("devolver")}>Devolver</Button><Button tone="gold" disabled={busy} onClick={()=>setConfirm("aprovar")}>Aprovar prova</Button></>}
        {canManage&&selected&&!dirty&&<Button variant="ghost" disabled={busy} onClick={()=>setConfirm("duplicar")}><Copy/> Duplicar</Button>}
        {canManage&&selected&&!dirty&&(selected.estado==="rascunho"||permissions?.admin&&selected.estado==="aprovada")&&<Button variant="ghost" disabled={busy} onClick={()=>setConfirm("arquivar")}>Arquivar</Button>}
-       {printHref&&<a href={printHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-medium text-slate-950"><Printer className="h-4 w-4"/> Imprimir prova</a>}
+       {printHref&&<Button asChild tone="gold"><a href={printHref} target="_blank" rel="noopener noreferrer"><Printer className="h-4 w-4"/> Imprimir prova</a></Button>}
      </div>}
     </div>:undefined}>
-   {form&&(preview||!canEdit?<iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada"})} className="h-[65vh] w-full rounded-xl border border-border bg-white"/>:
+   {form&&(preview||!canEdit?<iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada"})} className="h-[65vh] w-full rounded-xl border border-border bg-background"/>:
    <div className="space-y-6">
     <fieldset disabled={busy||Boolean(confirm)||discard} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
      {(["titulo","classe","disciplina","ano_lectivo","serie"] as const).map(key=><label key={key} className="grid gap-1 text-sm">{({titulo:"Título",classe:"Classe",disciplina:"Disciplina",ano_lectivo:"Ano lectivo",serie:"Série"})[key]}<input className={input} value={form[key]} onChange={e=>change(key,e.target.value)} maxLength={({titulo:160,classe:80,disciplina:120,ano_lectivo:9,serie:20})[key]}/></label>)}
