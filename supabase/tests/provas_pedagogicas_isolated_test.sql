@@ -5,9 +5,27 @@ SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001'
 DO $$
 DECLARE r public.provas_pedagogicas;
  v_school uuid:='00000000-0000-4000-8000-000000000001';
- v_data jsonb:='{"titulo":"Prova","classe":"8ª","disciplina":"Física","ano_lectivo":"2026/2027","trimestre":1,"duracao":90,"serie":"A","conteudo":[{"tipo":"discursiva","texto":"Questão confidencial","linhas":3}]}';
+ v_data jsonb:='{"ano_letivo_id":"20000000-0000-4000-8000-000000000001","curso_matriz_id":"70000000-0000-4000-8000-000000000001","titulo":"Prova","classe":"8ª","disciplina":"Física","ano_lectivo":"2026/2027","trimestre":1,"duracao":90,"serie":"A","conteudo":[{"tipo":"discursiva","texto":"Questão confidencial","linhas":3}]}';
 BEGIN
- r:=public.provas_mutar(v_school,NULL,NULL,'criar',v_data);
+ IF jsonb_array_length(public.provas_contexto(v_school,'20000000-0000-4000-8000-000000000001'))<>2 THEN RAISE EXCEPTION 'teacher context leaked or missing'; END IF;
+ BEGIN
+   PERFORM public.provas_mutar(v_school,NULL,NULL,'criar',jsonb_set(v_data,'{curso_matriz_id}','"70000000-0000-4000-8000-000000000002"'));
+   RAISE EXCEPTION 'unassigned discipline accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+   PERFORM public.provas_mutar(v_school,NULL,NULL,'criar',jsonb_set(v_data,'{curso_matriz_id}','"70000000-0000-4000-8000-000000000003"'));
+   RAISE EXCEPTION 'draft curriculum accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+   PERFORM public.provas_mutar(v_school,NULL,NULL,'criar',jsonb_set(v_data,'{trimestre}','3'));
+   RAISE EXCEPTION 'inactive trimester accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+   PERFORM public.provas_contexto(v_school,'20000000-0000-4000-8000-000000000002');
+   RAISE EXCEPTION 'cross-school year accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ r:=public.provas_mutar(v_school,NULL,NULL,'criar',v_data||'{"classe":"falsificada","disciplina":"falsificada","ano_lectivo":"2000/2001"}'::jsonb);
+ IF r.classe<>'8ª' OR r.disciplina<>'Física' OR r.ano_lectivo<>'2026/2027' THEN RAISE EXCEPTION 'untrusted snapshot accepted'; END IF;
  IF r.estado<>'rascunho' OR r.versao<>1 OR r.autor_id<>auth.uid() THEN RAISE EXCEPTION 'create failed'; END IF;
  PERFORM set_config('test.prova_id',r.id::text,true);
  BEGIN
