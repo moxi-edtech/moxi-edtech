@@ -12,10 +12,10 @@ test("A4 renderer numbers questions, resets groups, and supports handwriting spa
  assert.match(html,/@page\{size:A4/);
  assert.match(html,/1\. Define energia\./);
  assert.match(html,/a\) Justifica\./);
- assert.match(html,/2\. A Terra gira\. \(   \)/);
+ assert.match(html,/2\. A Terra gira\.<span class="vf"/);
  assert.match(html,/1\. √9/);
  assert.equal((html.match(/class="linha"/g)||[]).length,3);
- assert.match(html,/height:28mm/);
+ assert.match(html,/height:32mm/);
  assert.match(html,/Ano lectivo: 2026\/2027/);
 });
 test("all user values are escaped, draft preview contains no script or external resources",()=>{
@@ -62,4 +62,24 @@ test("write contract retains required academic UUIDs while print uses snapshots"
  assert.equal(provaWriteSchema.safeParse(base).success,false);
  assert.equal(provaWriteSchema.safeParse({...input,curso_matriz_id:"invalid"}).success,false);
  assert.equal(provaSchema.safeParse(base).success,true);
+});
+
+test("shared physical layout reserves print margins and exact writing space",()=>{
+ const {PROVA_PAPER,respostaLayout}=require("../../src/lib/provas/layout.ts");
+ assert.equal(PROVA_PAPER.marginLeft,20);assert.equal(PROVA_PAPER.marginRight,20);
+ assert.equal(PROVA_PAPER.marginTop,18);assert.equal(PROVA_PAPER.marginBottom,18);
+ assert.equal(PROVA_PAPER.questionGap,6);assert.equal(PROVA_PAPER.answerGap,3);
+ assert.equal(respostaLayout("discursiva",6).heightMm,48);
+ assert.equal(respostaLayout("calculo",1).heightMm,24);
+ assert.equal(respostaLayout("desenho",0).heightMm,0);
+ assert.equal(respostaLayout("desenho",20).heightMm,160);
+ assert.equal(respostaLayout("grupo",20).kind,"none");
+ const html=provaHtml({...base,conteudo:[{tipo:"desenho",texto:"Desenhe.",linhas:0},{tipo:"calculo",texto:"Calcule.",linhas:6},{tipo:"discursiva",texto:"Explique.",linhas:3}]},"Curtume");
+ assert.match(html,/@page\{size:A4;margin:18mm 20mm 18mm 20mm\}/);
+ assert.match(html,/height:48mm/);
+ assert.equal((html.match(/class="espaco"/g)||[]).length,1);
+ assert.equal((html.match(/class="linha"/g)||[]).length,3);
+ assert.match(html,/class="resposta resposta-inicio"/);
+ assert.match(html,/class="student-line"/);
+ assert.doesNotMatch(html,/_{20,}/);
 });
