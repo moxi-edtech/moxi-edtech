@@ -38,13 +38,19 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204020000_operational_receipt_batch_ssot.sql
       - name: Validate receipt contract and retries
         run: psql -v ON_ERROR_STOP=1 -f supabase/ops/tests/operational_receipt_batch_ssot_regression.sql
-      - name: Concurrent retries reuse a single receipt
+      - name: Concurrent initial issuance and retries reuse a single receipt
         shell: bash
         run: |
           set -euo pipefail
+          # Isolated fixture only: force the concurrent first-insert path.
+          psql -v ON_ERROR_STOP=1 -c 'DELETE FROM public.documentos_emitidos'
+          pids=()
           for i in 1 2 3 4; do
             psql -v ON_ERROR_STOP=1 -Atc "select internal.issue_operational_batch_receipt('00000000-0000-0000-0000-000000000014',null)->>'doc_id'" > "/tmp/receipt-$i" &
+            pids+=("$!")
           done
-          wait
+          for pid in "${pids[@]}"; do wait "$pid"; done
           test "$(cat /tmp/receipt-{1,2,3,4} | sort -u | wc -l)" -eq 1
           test "$(psql -Atc 'select count(*) from public.documentos_emitidos')" -eq 1
+      - name: Reconcile historical cohort and verify idempotent replay
+        run: psql -v ON_ERROR_STOP=1 -f supabase/ops/tests/operational_receipt_batch_ssot_reconciliation.sql
