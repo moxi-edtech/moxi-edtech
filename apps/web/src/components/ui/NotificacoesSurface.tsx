@@ -166,7 +166,7 @@ export function NotificacoesSurface({ triggerRef, notificacoes, naoLidas, loadin
     }} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 md:h-10 md:w-10"
       aria-label={naoLidas > 0 ? `Notificações, ${naoLidas} por ler` : "Notificações"} aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? panelId : undefined}>
       <Bell size={18} className="text-muted-foreground" aria-hidden="true"/>
-      {naoLidas > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full border-2 border-card bg-destructive px-0.5 text-[10px] font-bold text-white">{naoLidas > 9 ? "9+" : naoLidas}</span>}
+      {naoLidas > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full border-2 border-card bg-destructive px-0.5 text-[10px] font-bold text-background">{naoLidas > 9 ? "9+" : naoLidas}</span>}
     </button>
 
     {mobile ? <Dialog open={open} onOpenChange={setOpen}>

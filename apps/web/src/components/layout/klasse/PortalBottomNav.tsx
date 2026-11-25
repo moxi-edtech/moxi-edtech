@@ -121,7 +121,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
                     <Icon className={"h-5 w-5 shrink-0 " + (active ? "text-klasse-gold-700" : "text-muted-foreground")} aria-hidden="true" />
                     <span className="min-w-0 flex-1 truncate">{label}</span>
                     {badge && badge > 0
-                      ? <span className="rounded-full bg-destructive px-1.5 text-xs font-semibold text-white">{badge}</span>
+                      ? <span className="rounded-full bg-destructive px-1.5 text-xs font-semibold text-background">{badge}</span>
                       : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
                   </Link>
                 );
@@ -156,7 +156,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
                 <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
                 <span className="max-w-full truncate text-center">{item.compactLabel ?? label}</span>
                 {badge && badge > 0 && (
-                  <span className="absolute right-1 top-0 rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-white">{badge}</span>
+                  <span className="absolute right-1 top-0 rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-background">{badge}</span>
                 )}
               </Link>
             );
