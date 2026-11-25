@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Banknote, Building2, CreditCard, User, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -10,13 +10,14 @@ type Report = { date: string; totals: { especie: number; tpa: number; transferen
 const money = (value: number) => new Intl.NumberFormat("pt-AO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value) + " Kz";
 const labels: Record<string, string> = { especie: "Numerário", tpa: "TPA", transferencia: "Transferência", mcx: "MCX", outros: "Não classificado" };
 
-export default function FechoMovimentacoes({ escolaId, date, revision }: { escolaId: string; date: string; revision: number }) {
+export default function FechoMovimentacoes({ escolaId, date, revision, enabled, children }: { escolaId: string; date: string; revision: number; enabled: boolean; children: ReactNode }) {
   const [scope, setScope] = useState<Scope>("all");
   const [retry, setRetry] = useState(0);
   const [result, setResult] = useState<{ key: string; data?: Report; error?: string } | null>(null);
   const [limit, setLimit] = useState(50);
   const key = JSON.stringify([escolaId, date, revision, scope, retry]);
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     const query = new URLSearchParams({ escolaId, date, operador_scope: scope });
     fetch("/api/financeiro/fecho?" + query, { cache: "no-store", signal: controller.signal })
@@ -29,12 +30,13 @@ export default function FechoMovimentacoes({ escolaId, date, revision }: { escol
         if (!controller.signal.aborted) setResult({ key, error: error instanceof Error ? error.message : "Não foi possível consultar as movimentações." });
       });
     return () => controller.abort();
-  }, [key, escolaId, date, scope]);
-  const current = result?.key === key ? result : null;
+  }, [key, escolaId, date, scope, enabled]);
+  const current = enabled && result?.key === key ? result : null;
   const report = current?.data;
   const totals = report?.totals;
   const digital = totals ? totals.tpa + totals.transferencia + totals.mcx : 0;
   const other = totals ? Math.round((totals.total - totals.especie - digital) * 100) / 100 : 0;
+  if (!enabled) return <>{children}<p className="rounded-xl border border-border p-3 text-sm text-muted-foreground">Os valores do sistema e o extrato ficam disponíveis após a declaração de caixa.</p></>;
   return <section className="space-y-4" aria-label="Movimentações financeiras">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h2 className="font-semibold text-foreground">Movimentações do dia</h2><p className="text-xs text-muted-foreground">Consulta atual dos pagamentos liquidados. Não altera o snapshot da declaração.</p></div>
@@ -56,6 +58,9 @@ export default function FechoMovimentacoes({ escolaId, date, revision }: { escol
           </div>)}
       </div>
       {other !== 0 && <p className="text-xs text-muted-foreground">O total inclui {money(other)} em meios não classificados.</p>}
+    </>}
+    {children}
+    {report && <>
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3"><h3 className="text-sm font-semibold">Extrato de movimentações</h3><span className="text-xs text-muted-foreground">{report.items.length} registos</span></div>
         <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{["Hora","Aluno / responsável","Descrição","Método","Operador","Valor"].map(h=><th key={h} scope="col" className={"whitespace-nowrap px-4 py-3 "+(h==="Valor"?"text-right":"")}>{h}</th>)}</tr></thead>
