@@ -1,0 +1,50 @@
+name: Provas pedagógicas — segurança e impressão
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*_provas_pedagogicas.sql'
+      - 'supabase/tests/provas_pedagogicas_*'
+      - 'apps/web/src/lib/provas/**'
+      - 'apps/web/src/components/provas/**'
+      - 'apps/web/src/app/api/escola/**/provas/**'
+      - 'apps/web/tests/unit/provas-print.spec.mjs'
+      - '.github/workflows/provas-pedagogicas.yml'
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: provas_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: test-only
+      PGDATABASE: provas_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply isolated fixture and real migration
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_isolated_setup.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204001000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_isolated_test.sql
+  print:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --experimental-strip-types --test apps/web/tests/unit/provas-print.spec.mjs
