@@ -29,3 +29,22 @@ test("approved print uses only a nonce-bound fixed script, preview line count is
  assert.match(html,/<script nonce="nonce-1">/);
  assert.match(html,/window\.print/);
 });
+
+test("rich text and KaTeX MathML share the escaped A4 renderer",()=>{
+ const formula="\\frac{2}{5}+\\sqrt{9}";
+ const evil="<img src=x onerror=alert(1)>";
+ const rich={version:1,segments:[{kind:"text",text:evil,marks:["bold","italic"]},{kind:"break"},{kind:"math",latex:formula}]};
+ const html=provaHtml({...base,conteudo:[{tipo:"calculo",texto:evil+"\n"+formula,linhas:2,rich}]},"Curtume");
+ assert.match(html,/<em><strong>&lt;img/);
+ assert.match(html,/<math\b/);
+ assert.match(html,/<mfrac>/);
+ assert.match(html,/<msqrt>/);
+ assert.doesNotMatch(html,/<img\b|<script\b|<a\b/);
+});
+test("untrusted commands never generate active markup",()=>{
+ for(const latex of ["\\href{https://evil.test}{x}","\\includegraphics{evil}","\\htmlClass{x}{y}","\\def\\x{\\x}\\x","\\frac{1}"]){
+  const rich={version:1,segments:[{kind:"math",latex}]};
+  const html=provaHtml({...base,conteudo:[{tipo:"calculo",texto:latex,linhas:0,rich}]},"Curtume");
+  assert.doesNotMatch(html,/<math\b|<img\b|<a\b|<script\b/);
+ }
+});
