@@ -23,7 +23,7 @@ const DEFAULT_CONFIG: Config = {close_time:"17:00",reminder_minutes:30,weekdays:
 const cashState = (state?:string) => state==="approved"?"Aprovado":state==="rejected"?"Rejeitado":state==="declared"?"A aguardar aprovação":"Por declarar";
 
 export type ExpedienteCloseGuard = () => "busy"|"draft"|null;
-export default function ExpedienteWorkspace({ escolaId, initialDate, initialHistory=false, portal="secretaria", embedded=false, closeGuardRef }: { escolaId:string; initialDate?:string; initialHistory?:boolean; portal?:"secretaria"|"admin"|"operacoes"|"financeiro"; embedded?:boolean; closeGuardRef?:MutableRefObject<ExpedienteCloseGuard|null> }) {
+export default function ExpedienteWorkspace({ escolaId, initialDate, initialHistory=false, initialCash=false, portal="secretaria", embedded=false, closeGuardRef }: { escolaId:string; initialDate?:string; initialHistory?:boolean; initialCash?:boolean; portal?:"secretaria"|"admin"|"operacoes"|"financeiro"; embedded?:boolean; closeGuardRef?:MutableRefObject<ExpedienteCloseGuard|null> }) {
   const [date,setDate] = useState(initialDate ?? today());
   const [from,setFrom] = useState(initialDate ?? today());
   const [data,setData] = useState<Data|null>(null);
@@ -43,7 +43,7 @@ export default function ExpedienteWorkspace({ escolaId, initialDate, initialHist
   const [config,setConfig] = useState<Config>(DEFAULT_CONFIG);
   const [revision,setRevision] = useState(0);
   const [notice,setNotice]=useState("");
-  const [tab,setTab]=useState<"cash"|"detail"|"history">(initialHistory?"history":portal==="secretaria"?"detail":"cash");
+  const [tab,setTab]=useState<"cash"|"detail"|"history">(initialHistory?"history":initialCash?"cash":portal==="secretaria"?"detail":"cash");
   const [technical,setTechnical]=useState(false);
   const [activityOpen,setActivityOpen]=useState(false);
   const simple=portal==="secretaria";
@@ -174,7 +174,7 @@ export default function ExpedienteWorkspace({ escolaId, initialDate, initialHist
     </div>
     <div ref={detailRef} className="scroll-mt-4 !mt-0"/>
     {notice&&<p role="status" className="flex items-center gap-2 text-sm text-klasse-green dark:text-klasse-green-300"><CheckCircle2 className="h-4 w-4 shrink-0"/>{notice}</p>}
-    {tab==="history"&&visibleData&&<ExpedienteHistory endpoint={endpoint} today={today()} selected={date} onSelect={selectDay} supervise={supervise} refresh={revision} disabled={busy||showCash||loading||settings}/>}
+    {tab==="history"&&visibleData&&<ExpedienteHistory endpoint={endpoint} today={today()} selected={date} onSelect={selectDay} supervise={supervise} refresh={revision} disabled={busy||showCash||loading||settings||confirm||exportOpen}/>}
     {detailError&&<div role="alert" className="rounded-xl border border-border p-3 text-sm text-destructive">{detailError} <Button variant="outline" onClick={()=>setRevision(v=>v+1)}>Tentar novamente</Button></div>}
     {error&&!exportOpen&&!settings&&<div role="alert" className="rounded-xl border border-red-200 bg-card p-3 text-sm text-red-600">{error} <Button type="button" variant="ghost" disabled={busy} onClick={()=>setRevision(v=>v+1)}>Atualizar</Button></div>}
     {loading&&<div role="status" className="space-y-2 animate-pulse"><div className="h-12 rounded-xl bg-muted"/><span className="sr-only">A carregar expediente...</span></div>}
@@ -199,7 +199,7 @@ export default function ExpedienteWorkspace({ escolaId, initialDate, initialHist
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div className="flex items-center gap-3">{data.closed?<CheckCircle2 className="h-5 w-5 shrink-0 text-klasse-green"/>:<CalendarCheck className="h-5 w-5 shrink-0 text-muted-foreground"/>}<div><p className="text-sm font-medium">2. Encerrar expediente</p><p className="text-xs text-muted-foreground">{data.closed?"Concluído":"Por fechar"}</p></div></div>
-              {!data.closed&&data.canClose&&!confirm&&<Button type="button" variant={cashReady?"default":"ghost"} tone={cashReady?"gold":undefined} disabled={dayBlocked} onClick={()=>setConfirm(true)}>{cashReady?"Encerrar expediente":"Encerrar sem declaração de caixa"}</Button>}
+              {!data.closed&&data.canClose&&!confirm&&<Button type="button" variant={cashReady||!canStartCash?"default":"ghost"} tone={cashReady||!canStartCash?"gold":undefined} disabled={dayBlocked} onClick={()=>setConfirm(true)}>{cashReady?"Encerrar expediente":"Encerrar sem declaração de caixa"}</Button>}
             </div>
           </div>
         </div>}
@@ -210,7 +210,7 @@ export default function ExpedienteWorkspace({ escolaId, initialDate, initialHist
         {confirm&&!data.closed&&<div className="rounded-xl border border-border p-3 space-y-2"><p className="text-sm">{!data.cash||data.cash.status==="rejected"?"O expediente será fechado, mas o caixa continuará pendente. Confirme apenas se pretende encerrar a atividade separadamente.":"O resumo ficará registado e a administração será notificada. Os movimentos posteriores serão acrescentados ao histórico."}</p><div className="flex gap-2"><Button type="button" variant="outline" disabled={busy} onClick={()=>setConfirm(false)}>Cancelar</Button><Button type="button" loading={busy} disabled={loading||showCash||Boolean(detailError)} tone="gold" onClick={()=>mutate({action:"close",date})}>Confirmar fecho</Button></div></div>}
         {!simple&&<><p className="font-mono text-xl font-semibold">{data.closed?.operation_count ?? Object.values(data.preview).reduce((sum,n)=>sum+Number(n),0)} <span className="font-sans text-sm font-normal text-muted-foreground">registos de atividade</span></p>{data.closed&&<p className="text-sm text-muted-foreground">Humanos: {data.closed.human_count} · Automáticos: {data.closed.system_count} · Registos de negócio distintos: {data.closed.business_count}</p>}<details className="text-sm"><summary className="cursor-pointer font-medium">Ver resumo por categoria</summary><div className="mt-2 grid gap-2 sm:grid-cols-3">{Object.entries(data.closed?.summary??data.preview).map(([entity,count])=><div key={entity} className="rounded-xl border border-border p-3"><p className="text-sm text-muted-foreground">{entityLabels[entity]??entity}</p><p className="font-mono font-semibold">{count}</p></div>)}</div></details>{data.closed&&<Button type="button" variant="outline" disabled={busy||showCash||activityLoading} onClick={()=>{setEntityFilter("");setActorFilter("");setLateOnly(v=>!v);document.getElementById("expediente-activity")?.scrollIntoView({block:"start"});}}>{data.lateCount} movimentos posteriores{lateOnly?" · limpar filtro":""}</Button>}</>}
       </section>}
-      {tab==="cash"&&<FechoMovimentacoes key={escolaId+":"+date} escolaId={escolaId} date={date} revision={revision} enabled={canViewMovements} hiddenReason={showCash||!data.canSupervise||loading||detailError?null:"Totais e extrato disponíveis após a declaração."}>
+      {tab==="cash"&&<FechoMovimentacoes key={escolaId+":"+date} escolaId={escolaId} date={date} revision={revision} enabled={!simple&&canViewMovements} hiddenReason={simple||showCash||!data.canSupervise||loading||detailError?null:"Totais e extrato disponíveis após a declaração."}>
       <section ref={cashRef} className="scroll-mt-4 rounded-xl border border-border bg-card p-5 md:p-6 shadow-sm space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold text-foreground">Conferência de caixa</h2><p className="mt-1 text-sm text-muted-foreground">{cashState(data.cash?.status)}</p></div>{!data.cash&&data.canDeclare&&!showCash&&<Button type="button" tone="gold" disabled={dayBlocked} onClick={focusCash}>Declarar caixa</Button>}</div>
         {data.cash?.status==="rejected"&&data.canDeclare&&!showCash&&<div className="space-y-2"><p className="text-sm">Motivo da rejeição: {data.cash.approval_note??"—"}</p><Button tone="gold" disabled={dayBlocked} onClick={focusCash}>Regularizar caixa</Button></div>}
