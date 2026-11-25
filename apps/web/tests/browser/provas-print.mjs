@@ -75,6 +75,12 @@ try{
  };
  const assertLogo=path=>{const images=execFileSync("pdfimages",["-list",path],{encoding:"utf8"});assert.match(images,/\b80\s+40\b/,"embedded raster in actual PDF");};
  checkFooters(output);assertLogo(output);
+ const gridFormulas=["\\begin{cases}2x+y=10\\\\x-y=2\\end{cases}","\\begin{pmatrix}2&3\\\\4&5\\end{pmatrix}","\\begin{vmatrix}2&3\\\\4&5\\end{vmatrix}"];
+ const gridProof={...base,conteudo:gridFormulas.map(latex=>({tipo:"calculo",texto:latex,linhas:2,rich:{version:1,segments:[{kind:"math",latex}]}}))};
+ await page.setContent(provaHtml(gridProof,"Escola de teste",{draft:true,logo}),{waitUntil:"load"});
+ assert.equal(await page.locator("math mtable").count(),3);
+ for(const element of await page.locator("math mtable").all()){const box=await element.boundingBox();assert.ok(box&&box.width>0&&box.height>0,"visible mathematical grid");}
+
  await page.setContent(folhaGenericaHtml("Complexo Escolar Privado Adventista de Curtume",{nonce:"generic-test",logo}),{waitUntil:"load"});
  assert.equal(await page.locator(".blank-writing .linha").count(),18);
  const blankPdf=await page.pdf({preferCSSPageSize:true,printBackground:true});

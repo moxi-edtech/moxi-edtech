@@ -4,7 +4,7 @@ CREATE FUNCTION provas_private.provas_math_scalar_validate(v_latex text)
 RETURNS void LANGUAGE plpgsql IMMUTABLE SET search_path='' AS $scalar$
 DECLARE v_cmd text; v_char text; v_depth int; v_i int;
 BEGIN
-     IF length(v_latex) NOT BETWEEN 1 AND 300 OR btrim(v_latex)='' OR v_latex ~ '[[:cntrl:]<>&$#%]' OR right(v_latex,1)=chr(92) THEN RAISE EXCEPTION 'invalid_math' USING ERRCODE='22023'; END IF;
+     IF v_latex IS NULL OR length(v_latex) NOT BETWEEN 1 AND 300 OR btrim(v_latex)='' OR v_latex ~ '[[:cntrl:]<>&$#%]' OR right(v_latex,1)=chr(92) THEN RAISE EXCEPTION 'invalid_math' USING ERRCODE='22023'; END IF;
      v_depth:=0;
      FOR v_i IN 1..length(v_latex) LOOP
        v_char:=substr(v_latex,v_i,1);

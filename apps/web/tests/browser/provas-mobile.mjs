@@ -257,6 +257,25 @@ try{
    await noOverflow(page,"estrutura matemática "+width);
    page.once("dialog",d=>d.accept());
    await recursive.getByRole("button",{name:"Voltar",exact:true}).click();
+   await modular.getByRole("button",{name:"Adicionar componente",exact:true}).click();
+   await modular.getByLabel("Categoria de modelos").selectOption("Álgebra linear");
+   await modular.getByRole("button",{name:"Matriz",exact:true}).click();
+   await modular.getByRole("button",{name:"Personalizar estrutura",exact:true}).click();
+   await recursive.getByRole("button",{name:/Elemento \d+: Matriz/}).click();
+   await recursive.getByRole("button",{name:"Coluna",exact:true}).click();
+   await recursive.getByRole("button",{name:"Linha",exact:true}).click();
+   await recursive.getByRole("button",{name:/^Linha 3 · Coluna 3/}).click();
+   await recursive.getByRole("button",{name:"Elemento 1: 0",exact:true}).click();
+   await recursive.getByRole("button",{name:"Alterar valor",exact:true}).click();
+   await recursive.getByLabel("Valor ou variável",{exact:true}).fill("9");
+   await recursive.getByRole("button",{name:"Aplicar",exact:true}).click();
+   const matrixPreview=recursive.getByLabel("Pré-visualização completa");
+   assert.equal(await matrixPreview.locator("mtable mtr").count(),3);
+   assert.equal(await matrixPreview.locator("mtable mtd").count(),9);
+   assert.match(await matrixPreview.locator("annotation").textContent(),/0&0&9/);
+   await noOverflow(page,"matriz "+width);
+   page.once("dialog",d=>d.accept());
+   await recursive.getByRole("button",{name:"Voltar",exact:true}).click();
    await modular.getByRole("button",{name:"Cancelar",exact:true}).click();
    await dialog.getByRole("button",{name:"Concluir edição",exact:true}).click();
    await dialog.getByText("Opções da pergunta",{exact:true}).click();
@@ -341,7 +360,10 @@ try{
   assert.equal(await dialog.getByLabel("Cotação da pergunta 1",{exact:true}).count(),0);
   await dialog.getByText("Adicionar elemento de estrutura",{exact:true}).click();
   await dialog.getByRole("button",{name:/^Texto de apoio Conteúdo de referência/}).click();
-  await dialog.getByLabel("Texto de apoio 2",{exact:true}).fill("Leia o texto antes de responder.");
+  const support=dialog.getByLabel("Texto de apoio 2",{exact:true});
+  await support.click();
+  await support.pressSequentially("Leia o texto antes de responder.");
+  assert.equal(await support.inputValue(),"Leia o texto antes de responder.");
   assert.equal(await dialog.getByLabel("Linhas para resposta 2",{exact:true}).count(),0);
   assert.equal(await dialog.getByLabel("Cotação da pergunta 2",{exact:true}).count(),0);
   if(width<640){
