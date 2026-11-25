@@ -82,3 +82,7 @@ CREATE POLICY fixture_campus_scope ON public.turmas FOR SELECT TO authenticated 
 
 INSERT INTO auth.users VALUES ('10000000-0000-4000-8000-000000000007'),('10000000-0000-4000-8000-000000000008');
 INSERT INTO public.escola_users VALUES ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000007','k12','admin_financeiro'),('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000008','k12','secretaria_financeiro');
+
+-- Synthetic regime fixture; production uses the actual canonical resolver.
+ALTER TABLE public.turmas ADD COLUMN fixture_escala text DEFAULT 'quantitativa_secundario';
+CREATE FUNCTION public.resolve_regime_academico(p_turma_id uuid) RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT jsonb_build_object('escala',fixture_escala) FROM public.turmas WHERE id=p_turma_id $$;

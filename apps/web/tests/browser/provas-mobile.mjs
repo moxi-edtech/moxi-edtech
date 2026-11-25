@@ -32,7 +32,7 @@ try{
     return reply({prova:saved});
    }
    if(url.searchParams.get("branding")==="1")return reply({logo:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg=="});
-   if(url.searchParams.get("contexto")==="1")return reply({items:url.searchParams.has("ano")?[{ano_letivo_id:year,curso_matriz_id:matrix,ano_lectivo:"2026/2027",classe:"8.ª Classe",disciplina:"Física",curso:"Ensino Geral",trimestre:1}]:[{id:year,ativo:true,label:"2026/2027"}]});
+   if(url.searchParams.get("contexto")==="1")return reply({items:url.searchParams.has("ano")?[{ano_letivo_id:year,curso_matriz_id:matrix,ano_lectivo:"2026/2027",classe:"8.ª Classe",disciplina:"Física",curso:"Ensino Geral",trimestre:1,cotacao_max_cent:2000}]:[{id:year,ativo:true,label:"2026/2027"}]});
    if(url.searchParams.has("prova"))return reply({prova:base});
    return reply({provas:saved?[base,saved]:[base],escola:"Escola de teste",permissions:{author:true,admin:false,userId:user}});
   });
@@ -163,7 +163,8 @@ try{
   }
   await dialog.getByLabel("Enunciado 2",{exact:true}).fill("Qual é a unidade de energia?");
   for(const [i,value] of ["Joule","Watt","Newton","Pascal"].entries())await dialog.getByLabel("Alternativa "+String.fromCharCode(65+i)+" da pergunta 2",{exact:true}).fill(value);
-  await dialog.getByLabel("Cotação da pergunta 2").fill("1.25");
+  await dialog.getByLabel("Cotação da pergunta 2").fill("1,25");
+  assert.match(await dialog.getByRole("progressbar",{name:"Cotação atribuída"}).getAttribute("aria-valuetext"),/1,25 de 20/);
   if(width<640){
    await dialog.getByRole("button",{name:"Anterior",exact:true}).click();
    assert.equal(await dialog.getByRole("spinbutton",{name:"Linhas para resposta 1"}).inputValue(),"7");
@@ -172,7 +173,7 @@ try{
    assert.equal(await dialog.getByLabel("Alternativa A da pergunta 2").inputValue(),"Joule");
    await dialog.getByRole("button",{name:"Ir para bloco 1"}).click();
    await dialog.getByRole("button",{name:"Ir para bloco 2"}).click();
-   assert.equal(await dialog.getByLabel("Cotação da pergunta 2").inputValue(),"1.25");
+   assert.equal(await dialog.getByLabel("Cotação da pergunta 2").inputValue(),"1,25");
    assert.equal(await dialog.getByRole("button",{name:"Subir bloco 2"}).count(),0);
    await dialog.getByRole("button",{name:"Adicionar pergunta",exact:true}).click();
    assert.equal(await dialog.getByLabel("Tipo do bloco 3",{exact:true}).inputValue(),"discursiva");

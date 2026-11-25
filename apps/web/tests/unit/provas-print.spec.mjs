@@ -305,3 +305,17 @@ test("formula recovery is lossless for all model examples and canonical composit
  assert.deepEqual(formulaValueSlots("\\frac12"),[]);
  assert.deepEqual(formulaValueSlots("\\text{2026}+2").map(s=>s.value),["2"]);
 });
+
+const {parseCotacao,cotacaoStatus}=require("../../src/lib/provas/cotacao.ts");
+test("cotação decimal exacta e escalas académicas",()=>{
+ assert.equal(parseCotacao("2,1"),210);assert.equal(parseCotacao("2.5"),250);assert.equal(parseCotacao("0,75"),75);assert.equal(parseCotacao("2,111"),undefined);
+ const q=cent=>({tipo:"discursiva",texto:"Q",linhas:1,cotacao_cent:cent});
+ assert.equal(cotacaoStatus([q(210),q(790),{tipo:"grupo",texto:"G",linhas:0}],1000).ready,true);
+ assert.equal(cotacaoStatus([q(210),q(790)],2000).ready,false);
+ assert.equal(cotacaoStatus([q(1100)],1000).ready,false);
+ assert.equal(cotacaoStatus([q(1000),q(undefined)],1000).ready,false);
+ assert.equal(cotacaoStatus([q(1000),q(0)],1000).ready,false);
+ assert.equal(cotacaoStatus([q(1000)],null).ready,false);
+ assert.equal(cotacaoStatus([q(undefined)],0).ready,true);
+ assert.equal(cotacaoStatus([q(1)],0).ready,false);
+});

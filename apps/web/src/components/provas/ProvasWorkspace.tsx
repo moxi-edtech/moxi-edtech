@@ -11,6 +11,8 @@ import { formatClasseProva } from "@/lib/provas/academicLabels";
 import { safeLogoData } from "@/lib/provas/branding";
 import { PROVA_PAPER,respostaLayout,apresentacoes,type Apresentacao } from "@/lib/provas/layout";
 import { questionTemplate,placeholders,suggestedTypes,structures,isQuestion,formatCotacao } from "@/lib/provas/questionTemplates";
+import { cotacaoStatus } from "@/lib/provas/cotacao";
+import CotacaoInput from "./CotacaoInput";
 const ProvasOrderPanel=dynamic(()=>import("./ProvasOrderPanel"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar ordem das perguntas...</p>});
 const ProvasPrintPanel=dynamic(()=>import("./ProvasPrintPanel"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar distribuição...</p>});
 const RichQuestionEditor=dynamic(()=>import("./RichQuestionEditor"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar editor...</p>});
@@ -69,7 +71,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  const [anosLoading,setAnosLoading]=useState(false),[contextLoading,setContextLoading]=useState(false);
  const [anosError,setAnosError]=useState(""),[contextError,setContextError]=useState(""),[contextRetry,setContextRetry]=useState(0);
  const selectedYear=form?.ano_letivo_id??"";
- const editing=Boolean(form&&permissions?.author&&(!selected||selected.estado==="rascunho"&&(permissions.admin||selected.autor_id===permissions.userId)));
+ const editing=Boolean(form&&permissions?.author&&(!selected||selected.estado==="rascunho"&&(permissions.admin||selected.autor_id===permissions.userId)||selected.estado==="em_revisao"&&permissions.admin));
  useEffect(()=>{
   if(!editing)return;
   const c=new AbortController();setAnosLoading(true);setAnosError("");setAnos([]);
@@ -170,6 +172,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
     setError(issues.map(i=>i.path[0]==="conteudo"?(typeof i.path[1]==="number"?"Verifique o bloco "+(i.path[1]+1)+": enunciado, alternativas, cotação e formatação.":"Verifique o conteúdo da prova."):"Verifique "+String(i.path[0]).replace("_"," ")+".").filter((v,i,a)=>a.indexOf(v)===i).join(" "));return;
    }dados=validated.data;
   }else if(!selected||dirty)return;
+  if((action==="submeter"||action==="aprovar")&&(!cotacao.ready||contextLoading)){setError(cotacao.message);setConfirm(null);return;}
   const payload={acao:action,...(action==="criar"?{}:{id:selected?.id,versao:selected?.versao}),...(dados?{dados}:{})};
   locked.current=true;setBusy(true);setError("");setConfirm(null);
   const c=new AbortController();request.current=c;
@@ -186,7 +189,10 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  const yearOptions=contextos.filter(o=>o.ano_letivo_id===selectedYear);
  const matrixOptions=Array.from(new Map(yearOptions.map(o=>[o.curso_matriz_id,o])).values());
  const periodOptions=yearOptions.filter(o=>o.curso_matriz_id===form?.curso_matriz_id).map(o=>o.trimestre);
- const contextReady=Boolean(form&&yearOptions.some(o=>o.curso_matriz_id===form.curso_matriz_id&&o.trimestre===form.trimestre));
+ const selectedContext=yearOptions.find(o=>o.curso_matriz_id===form?.curso_matriz_id&&o.trimestre===form?.trimestre);
+ const contextReady=Boolean(form&&selectedContext);
+ const cotacaoMax=selectedContext?.cotacao_max_cent??null;
+ const cotacao=cotacaoStatus(form?.conteudo??[],cotacaoMax);
  function selectYear(id:string){
   const year=anos.find(a=>a.id===id);setContextos([]);
   setForm(p=>p?{...p,ano_letivo_id:id,ano_lectivo:year?.label??"",curso_matriz_id:"",classe:"",disciplina:"",trimestre:1}:p);setDirty(true);setError("");
@@ -222,8 +228,8 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
        {canEdit&&!organizing&&form.conteudo.length>1&&<Button type="button" variant="outline" className={teacherWizard&&!preview&&step==="header"?"hidden sm:inline-flex":undefined} disabled={busy||richIndex!==null} onClick={showOrder}><ListOrdered/> Organizar perguntas</Button>}
        {canEdit&&<Button variant={organizing?"default":"outline"} tone={organizing?"gold":undefined} disabled={busy||richIndex!==null} onClick={()=>{setOrganizing(false);setPreview(v=>!v);}}>{preview?<Pencil/>:<Eye/>}{preview?"Editar":"Pré-visualizar"}</Button>}
        {canEdit&&!organizing&&(!selected||dirty)&&<Button tone={singleQuestion&&!preview?undefined:"gold"} variant={singleQuestion&&!preview?"outline":"default"} className={teacherWizard&&step==="header"&&!preview?"hidden sm:inline-flex":undefined} disabled={busy||richIndex!==null||!contextReady||contextLoading} onClick={()=>mutate(selected?"guardar":"criar")}>Guardar rascunho</Button>}
-       {canManage&&!organizing&&selected&&!dirty&&selected.estado==="rascunho"&&(!singleQuestion||preview)&&<Button tone="gold" disabled={busy||richIndex!==null||!contextReady||contextLoading} onClick={()=>setConfirm("submeter")}>Enviar para revisão</Button>}
-       {permissions?.admin&&selected?.estado==="em_revisao"&&<><Button variant="outline" disabled={busy} onClick={()=>setConfirm("devolver")}>Devolver</Button><Button tone="gold" disabled={busy} onClick={()=>setConfirm("aprovar")}>Aprovar prova</Button></>}
+       {canManage&&!organizing&&selected&&!dirty&&selected.estado==="rascunho"&&(!singleQuestion||preview)&&<Button tone="gold" disabled={busy||richIndex!==null||!contextReady||contextLoading||!cotacao.ready} onClick={()=>setConfirm("submeter")}>Enviar para revisão</Button>}
+       {permissions?.admin&&selected?.estado==="em_revisao"&&<><Button variant="outline" disabled={busy} onClick={()=>setConfirm("devolver")}>Devolver</Button><Button tone="gold" disabled={busy||contextLoading||!cotacao.ready} onClick={()=>setConfirm("aprovar")}>Aprovar prova</Button></>}
        {canManage&&!organizing&&selected&&!dirty&&(!singleQuestion||!canEdit||preview)&&<Button variant="ghost" disabled={busy||richIndex!==null} onClick={()=>setConfirm("duplicar")}><Copy/> Duplicar</Button>}
        {canManage&&!organizing&&selected&&!dirty&&(!singleQuestion||!canEdit||preview)&&(selected.estado==="rascunho"||permissions?.admin&&selected.estado==="aprovada")&&<Button variant="ghost" disabled={busy||richIndex!==null} onClick={()=>setConfirm("arquivar")}>Arquivar</Button>}
        {printHref&&(permissions?.distribute?<Button tone="gold" onClick={()=>setDistribution(true)}><Printer/> Imprimir prova</Button>:<Button asChild tone="gold"><a href={printHref} target="_blank" rel="noopener noreferrer"><Printer className="h-4 w-4"/> Imprimir prova</a></Button>)}
@@ -238,7 +244,12 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
     </div>
     <div className="flex gap-1" aria-hidden="true">{[1,2,3].map(n=><span key={n} className={"h-1 flex-1 rounded-full "+(n<=(preview?3:step==="header"?1:2)?"bg-klasse-green":"bg-muted")}/>)}</div>
    </div>}
-   {form&&(distribution&&selected?.estado==="aprovada"&&permissions?.distribute?<div className="space-y-3"><Button variant="outline" onClick={()=>setDistribution(false)}><Eye/> Consultar prova</Button><ProvasPrintPanel key={selected.id+":"+selected.versao} endpoint={endpoint} prova={selected}/></div>:preview||!canEdit?<div className="min-w-0 space-y-2"><p className="text-xs text-muted-foreground">Apresentação: {apresentacoes[form.apresentacao??"automatica"]}. A leitura no ecrã é contínua; as quebras físicas são calculadas na impressão A4. Os espaços de resposta são preservados.</p><iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada",logo})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/></div>:organizing?<ProvasOrderPanel blocks={form.conteudo} disabled={busy||Boolean(confirm)||discard} onMove={reorder}/>:richIndex!==null&&form.conteudo[richIndex]?<RichQuestionEditor key={richIndex} block={form.conteudo[richIndex]} label={"Enunciado "+(richIndex+1)} startWithFormula={startFormula} disabled={busy||Boolean(confirm)||discard} onChange={part=>patch(richIndex,part)} onDone={finishRich}/>:
+   {form&&editing&&richIndex===null&&!distribution&&!organizing&&(preview||!teacherWizard||step==="questions"||!singleQuestion)&&<div className="mb-3 space-y-1.5 rounded-xl border border-border bg-card p-3" aria-live="polite">
+ <div className="flex items-baseline justify-between gap-2 text-sm"><span className="font-medium">Cotação total</span>{cotacaoMax!==null&&cotacaoMax>0&&<span className={"font-semibold tabular-nums "+(cotacao.total>cotacaoMax?"text-destructive":cotacao.ready?"text-klasse-green":"text-foreground")}>{formatCotacao(cotacao.total)} / {formatCotacao(cotacaoMax)}</span>}</div>
+ {cotacaoMax!==null&&cotacaoMax>0&&<div role="progressbar" aria-label="Cotação atribuída" aria-valuemin={0} aria-valuemax={cotacaoMax} aria-valuenow={Math.min(cotacao.total,cotacaoMax)} aria-valuetext={formatCotacao(cotacao.total)+" de "+formatCotacao(cotacaoMax)+" valores"} className="h-1.5 overflow-hidden rounded-full bg-muted"><div className={"h-full rounded-full "+(cotacao.total>cotacaoMax?"bg-red-600":cotacao.ready?"bg-klasse-green":"bg-klasse-gold")} style={{width:Math.min(100,cotacao.total/cotacaoMax*100)+"%"}}/></div>}
+ <p className={"text-xs "+(cotacao.ready?"text-klasse-green":cotacaoMax!==null&&(cotacao.total>cotacaoMax||cotacao.qualitative&&cotacao.hasNumeric)?"text-destructive":"text-muted-foreground")}>{contextLoading?"A carregar escala…":cotacao.message}</p>
+ </div>}
+    {form&&(distribution&&selected?.estado==="aprovada"&&permissions?.distribute?<div className="space-y-3"><Button variant="outline" onClick={()=>setDistribution(false)}><Eye/> Consultar prova</Button><ProvasPrintPanel key={selected.id+":"+selected.versao} endpoint={endpoint} prova={selected}/></div>:preview||!canEdit?<div className="min-w-0 space-y-2"><p className="text-xs text-muted-foreground">Apresentação: {apresentacoes[form.apresentacao??"automatica"]}. A leitura no ecrã é contínua; as quebras físicas são calculadas na impressão A4. Os espaços de resposta são preservados.</p><iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada",logo})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/></div>:organizing?<ProvasOrderPanel blocks={form.conteudo} disabled={busy||Boolean(confirm)||discard} onMove={reorder}/>:richIndex!==null&&form.conteudo[richIndex]?<RichQuestionEditor key={richIndex} block={form.conteudo[richIndex]} label={"Enunciado "+(richIndex+1)} startWithFormula={startFormula} disabled={busy||Boolean(confirm)||discard} onChange={part=>patch(richIndex,part)} onDone={finishRich}/>:
    <div className="min-w-0 space-y-5 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
     <div className={"rounded-xl border border-border bg-card p-3 sm:p-4 "+(teacherWizard&&step==="questions"?"hidden sm:block":"")}>
     <h3 id="provas-step-header" tabIndex={-1} className="sr-only">Cabeçalho da prova</h3>
@@ -260,7 +271,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
     <fieldset disabled={busy||Boolean(confirm)||discard} className={"min-w-0 space-y-3 "+(teacherWizard&&step==="header"?"hidden sm:block":"")}>
      <legend id="provas-step-questions" tabIndex={-1} className={singleQuestion?"sr-only":"mb-3 text-sm font-semibold text-klasse-green dark:text-foreground"}>Enunciado e perguntas</legend>
      {singleQuestion&&<p className="break-words text-xs font-medium text-muted-foreground">{form.disciplina} · {formatClasseProva(form.classe)}</p>}
-     <div className={singleQuestion?"hidden":"flex flex-wrap items-center justify-between gap-2 text-sm"}><span>{form.conteudo.filter(b=>isQuestion(b.tipo)).length} pergunta(s)</span><span className="tabular-nums text-muted-foreground">Cotação atribuída: {formatCotacao(form.conteudo.reduce((n,b)=>n+(b.cotacao_cent??0),0))} valores · {form.conteudo.filter(b=>isQuestion(b.tipo)&&b.cotacao_cent===undefined).length} sem cotação</span></div>
+      {!singleQuestion&&<p className="text-sm text-muted-foreground">{form.conteudo.filter(b=>isQuestion(b.tipo)).length} pergunta(s)</p>}
      {!selected&&form.conteudo.length===1&&!form.conteudo[0].texto&&!form.conteudo[0].rich&&!form.conteudo[0].alternativas&&form.conteudo[0].cotacao_cent===undefined&&<details key={singleQuestion?"mobile-model":"desktop-model"} open={!singleQuestion} className="rounded-xl border border-border p-3"><summary className={"min-h-11 cursor-pointer py-2 text-sm font-medium text-muted-foreground "+(singleQuestion?"":"hidden")}>Começar com um modelo</summary><div className="space-y-2"><p className={singleQuestion?"sr-only":"text-sm font-medium"}>Começar com um modelo</p><p className="text-xs text-muted-foreground">Estrutura pronta, sem enunciados pré-preenchidos.</p><div className="flex flex-wrap gap-2">{structures.map(s=><Button key={s.label} type="button" size="sm" variant="outline" disabled={richIndex!==null} onClick={()=>{setActiveBlock(0);change("conteudo",s.types.map(questionTemplate));}}>{s.label}</Button>)}</div></div></details>}
      {singleQuestion&&<div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -290,7 +301,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
       </div>}
       {block.tipo==="verdadeiro_falso"&&<p className="text-sm text-muted-foreground">Na folha: ( ) V  ·  ( ) F</p>}
       {block.tipo==="lacunas"&&<p className="text-xs text-muted-foreground">Utilize ____ no enunciado para indicar cada lacuna.</p>}
-      {isQuestion(block.tipo)&&<label className="grid max-w-56 gap-1 text-sm">Cotação (valores)<input type="number" inputMode="decimal" min={0} max={20} step="0.01" aria-label={"Cotação da pergunta "+(index+1)} className={input} placeholder="Opcional" value={block.cotacao_cent===undefined?"":block.cotacao_cent/100} disabled={richIndex!==null} onChange={e=>{const v=e.target.value;const n=Number(v);patch(index,{cotacao_cent:v===""||!Number.isFinite(n)?undefined:Math.min(2000,Math.max(0,Math.round(n*100)))});}}/></label>}
+       {isQuestion(block.tipo)&&(!cotacao.qualitative||block.cotacao_cent!==undefined)&&<label className="grid max-w-56 gap-1 text-sm">Cotação (valores)<CotacaoInput label={"Cotação da pergunta "+(index+1)} className={input} value={block.cotacao_cent} disabled={richIndex!==null} onChange={v=>patch(index,{cotacao_cent:v})}/>{block.cotacao_cent!==undefined&&cotacaoMax!==null&&block.cotacao_cent>cotacaoMax&&<span className="text-xs text-destructive">Excede a escala da classe.</span>}</label>}
       {(!["grupo","texto","verdadeiro_falso","lacunas","escolha"].includes(block.tipo)||block.linhas>0)&&<div className="min-w-0 space-y-3 border-t border-border pt-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2"><span className="text-sm font-medium">Espaço para resposta</span><span className={singleQuestion&&respostaLayout(block.tipo,block.linhas).kind!=="box"?"hidden":"text-xs tabular-nums text-muted-foreground"}>{respostaLayout(block.tipo,block.linhas).kind==="none"?"Sem espaço adicional":respostaLayout(block.tipo,block.linhas).kind==="box"?"Área livre · "+(respostaLayout(block.tipo,block.linhas).heightMm/10).toFixed(1).replace(".",",")+" cm":block.linhas+" linha(s) · "+(respostaLayout(block.tipo,block.linhas).heightMm/10).toFixed(1).replace(".",",")+" cm"}</span></div>
         <div className={singleQuestion?"hidden":"flex flex-wrap gap-2"} role="group" aria-label={"Espaço da resposta "+(index+1)}>

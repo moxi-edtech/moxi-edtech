@@ -8,6 +8,7 @@ DECLARE r public.provas_pedagogicas; v_bad jsonb;
  v_data jsonb:='{"ano_letivo_id":"20000000-0000-4000-8000-000000000001","curso_matriz_id":"70000000-0000-4000-8000-000000000001","tipo_prova":"recurso","titulo":"Prova","classe":"8ª","disciplina":"Física","ano_lectivo":"2026/2027","trimestre":1,"duracao":90,"serie":"A","conteudo":[{"tipo":"discursiva","texto":"Questão confidencial","linhas":3}]}';
 BEGIN
  IF jsonb_array_length(public.provas_contexto(v_school,'20000000-0000-4000-8000-000000000001'))<>2 THEN RAISE EXCEPTION 'teacher context leaked or missing'; END IF;
+ IF (public.provas_contexto(v_school,'20000000-0000-4000-8000-000000000001')->0->>'cotacao_max_cent')::integer IS DISTINCT FROM 2000 THEN RAISE EXCEPTION 'scale unavailable'; END IF;
  BEGIN
    PERFORM public.provas_mutar(v_school,NULL,NULL,'criar',jsonb_set(v_data,'{curso_matriz_id}','"70000000-0000-4000-8000-000000000002"'));
    RAISE EXCEPTION 'unassigned discipline accepted';
@@ -80,6 +81,13 @@ BEGIN
    RAISE EXCEPTION 'null presentation accepted';
  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  v_data:=v_data||'{"apresentacao":"espacosa"}'::jsonb;
+ BEGIN
+   PERFORM public.provas_mutar(v_school,r.id,r.versao,'submeter',NULL);
+   RAISE EXCEPTION 'missing cotacao accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN
+   IF SQLERRM<>'invalid_exam_cotacao' THEN RAISE; END IF;
+ END;
+ v_data:=jsonb_set(v_data,'{conteudo,0,cotacao_cent}','1875');
  r:=public.provas_mutar(v_school,r.id,r.versao,'guardar',v_data);
  IF r.apresentacao<>'espacosa' THEN RAISE EXCEPTION 'presentation persistence failed'; END IF;
  IF r.conteudo->1 IS DISTINCT FROM v_data->'conteudo'->1 THEN RAISE EXCEPTION 'structured question persistence failed'; END IF;

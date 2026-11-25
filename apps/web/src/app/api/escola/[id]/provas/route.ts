@@ -62,6 +62,8 @@ export async function POST(req:Request,{params}:Context){
  const result=await access.db.rpc("provas_mutar",{p_escola:access.escolaId,p_id:"id" in data?data.id:null,p_versao:"versao" in data?data.versao:null,p_acao:data.acao,p_dados:"dados" in data?data.dados:null});
  if(result.error){
    const status=result.error.code==="40001"?409:result.error.code==="42501"?403:result.error.code?.startsWith("22")||result.error.code?.startsWith("23")?400:500;
+   if(result.error.code==="22023"&&result.error.message==="invalid_exam_cotacao")return json({error:"A cotação deve corresponder à escala da classe, com valores positivos em todas as perguntas numéricas."},400);
+   if(result.error.code==="22023"&&result.error.message==="unavailable_exam_scale")return json({error:"Escala indisponível ou incompatível entre turmas. Consulte a Direção."},400);
    return json({error:status===409?"A prova foi alterada. Reabra a versão mais recente.":status===403?result.error.message==="invalid_academic_context"?"Seleccione um contexto académico publicado e autorizado.":"Operação não autorizada neste estado.":status===400?"Verifique os dados e o estado da prova.":"Não foi possível guardar a prova."},status);
  }
  return json({prova:result.data});
