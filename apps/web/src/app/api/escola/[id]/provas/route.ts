@@ -10,6 +10,14 @@ export async function GET(req:Request,{params}:Context){
  if(!access.ok)return json({error:"Acesso não autorizado."},access.status);
  const {db,escolaId}=access;
  const query=new URL(req.url).searchParams;
+ if(query.get("contexto")==="1"){
+   if(!access.author)return json({error:"Sem autorização para elaborar provas."},403);
+   const ano=query.get("ano");
+   if(ano!==null&&!z.string().uuid().safeParse(ano).success)return json({error:"Ano lectivo inválido."},400);
+   const result=await db.rpc("provas_contexto",{p_escola:escolaId,p_ano:ano});
+   if(result.error)return json({error:"Contexto académico indisponível. Consulte a Direção."},result.error.code==="42501"?403:result.error.code==="22023"?409:500);
+   return json({items:result.data??[]});
+ }
  const id=query.get("prova");
  if(id){
    if(!z.string().uuid().safeParse(id).success)return json({error:"Identificador inválido."},400);
@@ -45,7 +53,7 @@ export async function POST(req:Request,{params}:Context){
  const result=await access.db.rpc("provas_mutar",{p_escola:access.escolaId,p_id:"id" in data?data.id:null,p_versao:"versao" in data?data.versao:null,p_acao:data.acao,p_dados:"dados" in data?data.dados:null});
  if(result.error){
    const status=result.error.code==="40001"?409:result.error.code==="42501"?403:result.error.code?.startsWith("22")||result.error.code?.startsWith("23")?400:500;
-   return json({error:status===409?"A prova foi alterada. Reabra a versão mais recente.":status===403?"Operação não autorizada neste estado.":status===400?"Verifique os dados e o estado da prova.":"Não foi possível guardar a prova."},status);
+   return json({error:status===409?"A prova foi alterada. Reabra a versão mais recente.":status===403?result.error.message==="invalid_academic_context"?"Seleccione um contexto académico publicado e autorizado.":"Operação não autorizada neste estado.":status===400?"Verifique os dados e o estado da prova.":"Não foi possível guardar a prova."},status);
  }
  return json({prova:result.data});
 }
