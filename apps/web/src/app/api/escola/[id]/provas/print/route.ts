@@ -34,7 +34,7 @@ export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
   recipients=items.data;
  }else if(q.has("turmas")||q.has("matricula")||q.has("snapshot"))return fail("Modalidade inválida.",400);
  const [row,school]=await Promise.all([
-  access.db.from("provas_pedagogicas").select("titulo,tipo_prova,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo,versao").eq("escola_id",access.escolaId).eq("id",id).eq("estado","aprovada").maybeSingle(),
+  access.db.from("provas_pedagogicas").select("titulo,tipo_prova,apresentacao,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo,versao").eq("escola_id",access.escolaId).eq("id",id).eq("estado","aprovada").maybeSingle(),
   access.db.from("escolas").select("nome,logo_url").eq("id",access.escolaId).maybeSingle()
  ]);
  if(row.error||school.error)return fail("Não foi possível gerar a prova.",500);

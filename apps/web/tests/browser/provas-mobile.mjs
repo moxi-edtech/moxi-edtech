@@ -26,6 +26,7 @@ try{
     assert.ok(data.dados.conteudo[0].rich.segments.some(s=>s.kind==="math"&&s.latex==="2+3"));
     assert.deepEqual(data.dados.conteudo[1].alternativas,["Joule","Watt","Newton","Pascal"]);
     assert.equal(data.dados.conteudo[1].cotacao_cent,125);
+    assert.equal(data.dados.apresentacao,"espacosa");
     saved={...base,...data.dados,id:"30000000-0000-4000-8000-000000000002",estado:"rascunho",versao:1};
     return reply({prova:saved});
    }
@@ -44,6 +45,7 @@ try{
   await dialog.getByRole("combobox",{name:"Ano lectivo",exact:true}).waitFor();
   await dialog.getByLabel("Ano lectivo",{exact:true}).selectOption(year);
   await dialog.getByLabel("Classe e disciplina").selectOption(matrix);
+  await dialog.getByLabel("Apresentação da folha").selectOption("espacosa");
   await dialog.getByLabel("Enunciado 1",{exact:true}).fill("Calcula a soma.");
   await dialog.getByRole("button",{name:"Cabeçalho da prova"}).click();
   assert.equal(await dialog.getByRole("button",{name:/Cabeçalho da prova/}).getAttribute("aria-expanded"),"false");
@@ -81,6 +83,7 @@ try{
   await dialog.getByRole("button",{name:"Pré-visualizar"}).click();
   const preview=dialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
   await preview.locator("math").waitFor();
+  assert.equal(await preview.locator(".paper").getAttribute("data-layout"),"espacosa");
   assert.equal(await preview.locator(".linha").count(),7);
   assert.equal(await preview.locator(".alternativas li").count(),4);
   assert.match(await preview.locator(".cotacao").innerText(),/1,25/);

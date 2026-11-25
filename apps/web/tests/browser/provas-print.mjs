@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { execFileSync } from "node:child_process";
 const require=createRequire(import.meta.url);
 const { provaHtml }=require("../../src/lib/provas/print.ts");
-const { PROVA_PAPER:P }=require("../../src/lib/provas/layout.ts");
+const { PROVA_PAPER:P,chooseComposicao,COMPOSICAO }=require("../../src/lib/provas/layout.ts");
 const { PDFDocument }=require("pdf-lib");
 const {PROVA_FOOTER}=require("../../src/lib/provas/branding.ts");
 const logo="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==";
@@ -41,7 +41,8 @@ try{
    return {margin:getComputedStyle(paper).paddingLeft,gap:getComputedStyle(q).marginBottom,line:line.getBoundingClientRect().height,answerGap:getComputedStyle(first).marginTop,box:box.getBoundingClientRect().height};
  });
  const px=mm=>mm*96/25.4;
- for(const [actual,expected] of [[parseFloat(geometry.margin),P.marginLeft],[parseFloat(geometry.gap),P.questionGap],[geometry.line,P.lineHeight],[parseFloat(geometry.answerGap),P.answerGap],[geometry.box,4*P.lineHeight]])assert.ok(Math.abs(actual-px(expected))<1.5,JSON.stringify(geometry));
+ const composition=COMPOSICAO[chooseComposicao(conteudo,undefined,true)];
+ for(const [actual,expected] of [[parseFloat(geometry.margin),P.marginLeft],[parseFloat(geometry.gap),composition.questionGap],[geometry.line,P.lineHeight],[parseFloat(geometry.answerGap),composition.answerGap],[geometry.box,4*P.lineHeight]])assert.ok(Math.abs(actual-px(expected))<1.5,JSON.stringify(geometry));
  await mkdir("apps/web/visual-evidence/provas",{recursive:true});
  await page.screenshot({path:"apps/web/visual-evidence/provas/preview.png",fullPage:true});
  await page.setContent(provaHtml({...base,conteudo},"Escola de teste",{nonce:"browser-test",logo}),{waitUntil:"load"});
@@ -99,4 +100,25 @@ try{
  assert.equal(pages.filter(p=>p.includes("Estudante ALFA")).length,1);
  assert.equal(pages.filter(p=>p.includes("Estudante BETA")).length,1);
  console.log("Nominal copies start on separate pages:",nextPage+1,"total:",pages.length);
+ // Borderline fixture: the automatic profile fits seven two-line questions on one
+ // A4 page without reducing the writing area; spacious presentation flows naturally.
+ const fit=Array.from({length:7},(_,i)=>({tipo:"discursiva",texto:"Questão "+(i+1)+". Define energia.",linhas:2}));
+ const pageCounts={};
+ for(const mode of ["automatica","compacta","espacosa"]){
+   const input={...base,apresentacao:mode,conteudo:fit};
+   await page.setContent(provaHtml(input,"Escola de teste"),{waitUntil:"load"});
+   assert.equal(await page.locator(".linha").count(),14);
+   assert.ok(Math.abs(await page.locator(".linha").first().evaluate(el=>el.getBoundingClientRect().height)-px(P.lineHeight))<1.5);
+   assert.equal(await page.locator(".paper").getAttribute("data-layout"),chooseComposicao(fit,mode));
+   const data=await page.pdf({preferCSSPageSize:true,printBackground:true});
+   const path="apps/web/visual-evidence/provas/paginacao-"+mode+".pdf";
+   await writeFile(path,data);
+   pageCounts[mode]=(await PDFDocument.load(data)).getPageCount();
+   const text=checkFooters(path).join("\n");
+   assert.match(text,/Questão 7/,"last question survives");
+ }
+ assert.equal(pageCounts.automatica,1,"automatic fit fixture");
+ assert.equal(pageCounts.compacta,1,"compact fit fixture");
+ assert.ok(pageCounts.espacosa>=pageCounts.automatica);
+ console.log("Adaptive physical PDF page counts:",pageCounts);
 }finally{await browser.close();}

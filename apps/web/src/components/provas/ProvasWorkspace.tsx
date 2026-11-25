@@ -8,15 +8,15 @@ import { estados,tipos,tiposProva,provaWriteSchema,type Bloco,type Prova,type Pr
 import { provaHtml } from "@/lib/provas/print";
 import { formatClasseProva } from "@/lib/provas/academicLabels";
 import { safeLogoData } from "@/lib/provas/branding";
-import { PROVA_PAPER,respostaLayout } from "@/lib/provas/layout";
+import { PROVA_PAPER,respostaLayout,apresentacoes,type Apresentacao } from "@/lib/provas/layout";
 import { questionTemplate,placeholders,suggestedTypes,structures,isQuestion,formatCotacao } from "@/lib/provas/questionTemplates";
 const ProvasPrintPanel=dynamic(()=>import("./ProvasPrintPanel"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar distribuição...</p>});
 const RichQuestionEditor=dynamic(()=>import("./RichQuestionEditor"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar editor...</p>});
 const input="w-full min-w-0 max-w-full min-h-11 rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold";
-const fresh=():ProvaInput=>({ano_letivo_id:"",curso_matriz_id:"",tipo_prova:"trimestral",titulo:"Prova",classe:"",disciplina:"",ano_lectivo:"",trimestre:1,duracao:90,serie:"A",conteudo:[questionTemplate("discursiva")]});
+const fresh=():ProvaInput=>({ano_letivo_id:"",curso_matriz_id:"",tipo_prova:"trimestral",apresentacao:"automatica",titulo:"Prova",classe:"",disciplina:"",ano_lectivo:"",trimestre:1,duracao:90,serie:"A",conteudo:[questionTemplate("discursiva")]});
 function editable(p:Prova):ProvaInput {
- const {ano_letivo_id,curso_matriz_id,tipo_prova,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo}=p;
- return {ano_letivo_id,curso_matriz_id,tipo_prova:tipo_prova??"trimestral",titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo};
+ const {ano_letivo_id,curso_matriz_id,tipo_prova,apresentacao,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo}=p;
+ return {ano_letivo_id,curso_matriz_id,tipo_prova:tipo_prova??"trimestral",apresentacao:apresentacao??"automatica",titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo};
 }
 type Permissions={author:boolean;admin:boolean;distribute?:boolean;userId:string};
 type Action="submeter"|"aprovar"|"devolver"|"arquivar"|"duplicar";
@@ -148,7 +148,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false}:{escolaId:str
        {printHref&&(permissions?.distribute?<Button tone="gold" onClick={()=>setDistribution(true)}><Printer/> Imprimir prova</Button>:<Button asChild tone="gold"><a href={printHref} target="_blank" rel="noopener noreferrer"><Printer className="h-4 w-4"/> Imprimir prova</a></Button>)}
      </div>}
     </div>:undefined}>
-   {form&&(distribution&&selected?.estado==="aprovada"&&permissions?.distribute?<div className="space-y-3"><Button variant="outline" onClick={()=>setDistribution(false)}><Eye/> Consultar prova</Button><ProvasPrintPanel key={selected.id+":"+selected.versao} endpoint={endpoint} prova={selected}/></div>:preview||!canEdit?<div className="min-w-0 space-y-2"><p className="text-xs text-muted-foreground">Em ecrãs pequenos, a leitura adapta-se à largura. A impressão mantém as margens A4 e os espaços em milímetros.</p><iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada",logo})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/></div>:
+   {form&&(distribution&&selected?.estado==="aprovada"&&permissions?.distribute?<div className="space-y-3"><Button variant="outline" onClick={()=>setDistribution(false)}><Eye/> Consultar prova</Button><ProvasPrintPanel key={selected.id+":"+selected.versao} endpoint={endpoint} prova={selected}/></div>:preview||!canEdit?<div className="min-w-0 space-y-2"><p className="text-xs text-muted-foreground">Apresentação: {apresentacoes[form.apresentacao??"automatica"]}. A leitura no ecrã é contínua; as quebras físicas são calculadas na impressão A4. Os espaços de resposta são preservados.</p><iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada",logo})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/></div>:
    <div className="min-w-0 space-y-5 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
     <div className="rounded-xl border border-border p-3 sm:p-4">
     <Button type="button" variant="ghost" className="h-auto w-full justify-between whitespace-normal px-0 text-left" aria-expanded={headerExpanded} aria-controls="provas-header-fields" onClick={()=>setHeaderExpanded(v=>!v)}>
@@ -163,6 +163,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false}:{escolaId:str
      {(anosError||contextError)&&<div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive sm:col-span-2 lg:col-span-4">{anosError||contextError}<Button type="button" size="sm" variant="outline" onClick={()=>setContextRetry(v=>v+1)}>Tentar novamente</Button></div>}
      {!contextLoading&&!contextError&&selectedYear&&yearOptions.length===0&&<p role="status" className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-4">Não existem disciplinas publicadas e autorizadas neste ano. Consulte a Direção.</p>}
      <label className="grid gap-1 text-sm">Duração (min.)<input type="number" min={1} max={480} className={input} value={form.duracao||""} onChange={e=>change("duracao",Number(e.target.value))}/></label>
+     <label className="grid min-w-0 gap-1 text-sm sm:col-span-2">Apresentação da folha<select aria-label="Apresentação da folha" className={input} value={form.apresentacao??"automatica"} disabled={richIndex!==null} onChange={e=>change("apresentacao",e.target.value as Apresentacao)}>{Object.entries(apresentacoes).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select><span className="text-xs text-muted-foreground">A4 com paginação automática. Ajusta apenas a composição, nunca o espaço das respostas.</span></label>
     </fieldset>
     </div>
     <fieldset disabled={busy||Boolean(confirm)||discard} className="min-w-0 space-y-3">

@@ -89,7 +89,7 @@ test("nominal distribution uses one identical proof per recipient, escaping stud
  const second={...student,nome:"Aluno B",numero_processo:"P-456",numero_chamada:2};
  const prova={...base,tipo_prova:"recurso"};
  const html=provaHtml(prova,"Curtume",{recipients:[student,second],nonce:"fixed"});
- assert.equal((html.match(/class="paper"/g)||[]).length,2);
+ assert.equal((html.match(/class="paper" data-layout="/g)||[]).length,2);
  assert.equal((html.match(/Define energia\./g)||[]).length,2);
  assert.equal((html.match(/Exame de Recurso de Física/g)||[]).length,2);
  assert.match(html,/Nome &lt;img src=x&gt;/);
@@ -204,4 +204,26 @@ test("structured questions preserve legacy data, validate alternatives and print
  for(const invalid of [{...q,alternativas:[""]},{...q,alternativas:[" ","OK"]},{...q,tipo:"calculo"},{...q,cotacao_cent:2001},{...q,cotacao_cent:1.5},{tipo:"grupo",texto:"G",linhas:0,cotacao_cent:1}])assert.equal(blockSchema.safeParse(invalid).success,false);
  const html=provaHtml({...base,conteudo:[q]},"Curtume");
  assert.match(html,/1,25 val\./);assert.match(html,/A\) <\/span>Joule/);assert.match(html,/&lt;script&gt;bad/);assert.doesNotMatch(html,/<script>/);
+});
+
+test("adaptive composition preserves physical answers and uses compact only when it saves estimated sheets",()=>{
+ const {chooseComposicao,estimatedPages,COMPOSICAO,respostaLayout}=require("../../src/lib/provas/layout.ts");
+ const short=[{tipo:"discursiva",texto:"Define energia.",linhas:2}];
+ const dense=Array.from({length:7},()=>({...short[0]}));
+ assert.equal(chooseComposicao(short,"automatica"),"normal");
+ assert.equal(chooseComposicao(dense,"automatica"),"compacta");
+ assert.ok(estimatedPages(dense,"compacta")<estimatedPages(dense,"normal"));
+ assert.equal(chooseComposicao(short,"espacosa"),"espacosa");
+ assert.equal(chooseComposicao(short,"compacta"),"compacta");
+ assert.equal(chooseComposicao(short,undefined),"normal");
+ assert.ok(COMPOSICAO.compacta.questionGap<COMPOSICAO.normal.questionGap);
+ assert.equal(respostaLayout("discursiva",2).heightMm,16);
+ const {provaSchema}=require("../../src/lib/provas/schema.ts");
+ assert.equal(provaSchema.safeParse({...base,apresentacao:"invalid"}).success,false);
+ for(const mode of ["automatica","compacta","espacosa"]){
+  const html=provaHtml({...base,apresentacao:mode,conteudo:short},"Curtume");
+  assert.equal((html.match(/class="linha"/g)||[]).length,2);
+  assert.match(html,/\.linha\{height:8mm/);
+  assert.match(html,/data-layout="(normal|compacta|espacosa)"/);
+ }
 });

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { richSchema,richText } from "./rich";
 import { mathMarkup } from "./math";
+import { APRESENTACOES } from "./layout";
 export const TIPOS = ["grupo","texto","discursiva","verdadeiro_falso","lacunas","escolha","calculo","desenho","alinea"] as const;
 export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().min(1).max(3000),linhas:z.number().int().min(0).max(20),rich:richSchema.optional(),alternativas:z.array(z.string().trim().min(1).max(500)).min(2).max(8).optional(),cotacao_cent:z.number().int().min(0).max(2000).optional()}).strict().superRefine((b,ctx)=>{
  if(b.alternativas!==undefined&&b.tipo!=="escolha")ctx.addIssue({code:z.ZodIssueCode.custom,message:"Alternativas apenas em escolha múltipla",path:["alternativas"]});
@@ -13,12 +14,13 @@ export type TipoProva=typeof TIPOS_PROVA[number];
 export const tiposProva:Record<TipoProva,string>={professor:"Prova do Professor",trimestral:"Prova Trimestral",exame_final:"Exame Final",recurso:"Exame de Recurso",extraordinario:"Exame Extraordinário",segunda_chamada:"Prova de Segunda Chamada",diagnostica:"Prova Diagnóstica",simulado:"Simulado",outro:"Outra prova"};
 export const provaSchema=z.object({
  tipo_prova:z.enum(TIPOS_PROVA).optional(),
+ apresentacao:z.enum(APRESENTACOES).optional(),
  titulo:z.string().trim().min(1).max(160),classe:z.string().trim().min(1).max(80),disciplina:z.string().trim().min(1).max(120),
  ano_lectivo:z.string().regex(/^\d{4}\/\d{4}$/).refine(v=>[Number(v.slice(0,4)),Number(v.slice(0,4))+1].includes(Number(v.slice(5))),"Ano lectivo inválido"),
  trimestre:z.number().int().min(1).max(3),duracao:z.number().int().min(1).max(480),serie:z.string().trim().min(1).max(20),
  conteudo:z.array(blockSchema).min(1).max(80).refine(v=>v.reduce((n,b)=>n+(b.rich?.segments.filter(s=>s.kind==="math").length??0),0)<=80,"Até 80 fórmulas por prova")
 }).strict();
-export const provaWriteSchema=provaSchema.extend({tipo_prova:z.enum(TIPOS_PROVA).default("trimestral"),ano_letivo_id:z.string().uuid(),curso_matriz_id:z.string().uuid()});
+export const provaWriteSchema=provaSchema.extend({tipo_prova:z.enum(TIPOS_PROVA).default("trimestral"),apresentacao:z.enum(APRESENTACOES).optional(),ano_letivo_id:z.string().uuid(),curso_matriz_id:z.string().uuid()});
 export const mutationSchema=z.discriminatedUnion("acao",[
  z.object({acao:z.literal("criar"),dados:provaWriteSchema}).strict(),
  z.object({acao:z.literal("guardar"),id:z.string().uuid(),versao:z.number().int().positive(),dados:provaWriteSchema}).strict(),

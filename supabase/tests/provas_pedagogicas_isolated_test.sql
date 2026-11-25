@@ -26,6 +26,7 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  r:=public.provas_mutar(v_school,NULL,NULL,'criar',v_data||'{"classe":"falsificada","disciplina":"falsificada","ano_lectivo":"2000/2001"}'::jsonb);
  IF r.classe<>'8ª' OR r.disciplina<>'Física' OR r.ano_lectivo<>'2026/2027' THEN RAISE EXCEPTION 'untrusted snapshot accepted'; END IF;
+ IF r.apresentacao<>'automatica' THEN RAISE EXCEPTION 'default presentation failed'; END IF;
  IF r.tipo_prova<>'recurso' OR r.estado<>'rascunho' OR r.versao<>1 OR r.autor_id<>auth.uid() THEN RAISE EXCEPTION 'create failed'; END IF;
  PERFORM set_config('test.prova_id',r.id::text,true);
  BEGIN
@@ -70,7 +71,17 @@ BEGIN
   EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  END LOOP;
  v_data:=jsonb_set(v_data,'{conteudo}',(v_data->'conteudo')||'[{"tipo":"escolha","texto":"Qual?","linhas":0,"alternativas":["Joule","Watt"],"cotacao_cent":125}]'::jsonb);
+ BEGIN
+   PERFORM public.provas_mutar(v_school,r.id,r.versao,'guardar',v_data||'{"apresentacao":"invalid"}'::jsonb);
+   RAISE EXCEPTION 'invalid presentation accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN
+   PERFORM public.provas_mutar(v_school,r.id,r.versao,'guardar',v_data||'{"apresentacao":null}'::jsonb);
+   RAISE EXCEPTION 'null presentation accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ v_data:=v_data||'{"apresentacao":"espacosa"}'::jsonb;
  r:=public.provas_mutar(v_school,r.id,r.versao,'guardar',v_data);
+ IF r.apresentacao<>'espacosa' THEN RAISE EXCEPTION 'presentation persistence failed'; END IF;
  IF r.conteudo->1 IS DISTINCT FROM v_data->'conteudo'->1 THEN RAISE EXCEPTION 'structured question persistence failed'; END IF;
  IF r.conteudo->0->'rich' IS DISTINCT FROM v_data->'conteudo'->0->'rich' THEN RAISE EXCEPTION 'rich persistence failed'; END IF;
  IF r.versao<>2 THEN RAISE EXCEPTION 'save failed'; END IF;
@@ -118,6 +129,7 @@ DO $$
 DECLARE r public.provas_pedagogicas;
 BEGIN
  r:=public.provas_mutar('00000000-0000-4000-8000-000000000001',current_setting('test.prova_id')::uuid,3,'aprovar',NULL);
+ IF r.apresentacao<>'espacosa' THEN RAISE EXCEPTION 'approved presentation changed'; END IF;
  IF r.estado<>'aprovada' OR r.aprovado_por<>auth.uid() THEN RAISE EXCEPTION 'approval failed'; END IF;
 END $$;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000004',true);
