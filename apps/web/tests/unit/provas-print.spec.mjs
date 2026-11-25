@@ -51,3 +51,15 @@ test("untrusted commands never generate active markup",()=>{
   assert.doesNotMatch(html,/<math\b|<img\b|<a\b|<script\b/);
  }
 });
+
+test("write contract retains required academic UUIDs while print uses snapshots",()=>{
+ const {provaSchema,provaWriteSchema,mutationSchema}=require("../../src/lib/provas/schema.ts");
+ const input={...base,ano_letivo_id:"20000000-0000-4000-8000-000000000001",curso_matriz_id:"70000000-0000-4000-8000-000000000001"};
+ const parsed=provaWriteSchema.parse(input);
+ assert.equal(parsed.ano_letivo_id,input.ano_letivo_id);
+ assert.equal(parsed.curso_matriz_id,input.curso_matriz_id);
+ assert.equal(mutationSchema.safeParse({acao:"criar",dados:parsed}).success,true);
+ assert.equal(provaWriteSchema.safeParse(base).success,false);
+ assert.equal(provaWriteSchema.safeParse({...input,curso_matriz_id:"invalid"}).success,false);
+ assert.equal(provaSchema.safeParse(base).success,true);
+});
