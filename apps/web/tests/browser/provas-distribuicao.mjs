@@ -80,11 +80,12 @@ try{
   console.log("Secretary distribution smoke:",width,modal);
  }
  const adminPage=await browser.newPage({viewport:{width:1280,height:844}});
- const review={...prova,estado:"em_revisao",versao:3};
+ const review={...prova,estado:"em_revisao",versao:3,conteudo:[{...prova.conteudo[0],cotacao_cent:2000}]};
  await adminPage.route("**/api/escola/**/provas**",async route=>{
   const q=new URL(route.request().url()).searchParams;
   assert.equal(q.get("aprovadas"),null,"financial admin must not be reduced to print-only");
   if(q.get("branding")==="1")return route.fulfill({json:{logo:null}});
+  if(q.get("contexto")==="1")return route.fulfill({json:{items:q.has("ano")?[{ano_letivo_id:year,curso_matriz_id:matrix,ano_lectivo:"2026/2027",classe:"8.ª Classe",disciplina:"Física",curso:"Ensino Geral",trimestre:1,cotacao_max_cent:2000}]:[{id:year,ativo:true,label:"2026/2027"}]}});
   if(q.has("prova"))return route.fulfill({json:{prova:review}});
   return route.fulfill({json:{provas:[review],escola:"Escola de teste",permissions:{author:true,admin:true,distribute:true,userId:"10000000-0000-4000-8000-000000000007"}}});
  });
@@ -94,6 +95,8 @@ try{
  await adminDialog.getByRole("button",{name:"Nova prova"}).waitFor();
  await adminDialog.getByRole("button",{name:"Consultar",exact:true}).click();
  await adminDialog.getByRole("button",{name:"Aprovar prova"}).waitFor();
+ await adminDialog.getByText("Cotação completa.",{exact:true}).waitFor();
+ assert.equal(await adminDialog.getByRole("button",{name:"Aprovar prova"}).isEnabled(),true);
  assert.equal(await adminDialog.getByRole("button",{name:"Devolver",exact:true}).isVisible(),true);
  await adminPage.close();
  const empty=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});

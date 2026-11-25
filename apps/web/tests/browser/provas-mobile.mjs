@@ -197,12 +197,13 @@ try{
   const first=order.getByTestId("prova-order-row-0"),second=order.getByTestId("prova-order-row-1");
   assert.match(await first.innerText(),/Calcula a soma/);
   assert.match(await second.innerText(),/Qual é a unidade/);
-  assert.equal(await order.getByLabel("Posição do bloco 2").inputValue(),"1");
-   await order.getByLabel("Posição do bloco 2").selectOption("0");
+  assert.equal(await order.getByRole("button",{name:"Posição do bloco 2",exact:true}).innerText(),"2");
+   await order.getByRole("button",{name:"Posição do bloco 2",exact:true}).click();
+   await second.getByRole("button",{name:"Mover para posição 1",exact:true}).click();
   await first.getByText(/Qual é a unidade/).waitFor();
   assert.match(await first.innerText(),/Qual é a unidade/);
-   assert.equal(await order.getByLabel("Posição do bloco 1").inputValue(),"0");
-   assert.equal(await order.getByLabel("Posição do bloco 2").inputValue(),"1");
+   assert.equal(await order.getByRole("button",{name:"Posição do bloco 1",exact:true}).innerText(),"1");
+   assert.equal(await order.getByRole("button",{name:"Posição do bloco 2",exact:true}).innerText(),"2");
   if(width>=640){
    const handle=order.getByRole("button",{name:"Arrastar bloco 1"});const from=await handle.boundingBox(),to=await second.boundingBox();
    assert.ok(from&&to);
@@ -223,12 +224,15 @@ try{
    await cdp.detach();
    await first.getByText(/Calcula a soma/).waitFor();
   }else{
-   await order.getByLabel("Posição do bloco 1").selectOption("1");
+   await order.getByRole("button",{name:"Posição do bloco 1",exact:true}).click();
+    await first.getByRole("button",{name:"Mover para posição 2",exact:true}).click();
     await first.getByText(/Calcula a soma/).waitFor();
-    assert.equal(await order.getByLabel("Posição do bloco 2").inputValue(),"1");
-    await order.getByLabel("Posição do bloco 1").selectOption("1");
+    assert.equal(await order.getByRole("button",{name:"Posição do bloco 2",exact:true}).innerText(),"2");
+    await order.getByRole("button",{name:"Posição do bloco 1",exact:true}).click();
+    await first.getByRole("button",{name:"Mover para posição 2",exact:true}).click();
     await first.getByText(/Qual é a unidade/).waitFor();
-    await order.getByLabel("Posição do bloco 1").selectOption("1");
+    await order.getByRole("button",{name:"Posição do bloco 1",exact:true}).click();
+    await first.getByRole("button",{name:"Mover para posição 2",exact:true}).click();
     await first.getByText(/Calcula a soma/).waitFor();
   }
   await second.getByText(/Qual é a unidade/).waitFor();
