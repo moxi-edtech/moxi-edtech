@@ -26,7 +26,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: data.error }, { status: 400 });
     }
 
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json(data, { status: 200, headers: { "Cache-Control": "private, no-store" } });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
