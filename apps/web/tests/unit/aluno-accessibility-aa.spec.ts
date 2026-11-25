@@ -17,7 +17,7 @@ test("academic tabs implement roving focus, arrow keys, Home/End and stable acce
   assert.match(tabs, /tabIndex=\{value === tab.id \? 0 : -1\}/);
   assert.match(tabs, /refs\.current\[value\]\?\.focus\(\)/);
   assert.match(tabs, /onKeyDown=\{\(event\) => onTabKeyDown\(event, tab.id\)\}/);
-  for (const tab of ["notas", "disciplinas", "documentos"]) {
+  for (const tab of ["notas", "disciplinas", "faltas", "documentos"]) {
     assert.match(s, new RegExp('id="academic-panel-' + tab + '"'));
     assert.match(s, new RegExp('aria-labelledby="academic-tab-' + tab + '"'));
   }
@@ -44,20 +44,26 @@ test("academic grade modals trap and restore focus with Radix; actions and field
 });
 
 test("mobile interactive targets have at least 44px, theme-aware foregrounds and visible focus", async () => {
-  const [notes, docs, dash, disciplines] = await Promise.all([
+  const [notes, docs, dash, disciplines, card] = await Promise.all([
     source("components/aluno/tabs/TabNotas.tsx"),
     source("components/aluno/tabs/TabDocumentos.tsx"),
     source("components/aluno/dashboard/DashboardLoader.tsx"),
     source("components/aluno/disciplinas/DisciplinasList.tsx"),
+    source("components/shared/AcaoRapidaCard.tsx"),
   ]);
   assert.match(notes, /inline-flex min-h-11 items-center gap-1\.5 px-1 text-sm/);
-  assert.match(dash, /<PortalAction href=\{go\(item.href\)\}/);
+  assert.match(dash, /<AcaoRapidaCard key=\{item.kind \+ item.href\} dashboardCompact mobileCompact[\s\S]*?href=\{go\(item.href\)\}/);
+  assert.match(card, /min-h-16[^"]*bg-card p-3/);
+  assert.match(card, /if \(href\) return <Link href=\{href\}/);
+  assert.match(card, /aria-hidden="true"/);
+  assert.match(card, /text-foreground/);
+  assert.match(card, /text-muted-foreground/);
   const portalAction = await source("components/portal/ui/PortalAction.tsx");
   assert.match(docs, /<PortalAction onClick=\{\(\) => void handleAction\(doc\)\}/);
   assert.match(portalAction, /inline-flex min-h-11/);
   assert.match(disciplines, /inline-flex min-h-11 items-center gap-2/);
-  for (const file of [notes, dash, disciplines, portalAction]) assert.match(file, /focus-visible:ring-(2|ring)/);
-  assert.match(dash, /text-primary/);
+  for (const file of [notes, card, disciplines, portalAction]) assert.match(file, /focus-visible:ring-(2|ring)/);
+  assert.match(dash, /text-foreground/);
   assert.match(notes, /text-primary/);
 });
 
