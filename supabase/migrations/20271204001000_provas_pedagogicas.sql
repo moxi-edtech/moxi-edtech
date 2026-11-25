@@ -48,7 +48,7 @@ CREATE POLICY provas_read ON public.provas_pedagogicas FOR SELECT TO authenticat
 -- Validate rich v1 at the same RPC boundary; never accept HTML, arbitrary attrs or URLs.
 CREATE FUNCTION provas_private.provas_rich_validate(p_doc jsonb,p_text text)
 RETURNS integer LANGUAGE plpgsql IMMUTABLE SET search_path=''
-AS $
+AS $rich$
 DECLARE seg jsonb; m jsonb; v_latex text; v_cmd text; v_char text; v_depth int; v_i int;
  v_plain text:=''; v_math int:=0; v_marks text[];
 BEGIN
@@ -100,7 +100,13 @@ BEGIN
    END CASE;
    IF length(v_plain)>6000 THEN RAISE EXCEPTION 'invalid_rich_length' USING ERRCODE='22023'; END IF;
  END LOOP;
- IF regexp_replace(v_plain,'^[[:space:]]+|[[:space:]]+ No direct INSERT/UPDATE/DELETE grants.
+ IF regexp_replace(v_plain,'^[[:space:]]+|[[:space:]]+$','','g') IS DISTINCT FROM p_text THEN RAISE EXCEPTION 'inconsistent_rich' USING ERRCODE='22023'; END IF;
+ RETURN v_math;
+END;
+$rich$;
+REVOKE ALL ON FUNCTION provas_private.provas_rich_validate(jsonb,text) FROM PUBLIC,anon,authenticated,service_role;
+
+-- Only one mutation boundary. No direct INSERT/UPDATE/DELETE grants.
 CREATE FUNCTION provas_private.provas_mutar(p_escola uuid,p_id uuid,p_versao integer,p_acao text,p_dados jsonb)
 RETURNS public.provas_pedagogicas LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
