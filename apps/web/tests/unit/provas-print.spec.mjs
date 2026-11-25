@@ -83,3 +83,34 @@ test("shared physical layout reserves print margins and exact writing space",()=
  assert.match(html,/class="student-line"/);
  assert.doesNotMatch(html,/_{20,}/);
 });
+
+test("nominal distribution uses one identical proof per recipient, escaping student fields",()=>{
+ const student={matricula_id:"b0000000-0000-4000-8000-000000000001",turma_id:"80000000-0000-4000-8000-000000000001",turma:"8ª A",turno:"Manhã",sala:"12",nome:"Nome <img src=x>",numero_processo:"P-123",numero_chamada:1};
+ const second={...student,nome:"Aluno B",numero_processo:"P-456",numero_chamada:2};
+ const prova={...base,tipo_prova:"recurso"};
+ const html=provaHtml(prova,"Curtume",{recipients:[student,second],nonce:"fixed"});
+ assert.equal((html.match(/class="paper"/g)||[]).length,2);
+ assert.equal((html.match(/Define energia\./g)||[]).length,2);
+ assert.equal((html.match(/Exame de Recurso de Física/g)||[]).length,2);
+ assert.match(html,/Nome &lt;img src=x&gt;/);
+ assert.doesNotMatch(html,/<img\b/);
+ assert.match(html,/Sala da turma: 12/);
+ assert.match(html,/Turno: Manhã/);
+ assert.match(html,/N.º de processo: P-123/);
+ assert.doesNotMatch(html,/I Trimestre/);
+ assert.match(html,/\.paper\+\.paper\{break-before:page/);
+ const anonymous=provaHtml(prova,"Curtume",{recipients:[student,second],includeName:false});
+ assert.doesNotMatch(anonymous,/P-123|P-456|Aluno B|Nome &lt;img/);
+ assert.equal((anonymous.match(/class="student-line"/g)||[]).length,2);
+ assert.match(anonymous,/Turma: 8ª A/);
+});
+test("distribution query rejects unbounded, duplicate or incompatible selections",()=>{
+ const {parseDistribution}=require("../../src/lib/provas/distribution.ts");
+ const id="30000000-0000-4000-8000-000000000001",turma="80000000-0000-4000-8000-000000000001";
+ const q=new URLSearchParams({prova:id,versao:"4",modo:"imprimir",turmas:turma,offset:"0",limit:"20"});
+ assert.equal(parseDistribution(q).success,true);
+ q.set("limit","100");assert.equal(parseDistribution(q).success,false);
+ q.set("limit","40");q.set("turmas",turma+","+turma);assert.equal(parseDistribution(q).success,false);
+ q.set("turmas",turma);q.set("matricula",id);q.set("offset","40");assert.equal(parseDistribution(q).success,false);
+ q.set("offset","0");q.set("versao","0");assert.equal(parseDistribution(q).success,false);
+});
