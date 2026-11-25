@@ -3,7 +3,7 @@ import { useEffect,useRef,useState } from "react";
 import dynamic from "next/dynamic";
 import { EditorContent,Node,NodeViewWrapper,ReactNodeViewRenderer,useEditor,useEditorState,type JSONContent,type NodeViewProps } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Bold,Italic,Underline,Sigma,Check,Undo2,Redo2 } from "lucide-react";
+import { Bold,Italic,Underline,Sigma,Check,Undo2,Redo2,SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { richText,type RichDocument,type RichSegment } from "@/lib/provas/rich";
 import { mathMarkup } from "@/lib/provas/math";
@@ -52,6 +52,7 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
  const changeRef=useRef(onChange);
  useEffect(()=>{changeRef.current=onChange;},[onChange]);
  const [formula,setFormula]=useState<{latex:string;from:number;to:number}|null>(null);
+ const [formattingOpen,setFormattingOpen]=useState(false);
  const editor=useEditor({
   immediatelyRender:false,extensions:[StarterKit.configure({blockquote:false,bulletList:false,orderedList:false,listItem:false,heading:false,codeBlock:false,code:false,strike:false,link:false,horizontalRule:false,trailingNode:false}),FormulaNode],
   content:toEditor(block),
@@ -72,16 +73,19 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
  }
  const returnFocus=()=>requestAnimationFrame(()=>document.getElementById("provas-formula-trigger")?.focus({preventScroll:true}));
  return <div className="min-w-0 space-y-3 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
-  <div className={"min-w-0 overflow-hidden rounded-xl border border-border focus-within:ring-4 focus-within:ring-klasse-gold/20 "+(formula?"hidden":"")}>
-   <div role="group" aria-label="Formatação do enunciado" className="grid grid-cols-2 gap-1 border-b border-border bg-muted/30 p-2 sm:flex sm:flex-wrap">
-    <Button type="button" size="sm" variant={state?.bold?"secondary":"ghost"} aria-pressed={state?.bold} disabled={blocked} onClick={()=>editor.chain().focus().toggleBold().run()}><Bold/> Negrito</Button>
-    <Button type="button" size="sm" variant={state?.italic?"secondary":"ghost"} aria-pressed={state?.italic} disabled={blocked} onClick={()=>editor.chain().focus().toggleItalic().run()}><Italic/> Itálico</Button>
-    <Button type="button" size="sm" variant={state?.underline?"secondary":"ghost"} aria-pressed={state?.underline} disabled={blocked} onClick={()=>editor.chain().focus().toggleUnderline().run()}><Underline/> Sublinhado</Button>
-    <Button id="provas-formula-trigger" type="button" size="sm" variant="outline" disabled={blocked} onClick={openFormula}><Sigma/> {state?.formula?"Editar fórmula":"Fórmula"}</Button>
-    <Button type="button" size="sm" variant="ghost" disabled={blocked} onClick={()=>editor.chain().focus().undo().run()}><Undo2/> Desfazer</Button>
-    <Button type="button" size="sm" variant="ghost" disabled={blocked} onClick={()=>editor.chain().focus().redo().run()}><Redo2/> Refazer</Button>
+  <div className={"flex min-w-0 flex-col overflow-hidden rounded-xl border border-border focus-within:ring-4 focus-within:ring-klasse-gold/20 "+(formula?"hidden":"")}>
+   <div className="order-first sm:order-last"><EditorContent editor={editor}/></div>
+   <div role="group" aria-label="Formatação do enunciado" className="flex flex-wrap items-center gap-1 border-t border-border bg-muted/30 p-1.5 sm:order-first sm:border-b sm:border-t-0 sm:p-2">
+    <Button id="provas-formula-trigger" type="button" size="sm" variant="outline" disabled={blocked} onPointerDown={e=>e.preventDefault()} onClick={openFormula}><Sigma/> {state?.formula?"Editar fórmula":"Fórmula"}</Button>
+    <Button type="button" size="sm" variant="ghost" className="sm:hidden" aria-expanded={formattingOpen} aria-controls="provas-rich-formatting" disabled={blocked} onPointerDown={e=>e.preventDefault()} onClick={()=>setFormattingOpen(v=>!v)}><SlidersHorizontal/> Formatação</Button>
+    <div id="provas-rich-formatting" className={(formattingOpen?"flex":"hidden sm:flex")+" w-full flex-wrap items-center gap-1 sm:w-auto"}>
+     <Button type="button" size="sm" variant={state?.bold?"secondary":"ghost"} aria-label="Negrito" aria-pressed={state?.bold} disabled={blocked} onPointerDown={e=>e.preventDefault()} onClick={()=>editor.chain().focus().toggleBold().run()}><Bold/><span className="hidden sm:inline">Negrito</span></Button>
+     <Button type="button" size="sm" variant={state?.italic?"secondary":"ghost"} aria-label="Itálico" aria-pressed={state?.italic} disabled={blocked} onPointerDown={e=>e.preventDefault()} onClick={()=>editor.chain().focus().toggleItalic().run()}><Italic/><span className="hidden sm:inline">Itálico</span></Button>
+     <Button type="button" size="sm" variant={state?.underline?"secondary":"ghost"} aria-label="Sublinhado" aria-pressed={state?.underline} disabled={blocked} onPointerDown={e=>e.preventDefault()} onClick={()=>editor.chain().focus().toggleUnderline().run()}><Underline/><span className="hidden sm:inline">Sublinhado</span></Button>
+     <Button type="button" size="sm" variant="ghost" aria-label="Desfazer" disabled={blocked} onPointerDown={e=>e.preventDefault()} onClick={()=>editor.chain().focus().undo().run()}><Undo2/><span className="hidden sm:inline">Desfazer</span></Button>
+     <Button type="button" size="sm" variant="ghost" aria-label="Refazer" disabled={blocked} onPointerDown={e=>e.preventDefault()} onClick={()=>editor.chain().focus().redo().run()}><Redo2/><span className="hidden sm:inline">Refazer</span></Button>
+    </div>
    </div>
-   <EditorContent editor={editor}/>
   </div>
   {formula&&<FormulaInput initial={formula.latex} disabled={disabled} onCancel={()=>{setFormula(null);editor.setEditable(!disabled,false);returnFocus();}} onInsert={latex=>{
     if(disabled)return;
@@ -89,6 +93,6 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
     if(!editor.chain().insertContentAt({from:formula.from,to:formula.to},{type:"formula",attrs:{latex}}).run()){editor.setEditable(false,false);return;}
     setFormula(null);returnFocus();
   }}/>}
-  {!formula&&<div className="sticky bottom-0 flex justify-end border-t border-border bg-card pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"><Button type="button" className="w-full sm:w-auto" tone="gold" disabled={blocked} onClick={onDone}><Check/> Concluir edição</Button></div>}
+  {!formula&&<div className="flex justify-end border-t border-border bg-card pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"><Button type="button" className="w-full sm:w-auto" tone="gold" disabled={blocked} onClick={onDone}><Check/> Concluir edição</Button></div>}
  </div>;
 }

@@ -80,6 +80,23 @@ try{
    await page.setViewportSize({width,height});
   }
   await dialog.getByRole("button",{name:"Formatar / inserir fórmulas"}).click();
+  if(width<640){
+   const enunciado=dialog.getByRole("textbox",{name:"Enunciado 1",exact:true});
+   assert.equal(await dialog.getByRole("button",{name:"Negrito",exact:true}).isVisible(),false);
+   await enunciado.focus();
+   // Simulate the visual viewport shrinking while layout viewport remains unchanged,
+   // as on iOS with the native keyboard. This is not a physical-device test.
+   await page.evaluate(()=>{const vv=window.visualViewport;if(!vv)throw Error("Missing visual viewport");Object.defineProperty(vv,"height",{configurable:true,value:Math.max(220,vv.height-270)});vv.dispatchEvent(new Event("resize"));});
+   await page.waitForFunction(()=>document.querySelector("[role=dialog]")?.getAttribute("data-keyboard-open")==="true");
+   assert.equal(await dialog.locator("[data-modal-footer]").count(),0);
+   assert.equal(await enunciado.isVisible(),true);
+   const bounds=await dialog.locator("[data-modal-scroll]").boundingBox();
+   assert.ok(bounds&&bounds.height>120,"typing surface must retain usable height");
+   await noOverflow(page,"native keyboard "+width);
+   await page.screenshot({path:"apps/web/visual-evidence/provas/teclado-"+(isWebKit?"webkit-":"")+width+".png"});
+   await page.evaluate(()=>{const vv=window.visualViewport;Reflect.deleteProperty(vv,"height");vv.dispatchEvent(new Event("resize"));});
+   await page.waitForFunction(()=>document.querySelector("[role=dialog]")?.getAttribute("data-keyboard-open")==="false");
+  }
   await dialog.getByRole("button",{name:"Fórmula",exact:true}).click();
   const math=dialog.getByRole("region",{name:"Editor matemático"});
   await math.waitFor();
@@ -88,6 +105,14 @@ try{
   await math.getByRole("button",{name:"Fracção",exact:true}).click();
   await math.getByLabel("Numerador",{exact:true}).fill("7");
   await math.getByLabel("Denominador",{exact:true}).fill("5");
+  if(width<640){
+   await page.evaluate(()=>{const vv=window.visualViewport;Object.defineProperty(vv,"height",{configurable:true,value:Math.max(220,vv.height-270)});vv.dispatchEvent(new Event("resize"));});
+   await page.waitForFunction(()=>document.querySelector("[role=dialog]")?.getAttribute("data-keyboard-open")==="true");
+   assert.equal(await math.getByLabel("Denominador",{exact:true}).inputValue(),"5");
+   await noOverflow(page,"formula native keyboard "+width);
+   await page.evaluate(()=>{const vv=window.visualViewport;Reflect.deleteProperty(vv,"height");vv.dispatchEvent(new Event("resize"));});
+   await page.waitForFunction(()=>document.querySelector("[role=dialog]")?.getAttribute("data-keyboard-open")==="false");
+  }
   await math.getByRole("button",{name:"Alterar sinal de Numerador",exact:true}).click();
   assert.equal(await math.getByLabel("Numerador",{exact:true}).inputValue(),"-7");
   await math.getByRole("button",{name:"Alterar sinal de Numerador",exact:true}).click();
