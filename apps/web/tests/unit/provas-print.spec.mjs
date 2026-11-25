@@ -431,3 +431,19 @@ test("recursive editor round-trips every model and supports nested arithmetic",(
  assert.equal(mathTreeValid(Array.from({length:161},()=>tokenNode("x"))),false);
  assert.equal(mathTreeValid([tokenNode("1".repeat(301))]),false);
 });
+
+test("bounded matrix, determinant and system validation and cell editing",()=>{
+ const {safeLatex}=require("../../src/lib/provas/rich.ts");
+ const {parseMath,serializeMath,validMathExpression,replaceMathAt,mathSlots}=require("../../src/lib/provas/formulaAst.ts");
+ const good=["\\begin{cases}2x+y=10\\\\x-y=2\\end{cases}","\\begin{pmatrix}2&3\\\\4&5\\end{pmatrix}","\\begin{vmatrix}\\frac{1}{2}&x\\\\3&4\\end{vmatrix}","\\begin{pmatrix}1&2&3\\\\4&5&6\\end{pmatrix}"];
+ for(const latex of good){assert.ok(safeLatex(latex),latex);const tree=parseMath(latex);assert.ok(tree,latex);assert.equal(serializeMath(tree),latex);assert.equal(validMathExpression(tree),latex);}
+ const invalid=["\\begin{array}1&2\\end{array}","\\begin{pmatrix}1&2\\\\3\\end{pmatrix}","\\begin{vmatrix}1&2&3\\\\4&5&6\\end{vmatrix}","\\begin{cases}x=1\\end{cases}","\\begin{pmatrix}1&\\htmlClass{a}{x}\\\\3&4\\end{pmatrix}","\\begin{pmatrix}1&2\\\\3&4\\end{vmatrix}","x&y","\\begin{pmatrix}1&2\\\\3&\\begin{pmatrix}4\\end{pmatrix}\\end{pmatrix}","\\begin{pmatrix}1&&2\\\\3&4&5\\end{pmatrix}","\\begin{pmatrix}1&2&3&4&5\\end{pmatrix}"];
+ for(const latex of invalid)assert.equal(safeLatex(latex),false,latex);
+ const tree=parseMath(good[1]);assert.equal(mathSlots(tree[0]).length,4);
+ const next=replaceMathAt(tree,[{index:0,slot:"cell:1:0"}],parseMath("\\frac{x+1}{2}"));
+ assert.equal(validMathExpression(next),"\\begin{pmatrix}2&3\\\\\\frac{x+1}{2}&5\\end{pmatrix}");
+ assert.equal(serializeMath(tree),good[1]);
+ assert.equal(validMathExpression(replaceMathAt(tree,[{index:0,slot:"cell:0:0"}],[])),null);
+ const proof=provaHtml({...base,conteudo:good.map(latex=>({tipo:"calculo",texto:latex,linhas:2,rich:{version:1,segments:[{kind:"math",latex}]}}))},"Escola");
+ assert.equal((proof.match(/<mtable/g)||[]).length,4);
+});
