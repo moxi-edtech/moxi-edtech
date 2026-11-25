@@ -208,3 +208,15 @@ test("overdue card and radar tabs use canonical school workspaces with the same 
   assert.match(context, /"\/operacoes\/radar"/);
   assert.match(context, /"\/operacoes\/turmas-alunos"/);
 });
+
+test("Acessos ao Portal is a single entry pointing to the complete student access workspace", () => {
+  const entries = sidebarConfig.operacoes?.filter((item) => item.label === "Acessos ao Portal") ?? [];
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.href, "/escola/[escolaId]/operacoes/acesso-alunos");
+  assert.equal(entries[0]?.children, undefined);
+  assert.deepEqual(entries[0]?.activePrefixes, ["/escola/[escolaId]/operacoes/acessos"]);
+  const source = readFileSync(new URL("../../src/app/secretaria/(portal-secretaria)/acesso-alunos/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /<MetricasAcessoAlunos/);
+  assert.match(source, /<AcessoPortalManager/);
+  assert.match(source, /initialAlunoId=\{params.alunoId \?\? null\}/);
+});

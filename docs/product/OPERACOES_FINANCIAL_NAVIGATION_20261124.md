@@ -4,3 +4,7 @@
 - Radar → Alunos e turmas e retorno: links absolutos por escola e portal, com ano lectivo preservado. Elimina resolução errada de ../turmas-alunos a partir de /operacoes/radar. Reutiliza aliases existentes /operacoes/radar e /operacoes/turmas-alunos, mantendo rotas /financeiro no portal financeiro.
 - Cobranças usa rewrite financeiro existente. Não cria página, filtro de cobrança automático, queries, mudanças de dados ou permissões. Contexto académico reconhece ambos os aliases.
 - Teste com URL exacta do Curtume e outros contextos. CI e smoke autenticado pendentes. PR separada da agenda escolar.
+
+## Acessos ao Portal
+
+Removida a duplicação do menu de Operações. A entrada única aponta para /operacoes/acesso-alunos, que inclui métricas, AcessoPortalManager e suporte a alunoId. /operacoes/acessos permanece funcional para links anteriores e mantém a secção activa. Não remove páginas nem altera permissões.

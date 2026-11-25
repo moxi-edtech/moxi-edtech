@@ -134,13 +134,10 @@ export const sidebarConfig: SidebarConfig = {
       ],
     },
     {
-      href: "/escola/[escolaId]/operacoes/acessos",
+      href: "/escola/[escolaId]/operacoes/acesso-alunos",
       label: "Acessos ao Portal",
       icon: "KeyRound",
-      children: [
-        { href: "/escola/[escolaId]/operacoes/acessos", label: "Gestão de acessos" },
-        { href: "/escola/[escolaId]/operacoes/acesso-alunos", label: "Acesso dos alunos" },
-      ],
+      activePrefixes: ["/escola/[escolaId]/operacoes/acessos"],
     },
     {
       href: "/escola/[escolaId]/operacoes/relatorios",
