@@ -1,11 +1,16 @@
 import { z } from "zod";
+import { richSchema,richText } from "./rich";
+import { mathMarkup } from "./math";
 export const TIPOS = ["grupo","texto","discursiva","verdadeiro_falso","lacunas","escolha","calculo","desenho","alinea"] as const;
-export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().min(1).max(3000),linhas:z.number().int().min(0).max(20)}).strict();
+export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().min(1).max(3000),linhas:z.number().int().min(0).max(20),rich:richSchema.optional()}).strict().superRefine((b,ctx)=>{
+ if(b.rich&&richText(b.rich)!==b.texto)ctx.addIssue({code:z.ZodIssueCode.custom,message:"Conteúdo formatado inconsistente",path:["rich"]});
+ if(b.rich?.segments.some(s=>s.kind==="math"&&!mathMarkup(s.latex)))ctx.addIssue({code:z.ZodIssueCode.custom,message:"Expressão matemática inválida",path:["rich"]});
+});
 export const provaSchema=z.object({
  titulo:z.string().trim().min(1).max(160),classe:z.string().trim().min(1).max(80),disciplina:z.string().trim().min(1).max(120),
  ano_lectivo:z.string().regex(/^\d{4}\/\d{4}$/).refine(v=>Number(v.slice(5))===Number(v.slice(0,4))+1,"Ano lectivo inválido"),
  trimestre:z.number().int().min(1).max(3),duracao:z.number().int().min(1).max(480),serie:z.string().trim().min(1).max(20),
- conteudo:z.array(blockSchema).min(1).max(80)
+ conteudo:z.array(blockSchema).min(1).max(80).refine(v=>v.reduce((n,b)=>n+(b.rich?.segments.filter(s=>s.kind==="math").length??0),0)<=80,"Até 80 fórmulas por prova")
 }).strict();
 export const mutationSchema=z.discriminatedUnion("acao",[
  z.object({acao:z.literal("criar"),dados:provaSchema}).strict(),
