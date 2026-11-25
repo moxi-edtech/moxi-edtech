@@ -36,7 +36,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
 
   const closeMenu = useCallback(() => {
     setIsMoreOpen(false);
-    moreButtonRef.current?.focus();
+    requestAnimationFrame(() => moreButtonRef.current?.focus());
   }, []);
 
   // A navegação secundária é uma caixa de diálogo acessível, não uma segunda homepage.
@@ -131,6 +131,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
       )}
 
       <nav
+        inert={isMoreOpen ? true : undefined}
         className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label={navigationLabel}
@@ -146,7 +147,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
                 prefetch={item.prefetch ?? true}
                 onPointerEnter={() => onPreload?.(item)}
                 onTouchStart={() => onPreload?.(item)}
-                aria-label={label}
+                aria-label={badge && badge > 0 ? `${label}, ${badge}` : label}
                 aria-current={active ? "page" : undefined}
                 className={"relative flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 " +
                   (active ? "bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold/30" : "text-muted-foreground hover:bg-muted hover:text-foreground")}

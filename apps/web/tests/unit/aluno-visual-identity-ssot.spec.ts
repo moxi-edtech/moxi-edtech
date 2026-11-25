@@ -38,7 +38,7 @@ test("navegação mobile mantém as nove rotas, contexto, preloading e teclado",
   const layout = source("app/(portal-aluno)/aluno/AlunoLayoutClient.tsx");
   assert.match(nav, /const mainItems = items\.slice\(0, 4\)/);
   assert.match(nav, /const drawerItems = items\.slice\(4\)/);
-  assert.match(nav, /withAlunoParam\(href\)/);
+  assert.match(nav, /withAlunoParam\(item\.href\)/);
   assert.match(nav, /preloadPortalData/);
   const sharedNav = source("components/layout/klasse/PortalBottomNav.tsx");
   assert.match(nav, /<PortalBottomNav/);
