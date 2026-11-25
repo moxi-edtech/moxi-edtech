@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { CalendarDays, ChevronRight, Plus, Search, Users, BookOpen, RefreshCw } from "lucide-react";
+import { CalendarDays, CalendarOff, ChevronRight, Plus, Search, Users, BookOpen, RefreshCw } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { CALENDAR_ZONE, calendarDate as validDate, calendarDayKey as dateKey, eventStatus, eventCategory, categoryLabels, isScheduledPedagogicalInterruption, type EventStatus, type EventCategory } from "@/lib/academico/calendar-agenda-presentation";
 
 interface Event {
   id: string;
@@ -26,26 +27,15 @@ interface AcademicYear {
   data_fim: string;
 }
 type Course = { course_id: string; offering_id: string; nome: string; subsistema: string };
-const zone = "Africa/Luanda";
+const zone = CALENDAR_ZONE;
 const monthFormat = new Intl.DateTimeFormat("pt-PT", { month: "long", year: "numeric", timeZone: zone });
 const dayFormat = new Intl.DateTimeFormat("pt-PT", { day: "2-digit", timeZone: zone });
 const shortMonth = new Intl.DateTimeFormat("pt-PT", { month: "short", timeZone: zone });
 const fullDate = new Intl.DateTimeFormat("pt-PT", { day: "numeric", month: "short", year: "numeric", timeZone: zone });
 const timeFormat = new Intl.DateTimeFormat("pt-PT", { hour: "2-digit", minute: "2-digit", timeZone: zone });
-const dateKeyFormat = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: zone });
 const inputClass = "mt-1.5 block w-full min-w-0 rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 disabled:opacity-60";
 const primaryClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-klasse-gold px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/30 disabled:opacity-50";
 const secondaryClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-50";
-function validDate(value: string | null) {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isFinite(date.getTime()) ? date : null;
-}
-function dateKey(value: Date) {
-  const parts = dateKeyFormat.formatToParts(value);
-  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "";
-  return [part("year"), part("month"), part("day")].join("-");
-}
 function searchText(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt").trim();
 }
@@ -58,7 +48,17 @@ function audienceLabel(value: string | null) {
   const labels: Record<string, string> = { alunos: "Alunos", professores: "Professores", responsaveis: "Encarregados" };
   return value && value.toLowerCase() !== "todos" && value.toLowerCase() !== "curso" ? labels[value.toLowerCase()] ?? value : "";
 }
-function EventRow({ event }: { event: Event }) {
+const statusStyles: Record<EventStatus, { label: string; text: string; tile: string }> = {
+  scheduled: { label: "Agendado", text: "text-amber-700 dark:text-amber-300", tile: "bg-amber/10 text-amber-700 dark:text-amber-300" },
+  ongoing: { label: "Em curso", text: "text-emerald dark:text-emerald-300", tile: "bg-emerald/10 text-emerald dark:text-emerald-300" },
+  finished: { label: "Terminado", text: "text-muted-foreground", tile: "bg-muted text-muted-foreground" },
+  unknown: { label: "Data indisponível", text: "text-muted-foreground", tile: "bg-muted text-muted-foreground" },
+};
+function EventRow({ event, now }: { event: Event; now: Date }) {
+  const status = eventStatus(event, now);
+  const style = statusStyles[status];
+  const category = eventCategory(event.tipo);
+  const interruption = isScheduledPedagogicalInterruption(event.tipo);
   const start = validDate(event.data_inicio);
   const end = validDate(event.data_fim);
   const description = visibleDescription(event);
@@ -67,16 +67,17 @@ function EventRow({ event }: { event: Event }) {
   const hasTime = event.tipo === "EVENTO_GERAL" && event.data_inicio.includes("T") && start;
   return (
     <li className="flex min-w-0 items-start gap-4 px-4 py-4 sm:gap-5 sm:px-6">
-      <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-emerald/10 px-2 py-2 text-emerald dark:text-emerald-300" aria-hidden="true">
+      <div className={`flex w-14 shrink-0 flex-col items-center justify-center rounded-xl px-2 py-2 ${style.tile}`} aria-hidden="true">
         <span className="text-xl font-semibold leading-6 tabular-nums">{start ? dayFormat.format(start) : "—"}</span>
         <span className="text-xs font-medium capitalize">{start ? shortMonth.format(start).replace(/\.$/, "") : "Data"}</span>
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
-        <p className="break-words text-sm font-semibold leading-5 text-foreground">{event.nome}</p>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><p className={`min-w-0 flex-1 break-words text-sm font-semibold leading-5 ${status === "finished" ? "text-muted-foreground" : "text-foreground"}`}>{event.nome}</p><span className={`shrink-0 text-xs font-medium ${style.text}`}>{style.label}</span></div>
         <p className="text-sm leading-5 text-muted-foreground">
           {start ? fullDate.format(start) : "Data indisponível"}{hasEnd && end ? " – " + fullDate.format(end) : ""}
           {hasTime && start ? " · " + timeFormat.format(start) + (end && !hasEnd && end.getTime() !== start.getTime() ? " – " + timeFormat.format(end) : "") : ""}
         </p>
+        {(category === "holiday" || category === "pause") && <p className="flex items-start gap-1.5 text-xs font-medium text-muted-foreground"><CalendarOff className="mt-0.5 size-3.5 shrink-0 text-emerald dark:text-emerald-300" aria-hidden="true" /><span>{category === "holiday" ? "Feriado" : event.tipo === "FERIAS_ALUNOS" ? "Férias dos alunos" : "Pausa pedagógica"}{interruption ? " · Interrupção pedagógica" : ""}</span></p>}
         {description && <p className="whitespace-pre-wrap break-words text-sm leading-5 text-muted-foreground">{description}</p>}
         {event.offering_id && <p className="flex items-start gap-1.5 text-xs font-medium text-muted-foreground"><BookOpen className="mt-0.5 size-3.5 shrink-0 text-emerald dark:text-emerald-300" aria-hidden="true" /><span>Aplicável ao curso: {event.curso_nome || "Curso identificado"}</span></p>}
         {!event.offering_id && audience && <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Users className="size-3.5 text-emerald dark:text-emerald-300" aria-hidden="true" />{audience}</p>}
@@ -100,7 +101,9 @@ export default function CalendarioPage() {
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [courseOfferings, setCourseOfferings] = useState<Course[]>([]);
   const [search, setSearch] = useState("");
-  const [period, setPeriod] = useState<"all" | "upcoming">("all");
+  const [period, setPeriod] = useState<"all" | EventStatus>("all");
+  const [category, setCategory] = useState<"all" | EventCategory>("all");
+  const [now, setNow] = useState(() => new Date());
   const [revision, setRevision] = useState(0);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -144,18 +147,25 @@ export default function CalendarioPage() {
     return () => { active = false; controller.abort(); };
   }, [selectedYearId, selectedCourseId, revision]);
 
+  // Update locally at minute boundaries and when returning to the page.
+  useEffect(() => {
+    const update = () => setNow(new Date());
+    const timer = window.setInterval(update, 60_000);
+    window.addEventListener("focus", update);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", update); };
+  }, []);
+
   const effectiveYearId = selectedYearId || resolvedYearId;
   const selectedYear = years.find((year) => year.id === effectiveYearId);
   const courses = useMemo(() => [...new Map(courseOfferings.map((item) => [item.course_id, item])).values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt")), [courseOfferings]);
   const filtered = useMemo(() => {
     const q = searchText(search);
-    const today = dateKey(new Date());
     return events.filter((event) => {
-      const end = validDate(event.data_fim) ?? validDate(event.data_inicio);
-      if (period === "upcoming" && (!end || dateKey(end) < today)) return false;
-      return !q || searchText([event.nome, visibleDescription(event), event.curso_nome ?? ""].join(" ")).includes(q);
+      if (period !== "all" && eventStatus(event, now) !== period) return false;
+      if (category !== "all" && eventCategory(event.tipo) !== category) return false;
+      return !q || searchText([event.nome, visibleDescription(event), event.curso_nome ?? "", categoryLabels[eventCategory(event.tipo)]].join(" ")).includes(q);
     });
-  }, [events, search, period]);
+  }, [events, search, period, category, now]);
   const groups = useMemo(() => {
     const result = new Map<string, Event[]>();
     for (const event of filtered) {
@@ -203,7 +213,7 @@ export default function CalendarioPage() {
       setTitulo(""); setDescricao(""); setInicioAt(""); setFimAt(""); setPublicoAlvo("");
       setOpen(false);
       setNotice("Evento criado com sucesso.");
-      setSearch(""); setPeriod("all");
+      setSearch(""); setPeriod("all"); setCategory("all");
       setRevision((value) => value + 1);
       window.requestAnimationFrame(() => triggerRef.current?.focus({ preventScroll: true }));
     } catch (e) {
@@ -250,15 +260,19 @@ export default function CalendarioPage() {
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <input aria-label="Pesquisar eventos" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar eventos" className="w-full min-w-0 rounded-xl border border-border bg-card py-2.5 pl-9 pr-3 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20" />
             </label>
-            <div className="flex rounded-xl border border-border bg-card p-1" aria-label="Período dos eventos">
-              {([["all", "Todos"], ["upcoming", "Próximos"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={period === value} onClick={() => setPeriod(value)} className={`rounded-xl px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-gold ${period === value ? "bg-emerald/10 text-emerald dark:text-emerald-300" : "text-muted-foreground hover:bg-muted"}`}>{label}</button>)}
+            <div className="flex flex-wrap rounded-xl border border-border bg-card p-1" role="group" aria-label="Estado dos eventos">
+              {([["all", "Todos"], ["scheduled", "Agendados"], ["ongoing", "Em curso"], ["finished", "Terminados"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={period === value} onClick={() => setPeriod(value)} className={`rounded-xl px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-klasse-gold ${period === value ? "bg-emerald/10 text-emerald dark:text-emerald-300" : "text-muted-foreground hover:bg-muted"}`}>{label}</button>)}
             </div>
+            <select aria-label="Categoria dos eventos" value={category} onChange={(e) => setCategory(e.target.value as "all" | EventCategory)} className="min-w-0 max-w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
+              <option value="all">Todas as categorias</option>
+              {Object.entries(categoryLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </select>
           </div>
         </div>
         {error ? <div role="alert" className="rounded-xl border border-border bg-card p-5 text-sm"><p className="text-red-600 dark:text-red-300">{error}</p><button type="button" className={secondaryClass + " mt-4"} onClick={() => setRevision((value) => value + 1)}><RefreshCw className="size-4" aria-hidden="true" /> Tentar novamente</button></div> :
           loading ? <div role="status" className="space-y-3"><span className="sr-only">A carregar calendário</span>{[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-xl border border-border bg-card motion-safe:animate-pulse" />)}</div> :
-          groups.length === 0 ? <div className="rounded-xl border border-border bg-card px-4 py-12 text-center"><CalendarDays className="mx-auto size-8 text-emerald dark:text-emerald-300" aria-hidden="true" /><p className="mt-3 text-sm font-semibold">{search || period !== "all" ? "Nenhum evento corresponde aos filtros." : "Nenhum evento agendado."}</p>{(search || period !== "all") && <button type="button" className="mt-3 text-sm font-medium text-emerald underline dark:text-emerald-300" onClick={() => { setSearch(""); setPeriod("all"); }}>Limpar filtros</button>}</div> :
-          <div className="space-y-6">{groups.map(([month, items]) => <section key={month} className="space-y-3"><h3 className="text-sm font-semibold capitalize text-muted-foreground">{month}</h3><ul className="divide-y divide-border rounded-xl border border-border bg-card shadow-sm">{items.map((event) => <EventRow key={event.id} event={event} />)}</ul></section>)}</div>
+          groups.length === 0 ? <div className="rounded-xl border border-border bg-card px-4 py-12 text-center"><CalendarDays className="mx-auto size-8 text-emerald dark:text-emerald-300" aria-hidden="true" /><p className="mt-3 text-sm font-semibold">{search || period !== "all" || category !== "all" ? "Nenhum evento corresponde aos filtros." : "Nenhum evento agendado."}</p>{(search || period !== "all" || category !== "all") && <button type="button" className="mt-3 text-sm font-medium text-emerald underline dark:text-emerald-300" onClick={() => { setSearch(""); setPeriod("all"); setCategory("all"); }}>Limpar filtros</button>}</div> :
+          <div className="space-y-6">{groups.map(([month, items]) => <section key={month} className="space-y-3"><h3 className="text-sm font-semibold capitalize text-muted-foreground">{month}</h3><ul className="divide-y divide-border rounded-xl border border-border bg-card shadow-sm">{items.map((event) => <EventRow key={event.id} event={event} now={now} />)}</ul></section>)}</div>
         }
       </section>
 
