@@ -77,10 +77,29 @@ test("portal do aluno compacta cabeçalho, dashboard e notas sem perder ações"
   ]);
   assert.match(header, /<details className="group relative">/);
   assert.match(header, /<SignOutButton/);
-  assert.match(dashboard, /tone="info"/);
+  assert.match(dashboard, /AcaoRapidaCard dashboardCompact mobileCompact/);
   assert.doesNotMatch(dashboard, /O que precisas de saber hoje|id="school-links"/);
   assert.match(dashboard, /status_financeiro\.pendentes > 0/);
   assert.match(grid, /disabled=\{locked \|\| downloading \|\| !canDownloadOfficial\}/);
   assert.doesNotMatch(notas, /embedded && academicYear !== null/);
   assert.match(layout, /pb-\[calc\(88px\+env\(safe-area-inset-bottom\)\)\]/);
+});
+
+test("aluno reutiliza os cards de Operações com densidade mobile, sem retirar os links", async () => {
+  const [dashboard, quick, card] = await Promise.all([
+    read("components/aluno/dashboard/DashboardLoader.tsx"),
+    read("components/layout/escola-admin/QuickActionsSection.tsx"),
+    read("components/shared/AcaoRapidaCard.tsx"),
+  ]);
+  assert.match(quick, /import AcaoRapidaCard from "@\/components\/shared\/AcaoRapidaCard"/);
+  assert.match(dashboard, /import AcaoRapidaCard from "@\/components\/shared\/AcaoRapidaCard"/);
+  assert.match(dashboard, /grid-cols-1 gap-2 md:grid-cols-3/);
+  assert.match(card, /mobileCompact = false/);
+  assert.match(card, /unavailable: disabled \|\| unavailable/);
+  assert.match(card, /min-h-16[^"]*bg-card p-3/);
+  assert.match(card, /min-h-\[88px\][^"]*bg-card p-4/);
+  assert.match(card, /if \(href\) return <Link href=\{href\}/);
+  assert.match(dashboard, /href=\{go\("\/aluno\/horario"\)\}/);
+  assert.match(dashboard, /href=\{go\(item.href\)\}/);
+  assert.doesNotMatch(dashboard, /<PortalStatCard/);
 });

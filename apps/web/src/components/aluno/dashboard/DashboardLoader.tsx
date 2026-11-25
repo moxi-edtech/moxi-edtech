@@ -1,16 +1,14 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ArrowRight, BookOpen, FileText, Wallet, Bell, Clock3, ChevronRight, AlertCircle, CalendarCheck } from "lucide-react";
+import { ArrowRight, BookOpen, FileText, Wallet, Bell, Clock3, AlertCircle, CalendarCheck } from "lucide-react";
 import { ErrorState } from "@/components/feedback/FeedbackSystem";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { buildStudentAttention, nextLessonLabel, type StudentDocument, type StudentRematricula } from "@/lib/aluno/dashboardPresentation";
 import { PortalAction } from "@/components/portal/ui/PortalAction";
 import { PortalEmptyState } from "@/components/portal/ui/PortalEmptyState";
 import { PortalSection } from "@/components/portal/ui/PortalSection";
-import { PortalStatCard } from "@/components/portal/ui/PortalStatCard";
-import { PortalSurface } from "@/components/portal/ui/PortalSurface";
+import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 
 type DashboardData = {
   ok: boolean;
@@ -36,11 +34,10 @@ async function fetchJson<T>(path: string, signal: AbortSignal, scopedQuery = "")
     return null;
   }
 }
-const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 function LoadingDashboard() {
   return <div role="status" aria-live="polite" className="w-full animate-pulse space-y-5 py-2" aria-label="A carregar a tua página"><span className="sr-only">A carregar a tua página</span><div aria-hidden="true">
     <div className="h-28 rounded-xl bg-muted"/>
-    <div className="grid grid-cols-3 gap-2"><div className="h-24 rounded-xl bg-muted"/><div className="h-24 rounded-xl bg-muted"/><div className="h-24 rounded-xl bg-muted"/></div>
+    <div className="grid gap-2 md:grid-cols-3"><div className="h-16 rounded-xl bg-muted"/><div className="h-16 rounded-xl bg-muted"/><div className="h-16 rounded-xl bg-muted"/></div>
     <div className="h-48 rounded-2xl bg-muted"/><div className="h-32 rounded-2xl bg-muted"/>
     </div>
   </div>;
@@ -124,50 +121,39 @@ export default function DashboardLoader() {
       {screen.dashboard.ano_letivo && <p className="mt-2 text-sm text-white/90">Ano letivo {screen.dashboard.ano_letivo}</p>}
     </header>
     <PortalSection id="aluno-summary" title="Em resumo">
-      <div className="grid grid-cols-3 gap-2 sm:gap-3" data-testid="aluno-summary-cards">
-        <PortalStatCard label="Avisos" tone="info" accessibleLabel="Consultar avisos recentes"
-          icon={<Bell className="h-4 w-4" aria-hidden="true" />}
-          value={(screen.dashboard.avisos_recentes ?? []).length} href={go("/aluno/avisos")} />
-        <PortalStatCard label="Notas" tone={screen.boletim?.is_liberado ? "success" : "neutral"} accessibleLabel="Consultar o estado das notas"
-          icon={<BookOpen className="h-4 w-4" aria-hidden="true" />}
-          value={typeof screen.boletim?.is_liberado === "boolean" ? (screen.boletim.is_liberado ? "Acesso livre" : "Protegidas") : null}
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-3 md:gap-3" data-testid="aluno-summary-cards">
+        <AcaoRapidaCard dashboardCompact mobileCompact label="Avisos"
+          icon={<Bell className="h-4 w-4" />} sublabel={`${(screen.dashboard.avisos_recentes ?? []).length} recentes`}
+          href={go("/aluno/avisos")} />
+        <AcaoRapidaCard dashboardCompact mobileCompact label="Notas"
+          icon={<BookOpen className="h-4 w-4" />} unavailable={typeof screen.boletim?.is_liberado !== "boolean"}
+          sublabel={typeof screen.boletim?.is_liberado === "boolean" ? (screen.boletim.is_liberado ? "Acesso livre" : "Protegidas") : "Dados indisponíveis"}
           href={go("/aluno/academico")} />
-        <PortalStatCard label="Vencidas" tone={screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error ? (screen.dashboard.status_financeiro.pendentes > 0 ? "warning" : "success") : "neutral"} accessibleLabel="Consultar mensalidades vencidas"
-          icon={<Wallet className="h-4 w-4" aria-hidden="true" />}
-          value={screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error
-            ? screen.dashboard.status_financeiro.pendentes : null}
+        <AcaoRapidaCard dashboardCompact mobileCompact label="Propinas vencidas"
+          icon={<Wallet className="h-4 w-4" />}
+          unavailable={!screen.dashboard.status_financeiro || Boolean(screen.dashboard.status_financeiro.error)}
+          needsAttention={Boolean(screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error && screen.dashboard.status_financeiro.pendentes > 0)}
+          sublabel={screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error
+            ? String(screen.dashboard.status_financeiro.pendentes) : "Dados indisponíveis"}
           href={go("/aluno/financeiro")} />
       </div>
     </PortalSection>
     <div className="grid items-start gap-4 lg:grid-cols-5">
       <PortalSection id="next-class" title="Próxima aula" className="lg:col-span-3">
-        <PortalSurface>
-          {lesson ? <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="rounded-lg bg-muted px-3 py-2 text-primary"><p className="text-2xl font-semibold tabular-nums">{lesson.time}</p></div>
-              <div className="min-w-0"><p className="text-sm text-muted-foreground">{lesson.day}</p><p className="mt-1 text-lg font-semibold text-foreground">{lesson.subject}</p></div>
-            </div>
-            {lesson.details.length > 0 && <p className="text-sm text-muted-foreground">{lesson.details.join(" · ")}</p>}
-          </div> : <div className="flex items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-primary"><Clock3 className="h-5 w-5" aria-hidden="true"/></span><p className="text-sm text-muted-foreground">Sem próxima aula publicada.</p></div>}
-          <PortalAction className="mt-1 -ml-3" href={go("/aluno/horario")}>
-            Ver horário <ArrowRight aria-hidden="true" className="h-4 w-4" />
-          </PortalAction>
-        </PortalSurface>
+        <AcaoRapidaCard dashboardCompact mobileCompact icon={<Clock3 className="h-4 w-4"/>}
+          label={lesson ? lesson.subject : "Sem próxima aula publicada"}
+          sublabel={lesson ? [lesson.day, lesson.time, ...lesson.details].join(" · ") : "Ver horário"}
+          href={go("/aluno/horario")} />
       </PortalSection>
       {attentions.length > 0 && <PortalSection id="attention-title" title="A acompanhar" className="lg:col-span-2" testId="attention">
-        <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+        <div className="grid gap-2">
           {attentions.slice(0,3).map(item => {
             const Icon = item.kind === "mensalidade" ? Wallet : item.kind === "rejected" ? AlertCircle : item.kind === "rematricula" ? CalendarCheck : FileText;
-            const iconStyle = item.kind === "rejected" ? "bg-red-50 text-red-800" : item.kind === "mensalidade" || item.kind === "rematricula" ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-800";
-            return <Link key={item.kind + item.href} href={go(item.href)} className={`flex min-h-14 min-w-0 items-center gap-3 px-3 py-2.5 hover:bg-muted/40 ${focus}`}>
-              <span aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconStyle}`}><Icon className="h-4 w-4"/></span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold leading-5 text-foreground">{item.title}</span>
-                <span className="block text-xs leading-4 text-muted-foreground">{item.kind === "rejected" || item.kind === "academico" ? item.description : item.action}</span>
-                {(item.kind === "rejected" || item.kind === "academico") && <span className="sr-only">{item.action}</span>}
-              </span>
-              <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground"/>
-            </Link>;
+            const needsAttention = item.kind === "rejected" || item.kind === "mensalidade" || item.kind === "rematricula" || item.kind === "academico";
+            return <AcaoRapidaCard key={item.kind + item.href} dashboardCompact mobileCompact
+              icon={<Icon className="h-4 w-4"/>} label={item.title} needsAttention={needsAttention}
+              sublabel={item.kind === "rejected" || item.kind === "academico" ? [item.description, item.action].filter(Boolean).join(" · ") : item.action}
+              href={go(item.href)} />;
           })}
         </div>
       </PortalSection>}
