@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useMemo,useState} from "react";
-import {Printer,RefreshCw} from "lucide-react";
+import {Printer,RefreshCw,Wallet} from "lucide-react";
+import {z} from "zod";
 import {Button} from "@/components/ui/Button";
 import {PROVA_BATCH,PROVA_BATCH_SIZES,MAX_PROVA_TURMAS,type PrintTurma,type PrintRecipient} from "@/lib/provas/distribution";
 import {tiposProva,type Prova} from "@/lib/provas/schema";
@@ -8,6 +9,56 @@ import {formatClasseProva,turmaProvaLabels} from "@/lib/provas/academicLabels";
 type Mode="generic"|"turma"|"aluno";
 type Prepared={total:number;offset:number;snapshot:string};
 const input="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-3 py-2 text-base focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 sm:text-sm";
+const billingPreviewSchema=z.object({
+ ok:z.literal(true),snapshot:z.string().regex(/^[a-f0-9]{32}$/),
+ quantidade:z.number().int().positive(),moeda:z.literal("AOA"),
+ valor_centimos:z.number().int().positive().max(Number.MAX_SAFE_INTEGER).nullable(),
+ total_estimado_centimos:z.number().int().positive().max(Number.MAX_SAFE_INTEGER).nullable(),
+ estado:z.enum(["preco_disponivel","preco_nao_configurado"]),
+ confirmacao_disponivel:z.literal(false),
+}).superRefine((value,ctx)=>{
+ const valid=value.estado==="preco_disponivel"
+  ? value.valor_centimos!==null&&value.total_estimado_centimos===value.valor_centimos*value.quantidade
+  : value.valor_centimos===null&&value.total_estimado_centimos===null;
+ if(!valid)ctx.addIssue({code:z.ZodIssueCode.custom,message:"Prévia financeira inválida."});
+});
+type BillingPreview=z.infer<typeof billingPreviewSchema>;
+const money=new Intl.NumberFormat("pt-AO",{style:"currency",currency:"AOA"});
+function PrintBillingPreview({url,snapshot,total}:{url:string;snapshot:string;total:number}){
+ const [attempt,setAttempt]=useState(0);
+ const [state,setState]=useState<{attempt:number;quote?:BillingPreview;error?:string}|null>(null);
+ const current=state?.attempt===attempt?state:null;
+ const loading=attempt>0&&!current;
+ useEffect(()=>{
+  if(attempt===0)return;
+  const controller=new AbortController();
+  async function consult(){
+   try{
+    const res=await fetch(url,{signal:controller.signal,cache:"no-store"});
+    const data:unknown=await res.json();
+    if(!res.ok)throw Error(res.status===409?"A selecção mudou. Actualize os destinatários.":"Não foi possível consultar a cobrança.");
+    const parsed=billingPreviewSchema.safeParse(data);
+    if(!parsed.success||parsed.data.snapshot!==snapshot||parsed.data.quantidade!==total)throw Error("A selecção mudou. Actualize os destinatários.");
+    if(!controller.signal.aborted)setState({attempt,quote:parsed.data});
+   }catch(error){
+    if(!controller.signal.aborted)setState({attempt,error:error instanceof Error?error.message:"Não foi possível consultar a cobrança."});
+   }
+  }
+  void consult();
+  return()=>controller.abort();
+ },[attempt,url,snapshot,total]);
+ const quote=current?.quote;
+ return <div className="min-w-0 space-y-3 rounded-xl border border-border bg-card p-3">
+  <div className="flex items-center gap-2 text-sm font-semibold text-klasse-green dark:text-foreground"><Wallet className="h-4 w-4 shrink-0" aria-hidden="true"/> Cobrança de folhas de prova</div>
+  {quote?.estado==="preco_disponivel"&&quote.valor_centimos!==null&&quote.total_estimado_centimos!==null
+   ?<div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Por aluno</p><p className="font-medium tabular-nums">{money.format(quote.valor_centimos/100)}</p></div><div><p className="text-xs text-muted-foreground">Total estimado · {quote.quantidade} aluno(s)</p><p className="font-semibold tabular-nums">{money.format(quote.total_estimado_centimos/100)}</p></div></div>
+   :quote?.estado==="preco_nao_configurado"?<p role="status" className="text-sm text-muted-foreground">Preço de folhas de prova ainda não configurado.</p>:null}
+  {loading&&<p role="status" className="text-sm text-muted-foreground">A consultar preço...</p>}
+  {current?.error&&<p role="alert" className="text-sm text-destructive">{current.error}</p>}
+  <p className="text-xs text-muted-foreground">Prévia de preço. Não cria dívidas nem confirma pagamentos.</p>
+  <Button type="button" variant="outline" disabled={loading} onClick={()=>setAttempt(v=>v+1)}><Wallet/> {attempt===0?"Consultar cobrança":"Actualizar cobrança"}</Button>
+ </div>;
+}
 export default function ProvasPrintPanel({endpoint,prova}:{endpoint:string;prova:Prova}){
  const [mode,setMode]=useState<Mode>("generic"),[turmas,setTurmas]=useState<PrintTurma[]>([]),[chosen,setChosen]=useState<string[]>([]),[alunos,setAlunos]=useState<PrintRecipient[]>([]),[matricula,setMatricula]=useState(""),[name,setName]=useState(true),[prepared,setPrepared]=useState<Prepared|null>(null),[offset,setOffset]=useState(0),[revision,setRevision]=useState(0);
  const [listBusy,setListBusy]=useState(false),[studentBusy,setStudentBusy]=useState(false),[prepareBusy,setPrepareBusy]=useState(false);
@@ -55,6 +106,7 @@ export default function ProvasPrintPanel({endpoint,prova}:{endpoint:string;prova
   {mode!=="generic"&&<><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="accent-klasse-gold" checked={name} onChange={e=>setName(e.target.checked)}/> Incluir nome, número de processo e chamada</label><p className="text-xs text-muted-foreground">Turma, turno e sala da turma são preenchidos automaticamente. A data e hora de exame só poderão aparecer após integração com agendamento específico.</p>
    {!turmas.length&&!busy&&!error&&<p role="status" className="text-sm text-muted-foreground">Nenhuma turma elegível neste contexto académico.</p>}
    <div className="rounded-xl border border-border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">Provas a distribuir</p><p className="text-xl font-semibold tabular-nums text-klasse-green dark:text-foreground">{ready?ready.total:mode==="turma"?selectionCount:matricula?1:0}</p>{ready&&<p className="text-sm">Lote {Math.floor(offset/batchSize)+1} de {Math.ceil(ready.total/batchSize)} · provas {offset+1}–{Math.min(offset+batchSize,ready.total)}</p>}</div>
+   {ready&&!busy&&!error&&<PrintBillingPreview key={[endpoint,base,scopeKey,ready.snapshot,ready.total].join(":")} url={endpoint+"/cobranca?"+base+"&modo=imprimir&limit=1&turmas="+encodeURIComponent(chosenKey)+(mode==="aluno"?"&matricula="+encodeURIComponent(matricula):"")+"&snapshot="+encodeURIComponent(ready.snapshot)} snapshot={ready.snapshot} total={ready.total}/>}
    {ready&&mode==="turma"&&<label className="grid gap-1 text-sm">Provas por lote<select aria-label="Provas por lote" className={input} value={batchSize} onChange={e=>{setBatchSize(Number(e.target.value));setOffset(0);}}>{PROVA_BATCH_SIZES.map(n=><option key={n} value={n}>{n}</option>)}</select></label>}
    {ready&&ready.total>batchSize&&<div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={!offset} onClick={()=>setOffset(v=>Math.max(0,v-batchSize))}>Lote anterior</Button><Button type="button" variant="outline" disabled={offset+batchSize>=ready.total} onClick={()=>setOffset(v=>v+batchSize)}>Lote seguinte</Button></div>}
   </>}
