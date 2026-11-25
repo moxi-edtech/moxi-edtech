@@ -237,16 +237,23 @@ export function CartaoEstudante() {
         <div className="w-full max-w-[340px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
           <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center shadow-sm sm:p-6">
             
-            <div className="rounded-xl bg-white p-4">
+            {/* The QR is a machine-readable document, not a themed surface.
+                Its own SVG includes a quiet zone of at least four modules
+                (36 units for a 180-unit symbol, even at QR version 1). */}
+            <svg viewBox="0 0 252 252" width={252} height={252}
+              className="block h-auto w-full max-w-[252px]"
+              role="img" aria-label="Código QR de validação do cartão do estudante">
+              <rect width={252} height={252} rx={8} fill="#ffffff" />
               <QRCode
+                x={36}
+                y={36}
                 value={data.verification_url}
                 size={180}
-                style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                viewBox={`0 0 256 256`}
                 bgColor="#ffffff"
                 fgColor="#0f172a"
+                aria-hidden="true"
               />
-            </div>
+            </svg>
 
             <div className="space-y-1">
               <h3 className="text-sm font-semibold text-foreground">Validação em tempo real</h3>

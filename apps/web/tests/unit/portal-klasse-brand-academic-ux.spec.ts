@@ -143,3 +143,12 @@ test("restante portal do aluno usa cards compartilhados sem alterar operações"
   assert.match(activity, /Retomar Rascunho/);
   assert.match(runner, /handleSaveSubmission\(true\)/);
 });
+
+test("QR de identidade mantém zona de silêncio e contraste próprios sem superfície fixa no tema", async () => {
+  const identity = await read("components/aluno/tabs/CartaoEstudante.tsx");
+  assert.match(identity, /<svg viewBox="0 0 252 252" width=\{252\} height=\{252\}/);
+  assert.match(identity, /<rect width=\{252\} height=\{252\} rx=\{8\} fill="#ffffff"/);
+  assert.match(identity, /<QRCode\s+x=\{36\}\s+y=\{36\}\s+value=\{data.verification_url\}\s+size=\{180\}\s+bgColor="#ffffff"\s+fgColor="#0f172a"/);
+  assert.doesNotMatch(identity, /\bbg-white\b/);
+  assert.doesNotMatch(identity, /viewBox=\{`0 0 256 256`\}/);
+});
