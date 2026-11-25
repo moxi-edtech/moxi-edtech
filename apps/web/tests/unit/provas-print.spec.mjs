@@ -131,12 +131,13 @@ test("portal entry points share the server-authorized central and retain tenant 
  assert.match(secretaria,/ProvasPortalPage.*portal="secretaria"/s);
  assert.match(operacoes,/ProvasPortalPage.*portal="operacoes"/s);
  assert.match(professor,/provaAccess/);
+ assert.match(professor,/teacherWizard/);
  assert.match(central,/!access\.ok\|\|!access\.distribute/);
- assert.match(central,/portal==="secretaria"\|\|!access\.admin/);
+ assert.match(central,/const printOnly=!access\.admin/);
  assert.match(nav,/operacoes\/provas/);
- assert.match(quick,/buildPortalHref\(escolaParam, "\/secretaria\/provas"\)/);
+ assert.match(quick,/<ProvasModal/);
  assert.match(teacher,/professorHref\("\/professor\/provas"\)/);
- assert.match(legacy,/buildContextualPortalHref/);
+ assert.match(legacy,/<ProvasModal/);
  assert.doesNotMatch(legacy,/<ProvasWorkspace/);
 });
 

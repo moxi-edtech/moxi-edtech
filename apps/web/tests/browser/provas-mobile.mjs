@@ -46,9 +46,19 @@ try{
   await dialog.getByLabel("Ano lectivo",{exact:true}).selectOption(year);
   await dialog.getByLabel("Classe e disciplina").selectOption(matrix);
   await dialog.getByLabel("Apresentação da folha").selectOption("espacosa");
-  await dialog.getByLabel("Enunciado 1",{exact:true}).fill("Calcula a soma.");
-  await dialog.getByRole("button",{name:"Cabeçalho da prova"}).click();
-  assert.equal(await dialog.getByRole("button",{name:/Cabeçalho da prova/}).getAttribute("aria-expanded"),"false");
+  if(width<640){
+   assert.equal(await dialog.getByLabel("Enunciado 1",{exact:true}).isVisible(),false);
+   await dialog.getByRole("button",{name:"Perguntas",exact:true}).click();
+   await dialog.getByLabel("Enunciado 1",{exact:true}).fill("Calcula a soma.");
+   await dialog.getByRole("button",{name:"Cabeçalho",exact:true}).click();
+   assert.equal(await dialog.getByLabel("Apresentação da folha").inputValue(),"espacosa");
+   await dialog.getByRole("button",{name:"Perguntas",exact:true}).click();
+   assert.equal(await dialog.getByLabel("Enunciado 1",{exact:true}).inputValue(),"Calcula a soma.");
+  }else{
+   await dialog.getByLabel("Enunciado 1",{exact:true}).fill("Calcula a soma.");
+   await dialog.getByRole("button",{name:"Cabeçalho da prova"}).click();
+   assert.equal(await dialog.getByRole("button",{name:/Cabeçalho da prova/}).getAttribute("aria-expanded"),"false");
+  }
   await dialog.getByRole("group",{name:"Espaço da resposta 1"}).getByRole("button",{name:"Médio",exact:true}).click();
   await dialog.getByRole("button",{name:"Aumentar espaço da resposta 1"}).click();
   assert.equal(await dialog.getByRole("spinbutton",{name:"Linhas para resposta 1"}).inputValue(),"7");

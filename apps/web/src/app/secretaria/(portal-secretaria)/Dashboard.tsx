@@ -74,6 +74,7 @@ const JustificarFaltaModal = dynamic(
   { ssr: false, loading: () => <ModalLoading /> }
 );
 
+const ProvasModal = dynamic(() => import("@/components/provas/ProvasModal"), {ssr:false});
 const QuickDocHub = dynamic(
   () => import("@/components/secretaria/QuickDocHub"),
   { ssr: false, loading: () => <ModalLoading /> }
@@ -108,6 +109,7 @@ export function Dashboard({
   const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
   const pathname = usePathname();
   const [filaOpen, setFilaOpen] = useState(false);
+  const [provasOpen,setProvasOpen]=useState(false);
   const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
   const [nowMs] = useState(() => Date.now());
   const [userName, setUserName] = useState<string | null>(null);
@@ -465,7 +467,8 @@ export function Dashboard({
                   icon={<Printer className="h-5 w-5" />}
                   label="Imprimir provas"
                   sublabel="Por turma ou aluno"
-                  href={buildPortalHref(escolaParam, "/secretaria/provas")}
+                  onClick={()=>setProvasOpen(true)}
+                  dialogOpen={provasOpen}
                 />}
                 <AcaoRapidaCard
                   icon={<Banknote className="h-5 w-5" />}
@@ -582,6 +585,7 @@ export function Dashboard({
         <QuickDocHub escolaId={escolaId} initialNominal />
       </ModalShell>
 
+      {provasOpen&&escolaParam&&<ProvasModal escolaId={escolaParam} onClose={()=>setProvasOpen(false)}/>}
       <FilaAtendimentoModal open={filaOpen} onClose={() => setFilaOpen(false)} />
       <ModalShell
         open={balcaoModal === "matricular"}

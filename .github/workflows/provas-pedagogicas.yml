@@ -55,6 +55,7 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_isolated_setup.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204001000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204021000_provas_pedagogicas.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_isolated_test.sql
   print:
     runs-on: ubuntu-latest
