@@ -9,7 +9,7 @@ export const formulaModels=[
  {id:"fracao",category:"Aritmética",label:"Fracção",sample:"\\frac{3}{4}",fields:[field("Numerador","3"),field("Denominador","4")]},
  {id:"potencia",category:"Aritmética",label:"Potência",sample:"2^{3}",fields:[field("Base","2"),field("Expoente","3")]},
  {id:"raiz",category:"Aritmética",label:"Raiz quadrada",sample:"\\sqrt{25}",fields:[field("Radicando","25")]},
- {id:"soma_fracoes",category:"Aritmética",label:"Soma de fracções",sample:"\\frac{2}{3}+\\frac{1}{4}",fields:[field("1.º numerador","2"),field("1.º denominador","3"),field("2.º numerador","1"),field("2.º denominador","4")]},
+ {id:"soma_fracoes",category:"Aritmética",label:"Operações com fracções",sample:"\\frac{2}{3}+\\frac{1}{4}",fields:[field("1.º numerador","2"),field("1.º denominador","3"),field("2.º numerador","1"),field("2.º denominador","4")]},
  {id:"cientifica",category:"Aritmética",label:"Notação científica",sample:"3.2\\times10^{5}",fields:[field("Mantissa","3.2"),field("Expoente","5")]},
  {id:"variavel",category:"Álgebra",label:"Variável",sample:"x",fields:[field("Variável","x","variable")]},
  {id:"equacao",category:"Álgebra",label:"Equação do 1.º grau",sample:"2x+5=15",fields:[field("Coeficiente de x","2"),field("Termo constante","5"),field("Segundo membro","15")]},
@@ -41,7 +41,7 @@ function numeric(raw:string):string|null {
 const greek:Record<string,string>={"α":"\\alpha","β":"\\beta","θ":"\\theta","π":"\\pi","λ":"\\lambda","μ":"\\mu","ω":"\\omega"};
 export function variable(raw:string):string|null {
  const v=raw.trim();
- return /^[A-Za-z]$/.test(v)?v:greek[v]??numeric(v);
+ return /^[A-Za-z]$/.test(v)?v:Object.prototype.hasOwnProperty.call(greek,v)?greek[v]:numeric(v);
 }
 const signed=(v:string)=>v.startsWith("-")?v:"+"+v;
 const grouped=(v:string)=>v.startsWith("-")?"("+v+")":v;
@@ -83,15 +83,25 @@ export function modelExpression(id:FormulaModelId,values:readonly string[]):stri
 }
 export const formulaOperators=[{id:"+",label:"+"},{id:"-",label:"−"},{id:"\\times",label:"×"},{id:"\\div",label:"÷"},{id:"=",label:"="},{id:"\\pm",label:"±"},{id:"\\leq",label:"≤"},{id:"\\geq",label:"≥"},{id:"\\neq",label:"≠"}] as const;
 export type FormulaOperator=typeof formulaOperators[number]["id"];
-export type FormulaPart={id:number;operator:FormulaOperator;model:FormulaModelId;values:string[]}|{id:number;operator:FormulaOperator;existing:string};
+export type FormulaPart={id:number;operator:FormulaOperator;opens?:number;closes?:number}&({model:FormulaModelId;values:string[]}|{existing:string});
 export function completeExpression(value:string):boolean {
  return !/\\placeholder\b|\{\s*\}/.test(value)&&Boolean(mathMarkup(value));
 }
 export function partExpression(part:FormulaPart){return "existing" in part?part.existing:modelExpression(part.model,part.values);}
-export function composeExpression(parts:readonly FormulaPart[]):string|null {
- if(parts.length===0||parts.length>12)return null;
+export const MAX_FORMULA_PARTS=12;
+export function composeExpression(parts:readonly FormulaPart[],ending=false):string|null {
+ if(parts.length===0||parts.length>MAX_FORMULA_PARTS)return null;
  const terms=parts.map(partExpression);
  if(terms.some(v=>v===null))return null;
- const output=terms.map((v,i)=>i===0?v:parts[i].operator+(parts[i].operator.startsWith("\\")?" ":"")+v).join("");
+ let depth=0;
+ for(const part of parts){const opens=part.opens??0,closes=part.closes??0;if(!Number.isInteger(opens)||!Number.isInteger(closes)||opens<0||closes<0||opens>4||closes>4)return null;depth+=opens;if(depth>4)return null;depth-=closes;if(depth<0)return null;}
+ if(depth)return null;
+ const output=terms.map((v,i)=>(i===0?"":parts[i].operator+(parts[i].operator.startsWith("\\")?" ":""))+"(".repeat(parts[i].opens??0)+v+")".repeat(parts[i].closes??0)).join("")+(ending?"=":"");
  return completeExpression(output)?output:null;
+}
+
+/** A starter may expand into independent, editable terms instead of a fixed equation. */
+export function modelStarter(id:FormulaModelId,values:readonly string[]):Omit<Extract<FormulaPart,{model:FormulaModelId}>,"id">[]{
+ if(id==="soma_fracoes")return [{operator:"+",model:"fracao",values:values.slice(0,2)},{operator:"+",model:"fracao",values:values.slice(2,4)}];
+ return [{operator:"+",model:id,values:[...values]}];
 }

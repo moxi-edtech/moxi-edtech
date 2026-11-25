@@ -363,3 +363,19 @@ test("structure blocks do not consume question numbers or answer spaces",()=>{
  assert.equal((html.match(/class="apoio"/g)||[]).length,3);
  assert.equal((html.match(/class="cotacao"/g)||[]).length,0);
 });
+
+test("modular arithmetic starters, editable operators, terminal equality and grouping round-trip",()=>{
+ const {modelStarter,composeExpression}=require("../../src/lib/provas/formulaModels.ts");
+ const {recoverEditableExpression}=require("../../src/lib/provas/formulaRecovery.ts");
+ const seed=modelStarter("soma_fracoes",["2","3","1","4"]).map((p,id)=>({...p,id}));
+ assert.equal(seed.length,2);
+ assert.equal(composeExpression([seed[0],{...seed[1],operator:"-"}],true),"\\frac{2}{3}-\\frac{1}{4}=");
+ for(const source of ["1+2-4-7=","\\frac{2}{3}+\\frac{1}{4}","\\frac{2}{3}\\times \\frac{5}{7}+\\frac{1}{2}=","(5+3)\\times 2-4="]){
+  const recovered=recoverEditableExpression(source);
+  assert.ok(recovered.parts.length>=2,source);
+  assert.ok(recovered.parts.every(p=>!("existing" in p)),source);
+  assert.equal(composeExpression(recovered.parts,recovered.ending),source);
+ }
+ assert.equal(composeExpression([{...seed[0],opens:1}]),null);
+ assert.equal(composeExpression(seed.map((p,i)=>({...p,opens:i===0?1:0,closes:i===1?1:0})),true),"(\\frac{2}{3}+\\frac{1}{4})=");
+});
