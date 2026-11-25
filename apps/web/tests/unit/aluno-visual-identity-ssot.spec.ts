@@ -40,10 +40,12 @@ test("navegação mobile mantém as nove rotas, contexto, preloading e teclado",
   assert.match(nav, /const drawerItems = items\.slice\(4\)/);
   assert.match(nav, /withAlunoParam\(href\)/);
   assert.match(nav, /preloadPortalData/);
-  assert.match(nav, /aria-modal="true"/);
-  assert.match(nav, /event\.key === "Escape"/);
-  assert.match(nav, /min-h-12/);
-  assert.match(nav, /klasse-gold/);
+  const sharedNav = source("components/layout/klasse/PortalBottomNav.tsx");
+  assert.match(nav, /<PortalBottomNav/);
+  assert.match(sharedNav, /aria-modal="true"/);
+  assert.match(sharedNav, /event\.key === "Escape"/);
+  assert.match(sharedNav, /min-h-12/);
+  assert.match(sharedNav, /klasse-gold/);
   for (const route of [
     "/aluno/dashboard", "/aluno/horario", "/aluno/academico", "/aluno/financeiro",
     "/aluno/atividades", "/aluno/identidade", "/aluno/documentos", "/aluno/avisos", "/aluno/perfil",

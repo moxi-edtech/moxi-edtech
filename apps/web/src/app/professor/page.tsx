@@ -329,7 +329,7 @@ export default function Page() {
         <header aria-busy={loading} className="flex flex-col justify-between gap-2 sm:gap-4 md:flex-row md:items-center">
           <div className="space-y-1">
              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-amber animate-pulse" />
+                <span aria-hidden="true" className="h-2 w-2 rounded-full bg-amber" />
                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Portal do Professor</span>
              </div>
              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -444,8 +444,8 @@ export default function Page() {
                 {[
                   { label: "Aulas hoje", value: aulasHoje, color: "text-white" },
                   { label: "Turmas", value: turmasAtivas, color: "text-white" },
-                  { label: "Avaliações", value: avaliacoesPendentes, color: "text-amber-400", alert: avaliacoesPendentes > 0 },
-                  { label: "Faltas", value: faltasALancar, color: "text-rose-400", alert: faltasALancar > 0 },
+                  { label: "Avaliações", value: avaliacoesPendentes, color: avaliacoesPendentes > 0 ? "text-amber-400" : "text-white" },
+                  { label: "Faltas", value: faltasALancar, color: faltasALancar > 0 ? "text-rose-400" : "text-white" },
                 ].map((item) => (
                   <div key={item.label} className="group relative rounded-xl border border-klasse-green-700 bg-klasse-green-700/40 p-2.5 transition-colors hover:bg-klasse-green-700/60 sm:rounded-3xl sm:p-4">
                     <p className="mb-0.5 text-[11px] font-medium text-white/75 sm:mb-1 sm:text-[9px] sm:font-black sm:uppercase sm:tracking-widest">{item.label}</p>
@@ -455,7 +455,6 @@ export default function Page() {
                        ) : (
                          <p className={`text-xl font-bold sm:text-2xl ${item.color}`}>{item.value}</p>
                        )}
-                       {item.alert && <span className="h-2 w-2 rounded-full bg-current animate-ping" />}
                     </div>
                   </div>
                 ))}
