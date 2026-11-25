@@ -108,7 +108,7 @@ $test$;
 DO $$
 DECLARE u text;
 BEGIN
- FOREACH u IN ARRAY ARRAY['10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000004','10000000-0000-4000-8000-000000000005','10000000-0000-4000-8000-000000000006','10000000-0000-4000-8000-000000000007','10000000-0000-4000-8000-000000000008'] LOOP
+ FOREACH u IN ARRAY ARRAY['10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000004','10000000-0000-4000-8000-000000000005','10000000-0000-4000-8000-000000000006','10000000-0000-4000-8000-000000000008'] LOOP
    PERFORM set_config('request.jwt.claim.sub',u,true);
    IF EXISTS(SELECT 1 FROM public.provas_pedagogicas) THEN RAISE EXCEPTION 'draft leak to %',u; END IF;
  END LOOP;
@@ -124,10 +124,12 @@ BEGIN
   RAISE EXCEPTION 'teacher approval allowed';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $$;
-SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000007',true);
 DO $$
 DECLARE r public.provas_pedagogicas;
 BEGIN
+ IF (SELECT count(*) FROM public.provas_pedagogicas)<>1 THEN RAISE EXCEPTION 'financial admin cannot read review queue'; END IF;
+ IF jsonb_array_length(public.provas_contexto('00000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001'))<>3 THEN RAISE EXCEPTION 'financial admin context missing'; END IF;
  r:=public.provas_mutar('00000000-0000-4000-8000-000000000001',current_setting('test.prova_id')::uuid,3,'aprovar',NULL);
  IF r.apresentacao<>'espacosa' THEN RAISE EXCEPTION 'approved presentation changed'; END IF;
  IF r.estado<>'aprovada' OR r.aprovado_por<>auth.uid() THEN RAISE EXCEPTION 'approval failed'; END IF;
@@ -190,7 +192,7 @@ END $$;
 DO $print_roles$
 DECLARE u text; school uuid:='00000000-0000-4000-8000-000000000001'; p uuid:=current_setting('test.prova_id')::uuid;
 BEGIN
- FOREACH u IN ARRAY ARRAY['10000000-0000-4000-8000-000000000007','10000000-0000-4000-8000-000000000008'] LOOP
+ FOREACH u IN ARRAY ARRAY['10000000-0000-4000-8000-000000000008'] LOOP
   PERFORM set_config('request.jwt.claim.sub',u,true);
   IF (SELECT count(*) FROM public.provas_pedagogicas)<>1 THEN RAISE EXCEPTION 'approved proof unavailable to print role'; END IF;
   IF (public.provas_destinatarios(school,p,4,'turmas',ARRAY[]::uuid[],NULL,0)->>'total')::int<>43 THEN RAISE EXCEPTION 'print role missing distribution'; END IF;
@@ -201,6 +203,26 @@ BEGIN
  END LOOP;
 END;
 $print_roles$;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000007',true);
+DO $financial_admin$
+DECLARE r public.provas_pedagogicas; copy public.provas_pedagogicas; sch uuid:='00000000-0000-4000-8000-000000000001'; p uuid:=current_setting('test.prova_id')::uuid; data jsonb;
+BEGIN
+ SELECT * INTO r FROM public.provas_pedagogicas WHERE id=p;
+ IF (public.provas_destinatarios(sch,p,4,'turmas',ARRAY[]::uuid[],NULL,0)->>'total')::int<>43 THEN RAISE EXCEPTION 'financial admin distribution missing'; END IF;
+ copy:=public.provas_mutar(sch,p,4,'duplicar',NULL);
+ IF copy.estado<>'rascunho' THEN RAISE EXCEPTION 'financial admin cannot duplicate'; END IF;
+ data:=to_jsonb(copy)-ARRAY['id','escola_id','autor_id','estado','versao','criado_em','atualizado_em','aprovado_por','aprovado_em'];
+ copy:=public.provas_mutar(sch,copy.id,copy.versao,'guardar',data);
+ copy:=public.provas_mutar(sch,copy.id,copy.versao,'submeter',NULL);
+ copy:=public.provas_mutar(sch,copy.id,copy.versao,'devolver',NULL);
+ copy:=public.provas_mutar(sch,copy.id,copy.versao,'arquivar',NULL);
+ IF copy.estado<>'arquivada' THEN RAISE EXCEPTION 'financial admin lifecycle failed'; END IF;
+ BEGIN
+  PERFORM public.provas_mutar('00000000-0000-4000-8000-000000000002',NULL,NULL,'criar',data);
+  RAISE EXCEPTION 'financial admin cross tenant write allowed';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END;
+$financial_admin$;
 RESET ROLE;
 SET LOCAL ROLE anon;
 DO $$

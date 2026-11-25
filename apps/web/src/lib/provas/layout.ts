@@ -18,6 +18,11 @@ export const COMPOSICAO={
  espacosa:{questionGap:9,answerGap:4,lineHeight:1.6,headerGap:9,groupTop:8,groupBottom:5,alternativeGap:3}
 } as const;
 export type Composicao=keyof typeof COMPOSICAO;
+// Use columns only for short, single-line choices. Longer options keep the full
+// width, and the same predicate is used by the estimator and renderer.
+export function alternativesInColumns(options:readonly string[]|undefined):boolean{
+ return !!options&&options.length>=4&&options.length<=8&&options.every(a=>!/[\r\n\t]/.test(a)&&Array.from(a).length<=28);
+}
 const BODY_MM=PROVA_PAPER.height-PROVA_PAPER.marginTop-PROVA_PAPER.marginBottom;
 function textLines(text:string,width=82){
  return text.split(/\r?\n/).reduce((n,line)=>n+Math.max(1,Math.ceil(Array.from(line).length/width)),0);
@@ -31,7 +36,7 @@ export function estimatedPages(blocks:readonly Bloco[],mode:Composicao,hasLogo=f
   const answer=respostaLayout(b.tipo,b.linhas);
   const maths=b.rich?.segments.filter(s=>s.kind==="math").length??0;
   const content=textLines(b.texto,b.tipo==="alinea"?78:82)*line+maths*6;
-  const alternatives=(b.alternativas??[]).reduce((n,a)=>n+textLines(a,76)*line,0)+(b.alternativas?.length?p.alternativeGap:0);
+  const alternatives=(alternativesInColumns(b.alternativas)?Math.ceil(b.alternativas!.length/2)*line:(b.alternativas??[]).reduce((n,a)=>n+textLines(a,76)*line,0))+(b.alternativas?.length?p.alternativeGap:0);
   const gap=b.tipo==="grupo"?p.groupTop+p.groupBottom:p.questionGap;
   const height=content+alternatives+gap+answer.heightMm+(answer.kind==="none"?0:p.answerGap);
   // Estimate keep-together for ordinary questions; long material may flow across sheets.

@@ -27,6 +27,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 
+const ProvasModal = dynamic(() => import("@/components/provas/ProvasModal"), {ssr:false});
 const RecebimentosWorkspace = dynamic(() => import("@/components/financeiro/FilaValidacaoPagamentos").then(m => m.FilaValidacaoPagamentos), { ssr: false, loading: () => <WorkspaceLoading /> });
 const HorarioWorkspace = dynamic(() => import("@/components/escola/horarios/HorarioEditor").then(m => m.HorarioEditor), { ssr: false, loading: () => <WorkspaceLoading /> });
 
@@ -103,6 +104,7 @@ export default function QuickActionsSection({
         {
           key: "provas",
           label: "Central de provas",
+          opensModal: true,
           icon: ClipboardCheck,
           href: buildPortalHref(escolaParam, "/operacoes/provas"),
         },
@@ -115,6 +117,13 @@ export default function QuickActionsSection({
         },
       ]
     : [
+        {
+          key: "provas",
+          label: "Central de provas",
+          icon: ClipboardCheck,
+          opensModal: true,
+          href: buildPortalHref(escolaParam, "/operacoes/provas"),
+        },
         {
           key: "funcionario",
           label: "Novo Funcionário",
@@ -230,7 +239,8 @@ export default function QuickActionsSection({
         {selectedAction?.key === "horarios" && <Suspense fallback={<WorkspaceLoading />}><HorarioDataProvider key={escolaId} escolaId={escolaId}><HorarioWorkspace escolaId={escolaId} dashboardModal closeGuardRef={closeGuardRef} /></HorarioDataProvider></Suspense>}
       </ModalShell>
 
-      <Sheet open={!!selectedAction && !operationalModal} onOpenChange={(open) => !open && setSelectedAction(null)}>
+      {selectedAction?.key === "provas" && <ProvasModal escolaId={escolaId} onClose={closeOperationalModal} />}
+      <Sheet open={!!selectedAction && !operationalModal && selectedAction.key !== "provas"} onOpenChange={(open) => !open && setSelectedAction(null)}>
         <SheetContent side="right" className="sm:max-w-3xl overflow-y-auto scrollbar-hide">
           <SheetHeader className="border-b border-border pb-4 mb-4">
             <SheetTitle className="flex items-center gap-2 text-xl font-black tracking-tight">

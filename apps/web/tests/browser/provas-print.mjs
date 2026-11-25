@@ -70,7 +70,7 @@ try{
  }
  const checkFooters=path=>{
   const pages=execFileSync("pdftotext",["-layout",path,"-"],{encoding:"utf8"}).split(String.fromCharCode(12)).filter(s=>s.trim());
-  for(const p of pages){assert.equal(p.split(PROVA_FOOTER).length-1,1,"one footer per physical page");assert.ok(p.replace(PROVA_FOOTER,"").trim(),"no blank footer-only pages");}
+  for(const [i,p] of pages.entries()){assert.equal(p.split(PROVA_FOOTER).length-1,1,"one footer per physical page");const pageLabel=new RegExp("Página(?: do lote)?\\s+"+(i+1)+"\\s+de\\s+"+pages.length);assert.match(p,pageLabel,"physical page numbering");assert.ok(p.replace(PROVA_FOOTER,"").replace(pageLabel,"").trim(),"no blank footer-only pages");}
   return pages;
  };
  const assertLogo=path=>{const images=execFileSync("pdfimages",["-list",path],{encoding:"utf8"});assert.match(images,/\b80\s+40\b/,"embedded raster in actual PDF");};
@@ -121,4 +121,20 @@ try{
  assert.equal(pageCounts.compacta,1,"compact fit fixture");
  assert.ok(pageCounts.espacosa>=pageCounts.automatica);
  console.log("Adaptive physical PDF page counts:",pageCounts);
+ const design={...base,apresentacao:"automatica",conteudo:[
+  {tipo:"discursiva",texto:"Define energia.",linhas:2,cotacao_cent:200},
+  {tipo:"escolha",texto:"Qual é a unidade de energia?",linhas:0,cotacao_cent:200,alternativas:["Watt","Joule","Newton","Pascal"]},
+  {tipo:"calculo",texto:"Calcula a energia cinética.",linhas:6,cotacao_cent:400}
+ ]};
+ await page.setContent(provaHtml(design,"Complexo Escolar Privado Adventista de Curtume",{logo}),{waitUntil:"load"});
+ const cols=await page.locator(".alternativas li").evaluateAll(els=>els.map(el=>({x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().y})));
+ assert.ok(cols[1].x>cols[0].x&&Math.abs(cols[1].y-cols[0].y)<2,"short alternatives in row-major columns");
+ assert.equal(await page.locator(".linha").count(),2);
+ assert.ok(Math.abs(await page.locator(".espaco").evaluate(el=>el.getBoundingClientRect().height)-px(48))<1.5);
+ const layoutPdf=await page.pdf({preferCSSPageSize:true,printBackground:true});
+ const layoutPath="apps/web/visual-evidence/provas/layout-institucional.pdf";
+ await writeFile(layoutPath,layoutPdf);
+ assert.equal((await PDFDocument.load(layoutPdf)).getPageCount(),1);
+ assert.match(checkFooters(layoutPath)[0],/Define energia/);
+
 }finally{await browser.close();}

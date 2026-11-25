@@ -9,7 +9,7 @@ const turmas=[{id:a,nome:"ESG-8ª Classe-T-Z",letra:"A",curso:"Ensino Geral",tur
 const aluno={matricula_id:m,turma_id:a,turma:"ESG-8ª Classe-T-Z",letra:"A",curso:"Ensino Geral",turno:"M",sala:"12",nome:"Aluno de teste",numero_processo:"P-1",numero_chamada:1};
 const browser=await chromium.launch({headless:true});
 try{
- for(const width of [390,1280]){
+ for(const [width,modal] of [[390,true],[1280,false],[1280,true]]){
   const page=await browser.newPage({viewport:{width,height:844},hasTouch:width<640,isMobile:width<640});
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   await page.route("**/api/escola/**/provas**",async route=>{
@@ -23,15 +23,17 @@ try{
     const total=q.has("matricula")?1:turmas.filter(t=>selected.includes(t.id)).reduce((n,t)=>n+t.total,0);
     return reply({items:mode==="turmas"?turmas:mode==="alunos"?[aluno]:[],total:mode==="turmas"?72:total,offset:0,limit:Number(q.get("limit")??40),snapshot});
    }
-   assert.equal(q.get("aprovadas"),"1","secretary central requests only approved proofs");
+   assert.equal(q.get("aprovadas"),modal?null:"1","modal uses role-scoped API; dedicated print-only page requests approved proofs");
    if(q.has("prova"))return reply({prova});
-   return reply({provas:[prova],escola:"Escola de teste",permissions:{author:true,admin:true,distribute:true,userId:"10000000-0000-4000-8000-000000000004"}});
+   return reply({provas:[prova],escola:"Escola de teste",permissions:{author:!modal,admin:!modal,distribute:true,userId:"10000000-0000-4000-8000-000000000004"}});
   });
-  await page.goto("http://127.0.0.1:6006/provas.html?portal=secretaria");
+  await page.goto("http://127.0.0.1:6006/provas.html?portal=secretaria"+(modal?"&modal=1":""));
+  if(modal)await page.getByRole("button",{name:"Abrir central de provas"}).click();
   await page.getByRole("heading",{name:"Central de impressão de provas"}).waitFor();
   await page.getByRole("button",{name:"Imprimir",exact:true}).click();
   const dialog=page.getByRole("dialog");
   await dialog.getByRole("link",{name:"Abrir folha para impressão"}).waitFor();
+  assert.equal(await page.getByRole("dialog").count(),1,"one dialog, no stacked overlays");
   assert.equal(await page.getByRole("button",{name:"Nova prova",exact:true}).count(),0,"print-only hides authoring even for admin");
   assert.equal(await dialog.getByRole("button",{name:"Aprovar prova",exact:true}).count(),0);
   await dialog.getByRole("radio",{name:/^Por turma/}).check();
@@ -64,7 +66,31 @@ try{
   assert.ok(metrics.s<=metrics.w+2,"mobile distribution overflow");
   assert.equal(errors.length,0,errors.join("\n"));
   await page.screenshot({path:"apps/web/visual-evidence/provas/distribuicao-"+width+".png"});
+  if(modal){
+   await dialog.getByRole("button",{name:"Voltar à lista"}).click();
+   await dialog.getByRole("heading",{name:"Central de impressão de provas"}).waitFor();
+   await dialog.getByRole("button",{name:"Fechar",exact:true}).click();
+   await dialog.waitFor({state:"hidden"});
+   await page.waitForFunction(()=>document.activeElement?.textContent?.includes("Abrir central de provas"));
+  }
   await page.close();
-  console.log("Secretary distribution smoke:",width);
+  console.log("Secretary distribution smoke:",width,modal);
  }
+ const adminPage=await browser.newPage({viewport:{width:1280,height:844}});
+ const review={...prova,estado:"em_revisao",versao:3};
+ await adminPage.route("**/api/escola/**/provas**",async route=>{
+  const q=new URL(route.request().url()).searchParams;
+  assert.equal(q.get("aprovadas"),null,"financial admin must not be reduced to print-only");
+  if(q.get("branding")==="1")return route.fulfill({json:{logo:null}});
+  if(q.has("prova"))return route.fulfill({json:{prova:review}});
+  return route.fulfill({json:{provas:[review],escola:"Escola de teste",permissions:{author:true,admin:true,distribute:true,userId:"10000000-0000-4000-8000-000000000007"}}});
+ });
+ await adminPage.goto("http://127.0.0.1:6006/provas.html?modal=1");
+ await adminPage.getByRole("button",{name:"Abrir central de provas"}).click();
+ const adminDialog=adminPage.getByRole("dialog");
+ await adminDialog.getByRole("button",{name:"Nova prova"}).waitFor();
+ await adminDialog.getByRole("button",{name:"Consultar",exact:true}).click();
+ await adminDialog.getByRole("button",{name:"Aprovar prova"}).waitFor();
+ assert.equal(await adminDialog.getByRole("button",{name:"Devolver",exact:true}).isVisible(),true);
+ await adminPage.close();
 }finally{await browser.close();}
