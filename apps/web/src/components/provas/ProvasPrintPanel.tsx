@@ -2,23 +2,24 @@
 import {useEffect,useMemo,useState} from "react";
 import {Printer,RefreshCw} from "lucide-react";
 import {Button} from "@/components/ui/Button";
-import {PROVA_BATCH,MAX_PROVA_TURMAS,type PrintTurma,type PrintRecipient} from "@/lib/provas/distribution";
+import {PROVA_BATCH,PROVA_BATCH_SIZES,MAX_PROVA_TURMAS,type PrintTurma,type PrintRecipient} from "@/lib/provas/distribution";
 import {tiposProva,type Prova} from "@/lib/provas/schema";
 type Mode="generic"|"turma"|"aluno";
 type Prepared={total:number;offset:number;snapshot:string;items:PrintRecipient[]};
 const input="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-3 py-2 text-base focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 sm:text-sm";
 export default function ProvasPrintPanel({endpoint,prova}:{endpoint:string;prova:Prova}){
  const [mode,setMode]=useState<Mode>("generic"),[turmas,setTurmas]=useState<PrintTurma[]>([]),[chosen,setChosen]=useState<string[]>([]),[alunos,setAlunos]=useState<PrintRecipient[]>([]),[matricula,setMatricula]=useState(""),[name,setName]=useState(true),[prepared,setPrepared]=useState<Prepared|null>(null),[offset,setOffset]=useState(0),[revision,setRevision]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [batchSize,setBatchSize]=useState<number>(PROVA_BATCH);
  const base=useMemo(()=>new URLSearchParams({prova:prova.id,versao:String(prova.versao)}).toString(),[prova.id,prova.versao]);
  const chosenKey=chosen.join(",");
  const selectionCount=turmas.filter(t=>chosen.includes(t.id)).reduce((sum,t)=>sum+t.total,0);
  const scopeKey=[mode,chosenKey,matricula,revision].join(":");
  const [preparedKey,setPreparedKey]=useState("");
- const ready=prepared&&preparedKey===scopeKey;
+ const ready=preparedKey===scopeKey?prepared:null;
  function reset(){setPrepared(null);setPreparedKey("");setOffset(0);setError("");}
  async function get(q:string,signal:AbortSignal){const res=await fetch(endpoint+"/distribuicao?"+base+"&"+q,{signal,cache:"no-store"});const data=await res.json();if(!res.ok)throw Error(data.error??"Não foi possível consultar destinatários.");return data;}
  useEffect(()=>{
-  if(mode==="generic")return;
+  if(mode==="generic"){setBusy(false);return;}
   const controller=new AbortController();setBusy(true);setError("");
   get("modo=turmas",controller.signal).then(data=>{if(!controller.signal.aborted)setTurmas(data.items);}).catch(e=>{if(!controller.signal.aborted)setError(e.message);}).finally(()=>{if(!controller.signal.aborted)setBusy(false);});
   return()=>controller.abort();
@@ -41,7 +42,7 @@ export default function ProvasPrintPanel({endpoint,prova}:{endpoint:string;prova
   return()=>controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
  },[endpoint,base,scopeKey,mode,chosenKey,matricula]);
- const url=mode==="generic"?endpoint+"/print?prova="+encodeURIComponent(prova.id):ready?endpoint+"/print?"+base+"&modo=imprimir&turmas="+encodeURIComponent(chosenKey)+(mode==="aluno"?"&matricula="+encodeURIComponent(matricula):"")+"&offset="+offset+"&snapshot="+prepared.snapshot+"&nome="+(name?"1":"0"):null;
+ const url=mode==="generic"?endpoint+"/print?prova="+encodeURIComponent(prova.id):ready?endpoint+"/print?"+base+"&modo=imprimir&turmas="+encodeURIComponent(chosenKey)+(mode==="aluno"?"&matricula="+encodeURIComponent(matricula):"")+"&offset="+offset+"&limit="+batchSize+"&snapshot="+ready.snapshot+"&nome="+(name?"1":"0"):null;
  return <section className="min-w-0 space-y-4">
   <div className="rounded-xl border border-border bg-card p-3"><p className="font-semibold">{tiposProva[prova.tipo_prova]??"Prova"} · {prova.disciplina}</p><p className="text-sm text-muted-foreground">{prova.classe} · {prova.ano_lectivo} · Série {prova.serie}</p><p className="mt-1 text-xs text-muted-foreground">Conteúdo aprovado. A distribuição não modifica a prova.</p></div>
   <fieldset className="min-w-0 space-y-2"><legend className="mb-2 font-medium text-sm">Modalidade de impressão</legend>
@@ -51,8 +52,8 @@ export default function ProvasPrintPanel({endpoint,prova}:{endpoint:string;prova
   {mode==="aluno"&&<div className="grid min-w-0 gap-3 sm:grid-cols-2"><label className="grid min-w-0 gap-1 text-sm">Turma<select className={input} value={chosen[0]??""} onChange={e=>{reset();setChosen(e.target.value?[e.target.value]:[]);setMatricula("");}}><option value="">Seleccione a turma</option>{turmas.map(t=><option key={t.id} value={t.id} disabled={!t.total}>{t.nome} · {t.total}</option>)}</select></label><label className="grid min-w-0 gap-1 text-sm">Aluno<select className={input} value={matricula} disabled={!chosen.length||!alunos.length} onChange={e=>{reset();setMatricula(e.target.value);}}><option value="">Seleccione o aluno</option>{alunos.map(a=><option key={a.matricula_id} value={a.matricula_id}>{a.nome}{a.numero_processo?" · "+a.numero_processo:""}</option>)}</select></label></div>}
   {mode!=="generic"&&<><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="accent-klasse-gold" checked={name} onChange={e=>setName(e.target.checked)}/> Incluir nome, número de processo e chamada</label><p className="text-xs text-muted-foreground">Turma, turno e sala da turma são preenchidos automaticamente. A data e hora de exame só poderão aparecer após integração com agendamento específico.</p>
    {!turmas.length&&!busy&&!error&&<p role="status" className="text-sm text-muted-foreground">Nenhuma turma elegível neste contexto académico.</p>}
-   <div className="rounded-xl border border-border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">Provas a distribuir</p><p className="text-xl font-semibold tabular-nums">{ready?prepared.total:mode==="turma"?selectionCount:matricula?1:0}</p>{ready&&<p className="text-sm">Lote {Math.floor(offset/PROVA_BATCH)+1} de {Math.ceil(prepared.total/PROVA_BATCH)} · provas {offset+1}–{Math.min(offset+PROVA_BATCH,prepared.total)}</p>}</div>
-   {ready&&prepared.total>PROVA_BATCH&&<div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={!offset} onClick={()=>setOffset(v=>Math.max(0,v-PROVA_BATCH))}>Lote anterior</Button><Button type="button" variant="outline" disabled={offset+PROVA_BATCH>=prepared.total} onClick={()=>setOffset(v=>v+PROVA_BATCH)}>Lote seguinte</Button></div>}
+   <div className="rounded-xl border border-border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">Provas a distribuir</p><p className="text-xl font-semibold tabular-nums">{ready?ready.total:mode==="turma"?selectionCount:matricula?1:0}</p>{ready&&<p className="text-sm">Lote {Math.floor(offset/batchSize)+1} de {Math.ceil(prepared.total/PROVA_BATCH)} · provas {offset+1}–{Math.min(offset+batchSize,prepared.total)}</p>}</div>
+   {ready&&prepared.total>PROVA_BATCH&&<div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={!offset} onClick={()=>setOffset(v=>Math.max(0,v-batchSize))}>Lote anterior</Button><Button type="button" variant="outline" disabled={offset+batchSize>=prepared.total} onClick={()=>setOffset(v=>v+batchSize)}>Lote seguinte</Button></div>}
   </>}
   {busy&&<p role="status" className="text-sm text-muted-foreground">A consultar destinatários...</p>}
   {error&&<div role="alert" className="space-y-2 text-sm text-destructive"><p>{error}</p><Button variant="outline" onClick={()=>{reset();setRevision(v=>v+1);}}><RefreshCw/> Actualizar selecção</Button></div>}
