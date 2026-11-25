@@ -17,6 +17,7 @@ type AcaoRapidaCardProps = {
   dashboardCompact?: boolean;
   /** Same dashboard card with reduced spacing for the student mobile portal. */
   mobileCompact?: boolean;
+  emphasizeSublabel?: boolean;
   /** Missing data is not a disabled destination. */
   unavailable?: boolean;
   /** A confirmed operational pending item, independent of the legacy static variant. */
@@ -37,6 +38,7 @@ export default function AcaoRapidaCard({
   compact = false,
   dashboardCompact = false,
   mobileCompact = false,
+  emphasizeSublabel = false,
   unavailable = false,
   needsAttention = false,
   variant = "green",
@@ -57,7 +59,7 @@ export default function AcaoRapidaCard({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-medium leading-snug text-foreground">{label}</span>
-          {sublabel && <span className="mt-1 block text-xs leading-snug text-muted-foreground">{sublabel}</span>}
+          {sublabel && <span className={`mt-1 block break-words leading-snug ${emphasizeSublabel ? "text-base font-semibold tabular-nums text-foreground" : "text-xs text-muted-foreground"}`}>{sublabel}</span>}
           {disabled && disabledReason && <span className="mt-1 block text-xs leading-snug text-muted-foreground">{disabledReason}</span>}
         </span>
         {!disabled && (href || onClick) && <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />}
