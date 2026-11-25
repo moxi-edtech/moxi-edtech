@@ -1,0 +1,56 @@
+name: Operational Receipt Batch SSOT · PostgreSQL 17
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*operational_receipt_batch_ssot.sql'
+      - 'supabase/ops/reconcile_operational_receipts_20261125.sql'
+      - 'supabase/ops/tests/operational_receipt_batch_ssot_*.sql'
+      - '.github/workflows/operational-receipt-batch-ssot.yml'
+permissions:
+  contents: read
+jobs:
+  postgres17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: fixture
+          POSTGRES_DB: receipt_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: fixture
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: receipt_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install isolated fixture and versioned migration
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/ops/tests/operational_receipt_batch_ssot_fixture.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204020000_operational_receipt_batch_ssot.sql
+      - name: Validate receipt contract and retries
+        run: psql -v ON_ERROR_STOP=1 -f supabase/ops/tests/operational_receipt_batch_ssot_regression.sql
+      - name: Concurrent initial issuance and retries reuse a single receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Isolated fixture only: force the concurrent first-insert path.
+          psql -v ON_ERROR_STOP=1 -c 'DELETE FROM public.documentos_emitidos'
+          pids=()
+          for i in 1 2 3 4; do
+            psql -v ON_ERROR_STOP=1 -Atc "select internal.issue_operational_batch_receipt('00000000-0000-0000-0000-000000000014',null)->>'doc_id'" > "/tmp/receipt-$i" &
+            pids+=("$!")
+          done
+          for pid in "${pids[@]}"; do wait "$pid"; done
+          test "$(cat /tmp/receipt-{1,2,3,4} | sort -u | wc -l)" -eq 1
+          test "$(psql -Atc 'select count(*) from public.documentos_emitidos')" -eq 1
+      - name: Reconcile historical cohort and verify idempotent replay
+        run: psql -v ON_ERROR_STOP=1 -f supabase/ops/tests/operational_receipt_batch_ssot_reconciliation.sql

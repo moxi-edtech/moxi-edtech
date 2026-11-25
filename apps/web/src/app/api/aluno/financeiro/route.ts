@@ -4,6 +4,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import type { Database, Json } from "~types/supabase";
+import { loadIssuedMonthlyReceipts } from "@/lib/financeiro/issued-monthly-receipts";
 import { extractServicosFromPagamentos, extractServicosFromPedidos } from "@/lib/financeiro/servicosPagamento";
 
 export const dynamic = "force-dynamic";
@@ -75,23 +76,9 @@ export async function GET(request: Request) {
     if (anoAtivoError) throw anoAtivoError;
 
     const mensalidadeIds = (mensalidades ?? []).map((m) => m.id);
-    const reciboByMensalidadeId = new Map<string, string>();
-
-    if (mensalidadeIds.length) {
-      const { data: recibos } = await supabase
-        .from("documentos_emitidos")
-        .select("id, mensalidade_id, created_at")
-        .eq("tipo", "recibo").eq("escola_id", ctx.escolaId)
-        .in("mensalidade_id", mensalidadeIds)
-        .order("created_at", { ascending: false }).order("id", { ascending: false });
-
-      for (const recibo of recibos ?? []) {
-        const mensalidadeId = String(recibo.mensalidade_id ?? "");
-        if (mensalidadeId && !reciboByMensalidadeId.has(mensalidadeId)) {
-          reciboByMensalidadeId.set(mensalidadeId, recibo.id);
-        }
-      }
-    }
+    const reciboByMensalidadeId = await loadIssuedMonthlyReceipts(supabase, {
+      escolaId: ctx.escolaId, alunoId, mensalidadeIds,
+    });
 
     // 2. Buscar Movimentos do Ledger (SSOT)
     const { data: movimentos, error: ledgerError } = await supabase

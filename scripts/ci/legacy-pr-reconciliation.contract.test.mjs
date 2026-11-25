@@ -92,7 +92,14 @@ test("Operational receipt recovery is payment-identified, idempotent and tenant-
   assert.match(writer, /emitir_recibo/);
   const lookup = read("apps/web/src/app/api/secretaria/recibos/consultar/route.ts");
   assert.match(lookup, /pagamento_id/);
-  assert.match(lookup, /findConsolidatedReceipt/);
+  assert.match(lookup, /loadIssuedBatchPaymentReceipt\(db,/);
+  assert.match(lookup, /loadIssuedMonthlyReceipts\(db,/);
+  const resolver = read("apps/web/src/lib/financeiro/issued-monthly-receipts.ts");
+  assert.match(resolver, /batch_idempotency_key/);
+  assert.match(resolver, /batch_fingerprint/);
+  assert.match(resolver, /\.eq\("escola_id", escolaId\)\.eq\("aluno_id", alunoId\)/);
+  assert.match(resolver, /\.is\("revoked_at", null\)/);
+  assert.doesNotMatch(resolver, /\.insert\(|\.update\(|\.upsert\(|\.delete\(|\.rpc\(/);
   assert.match(lookup, /\.eq\("escola_id", escolaId\)\.eq\("aluno_id", alunoId\)/);
   assert.match(lookup, /Não repita o pagamento/);
 });

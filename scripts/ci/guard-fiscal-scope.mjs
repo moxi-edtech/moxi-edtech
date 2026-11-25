@@ -10,6 +10,8 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const LIFECYCLE_MIGRATION_ALLOWLIST = new Set([
+  // PR #477: only the tested operational receipt contract; fiscal scanner still applies.
+  "20271204020000_operational_receipt_batch_ssot.sql",
   "20261028211345_lifecycle_p0_revoke_legacy_writers_20261028.sql",
   "20261028211433_lifecycle_sync_status_ativo_20261028.sql",
   "20261028211533_lifecycle_history_ssot_view_20261028.sql",
@@ -318,6 +320,25 @@ export function checkFiscalAndSchemaScope(paths, readMigration = (path) => readF
       }
       if (/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE)\s+public\.(?:notas|historico_anos|historico_disciplinas|pagamentos|mensalidades)/i.test(executableSql)) {
         violations.push("RAA activation gate cannot write grades, historical data or payments: " + path);
+      }
+    }
+
+    if (name === "20271204020000_operational_receipt_batch_ssot.sql") {
+      for (const token of [
+        "CREATE OR REPLACE FUNCTION internal.operational_receipt_batch_contract",
+        "CREATE OR REPLACE FUNCTION internal.issue_operational_batch_receipt",
+        "pg_advisory_xact_lock", "FOR SHARE",
+        "RECEIPT_BATCH_ITEM_PAYMENT_MISMATCH", "RECEIPT_BATCH_UNSETTLED_OR_AMBIGUOUS",
+        "CREATE TABLE IF NOT EXISTS internal.operational_receipt_reconciliation",
+        "ALTER TABLE internal.operational_receipt_reconciliation ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL ON TABLE internal.operational_receipt_reconciliation FROM PUBLIC, anon, authenticated, service_role",
+        "REVOKE ALL ON FUNCTION internal.issue_operational_batch_receipt(uuid,uuid) FROM PUBLIC, anon, authenticated, service_role",
+      ]) {
+        if (!content.includes(token)) violations.push("Reviewed receipt SSOT missing guard: " + token);
+      }
+      if (/(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?|ALTER\s+TABLE)\s+public\.(?:pagamentos|mensalidades|financeiro_\w+|notas|matriculas)\b/i.test(executableSql)
+        || /DISABLE\s+(?:ROW\s+LEVEL\s+SECURITY|TRIGGER)|GRANT\s+(?:ALL|EXECUTE|SELECT|INSERT|UPDATE|DELETE)\b/i.test(executableSql)) {
+        violations.push("Receipt SSOT cannot mutate the ledger, enrollment or grades, disable security or widen grants: " + path);
       }
     }
 
