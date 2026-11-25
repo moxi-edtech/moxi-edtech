@@ -22,3 +22,19 @@ test("CC-003 auth switch invalidates student modal and stale lookup requests", (
   assert.match(appShell, /subscription\.unsubscribe\(\)/);
   assert.match(topbar, /clearExplorerReturnContext\(\)/);
 });
+
+test("professor topbar has no global search trigger or mounted command palette", () => {
+  assert.match(topbar, /const showCommandCenter = portal !== "professor";/);
+  const branch = topbar.slice(topbar.indexOf("{showCommandCenter ? ("), topbar.indexOf('<div className="ml-auto flex'));
+  assert.match(branch, /\{showCommandCenter \? \(/);
+  const [enabled, disabled] = branch.split(") : (");
+  assert.ok(disabled, "the teacher branch must not render the global search");
+  assert.match(enabled, /Pesquisar ou digitar acção/);
+  assert.match(enabled, /aria-label="Pesquisar ou abrir Command Center"/);
+  assert.match(enabled, /<CommandPalette\b/);
+  assert.doesNotMatch(disabled, /<CommandPalette\b|<Search\b|setPaletteOpen/);
+  assert.equal((topbar.match(/<CommandPalette\b/g) ?? []).length, 1);
+  assert.match(topbar, /props\.portal \?\? "-"/);
+  assert.match(topbar, /<NotificacoesDropdown/);
+  assert.match(topbar, /<SignOutButton/);
+});
