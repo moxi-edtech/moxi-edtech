@@ -126,7 +126,7 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/escola/[escolaId]/operacoes/financeiro", label: "Visão geral" },
         { href: "/escola/[escolaId]/operacoes/radar", label: "Radar de inadimplência" },
         { href: "/escola/[escolaId]/operacoes/financeiro/recebimentos", label: "Recebimentos" },
-        { href: "/escola/[escolaId]/operacoes/financeiro/controle-caixa", label: "Controlo de caixa" },
+        { href: "/escola/[escolaId]/operacoes/financeiro/conciliacao", label: "Conciliação bancária" },
         { href: "/escola/[escolaId]/operacoes/financeiro/cobrancas", label: "Cobranças" },
         { href: "/escola/[escolaId]/operacoes/financeiro/tabelas-mensalidade", label: "Mensalidades e preços" },
         { href: "/escola/[escolaId]/operacoes/financeiro/fiscal", label: "Fiscal" },
@@ -357,7 +357,7 @@ export const sidebarConfig: SidebarConfig = {
       children: [
         { href: "/escola/[escolaId]/financeiro/pagamentos", label: "Lista" },
         { href: "/escola/[escolaId]/financeiro/cobrancas", label: "Cobranças" },
-        { href: "/escola/[escolaId]/financeiro/fecho", label: "Fecho de Caixa" },
+        { href: "/escola/[escolaId]/financeiro/fecho-diario", label: "Fecho diário" },
         { href: "/escola/[escolaId]/financeiro/conciliacao", label: "Conciliação" },
         { href: "/escola/[escolaId]/secretaria/rematricula/reconciliacao", label: "Pendências de reconciliação", badge: "Resolver" },
       ],

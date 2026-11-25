@@ -52,7 +52,7 @@ test("sidebar de Operações simplifica o Financeiro sem expor rotas legadas", (
     { href: "/escola/[escolaId]/operacoes/financeiro", label: "Visão geral" },
     { href: "/escola/[escolaId]/operacoes/radar", label: "Radar de inadimplência" },
     { href: "/escola/[escolaId]/operacoes/financeiro/recebimentos", label: "Recebimentos" },
-    { href: "/escola/[escolaId]/operacoes/financeiro/controle-caixa", label: "Controlo de caixa" },
+    { href: "/escola/[escolaId]/operacoes/financeiro/conciliacao", label: "Conciliação bancária" },
     { href: "/escola/[escolaId]/operacoes/financeiro/cobrancas", label: "Cobranças" },
     { href: "/escola/[escolaId]/operacoes/financeiro/tabelas-mensalidade", label: "Mensalidades e preços" },
     { href: "/escola/[escolaId]/operacoes/financeiro/fiscal", label: "Fiscal" },

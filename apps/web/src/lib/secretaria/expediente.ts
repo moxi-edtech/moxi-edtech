@@ -26,6 +26,10 @@ export async function expedienteAccess(requestedSchool: string) {
 }
 
 type Access = Extract<Awaited<ReturnType<typeof expedienteAccess>>, {ok:true}>;
+export function canReadCashMovements(access: Access, status: string | null | undefined) {
+  const canDeclare = access.canClose || access.canApprove && !access.canConfigure;
+  return !canDeclare || status === "declared" || status === "approved";
+}
 type ActivityFilter = {entity?:string; actor?:string; late?:boolean};
 
 const queueColumns="day_key,status,revision,declared_by,operador_id,declared_cash,declared_tpa,declared_transfer,declared_mcx,system_cash,system_tpa,system_transfer,system_mcx,system_other_count";
@@ -109,7 +113,7 @@ export async function getExpedienteDetail(access:Access,date:string){
   const names=new Map<string,string>();
   if(ids.length){const r=await supabase.from("profiles").select("user_id,nome").eq("escola_id",escolaId).in("user_id",ids);for(const s of r.data??[])names.set(s.user_id,s.nome??"Funcionário");}
   const actor=(id:string|null|undefined)=>id?(names.get(id)??"Funcionário · "+id.slice(0,6)):null;
-  return {closed:closed.data?{...closed.data,closed_by_name:actor(closed.data.closed_by)}:null,lateCount:late.count??0,preview:preview.data??{},config:config.data,cash:cash.data?{...cash.data,declared_by_name:actor(cash.data.declared_by??cash.data.operador_id),approved_by_name:actor(cash.data.approved_by)}:null,cashRevisions:revisions?.data??[],variation:variation.data,captureStartedAt:captureStart.data,canSupervise:access.canSupervise,canDeclare:access.canClose||access.canApprove&&!access.canConfigure,canClose:access.canClose&&date>=new Intl.DateTimeFormat("sv-SE",{timeZone:"Africa/Luanda",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(captureStart.data)),canConfigure:access.canConfigure,canApprove:access.canApprove&&(cash.data?.declared_by??cash.data?.operador_id)!==access.userId};
+  return {closed:closed.data?{...closed.data,closed_by_name:actor(closed.data.closed_by)}:null,lateCount:late.count??0,preview:preview.data??{},config:config.data,cash:cash.data?{...cash.data,declared_by_name:actor(cash.data.declared_by??cash.data.operador_id),approved_by_name:actor(cash.data.approved_by)}:null,cashRevisions:revisions?.data??[],variation:variation.data,captureStartedAt:captureStart.data,canSupervise:access.canSupervise,canViewMovements:access.canSupervise&&canReadCashMovements(access,cash.data?.status),canDeclare:access.canClose||access.canApprove&&!access.canConfigure,canClose:access.canClose&&date>=new Intl.DateTimeFormat("sv-SE",{timeZone:"Africa/Luanda",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(captureStart.data)),canConfigure:access.canConfigure,canApprove:access.canApprove&&(cash.data?.declared_by??cash.data?.operador_id)!==access.userId};
 }
 export async function getExpediente(access:Access,date:string,cursor=0,filters:ActivityFilter={}){
   const [detail,activity]=await Promise.all([getExpedienteDetail(access,date),getExpedienteActivity(access,date,cursor,filters)]);
