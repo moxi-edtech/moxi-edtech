@@ -65,7 +65,7 @@ test("financial status failures do not masquerade as zero", () => {
   assert.match(focus, /mensalidadesStatusDisponivel === false \? null/);
 });
 
-test("Operações restores branded green icon containers and only four daily shortcuts", () => {
+test("Operações preserves branded green icon containers and exactly five daily shortcuts including provas", () => {
   const quick = source("components/layout/escola-admin/QuickActionsSection.tsx");
   const action = source("components/shared/AcaoRapidaCard.tsx");
   const kpi = source("components/dashboard/KpiCard.tsx");
@@ -73,7 +73,8 @@ test("Operações restores branded green icon containers and only four daily sho
   const css = source("app/globals.css");
   const list = quick.match(/const actions: QuickAction\[\] = portalBase === "operacoes"\s*\? \[([\s\S]*?)\]\s*:\s*\[/);
   assert.ok(list);
-  assert.deepEqual([...list[1].matchAll(/key: "([^"]+)"/g)].map((match) => match[1]), ["recebimentos", "horarios", "criar_aviso"]);
+  assert.deepEqual([...list[1].matchAll(/key: "([^"]+)"/g)].map((match) => match[1]), ["recebimentos", "horarios", "provas", "criar_aviso"]);
+  assert.match(list[1], /key: "provas",\s*label: "Central de provas",\s*icon: ClipboardCheck,\s*href: buildPortalHref\(escolaParam, "\/operacoes\/provas"\)/);
   assert.doesNotMatch(list[1], /Nova Matrícula|Nova Admissão|Importar Alunos/);
   assert.match(quick, /<ExpedienteDashboardCard escolaId=\{escolaId\} portal=\{portalBase\}/);
   assert.match(quick, /Novo Funcionário/);
