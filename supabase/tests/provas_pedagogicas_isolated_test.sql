@@ -5,7 +5,7 @@ SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001'
 DO $$
 DECLARE r public.provas_pedagogicas;
  v_school uuid:='00000000-0000-4000-8000-000000000001';
- v_data jsonb:='{"ano_letivo_id":"20000000-0000-4000-8000-000000000001","curso_matriz_id":"70000000-0000-4000-8000-000000000001","titulo":"Prova","classe":"8ª","disciplina":"Física","ano_lectivo":"2026/2027","trimestre":1,"duracao":90,"serie":"A","conteudo":[{"tipo":"discursiva","texto":"Questão confidencial","linhas":3}]}';
+ v_data jsonb:='{"ano_letivo_id":"20000000-0000-4000-8000-000000000001","curso_matriz_id":"70000000-0000-4000-8000-000000000001","tipo_prova":"recurso","titulo":"Prova","classe":"8ª","disciplina":"Física","ano_lectivo":"2026/2027","trimestre":1,"duracao":90,"serie":"A","conteudo":[{"tipo":"discursiva","texto":"Questão confidencial","linhas":3}]}';
 BEGIN
  IF jsonb_array_length(public.provas_contexto(v_school,'20000000-0000-4000-8000-000000000001'))<>2 THEN RAISE EXCEPTION 'teacher context leaked or missing'; END IF;
  BEGIN
@@ -26,7 +26,7 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  r:=public.provas_mutar(v_school,NULL,NULL,'criar',v_data||'{"classe":"falsificada","disciplina":"falsificada","ano_lectivo":"2000/2001"}'::jsonb);
  IF r.classe<>'8ª' OR r.disciplina<>'Física' OR r.ano_lectivo<>'2026/2027' THEN RAISE EXCEPTION 'untrusted snapshot accepted'; END IF;
- IF r.estado<>'rascunho' OR r.versao<>1 OR r.autor_id<>auth.uid() THEN RAISE EXCEPTION 'create failed'; END IF;
+ IF r.tipo_prova<>'recurso' OR r.estado<>'rascunho' OR r.versao<>1 OR r.autor_id<>auth.uid() THEN RAISE EXCEPTION 'create failed'; END IF;
  PERFORM set_config('test.prova_id',r.id::text,true);
  BEGIN
    PERFORM public.provas_mutar('00000000-0000-4000-8000-000000000002',NULL,NULL,'criar',v_data);
@@ -74,6 +74,16 @@ BEGIN
    RAISE EXCEPTION 'invalid lines allowed';
  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
 END $$;
+-- Nominal distribution never exposes a draft even to administration.
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
+DO $test$
+BEGIN
+ BEGIN
+  PERFORM public.provas_destinatarios('00000000-0000-4000-8000-000000000001',current_setting('test.prova_id')::uuid,2,'turmas',ARRAY[]::uuid[],NULL,0);
+  RAISE EXCEPTION 'draft distribution allowed';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END;
+$test$;
 -- Other teacher, student, secretary and other-school admin cannot read draft.
 DO $$
 DECLARE u text;
@@ -110,6 +120,44 @@ BEGIN
   RAISE EXCEPTION 'secretary mutation allowed';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $$;
+DO $test$
+DECLARE sch uuid:='00000000-0000-4000-8000-000000000001'; p uuid:=current_setting('test.prova_id')::uuid; turma uuid:='80000000-0000-4000-8000-000000000001'; turma_b uuid:='80000000-0000-4000-8000-000000000002'; m uuid:='b0000000-0000-4000-8000-000000000001'; x jsonb; y jsonb;
+BEGIN
+ x:=public.provas_destinatarios(sch,p,4,'turmas',ARRAY[]::uuid[],NULL,0);
+ IF jsonb_array_length(x->'items')<>2 OR (x->>'total')::int<>43 THEN RAISE EXCEPTION 'campus scope or active counts incorrect: %',x; END IF;
+ x:=public.provas_destinatarios(sch,p,4,'alunos',ARRAY[turma],NULL,0);
+ IF (x->>'total')::int<>42 OR jsonb_array_length(x->'items')<>42 THEN RAISE EXCEPTION 'invalid roster'; END IF;
+ x:=public.provas_destinatarios(sch,p,4,'imprimir',ARRAY[turma],NULL,0);
+ y:=public.provas_destinatarios(sch,p,4,'imprimir',ARRAY[turma],NULL,40);
+ IF jsonb_array_length(x->'items')<>40 OR jsonb_array_length(y->'items')<>2 OR x->>'snapshot' IS DISTINCT FROM y->>'snapshot' THEN RAISE EXCEPTION 'batch continuity failed'; END IF;
+ x:=public.provas_destinatarios(sch,p,4,'imprimir',ARRAY[turma,turma_b],NULL,40);
+ IF (x->>'total')::int<>43 OR jsonb_array_length(x->'items')<>3 THEN RAISE EXCEPTION 'multi class print failed'; END IF;
+ x:=public.provas_destinatarios(sch,p,4,'imprimir',ARRAY[turma],m,0);
+ IF (x->>'total')::int<>1 OR x->'items'->0->>'nome'<>'Aluno Completo 1' OR x->'items'->0->>'sala'<>'12' OR x->'items'->0 ? 'aluno_id' THEN RAISE EXCEPTION 'individual context failed'; END IF;
+ BEGIN
+  PERFORM public.provas_destinatarios(sch,p,4,'imprimir',ARRAY[turma_b],m,0);
+  RAISE EXCEPTION 'foreign class enrollment accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN
+  PERFORM public.provas_destinatarios(sch,p,4,'imprimir',ARRAY['80000000-0000-4000-8000-000000000003'::uuid],NULL,0);
+  RAISE EXCEPTION 'campus restricted turma accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+  PERFORM public.provas_destinatarios(sch,p,3,'imprimir',ARRAY[turma],NULL,0);
+  RAISE EXCEPTION 'old version accepted';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
+ PERFORM set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
+ BEGIN
+  PERFORM public.provas_destinatarios(sch,p,4,'imprimir',ARRAY[turma],NULL,0);
+  RAISE EXCEPTION 'teacher nominal distribution accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000006',true);
+ BEGIN
+  PERFORM public.provas_destinatarios(sch,p,4,'turmas',ARRAY[]::uuid[],NULL,0);
+  RAISE EXCEPTION 'cross tenant distribution accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END;
+$test$;
 DO $$
 DECLARE u text;
 BEGIN
