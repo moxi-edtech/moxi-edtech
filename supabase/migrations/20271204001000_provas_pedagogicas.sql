@@ -8,6 +8,7 @@ CREATE TABLE public.provas_pedagogicas (
  autor_id uuid NOT NULL REFERENCES auth.users(id),
  ano_letivo_id uuid NOT NULL REFERENCES public.anos_letivos(id),
  curso_matriz_id uuid NOT NULL REFERENCES public.curso_matriz(id),
+ tipo_prova text NOT NULL DEFAULT 'trimestral' CHECK(tipo_prova IN ('professor','trimestral','exame_final','recurso','extraordinario','segunda_chamada','diagnostica','simulado','outro')),
  titulo text NOT NULL CHECK(length(btrim(titulo)) BETWEEN 1 AND 160),
  classe text NOT NULL CHECK(length(btrim(classe)) BETWEEN 1 AND 80),
  disciplina text NOT NULL CHECK(length(btrim(disciplina)) BETWEEN 1 AND 120),
@@ -212,16 +213,16 @@ BEGIN
      IF v_math_total>80 THEN RAISE EXCEPTION 'too_many_formulas' USING ERRCODE='22023'; END IF;
    END LOOP;
    IF p_acao='criar' THEN
-     INSERT INTO public.provas_pedagogicas(escola_id,autor_id,ano_letivo_id,curso_matriz_id,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo)
-     VALUES(p_escola,v_actor,v_context.ano_letivo_id,v_context.curso_matriz_id,p_dados->>'titulo',v_context.classe,v_context.disciplina,v_context.ano_lectivo,v_context.trimestre,(p_dados->>'duracao')::smallint,p_dados->>'serie',v_body) RETURNING * INTO r;
+     INSERT INTO public.provas_pedagogicas(escola_id,autor_id,ano_letivo_id,curso_matriz_id,tipo_prova,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo)
+     VALUES(p_escola,v_actor,v_context.ano_letivo_id,v_context.curso_matriz_id,coalesce(p_dados->>'tipo_prova','trimestral'),p_dados->>'titulo',v_context.classe,v_context.disciplina,v_context.ano_lectivo,v_context.trimestre,(p_dados->>'duracao')::smallint,p_dados->>'serie',v_body) RETURNING * INTO r;
    ELSE
-     UPDATE public.provas_pedagogicas SET ano_letivo_id=v_context.ano_letivo_id,curso_matriz_id=v_context.curso_matriz_id,titulo=p_dados->>'titulo',classe=v_context.classe,disciplina=v_context.disciplina,ano_lectivo=v_context.ano_lectivo,trimestre=v_context.trimestre,duracao=(p_dados->>'duracao')::smallint,serie=p_dados->>'serie',conteudo=v_body,versao=versao+1,atualizado_em=clock_timestamp() WHERE id=r.id RETURNING * INTO r;
+     UPDATE public.provas_pedagogicas SET ano_letivo_id=v_context.ano_letivo_id,curso_matriz_id=v_context.curso_matriz_id,tipo_prova=coalesce(p_dados->>'tipo_prova','trimestral'),titulo=p_dados->>'titulo',classe=v_context.classe,disciplina=v_context.disciplina,ano_lectivo=v_context.ano_lectivo,trimestre=v_context.trimestre,duracao=(p_dados->>'duracao')::smallint,serie=p_dados->>'serie',conteudo=v_body,versao=versao+1,atualizado_em=clock_timestamp() WHERE id=r.id RETURNING * INTO r;
    END IF;
  ELSIF p_acao='duplicar' THEN
    SELECT * INTO v_context FROM provas_private.provas_opcoes(p_escola,r.ano_letivo_id,r.curso_matriz_id) o WHERE o.trimestre=r.trimestre;
    IF NOT FOUND THEN RAISE EXCEPTION 'invalid_academic_context' USING ERRCODE='42501'; END IF;
-   INSERT INTO public.provas_pedagogicas(escola_id,autor_id,ano_letivo_id,curso_matriz_id,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo)
-   VALUES(p_escola,v_actor,v_context.ano_letivo_id,v_context.curso_matriz_id,r.titulo,v_context.classe,v_context.disciplina,v_context.ano_lectivo,v_context.trimestre,r.duracao,r.serie,r.conteudo) RETURNING * INTO r;
+   INSERT INTO public.provas_pedagogicas(escola_id,autor_id,ano_letivo_id,curso_matriz_id,tipo_prova,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo)
+   VALUES(p_escola,v_actor,v_context.ano_letivo_id,v_context.curso_matriz_id,r.tipo_prova,r.titulo,v_context.classe,v_context.disciplina,v_context.ano_lectivo,v_context.trimestre,r.duracao,r.serie,r.conteudo) RETURNING * INTO r;
  ELSE
    IF p_acao IN ('submeter','aprovar') AND NOT EXISTS(SELECT 1 FROM provas_private.provas_opcoes(p_escola,r.ano_letivo_id,r.curso_matriz_id) o WHERE o.trimestre=r.trimestre) THEN RAISE EXCEPTION 'invalid_academic_context' USING ERRCODE='42501'; END IF;
    IF p_acao='submeter' AND r.estado='rascunho' AND EXISTS(SELECT 1 FROM jsonb_array_elements(r.conteudo) x WHERE x->>'tipo' NOT IN ('grupo','texto')) THEN r.estado:='em_revisao';
@@ -241,4 +242,68 @@ RETURNS public.provas_pedagogicas LANGUAGE sql SECURITY INVOKER SET search_path=
 AS $$ SELECT provas_private.provas_mutar(p_escola,p_id,p_versao,p_acao,p_dados); $$;
 REVOKE ALL ON FUNCTION public.provas_mutar(uuid,uuid,integer,text,jsonb) FROM PUBLIC,anon,service_role;
 GRANT EXECUTE ON FUNCTION public.provas_mutar(uuid,uuid,integer,text,jsonb) TO authenticated;
+
+-- Read-only distribution. SECURITY INVOKER preserves school and campus RLS on
+-- turmas, turma_disciplinas, matriculas and alunos. No service role or names supplied by the caller.
+CREATE FUNCTION public.provas_destinatarios(p_escola uuid,p_prova uuid,p_versao integer,p_modo text,p_turmas uuid[],p_matricula uuid,p_offset integer)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path='' AS $distribution$
+DECLARE r public.provas_pedagogicas; v_items jsonb; v_total integer; v_allowed integer; v_duplicate boolean;
+BEGIN
+ IF NOT provas_private.provas_papel(p_escola,ARRAY['admin','admin_escola','diretor','admin_secretaria','admin_secretario','staff_admin','secretaria']) THEN
+  RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501';
+ END IF;
+ IF p_modo IS NULL OR p_modo NOT IN ('turmas','alunos','imprimir') OR p_offset IS NULL OR p_offset<0 OR p_offset>10000 OR p_turmas IS NULL OR cardinality(p_turmas)>10 OR array_position(p_turmas,NULL::uuid) IS NOT NULL OR cardinality(p_turmas)<>(SELECT count(DISTINCT x) FROM unnest(p_turmas) x) THEN
+  RAISE EXCEPTION 'invalid_distribution' USING ERRCODE='22023';
+ END IF;
+ IF (p_modo='turmas' AND (cardinality(p_turmas)<>0 OR p_matricula IS NOT NULL OR p_offset<>0))
+ OR (p_modo='alunos' AND (cardinality(p_turmas)<>1 OR p_matricula IS NOT NULL OR p_offset<>0))
+ OR (p_modo='imprimir' AND (cardinality(p_turmas)=0 OR (p_matricula IS NOT NULL AND (cardinality(p_turmas)<>1 OR p_offset<>0)))) THEN
+  RAISE EXCEPTION 'invalid_distribution' USING ERRCODE='22023';
+ END IF;
+ SELECT * INTO r FROM public.provas_pedagogicas WHERE id=p_prova AND escola_id=p_escola AND estado='aprovada';
+ IF NOT FOUND THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
+ IF p_versao IS DISTINCT FROM r.versao THEN RAISE EXCEPTION 'version_conflict' USING ERRCODE='40001'; END IF;
+ WITH eligible AS MATERIALIZED (
+   SELECT t.id,t.nome,t.turno,t.sala
+   FROM public.turmas t
+   JOIN public.curso_matriz cm ON cm.id=r.curso_matriz_id AND cm.escola_id=t.escola_id AND cm.classe_id=t.classe_id AND cm.curso_id=t.curso_id
+   JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id AND cc.escola_id=t.escola_id AND cc.ano_letivo_id=r.ano_letivo_id
+   WHERE t.escola_id=p_escola AND t.ano_letivo_id=r.ano_letivo_id AND t.session_id=r.ano_letivo_id
+     AND (p_modo='turmas' OR t.id=ANY(p_turmas))
+     AND EXISTS(SELECT 1 FROM public.turma_disciplinas td WHERE td.escola_id=p_escola AND td.turma_id=t.id AND td.curso_matriz_id=r.curso_matriz_id
+      AND (td.periodos_ativos IS NULL OR r.trimestre=ANY(td.periodos_ativos)))
+ ), roster AS MATERIALIZED (
+   SELECT m.id AS matricula_id,m.aluno_id,e.id AS turma_id,e.nome AS turma,e.turno,e.sala,
+     coalesce(nullif(btrim(a.nome_completo),''),a.nome) AS nome,a.numero_processo,m.numero_chamada
+   FROM eligible e
+   JOIN public.matriculas m ON m.escola_id=p_escola AND m.session_id=r.ano_letivo_id AND m.turma_id=e.id
+   JOIN public.alunos a ON a.id=m.aluno_id AND a.escola_id=m.escola_id AND a.deleted_at IS NULL
+   WHERE m.ativo IS TRUE AND lower(btrim(m.status)) IN ('ativo','ativa','active')
+     AND (p_matricula IS NULL OR m.id=p_matricula)
+ ), stats AS (
+   SELECT count(*)::integer AS total,count(DISTINCT aluno_id)<>count(*) AS duplicate FROM roster
+ ), payload AS (
+   SELECT CASE WHEN p_modo='turmas' THEN (
+    SELECT coalesce(jsonb_agg(to_jsonb(q) ORDER BY q.nome,q.id),'[]'::jsonb) FROM (
+      SELECT e.id,e.nome,e.turno,e.sala,count(roster.matricula_id)::integer AS total
+      FROM eligible e LEFT JOIN roster ON roster.turma_id=e.id GROUP BY e.id,e.nome,e.turno,e.sala
+      ORDER BY e.nome,e.id LIMIT 501
+    ) q
+   ) ELSE (
+    SELECT coalesce(jsonb_agg(to_jsonb(q)-'aluno_id' ORDER BY q.turma,q.numero_chamada NULLS LAST,q.nome,q.matricula_id),'[]'::jsonb) FROM (
+      SELECT * FROM roster ORDER BY turma,numero_chamada NULLS LAST,nome,matricula_id
+      LIMIT CASE WHEN p_modo='alunos' THEN 1001 ELSE 40 END OFFSET p_offset
+    ) q
+   ) END AS items
+ )
+ SELECT payload.items,stats.total,(SELECT count(*) FROM eligible)::integer,stats.duplicate INTO v_items,v_total,v_allowed,v_duplicate FROM payload CROSS JOIN stats;
+ IF p_modo<>'turmas' AND v_allowed<>cardinality(p_turmas) THEN RAISE EXCEPTION 'invalid_turma' USING ERRCODE='42501'; END IF;
+ IF p_modo<>'turmas' AND v_duplicate THEN RAISE EXCEPTION 'duplicate_active_enrollment' USING ERRCODE='22023'; END IF;
+ IF (p_modo='turmas' AND v_allowed>500) OR (p_modo='alunos' AND v_total>1000) THEN RAISE EXCEPTION 'distribution_limit' USING ERRCODE='22023'; END IF;
+ IF p_modo='imprimir' AND (v_total=0 OR p_offset>=v_total OR (p_matricula IS NOT NULL AND v_total<>1)) THEN RAISE EXCEPTION 'no_eligible_students' USING ERRCODE='22023'; END IF;
+ RETURN jsonb_build_object('items',v_items,'total',v_total,'offset',p_offset,'limit',40);
+END;
+$distribution$;
+REVOKE ALL ON FUNCTION public.provas_destinatarios(uuid,uuid,integer,text,uuid[],uuid,integer) FROM PUBLIC,anon,service_role;
+GRANT EXECUTE ON FUNCTION public.provas_destinatarios(uuid,uuid,integer,text,uuid[],uuid,integer) TO authenticated;
 COMMIT;
