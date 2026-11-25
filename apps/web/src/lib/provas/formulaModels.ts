@@ -1,6 +1,6 @@
 import { mathMarkup } from "./math";
 
-export const formulaCategories=["Aritmética","Álgebra","Geometria","Trigonometria","Análise","Física"] as const;
+export const formulaCategories=["Aritmética","Álgebra","Geometria","Trigonometria","Análise","Física","Álgebra linear","Estatística e probabilidade","Combinatória"] as const;
 export type FormulaCategory=typeof formulaCategories[number];
 type ModelField={label:string;example:string;kind:"number"|"variable"};
 const field=(label:string,example:string,kind:ModelField["kind"]="number"):ModelField=>({label,example,kind});
@@ -32,6 +32,15 @@ export const formulaModels=[
  {id:"velocidade",category:"Física",label:"Velocidade média",sample:"v=\\frac{100}{20}",fields:[field("Distância","100"),field("Tempo","20")]},
  {id:"energia",category:"Física",label:"Energia cinética",sample:"E_{c}=\\frac{mv^{2}}{2}",fields:[field("Massa","m","variable"),field("Velocidade","v","variable")]},
  {id:"forca",category:"Física",label:"Força",sample:"F=5\\times3",fields:[field("Massa","5"),field("Aceleração","3")]},
+ {id:"sistema",category:"Álgebra",label:"Sistema de equações",sample:"\\begin{cases}2x+y=10\\\\x-y=2\\end{cases}",fields:[field("Coeficiente x · 1ª equação","2"),field("Coeficiente y · 1ª equação","1"),field("Resultado · 1ª equação","10"),field("Coeficiente x · 2ª equação","1"),field("Coeficiente y · 2ª equação","-1"),field("Resultado · 2ª equação","2")]},
+ {id:"matriz",category:"Álgebra linear",label:"Matriz",sample:"\\begin{pmatrix}2&3\\\\4&5\\end{pmatrix}",fields:[field("Linha 1 · Coluna 1","2"),field("Linha 1 · Coluna 2","3"),field("Linha 2 · Coluna 1","4"),field("Linha 2 · Coluna 2","5")]},
+ {id:"determinante",category:"Álgebra linear",label:"Determinante",sample:"\\begin{vmatrix}2&3\\\\4&5\\end{vmatrix}",fields:[field("Linha 1 · Coluna 1","2"),field("Linha 1 · Coluna 2","3"),field("Linha 2 · Coluna 1","4"),field("Linha 2 · Coluna 2","5")]},
+ {id:"media",category:"Estatística e probabilidade",label:"Média aritmética",sample:"\\mu=\\frac{2+4+7}{3}",fields:[field("1.º valor","2"),field("2.º valor","4"),field("3.º valor","7"),field("Quantidade","3")]},
+ {id:"variancia",category:"Estatística e probabilidade",label:"Variância",sample:"\\sigma^{2}=\\frac{\\sum(x_{i}-\\mu)^{2}}{n}",fields:[field("Observação","x","variable"),field("Quantidade","n","variable")]},
+ {id:"probabilidade",category:"Estatística e probabilidade",label:"Probabilidade",sample:"P(A)=\\frac{3}{10}",fields:[field("Evento","A","variable"),field("Casos favoráveis","3"),field("Casos possíveis","10")]},
+ {id:"derivada",category:"Análise",label:"Derivada",sample:"\\frac{dy}{dx}=3x^{2}",fields:[field("Coeficiente","3"),field("Expoente","2")]},
+ {id:"arranjo",category:"Combinatória",label:"Arranjos",sample:"A_{5}^{2}=\\frac{5!}{(5-2)!}",fields:[field("Total","5"),field("Seleccionados","2")]},
+ {id:"combinacao",category:"Combinatória",label:"Combinações",sample:"C_{5}^{2}=\\frac{5!}{2!(5-2)!}",fields:[field("Total","5"),field("Seleccionados","2")]},
 ] as const satisfies readonly {id:string;category:FormulaCategory;label:string;sample:string;fields:readonly ModelField[]}[];
 export type FormulaModelId=typeof formulaModels[number]["id"];
 function numeric(raw:string):string|null {
@@ -51,8 +60,16 @@ export function modelExpression(id:FormulaModelId,values:readonly string[]):stri
  if(!model||values.length!==model.fields.length)return null;
  const terms=values.map((v,i)=>model.fields[i].kind==="variable"?variable(v):numeric(v));
  if(terms.some(v=>v===null))return null;
- const [a,b,c,d]=terms as string[];
+ const [a,b,c,d,e,f]=terms as string[];
  switch(id){
+  case "sistema":return "\\begin{cases}"+a+"x"+signed(b)+"y="+c+"\\\\"+d+"x"+signed(e)+"y="+f+"\\end{cases}";
+  case "matriz":case "determinante":{const env=id==="matriz"?"pmatrix":"vmatrix";return "\\begin{"+env+"}"+a+"&"+b+"\\\\"+c+"&"+d+"\\end{"+env+"}";}
+  case "media":return "\\mu=\\frac{"+a+signed(b)+signed(c)+"}{"+d+"}";
+  case "variancia":return "\\sigma^{2}=\\frac{\\sum("+a+"_{i}-\\mu)^{2}}{"+b+"}";
+  case "probabilidade":return "P("+a+")=\\frac{"+b+"}{"+c+"}";
+  case "derivada":return "\\frac{dy}{dx}="+a+"x^{"+b+"}";
+  case "arranjo":return "A_{"+a+"}^{"+b+"}=\\frac{"+a+"!}{("+a+"-"+grouped(b)+")!}";
+  case "combinacao":return "C_{"+a+"}^{"+b+"}=\\frac{"+a+"!}{"+grouped(b)+"!("+a+"-"+grouped(b)+")!}";
   case "numero":case "variavel":return a;
   case "fracao":return "\\frac{"+a+"}{"+b+"}";
   case "potencia":return power(a,b);

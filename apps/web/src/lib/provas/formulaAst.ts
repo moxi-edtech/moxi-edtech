@@ -1,4 +1,4 @@
-import { safeLatex } from "./rich";
+import { safeLatex,validGridDimensions,type MathGridEnvironment } from "./rich";
 import { mathMarkup } from "./math";
 import { formulaModels,modelExpression,type FormulaModelId } from "./formulaModels";
 
@@ -7,8 +7,9 @@ export type MathNode =
  | {kind:"group";open:"("|"["|"{";body:MathNode[]}
  | {kind:"fraction";command:"\\frac"|"\\dfrac"|"\\tfrac";numerator:MathNode[];denominator:MathNode[]}
  | {kind:"root";index?:MathNode[];body:MathNode[]}
- | {kind:"script";symbol:"^"|"_";body:MathNode[];braced:boolean};
-export type MathSlot="body"|"numerator"|"denominator"|"index";
+ | {kind:"script";symbol:"^"|"_";body:MathNode[];braced:boolean}
+ | {kind:"grid";env:MathGridEnvironment;rows:MathNode[][][]};
+export type MathSlot="body"|"numerator"|"denominator"|"index"|`cell:${number}:${number}`;
 export type MathPath=readonly {index:number;slot:MathSlot}[];
 export const AST_LIMITS={depth:8,nodes:160,characters:300} as const;
 const closing={"(":")","[":"]","{":"}"} as const;
@@ -17,6 +18,7 @@ const tokenPattern=/^(?:\\[A-Za-z]+|\\[,;! ]|\d+(?:\.\d+)?|\.\d+|[A-Za-z]|[+\-=*
 export function tokenNode(value:string):MathNode{return {kind:"token",value};}
 export function mathSlots(node:MathNode):{key:MathSlot;label:string;nodes:MathNode[]}[]{
  switch(node.kind){
+  case "grid":return node.rows.flatMap((row,r)=>row.map((nodes,c)=>({key:`cell:${r}:${c}` as MathSlot,label:node.env==="cases"?"Equação "+(r+1):"Linha "+(r+1)+" · Coluna "+(c+1),nodes})));
   case "fraction":return [{key:"numerator",label:"Numerador",nodes:node.numerator},{key:"denominator",label:"Denominador",nodes:node.denominator}];
   case "root":return [...(node.index?[{key:"index" as const,label:"Índice da raiz",nodes:node.index}]:[]),{key:"body",label:"Radicando",nodes:node.body}];
   case "script":return [{key:"body",label:node.symbol==="^"?"Expoente":"Índice",nodes:node.body}];
@@ -27,7 +29,7 @@ export function mathSlots(node:MathNode):{key:MathSlot;label:string;nodes:MathNo
 export function serializeMath(nodes:readonly MathNode[]):string{
  let out="";
  for(const n of nodes){
-  const value=n.kind==="token"?n.value:n.kind==="group"?n.open+serializeMath(n.body)+closing[n.open]:n.kind==="fraction"?n.command+"{"+serializeMath(n.numerator)+"}{"+serializeMath(n.denominator)+"}":n.kind==="root"?"\\sqrt"+(n.index?"["+serializeMath(n.index)+"]":"")+"{"+serializeMath(n.body)+"}":n.symbol+(n.braced?"{"+serializeMath(n.body)+"}":serializeMath(n.body));
+  const value=n.kind==="grid"?"\\begin{"+n.env+"}"+n.rows.map(row=>row.map(serializeMath).join("&")).join("\\\\")+"\\end{"+n.env+"}":n.kind==="token"?n.value:n.kind==="group"?n.open+serializeMath(n.body)+closing[n.open]:n.kind==="fraction"?n.command+"{"+serializeMath(n.numerator)+"}{"+serializeMath(n.denominator)+"}":n.kind==="root"?"\\sqrt"+(n.index?"["+serializeMath(n.index)+"]":"")+"{"+serializeMath(n.body)+"}":n.symbol+(n.braced?"{"+serializeMath(n.body)+"}":serializeMath(n.body));
   // A newly adjacent alphabetic token must not extend a TeX command name.
   if(/\\[A-Za-z]+$/.test(out)&&/^[A-Za-z]/.test(value))out+=" ";
   out+=value;
@@ -36,13 +38,14 @@ export function serializeMath(nodes:readonly MathNode[]):string{
 }
 export function mathTreeValid(nodes:readonly MathNode[],allowEmpty=false):boolean{
  let count=0;
- function walk(list:readonly MathNode[],depth:number):boolean{
+ function walk(list:readonly MathNode[],depth:number,inGrid=false):boolean{
   if(depth>AST_LIMITS.depth||(!allowEmpty&&!list.length))return false;
   for(const n of list){
    if(++count>AST_LIMITS.nodes)return false;
+   if(n.kind==="grid"&&(inGrid||!validGridDimensions(n.env,n.rows)))return false;
    if(n.kind==="token"&&(!tokenPattern.test(n.value)||forbiddenCommands.has(n.value)))return false;
    if(n.kind==="script"&&!n.braced&&(n.body.length!==1||n.body[0].kind!=="token"||!/^[A-Za-z0-9]$/.test(n.body[0].value)))return false;
-   for(const slot of mathSlots(n))if(!walk(slot.nodes,depth+1))return false;
+   for(const slot of mathSlots(n))if(!walk(slot.nodes,depth+1,inGrid||n.kind==="grid"))return false;
   }
   return true;
  }
@@ -76,6 +79,14 @@ export function parseMath(source:string):MathNode[]|null{
   while(pos<source.length&&source[pos]!==stop){
    if(++count>AST_LIMITS.nodes)throw Error("size");
    const c=source[pos];
+   if(source.startsWith("\\begin{",pos)){
+    const match=/^\\begin\{(cases|pmatrix|vmatrix)\}/.exec(source.slice(pos));if(!match)throw Error("grid");
+    const env=match[1] as MathGridEnvironment,endTag="\\end{"+env+"}",bodyStart=pos+match[0].length,end=source.indexOf(endTag,bodyStart);
+    if(end<0)throw Error("grid end");
+    const rows=source.slice(bodyStart,end).split("\\\\").map(row=>row.split("&").map(cell=>parseMath(cell)));
+    if(rows.some(row=>row.some(cell=>!cell)))throw Error("grid cell");
+    nodes.push({kind:"grid",env,rows:rows as MathNode[][][]});pos=end+endTag.length;continue;
+   }
    if(c==="("||c==="["||c==="{"){nodes.push({kind:"group",open:c,body:takeGroup(c,depth)});continue;}
    if(c===")"||c==="]"||c==="}")throw Error("unexpected close");
    if(c==="^"||c==="_"){
@@ -115,10 +126,15 @@ export function replaceMathAt(nodes:MathNode[],path:MathPath,replacement:MathNod
  const [step,...rest]=path,n=nodes[step.index],slot=n&&mathSlots(n).find(s=>s.key===step.slot);
  if(!slot)return null;
  const value=replaceMathAt(slot.nodes,rest,replacement);if(!value)return null;
- return nodes.map((item,i)=>i===step.index?{...item,[step.slot]:value,...(item.kind==="script"?{braced:true}:{})}:item);
+ return nodes.map((item,i)=>{
+  if(i!==step.index)return item;
+  if(item.kind==="grid"){const [,r,c]=step.slot.split(":").map(Number);return {...item,rows:item.rows.map((row,ri)=>row.map((cell,ci)=>ri===r&&ci===c?value:cell))};}
+  return {...item,[step.slot]:value,...(item.kind==="script"?{braced:true}:{})};
+ });
 }
 export function mathNodeLabel(node:MathNode):string{
  switch(node.kind){
+  case "grid":return node.env==="cases"?"Sistema de equações":node.env==="vmatrix"?"Determinante":"Matriz";
   case "fraction":return "Fracção";
   case "root":return "Raiz";
   case "script":return node.symbol==="^"?"Expoente":"Índice";
@@ -126,6 +142,6 @@ export function mathNodeLabel(node:MathNode):string{
   default:return /^\s+$/.test(node.value)?"Espaço":node.value==="\\,"?"Espaço fino":node.value;
  }
 }
-export const mathSymbols=[["+", "+"],["−","-"],["×","\\times"],["÷","\\div"],["=","="],["±","\\pm"],["≤","\\leq"],["≥","\\geq"],["≠","\\neq"],["·","\\cdot"],["π","\\pi"],["∞","\\infty"],["sin","\\sin"],["cos","\\cos"],["tan","\\tan"],["log","\\log"],["ln","\\ln"],["∫","\\int"],["∑","\\sum"],["lim","\\lim"],["→","→"],["°","\\circ"]] as const;
+export const mathSymbols=[["+", "+"],["−","-"],["×","\\times"],["÷","\\div"],["=","="],["±","\\pm"],["≤","\\leq"],["≥","\\geq"],["≠","\\neq"],["·","\\cdot"],["π","\\pi"],["∞","\\infty"],["sin","\\sin"],["cos","\\cos"],["tan","\\tan"],["log","\\log"],["ln","\\ln"],["∫","\\int"],["∑","\\sum"],["lim","\\lim"],["→","→"],["°","\\circ"],["!","!"],["′","′"],["σ","\\sigma"],["μ","\\mu"]] as const;
 export function editableMathToken(value:string):boolean{return /^(?:\d+(?:\.\d+)?|\.\d+|[A-Za-z])$/.test(value);}
 export function validMathToken(value:string):boolean{return editableMathToken(value)&&value.length<=16;}

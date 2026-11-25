@@ -2,8 +2,8 @@ import { completeExpression,composeExpression,formulaModels,formulaOperators,mod
 
 type EditablePart=Extract<FormulaPart,{model:FormulaModelId}>;
 const escapeRegex=(s:string)=>s.replace(/[.*+?^{}()|[\]\\]/g,"\\$&");
-const digits=["91827364","82736451","73645182","64518273"];
-const letters=["J","Q","W","Z"];
+const digits=["91827364","82736451","73645182","64518273","55409182","46390871"];
+const letters=["J","Q","W","Z","K","T"];
 const symbols:Record<string,string>={"\\alpha":"α","\\beta":"β","\\theta":"θ","\\pi":"π","\\lambda":"λ","\\mu":"μ","\\omega":"ω"};
 type Matcher={model:FormulaModelId;regex:RegExp;negative:boolean[];variable:boolean[]};
 // Generate reverse matchers from the forward model itself. No user-controlled regex.

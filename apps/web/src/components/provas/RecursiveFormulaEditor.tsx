@@ -12,6 +12,9 @@ function MathPreview({source}:{source:string}){
  return html?<span className="inline-block max-w-full overflow-x-auto align-middle" dangerouslySetInnerHTML={{__html:html}}/>:<span className="text-xs text-muted-foreground">Complete a expressão.</span>;
 }
 const structures:readonly {name:string;sample:string;nodes:()=>MathNode[]}[]=[
+ {name:"Sistema de equações",sample:"\\begin{cases}x+y=3\\\\x-y=1\\end{cases}",nodes:()=>[{kind:"grid",env:"cases",rows:[[[tokenNode("x"),tokenNode("+"),tokenNode("y"),tokenNode("="),tokenNode("3")]],[[tokenNode("x"),tokenNode("-"),tokenNode("y"),tokenNode("="),tokenNode("1")]]]}]},
+ {name:"Matriz",sample:"\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}",nodes:()=>[{kind:"grid",env:"pmatrix",rows:[[[tokenNode("1")],[tokenNode("2")]],[[tokenNode("3")],[tokenNode("4")]]]}]},
+ {name:"Determinante",sample:"\\begin{vmatrix}1&2\\\\3&4\\end{vmatrix}",nodes:()=>[{kind:"grid",env:"vmatrix",rows:[[[tokenNode("1")],[tokenNode("2")]],[[tokenNode("3")],[tokenNode("4")]]]}]},
  {name:"Fracção",sample:"\\frac{1}{2}",nodes:()=>[{kind:"fraction",command:"\\frac",numerator:[tokenNode("1")],denominator:[tokenNode("2")]}]},
  {name:"Raiz",sample:"\\sqrt{x}",nodes:()=>[{kind:"root",body:[tokenNode("x")]}]},
  {name:"Raiz de índice n",sample:"\\sqrt[3]{x}",nodes:()=>[{kind:"root",index:[tokenNode("3")],body:[tokenNode("x")]}]},
@@ -21,7 +24,7 @@ const structures:readonly {name:string;sample:string;nodes:()=>MathNode[]}[]=[
  {name:"Parênteses",sample:"(x+1)",nodes:()=>[{kind:"group",open:"(",body:[tokenNode("x"),tokenNode("+"),tokenNode("1")]}]},
  {name:"Colchetes",sample:"[x+1]",nodes:()=>[{kind:"group",open:"[",body:[tokenNode("x"),tokenNode("+"),tokenNode("1")]}]},
 ];
-const allSymbols=[...mathSymbols,["α","\\alpha"],["β","\\beta"],["θ","\\theta"],["λ","\\lambda"],["μ","\\mu"],["ω","\\omega"],["γ","\\gamma"],["δ","\\delta"],["σ","\\sigma"],["φ","\\phi"]] as const;
+const allSymbols=[...mathSymbols,["α","\\alpha"],["β","\\beta"],["θ","\\theta"],["λ","\\lambda"],["ω","\\omega"],["γ","\\gamma"],["δ","\\delta"],["φ","\\phi"]] as const;
 type Picker="numbers"|"symbols"|"structures"|"models";
 export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled,label}:{initial:MathNode[];onInsert:(value:string)=>void;onBack:()=>void;disabled:boolean;label:string}){
  const [tree,setTree]=useState(initial);
@@ -60,6 +63,15 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
   const to=selection+delta;if(to<0||to>=list.length)return;
   const next=[...list];[next[selection],next[to]]=[next[to],next[selection]];change(next,to);
  }
+ function resizeGrid(axis:"row"|"column",delta:number){
+  if(disabled||selection===null||selected?.kind!=="grid")return;
+  const rows=selected.rows.length,cols=selected.rows[0].length,square=selected.env==="vmatrix";
+  const nr=rows+(axis==="row"||square?delta:0),nc=cols+(axis==="column"||square?delta:0);
+  if(nr<(selected.env==="cases"||square?2:1)||nc<(square?2:1)||nr>4||nc>4||(selected.env==="cases"&&nc!==1))return;
+  if(delta<0&&!window.confirm("Remover a última linha ou coluna e o seu conteúdo?"))return;
+  const next={...selected,rows:Array.from({length:nr},(_,r)=>Array.from({length:nc},(_,c)=>selected.rows[r]?.[c]??[tokenNode(selected.env==="cases"?"x":"0"),...(selected.env==="cases"?[tokenNode("="),tokenNode("0")]:[])]))};
+  change(list.map((n,i)=>i===selection?next:n),selection);
+ }
  const previewStyle="flex min-h-20 min-w-0 items-center justify-center overflow-x-auto rounded-xl border border-border bg-card p-3 text-2xl";
  return <section aria-label="Compositor de estruturas" className="min-w-0 space-y-3">
   <div className="flex items-center justify-between gap-2"><h3 className="text-base font-semibold text-klasse-green dark:text-foreground">Personalizar expressão</h3><Button type="button" variant="ghost" size="sm" onClick={()=>{if(source===serializeMath(initial)||window.confirm("Descartar as alterações feitas nesta expressão?"))onBack();}} disabled={disabled}><ArrowLeft/> Voltar</Button></div>
@@ -75,6 +87,12 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
   </div>
   {selected&&selection!==null&&<div className="space-y-2 rounded-xl border border-border p-3">
    <p className="text-sm font-medium">{mathNodeLabel(selected)}</p>
+   {selected.kind==="grid"&&<div className="space-y-2"><p className="text-xs text-muted-foreground">{selected.env==="cases"?selected.rows.length+" equações":selected.rows.length+" × "+selected.rows[0].length}</p><div className="flex flex-wrap gap-1">
+    <Button type="button" size="sm" variant="outline" disabled={disabled||selected.rows.length>=4||selected.env==="vmatrix"&&selected.rows[0].length>=4} onClick={()=>resizeGrid("row",1)}><Plus/> {selected.env==="cases"?"Equação":selected.env==="vmatrix"?"Dimensão":"Linha"}</Button>
+    {selected.env==="pmatrix"&&<Button type="button" size="sm" variant="outline" disabled={disabled||selected.rows[0].length>=4} onClick={()=>resizeGrid("column",1)}><Plus/> Coluna</Button>}
+    <Button type="button" size="sm" variant="outline" disabled={disabled||selected.rows.length<=(selected.env==="pmatrix"?1:2)} onClick={()=>resizeGrid("row",-1)}>Remover {selected.env==="cases"?"equação":selected.env==="vmatrix"?"dimensão":"linha"}</Button>
+    {selected.env==="pmatrix"&&<Button type="button" size="sm" variant="outline" disabled={disabled||selected.rows[0].length<=1} onClick={()=>resizeGrid("column",-1)}>Remover coluna</Button>}
+   </div></div>}
    {mathSlots(selected).length>0&&<div className="grid gap-2">{mathSlots(selected).map(slot=><button key={slot.key} type="button" className="flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-xl border border-border px-3 text-left text-sm" onClick={()=>openSlot(selection,slot.key)} disabled={disabled||path.length>=AST_LIMITS.depth}><span>{slot.label}</span><span className="min-w-0 flex-1 text-right"><MathPreview source={serializeMath(slot.nodes)}/></span><ChevronRight className="size-4 shrink-0"/></button>)}</div>}
    <div className="flex flex-wrap gap-1">
     {selected.kind==="token"&&editableMathToken(selected.value)&&<Button type="button" size="sm" variant="outline" onClick={()=>openPicker("numbers","replace")} disabled={disabled}>Alterar valor</Button>}
