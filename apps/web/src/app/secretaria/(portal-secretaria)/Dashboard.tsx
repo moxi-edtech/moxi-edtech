@@ -461,6 +461,12 @@ export function Dashboard({
                   sublabel="Exportação nominal"
                   onClick={() => setBalcaoModal("turma_docs")}
                 />
+                {escolaParam && <AcaoRapidaCard
+                  icon={<Printer className="h-5 w-5" />}
+                  label="Imprimir provas"
+                  sublabel="Por turma ou aluno"
+                  href={buildPortalHref(escolaParam, "/secretaria/provas")}
+                />}
                 <AcaoRapidaCard
                   icon={<Banknote className="h-5 w-5" />}
                   label="Pagar Propina"

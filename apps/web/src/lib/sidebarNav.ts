@@ -116,6 +116,7 @@ export const sidebarConfig: SidebarConfig = {
       children: [
         { href: "/escola/[escolaId]/operacoes/documentos", label: "Emissão de Declarações" },
         { href: "/escola/[escolaId]/operacoes/documentos-oficiais", label: "Documentos Oficiais (MED)" },
+        { href: "/escola/[escolaId]/operacoes/provas", label: "Central de provas" },
       ],
     },
     {
@@ -398,6 +399,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/escola/[escolaId]/professor", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/escola/[escolaId]/professor/frequencias", label: "Frequências", icon: "BookOpen" },
     { href: "/escola/[escolaId]/professor/notas", label: "Lançar Notas", icon: "FileText" },
+    { href: "/escola/[escolaId]/professor/provas", label: "Provas", icon: "FileText" },
     { href: "/escola/[escolaId]/professor/calendario", label: "Calendário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/professor/perfil", label: "Perfil", icon: "User" },
   ],

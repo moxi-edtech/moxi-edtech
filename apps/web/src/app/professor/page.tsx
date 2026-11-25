@@ -369,6 +369,11 @@ export default function Page() {
           </div>
         )}
         <AssignmentsBanner loading={loading} hasAssignments={atribs.length > 0} hasError={Boolean(loadError)} academicYearLabel={academicYearLabel} />
+        {escolaParam && <Link href={professorHref("/professor/provas")} prefetch={false} className="flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-3 transition hover:border-ring focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 sm:p-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-klasse-green"><ClipboardCheck className="h-5 w-5" aria-hidden="true" /></span>
+          <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">Provas</span><span className="block text-xs text-muted-foreground">Elaborar, enviar para revisão e consultar</span></span>
+          <span className="shrink-0 text-xs font-semibold text-klasse-green">Abrir</span>
+        </Link>}
         <ProfessorReopeningRequests assignments={atribs} notesHref={professorHref("/professor/notas")} />
 
         {/* Aula actual: só mostra o estado real da aula, não presume que já começou. */}

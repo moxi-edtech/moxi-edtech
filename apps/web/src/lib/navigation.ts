@@ -56,6 +56,7 @@ export function toContextualPortalPath(path: string, pathname: string | null | u
     ["/secretaria/calendario", "/operacoes/calendario"],
     ["/secretaria/documentos-oficiais", "/operacoes/documentos-oficiais"],
     ["/secretaria/documentos", "/operacoes/documentos"],
+    ["/secretaria/provas", "/operacoes/provas"],
     ["/secretaria/operacoes-academicas", "/operacoes/academico"],
     ["/secretaria/importacoes", "/operacoes/importacoes"],
     ["/secretaria/exportacoes", "/operacoes/exportacoes"],
