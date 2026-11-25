@@ -113,6 +113,18 @@ try{
   await page.screenshot({path:"apps/web/visual-evidence/provas/formula-"+(isWebKit?"webkit-":"")+width+".png"});
   await dialog.getByRole("button",{name:"Inserir fórmula"}).click();
   await dialog.getByRole("group",{name:"Formatação do enunciado"}).waitFor();
+  if(width<640){
+   await dialog.getByRole("textbox",{name:"Enunciado 1"}).locator("math").click();
+   await dialog.getByRole("button",{name:"Editar fórmula",exact:true}).click();
+   await math.getByRole("button",{name:"Editar componente 1",exact:true}).click();
+   assert.equal(await math.getByLabel("Numerador",{exact:true}).inputValue(),"7");
+   assert.equal(await math.getByLabel("Denominador",{exact:true}).inputValue(),"5");
+   await math.getByLabel("Numerador",{exact:true}).fill("8");
+   await math.getByLabel("Numerador",{exact:true}).fill("7");
+   await math.getByRole("button",{name:"Actualizar fórmula",exact:true}).click();
+   await dialog.getByRole("group",{name:"Formatação do enunciado"}).waitFor();
+   assert.equal(await dialog.getByRole("textbox",{name:"Enunciado 1"}).locator("math").count(),1,"update replaces, never duplicates");
+  }
   await dialog.getByRole("button",{name:"Concluir edição"}).click();
   if(width<640){
    await dialog.getByRole("button",{name:"Adicionar pergunta",exact:true}).click();

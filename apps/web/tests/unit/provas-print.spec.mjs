@@ -278,3 +278,29 @@ test("mobile composition preserves math notation and rejects unsafe/incomplete c
  assert.match(html,/<mfrac>/);
  assert.match(html,/<msup>/);
 });
+
+test("formula recovery is lossless for all model examples and canonical compositions",()=>{
+ const {formulaModels,modelExpression,composeExpression}=require("../../src/lib/provas/formulaModels.ts");
+ const {recoverFormulaParts,formulaValueSlots,updateFormulaValues}=require("../../src/lib/provas/formulaRecovery.ts");
+ for(const model of formulaModels){
+  const source=modelExpression(model.id,model.fields.map(f=>f.example));
+  const parts=recoverFormulaParts(source);
+  assert.ok(parts.every(p=>"model" in p),model.id);
+  assert.equal(composeExpression(parts),source,model.id);
+ }
+ const source="\\frac{7}{5}+\\sqrt{25}-2^{3}";
+ const recovered=recoverFormulaParts(source);
+ assert.equal(recovered.length,3);
+ assert.deepEqual(recovered.map(p=>p.model),["fracao","raiz","potencia"]);
+ assert.equal(composeExpression(recovered),source);
+ assert.equal(composeExpression(recovered.map((p,i)=>i===0?{...p,values:["8","5"]}:p)),"\\frac{8}{5}+\\sqrt{25}-2^{3}");
+ const complex="\\frac{3x^{2}+7}{\\sqrt{16}}";
+ assert.equal(composeExpression(recoverFormulaParts(complex)),complex);
+ assert.deepEqual(formulaValueSlots(complex).map(s=>s.value),["3","2","7","16"]);
+ assert.equal(updateFormulaValues(complex,["3","2","7","16"]),complex);
+ assert.equal(updateFormulaValues(complex,["4","3","8","25"]),"\\frac{4x^{3}+8}{\\sqrt{25}}");
+ assert.equal(updateFormulaValues("x^2+3",["12","4"]),"x^{12}+4");
+ assert.equal(updateFormulaValues(complex,["3","2","7","\\htmlClass"]),null);
+ assert.deepEqual(formulaValueSlots("\\frac12"),[]);
+ assert.deepEqual(formulaValueSlots("\\text{2026}+2").map(s=>s.value),["2"]);
+});
