@@ -8,6 +8,8 @@ on:
       - 'apps/web/src/components/provas/**'
       - 'apps/web/src/app/api/escola/**/provas/**'
       - 'apps/web/tests/unit/provas-print.spec.mjs'
+      - 'apps/web/tests/unit/provas-browser.spec.mjs'
+      - 'scripts/audit-provas-dependencies.mjs'
       - 'apps/web/package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/provas-pedagogicas.yml'
@@ -76,3 +78,34 @@ jobs:
           audit_exit=$?
           set -e
           node scripts/audit-provas-dependencies.mjs /tmp/provas-deps.json /tmp/provas-audit.json "$audit_exit"
+
+  browser-print:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Install isolated browser tools (CI only)
+        run: |
+          mkdir -p /tmp/klasse-provas-browser
+          npm --prefix /tmp/klasse-provas-browser install --no-save --ignore-scripts @playwright/test@1.57.0
+          /tmp/klasse-provas-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: A4 document and MathML browser smoke
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
+        run: pnpm exec tsx apps/web/tests/unit/provas-browser.spec.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: provas-browser-synthetic
+          path: apps/web/visual-evidence/provas/
+          retention-days: 7
+          if-no-files-found: warn
