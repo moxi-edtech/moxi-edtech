@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { mapIssuedMonthlyReceipts } from "../../src/lib/financeiro/issued-monthly-receipts";
+import { mapIssuedMonthlyReceipts, mapIssuedBatchPaymentReceipts } from "../../src/lib/financeiro/issued-monthly-receipts";
 
 const ids = ["sep", "oct", "nov", "unpaid"];
-const items = ids.map(id => ({ tipo: "mensalidade", id, preco: 3000 }));
+const items = ids.slice(0, 3).map(id => ({ tipo: "mensalidade", id, preco: 3000 }));
 const doc = { id: "original", mensalidade_id: null, dados_snapshot: { pagamento_id: "service", itens_pagamento: [...items, { tipo: "servico", id: "fee", preco: 1800 }] } };
 const payments = [
-  ...ids.slice(0, 3).map(id => ({ id: "p-"+id, mensalidade_id: id, valor_pago: 3000, meta: { emitir_recibo: false, batch_idempotency_key: "batch-a" } })),
-  { id: "service", mensalidade_id: null, valor_pago: 1800, meta: { emitir_recibo: true, batch_idempotency_key: "batch-a" } },
+  ...ids.slice(0, 3).map((id, index) => ({ id: "p-"+id, mensalidade_id: id, valor_pago: 3000, meta: { emitir_recibo: false, batch_idempotency_key: "batch-a", batch_fingerprint: "fingerprint-a", batch_index: index } })),
+  { id: "service", mensalidade_id: null, valor_pago: 1800, meta: { emitir_recibo: true, batch_idempotency_key: "batch-a", batch_fingerprint: "fingerprint-a", batch_index: 3 } },
 ];
 
 test("a rematricula consolidated receipt is reused for all settled monthly items, not unpaid or services", () => {
@@ -38,4 +38,12 @@ test("both channels reuse authenticated, school/student scoped read-only lookup"
   assert.match(helper, /\.is\("revoked_at", null\)/);
   assert.match(helper, /\.eq\("status", "settled"\)/);
   assert.doesNotMatch(helper, /\.insert\(|\.update\(|\.upsert\(|\.delete\(|\.rpc\(|supabaseServerRole/);
+});
+
+test("payment lookup returns the same original receipt for the exact four batch members", () => {
+  assert.deepEqual([...mapIssuedBatchPaymentReceipts([doc], payments)], [
+    ["p-sep","original"], ["p-oct","original"], ["p-nov","original"], ["service","original"],
+  ]);
+  assert.equal(mapIssuedBatchPaymentReceipts([doc], payments.map((p,i) => i===0 ? {...p, valor_pago: 2900} : p)).size, 0);
+  assert.equal(mapIssuedBatchPaymentReceipts([doc], payments.map((p,i) => i===0 ? {...p, meta: {...p.meta, batch_fingerprint:"other"}} : p)).size, 0);
 });
