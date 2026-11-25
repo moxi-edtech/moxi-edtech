@@ -15,5 +15,5 @@ export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
  if(!valid.success)return json({error:"Resposta de distribuição inválida."},500);
  const items=(parsed.data.modo==="turmas"?turmaSchema.array():recipientSchema.array()).safeParse(valid.data.items);
  if(!items.success)return json({error:"Destinatários inválidos."},500);
- return json({...valid.data,items:items.data});
+ return json({...valid.data,items:parsed.data.modo==="imprimir"?[]:items.data});
 }
