@@ -1,4 +1,4 @@
-import type { Bloco, ProvaInput } from "./schema";
+import type { Bloco, ProvaPrintInput } from "./schema";
 import { mathMarkup } from "./math";
 const esc=(s:unknown)=>String(s??"").replace(/[&<>"']/g,c=>(({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"} as Record<string,string>)[c]!));
 export function blocoHtml(b:Bloco):string{
@@ -13,7 +13,7 @@ export function blocoHtml(b:Bloco):string{
   return text;
  }).join("");
 }
-export function provaHtml(prova:ProvaInput,escola:string,options:{nonce?:string;draft?:boolean}={}){
+export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:string;draft?:boolean}={}){
  let number=0,letter=0;
  const blocks=prova.conteudo.map(b=>{
    if(b.tipo==="grupo"){number=0;letter=0;return '<h3>'+blocoHtml(b)+'</h3>';}
