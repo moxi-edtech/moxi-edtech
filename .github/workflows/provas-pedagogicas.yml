@@ -8,6 +8,8 @@ on:
       - 'apps/web/src/components/provas/**'
       - 'apps/web/src/app/api/escola/**/provas/**'
       - 'apps/web/tests/unit/provas-print.spec.mjs'
+      - 'apps/web/package.json'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/provas-pedagogicas.yml'
 permissions:
   contents: read
@@ -47,4 +49,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --experimental-strip-types --test apps/web/tests/unit/provas-print.spec.mjs
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm exec tsx --test apps/web/tests/unit/provas-print.spec.mjs
