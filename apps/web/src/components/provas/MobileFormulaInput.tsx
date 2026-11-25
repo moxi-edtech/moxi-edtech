@@ -3,6 +3,8 @@ import { useRef,useState } from "react";
 import { ArrowLeft,Plus,Pencil,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { mathMarkup } from "@/lib/provas/math";
+import { parseMath,type MathNode } from "@/lib/provas/formulaAst";
+import RecursiveFormulaEditor from "./RecursiveFormulaEditor";
 import { recoverEditableExpression,formulaValueSlots,updateFormulaValues } from "@/lib/provas/formulaRecovery";
 import { composeExpression,formulaCategories,formulaModels,formulaOperators,partExpression,modelExpression,completeExpression,modelStarter,MAX_FORMULA_PARTS,type FormulaCategory,type FormulaModelId,type FormulaOperator,type FormulaPart } from "@/lib/provas/formulaModels";
 
@@ -13,6 +15,7 @@ function Formula({value}:{value:string|null}){
 export default function MobileFormulaInput({initial,onInsert,onCancel,disabled=false}:{initial:string;onInsert:(latex:string)=>void;onCancel:()=>void;disabled?:boolean}){
  const [recovered]=useState(()=>recoverEditableExpression(initial));
  const [parts,setParts]=useState<FormulaPart[]>(recovered.parts);
+ const [recursive,setRecursive]=useState<MathNode[]|null>(null);
  const [ending,setEnding]=useState(recovered.ending);
  const [groupStart,setGroupStart]=useState<number|null>(null);
  const [operatorOpen,setOperatorOpen]=useState<number|null>(null);
@@ -69,12 +72,16 @@ export default function MobileFormulaInput({initial,onInsert,onCancel,disabled=f
  function groupAt(index:number){if(groupStart===null){setGroupStart(index);return;}const from=Math.min(groupStart,index),to=Math.max(groupStart,index);const next=parts.map((p,i)=>({...p,opens:(p.opens??0)+(i===from?1:0),closes:(p.closes??0)+(i===to?1:0)}));if(composeExpression(next,ending))setParts(next);else setError("Não foi possível agrupar estes termos.");setGroupStart(null);}
  function submit(){if(disabled)return;if(!current){setError("A expressão está incompleta ou excede o limite de 300 caracteres.");return;}onInsert(current);}
  const insertLabel=initial?"Actualizar fórmula":"Inserir fórmula";
+ function openRecursive(source:string|null){if(disabled)return;const tree=source===null?null:parseMath(source);if(!tree){setError("Esta expressão contém uma estrutura ainda não reconhecida. Pode manter a fórmula original ou editar os valores disponíveis.");return;}setRecursive(tree);setError("");}
+ function customizeDraft(){if(!chosen||!draft)return;const previous=parts.find(p=>p.id===editing);const item:FormulaPart={id:previous?.id??nextId.current,operator:previous?.operator??"+",opens:previous?.opens,closes:previous?.closes,model:chosen,values:[...values]};const next=editing===null?[...parts,item]:parts.map(p=>p.id===editing?item:p);openRecursive(composeExpression(next,ending));}
+ if(recursive)return <RecursiveFormulaEditor initial={recursive} onInsert={onInsert} onBack={()=>setRecursive(null)} disabled={disabled} label={insertLabel}/>;
  return <section aria-label="Editor matemático" className="min-w-0 space-y-3">
   <div><h3 className="text-base font-semibold text-klasse-green dark:text-foreground">Expressão matemática</h3><p className="text-xs text-muted-foreground">Escolha um modelo ou combine termos e operadores.</p></div>
   {picking?(parameterSource!==null?<div className="space-y-3">
    <p className="text-sm font-medium">Editar valores da fórmula</p>
    <div aria-label="Pré-visualização dos valores" className="flex min-h-24 items-center justify-center overflow-x-auto rounded-xl border border-border bg-card p-3 text-2xl"><Formula value={parameterSlots.length?parameterDraft:parameterSource}/></div>
    {parameterSlots.length>0?<><p className="text-xs text-muted-foreground">Altere os números pela ordem em que aparecem. A estrutura, variáveis e operadores são preservados.</p><div className="grid grid-cols-2 gap-2">{parameterSlots.map((slot,i)=><label key={slot.start} className="grid min-w-0 gap-1 text-xs font-medium">Valor {i+1}<input type="text" inputMode="decimal" maxLength={16} autoComplete="off" disabled={disabled} className="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-3 text-base focus:outline-none focus:ring-4 focus:ring-klasse-gold/20" value={parameterValues[i]??""} onChange={e=>setParameterValues(v=>v.map((x,j)=>i===j?e.target.value:x))}/></label>)}</div><Button type="button" variant="outline" className="w-full" disabled={disabled||!parameterDraft} onClick={()=>saveValues()}>Guardar valores</Button></>:<p className="text-xs text-muted-foreground">Esta estrutura não permite edição segura dos valores no celular. A expressão original permanece intacta.</p>}
+   <Button type="button" variant="outline" className="w-full" disabled={disabled||!current} onClick={()=>openRecursive(current)}><Pencil/> Personalizar estrutura</Button>
    <Button type="button" variant="ghost" className="w-full" disabled={disabled} onClick={()=>{setParameterSource(null);setChosen(null);}}>Substituir por modelo</Button>
   </div>:model?<div className="space-y-3">
    <div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">{model.label}</p><Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={()=>setChosen(null)}>Trocar modelo</Button></div>
@@ -84,6 +91,7 @@ export default function MobileFormulaInput({initial,onInsert,onCancel,disabled=f
     {f.kind==="number"&&<button type="button" aria-label={"Alterar sinal de "+f.label} disabled={disabled} className="min-h-11 min-w-11 shrink-0 rounded-xl border border-border text-base focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" onClick={()=>setValues(v=>v.map((x,j)=>i===j?(x.startsWith("-")?x.slice(1):"-"+x):x))}>±</button>}
    </div></div>)}</div>
    <Button type="button" variant="outline" className="w-full" disabled={disabled||!draft||!completeExpression(draft)||(editing===null&&parts.length>=MAX_FORMULA_PARTS)} onClick={()=>savePart()}><Plus/> {editing===null?"Adicionar à expressão":"Guardar componente"}</Button>
+   <Button type="button" variant="ghost" className="w-full" disabled={disabled||!draft||!completeExpression(draft)} onClick={customizeDraft}><Pencil/> Personalizar estrutura</Button>
   </div>:<div className="space-y-3">
    <label className="grid gap-1 text-xs font-medium">Categoria<select aria-label="Categoria de modelos" value={category} disabled={disabled} onChange={e=>setCategory(e.target.value as FormulaCategory)} className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-base focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">{formulaCategories.map(v=><option key={v}>{v}</option>)}</select></label>
    <div className="grid grid-cols-2 gap-2" aria-label="Modelos matemáticos">{formulaModels.filter(m=>m.category===category).map(m=><button key={m.id} type="button" aria-label={m.label} disabled={disabled} className="flex min-h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-card p-2 text-center hover:border-klasse-gold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" onClick={()=>choose(m.id)}><span className="text-xl"><Formula value={m.sample}/></span><span className="text-xs font-medium">{m.label}</span></button>)}</div>
@@ -109,6 +117,7 @@ export default function MobileFormulaInput({initial,onInsert,onCancel,disabled=f
     {parts.some(p=>p.opens||p.closes)&&<Button type="button" variant="ghost" disabled={disabled} onClick={()=>{setParts(p=>p.map(v=>({...v,opens:0,closes:0})));setGroupStart(null);}}>Remover parênteses</Button>}
    </div>
    {groupStart!==null&&<div className="rounded-xl border border-border p-2 text-xs">Início do grupo <select aria-label="Primeiro termo do grupo" value={groupStart} onChange={e=>setGroupStart(Number(e.target.value))} className="min-h-11 rounded-xl border border-border bg-background px-2 text-base">{parts.map((p,i)=><option key={p.id} value={i}>{i+1}</option>)}</select> · Escolha o último termo.</div>}
+   <Button type="button" variant="outline" className="w-full" disabled={disabled||!current} onClick={()=>openRecursive(current)}><Pencil/> Personalizar estrutura</Button>
    {parts.some(p=>"existing" in p)&&<p className="text-xs text-muted-foreground">A fórmula original é preservada. Pode editar os valores reconhecidos ou substituir a estrutura por um modelo.</p>}
   </div>}
   <div className="sticky bottom-0 z-10 space-y-2 border-t border-border bg-card pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 group-data-[keyboard-open=true]/modal:static">
