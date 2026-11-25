@@ -71,7 +71,7 @@ try{
  const batchDoc=await PDFDocument.load(batch);
  const batchPath="apps/web/visual-evidence/provas/lote-nominal.pdf";
  await writeFile(batchPath,batch);
- const pages=execFileSync("pdftotext",["-layout",batchPath,"-"],{encoding:"utf8"}).split("\\f").filter(s=>s.trim());
+ const pages=execFileSync("pdftotext",["-layout",batchPath,"-"],{encoding:"utf8"}).split(String.fromCharCode(12)).filter(s=>s.trim());
  assert.equal(pages.length,batchDoc.getPageCount(),"PDF pages must contain content");
  assert.ok(pages.length>=6,"two multi-page copies");
  assert.match(pages[0],/Estudante ALFA/);
