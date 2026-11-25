@@ -1,7 +1,7 @@
 # Cobrança de folhas de prova — sprint backend
 
 ## Estado
-Prévia individual, somente leitura, implementada. Não existe ainda autorização para criar ou liquidar obrigações de folha de prova. Não instalar/activar o código reservado no catálogo até fechar a mutação e os pontos de entrada genéricos. Sem alteração de impressão, fiscal ou produção.
+Prévia individual e colectiva, somente leitura, integrada na central de impressão existente. Não existe ainda autorização para criar ou liquidar obrigações de folha de prova. Não instalar/activar o código reservado no catálogo até fechar a mutação e os pontos de entrada genéricos. Sem alteração do gerador de impressão, fiscal ou produção.
 
 ## Reutilização
 - `servicos_escola`: catálogo/preço por escola; código reservado `SERV_FOLHA_PROVA`, emolumento distinto de inscrição em exame.
@@ -13,7 +13,9 @@ Prévia individual, somente leitura, implementada. Não existe ainda autorizaç�
 
 ## Prévia disponível na branch
 GET /api/escola/{id}/provas/cobranca?prova={uuid}&versao={n}&modo=imprimir&turmas={uuid}&matricula={uuid}&offset=0&limit=1
-A resposta inclui prova, versão, matrícula, turma, snapshot da distribuição, código de serviço, moeda AOA, valor em cêntimos ou null e estado do preço. A prévia não reserva nem cria cobrança. Não retorna nomes, conteúdo ou dados de pagamento. Preço não configurado não equivale a gratuito. Não usar a resposta como autorização de pagamento.
+A consulta colectiva usa o mesmo endpoint, omite matricula e aceita até dez turmas elegíveis. O snapshot opcional da selecção é comparado com a distribuição canónica; divergências retornam 409. A resposta inclui prova, versão, matrícula (se individual), turmas, snapshot, quantidade total de destinatários (não apenas o lote/página), código de serviço, moeda AOA, valor unitário e total estimado em cêntimos ou null e estado do preço. A prévia não reserva nem cria cobrança. Não retorna nomes, conteúdo ou dados de pagamento. Preço não configurado não equivale a gratuito. Não usar a resposta como autorização de pagamento.
+
+Na central de impressão, a acção Consultar cobrança aparece apenas após preparar destinatários nominais. A consulta é explícita e não bloqueia a impressão. O painel apresenta preço unitário e estimativa bruta da selecção, não saldo por liquidar. Mudança de prova, turma, aluno ou snapshot invalida a prévia; a folha genérica não tem cobrança associada.
 
 ## Decisões pendentes antes de escrita
 1. Unidade comercial: folha por prova e aluno (proposta inicial), ou pacote por aluno/trimestre. Não confundir com número de páginas físicas, cópia ou série alternativa.
