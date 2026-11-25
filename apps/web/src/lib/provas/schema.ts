@@ -12,6 +12,26 @@ export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().mi
 export const TIPOS_PROVA=["professor","trimestral","exame_final","recurso","extraordinario","segunda_chamada","diagnostica","simulado","outro"] as const;
 export type TipoProva=typeof TIPOS_PROVA[number];
 export const tiposProva:Record<TipoProva,string>={professor:"Prova do Professor",trimestral:"Prova Trimestral",exame_final:"Exame Final",recurso:"Exame de Recurso",extraordinario:"Exame Extraordinário",segunda_chamada:"Prova de Segunda Chamada",diagnostica:"Prova Diagnóstica",simulado:"Simulado",outro:"Outra prova"};
+type TitleContext={tipo_prova?:TipoProva;titulo:string;disciplina:string};
+/** Standard types derive their printed/display title from the academic snapshot. */
+export function provaDisplayTitle(prova:TitleContext):string{
+ const type=prova.tipo_prova?tiposProva[prova.tipo_prova]:null;
+ const title=prova.titulo.trim();
+ if(!type)return [title,prova.disciplina].filter(Boolean).join(" — ");
+ const custom=prova.tipo_prova==="outro"&&title&&title!=="Prova"&&title!==type;
+ return [custom?title:type,prova.disciplina].filter(Boolean).join(" de ");
+}
+export function provaSubtitle(prova:TitleContext):string|null{
+ const type=prova.tipo_prova?tiposProva[prova.tipo_prova]:null;
+ const title=prova.titulo.trim();
+ return type&&prova.tipo_prova!=="outro"&&title&&title!=="Prova"&&title!==type&&title!==provaDisplayTitle(prova)?title:null;
+}
+/** Keep the stored title contract; a type change is explicit, not an implicit rewrite on load. */
+export function tituloAoMudarTipo(previous:TitleContext,next:TipoProva):string{
+ if(next===previous.tipo_prova)return previous.titulo;
+ if(next==="outro")return "";
+ return previous.tipo_prova!=="outro"&&provaSubtitle(previous)?previous.titulo:tiposProva[next];
+}
 export const provaSchema=z.object({
  tipo_prova:z.enum(TIPOS_PROVA).optional(),
  apresentacao:z.enum(APRESENTACOES).optional(),

@@ -330,3 +330,25 @@ test("standalone generic sheet has manual identification, blank writing lines an
  assert.doesNotMatch(html,/class="questao|Duração: 1 min|Série A|RASCUNHO/);
  assert.match(html,/<script nonce="fixed-nonce">/);
 });
+
+test("standard proof titles are automatic; custom and legacy titles are preserved",()=>{
+ const {provaDisplayTitle,provaSubtitle,tituloAoMudarTipo,tiposProva}=require("../../src/lib/provas/schema.ts");
+ for(const [type,label] of Object.entries(tiposProva)){
+  if(type==="outro")continue;
+  const p={...base,tipo_prova:type,titulo:label};
+  assert.equal(provaDisplayTitle(p),label+" de Física");
+  assert.equal(provaSubtitle(p),null);
+  assert.match(provaHtml(p,"Escola"),new RegExp('<h2 class="title">'+label+' de Física</h2>'));
+  assert.doesNotMatch(provaHtml(p,"Escola"),/<p class="subtitle">/);
+ }
+ const legacy={...base,tipo_prova:"trimestral",titulo:"Avaliação de recuperação"};
+ assert.equal(provaSubtitle(legacy),"Avaliação de recuperação");
+ assert.equal(tituloAoMudarTipo(legacy,"recurso"),legacy.titulo);
+ assert.match(provaHtml(legacy,"Escola"),/<p class="subtitle">Avaliação de recuperação<\/p>/);
+ assert.equal(tituloAoMudarTipo({...legacy,titulo:"Prova Trimestral"},"recurso"),"Exame de Recurso");
+ assert.equal(tituloAoMudarTipo(legacy,"outro"),"");
+ const custom={...legacy,tipo_prova:"outro",titulo:"Avaliação especial"};
+ assert.equal(provaDisplayTitle(custom),"Avaliação especial de Física");
+ assert.equal(tituloAoMudarTipo(custom,"trimestral"),"Prova Trimestral");
+ assert.equal(provaDisplayTitle({...base,tipo_prova:undefined}),"Prova — Física");
+});

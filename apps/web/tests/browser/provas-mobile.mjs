@@ -28,6 +28,8 @@ try{
     assert.deepEqual(data.dados.conteudo[1].alternativas,["Joule","Watt","Newton","Pascal"]);
     assert.equal(data.dados.conteudo[1].cotacao_cent,125);
     assert.equal(data.dados.apresentacao,"espacosa");
+    assert.equal(data.dados.titulo,"Prova Trimestral");
+    assert.equal(data.dados.serie,"A");
     saved={...base,...data.dados,id:"30000000-0000-4000-8000-000000000002",estado:"rascunho",versao:1};
     return reply({prova:saved});
    }
@@ -46,12 +48,27 @@ try{
   await dialog.getByRole("combobox",{name:"Ano lectivo",exact:true}).waitFor();
   await dialog.getByLabel("Ano lectivo",{exact:true}).selectOption(year);
   await dialog.getByLabel("Classe e disciplina").selectOption(matrix);
+  assert.equal(await dialog.getByLabel("Título da prova",{exact:true}).count(),0);
+  assert.equal(await dialog.getByLabel("Título automático",{exact:true}).innerText(),"Prova Trimestral de Física");
+  await dialog.getByLabel("Tipo de prova",{exact:true}).selectOption("recurso");
+  assert.equal(await dialog.getByLabel("Título automático",{exact:true}).innerText(),"Exame de Recurso de Física");
+  await dialog.getByLabel("Tipo de prova",{exact:true}).selectOption("outro");
+  assert.equal(await dialog.getByLabel("Título da prova",{exact:true}).inputValue(),"");
+  if(width<640)assert.equal(await dialog.getByRole("button",{name:"Perguntas",exact:true}).isEnabled(),false);
+  await dialog.getByLabel("Título da prova",{exact:true}).fill("Avaliação especial");
+  await dialog.getByLabel("Tipo de prova",{exact:true}).selectOption("trimestral");
+  assert.equal(await dialog.getByLabel("Título da prova",{exact:true}).count(),0);
+  assert.equal(await dialog.getByLabel("Série",{exact:true}).isVisible(),false);
+  await dialog.getByText(/Opções avançadas/).click();
+  assert.equal(await dialog.getByLabel("Série",{exact:true}).inputValue(),"A");
+  assert.equal(await dialog.getByLabel("Apresentação da folha").inputValue(),"automatica");
   await dialog.getByLabel("Apresentação da folha").selectOption("espacosa");
   if(width<640){
    assert.equal(await dialog.getByLabel("Enunciado 1",{exact:true}).isVisible(),false);
    await dialog.getByRole("button",{name:"Perguntas",exact:true}).click();
    await dialog.getByLabel("Enunciado 1",{exact:true}).fill("Calcula a soma.");
    await dialog.getByRole("button",{name:"Cabeçalho",exact:true}).click();
+   if(!await dialog.getByLabel("Apresentação da folha").isVisible())await dialog.getByText(/Opções avançadas/).click();
    assert.equal(await dialog.getByLabel("Apresentação da folha").inputValue(),"espacosa");
    await dialog.getByRole("button",{name:"Perguntas",exact:true}).click();
    assert.equal(await dialog.getByLabel("Enunciado 1",{exact:true}).inputValue(),"Calcula a soma.");
