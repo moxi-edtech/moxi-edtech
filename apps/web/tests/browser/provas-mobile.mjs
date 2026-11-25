@@ -61,7 +61,7 @@ try{
   }
   if(width<640){
    assert.equal(await dialog.getByRole("button",{name:"Médio",exact:true}).isVisible(),false);
-   assert.equal(await dialog.getByRole("button",{name:"Subir bloco 1"}).isVisible(),false);
+   assert.equal(await dialog.getByRole("button",{name:"Subir bloco 1"}).count(),0);
    assert.equal(await dialog.getByRole("button",{name:"Adicionar √",exact:true}).isVisible(),false);
    await dialog.getByText("Símbolos matemáticos",{exact:true}).click();
    assert.equal(await dialog.getByRole("button",{name:"Adicionar √",exact:true}).isVisible(),true);
@@ -115,13 +115,7 @@ try{
    await dialog.getByRole("button",{name:"Ir para bloco 1"}).click();
    await dialog.getByRole("button",{name:"Ir para bloco 2"}).click();
    assert.equal(await dialog.getByLabel("Cotação da pergunta 2").inputValue(),"1.25");
-   assert.equal(await dialog.getByRole("button",{name:"Subir bloco 2"}).isVisible(),false);
-   await dialog.getByText("Opções da pergunta",{exact:true}).click();
-   await dialog.getByRole("button",{name:"Subir bloco 2"}).click();
-   assert.equal(await dialog.getByLabel("Tipo do bloco 1",{exact:true}).inputValue(),"escolha");
-   await dialog.getByText("Opções da pergunta",{exact:true}).click();
-   await dialog.getByRole("button",{name:"Descer bloco 1"}).click();
-   assert.equal(await dialog.getByLabel("Tipo do bloco 2",{exact:true}).inputValue(),"escolha");
+   assert.equal(await dialog.getByRole("button",{name:"Subir bloco 2"}).count(),0);
    await dialog.getByRole("button",{name:"Adicionar pergunta",exact:true}).click();
    assert.equal(await dialog.getByLabel("Tipo do bloco 3",{exact:true}).inputValue(),"discursiva");
    await dialog.getByText("Opções da pergunta",{exact:true}).click();
@@ -130,6 +124,38 @@ try{
    await noOverflow(page,"single question "+width);
    await page.screenshot({path:"apps/web/visual-evidence/provas/pergunta-individual-"+width+".png"});
   }
+  await dialog.getByRole("button",{name:"Organizar perguntas",exact:true}).click();
+  const order=dialog.getByRole("region",{name:"Organizar perguntas",exact:true});
+  await order.getByRole("list",{name:"Ordem dos blocos"}).waitFor();
+  assert.equal(await dialog.getByLabel("Enunciado 2",{exact:true}).count(),0,"organizer does not render question editor");
+  const first=order.getByTestId("prova-order-row-0"),second=order.getByTestId("prova-order-row-1");
+  assert.match(await first.innerText(),/Calcula a soma/);
+  assert.match(await second.innerText(),/Qual é a unidade/);
+  await order.getByLabel("Posição do bloco 2").selectOption("0");
+  assert.match(await first.innerText(),/Qual é a unidade/);
+  if(width>=640){
+   const handle=order.getByRole("button",{name:"Arrastar bloco 1"});const from=await handle.boundingBox(),to=await second.boundingBox();
+   assert.ok(from&&to);
+   await page.mouse.move(from.x+from.width/2,from.y+from.height/2);
+   await page.mouse.down();await page.mouse.move(from.x+from.width/2+8,from.y+from.height/2,{steps:2});
+   await page.mouse.move(to.x+to.width/2,to.y+to.height/2,{steps:12});
+   await page.mouse.up();
+   await first.getByText(/Calcula a soma/).waitFor();
+  }else{
+   // Real touch pointer gesture in Chromium; scroll remains available outside handle.
+   const handle=order.getByRole("button",{name:"Arrastar bloco 1"});const from=await handle.boundingBox(),to=await second.boundingBox();
+   assert.ok(from&&to);
+   const cdp=await page.context().newCDPSession(page);
+   const x=from.x+from.width/2,y=from.y+from.height/2,target=to.y+to.height/2;
+   await cdp.send("Input.dispatchTouchEvent",{type:"touchStart",touchPoints:[{x,y}]});
+   for(let i=1;i<=10;i++)await cdp.send("Input.dispatchTouchEvent",{type:"touchMove",touchPoints:[{x,y:y+(target-y)*i/10}]});
+   await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
+   await cdp.detach();
+   await first.getByText(/Calcula a soma/).waitFor();
+  }
+  assert.match(await second.innerText(),/Qual é a unidade/);
+  await noOverflow(page,"organizer "+width);
+  await page.screenshot({path:"apps/web/visual-evidence/provas/organizador-"+width+".png"});
   await dialog.getByRole("button",{name:"Pré-visualizar"}).click();
   const preview=dialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
   await preview.locator("math").waitFor();

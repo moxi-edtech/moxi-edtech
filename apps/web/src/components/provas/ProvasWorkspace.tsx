@@ -1,7 +1,7 @@
 "use client";
 import { useEffect,useRef,useState } from "react";
 import dynamic from "next/dynamic";
-import { ArrowDown,ArrowUp,ClipboardList,Copy,Eye,Pencil,Plus,Printer,Trash2,Minus,ChevronDown,ChevronUp,ArrowLeft,ArrowRight,Ellipsis } from "lucide-react";
+import { ClipboardList,Copy,Eye,Pencil,Plus,Printer,Trash2,Minus,ChevronDown,ChevronUp,ArrowLeft,ArrowRight,Ellipsis,ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { estados,tipos,tiposProva,provaWriteSchema,type Bloco,type Prova,type ProvaInput,type ProvaResumo,type AnoProva,type ContextoProva,type TipoProva } from "@/lib/provas/schema";
@@ -10,6 +10,7 @@ import { formatClasseProva } from "@/lib/provas/academicLabels";
 import { safeLogoData } from "@/lib/provas/branding";
 import { PROVA_PAPER,respostaLayout,apresentacoes,type Apresentacao } from "@/lib/provas/layout";
 import { questionTemplate,placeholders,suggestedTypes,structures,isQuestion,formatCotacao } from "@/lib/provas/questionTemplates";
+const ProvasOrderPanel=dynamic(()=>import("./ProvasOrderPanel"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar ordem das perguntas...</p>});
 const ProvasPrintPanel=dynamic(()=>import("./ProvasPrintPanel"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar distribuição...</p>});
 const RichQuestionEditor=dynamic(()=>import("./RichQuestionEditor"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar editor...</p>});
 const input="w-full min-w-0 max-w-full min-h-11 rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold";
@@ -31,6 +32,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  const [headerExpanded,setHeaderExpanded]=useState(true);
  const [step,setStep]=useState<"header"|"questions">("header");
  const [activeBlock,setActiveBlock]=useState(0);
+ const [organizing,setOrganizing]=useState(false);
  const [smallScreen,setSmallScreen]=useState(false);
  const singleQuestion=teacherWizard&&smallScreen;
  const currentBlock=Math.max(0,Math.min(activeBlock,(form?.conteudo.length??1)-1));
@@ -42,7 +44,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
   return()=>mq.removeEventListener("change",sync);
  },[teacherWizard]);
  useEffect(()=>{
-  if(!singleQuestion||step!=="questions"||preview)return;
+  if(!singleQuestion||step!=="questions"||preview||organizing)return;
   const active=document.getElementById("provas-nav-"+currentBlock);
   const strip=active?.parentElement;
   if(active&&strip){
@@ -50,7 +52,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
    if(a.left<b.left)strip.scrollLeft+=a.left-b.left;
    else if(a.right>b.right)strip.scrollLeft+=a.right-b.right;
   }
- },[singleQuestion,step,preview,currentBlock,form?.conteudo.length]);
+ },[singleQuestion,step,preview,organizing,currentBlock,form?.conteudo.length]);
  const [distribution,setDistribution]=useState(false);
  const [branding,setBranding]=useState<{endpoint:string;logo:string|null}|null>(null);
  const logo=branding?.endpoint===endpoint?branding.logo:null;
@@ -109,6 +111,8 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  }
  function removeBlock(index:number){
   if(!form||richIndex!==null||busy||confirm||discard||form.conteudo.length<=1)return;
+  const block=form.conteudo[index];if(!block)return;
+  if((block.texto.trim()||block.alternativas?.some(a=>a.trim())||block.cotacao_cent!==undefined)&&!window.confirm("Remover este bloco da prova?"))return;
   change("conteudo",form.conteudo.filter((_,i)=>i!==index));
   const next=currentBlock>index?currentBlock-1:Math.min(currentBlock,form.conteudo.length-2);
   setActiveBlock(next);
@@ -122,13 +126,28 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
   const next:Bloco={...questionTemplate(tipo),texto:b.texto,...(b.rich?{rich:b.rich}:{}),...(isQuestion(tipo)&&b.cotacao_cent!==undefined?{cotacao_cent:b.cotacao_cent}:{})};
   change("conteudo",form.conteudo.map((item,i)=>i===index?next:item));
  }
- function move(index:number,step:number){if(!form||richIndex!==null||busy||confirm||discard)return;const blocks=[...form.conteudo],to=index+step;if(to<0||to>=blocks.length)return;[blocks[index],blocks[to]]=[blocks[to],blocks[index]];change("conteudo",blocks);setActiveBlock(currentBlock===index?to:currentBlock===to?index:currentBlock);if(singleQuestion)focusBlock(to);}
- function close(force=false){if(locked.current)return;if((dirty||richIndex!==null)&&!force){setDiscard(true);return;}setRichIndex(null);setDistribution(false);setForm(null);setSelected(null);setDirty(false);setDiscard(false);setConfirm(null);setError("");if(onDismiss)restoreFocus();}
- function create(){if(printOnly||locked.current)return;setRichIndex(null);setSelected(null);setDistribution(false);setForm(fresh());setHeaderExpanded(true);setStep("header");setActiveBlock(0);setDirty(false);setPreview(false);setError("");setNotice("");}
+ function reorder(from:number,to:number){
+  if(!form||richIndex!==null||busy||confirm||discard||!Number.isInteger(from)||!Number.isInteger(to)||from===to||from<0||to<0||from>=form.conteudo.length||to>=form.conteudo.length)return;
+  const blocks=[...form.conteudo],active=blocks[currentBlock];
+  const [moved]=blocks.splice(from,1);
+  blocks.splice(to,0,moved);
+  change("conteudo",blocks);
+  setActiveBlock(Math.max(0,blocks.indexOf(active)));
+ }
+ function showOrder(){
+  if(!form||richIndex!==null||busy||confirm||discard)return;
+  setPreview(false);setOrganizing(true);setStep("questions");
+ }
+ function backToQuestions(){
+  setOrganizing(false);setStep("questions");
+  if(singleQuestion)focusBlock(currentBlock);
+ }
+ function close(force=false){if(locked.current)return;if((dirty||richIndex!==null)&&!force){setDiscard(true);return;}setRichIndex(null);setOrganizing(false);setDistribution(false);setForm(null);setSelected(null);setDirty(false);setDiscard(false);setConfirm(null);setError("");if(onDismiss)restoreFocus();}
+ function create(){if(printOnly||locked.current)return;setRichIndex(null);setSelected(null);setDistribution(false);setForm(fresh());setHeaderExpanded(true);setStep("header");setOrganizing(false);setActiveBlock(0);setDirty(false);setPreview(false);setError("");setNotice("");}
  async function open(id:string,print=false){
   if(locked.current)return;locked.current=true;setBusy(true);setListError("");setNotice("");
   const c=new AbortController();request.current=c;
-  try{const b=await response(await fetch(endpoint+"?prova="+encodeURIComponent(id)+(printOnly?"&aprovadas=1":""),{cache:"no-store",signal:c.signal}));if(c.signal.aborted)return;setRichIndex(null);setSelected(b.prova);setDistribution(print&&b.prova.estado==="aprovada"&&Boolean(permissions?.distribute));setForm(editable(b.prova));setHeaderExpanded(true);setStep("header");setActiveBlock(0);setDirty(false);setPreview(b.prova.estado!=="rascunho"||!permissions?.author);setError("");}
+  try{const b=await response(await fetch(endpoint+"?prova="+encodeURIComponent(id)+(printOnly?"&aprovadas=1":""),{cache:"no-store",signal:c.signal}));if(c.signal.aborted)return;setRichIndex(null);setSelected(b.prova);setDistribution(print&&b.prova.estado==="aprovada"&&Boolean(permissions?.distribute));setForm(editable(b.prova));setHeaderExpanded(true);setStep("header");setOrganizing(false);setActiveBlock(0);setDirty(false);setPreview(b.prova.estado!=="rascunho"||!permissions?.author);setError("");}
   catch(e){if(!c.signal.aborted)setListError(e instanceof Error?e.message:"Erro ao abrir a prova.");}
   finally{if(request.current===c){request.current=null;locked.current=false;setBusy(false);}}
  }
@@ -138,6 +157,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
   if(action==="criar"||action==="guardar"){
    const validated=provaWriteSchema.safeParse(form);
    if(!validated.success){
+    setOrganizing(false);
     const issues=validated.error.issues;
     const invalid=issues.find(i=>i.path[0]==="conteudo"&&typeof i.path[1]==="number");
     if(teacherWizard){
@@ -154,7 +174,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
   try{
    const b=await response(await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),cache:"no-store",signal:c.signal}));
    if(c.signal.aborted)return;
-   const saved=b.prova as Prova;if(action==="duplicar")setActiveBlock(0);setDistribution(false);setSelected(saved);setForm(editable(saved));setDirty(false);setPreview(saved.estado!=="rascunho");setNotice(action==="criar"||action==="guardar"?"Prova guardada.":action==="duplicar"?"Cópia criada como rascunho.":"Estado atualizado.");setOffset(0);setRevision(v=>v+1);
+   const saved=b.prova as Prova;setOrganizing(false);if(action==="duplicar")setActiveBlock(0);setDistribution(false);setSelected(saved);setForm(editable(saved));setDirty(false);setPreview(saved.estado!=="rascunho");setNotice(action==="criar"||action==="guardar"?"Prova guardada.":action==="duplicar"?"Cópia criada como rascunho.":"Estado atualizado.");setOffset(0);setRevision(v=>v+1);
   }catch(e){if(!c.signal.aborted)setError(e instanceof Error?e.message:"Erro ao guardar.");}
   finally{if(request.current===c){request.current=null;locked.current=false;setBusy(false);}}
  }
@@ -176,7 +196,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  const headerReady=Boolean(form&&contextReady&&!contextLoading&&form.titulo.trim()&&form.serie.trim()&&Number.isInteger(form.duracao)&&form.duracao>=1&&form.duracao<=480);
  function goStep(next:"header"|"questions"){
   if(richIndex!==null||busy||confirm||discard||next==="questions"&&!headerReady)return;
-  setStep(next);setHeaderExpanded(true);setError("");
+  setOrganizing(false);setStep(next);setHeaderExpanded(true);setError("");
   requestAnimationFrame(()=>document.getElementById("provas-step-"+next)?.focus());
  }
  const actionLabels:Record<Action,string>={submeter:"Enviar para revisão",aprovar:"Aprovar prova",devolver:"Devolver para edição",arquivar:"Arquivar",duplicar:"Duplicar"};
@@ -195,13 +215,15 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
     footer={distribution?undefined:form?<div className="min-w-0 space-y-2 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
      {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}{notice&&<p role="status" className="text-sm text-klasse-green">{notice}</p>}
      {discard?<div className="flex flex-wrap items-center gap-2"><p className="mr-auto text-sm">Descartar as alterações não guardadas?</p><Button variant="outline" onClick={()=>setDiscard(false)}>Continuar edição</Button><Button variant="destructive" onClick={()=>close(true)}>Descartar</Button></div>:confirm?<div className="flex flex-wrap items-center gap-2"><p className="mr-auto text-sm">Confirmar: {actionLabels[confirm]}?</p><Button variant="outline" onClick={()=>setConfirm(null)}>Cancelar</Button><Button tone="gold" disabled={busy} onClick={()=>mutate(confirm)}>Confirmar</Button></div>:<div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
-       {canEdit&&teacherWizard&&!preview&&step==="header"&&<Button type="button" tone="gold" className="sm:hidden" disabled={!headerReady||busy||richIndex!==null} onClick={()=>goStep("questions")}>Perguntas <ArrowRight/></Button>}
-       {canEdit&&<Button variant="outline" disabled={busy||richIndex!==null} onClick={()=>setPreview(v=>!v)}>{preview?<Pencil/>:<Eye/>}{preview?"Editar":"Pré-visualizar"}</Button>}
-       {canEdit&&(!selected||dirty)&&<Button tone={singleQuestion&&!preview?undefined:"gold"} variant={singleQuestion&&!preview?"outline":"default"} className={teacherWizard&&step==="header"&&!preview?"hidden sm:inline-flex":undefined} disabled={busy||richIndex!==null||!contextReady||contextLoading} onClick={()=>mutate(selected?"guardar":"criar")}>Guardar rascunho</Button>}
-       {canManage&&selected&&!dirty&&selected.estado==="rascunho"&&(!singleQuestion||preview)&&<Button tone="gold" disabled={busy||richIndex!==null||!contextReady||contextLoading} onClick={()=>setConfirm("submeter")}>Enviar para revisão</Button>}
+       {canEdit&&teacherWizard&&!preview&&!organizing&&step==="header"&&<Button type="button" tone="gold" className="sm:hidden" disabled={!headerReady||busy||richIndex!==null} onClick={()=>goStep("questions")}>Perguntas <ArrowRight/></Button>}
+       {canEdit&&organizing&&<Button variant="outline" disabled={busy} onClick={backToQuestions}><ArrowLeft/> Voltar às perguntas</Button>}
+       {canEdit&&!organizing&&form.conteudo.length>1&&<Button type="button" variant="outline" className={teacherWizard&&!preview&&step==="header"?"hidden sm:inline-flex":undefined} disabled={busy||richIndex!==null} onClick={showOrder}><ListOrdered/> Organizar perguntas</Button>}
+       {canEdit&&<Button variant={organizing?"default":"outline"} tone={organizing?"gold":undefined} disabled={busy||richIndex!==null} onClick={()=>{setOrganizing(false);setPreview(v=>!v);}}>{preview?<Pencil/>:<Eye/>}{preview?"Editar":"Pré-visualizar"}</Button>}
+       {canEdit&&!organizing&&(!selected||dirty)&&<Button tone={singleQuestion&&!preview?undefined:"gold"} variant={singleQuestion&&!preview?"outline":"default"} className={teacherWizard&&step==="header"&&!preview?"hidden sm:inline-flex":undefined} disabled={busy||richIndex!==null||!contextReady||contextLoading} onClick={()=>mutate(selected?"guardar":"criar")}>Guardar rascunho</Button>}
+       {canManage&&!organizing&&selected&&!dirty&&selected.estado==="rascunho"&&(!singleQuestion||preview)&&<Button tone="gold" disabled={busy||richIndex!==null||!contextReady||contextLoading} onClick={()=>setConfirm("submeter")}>Enviar para revisão</Button>}
        {permissions?.admin&&selected?.estado==="em_revisao"&&<><Button variant="outline" disabled={busy} onClick={()=>setConfirm("devolver")}>Devolver</Button><Button tone="gold" disabled={busy} onClick={()=>setConfirm("aprovar")}>Aprovar prova</Button></>}
-       {canManage&&selected&&!dirty&&(!singleQuestion||!canEdit||preview)&&<Button variant="ghost" disabled={busy||richIndex!==null} onClick={()=>setConfirm("duplicar")}><Copy/> Duplicar</Button>}
-       {canManage&&selected&&!dirty&&(!singleQuestion||!canEdit||preview)&&(selected.estado==="rascunho"||permissions?.admin&&selected.estado==="aprovada")&&<Button variant="ghost" disabled={busy||richIndex!==null} onClick={()=>setConfirm("arquivar")}>Arquivar</Button>}
+       {canManage&&!organizing&&selected&&!dirty&&(!singleQuestion||!canEdit||preview)&&<Button variant="ghost" disabled={busy||richIndex!==null} onClick={()=>setConfirm("duplicar")}><Copy/> Duplicar</Button>}
+       {canManage&&!organizing&&selected&&!dirty&&(!singleQuestion||!canEdit||preview)&&(selected.estado==="rascunho"||permissions?.admin&&selected.estado==="aprovada")&&<Button variant="ghost" disabled={busy||richIndex!==null} onClick={()=>setConfirm("arquivar")}>Arquivar</Button>}
        {printHref&&(permissions?.distribute?<Button tone="gold" onClick={()=>setDistribution(true)}><Printer/> Imprimir prova</Button>:<Button asChild tone="gold"><a href={printHref} target="_blank" rel="noopener noreferrer"><Printer className="h-4 w-4"/> Imprimir prova</a></Button>)}
      </div>}
     </div>:undefined}>
@@ -209,12 +231,12 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
    {onDismiss&&form&&<Button type="button" variant="ghost" className="mb-3" disabled={busy} onClick={()=>close()}><ArrowLeft/> Voltar à lista</Button>}
    {form&&canEdit&&teacherWizard&&<div className="mb-3 space-y-2 sm:hidden" aria-label="Etapas de elaboração">
     <div className="flex min-w-0 items-center justify-between gap-2">
-     <p className="text-xs font-medium text-muted-foreground">Etapa {preview?3:step==="header"?1:2} de 3 · {preview?"Pré-visualização":step==="header"?"Cabeçalho":"Perguntas"}</p>
-     {!preview&&step==="questions"&&<Button type="button" size="sm" variant="ghost" disabled={busy||richIndex!==null||Boolean(confirm)||discard} onClick={()=>goStep("header")}><ArrowLeft/> Cabeçalho</Button>}
+     <p className="text-xs font-medium text-muted-foreground">Etapa {preview?3:step==="header"?1:2} de 3 · {preview?"Pré-visualização":organizing?"Organização":step==="header"?"Cabeçalho":"Perguntas"}</p>
+     {!preview&&!organizing&&step==="questions"&&<Button type="button" size="sm" variant="ghost" disabled={busy||richIndex!==null||Boolean(confirm)||discard} onClick={()=>goStep("header")}><ArrowLeft/> Cabeçalho</Button>}
     </div>
     <div className="flex gap-1" aria-hidden="true">{[1,2,3].map(n=><span key={n} className={"h-1 flex-1 rounded-full "+(n<=(preview?3:step==="header"?1:2)?"bg-klasse-green":"bg-muted")}/>)}</div>
    </div>}
-   {form&&(distribution&&selected?.estado==="aprovada"&&permissions?.distribute?<div className="space-y-3"><Button variant="outline" onClick={()=>setDistribution(false)}><Eye/> Consultar prova</Button><ProvasPrintPanel key={selected.id+":"+selected.versao} endpoint={endpoint} prova={selected}/></div>:preview||!canEdit?<div className="min-w-0 space-y-2"><p className="text-xs text-muted-foreground">Apresentação: {apresentacoes[form.apresentacao??"automatica"]}. A leitura no ecrã é contínua; as quebras físicas são calculadas na impressão A4. Os espaços de resposta são preservados.</p><iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada",logo})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/></div>:
+   {form&&(distribution&&selected?.estado==="aprovada"&&permissions?.distribute?<div className="space-y-3"><Button variant="outline" onClick={()=>setDistribution(false)}><Eye/> Consultar prova</Button><ProvasPrintPanel key={selected.id+":"+selected.versao} endpoint={endpoint} prova={selected}/></div>:preview||!canEdit?<div className="min-w-0 space-y-2"><p className="text-xs text-muted-foreground">Apresentação: {apresentacoes[form.apresentacao??"automatica"]}. A leitura no ecrã é contínua; as quebras físicas são calculadas na impressão A4. Os espaços de resposta são preservados.</p><iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada",logo})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/></div>:organizing?<ProvasOrderPanel blocks={form.conteudo} disabled={busy||Boolean(confirm)||discard} onMove={reorder}/>:
    <div className="min-w-0 space-y-5 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
     <div className={"rounded-xl border border-border bg-card p-3 sm:p-4 "+(teacherWizard&&step==="questions"?"hidden sm:block":"")}>
     <h3 id="provas-step-header" tabIndex={-1} className="sr-only">Cabeçalho da prova</h3>
@@ -250,7 +272,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
      {form.conteudo.map((block,index)=>singleQuestion&&index!==currentBlock?null:<div key={index} className="min-w-0 space-y-3 rounded-xl border border-border bg-card p-3 sm:p-4">
       <h4 id={"provas-block-heading-"+index} tabIndex={-1} className={singleQuestion?"sr-only":"text-sm font-semibold text-klasse-green dark:text-foreground"}>{isQuestion(block.tipo)?"Pergunta":"Bloco"} {String(index+1).padStart(2,"0")}</h4>
       <div className="flex flex-wrap items-center justify-between gap-2"><label className={singleQuestion?"grid w-full min-w-0 gap-1 text-sm":"flex w-full min-w-0 items-center gap-2 text-sm sm:w-auto"}><span className="shrink-0 font-medium text-muted-foreground">{singleQuestion?"Tipo de pergunta":String(index+1).padStart(2,"0")+"."}</span><select id={"provas-block-type-"+index} aria-label={"Tipo do bloco "+(index+1)} className={input} value={block.tipo} disabled={richIndex!==null} onChange={e=>setQuestionType(index,e.target.value as Bloco["tipo"])}>{Object.entries(tipos).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
-       <details key={singleQuestion?"mobile-options":"desktop-options"} open={!singleQuestion} className="w-full sm:w-auto"><summary className={"flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm text-muted-foreground "+(singleQuestion?"":"hidden")}><Ellipsis className="size-4"/> Opções da pergunta</summary><div className="flex w-full flex-wrap gap-1 sm:w-auto"><Button size="sm" variant="ghost" aria-label={"Subir bloco "+(index+1)} disabled={richIndex!==null||index===0} onClick={()=>move(index,-1)}><ArrowUp/> Subir</Button><Button size="sm" variant="ghost" aria-label={"Descer bloco "+(index+1)} disabled={richIndex!==null||index===form.conteudo.length-1} onClick={()=>move(index,1)}><ArrowDown/> Descer</Button><Button size="sm" variant="ghost" className="text-destructive" aria-label={"Remover bloco "+(index+1)} disabled={richIndex!==null||form.conteudo.length===1} onClick={()=>removeBlock(index)}><Trash2/> Remover</Button></div></details>
+       <details key={singleQuestion?"mobile-options":"desktop-options"} open={!singleQuestion} className="w-full sm:w-auto"><summary className={"flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm text-muted-foreground "+(singleQuestion?"":"hidden")}><Ellipsis className="size-4"/> Opções da pergunta</summary><div className="flex w-full flex-wrap gap-1 sm:w-auto"><Button size="sm" variant="ghost" className="text-destructive" aria-label={"Remover bloco "+(index+1)} disabled={richIndex!==null||form.conteudo.length===1} onClick={()=>removeBlock(index)}><Trash2/> Remover</Button></div></details>
       </div>
       {richIndex===index?<RichQuestionEditor key={index} block={block} label={"Enunciado "+(index+1)} disabled={busy||Boolean(confirm)||discard} onChange={part=>patch(index,part)} onDone={finishRich}/>:
        <div className="space-y-2">
