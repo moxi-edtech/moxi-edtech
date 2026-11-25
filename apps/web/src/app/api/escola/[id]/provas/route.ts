@@ -33,7 +33,7 @@ export async function GET(req:Request,{params}:Context){
    db.from("escolas").select("nome").eq("id",escolaId).maybeSingle()
  ]);
  if(result.error||school.error||!school.data)return json({error:"Não foi possível consultar as provas."},500);
- return json({provas:result.data??[],escola:school.data.nome,permissions:{author:access.author,admin:access.admin,userId:access.userId}});
+ return json({provas:result.data??[],escola:school.data.nome,permissions:{author:access.author,admin:access.admin,distribute:access.distribute,userId:access.userId}});
 }
 export async function POST(req:Request,{params}:Context){
  const access=await provaAccess((await params).id);
