@@ -3,8 +3,8 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 const ADMINS=["admin","admin_escola","diretor","admin_secretaria","admin_secretario","staff_admin"];
 const ROLES=[...ADMINS,"professor","secretaria","secretaria_financeiro"];
-export const summaryColumns="id,autor_id,ano_letivo_id,curso_matriz_id,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,estado,versao,atualizado_em";
-export const detailColumns="id,autor_id,ano_letivo_id,curso_matriz_id,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,estado,versao,atualizado_em,conteudo";
+export const summaryColumns="id,autor_id,ano_letivo_id,curso_matriz_id,tipo_prova,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,estado,versao,atualizado_em";
+export const detailColumns="id,autor_id,ano_letivo_id,curso_matriz_id,tipo_prova,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,estado,versao,atualizado_em,conteudo";
 export async function provaAccess(requested:string){
  const db=await supabaseServerTyped<any>();
  const {data:{user}}=await db.auth.getUser();
@@ -15,5 +15,6 @@ export async function provaAccess(requested:string){
  if(error||!data?.length)return {ok:false as const,status:403};
  const admin=data.some((r:{papel:string})=>ADMINS.includes(r.papel));
  const author=admin||data.some((r:{papel:string})=>r.papel==="professor");
- return {ok:true as const,db,escolaId,userId:user.id,admin,author};
+ const distribute=admin||data.some((r:{papel:string})=>r.papel==="secretaria");
+ return {ok:true as const,db,escolaId,userId:user.id,admin,author,distribute};
 }
