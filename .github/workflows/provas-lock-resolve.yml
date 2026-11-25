@@ -1,0 +1,36 @@
+name: Provas — resolução temporária do lockfile
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/provas-lock-resolve.yml'
+permissions:
+  contents: read
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Resolve exact versions without lifecycle scripts
+        run: |
+          node -e 'const fs=require("fs");const p="apps/web/package.json";const m=JSON.parse(fs.readFileSync(p,"utf8"));Object.assign(m.dependencies,{"@tiptap/react":"3.35.0","@tiptap/pm":"3.35.0","@tiptap/starter-kit":"3.35.0","mathlive":"0.111.4","katex":"0.19.1"});m.dependencies=Object.fromEntries(Object.entries(m.dependencies).sort(([a],[b])=>a.localeCompare(b,"en")));fs.writeFileSync(p,JSON.stringify(m,null,2)+"\n")'
+          pnpm install --lockfile-only --ignore-scripts --no-frozen-lockfile
+          git diff --stat -- apps/web/package.json pnpm-lock.yaml
+      - name: Export reproducible lockfile patch
+        run: |
+          git diff --no-color -- apps/web/package.json pnpm-lock.yaml > /tmp/provas-lock.patch
+          test -s /tmp/provas-lock.patch
+          sha256sum /tmp/provas-lock.patch
+          python3 -c 'import base64; b=base64.b64encode(open("/tmp/provas-lock.patch","rb").read()).decode(); print("\n".join("PROVAS_LOCK_PART "+str(i//1800)+" "+b[i:i+1800] for i in range(0,len(b),1800)))'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: provas-lock-patch
+          path: /tmp/provas-lock.patch
+          retention-days: 1
