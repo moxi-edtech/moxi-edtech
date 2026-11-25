@@ -167,3 +167,29 @@ test("operations quick actions mount canonical receipts and timetable workspaces
  assert.match(receipts,/if \(!pagamento \|\| decisionLock.current\) return;/);
  assert.match(receipts,/finally \{\s*decisionLock.current = false;/);
 });
+
+test("financial close has one workspace, legacy navigation and server-side report restriction",()=>{
+ const legacy=src("app/escola/[id]/(portal)/financeiro/fecho/page.tsx");
+ const control=src("app/escola/[id]/(portal)/financeiro/controle-caixa/page.tsx");
+ const ui=src("components/secretaria/ExpedienteWorkspace.tsx");
+ const report=src("components/financeiro/FechoMovimentacoes.tsx");
+ const access=src("lib/secretaria/expediente.ts");
+ const financial=src("lib/financeiro/fecho.ts");
+ assert.match(legacy,/redirect\(/);
+ assert.match(legacy,/financeiro\/fecho-diario/);
+ assert.doesNotMatch(legacy,/fetch\(|useState/);
+ assert.match(control,/query.vista === "fecho"/);
+ assert.match(control,/conciliacao/);
+ assert.match(ui,/FechoMovimentacoes/);
+ for(const name of ["Fecho de caixa","Expediente","Histórico"])assert.ok(ui.includes(name));
+ assert.match(ui,/visibleData\?\.canViewMovements/);
+ assert.match(report,/if \(!enabled\) return;/);
+ assert.match(report,/AbortController/);
+ assert.match(report,/operador_scope: scope/);
+ assert.match(financial,/expedienteAccess\(escolaIdParam\)/);
+ assert.match(financial,/!access.canSupervise/);
+ assert.match(financial,/canReadCashMovements\(access, snapshot.data\?\.status\)/);
+ assert.ok(financial.indexOf("canReadCashMovements(access, snapshot.data?.status)") < financial.indexOf('from("pagamentos")'));
+ assert.match(access,/status === "declared" \|\| status === "approved"/);
+ assert.match(access,/canViewMovements:access.canSupervise&&canReadCashMovements/);
+});
