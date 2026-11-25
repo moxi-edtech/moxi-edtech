@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { estados,tipos,tiposProva,provaWriteSchema,type Bloco,type Prova,type ProvaInput,type ProvaResumo,type AnoProva,type ContextoProva,type TipoProva } from "@/lib/provas/schema";
 import { provaHtml } from "@/lib/provas/print";
+import { mathMarkup } from "@/lib/provas/math";
 import { formatClasseProva } from "@/lib/provas/academicLabels";
 import { safeLogoData } from "@/lib/provas/branding";
 import { PROVA_PAPER,respostaLayout,apresentacoes,type Apresentacao } from "@/lib/provas/layout";
@@ -29,6 +30,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  const [selected,setSelected]=useState<Prova|null>(null),[form,setForm]=useState<ProvaInput|null>(null),[preview,setPreview]=useState(false),[dirty,setDirty]=useState(false),[discard,setDiscard]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [confirm,setConfirm]=useState<Action|null>(null);
  const [richIndex,setRichIndex]=useState<number|null>(null);
+ const [startFormula,setStartFormula]=useState(false);
  const [headerExpanded,setHeaderExpanded]=useState(true);
  const [step,setStep]=useState<"header"|"questions">("header");
  const [activeBlock,setActiveBlock]=useState(0);
@@ -86,7 +88,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  const richTrigger=useRef<HTMLElement|null>(null);
  const rememberOpener=(target:HTMLElement)=>{opener.current=target;};
  function restoreFocus(){const target=opener.current;requestAnimationFrame(()=>{if(target?.isConnected)target.focus();else document.getElementById("provas-heading")?.focus();});}
- function finishRich(){setRichIndex(null);requestAnimationFrame(()=>{const target=richTrigger.current;if(target?.isConnected)target.focus();else document.getElementById("provas-rich-"+(richIndex??0))?.focus();});}
+ function finishRich(){setStartFormula(false);setRichIndex(null);requestAnimationFrame(()=>{const target=richTrigger.current;if(target?.isConnected)target.focus();else document.getElementById("provas-rich-"+(richIndex??0))?.focus();});}
  useEffect(()=>{
   const c=new AbortController();setLoading(true);setListError("");
   fetch(endpoint+"?offset="+offset+(printOnly?"&aprovadas=1":""),{cache:"no-store",signal:c.signal}).then(response).then(b=>{if(!c.signal.aborted){setRows(b.provas);setSchool(b.escola);setPermissions(printOnly?{...b.permissions,author:false,admin:false}:b.permissions);}}).catch(e=>{if(!c.signal.aborted)setListError(e.message);}).finally(()=>{if(!c.signal.aborted)setLoading(false);});
@@ -211,8 +213,8 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  </div>;
  return <section className="min-w-0 space-y-4 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
   {!onDismiss&&listing}
-  <ModalShell open={Boolean(form)||Boolean(onDismiss)} title={form?(selected?selected.titulo:"Nova prova"):"Central de provas"} description={form?(selected?estados[selected.estado]:"Configure o cabeçalho e adicione perguntas."):"Consulte e faça a gestão das provas autorizadas."} size="wide" mobileFullscreen onRestoreFocus={onDismiss?undefined:restoreFocus} onClose={()=>{if(form)close();else onDismiss?.();}}
-    footer={distribution?undefined:form?<div className="min-w-0 space-y-2 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
+  <ModalShell open={Boolean(form)||Boolean(onDismiss)} title={richIndex!==null?"Editar pergunta "+(richIndex+1):form?(selected?selected.titulo:"Nova prova"):"Central de provas"} description={richIndex!==null?"Enunciado e expressões matemáticas":form?(selected?estados[selected.estado]:"Configure o cabeçalho e adicione perguntas."):"Consulte e faça a gestão das provas autorizadas."} size="wide" mobileFullscreen onRestoreFocus={onDismiss?undefined:restoreFocus} onClose={()=>{if(form)close();else onDismiss?.();}}
+    footer={distribution||richIndex!==null&&!discard&&!confirm?undefined:form?<div className="min-w-0 space-y-2 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
      {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}{notice&&<p role="status" className="text-sm text-klasse-green">{notice}</p>}
      {discard?<div className="flex flex-wrap items-center gap-2"><p className="mr-auto text-sm">Descartar as alterações não guardadas?</p><Button variant="outline" onClick={()=>setDiscard(false)}>Continuar edição</Button><Button variant="destructive" onClick={()=>close(true)}>Descartar</Button></div>:confirm?<div className="flex flex-wrap items-center gap-2"><p className="mr-auto text-sm">Confirmar: {actionLabels[confirm]}?</p><Button variant="outline" onClick={()=>setConfirm(null)}>Cancelar</Button><Button tone="gold" disabled={busy} onClick={()=>mutate(confirm)}>Confirmar</Button></div>:<div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
        {canEdit&&teacherWizard&&!preview&&!organizing&&step==="header"&&<Button type="button" tone="gold" className="sm:hidden" disabled={!headerReady||busy||richIndex!==null} onClick={()=>goStep("questions")}>Perguntas <ArrowRight/></Button>}
@@ -228,15 +230,15 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
      </div>}
     </div>:undefined}>
    {onDismiss&&!form&&listing}
-   {onDismiss&&form&&<Button type="button" variant="ghost" className="mb-3" disabled={busy} onClick={()=>close()}><ArrowLeft/> Voltar à lista</Button>}
-   {form&&canEdit&&teacherWizard&&<div className="mb-3 space-y-2 sm:hidden" aria-label="Etapas de elaboração">
+   {onDismiss&&form&&richIndex===null&&<Button type="button" variant="ghost" className="mb-3" disabled={busy} onClick={()=>close()}><ArrowLeft/> Voltar à lista</Button>}
+   {form&&canEdit&&teacherWizard&&richIndex===null&&<div className="mb-3 space-y-2 sm:hidden" aria-label="Etapas de elaboração">
     <div className="flex min-w-0 items-center justify-between gap-2">
      <p className="text-xs font-medium text-muted-foreground">Etapa {preview?3:step==="header"?1:2} de 3 · {preview?"Pré-visualização":organizing?"Organização":step==="header"?"Cabeçalho":"Perguntas"}</p>
      {!preview&&!organizing&&step==="questions"&&<Button type="button" size="sm" variant="ghost" disabled={busy||richIndex!==null||Boolean(confirm)||discard} onClick={()=>goStep("header")}><ArrowLeft/> Cabeçalho</Button>}
     </div>
     <div className="flex gap-1" aria-hidden="true">{[1,2,3].map(n=><span key={n} className={"h-1 flex-1 rounded-full "+(n<=(preview?3:step==="header"?1:2)?"bg-klasse-green":"bg-muted")}/>)}</div>
    </div>}
-   {form&&(distribution&&selected?.estado==="aprovada"&&permissions?.distribute?<div className="space-y-3"><Button variant="outline" onClick={()=>setDistribution(false)}><Eye/> Consultar prova</Button><ProvasPrintPanel key={selected.id+":"+selected.versao} endpoint={endpoint} prova={selected}/></div>:preview||!canEdit?<div className="min-w-0 space-y-2"><p className="text-xs text-muted-foreground">Apresentação: {apresentacoes[form.apresentacao??"automatica"]}. A leitura no ecrã é contínua; as quebras físicas são calculadas na impressão A4. Os espaços de resposta são preservados.</p><iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada",logo})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/></div>:organizing?<ProvasOrderPanel blocks={form.conteudo} disabled={busy||Boolean(confirm)||discard} onMove={reorder}/>:
+   {form&&(distribution&&selected?.estado==="aprovada"&&permissions?.distribute?<div className="space-y-3"><Button variant="outline" onClick={()=>setDistribution(false)}><Eye/> Consultar prova</Button><ProvasPrintPanel key={selected.id+":"+selected.versao} endpoint={endpoint} prova={selected}/></div>:preview||!canEdit?<div className="min-w-0 space-y-2"><p className="text-xs text-muted-foreground">Apresentação: {apresentacoes[form.apresentacao??"automatica"]}. A leitura no ecrã é contínua; as quebras físicas são calculadas na impressão A4. Os espaços de resposta são preservados.</p><iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada",logo})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/></div>:organizing?<ProvasOrderPanel blocks={form.conteudo} disabled={busy||Boolean(confirm)||discard} onMove={reorder}/>:richIndex!==null&&form.conteudo[richIndex]?<RichQuestionEditor key={richIndex} block={form.conteudo[richIndex]} label={"Enunciado "+(richIndex+1)} startWithFormula={startFormula} disabled={busy||Boolean(confirm)||discard} onChange={part=>patch(richIndex,part)} onDone={finishRich}/>:
    <div className="min-w-0 space-y-5 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
     <div className={"rounded-xl border border-border bg-card p-3 sm:p-4 "+(teacherWizard&&step==="questions"?"hidden sm:block":"")}>
     <h3 id="provas-step-header" tabIndex={-1} className="sr-only">Cabeçalho da prova</h3>
@@ -274,11 +276,10 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
       <div className="flex flex-wrap items-center justify-between gap-2"><label className={singleQuestion?"grid w-full min-w-0 gap-1 text-sm":"flex w-full min-w-0 items-center gap-2 text-sm sm:w-auto"}><span className="shrink-0 font-medium text-muted-foreground">{singleQuestion?"Tipo de pergunta":String(index+1).padStart(2,"0")+"."}</span><select id={"provas-block-type-"+index} aria-label={"Tipo do bloco "+(index+1)} className={input} value={block.tipo} disabled={richIndex!==null} onChange={e=>setQuestionType(index,e.target.value as Bloco["tipo"])}>{Object.entries(tipos).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
        <details key={singleQuestion?"mobile-options":"desktop-options"} open={!singleQuestion} className="w-full sm:w-auto"><summary className={"flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm text-muted-foreground "+(singleQuestion?"":"hidden")}><Ellipsis className="size-4"/> Opções da pergunta</summary><div className="flex w-full flex-wrap gap-1 sm:w-auto"><Button size="sm" variant="ghost" className="text-destructive" aria-label={"Remover bloco "+(index+1)} disabled={richIndex!==null||form.conteudo.length===1} onClick={()=>removeBlock(index)}><Trash2/> Remover</Button></div></details>
       </div>
-      {richIndex===index?<RichQuestionEditor key={index} block={block} label={"Enunciado "+(index+1)} disabled={busy||Boolean(confirm)||discard} onChange={part=>patch(index,part)} onDone={finishRich}/>:
-       <div className="space-y-2">
+      {<div className="space-y-2">
         {singleQuestion&&<label htmlFor={block.rich?"provas-rich-"+index:"provas-block-"+index} className="block text-sm font-medium">Enunciado</label>}
-        {block.rich?<div className="min-h-20 min-w-0 break-words whitespace-pre-wrap rounded-xl border border-border bg-muted/20 p-3 text-sm"><span className="mb-1 block text-xs text-muted-foreground">Conteúdo formatado · ver pré-visualização para as fórmulas</span>{block.texto}</div>:<textarea className={input+" resize-y"} id={"provas-block-"+index} aria-label={"Enunciado "+(index+1)} rows={singleQuestion?5:4} maxLength={3000} value={block.texto} placeholder={placeholders[block.tipo]} disabled={richIndex!==null} onChange={e=>patch(index,{texto:e.target.value})}/>}
-        <Button type="button" id={"provas-rich-"+index} size="sm" variant="outline" className="w-full sm:w-auto" disabled={richIndex!==null} onClick={e=>{richTrigger.current=e.currentTarget;setActiveBlock(index);setRichIndex(index);}}><Pencil/> {block.rich?"Editar conteúdo formatado":"Formatar / inserir fórmulas"}</Button>
+        {block.rich?<div className="min-h-20 min-w-0 break-words whitespace-pre-wrap rounded-xl border border-border bg-muted/20 p-3 text-sm">{block.rich.segments.map((segment,i)=>segment.kind==="break"?<br key={i}/>:segment.kind==="math"?<span key={i} className="inline-block max-w-full overflow-x-auto px-1 align-middle" aria-label={segment.latex} dangerouslySetInnerHTML={{__html:mathMarkup(segment.latex)??""}}/>:<span key={i} className={(segment.marks.includes("bold")?"font-bold ":"")+(segment.marks.includes("italic")?"italic ":"")+(segment.marks.includes("underline")?"underline":"")}>{segment.text}</span>)}</div>:<textarea className={input+" resize-y"} id={"provas-block-"+index} aria-label={"Enunciado "+(index+1)} rows={singleQuestion?5:4} maxLength={3000} value={block.texto} placeholder={placeholders[block.tipo]} disabled={richIndex!==null} onChange={e=>patch(index,{texto:e.target.value})}/>}
+        <Button type="button" id={"provas-rich-"+index} size="sm" variant="outline" className="w-full sm:w-auto" disabled={richIndex!==null} onClick={e=>{richTrigger.current=e.currentTarget;setStartFormula(block.tipo==="calculo"&&!block.rich);setActiveBlock(index);setRichIndex(index);}}><Pencil/> {block.rich?"Editar conteúdo formatado":block.tipo==="calculo"?"Inserir fórmula":"Formatar / inserir fórmulas"}</Button>
        </div>}
 
       {block.tipo==="escolha"&&<div className="space-y-2">

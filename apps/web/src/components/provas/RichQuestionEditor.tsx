@@ -48,7 +48,7 @@ function fromEditor(doc:JSONContent):RichDocument{
  }
  return {version:1,segments};
 }
-export default function RichQuestionEditor({block,onChange,onDone,disabled,label}:{block:Bloco;onChange:(patch:Partial<Bloco>)=>void;onDone:()=>void;disabled:boolean;label:string}){
+export default function RichQuestionEditor({block,onChange,onDone,disabled,label,startWithFormula=false}:{block:Bloco;onChange:(patch:Partial<Bloco>)=>void;onDone:()=>void;disabled:boolean;label:string;startWithFormula?:boolean}){
  const changeRef=useRef(onChange);
  useEffect(()=>{changeRef.current=onChange;},[onChange]);
  const [formula,setFormula]=useState<{latex:string;from:number;to:number}|null>(null);
@@ -56,6 +56,7 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
   immediatelyRender:false,extensions:[StarterKit.configure({blockquote:false,bulletList:false,orderedList:false,listItem:false,heading:false,codeBlock:false,code:false,strike:false,link:false,horizontalRule:false,trailingNode:false}),FormulaNode],
   content:toEditor(block),
   editorProps:{attributes:{"aria-label":label,role:"textbox","aria-multiline":"true",class:"min-h-32 min-w-0 max-w-full break-words px-3 py-3 text-base leading-relaxed outline-none whitespace-pre-wrap sm:text-sm"}},
+  onCreate:({editor})=>{if(startWithFormula){const pos=editor.state.doc.content.size-1;editor.commands.setTextSelection(pos);setFormula({latex:"",from:pos,to:pos});}},
   onUpdate:({editor})=>{const rich=fromEditor(editor.getJSON());changeRef.current({texto:richText(rich),rich:rich.segments.length?rich:undefined});}
  });
  const state=useEditorState({editor,selector:({editor:e})=>({bold:e?.isActive("bold")??false,italic:e?.isActive("italic")??false,underline:e?.isActive("underline")??false,formula:e?.isActive("formula")??false})});
@@ -65,26 +66,28 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
  function openFormula(){
   if(!editor)return;
   const {from,to}=editor.state.selection;
-  setFormula({latex:editor.isActive("formula")?String(editor.getAttributes("formula").latex??""):"",from,to});
+  const latex=editor.isActive("formula")?String(editor.getAttributes("formula").latex??""):"";
+  editor.commands.blur();setFormula({latex,from,to});
  }
+ const returnFocus=()=>requestAnimationFrame(()=>document.getElementById("provas-formula-trigger")?.focus({preventScroll:true}));
  return <div className="min-w-0 space-y-3 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
-  <div className="min-w-0 overflow-hidden rounded-xl border border-border focus-within:ring-4 focus-within:ring-klasse-gold/20">
+  <div className={"min-w-0 overflow-hidden rounded-xl border border-border focus-within:ring-4 focus-within:ring-klasse-gold/20 "+(formula?"hidden":"")}>
    <div role="group" aria-label="Formatação do enunciado" className="grid grid-cols-2 gap-1 border-b border-border bg-muted/30 p-2 sm:flex sm:flex-wrap">
     <Button type="button" size="sm" variant={state?.bold?"secondary":"ghost"} aria-pressed={state?.bold} disabled={blocked} onClick={()=>editor.chain().focus().toggleBold().run()}><Bold/> Negrito</Button>
     <Button type="button" size="sm" variant={state?.italic?"secondary":"ghost"} aria-pressed={state?.italic} disabled={blocked} onClick={()=>editor.chain().focus().toggleItalic().run()}><Italic/> Itálico</Button>
     <Button type="button" size="sm" variant={state?.underline?"secondary":"ghost"} aria-pressed={state?.underline} disabled={blocked} onClick={()=>editor.chain().focus().toggleUnderline().run()}><Underline/> Sublinhado</Button>
-    <Button type="button" size="sm" variant="ghost" disabled={blocked} onClick={openFormula}><Sigma/> {state?.formula?"Editar fórmula":"Fórmula"}</Button>
+    <Button id="provas-formula-trigger" type="button" size="sm" variant="outline" disabled={blocked} onClick={openFormula}><Sigma/> {state?.formula?"Editar fórmula":"Fórmula"}</Button>
     <Button type="button" size="sm" variant="ghost" disabled={blocked} onClick={()=>editor.chain().focus().undo().run()}><Undo2/> Desfazer</Button>
     <Button type="button" size="sm" variant="ghost" disabled={blocked} onClick={()=>editor.chain().focus().redo().run()}><Redo2/> Refazer</Button>
    </div>
    <EditorContent editor={editor}/>
   </div>
-  {formula&&<FormulaInput initial={formula.latex} onCancel={()=>{setFormula(null);editor.setEditable(!disabled,false);editor.commands.focus();}} onInsert={latex=>{
+  {formula&&<FormulaInput initial={formula.latex} disabled={disabled} onCancel={()=>{setFormula(null);editor.setEditable(!disabled,false);returnFocus();}} onInsert={latex=>{
     if(disabled)return;
     editor.setEditable(true,false);
-    editor.chain().focus().insertContentAt({from:formula.from,to:formula.to},{type:"formula",attrs:{latex}}).run();
-    setFormula(null);
+    if(!editor.chain().insertContentAt({from:formula.from,to:formula.to},{type:"formula",attrs:{latex}}).run()){editor.setEditable(false,false);return;}
+    setFormula(null);returnFocus();
   }}/>}
-  <div className="flex justify-end"><Button type="button" className="w-full sm:w-auto" variant="outline" size="sm" disabled={blocked} onClick={onDone}><Check/> Concluir edição</Button></div>
+  {!formula&&<div className="sticky bottom-0 flex justify-end border-t border-border bg-card pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"><Button type="button" className="w-full sm:w-auto" tone="gold" disabled={blocked} onClick={onDone}><Check/> Concluir edição</Button></div>}
  </div>;
 }

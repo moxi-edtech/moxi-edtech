@@ -248,3 +248,20 @@ test("institutional monochrome composition uses school identity, bold numbers, a
  assert.match(wide,/class="alternativas"/);
  assert.doesNotMatch(wide,/class="alternativas duas-colunas"/);
 });
+
+test("editable formula models produce only validated mathematical expressions",()=>{
+ const {formulaModels,modelExpression,completeExpression}=require("../../src/lib/provas/formulaModels.ts");
+ for(const model of formulaModels){
+  const value=modelExpression(model.id,model.fields.map(f=>f.example));
+  assert.equal(value,model.sample,model.id);
+  assert.equal(completeExpression(value),true,model.id);
+ }
+ assert.equal(modelExpression("equacao",["2","-5","15"]),"2x-5=15");
+ assert.equal(modelExpression("potencia",["-2","3"]),"(-2)^{3}");
+ assert.equal(modelExpression("fracao",["3,5","2"]),"\\frac{3.5}{2}");
+ assert.equal(modelExpression("fracao",["\\htmlClass{evil}","2"]),null);
+ assert.equal(modelExpression("fracao",["","2"]),null);
+ assert.equal(completeExpression("\\frac{}{5}"),false);
+ assert.equal(completeExpression("\\placeholder{}+3"),false);
+ assert.equal(completeExpression("2+3"),true);
+});

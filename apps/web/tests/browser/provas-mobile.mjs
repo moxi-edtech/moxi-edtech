@@ -23,7 +23,7 @@ try{
    if(req.method()==="POST"){
     const data=req.postDataJSON();
     assert.equal(data.dados.ano_letivo_id,year);assert.equal(data.dados.curso_matriz_id,matrix);assert.equal(data.dados.conteudo[0].linhas,7);
-    assert.ok(data.dados.conteudo[0].rich.segments.some(s=>s.kind==="math"&&s.latex==="2+3"));
+    assert.ok(data.dados.conteudo[0].rich.segments.some(s=>s.kind==="math"&&s.latex===(width===390?"\\frac{7}{5}":"2+3")));
     assert.deepEqual(data.dados.conteudo[1].alternativas,["Joule","Watt","Newton","Pascal"]);
     assert.equal(data.dados.conteudo[1].cotacao_cent,125);
     assert.equal(data.dados.apresentacao,"espacosa");
@@ -80,19 +80,32 @@ try{
   }
   await dialog.getByRole("button",{name:"Formatar / inserir fórmulas"}).click();
   await dialog.getByRole("button",{name:"Fórmula",exact:true}).click();
-  await dialog.getByRole("group",{name:"Teclado matemático"}).waitFor();
+  const math=dialog.getByRole("region",{name:"Editor matemático"});
+  await math.waitFor();
+  assert.equal(await dialog.getByRole("button",{name:"Guardar rascunho"}).count(),0,"proof footer is absent during math editing");
+  assert.equal(await dialog.getByRole("group",{name:"Formatação do enunciado"}).isVisible(),false);
+  await math.getByRole("button",{name:"Fracção",exact:false}).click();
+  await math.getByLabel("Numerador",{exact:true}).fill("7");
+  await math.getByLabel("Denominador",{exact:true}).fill("5");
+  assert.equal(await math.getByLabel("Pré-visualização do modelo").locator("mfrac").count(),1);
   if(width===320){
-   const pad=dialog.getByRole("group",{name:"Teclado matemático"});
-   await pad.getByRole("button",{name:"2",exact:true}).click();
-   await pad.getByRole("button",{name:"+",exact:true}).click();
-   await pad.getByRole("button",{name:"3",exact:true}).click();
-  }else{
-   await dialog.getByRole("button",{name:"Editar em LaTeX (alternativa por teclado)"}).click();
-   await dialog.getByLabel("Expressão em LaTeX").fill("2+3");
+   await math.getByRole("button",{name:"Livre",exact:true}).click();
+   const pad=math.getByRole("group",{name:"Teclado matemático"});
+   await pad.getByRole("button",{name:"2",exact:true}).tap();
+   await pad.getByRole("button",{name:"+",exact:true}).tap();
+   await pad.getByRole("button",{name:"3",exact:true}).tap();
+   await math.getByRole("button",{name:"Modelos",exact:true}).click();
+   assert.equal(await math.getByLabel("Numerador",{exact:true}).inputValue(),"7");
+   await math.getByRole("button",{name:"Livre",exact:true}).click();
+   assert.equal(await math.locator("math-field").evaluate(el=>el.value),"2+3");
+  }else if(width!==390){
+   await math.getByRole("button",{name:"LaTeX",exact:true}).click();
+   await math.getByLabel("Expressão em LaTeX").fill("2+3");
   }
   await noOverflow(page,"formula "+width);
   await page.screenshot({path:"apps/web/visual-evidence/provas/formula-"+width+".png"});
   await dialog.getByRole("button",{name:"Inserir fórmula"}).click();
+  await dialog.getByRole("group",{name:"Formatação do enunciado"}).waitFor();
   await dialog.getByRole("button",{name:"Concluir edição"}).click();
   if(width<640){
    await dialog.getByRole("button",{name:"Adicionar pergunta",exact:true}).click();
