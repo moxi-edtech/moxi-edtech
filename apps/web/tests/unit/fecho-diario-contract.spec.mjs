@@ -193,3 +193,26 @@ test("financial close has one workspace, legacy navigation and server-side repor
  assert.match(access,/status === "declared" \|\| status === "approved"/);
  assert.match(access,/canViewMovements:access.canSupervise&&canReadCashMovements/);
 });
+
+test("secretaria presents a short guided close and loads activity only on demand",()=>{
+ const ui=src("components/secretaria/ExpedienteWorkspace.tsx");
+ const cash=src("components/secretaria/FechoCaixaCego.tsx");
+ const alias=src("app/escola/[id]/(portal)/secretaria/(portal-secretaria)/fecho/page.tsx");
+ const globalAlias=src("app/secretaria/(portal-secretaria)/fecho/page.tsx");
+ const route=src("app/escola/[id]/(portal)/secretaria/(portal-secretaria)/fecho-diario/page.tsx");
+ assert.match(ui,/const simple=portal==="secretaria"/);
+ assert.match(ui,/1\. Conferir caixa/);
+ assert.match(ui,/2\. Encerrar expediente/);
+ assert.match(ui,/\(simple&&!activityOpen\)/);
+ assert.match(ui,/Ver atividade do dia/);
+ assert.match(ui,/enabled=\{!simple&&canViewMovements\}/);
+ assert.match(ui,/compact=\{simple\}/);
+ assert.match(ui,/onCompleted=\{\(\)=>\{if\(simple\)setTab\("detail"\);\}\}/);
+ assert.match(cash,/open=\{!compact\|\|result.status==="DIVERGENT"\}/);
+ assert.match(cash,/values.every\(value=>value===0\)&&!zeroConfirmed/);
+ for(const old of [alias,globalAlias]){
+   assert.match(old,/secretaria\/fecho-diario\?view=cash/);
+   assert.doesNotMatch(old,/FechoCaixaCego|fetch\(/);
+ }
+ assert.match(route,/initialCash=\{queryParams.view==="cash"\}/);
+});
