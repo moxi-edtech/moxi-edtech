@@ -64,4 +64,22 @@ try{
  }
  console.log("Physical text bounds validated:",words.length,"words");
  console.log("A4 browser smoke passed; pages:",doc.getPageCount());
+ const one={matricula_id:"b0000000-0000-4000-8000-000000000001",turma_id:"80000000-0000-4000-8000-000000000001",turma:"8ª A",turno:"Manhã",sala:"12",nome:"Estudante ALFA",numero_processo:"P-001",numero_chamada:1};
+ const two={...one,matricula_id:"b0000000-0000-4000-8000-000000000002",nome:"Estudante BETA",numero_processo:"P-002",numero_chamada:2};
+ await page.setContent(provaHtml({...base,tipo_prova:"trimestral",conteudo},"Escola de teste",{nonce:"browser-batch",recipients:[one,two]}),{waitUntil:"load"});
+ const batch=await page.pdf({preferCSSPageSize:true,printBackground:true});
+ const batchDoc=await PDFDocument.load(batch);
+ const batchPath="apps/web/visual-evidence/provas/lote-nominal.pdf";
+ await writeFile(batchPath,batch);
+ const pages=execFileSync("pdftotext",["-layout",batchPath,"-"],{encoding:"utf8"}).split("\\f").filter(s=>s.trim());
+ assert.equal(pages.length,batchDoc.getPageCount(),"PDF pages must contain content");
+ assert.ok(pages.length>=6,"two multi-page copies");
+ assert.match(pages[0],/Estudante ALFA/);
+ const nextPage=pages.findIndex(p=>p.includes("Estudante BETA"));
+ assert.ok(nextPage>=3,"second student starts after first full copy");
+ assert.ok(!pages.slice(0,nextPage).some(p=>p.includes("Estudante BETA")));
+ assert.ok(!pages.slice(nextPage).some(p=>p.includes("Estudante ALFA")));
+ assert.equal(pages.filter(p=>p.includes("Estudante ALFA")).length,1);
+ assert.equal(pages.filter(p=>p.includes("Estudante BETA")).length,1);
+ console.log("Nominal copies start on separate pages:",nextPage+1,"total:",pages.length);
 }finally{await browser.close();}
