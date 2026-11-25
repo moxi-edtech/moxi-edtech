@@ -152,3 +152,11 @@ test("QR de identidade mantém zona de silêncio e contraste próprios sem super
   assert.doesNotMatch(identity, /\bbg-white\b/);
   assert.doesNotMatch(identity, /viewBox=\{`0 0 256 256`\}/);
 });
+
+test("cartão digital usa superfícies e texto semânticos no modo claro e escuro", async () => {
+  const identity = await read("components/aluno/tabs/CartaoEstudante.tsx");
+  assert.match(identity, /min-h-\[215px\][^"]*border-border bg-card[^"]*text-foreground/);
+  assert.match(identity, /rounded-xl border border-border bg-muted/);
+  assert.doesNotMatch(identity, /\b(?:bg-white|(?:bg|text|border|ring)-(?:slate|gray|zinc)-\d+|(?:border|ring)-white)\b/);
+  assert.match(identity, /data\.verification_url/);
+});

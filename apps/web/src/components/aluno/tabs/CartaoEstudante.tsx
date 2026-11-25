@@ -163,24 +163,24 @@ export function CartaoEstudante() {
       {/* TAB 1: Visual do Cartão Estudantil */}
       {activeTab === "card" && (
         <div className="w-full max-w-[360px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
-          <div className="relative min-h-[215px] w-full rounded-xl bg-[#0d1711] p-4 text-white shadow-sm ring-1 ring-white/10 flex flex-col justify-between">
+          <div className="relative min-h-[215px] w-full rounded-xl border border-border bg-card p-4 text-foreground shadow-sm flex flex-col justify-between">
             
 
             {/* Header do Cartão */}
-            <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2">
+            <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
               <div className="flex min-w-0 items-center gap-2.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 backdrop-blur-md p-1">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted p-1">
                   {data.escola_logo ? (
                     <img src={data.escola_logo} alt="Logo" className="h-full w-full object-contain" />
                   ) : (
-                    <GraduationCap className="h-5 w-5 text-amber" />
+                    <GraduationCap className="h-5 w-5 text-primary" />
                   )}
                 </div>
-                <h3 className="min-w-0 break-words text-xs font-semibold text-white">
+                <h3 className="min-w-0 break-words text-sm font-semibold text-foreground">
                   {data.escola}
                 </h3>
               </div>
-              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[9px] font-black uppercase text-amber backdrop-blur-sm">
+              <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
                 {data.ano_letivo}
               </span>
             </div>
@@ -188,11 +188,11 @@ export function CartaoEstudante() {
             {/* Corpo do Cartão */}
             <div className="relative my-3 flex items-center gap-3">
               {/* Foto do Aluno */}
-              <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-800 ring-1 ring-white/20 shadow-lg">
+              <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
                 {data.foto ? (
                   <img src={data.foto} alt={data.nome} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-slate-800 text-white/20">
+                  <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
                     <User size={36} />
                   </div>
                 )}
@@ -200,16 +200,16 @@ export function CartaoEstudante() {
 
               {/* Dados Principais */}
               <div className="min-w-0 flex-1 space-y-1">
-                <h2 className="break-words text-sm font-semibold leading-tight text-white">{data.nome}</h2>
-                <p className="text-[10px] font-bold text-slate-400">
-                  Proc: <span className="text-emerald-400 font-mono">{data.processo}</span>
+                <h2 className="break-words text-sm font-semibold leading-tight text-foreground">{data.nome}</h2>
+                <p className="text-xs font-medium text-muted-foreground">
+                  Proc: <span className="text-foreground font-mono">{data.processo}</span>
                 </p>
                 
                 <div className="pt-2 space-y-0.5">
-                  <p className="break-words text-xs font-medium text-amber">
+                  <p className="break-words text-xs font-medium text-primary">
                     {data.curso}
                   </p>
-                  <p className="text-[10px] font-medium text-white/80">
+                  <p className="text-xs text-muted-foreground">
                     Turma: {data.turma}
                   </p>
                 </div>
@@ -217,8 +217,8 @@ export function CartaoEstudante() {
             </div>
 
             {/* Footer do Cartão */}
-            <div className="relative flex flex-wrap items-center justify-between gap-1 border-t border-white/10 pt-2.5 text-[9px] font-bold text-slate-400">
-              <span className="flex items-center gap-1 text-emerald-400">
+            <div className="relative flex flex-wrap items-center justify-between gap-1 border-t border-border pt-2.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1 text-primary">
                 <ShieldCheck size={12} /> Documento Oficial
               </span>
               <span>Validade: {new Date(data.validade).toLocaleDateString("pt-PT")}</span>
@@ -226,7 +226,7 @@ export function CartaoEstudante() {
 
           </div>
 
-          <p className="text-center text-[11px] font-medium text-slate-400">
+          <p className="text-center text-xs text-muted-foreground">
             Apresente este cartão digital para identificação nas instalações escolares.
           </p>
         </div>
@@ -258,11 +258,11 @@ export function CartaoEstudante() {
             <div className="space-y-1">
               <h3 className="text-sm font-semibold text-foreground">Validação em tempo real</h3>
               <p className="text-sm leading-5 text-muted-foreground">
-                Código para leitura nos leitos de acesso ou conferência de presença.
+                Apresenta o código para validar a tua identidade.
               </p>
             </div>
 
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-100 px-3.5 py-1 text-[10px] font-bold text-emerald-700">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald/10 border border-emerald/20 px-3.5 py-1 text-xs font-medium text-emerald dark:text-emerald-300">
               <ShieldCheck size={12} /> Válido até {new Date(data.validade).toLocaleDateString("pt-PT")}
             </div>
 
