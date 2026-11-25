@@ -122,13 +122,13 @@ export function CartaoEstudante() {
   if (!data) return <div role="alert" className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">{error?.message || "Falha ao carregar identidade."}</div>;
 
   return (
-    <div className="flex flex-col items-center space-y-6 py-6 px-2 max-w-md mx-auto">
+    <div className="mx-auto flex w-full min-w-0 max-w-md flex-col items-center space-y-4">
 
       {/* Offline Status Badge */}
       {(isServedFromCache || isOffline) && (
         <div className="flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200/80 px-4 py-1.5 text-xs font-bold text-amber-800 shadow-sm animate-in fade-in duration-300">
           <WifiOff size={14} className="text-amber-600 shrink-0" />
-          <span>Modo Offline — Cartão Salvo no Dispositivo</span>
+          <span>Offline · Cartão guardado</span>
         </div>
       )}
 
@@ -163,23 +163,20 @@ export function CartaoEstudante() {
       {/* TAB 1: Visual do Cartão Estudantil */}
       {activeTab === "card" && (
         <div className="w-full max-w-[360px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
-          <div className="relative aspect-[1.58/1] w-full overflow-hidden rounded-[2.5rem] bg-[#0d1711] p-6 text-white shadow-xl ring-1 ring-white/10 flex flex-col justify-between">
+          <div className="relative min-h-[215px] w-full rounded-xl bg-[#0d1711] p-4 text-white shadow-sm ring-1 ring-white/10 flex flex-col justify-between">
             
-            {/* Ambient Lighting Ornaments */}
-            <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-amber/10 blur-[50px]" />
-            <div className="absolute -left-12 -bottom-12 h-44 w-44 rounded-full bg-emerald-500/10 blur-[50px]" />
 
             {/* Header do Cartão */}
-            <div className="relative flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 backdrop-blur-md p-1">
+            <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 backdrop-blur-md p-1">
                   {data.escola_logo ? (
                     <img src={data.escola_logo} alt="Logo" className="h-full w-full object-contain" />
                   ) : (
                     <GraduationCap className="h-5 w-5 text-amber" />
                   )}
                 </div>
-                <h3 className="text-xs font-black uppercase tracking-tight text-white truncate max-w-[170px]">
+                <h3 className="min-w-0 break-words text-xs font-semibold text-white">
                   {data.escola}
                 </h3>
               </div>
@@ -189,7 +186,7 @@ export function CartaoEstudante() {
             </div>
 
             {/* Corpo do Cartão */}
-            <div className="relative my-auto flex items-center gap-4">
+            <div className="relative my-3 flex items-center gap-3">
               {/* Foto do Aluno */}
               <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-800 ring-1 ring-white/20 shadow-lg">
                 {data.foto ? (
@@ -203,13 +200,13 @@ export function CartaoEstudante() {
 
               {/* Dados Principais */}
               <div className="min-w-0 flex-1 space-y-1">
-                <h2 className="text-sm font-black text-white leading-tight truncate">{data.nome}</h2>
+                <h2 className="break-words text-sm font-semibold leading-tight text-white">{data.nome}</h2>
                 <p className="text-[10px] font-bold text-slate-400">
                   Proc: <span className="text-emerald-400 font-mono">{data.processo}</span>
                 </p>
                 
                 <div className="pt-2 space-y-0.5">
-                  <p className="text-[9px] font-black uppercase text-amber tracking-tight truncate">
+                  <p className="break-words text-xs font-medium text-amber">
                     {data.curso}
                   </p>
                   <p className="text-[10px] font-medium text-white/80">
@@ -220,7 +217,7 @@ export function CartaoEstudante() {
             </div>
 
             {/* Footer do Cartão */}
-            <div className="relative flex items-center justify-between border-t border-white/10 pt-2.5 text-[9px] font-bold text-slate-400">
+            <div className="relative flex flex-wrap items-center justify-between gap-1 border-t border-white/10 pt-2.5 text-[9px] font-bold text-slate-400">
               <span className="flex items-center gap-1 text-emerald-400">
                 <ShieldCheck size={12} /> Documento Oficial
               </span>
@@ -240,12 +237,13 @@ export function CartaoEstudante() {
         <div className="w-full max-w-[340px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
           <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center shadow-sm sm:p-6">
             
-            <div className="rounded-xl border border-border bg-card p-5">
+            <div className="rounded-xl bg-white p-4">
               <QRCode
                 value={data.verification_url}
                 size={180}
                 style={{ height: "auto", maxWidth: "100%", width: "100%" }}
                 viewBox={`0 0 256 256`}
+                bgColor="#ffffff"
                 fgColor="#0f172a"
               />
             </div>
