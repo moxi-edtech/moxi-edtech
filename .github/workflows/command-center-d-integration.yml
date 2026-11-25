@@ -13,7 +13,7 @@ permissions:
   contents: read
 jobs:
   combined-synthetic-merge:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -47,10 +47,15 @@ jobs:
           cd "$RUNNER_TEMP/cc-composite"
           pnpm install --frozen-lockfile
       - name: Combined TS application contract
+        # Match the existing full-web CI memory budget; the default V8 heap is too small.
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           cd "$RUNNER_TEMP/cc-composite"
           pnpm -C apps/web typecheck
       - name: Combined lint across conflicting owners
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           cd "$RUNNER_TEMP/cc-composite"
           pnpm -C apps/web exec eslint src/components/layout/klasse/Topbar.tsx src/hooks/useGlobalSearch.ts src/components/CommandPalette.tsx src/components/secretaria/BalcaoWorkspace.tsx --max-warnings 0
@@ -62,6 +67,7 @@ jobs:
         shell: bash
       - name: Combined Next.js production build (disposable only)
         env:
+          NODE_OPTIONS: --max-old-space-size=6144
           NEXT_PUBLIC_SUPABASE_URL: https://fixture.invalid
           NEXT_PUBLIC_SUPABASE_ANON_KEY: synthetic-public-key-no-real-session
         run: |
@@ -77,7 +83,8 @@ jobs:
             /tmp/cc-d-all-unit-tests.txt
           retention-days: 14
   synthetic-three-attendances:
-    runs-on: ubuntu-latest
+    # Chromium from Playwright 1.57 is not supported on ubuntu-26.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -110,7 +117,12 @@ jobs:
         run: node apps/web/scripts/visual/command-center-three-attendances.mjs
       - name: Diagnostics
         if: failure()
-        run: tail -n 80 /tmp/cc-d-vite.log
+        run: |
+          if test -f /tmp/cc-d-vite.log; then
+            tail -n 80 /tmp/cc-d-vite.log
+          else
+            echo 'Vite was not started; inspect the preceding failed setup step.'
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
