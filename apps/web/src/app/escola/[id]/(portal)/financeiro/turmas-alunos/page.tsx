@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import ModalExtratoAluno from './modal-extrato-aluno';
 import { useParams, usePathname, useSearchParams } from 'next/navigation';
-import { buildContextualPortalHref } from '@/lib/navigation';
+import { buildContextualPortalHref, buildFinancialWorkspaceHref } from '@/lib/navigation';
 import { formatTurmaDisplayName } from '@/utils/formatters';
 import { useToast, useConfirm } from "@/components/feedback/FeedbackSystem";
 
@@ -377,7 +377,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
           Alunos e turmas
         </button>
         <Link
-          href={contextualPortalHref('/financeiro/radar')}
+          href={buildFinancialWorkspaceHref(escolaParam, 'radar', pathname, anoLetivoId)}
           className="rounded-lg px-3 py-2 text-sm font-semibold text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
         >
           Inadimplência

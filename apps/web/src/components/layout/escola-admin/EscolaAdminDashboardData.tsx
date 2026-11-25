@@ -636,6 +636,7 @@ export default async function EscolaAdminDashboardData({
         mode={mode}
         escolaNome={escolaNome ?? escolaNomeResult.data?.nome ?? undefined}
         anoLetivo={anoLetivo}
+        academicYearId={activeYear?.id ?? null}
         loading={false}
         error={null}
         stats={stats}

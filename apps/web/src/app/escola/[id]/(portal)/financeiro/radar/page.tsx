@@ -8,8 +8,9 @@ import RadarInadimplenciaActive, {
   type RadarEntry,
 } from "@/app/financeiro/_components/RadarInadimplenciaActive";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
-import { useParams } from "next/navigation";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
+import { buildFinancialWorkspaceHref, buildContextualPortalHref } from "@/lib/navigation";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 
 // --- TIPAGENS ---
@@ -44,6 +45,7 @@ const getCanalNome = (canal: string) => {
 
 export default function SistemaCobrancas() {
   const params = useParams();
+  const pathname = usePathname();
   const escolaId = params?.id as string;
   const searchParams = useSearchParams();
   const academicYearId = searchParams?.get(ACADEMIC_YEAR_PARAM);
@@ -197,7 +199,7 @@ export default function SistemaCobrancas() {
               description="Automatize cobranças por WhatsApp, SMS e email."
               breadcrumbs={[
                 { label: "Início", href: `/escola/${escolaId}` },
-                { label: "Financeiro", href: `/escola/${escolaId}/financeiro` },
+                { label: "Financeiro", href: buildContextualPortalHref(escolaId, "/financeiro", pathname) },
                 { label: "Radar" },
               ]}
             />
@@ -223,17 +225,12 @@ export default function SistemaCobrancas() {
           >
             Inadimplência
           </span>
-          <button
-            type="button"
-            onClick={() => {
-              window.location.assign(
-                new URL("../turmas-alunos", window.location.href).toString()
-              );
-            }}
-            className="rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          <Link
+            href={buildFinancialWorkspaceHref(escolaId, "turmas-alunos", pathname, academicYearId)}
+            className="rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             Alunos e turmas
-          </button>
+          </Link>
         </nav>
 
         {/* CONTEÚDO */}

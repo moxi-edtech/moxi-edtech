@@ -7,7 +7,7 @@ import { OperationalMetricSkeleton } from "@/components/shared/OperationalMetric
 import type { SetupStatus } from "./setupStatus";
 import type { KpiStats, OperationalSnapshot } from "./dashboard.types";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildPortalHref, buildFinancialWorkspaceHref } from "@/lib/navigation";
 
 type Props = {
   escolaId:        string;
@@ -17,6 +17,7 @@ type Props = {
   error?:          string | null;
   setupStatus:     SetupStatus;
   operationalSnapshot?: OperationalSnapshot;
+  academicYearId?: string | null;
   financeiroHref?: string;
   portalBase?:     "admin" | "operacoes";
   alunoSeries?:    number[];
@@ -65,6 +66,7 @@ export default function KpiSection({
   error,
   setupStatus,
   operationalSnapshot,
+  academicYearId,
   financeiroHref,
   portalBase = "admin",
   alunoSeries,
@@ -99,9 +101,7 @@ export default function KpiSection({
 
   const portalHref = (path: string) => buildPortalHref(escolaParam, `/${portalBase}/${path}`);
   const financeHref = financeiroHref ?? buildPortalHref(escolaParam, "/financeiro");
-  const financeRadarHref = mode === "operacoes"
-    ? buildPortalHref(escolaParam, "/operacoes/turmas-alunos")
-    : `${financeHref}/radar`;
+  const overdueHref = buildFinancialWorkspaceHref(escolaParam, "cobrancas", "/operacoes/dashboard", academicYearId);
   const op = operationalSnapshot ?? {
     mensalidadesPendentes: 0,
     mensalidadesInadimplentes: 0,
@@ -152,7 +152,7 @@ export default function KpiSection({
           label: "Propinas em atraso",
           value: propinasDisponiveis ? op.mensalidadesInadimplentes : undefined,
           icon: UserCheck,
-          href: financeRadarHref,
+          href: overdueHref,
           variant: !propinasDisponiveis ? ("default" as const) : op.mensalidadesInadimplentes > 0 ? ("warning" as const) : ("success" as const),
           trend: undefined,
           chartData: undefined,
