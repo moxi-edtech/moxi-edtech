@@ -398,6 +398,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/escola/[escolaId]/professor", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/escola/[escolaId]/professor/frequencias", label: "Frequências", icon: "BookOpen" },
     { href: "/escola/[escolaId]/professor/notas", label: "Lançar Notas", icon: "FileText" },
+    { href: "/escola/[escolaId]/professor/provas", label: "Provas", icon: "FileText" },
     { href: "/escola/[escolaId]/professor/calendario", label: "Calendário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/professor/perfil", label: "Perfil", icon: "User" },
   ],
