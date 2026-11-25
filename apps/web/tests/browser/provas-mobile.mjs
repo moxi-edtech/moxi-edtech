@@ -313,7 +313,9 @@ try{
   await dialog.getByLabel("Classe e disciplina").selectOption(matrix);
   if(width<640)await dialog.getByRole("button",{name:"Perguntas",exact:true}).click();
   await dialog.getByLabel("Tipo do bloco 1",{exact:true}).selectOption("grupo");
-  await dialog.getByLabel("Título do grupo 1",{exact:true}).fill("I Grupo");
+  assert.equal(await dialog.getByLabel("Título do grupo 1",{exact:true}).inputValue(),"");
+  await dialog.getByLabel("Título do grupo 1",{exact:true}).fill("Interpretação");
+  assert.match(await dialog.getByLabel("Resumo I Grupo").innerText(),/0 pergunta/);
   assert.equal(await dialog.getByLabel("Cotação da pergunta 1",{exact:true}).count(),0);
   await dialog.getByText("Adicionar elemento de estrutura",{exact:true}).click();
   await dialog.getByRole("button",{name:/^Texto de apoio Conteúdo de referência/}).click();
@@ -326,11 +328,14 @@ try{
    assert.match(await dialog.getByRole("status").filter({hasText:"Pergunta 1 · posição 3 de 3"}).innerText(),/Pergunta 1/);
   }else await dialog.getByLabel("Adicionar pergunta ou bloco").selectOption("discursiva");
   await dialog.getByLabel("Enunciado 1",{exact:true}).fill("Identifica a ideia principal.");
+  await dialog.getByLabel("Cotação da pergunta 1",{exact:true}).fill("20");
+  if(width>=640){assert.match(await dialog.getByLabel("Resumo I Grupo").innerText(),/1 pergunta.*20 val/);await dialog.getByRole("button",{name:"Recolher perguntas"}).click();assert.equal(await dialog.getByLabel("Enunciado 1",{exact:true}).count(),0);await dialog.getByRole("button",{name:"Expandir perguntas"}).click();assert.equal(await dialog.getByLabel("Enunciado 1",{exact:true}).inputValue(),"Identifica a ideia principal.");}
   await dialog.getByRole("button",{name:"Pré-visualizar"}).click();
   await preview.locator(".apoio").waitFor();
   assert.equal(await preview.locator(".question-number").innerText(),"1.");
   assert.equal(await preview.locator(".apoio").innerText(),"Leia o texto antes de responder.");
   assert.equal(await preview.locator("h3 + .apoio + .questao").count(),1);
+  assert.match(await preview.locator("h3").innerText(),/I Grupo — Interpretação.*20 val\./);
   await noOverflow(page,"estrutura "+width);
   assert.equal(errors.length,0,errors.join("\n"));
   await page.close();

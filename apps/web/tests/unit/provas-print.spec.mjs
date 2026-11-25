@@ -379,3 +379,24 @@ test("modular arithmetic starters, editable operators, terminal equality and gro
  assert.equal(composeExpression([{...seed[0],opens:1}]),null);
  assert.equal(composeExpression(seed.map((p,i)=>({...p,opens:i===0?1:0,closes:i===1?1:0})),true),"(\\frac{2}{3}+\\frac{1}{4})=");
 });
+
+test("groups derive roman headings, totals and membership without rewriting old titles",()=>{
+ const {groupSummaries,groupHeading,questionTemplate,moveChangesGroup,groupTitleInput}=require("../../src/lib/provas/questionTemplates.ts");
+ const g={tipo:"grupo",texto:"IV Grupo — Aritmética",linhas:0},h={tipo:"grupo",texto:"Grupo",linhas:0};
+ const a={tipo:"discursiva",texto:"A",linhas:2,cotacao_cent:450},b={tipo:"alinea",texto:"B",linhas:1,cotacao_cent:350},c={tipo:"calculo",texto:"C",linhas:3,cotacao_cent:1200},support={tipo:"texto",texto:"Leia",linhas:0};
+ const blocks=[g,support,a,b,h,c];
+ const groups=groupSummaries(blocks);
+ assert.deepEqual(groups.map(x=>[x.title,x.questions,x.total,x.assigned]),[["I Grupo — Aritmética",2,800,2],["II Grupo",1,1200,1]]);
+ assert.equal(groupHeading(4,"II Grupo: Álgebra"),"IV Grupo — Álgebra");
+ assert.equal(groupTitleInput("Aritmética "),"Aritmética ");
+ assert.equal(questionTemplate("grupo").texto,"Grupo");
+ assert.equal(moveChangesGroup(blocks,2,3),false);
+ assert.equal(moveChangesGroup(blocks,2,5),true);
+ assert.equal(moveChangesGroup(blocks,4,1),true);
+ assert.equal(groupSummaries([g,h,c])[0].questions,0);
+ const html=provaHtml({...base,conteudo:blocks},"Escola");
+ assert.match(html,/I Grupo — Aritmética<span class="group-total"> · 8 val\./);
+ assert.match(html,/II Grupo<span class="group-total"> · 12 val\./);
+ assert.doesNotMatch(html,/IV Grupo — Aritmética/);
+ assert.doesNotMatch(provaHtml({...base,conteudo:[g,{...a,cotacao_cent:undefined}]},"Escola"),/<span class="group-total">/);
+});

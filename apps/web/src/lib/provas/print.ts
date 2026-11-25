@@ -4,7 +4,7 @@ import { formatClasseProva, turmaProvaLabels } from "./academicLabels";
 import { mathMarkup } from "./math";
 import { PROVA_FOOTER,safeLogoData } from "./branding";
 import { PROVA_PAPER as P,respostaLayout,chooseComposicao,COMPOSICAO,alternativesInColumns } from "./layout";
-import { formatCotacao,blockNumbering } from "./questionTemplates";
+import { formatCotacao,blockNumbering,groupSummaries,groupTitleInput } from "./questionTemplates";
 const esc=(s:unknown)=>String(s??"").replace(/[&<>"']/g,c=>(({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"} as Record<string,string>)[c]!));
 export function blocoHtml(b:Bloco):string{
  if(!b.rich)return esc(b.texto);
@@ -20,8 +20,23 @@ export function blocoHtml(b:Bloco):string{
 }
 export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:string;draft?:boolean;recipients?:readonly PrintRecipient[];includeName?:boolean;logo?:string|null;blankSheet?:boolean}={}){
  const numbering=blockNumbering(prova.conteudo);
+ const groups=groupSummaries(prova.conteudo);
  const blocks=options.blankSheet?'<section class="blank-writing" aria-label="Espaço para respostas">'+Array.from({length:18},()=>'<div class="linha"></div>').join("")+'</section>':prova.conteudo.map((b,index)=>{
-   if(b.tipo==="grupo"){return '<h3>'+blocoHtml(b)+'</h3>';}
+   if(b.tipo==="grupo"){
+    const group=groups[numbering[index].group-1];
+    // Preserve legacy rich content; strip an old ordinal only when it is wholly
+    // contained in the first text segment, so formatting is not destroyed.
+    let title=esc(group.title);
+    if(b.rich){
+     const first=b.rich.segments[0];
+     const prefix=first?.kind==="text"?groupTitleInput(first.text):null;
+     const segments=first?.kind==="text"&&prefix!==null?[...(prefix?[{...first,text:prefix}]:[]),...b.rich.segments.slice(1)]:b.rich.segments;
+     const content=blocoHtml({...b,rich:{...b.rich,segments}});
+     title=esc(group.label)+(content?" — "+content:"");
+    }
+    const total=group.hasNumeric&&group.assigned===group.questions?'<span class="group-total"> · '+esc(formatCotacao(group.total))+' val.</span>':"";
+    return '<h3>'+title+total+'</h3>';
+   }
    if(b.tipo==="texto")return '<div class="apoio">'+blocoHtml(b)+'</div>';
    const prefix=numbering[index].prefix;
    const suffix=b.tipo==="verdadeiro_falso"?'<span class="vf" aria-label="Verdadeiro ou falso">( &nbsp; ) V &nbsp; ( &nbsp; ) F</span>':"";
@@ -82,7 +97,7 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
  .enunciado{display:flow-root;orphans:3;widows:3;break-after:avoid-page;page-break-after:avoid}.question-number{font-weight:700}
  .enunciado,.apoio,h3{white-space:pre-wrap;overflow-wrap:anywhere}
  .apoio{margin:0 0 var(--question-gap);orphans:3;widows:3}
- h3{text-align:center;font-size:12pt;margin:var(--group-top) 0 var(--group-bottom);break-after:avoid-page;page-break-after:avoid}
+ .group-total{font-size:10pt;font-weight:normal;white-space:nowrap}\n h3{text-align:center;font-size:12pt;margin:var(--group-top) 0 var(--group-bottom);break-after:avoid-page;page-break-after:avoid}
  .formula{display:inline-block;vertical-align:middle;max-width:100%;break-inside:avoid-page}.formula math{font-size:1.05em}
  .cotacao{float:right;margin-left:4mm;font-size:10pt;font-weight:normal;color:#444;white-space:nowrap}.alternativas{list-style:none;margin:var(--alternative-gap) 0 0;padding:0 0 0 5mm}.alternativas.duas-colunas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:5mm;row-gap:1mm;break-inside:avoid-page}.alternativas li{white-space:pre-wrap;overflow-wrap:anywhere;break-inside:avoid-page;page-break-inside:avoid}.alternativas li:last-child{break-after:avoid-page}.opcao{white-space:nowrap}\n .alinea{margin-left:5mm}.vf{display:inline-block;white-space:nowrap;margin-left:3mm;min-width:9mm}
  .resposta{margin-top:var(--answer-gap);break-before:avoid-page}.linha,.espaco{break-inside:avoid-page;page-break-inside:avoid}
