@@ -18,7 +18,26 @@ BEGIN
    UPDATE public.provas_pedagogicas SET estado='aprovada' WHERE id=r.id;
    RAISE EXCEPTION 'direct update allowed';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ -- Direct RPC must reject rich payloads with arbitrary nodes, mismatched text or unsafe commands.
+ BEGIN
+   PERFORM public.provas_mutar(v_school,r.id,r.versao,'guardar',jsonb_set(v_data,'{conteudo,0,rich}','{"version":1,"segments":[{"kind":"math","latex":"\\href{https://evil.test}{x}"}]}'));
+   RAISE EXCEPTION 'unsafe formula accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN
+   PERFORM public.provas_mutar(v_school,r.id,r.versao,'guardar',jsonb_set(v_data,'{conteudo,0,rich}','{"version":1,"segments":[{"kind":"text","text":"different","marks":[]}]}'));
+   RAISE EXCEPTION 'inconsistent rich accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN
+   PERFORM public.provas_mutar(v_school,r.id,r.versao,'guardar',jsonb_set(v_data,'{conteudo,0,rich}','{"version":1,"segments":[{"kind":"text","text":"Questão confidencial","marks":["bold"],"href":"https://evil.test"}]}'));
+   RAISE EXCEPTION 'arbitrary attribute accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ v_data:=jsonb_set(v_data,'{conteudo,0,texto}',to_jsonb('Questão confidencial '||chr(92)||'frac{1}{2}'));
+ v_data:=jsonb_set(v_data,'{conteudo,0,rich}',jsonb_build_object('version',1,'segments',jsonb_build_array(
+  jsonb_build_object('kind','text','text','Questão confidencial ','marks',jsonb_build_array('bold')),
+  jsonb_build_object('kind','math','latex',chr(92)||'frac{1}{2}')
+ )));
  r:=public.provas_mutar(v_school,r.id,r.versao,'guardar',v_data);
+ IF r.conteudo->0->'rich' IS DISTINCT FROM v_data->'conteudo'->0->'rich' THEN RAISE EXCEPTION 'rich persistence failed'; END IF;
  IF r.versao<>2 THEN RAISE EXCEPTION 'save failed'; END IF;
  BEGIN
    PERFORM public.provas_mutar(v_school,r.id,1,'guardar',v_data);
