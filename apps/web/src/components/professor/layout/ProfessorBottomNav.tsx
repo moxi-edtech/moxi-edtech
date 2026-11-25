@@ -29,6 +29,7 @@ export function ProfessorBottomNav({ items, activePath }: Props) {
     navigationLabel="Navegação do portal do professor"
     moreLabel="Abrir mais áreas do Portal do Professor"
     description="Aceder às restantes áreas do professor"
+    hideOnDesktop
     moreIcon={Plus}
   />;
 }

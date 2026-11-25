@@ -57,9 +57,9 @@ test("navegação mobile mantém as nove rotas, contexto, preloading e teclado",
 test("dashboard mostra dados reais e superfícies compactas, sem homepage promocional", () => {
   const page = source("components/aluno/dashboard/DashboardLoader.tsx");
   assert.match(page, /data-testid="aluno-dashboard-editorial"/);
-  assert.match(page, /<PortalStatCard label="Avisos"/);
-  assert.match(page, /<PortalStatCard label="Notas"/);
-  assert.match(page, /<PortalStatCard label="Vencidas"/);
+  assert.match(page, /<AcaoRapidaCard dashboardCompact mobileCompact label="Avisos"/);
+  assert.match(page, /<AcaoRapidaCard dashboardCompact mobileCompact label="Notas"/);
+  assert.match(page, /<AcaoRapidaCard dashboardCompact mobileCompact label="Propinas vencidas"/);
   assert.match(page, /typeof screen\.boletim\?\.is_liberado === "boolean"/);
   assert.match(page, /screen\.dashboard\.status_financeiro && !screen\.dashboard\.status_financeiro\.error/);
   assert.match(page, /bg-klasse-green/);

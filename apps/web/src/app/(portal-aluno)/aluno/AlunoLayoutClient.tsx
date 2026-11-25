@@ -194,7 +194,7 @@ export default function AlunoLayoutClient({
 
       <NetworkStatus />
 
-      <main id="conteudo-aluno" className="mx-auto w-full max-w-[1200px] px-4 py-5 pb-[calc(96px+env(safe-area-inset-bottom))] md:px-6 md:py-6">
+      <main id="conteudo-aluno" className="mx-auto w-full max-w-[1200px] px-3 pt-3 pb-[calc(88px+env(safe-area-inset-bottom))] md:px-6 md:pt-6">
         <AlunoPortalScopeContext.Provider value={portalScope}>{children}</AlunoPortalScopeContext.Provider>
 
         <AlunoBottomNav items={navItems} activePath={safePathname} withAlunoParam={withAlunoParam} />

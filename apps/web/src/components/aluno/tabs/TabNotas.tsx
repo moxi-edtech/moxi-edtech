@@ -408,7 +408,6 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           <Link href={buildPortalHref(escolaSlug, `/aluno/documentos${navQuery}`)} className={`inline-flex min-h-11 items-center text-foreground ${focus}`}>Documentos</Link>
         </nav>
       </header>}
-      {embedded && academicYear !== null && <p className="text-xs font-medium text-muted-foreground">Ano letivo {academicYear}</p>}
       {visibleLoading ? <section aria-label="A carregar as tuas notas" role="status" aria-live="polite" className="space-y-2 motion-safe:animate-pulse">
         <span className="sr-only">A carregar as tuas notas</span><div aria-hidden="true" className="h-5 w-36 rounded-lg bg-muted"/><div aria-hidden="true" className="h-24 rounded-xl bg-muted"/>
       </section> : accessError ? <section role="alert" className="space-y-2 rounded-xl border border-destructive/40 bg-card p-4">

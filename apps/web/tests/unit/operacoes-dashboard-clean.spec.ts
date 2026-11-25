@@ -80,7 +80,7 @@ test("Operações preserves branded green icon containers and exactly five daily
   assert.match(quick, /<ExpedienteDashboardCard escolaId=\{escolaId\} portal=\{portalBase\}/);
   assert.match(quick, /Novo Funcionário/);
   assert.match(quick, /Lançar Nota/);
-  assert.match(action, /operationalCardTone\(\{ unavailable: disabled, needsAttention \}\)/);
+  assert.match(action, /operationalCardTone\(\{ unavailable: disabled \|\| unavailable, needsAttention \}\)/);
   assert.match(action, /operationalCardIconClasses\[tone\]/);
   assert.match(kpi, /needsAttention=\{variant === "warning"\}/);
   assert.match(hub, /needsAttention=\{value > 0\}/);

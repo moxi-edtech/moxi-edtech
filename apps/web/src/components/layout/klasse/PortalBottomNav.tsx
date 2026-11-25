@@ -21,12 +21,13 @@ type Props = {
   activeHref: string | null;
   navigationLabel: string;
   moreLabel: string;
-  description: string;
+  description?: string;
+  hideOnDesktop?: boolean;
   moreIcon?: LucideIcon;
   onPreload?: (item: PortalBottomNavItem) => void;
 };
 
-export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigationLabel, moreLabel, description, moreIcon: MoreIcon = MoreHorizontal, onPreload }: Props) {
+export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigationLabel, moreLabel, description, hideOnDesktop = false, moreIcon: MoreIcon = MoreHorizontal, onPreload }: Props) {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const dialogId = useId();
   const titleId = useId();
@@ -65,14 +66,14 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
     };
     document.addEventListener("keydown", onKeyDown);
     const mq = window.matchMedia("(min-width: 768px)");
-    const closeOnDesktop = () => { if (mq.matches) closeMenu(); };
+    const closeOnDesktop = () => { if (hideOnDesktop && mq.matches) closeMenu(); };
     mq.addEventListener("change", closeOnDesktop);
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
       mq.removeEventListener("change", closeOnDesktop);
     };
-  }, [isMoreOpen, closeMenu]);
+  }, [isMoreOpen, closeMenu, hideOnDesktop]);
 
   return (
     <>
@@ -90,7 +91,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
             <div className="mb-3 flex items-start justify-between gap-3 border-b border-border pb-3">
               <div>
                 <h2 id={titleId} className="text-base font-semibold text-primary">Outras áreas</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+                {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
               </div>
               <button
                 type="button"
@@ -136,7 +137,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label={navigationLabel}
       >
-        <div className="mx-auto grid w-full max-w-[1200px] grid-cols-5 gap-0.5 px-1 py-1.5 sm:gap-1 sm:px-2">
+        <div className="mx-auto grid w-full max-w-[1200px] grid-cols-5 gap-0.5 px-1 py-1 sm:gap-1 sm:px-2">
           {mainItems.map((item) => {
             const { href, label, icon: Icon, badge } = item;
             const active = item.href === activeHref;

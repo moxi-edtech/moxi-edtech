@@ -27,13 +27,13 @@ export function PushSettings({ escolaId }: { escolaId?: string | null }) {
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${isSubscribed ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-            {isSubscribed ? <Bell size={20} /> : <BellOff size={20} />}
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className={`h-8 w-8 shrink-0 rounded-xl flex items-center justify-center transition-colors ${isSubscribed ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+            {isSubscribed ? <Bell size={16} aria-hidden="true" /> : <BellOff size={16} aria-hidden="true" />}
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Notificações Push</p>
+            <p className="text-sm font-semibold text-foreground">Notificações</p>
             <p className="text-xs text-muted-foreground">Alertas de notas, pagamentos e avisos.</p>
           </div>
         </div>
@@ -41,6 +41,7 @@ export function PushSettings({ escolaId }: { escolaId?: string | null }) {
         <div className="flex items-center gap-3">
           {loading && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
           <Switch
+            aria-label="Receber notificações"
             checked={isSubscribed}
             onCheckedChange={handleToggle}
             disabled={loading || permission === "denied"}

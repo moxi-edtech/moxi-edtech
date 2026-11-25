@@ -14,13 +14,13 @@ const stories = [
   ["documentos-rejeitados", "klasse-portal-visual-fixtures--documentos-rejeitados", /Boletim/i],
   ["notas-pagas", "klasse-portal-visual-fixtures--notas-pagas", /Notas|Matemática/i],
   ["professor-com-turmas", "klasse-portal-visual-fixtures--professor-com-turmas", /Portal do Professor/i],
-  ["dashboard-clean", "synthetic-dashboard-clean", /A tua vida escolar/i],
-  ["dashboard-pending", "synthetic-dashboard-pending", /A tua vida escolar/i],
-  ["dashboard-rejected", "synthetic-dashboard-rejected", /A tua vida escolar/i],
-  ["dashboard-rematricula", "synthetic-dashboard-rematricula", /A tua vida escolar/i],
-  ["dashboard-overdue", "synthetic-dashboard-overdue", /A tua vida escolar/i],
-  ["dashboard-empty", "synthetic-dashboard-empty", /A tua vida escolar/i],
-  ["dashboard-approved", "synthetic-dashboard-approved", /A tua vida escolar/i],
+  ["dashboard-clean", "synthetic-dashboard-clean", /Em resumo/i],
+  ["dashboard-pending", "synthetic-dashboard-pending", /Em resumo/i],
+  ["dashboard-rejected", "synthetic-dashboard-rejected", /Em resumo/i],
+  ["dashboard-rematricula", "synthetic-dashboard-rematricula", /Em resumo/i],
+  ["dashboard-overdue", "synthetic-dashboard-overdue", /Em resumo/i],
+  ["dashboard-empty", "synthetic-dashboard-empty", /Em resumo/i],
+  ["dashboard-approved", "synthetic-dashboard-approved", /Em resumo/i],
   ["grade-paid", "synthetic-grade-paid", /As tuas notas/i],
   ["grade-unpaid", "synthetic-grade-unpaid", /As tuas notas/i],
   ["grade-pending", "synthetic-grade-pending", /As tuas notas/i],
@@ -50,7 +50,24 @@ try {
         await page.setViewportSize({ width, height });
         const url = `${baseUrl}/?story=${name}`;
         await page.goto(url, { waitUntil: "domcontentloaded" });
-        if (name.startsWith("dashboard-")) await page.getByTestId("aluno-dashboard-editorial").waitFor({timeout:10000});
+        if (name.startsWith("dashboard-")) {
+          const dashboard = page.getByTestId("aluno-dashboard-editorial");
+          await dashboard.waitFor({timeout:10000});
+          await dashboard.getByRole("heading", {name:"Em resumo", exact:true}).waitFor({timeout:10000});
+          const summary = dashboard.getByTestId("aluno-summary-cards");
+          for (const [label, destination] of [
+            ["Avisos", "/aluno/avisos"],
+            ["Notas", "/aluno/academico"],
+            ["Propinas vencidas", "/aluno/financeiro"],
+          ]) {
+            const link = summary.getByRole("link", {name: new RegExp("^" + label)});
+            await link.waitFor({timeout:10000});
+            const href = await link.getAttribute("href");
+            if (!href || !new URL(href, baseUrl).pathname.endsWith(destination)) {
+              errors.push(`${name} ${width}x${height} zoom ${zoom}: invalid card destination ${label}`);
+            }
+          }
+        }
         else if (name.startsWith("grade-")) {
           await page.getByTestId("aluno-boletim-grid").waitFor({timeout:10000});
           await page.getByTestId("aluno-boletim-grid").getByText("Matemática", {exact:true}).first().waitFor({timeout:10000});
@@ -70,6 +87,27 @@ try {
         if (expectedState) await page.getByText(expectedState, { exact: false }).first().waitFor({ timeout: 8000 }).catch(() => {});
         await page.evaluate(z => { document.documentElement.style.zoom = String(z); }, zoom);
         await page.waitForTimeout(200);
+        if (name.startsWith("dashboard-")) {
+          const links = page.getByTestId("aluno-summary-cards").getByRole("link");
+          if (await links.count() !== 3) errors.push(`${name}: expected exactly three summary cards`);
+          const targets = await links.evaluateAll(nodes => nodes.map(el => ({
+            width: el.offsetWidth, height: el.offsetHeight,
+          })));
+          if (targets.some(target => target.width < 44 || target.height < 44)) {
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: summary card below 44px touch target`);
+          }
+          if (name === "dashboard-clean") {
+            await links.first().focus();
+            await page.keyboard.press("Tab");
+            const focusVisible = await links.nth(1).evaluate(el => {
+              const style = getComputedStyle(el);
+              return document.activeElement === el && el.matches(":focus-visible") &&
+                (style.outlineStyle !== "none" || style.boxShadow !== "none");
+            });
+            if (!focusVisible) errors.push(`${name} ${width}x${height} zoom ${zoom}: card keyboard focus not visible`);
+            await links.nth(1).evaluate(el => el.blur());
+          }
+        }
         const metrics = await page.evaluate(() => {
           const root = document.documentElement;
           return { horizontalOverflow: Math.max(0, root.scrollWidth - root.clientWidth),

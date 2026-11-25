@@ -39,6 +39,5 @@ export function AlunoBottomNav({ items, activePath, withAlunoParam }: Props) {
     activeHref={active ? withAlunoParam(active.href) : null}
     navigationLabel="Navegação do portal do aluno"
     moreLabel="Abrir mais áreas do Portal do Aluno"
-    description="Aceder aos restantes serviços do aluno"
     onPreload={handlePreload} />;
 }

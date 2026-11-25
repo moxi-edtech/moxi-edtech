@@ -122,7 +122,7 @@ export function TabPerfil() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-4">
         <TableSkeleton rows={4} cols={1} />
       </div>
     );
@@ -132,52 +132,49 @@ export function TabPerfil() {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Perfil</h1>
-        <p className="text-xs text-muted-foreground">Gerencie seus dados de contato e segurança.</p>
       </header>
-
-      <PushSettings escolaId={dados.escola_id} />
 
       {/* Atualização Cadastral */}
       <AlunoCard>
-        <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
-          <User className="h-4 w-4 text-muted-foreground" />
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300"><User className="h-4 w-4" aria-hidden="true" /></span>
           <h2 className="text-sm font-semibold text-foreground">Dados pessoais</h2>
         </div>
         
         <form onSubmit={handleSalvarDados} className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-foreground">Nome do Aluno</label>
-            <Input value={dados.nome} disabled className="bg-muted/40" />
+            <label htmlFor="aluno-perfil-nome" className="mb-1 block text-xs font-semibold text-foreground">Nome do Aluno</label>
+            <Input id="aluno-perfil-nome" value={dados.nome} disabled className="bg-muted/40" />
             <p className="mt-1 text-xs text-muted-foreground">O nome só pode ser alterado pela Direção da escola.</p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-foreground">Login do Portal</label>
-              <Input value={dados.loginPortal || dados.emailAuth || "—"} disabled className="bg-muted/40 font-mono" />
+              <label htmlFor="aluno-perfil-login" className="mb-1 block text-xs font-semibold text-foreground">Login do Portal</label>
+              <Input id="aluno-perfil-login" value={dados.loginPortal || dados.emailAuth || "—"} disabled className="bg-muted/40 font-mono" />
               <p className="mt-1 text-xs text-muted-foreground">
-                O login de acesso é gerido pela secretaria e não muda quando atualiza o email de contato.
+                Gerido pela secretaria.
               </p>
             </div>
             <div>
-              <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-foreground">
+              <label htmlFor="aluno-perfil-email" className="mb-1 flex items-center gap-1 text-xs font-semibold text-foreground">
                 <Mail className="h-3 w-3" /> Email de Contato
               </label>
-              <Input 
+              <Input id="aluno-perfil-email" 
                 type="email" 
                 value={dados.email} 
                 onChange={(e) => setDados({ ...dados, email: e.target.value })} 
                 placeholder="seu.email@exemplo.com"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                Usado para comunicação da escola. Não altera o login do portal.
+                Não altera o login do portal.
               </p>
             </div>
             <div>
-              <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-foreground">
+              <label htmlFor="aluno-perfil-telefone" className="mb-1 flex items-center gap-1 text-xs font-semibold text-foreground">
                 <Phone className="h-3 w-3" /> Telefone / WhatsApp
               </label>
-              <Input 
+              <Input id="aluno-perfil-telefone" 
                 type="tel" 
                 value={dados.telefone} 
                 onChange={(e) => setDados({ ...dados, telefone: e.target.value })} 
@@ -187,10 +184,10 @@ export function TabPerfil() {
           </div>
 
           <div>
-            <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-foreground">
+            <label htmlFor="aluno-perfil-morada" className="mb-1 flex items-center gap-1 text-xs font-semibold text-foreground">
               <MapPin className="h-3 w-3" /> Endereço
             </label>
-            <Input 
+            <Input id="aluno-perfil-morada" 
               value={dados.endereco} 
               onChange={(e) => setDados({ ...dados, endereco: e.target.value })} 
               placeholder="Sua morada completa"
@@ -208,15 +205,15 @@ export function TabPerfil() {
 
       {/* Redefinição de Senha */}
       <AlunoCard>
-        <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
-          <Lock className="h-4 w-4 text-muted-foreground" />
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300"><Lock className="h-4 w-4" aria-hidden="true" /></span>
           <h2 className="text-sm font-semibold text-foreground">Segurança da conta</h2>
         </div>
         
         <form onSubmit={handleSalvarSenha} className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-foreground">Senha Atual</label>
-            <Input
+            <label htmlFor="aluno-perfil-senha-atual" className="mb-1 block text-xs font-semibold text-foreground">Senha Atual</label>
+            <Input id="aluno-perfil-senha-atual"
               type="password"
               value={senhaAtual}
               onChange={(e) => setSenhaAtual(e.target.value)}
@@ -227,8 +224,8 @@ export function TabPerfil() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-foreground">Nova Senha</label>
-              <Input 
+              <label htmlFor="aluno-perfil-senha" className="mb-1 block text-xs font-semibold text-foreground">Nova Senha</label>
+              <Input id="aluno-perfil-senha" 
                 type="password" 
                 value={senha} 
                 onChange={(e) => setSenha(e.target.value)} 
@@ -237,8 +234,8 @@ export function TabPerfil() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-foreground">Confirmar Nova Senha</label>
-              <Input 
+              <label htmlFor="aluno-perfil-confirmacao" className="mb-1 block text-xs font-semibold text-foreground">Confirmar Nova Senha</label>
+              <Input id="aluno-perfil-confirmacao" 
                 type="password" 
                 value={confirmarSenha} 
                 onChange={(e) => setConfirmarSenha(e.target.value)} 
@@ -264,6 +261,7 @@ export function TabPerfil() {
           </div>
         </form>
       </AlunoCard>
+      <PushSettings escolaId={dados.escola_id} />
     </div>
   );
 }
