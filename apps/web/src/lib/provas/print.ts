@@ -36,12 +36,12 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
  const documentTitle=type?type+" de "+prova.disciplina:prova.titulo+" — "+prova.disciplina;
  const showTrim=!prova.tipo_prova||["professor","trimestral","segunda_chamada","diagnostica","outro"].includes(prova.tipo_prova);
  const header=(recipient:PrintRecipient|null)=>{
-   const named=recipient&&options.includeName!==false;
-   const student=named?'<strong class="student-name">'+esc(recipient.nome)+'</strong>':'<span class="student-line"></span>';
+   const named=options.includeName!==false?recipient:null;
+   const student=named?'<strong class="student-name">'+esc(named.nome)+'</strong>':'<span class="student-line"></span>';
    const turma=recipient?'<span>Turma: '+esc(recipient.turma??"—")+'</span>'+(recipient.turno?'<span>Turno: '+esc(recipient.turno)+'</span>':''):'';
    const room=recipient?.sala?'<span>Sala da turma: '+esc(recipient.sala)+'</span>':'<span>Sala nº ______</span>';
-   const process=named&&recipient.numero_processo?'<span>N.º de processo: '+esc(recipient.numero_processo)+'</span>':'';
-   const call=named&&recipient.numero_chamada!==null?'<span>N.º de chamada: '+esc(recipient.numero_chamada)+'</span>':'';
+   const process=named&&named.numero_processo?'<span>N.º de processo: '+esc(named.numero_processo)+'</span>':'';
+   const call=named&&named.numero_chamada!==null?'<span>N.º de chamada: '+esc(named.numero_chamada)+'</span>':'';
    return '<header class="cabecalho"><h1 class="school">'+esc(escola)+'</h1><div class="meta"><span>'+esc(prova.classe)+'</span>'+(showTrim?'<span>'+tr+' Trimestre</span>':'')+'<span>Ano lectivo: '+esc(prova.ano_lectivo)+'</span></div>'+
     '<h2 class="title">'+esc(documentTitle)+'</h2>'+(type&&prova.titulo.trim()!=="Prova"&&prova.titulo.trim()!==type?'<p class="subtitle">'+esc(prova.titulo)+'</p>':'')+
     '<div class="meta"><span>Duração: '+esc(prova.duracao)+' min.</span><span>Série '+esc(prova.serie)+'</span>'+turma+room+'</div><div class="student"><span>Nome do aluno:</span>'+student+'</div>'+(process||call?'<div class="meta">'+process+call+'</div>':'')+'</header>';
