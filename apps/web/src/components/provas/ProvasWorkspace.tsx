@@ -7,6 +7,7 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { estados,tipos,tiposProva,provaWriteSchema,type Bloco,type Prova,type ProvaInput,type ProvaResumo,type AnoProva,type ContextoProva,type TipoProva } from "@/lib/provas/schema";
 import { provaHtml } from "@/lib/provas/print";
 import { formatClasseProva } from "@/lib/provas/academicLabels";
+import { safeLogoData } from "@/lib/provas/branding";
 import { PROVA_PAPER,respostaLayout } from "@/lib/provas/layout";
 const ProvasPrintPanel=dynamic(()=>import("./ProvasPrintPanel"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar distribuição...</p>});
 const RichQuestionEditor=dynamic(()=>import("./RichQuestionEditor"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar editor...</p>});
@@ -28,6 +29,15 @@ export default function ProvasWorkspace({escolaId,printOnly=false}:{escolaId:str
  const [richIndex,setRichIndex]=useState<number|null>(null);
  const [headerExpanded,setHeaderExpanded]=useState(true);
  const [distribution,setDistribution]=useState(false);
+ const [branding,setBranding]=useState<{endpoint:string;logo:string|null}|null>(null);
+ const logo=branding?.endpoint===endpoint?branding.logo:null;
+ const modalOpen=Boolean(form);
+ useEffect(()=>{
+  if(!modalOpen)return;
+  const controller=new AbortController();
+  fetch(endpoint+"?branding=1",{cache:"no-store",signal:controller.signal}).then(response).then(b=>{if(!controller.signal.aborted)setBranding({endpoint,logo:safeLogoData(b.logo)});}).catch(()=>{if(!controller.signal.aborted)setBranding({endpoint,logo:null});});
+  return()=>controller.abort();
+ },[endpoint,modalOpen]);
  const [anos,setAnos]=useState<AnoProva[]>([]),[contextos,setContextos]=useState<ContextoProva[]>([]);
  const [anosLoading,setAnosLoading]=useState(false),[contextLoading,setContextLoading]=useState(false);
  const [anosError,setAnosError]=useState(""),[contextError,setContextError]=useState(""),[contextRetry,setContextRetry]=useState(0);
@@ -124,7 +134,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false}:{escolaId:str
        {printHref&&(permissions?.distribute?<Button tone="gold" onClick={()=>setDistribution(true)}><Printer/> Imprimir prova</Button>:<Button asChild tone="gold"><a href={printHref} target="_blank" rel="noopener noreferrer"><Printer className="h-4 w-4"/> Imprimir prova</a></Button>)}
      </div>}
     </div>:undefined}>
-   {form&&(distribution&&selected?.estado==="aprovada"&&permissions?.distribute?<div className="space-y-3"><Button variant="outline" onClick={()=>setDistribution(false)}><Eye/> Consultar prova</Button><ProvasPrintPanel key={selected.id+":"+selected.versao} endpoint={endpoint} prova={selected}/></div>:preview||!canEdit?<div className="min-w-0 space-y-2"><p className="text-xs text-muted-foreground">Em ecrãs pequenos, a leitura adapta-se à largura. A impressão mantém as margens A4 e os espaços em milímetros.</p><iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada"})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/></div>:
+   {form&&(distribution&&selected?.estado==="aprovada"&&permissions?.distribute?<div className="space-y-3"><Button variant="outline" onClick={()=>setDistribution(false)}><Eye/> Consultar prova</Button><ProvasPrintPanel key={selected.id+":"+selected.versao} endpoint={endpoint} prova={selected}/></div>:preview||!canEdit?<div className="min-w-0 space-y-2"><p className="text-xs text-muted-foreground">Em ecrãs pequenos, a leitura adapta-se à largura. A impressão mantém as margens A4 e os espaços em milímetros.</p><iframe title="Pré-visualização A4 da prova" sandbox="" srcDoc={provaHtml(form,school,{draft:selected?.estado!=="aprovada",logo})} className="h-[60dvh] min-h-40 w-full rounded-xl border border-border bg-background sm:h-[65vh]"/></div>:
    <div className="min-w-0 space-y-5 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
     <div className="rounded-xl border border-border p-3 sm:p-4">
     <Button type="button" variant="ghost" className="h-auto w-full justify-between whitespace-normal px-0 text-left" aria-expanded={headerExpanded} aria-controls="provas-header-fields" onClick={()=>setHeaderExpanded(v=>!v)}>

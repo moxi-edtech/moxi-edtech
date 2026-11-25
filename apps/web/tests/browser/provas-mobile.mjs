@@ -27,6 +27,7 @@ try{
     saved={...base,...data.dados,id:"30000000-0000-4000-8000-000000000002",estado:"rascunho",versao:1};
     return reply({prova:saved});
    }
+   if(url.searchParams.get("branding")==="1")return reply({logo:null});
    if(url.searchParams.get("contexto")==="1")return reply({items:url.searchParams.has("ano")?[{ano_letivo_id:year,curso_matriz_id:matrix,ano_lectivo:"2026/2027",classe:"8.ª Classe",disciplina:"Física",curso:"Ensino Geral",trimestre:1}]:[{id:year,ativo:true,label:"2026/2027"}]});
    if(url.searchParams.has("prova"))return reply({prova:base});
    return reply({provas:saved?[base,saved]:[base],escola:"Escola de teste",permissions:{author:true,admin:false,userId:user}});

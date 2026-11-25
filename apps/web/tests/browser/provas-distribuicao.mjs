@@ -16,6 +16,7 @@ try{
    const u=new URL(route.request().url()),q=u.searchParams;
    assert.equal(route.request().method(),"GET","distribution must not edit the approved proof");
    const reply=json=>route.fulfill({json});
+   if(q.get("branding")==="1")return reply({logo:null});
    if(u.pathname.endsWith("/distribuicao")){
     assert.equal(q.get("versao"),"4");
     const mode=q.get("modo"),selected=(q.get("turmas")??"").split(",");

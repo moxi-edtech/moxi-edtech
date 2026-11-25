@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { provaAccess,summaryColumns,detailColumns } from "@/lib/provas/access";
 import { mutationSchema } from "@/lib/provas/schema";
+import { loadProvaLogo } from "@/lib/provas/loadLogo";
 export const dynamic="force-dynamic";
 const json=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:{"Cache-Control":"private, no-store"}});
 type Context={params:Promise<{id:string}>};
@@ -10,6 +11,10 @@ export async function GET(req:Request,{params}:Context){
  if(!access.ok)return json({error:"Acesso não autorizado."},access.status);
  const {db,escolaId}=access;
  const query=new URL(req.url).searchParams;
+ if(query.get("branding")==="1"){
+   const school=await db.from("escolas").select("logo_url").eq("id",escolaId).maybeSingle();
+   return json({logo:school.error?null:await loadProvaLogo(school.data?.logo_url,escolaId)});
+ }
  if(query.get("contexto")==="1"){
    if(!access.author)return json({error:"Sem autorização para elaborar provas."},403);
    const ano=query.get("ano");
