@@ -38,7 +38,7 @@ test("single dashboard refresh and compact cards preserve actions", () => {
   assert.doesNotMatch(dashboard, /isOperacoes && <button[^>]*onClick=\{handleRefresh\}/);
   assert.match(hub, /refresh\(\);\s*onRefreshDashboard\?\.\(\)/);
   assert.match(hub, /disabled=\{refreshing \|\| dashboardRefreshing\}/);
-  assert.match(hub, /aria-haspopup="dialog"/);
+  assert.match(source("components/shared/OperationalMetricCard.tsx"), /aria-haspopup="dialog"/);
   assert.match(quick, /dashboardCompact=\{portalBase === "operacoes"\}/);
   assert.match(expediente, /dashboardCompact=\{portal==="operacoes"\}/);
   assert.match(action, /ref=\{buttonRef\}/);
@@ -80,8 +80,9 @@ test("Operações restores branded green icon containers and only four daily sho
   assert.match(quick, /Lançar Nota/);
   assert.match(action, /operationalCardTone\(\{ unavailable: disabled, needsAttention \}\)/);
   assert.match(action, /operationalCardIconClasses\[tone\]/);
-  assert.match(kpi, /operationalCardTone\(\{ unavailable, needsAttention: variant === "warning" \}\)/);
-  assert.match(hub, /operationalCardTone\(\{ needsAttention: value > 0 \}\)/);
+  assert.match(kpi, /needsAttention=\{variant === "warning"\}/);
+  assert.match(hub, /needsAttention=\{value > 0\}/);
+  assert.match(source("components/shared/OperationalMetricCard.tsx"), /operationalCardTone\(\{ unavailable, needsAttention \}\)/);
   assert.doesNotMatch(css, /\.operations-actions-grid \{ grid-template-columns: repeat\(3,/);
 });
 
@@ -111,12 +112,15 @@ test("operational card families share column thresholds and aligned metric rows"
   assert.match(css, /@container \(min-width: 920px\)\s*\{\s*\.operations-actions-grid, \.operations-kpi-grid \{ grid-template-columns: repeat\(4,/);
   assert.match(css, /grid-auto-rows: 1fr;/);
   assert.match(css, /\.operations-metric-header \{[\s\S]*?min-height: 2\.5rem;/);
-  assert.match(kpi, /operations-metric-card operations-metric-summary/);
-  assert.match(kpi, /className="operations-metric-value"/);
-  assert.match(kpi, /min-h-4 text-xs leading-4 text-muted-foreground">\{description\}/);
-  assert.match(kpiSection, /operations-metric-summary motion-safe:animate-pulse/);
-  assert.match(hub, /operations-metric-card operations-metric-daily/);
-  assert.match(hub, /className="operations-metric-value"/);
+  const metric = source("components/shared/OperationalMetricCard.tsx");
+  assert.match(kpi, /return <OperationalMetricCard/);
+  assert.match(hub, /<OperationalMetricCard/);
+  assert.match(kpiSection, /<OperationalMetricSkeleton key=\{i\}/);
+  assert.match(hub, /<OperationalMetricSkeleton key=\{i\}/);
+  assert.match(metric, /operations-metric-card operations-metric-size/);
+  assert.match(metric, /className="operations-metric-value"/);
+  assert.match(css, /\.operations-metric-size \{ min-height: 7\.5rem; \}/);
+  assert.doesNotMatch(css, /\.operations-metric-(daily|summary)\s*\{/);
   assert.equal((hub.match(/dashboardCompact=\{Boolean\(afterCounters\)\}/g) ?? []).length, 4);
   assert.match(action, /h-full min-h-\[88px\]/);
 });
@@ -134,6 +138,27 @@ test("operations dashboard uses a consistent breathing rhythm without changing t
   assert.match(dashboard, /isOperacoes \? "operations-dashboard-flow min-w-0 pb-10" : "min-w-0 space-y-5/);
   assert.match(hub, /afterCounters \? "operations-dashboard-flow min-w-0"/);
   assert.match(quick, /mb-4 text-base font-semibold text-foreground">Ações rápidas/);
-  assert.match(kpi, /operations-metric-summary rounded-xl border border-border bg-card p-4/);
+  assert.match(kpi, /return <OperationalMetricCard/);
+  assert.match(source("components/shared/OperationalMetricCard.tsx"), /operations-metric-size rounded-xl border border-border bg-card p-4/);
   assert.match(action, /min-h-\[88px\][^"]*bg-card p-4/);
+});
+
+test("the two metric sections share one card and preserve financial scope and missing values", () => {
+  const metric = source("components/shared/OperationalMetricCard.tsx");
+  const dashboard = source("components/layout/escola-admin/EscolaAdminDashboardContent.tsx");
+  assert.match(metric, /value == null/);
+  assert.match(metric, /!Number\.isFinite\(value\)/);
+  assert.match(metric, /unavailable && <span[^>]*>Dados indisponíveis/);
+  assert.match(metric, /description && !unavailable && <span className="sr-only"/);
+  assert.match(metric, /if \(href\) return <Link href=\{href\}/);
+  assert.match(metric, /if \(onClick\) return <button type="button"/);
+  assert.match(dashboard, /Propinas do ano activo · pendentes não vencidas/);
+});
+
+test("compact KPI passes explicit navigation or static props without optional href union", () => {
+  const kpi = source("components/dashboard/KpiCard.tsx");
+  const compact = kpi.slice(kpi.indexOf("if (compact)"), kpi.indexOf("const Content ="));
+  assert.match(compact, /if \(href\) \{\s*return <OperationalMetricCard[^>]*href=\{href\}/);
+  assert.match(compact, /\}\s*return <OperationalMetricCard[^>]*description=\{description\} \/>/);
+  assert.doesNotMatch(compact, /\.\.\.\(href/);
 });

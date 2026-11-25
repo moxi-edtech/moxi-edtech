@@ -3,6 +3,7 @@
 
 import { UsersRound, Users, UserCheck, Wallet, AlertCircle } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { OperationalMetricSkeleton } from "@/components/shared/OperationalMetricCard";
 import type { SetupStatus } from "./setupStatus";
 import type { KpiStats, OperationalSnapshot } from "./dashboard.types";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -88,7 +89,7 @@ export default function KpiSection({
   if (loading) {
     return (
       <div className={gridClasses}>
-        {Array.from({ length: 4 }).map((_, i) => mode === "operacoes" ? <div key={i} className="operations-metric-summary motion-safe:animate-pulse rounded-xl border border-border bg-card" /> : <KpiSkeleton key={i} />)}
+        {Array.from({ length: 4 }).map((_, i) => mode === "operacoes" ? <OperationalMetricSkeleton key={i} /> : <KpiSkeleton key={i} />)}
       </div>
     );
   }

@@ -514,7 +514,10 @@ export default function EscolaAdminDashboardContent({
             <>
               <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} portalBase={portalBase} />
               <section aria-label="Visão geral da escola" className="space-y-4">
-                <h2 className="text-base font-semibold text-foreground">Visão geral da escola</h2>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h2 className="text-base font-semibold text-foreground">Visão geral da escola</h2>
+                  <p className="text-xs text-muted-foreground">Propinas do ano activo · pendentes não vencidas</p>
+                </div>
                 {kpiSection}
               </section>
               {hasMovimentoReceita && (

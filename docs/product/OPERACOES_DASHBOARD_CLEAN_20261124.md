@@ -40,3 +40,9 @@
 - Ritmo entre secções de 28px, 32px no espaço útil largo do hub; grelhas com 16px de separação, títulos de secção 16px e margem de 16px até aos cartões.
 - Padding interno de 16px nos cartões compactos; mínimos de 120px (acompanhamento), 144px (indicadores gerais), 88px (atalhos). Alturas continuam flexíveis. Caixa mensal com 20px de padding.
 - Sem novos textos, ornamentos ou secções; preserva o contraste dos ícones e as quatro ações rápidas. Escopo Operações, sem alterar variantes não compactas nem consultas. Contratos de espaçamento adicionados; confirmação visual autenticada e CI pendentes.
+
+## Unificação das métricas (feedback pós-PR #472)
+
+- Visão geral da escola e Acompanhamento diário usam o mesmo `OperationalMetricCard` e skeleton: 120px de altura mínima, 16px de padding, mesmas posições de título, valor, ícone e chevron. Retira o rodapé vazio e a altura especial de 144px.
+- O âmbito das propinas fica numa única nota visível no cabeçalho (ano activo; pendentes não vencidas), e a descrição específica permanece acessível no card. Falhas continuam explicitamente identificadas por «Dados indisponíveis», ícone neutro e travessão, nunca zero.
+- As três métricas diárias continuam a abrir modais; as quatro métricas da escola continuam a navegar nos links existentes. Sem mudanças nas consultas, permissões, outros portais ou espaçamento entre secções. CI e homologação visual pendentes.

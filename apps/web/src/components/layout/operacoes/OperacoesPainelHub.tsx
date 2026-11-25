@@ -1,13 +1,12 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { operationalCardTone, operationalCardIconClasses } from "@/lib/ui/operational-card-tone";
+import { OperationalMetricCard, OperationalMetricSkeleton } from "@/components/shared/OperationalMetricCard";
 import {
   Activity,
   ArrowRight,
   BarChart3,
   ClipboardCheck,
-  ChevronRight,
   RefreshCw,
   FileText,
   Inbox,
@@ -133,29 +132,19 @@ export default function OperacoesPainelHub({ escolaId, operationalSnapshot, char
           <div className={afterCounters ? "operations-daily-grid mt-4 grid" : "mt-3 grid grid-cols-2 gap-3 min-[1280px]:grid-cols-3 min-[1700px]:mt-4 min-[1700px]:gap-4"}>
             {loading
               ? (onlyReopen ? [0] : [0, 1, 2]).map((i) => (
-                  <div key={i} className={`${afterCounters ? "operations-metric-daily" : "h-[104px]"} motion-safe:animate-pulse rounded-xl border border-border bg-card`} />
+                  afterCounters ? <OperationalMetricSkeleton key={i} /> : <div key={i} className="h-[104px] motion-safe:animate-pulse rounded-xl border border-border bg-card" />
                 ))
               : contadores.filter(({ id }) => !onlyReopen || id === "reabertura").map(({ id, icon: Icon, label, value, tone }) => (
                   afterCounters ? (
-                    <button
+                    <OperationalMetricCard
                       key={id}
-                      type="button"
-                      aria-haspopup="dialog"
-                      aria-expanded={aberto === id}
+                      label={label}
+                      value={value}
+                      icon={Icon}
+                      needsAttention={value > 0}
+                      dialogOpen={aberto === id}
                       onClick={(event) => { counterTrigger.current = event.currentTarget; setAberto(id); }}
-                      className="group operations-metric-card operations-metric-daily rounded-xl border border-border bg-card p-4 text-left shadow-sm transition hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <span className="operations-metric-header text-sm font-medium leading-5 text-muted-foreground">
-                        <span className="min-w-0 break-words">{label}</span>
-                        <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${operationalCardIconClasses[operationalCardTone({ needsAttention: value > 0 })]}`}>
-                          <Icon className="h-4 w-4" />
-                        </span>
-                      </span>
-                      <span className="operations-metric-value">
-                        <span className={`text-2xl font-semibold tabular-nums ${tone === "warning" ? "text-amber-700 dark:text-amber-300" : "text-foreground"}`}>{value.toLocaleString("pt-AO")}</span>
-                        <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
-                      </span>
-                    </button>
+                    />
                   ) : <StatCard
                     key={id}
                     label={label}
