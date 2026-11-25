@@ -193,7 +193,8 @@ test("question templates are contextual without restricting formats or mutating 
  assert.equal(questionTemplate("calculo").linhas,6);
  const a=questionTemplate("escolha"), b=questionTemplate("escolha");a.alternativas[0]="Changed";assert.equal(b.alternativas[0],"");
  assert.equal(suggestedTypes("Matemática")[0],"calculo");
- assert.equal(suggestedTypes("Língua Portuguesa")[0],"texto");
+ assert.equal(suggestedTypes("Língua Portuguesa")[0],"discursiva");
+ assert.ok(!suggestedTypes("Língua Portuguesa").includes("texto"));
  assert.equal(structures.length,3);
  assert.equal(formatCotacao(0),"0");assert.equal(formatCotacao(2000),"20");assert.equal(formatCotacao(125),"1,25");
 });

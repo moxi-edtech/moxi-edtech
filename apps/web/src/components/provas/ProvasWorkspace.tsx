@@ -44,7 +44,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  const numbering=blockNumbering(form?.conteudo??[]);
  const groups=groupSummaries(form?.conteudo??[]);
  const emptyGroups=groups.filter(g=>g.questions===0);
- const groupAt=(index:number)=>groups[numbering[index]?.group-1];
+ const groupAt=(index:number)=>groups[(numbering[index]?.group??0)-1];
  const mixed=Boolean(form?.conteudo.some(b=>!isQuestion(b.tipo)||b.tipo==="alinea"));
  const fieldLabel=(index:number)=>{const block=form?.conteudo[index];if(!block)return "Conteúdo";return blockFieldLabel(block.tipo)+" "+(isQuestion(block.tipo)?numbering[index].short.replace(")",""):index+1);};
  useEffect(()=>{
@@ -105,7 +105,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  },[endpoint,offset,revision,printOnly]);
  useEffect(()=>()=>request.current?.abort(),[endpoint]);
  function change<K extends keyof ProvaInput>(key:K,value:ProvaInput[K]){if(key==="conteudo")setCollapsedGroups([]);setForm(p=>p?{...p,[key]:value}:p);setDirty(true);setError("");}
- function patch(index:number,part:Partial<Bloco>){setForm(p=>p?{...p,conteudo:p.conteudo.map((b,i)=>i===index?{...b,...part}:b)}:p);setDirty(true);setError("");}
+ function patch(index:number,part:Partial<Bloco>){setForm(p=>p?{...p,conteudo:p.conteudo.map((b,i)=>{if(i!==index)return b;const next={...b,...part};return next.tipo==="grupo"&&!next.texto.trim()&&!next.rich?{...next,texto:UNTITLED_GROUP}:next;})}:p);setDirty(true);setError("");}
  function focusBlock(index:number,field:"heading"|"type"|"text"="heading"){
   requestAnimationFrame(()=>document.getElementById(field==="heading"?"provas-block-heading-"+index:field==="type"?"provas-block-type-"+index:"provas-block-"+index)?.focus());
  }

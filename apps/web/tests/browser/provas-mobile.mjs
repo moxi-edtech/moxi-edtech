@@ -231,11 +231,11 @@ try{
    await modular.getByRole("button",{name:"Terminar com =",exact:true}).click();
    const live=modular.getByLabel("Pré-visualização da expressão");
    assert.equal(await live.locator("mfrac").count(),3);
-   assert.match(await live.locator("annotation").innerText(),/\\times/);
-   assert.ok((await live.locator("annotation").innerText()).endsWith("="));
+   assert.match(await live.locator("annotation").textContent(),/\\times/);
+   assert.ok((await live.locator("annotation").textContent()).endsWith("="));
    await modular.getByRole("button",{name:"Agrupar termos",exact:true}).click();
    await modular.getByRole("button",{name:"Terminar grupo neste termo",exact:true}).first().click();
-   assert.ok((await live.locator("annotation").innerText()).startsWith("("));
+   assert.ok((await live.locator("annotation").textContent()).startsWith("("));
    await modular.getByRole("button",{name:"Cancelar",exact:true}).click();
    await dialog.getByRole("button",{name:"Concluir edição",exact:true}).click();
    await dialog.getByText("Opções da pergunta",{exact:true}).click();
@@ -316,6 +316,7 @@ try{
   assert.equal(await dialog.getByLabel("Título do grupo 1",{exact:true}).inputValue(),"");
   await dialog.getByLabel("Título do grupo 1",{exact:true}).fill("Interpretação");
   assert.match(await dialog.getByLabel("Resumo I Grupo").innerText(),/0 pergunta/);
+  assert.ok(await dialog.getByText(/Sem perguntas: I Grupo/).first().isVisible());
   assert.equal(await dialog.getByLabel("Cotação da pergunta 1",{exact:true}).count(),0);
   await dialog.getByText("Adicionar elemento de estrutura",{exact:true}).click();
   await dialog.getByRole("button",{name:/^Texto de apoio Conteúdo de referência/}).click();

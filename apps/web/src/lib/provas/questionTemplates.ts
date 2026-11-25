@@ -16,7 +16,7 @@ export function groupRoman(value:number):string{
 export function groupLabel(ordinal:number){return groupRoman(ordinal)+" Grupo";}
 const legacyGroupPrefix=/^\s*(?:(?:[IVXLCDM]+|\d+\.?[ºª]?)\s+Grupo|Grupo\s+(?:[IVXLCDM]+|\d+\.?[ºª]?))(?=\s*[:—–-]|\s*$|\s+)/i;
 export function groupTitleInput(text:string):string{
- if(text===UNTITLED_GROUP)return "";
+ if(text.trim()===UNTITLED_GROUP)return "";
  return text.replace(legacyGroupPrefix,"").replace(/^\s*[:—–-]\s*/,"").trimStart();
 }
 export function groupTitle(text:string){return groupTitleInput(text).trim();}
