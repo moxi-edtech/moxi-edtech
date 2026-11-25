@@ -24,7 +24,7 @@ try{
    if(req.method()==="POST"){
     const data=req.postDataJSON();
     assert.equal(data.dados.ano_letivo_id,year);assert.equal(data.dados.curso_matriz_id,matrix);assert.equal(data.dados.conteudo[0].linhas,7);
-    assert.ok(data.dados.conteudo[0].rich.segments.some(s=>s.kind==="math"&&s.latex===(width===390?"\\frac{7}{5}":"2+3")));
+    assert.ok(data.dados.conteudo[0].rich.segments.some(s=>s.kind==="math"&&s.latex===(width===320?"\\frac{7}{5}+2^{3}":width===390?"\\frac{7}{5}":"2+3")));
     assert.deepEqual(data.dados.conteudo[1].alternativas,["Joule","Watt","Newton","Pascal"]);
     assert.equal(data.dados.conteudo[1].cotacao_cent,125);
     assert.equal(data.dados.apresentacao,"espacosa");
@@ -85,24 +85,26 @@ try{
   await math.waitFor();
   assert.equal(await dialog.getByRole("button",{name:"Guardar rascunho"}).count(),0,"proof footer is absent during math editing");
   assert.equal(await dialog.getByRole("group",{name:"Formatação do enunciado"}).isVisible(),false);
-  await math.getByRole("button",{name:"Fracção",exact:false}).click();
+  await math.getByRole("button",{name:"Fracção",exact:true}).click();
   await math.getByLabel("Numerador",{exact:true}).fill("7");
   await math.getByLabel("Denominador",{exact:true}).fill("5");
   await math.getByRole("button",{name:"Alterar sinal de Numerador",exact:true}).click();
   assert.equal(await math.getByLabel("Numerador",{exact:true}).inputValue(),"-7");
   await math.getByRole("button",{name:"Alterar sinal de Numerador",exact:true}).click();
   assert.equal(await math.getByLabel("Pré-visualização do modelo").locator("mfrac").count(),1);
-  if(width===320){
-   await math.getByRole("button",{name:"Livre",exact:true}).click();
-   const pad=math.getByRole("group",{name:"Teclado matemático"});
-   await pad.getByRole("button",{name:"2",exact:true}).tap();
-   await pad.getByRole("button",{name:"+",exact:true}).tap();
-   await pad.getByRole("button",{name:"3",exact:true}).tap();
-   await math.getByRole("button",{name:"Modelos",exact:true}).click();
-   assert.equal(await math.getByLabel("Numerador",{exact:true}).inputValue(),"7");
-   await math.getByRole("button",{name:"Livre",exact:true}).click();
-   assert.equal(await math.locator("math-field").evaluate(el=>el.value),"2+3");
-  }else if(width!==390){
+  if(width<640){
+   assert.equal(await math.getByRole("button",{name:"Livre",exact:true}).count(),0);
+   assert.equal(await math.getByRole("button",{name:"LaTeX",exact:true}).count(),0);
+   assert.equal(await math.locator("math-field").count(),0);
+   if(width===320){
+    await math.getByRole("button",{name:"Adicionar à expressão",exact:true}).click();
+    await math.getByRole("button",{name:"Adicionar componente",exact:true}).click();
+    await math.getByRole("button",{name:"Potência",exact:true}).click();
+    await math.getByRole("button",{name:"Adicionar à expressão",exact:true}).click();
+    assert.equal(await math.getByLabel("Pré-visualização da expressão").locator("mfrac").count(),1);
+    assert.equal(await math.getByLabel("Pré-visualização da expressão").locator("msup").count(),1);
+   }
+  }else{
    await math.getByRole("button",{name:"LaTeX",exact:true}).click();
    await math.getByLabel("Expressão em LaTeX").fill("2+3");
   }
@@ -177,7 +179,9 @@ try{
    await first.getByText(/Calcula a soma/).waitFor();
   }else{
    await order.getByLabel("Posição do bloco 1").selectOption("1");
+   await first.getByText(/Calcula a soma/).waitFor();
   }
+  await second.getByText(/Qual é a unidade/).waitFor();
   assert.match(await second.innerText(),/Qual é a unidade/);
   await noOverflow(page,"organizer "+width);
   await page.screenshot({path:"apps/web/visual-evidence/provas/organizador-"+width+".png"});

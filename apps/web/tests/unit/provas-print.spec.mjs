@@ -265,3 +265,16 @@ test("editable formula models produce only validated mathematical expressions",(
  assert.equal(completeExpression("\\placeholder{}+3"),false);
  assert.equal(completeExpression("2+3"),true);
 });
+
+test("mobile composition preserves math notation and rejects unsafe/incomplete components",()=>{
+ const {composeExpression,modelExpression}=require("../../src/lib/provas/formulaModels.ts");
+ const parts=[{id:1,operator:"+",model:"fracao",values:["7","5"]},{id:2,operator:"+",model:"potencia",values:["2","3"]}];
+ assert.equal(composeExpression(parts),"\\frac{7}{5}+2^{3}");
+ assert.equal(composeExpression([{id:1,operator:"+",existing:"\\sqrt{25}"},parts[1]]),"\\sqrt{25}+2^{3}");
+ assert.equal(composeExpression([{...parts[0],values:["","5"]}]),null);
+ assert.equal(composeExpression(Array.from({length:13},(_,i)=>({...parts[0],id:i}))),null);
+ assert.equal(modelExpression("fracao_algebrica",["3","\\htmlClass","2","5"]),null);
+ const html=provaHtml({...base,conteudo:[{tipo:"calculo",texto:composeExpression(parts),linhas:6,rich:{version:1,segments:[{kind:"math",latex:composeExpression(parts)}]}}]},"Curtume");
+ assert.match(html,/<mfrac>/);
+ assert.match(html,/<msup>/);
+});
