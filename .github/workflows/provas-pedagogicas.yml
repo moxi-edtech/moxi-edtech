@@ -10,6 +10,7 @@ on:
       - 'apps/web/tests/unit/provas-print.spec.mjs'
       - 'apps/web/tests/browser/provas-print.mjs'
       - 'apps/web/tests/browser/provas-mobile.mjs'
+      - 'apps/web/tests/browser/provas-distribuicao.mjs'
       - 'apps/web/visual-harness/provas*'
       - 'apps/web/src/components/ui/ModalShell.tsx'
       - 'apps/web/src/app/escola/**/professor/provas/**'
@@ -121,6 +122,10 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
         run: node apps/web/tests/browser/provas-mobile.mjs
+      - name: Secretary distribution smoke
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
+        run: node apps/web/tests/browser/provas-distribuicao.mjs
       - name: Vite diagnostics
         if: failure()
         run: tail -n 100 /tmp/klasse-provas-vite.log || true
