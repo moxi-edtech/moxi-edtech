@@ -20,9 +20,17 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  -- Direct RPC must reject rich payloads with arbitrary nodes, mismatched text or unsafe commands.
  BEGIN
-   PERFORM public.provas_mutar(v_school,r.id,r.versao,'guardar',jsonb_set(v_data,'{conteudo,0,rich}','{"version":1,"segments":[{"kind":"math","latex":"\\href{https://evil.test}{x}"}]}'));
+   PERFORM provas_private.provas_rich_validate('{"version":1,"segments":[{"kind":"text","text":"x","marks":[]}]}','x');
+   RAISE EXCEPTION 'direct validator execution allowed';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN
+   PERFORM public.provas_mutar(v_school,r.id,r.versao,'guardar',
+     jsonb_set(jsonb_set(v_data,'{conteudo,0,texto}',to_jsonb(chr(92)||'href{https://evil.test}{x}')),
+     '{conteudo,0,rich}',jsonb_build_object('version',1,'segments',jsonb_build_array(jsonb_build_object('kind','math','latex',chr(92)||'href{https://evil.test}{x}')))));
    RAISE EXCEPTION 'unsafe formula accepted';
- EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ EXCEPTION WHEN invalid_parameter_value THEN
+   IF SQLERRM <> 'unsupported_math_command' THEN RAISE; END IF;
+ END;
  BEGIN
    PERFORM public.provas_mutar(v_school,r.id,r.versao,'guardar',jsonb_set(v_data,'{conteudo,0,rich}','{"version":1,"segments":[{"kind":"text","text":"different","marks":[]}]}'));
    RAISE EXCEPTION 'inconsistent rich accepted';
