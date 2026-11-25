@@ -20,7 +20,7 @@ jobs:
           node-version: '22'
       - name: Resolve exact versions without lifecycle scripts
         run: |
-          node -e 'const fs=require("fs");const p="apps/web/package.json";const m=JSON.parse(fs.readFileSync(p,"utf8"));Object.assign(m.dependencies,{"@tiptap/react":"3.35.0","@tiptap/pm":"3.35.0","@tiptap/starter-kit":"3.35.0","mathlive":"0.111.4","katex":"0.19.1"});m.dependencies=Object.fromEntries(Object.entries(m.dependencies).sort(([a],[b])=>a.localeCompare(b,"en")));fs.writeFileSync(p,JSON.stringify(m,null,2)+"\n")'
+          node -e 'const fs=require("fs");const p="apps/web/package.json";const m=JSON.parse(fs.readFileSync(p,"utf8"));Object.assign(m.dependencies,{"@tiptap/react":"3.35.0","@tiptap/pm":"3.35.0","@tiptap/starter-kit":"3.35.0","mathlive":"0.111.4","katex":"0.19.1"});m.devDependencies["@types/react-dom"]="19.2.3";m.devDependencies=Object.fromEntries(Object.entries(m.devDependencies).sort(([a],[b])=>a.localeCompare(b,"en")));m.dependencies=Object.fromEntries(Object.entries(m.dependencies).sort(([a],[b])=>a.localeCompare(b,"en")));fs.writeFileSync(p,JSON.stringify(m,null,2)+"\n")'
           pnpm install --lockfile-only --ignore-scripts --no-frozen-lockfile
           git diff --stat -- apps/web/package.json pnpm-lock.yaml
       - name: Export reproducible lockfile patch
