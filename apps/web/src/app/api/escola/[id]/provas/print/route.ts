@@ -44,6 +44,6 @@ export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
  if(!parsed.success)return fail("Conteúdo inválido.",422);
  const nonce=randomUUID();
  const html=provaHtml(parsed.data,school.data.nome,{nonce,recipients,includeName:q.get("nome")!=="0"});
- if(Buffer.byteLength(html,"utf8")>12*1024*1024)return fail("O lote ultrapassa o limite de impressão. Seleccione menos destinatários.",413);
+ if(Buffer.byteLength(html,"utf8")>4*1024*1024)return fail("O lote ultrapassa o limite de impressão. Seleccione um tamanho de lote menor.",413);
  return new Response(html,{headers:{...headers,"Content-Type":"text/html; charset=utf-8","Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-"+nonce+"'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}});
 }
