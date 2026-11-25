@@ -154,3 +154,11 @@ test("the two metric sections share one card and preserve financial scope and mi
   assert.match(metric, /if \(onClick\) return <button type="button"/);
   assert.match(dashboard, /Propinas do ano activo · pendentes não vencidas/);
 });
+
+test("compact KPI passes explicit navigation or static props without optional href union", () => {
+  const kpi = source("components/dashboard/KpiCard.tsx");
+  const compact = kpi.slice(kpi.indexOf("if (compact)"), kpi.indexOf("const Content ="));
+  assert.match(compact, /if \(href\) \{\s*return <OperationalMetricCard[^>]*href=\{href\}/);
+  assert.match(compact, /\}\s*return <OperationalMetricCard[^>]*description=\{description\} \/>/);
+  assert.doesNotMatch(compact, /\.\.\.\(href/);
+});

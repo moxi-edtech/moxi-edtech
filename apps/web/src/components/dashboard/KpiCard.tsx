@@ -65,7 +65,10 @@ export function KpiCard({
   }[variant];
 
   if (compact) {
-    return <OperationalMetricCard label={label} value={value} icon={Icon} needsAttention={variant === "warning"} description={description} {...(href ? { href } : {})} />;
+    if (href) {
+      return <OperationalMetricCard label={label} value={value} icon={Icon} needsAttention={variant === "warning"} description={description} href={href} />;
+    }
+    return <OperationalMetricCard label={label} value={value} icon={Icon} needsAttention={variant === "warning"} description={description} />;
   }
 
   const Content = (
