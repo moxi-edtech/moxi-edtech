@@ -125,65 +125,16 @@ BEGIN
   IF jsonb_typeof(item) IS DISTINCT FROM 'object' OR (item-ARRAY['chave','dados'])<>'{}'::jsonb OR jsonb_typeof(item->'chave') IS DISTINCT FROM 'string' OR jsonb_typeof(item->'dados') IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'invalid_import_item' USING ERRCODE='22023'; END IF;
   chave:=item->>'chave'; d:=item->'dados';
   IF chave<>btrim(chave) OR length(chave) NOT BETWEEN 1 AND 200 OR (d-ARRAY['ano_letivo_id','curso_matriz_id','tipo_prova','titulo','trimestre','duracao','serie','apresentacao','conteudo'])<>'{}'::jsonb THEN RAISE EXCEPTION 'invalid_import_item' USING ERRCODE='22023'; END IF;
-  IF jsonb_typeof(d->'ano_letivo_id') IS DISTINCT FROM 'string' OR jsonb_typeof(d->'curso_matriz_id') IS DISTINCT FROM 'string' OR jsonb_typeof(d->'trimestre') IS DISTINCT FROM 'number' OR coalesce(d->>'trimestre','') !~ '^[1-3](sha256(convert_to(d::text,'UTF8')),'hex');
-  SELECT * INTO r FROM public.provas_pedagogicas p WHERE p.escola_id=p_escola AND p.importacao_chave=chave;
-  IF FOUND THEN
-   IF r.importacao_hash IS DISTINCT FROM fingerprint THEN RAISE EXCEPTION 'import_key_conflict' USING ERRCODE='23505'; END IF;
-   prova_id:=r.id; criada:=false; RETURN NEXT; CONTINUE;
-  END IF;
-  SELECT * INTO ctx FROM provas_private.provas_import_contexto(p_escola,(d->>'ano_letivo_id')::uuid,(d->>'curso_matriz_id')::uuid) c WHERE c.trimestre=(d->>'trimestre')::integer;
-  IF NOT FOUND THEN RAISE EXCEPTION 'invalid_academic_context' USING ERRCODE='42501'; END IF;
-  PERFORM provas_private.provas_validar_blocos(d->'conteudo');
-  IF d ? 'apresentacao' AND (jsonb_typeof(d->'apresentacao') IS DISTINCT FROM 'string' OR d->>'apresentacao' NOT IN ('automatica','compacta','espacosa')) THEN RAISE EXCEPTION 'invalid_apresentacao' USING ERRCODE='22023'; END IF;
-  v_max:=provas_private.provas_cotacao_max(p_escola,ctx.ano_letivo_id,ctx.curso_matriz_id,ctx.trimestre);
-  IF v_max IS NULL THEN RAISE EXCEPTION 'unavailable_exam_scale' USING ERRCODE='22023'; END IF;
-  SELECT count(*),count(*) FILTER(WHERE coalesce((b->>'cotacao_cent')::integer,0)<=0),count(*) FILTER(WHERE b ? 'cotacao_cent'),coalesce(sum((b->>'cotacao_cent')::integer),0)
-   INTO v_count,v_missing,v_marked,v_total FROM jsonb_array_elements(d->'conteudo') b WHERE b->>'tipo' NOT IN ('grupo','texto');
-  IF v_count=0 OR (v_max=0 AND v_marked<>0) OR (v_max>0 AND (v_total<>v_max OR v_missing<>0)) THEN RAISE EXCEPTION 'invalid_exam_cotacao' USING ERRCODE='22023'; END IF;
-  INSERT INTO public.provas_pedagogicas(escola_id,autor_id,autor_tipo,importacao_chave,importacao_hash,ano_letivo_id,curso_matriz_id,tipo_prova,apresentacao,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo)
-   VALUES(p_escola,NULL,'sistema',chave,fingerprint,ctx.ano_letivo_id,ctx.curso_matriz_id,coalesce(d->>'tipo_prova','trimestral'),coalesce(d->>'apresentacao','automatica'),d->>'titulo',ctx.classe,ctx.disciplina,ctx.ano_lectivo,ctx.trimestre,(d->>'duracao')::smallint,d->>'serie',d->'conteudo')
-   ON CONFLICT (escola_id,importacao_chave) WHERE importacao_chave IS NOT NULL DO NOTHING RETURNING * INTO r;
-  criada:=FOUND;
-  IF NOT criada THEN
-   SELECT * INTO STRICT r FROM public.provas_pedagogicas p WHERE p.escola_id=p_escola AND p.importacao_chave=chave;
-   IF r.importacao_hash IS DISTINCT FROM fingerprint THEN RAISE EXCEPTION 'import_key_conflict' USING ERRCODE='23505'; END IF;
-  END IF;
-  prova_id:=r.id; RETURN NEXT;
- END LOOP;
-END;
-$import$;
-REVOKE ALL ON FUNCTION provas_private.provas_importar_sistema(uuid,jsonb) FROM PUBLIC,anon,authenticated,service_role;
-COMMIT;
- OR jsonb_typeof(d->'duracao') IS DISTINCT FROM 'number' OR coalesce(d->>'duracao','') !~ '^[0-9]{1,3}(sha256(convert_to(d::text,'UTF8')),'hex');
-  SELECT * INTO r FROM public.provas_pedagogicas p WHERE p.escola_id=p_escola AND p.importacao_chave=chave;
-  IF FOUND THEN
-   IF r.importacao_hash IS DISTINCT FROM fingerprint THEN RAISE EXCEPTION 'import_key_conflict' USING ERRCODE='23505'; END IF;
-   prova_id:=r.id; criada:=false; RETURN NEXT; CONTINUE;
-  END IF;
-  SELECT * INTO ctx FROM provas_private.provas_import_contexto(p_escola,(d->>'ano_letivo_id')::uuid,(d->>'curso_matriz_id')::uuid) c WHERE c.trimestre=(d->>'trimestre')::integer;
-  IF NOT FOUND THEN RAISE EXCEPTION 'invalid_academic_context' USING ERRCODE='42501'; END IF;
-  PERFORM provas_private.provas_validar_blocos(d->'conteudo');
-  IF d ? 'apresentacao' AND (jsonb_typeof(d->'apresentacao') IS DISTINCT FROM 'string' OR d->>'apresentacao' NOT IN ('automatica','compacta','espacosa')) THEN RAISE EXCEPTION 'invalid_apresentacao' USING ERRCODE='22023'; END IF;
-  v_max:=provas_private.provas_cotacao_max(p_escola,ctx.ano_letivo_id,ctx.curso_matriz_id,ctx.trimestre);
-  IF v_max IS NULL THEN RAISE EXCEPTION 'unavailable_exam_scale' USING ERRCODE='22023'; END IF;
-  SELECT count(*),count(*) FILTER(WHERE coalesce((b->>'cotacao_cent')::integer,0)<=0),count(*) FILTER(WHERE b ? 'cotacao_cent'),coalesce(sum((b->>'cotacao_cent')::integer),0)
-   INTO v_count,v_missing,v_marked,v_total FROM jsonb_array_elements(d->'conteudo') b WHERE b->>'tipo' NOT IN ('grupo','texto');
-  IF v_count=0 OR (v_max=0 AND v_marked<>0) OR (v_max>0 AND (v_total<>v_max OR v_missing<>0)) THEN RAISE EXCEPTION 'invalid_exam_cotacao' USING ERRCODE='22023'; END IF;
-  INSERT INTO public.provas_pedagogicas(escola_id,autor_id,autor_tipo,importacao_chave,importacao_hash,ano_letivo_id,curso_matriz_id,tipo_prova,apresentacao,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo)
-   VALUES(p_escola,NULL,'sistema',chave,fingerprint,ctx.ano_letivo_id,ctx.curso_matriz_id,coalesce(d->>'tipo_prova','trimestral'),coalesce(d->>'apresentacao','automatica'),d->>'titulo',ctx.classe,ctx.disciplina,ctx.ano_lectivo,ctx.trimestre,(d->>'duracao')::smallint,d->>'serie',d->'conteudo')
-   ON CONFLICT (escola_id,importacao_chave) WHERE importacao_chave IS NOT NULL DO NOTHING RETURNING * INTO r;
-  criada:=FOUND;
-  IF NOT criada THEN
-   SELECT * INTO STRICT r FROM public.provas_pedagogicas p WHERE p.escola_id=p_escola AND p.importacao_chave=chave;
-   IF r.importacao_hash IS DISTINCT FROM fingerprint THEN RAISE EXCEPTION 'import_key_conflict' USING ERRCODE='23505'; END IF;
-  END IF;
-  prova_id:=r.id; RETURN NEXT;
- END LOOP;
-END;
-$import$;
-REVOKE ALL ON FUNCTION provas_private.provas_importar_sistema(uuid,jsonb) FROM PUBLIC,anon,authenticated,service_role;
-COMMIT;
- OR jsonb_typeof(d->'titulo') IS DISTINCT FROM 'string' OR jsonb_typeof(d->'serie') IS DISTINCT FROM 'string' OR (d ? 'tipo_prova' AND jsonb_typeof(d->'tipo_prova') IS DISTINCT FROM 'string') THEN RAISE EXCEPTION 'invalid_import_data' USING ERRCODE='22023'; END IF;
+  IF jsonb_typeof(d->'ano_letivo_id') IS DISTINCT FROM 'string'
+   OR jsonb_typeof(d->'curso_matriz_id') IS DISTINCT FROM 'string'
+   OR jsonb_typeof(d->'trimestre') IS DISTINCT FROM 'number'
+   OR coalesce(d->>'trimestre','') !~ '^[1-3]$'
+   OR jsonb_typeof(d->'duracao') IS DISTINCT FROM 'number'
+   OR coalesce(d->>'duracao','') !~ '^[0-9]{1,3}$'
+   OR jsonb_typeof(d->'titulo') IS DISTINCT FROM 'string'
+   OR jsonb_typeof(d->'serie') IS DISTINCT FROM 'string'
+   OR (d ? 'tipo_prova' AND jsonb_typeof(d->'tipo_prova') IS DISTINCT FROM 'string')
+  THEN RAISE EXCEPTION 'invalid_import_data' USING ERRCODE='22023'; END IF;
   fingerprint:=encode(sha256(convert_to(d::text,'UTF8')),'hex');
   SELECT * INTO r FROM public.provas_pedagogicas p WHERE p.escola_id=p_escola AND p.importacao_chave=chave;
   IF FOUND THEN
