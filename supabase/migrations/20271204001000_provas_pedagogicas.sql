@@ -1,6 +1,7 @@
 BEGIN;
 -- Confidential assessment documents; no fiscal, student or public-document linkage.
-CREATE SCHEMA IF NOT EXISTS private;
+CREATE SCHEMA provas_private;
+REVOKE ALL ON SCHEMA provas_private FROM PUBLIC,anon,service_role;
 CREATE TABLE public.provas_pedagogicas (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  escola_id uuid NOT NULL REFERENCES public.escolas(id) ON DELETE CASCADE,
@@ -27,7 +28,7 @@ ALTER TABLE public.provas_pedagogicas ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.provas_pedagogicas FROM PUBLIC,anon,authenticated,service_role;
 GRANT SELECT ON public.provas_pedagogicas TO authenticated;
 
-CREATE FUNCTION private.provas_papel(p_escola uuid,p_roles text[])
+CREATE FUNCTION provas_private.provas_papel(p_escola uuid,p_roles text[])
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=''
 AS $$
  SELECT auth.uid() IS NOT NULL AND EXISTS(
@@ -35,24 +36,24 @@ AS $$
    AND e.tenant_type='k12' AND e.papel=ANY(p_roles)
  );
 $$;
-REVOKE ALL ON FUNCTION private.provas_papel(uuid,text[]) FROM PUBLIC,anon,service_role;
-GRANT USAGE ON SCHEMA private TO authenticated;
-GRANT EXECUTE ON FUNCTION private.provas_papel(uuid,text[]) TO authenticated;
+REVOKE ALL ON FUNCTION provas_private.provas_papel(uuid,text[]) FROM PUBLIC,anon,service_role;
+GRANT USAGE ON SCHEMA provas_private TO authenticated;
+GRANT EXECUTE ON FUNCTION provas_private.provas_papel(uuid,text[]) TO authenticated;
 CREATE POLICY provas_read ON public.provas_pedagogicas FOR SELECT TO authenticated USING (
- private.provas_papel(escola_id,ARRAY['admin','admin_escola','diretor','admin_secretaria','admin_secretario','staff_admin'])
- OR (autor_id=(SELECT auth.uid()) AND private.provas_papel(escola_id,ARRAY['professor']))
- OR (estado='aprovada' AND private.provas_papel(escola_id,ARRAY['secretaria','secretaria_financeiro']))
+ provas_private.provas_papel(escola_id,ARRAY['admin','admin_escola','diretor','admin_secretaria','admin_secretario','staff_admin'])
+ OR (autor_id=(SELECT auth.uid()) AND provas_private.provas_papel(escola_id,ARRAY['professor']))
+ OR (estado='aprovada' AND provas_private.provas_papel(escola_id,ARRAY['secretaria','secretaria_financeiro']))
 );
 
 -- Only one mutation boundary. No direct INSERT/UPDATE/DELETE grants.
-CREATE FUNCTION private.provas_mutar(p_escola uuid,p_id uuid,p_versao integer,p_acao text,p_dados jsonb)
+CREATE FUNCTION provas_private.provas_mutar(p_escola uuid,p_id uuid,p_versao integer,p_acao text,p_dados jsonb)
 RETURNS public.provas_pedagogicas LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $$
 DECLARE r public.provas_pedagogicas; v_actor uuid:=auth.uid();
  v_admin boolean; v_prof boolean; b jsonb; v_body jsonb;
 BEGIN
- v_admin:=private.provas_papel(p_escola,ARRAY['admin','admin_escola','diretor','admin_secretaria','admin_secretario','staff_admin']);
- v_prof:=private.provas_papel(p_escola,ARRAY['professor']);
+ v_admin:=provas_private.provas_papel(p_escola,ARRAY['admin','admin_escola','diretor','admin_secretaria','admin_secretario','staff_admin']);
+ v_prof:=provas_private.provas_papel(p_escola,ARRAY['professor']);
  IF v_actor IS NULL OR NOT(v_admin OR v_prof) THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
  IF p_acao IS NULL OR p_acao NOT IN ('criar','guardar','submeter','aprovar','devolver','arquivar','duplicar') THEN RAISE EXCEPTION 'invalid_action' USING ERRCODE='22023'; END IF;
  IF p_acao<>'criar' THEN
@@ -92,11 +93,11 @@ BEGIN
  RETURN r;
 END;
 $$;
-REVOKE ALL ON FUNCTION private.provas_mutar(uuid,uuid,integer,text,jsonb) FROM PUBLIC,anon,service_role;
-GRANT EXECUTE ON FUNCTION private.provas_mutar(uuid,uuid,integer,text,jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION provas_private.provas_mutar(uuid,uuid,integer,text,jsonb) FROM PUBLIC,anon,service_role;
+GRANT EXECUTE ON FUNCTION provas_private.provas_mutar(uuid,uuid,integer,text,jsonb) TO authenticated;
 CREATE FUNCTION public.provas_mutar(p_escola uuid,p_id uuid,p_versao integer,p_acao text,p_dados jsonb)
 RETURNS public.provas_pedagogicas LANGUAGE sql SECURITY INVOKER SET search_path=''
-AS $$ SELECT private.provas_mutar(p_escola,p_id,p_versao,p_acao,p_dados); $$;
+AS $$ SELECT provas_private.provas_mutar(p_escola,p_id,p_versao,p_acao,p_dados); $$;
 REVOKE ALL ON FUNCTION public.provas_mutar(uuid,uuid,integer,text,jsonb) FROM PUBLIC,anon,service_role;
 GRANT EXECUTE ON FUNCTION public.provas_mutar(uuid,uuid,integer,text,jsonb) TO authenticated;
 COMMIT;
