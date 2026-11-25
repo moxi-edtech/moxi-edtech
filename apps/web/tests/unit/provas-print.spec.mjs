@@ -10,10 +10,10 @@ const base={titulo:"Prova",classe:"8.ª Classe",disciplina:"Física",ano_lectivo
 test("A4 renderer numbers questions, resets groups, and supports handwriting space",()=>{
  const html=provaHtml(base,"Curtume");
  assert.match(html,/@page\{size:A4/);
- assert.match(html,/1\. Define energia\./);
- assert.match(html,/a\) Justifica\./);
- assert.match(html,/2\. A Terra gira\.<span class="vf"/);
- assert.match(html,/1\. √9/);
+ assert.match(html,/1\.<\/strong> Define energia\./);
+ assert.match(html,/a\)<\/strong> Justifica\./);
+ assert.match(html,/2\.<\/strong> A Terra gira\.<span class="vf"/);
+ assert.match(html,/1\.<\/strong> √9/);
  assert.equal((html.match(/class="linha"/g)||[]).length,3);
  assert.match(html,/height:32mm/);
  assert.match(html,/Ano lectivo: 2026\/2027/);
@@ -180,7 +180,7 @@ test("institutional branding uses only the school storage path and a bounded ima
  assert.equal(html.split(logo).length-1,1,"embed logo once regardless of batch size");
  assert.equal((html.match(/class="school-logo"/g)||[]).length,2);
  assert.ok(html.includes(PROVA_FOOTER));
- assert.match(html,/@bottom-center/);
+ assert.match(html,/@bottom-left/);
  const fallback=provaHtml(base,"Curtume",{logo:"https://evil.test/track.png"});
  assert.doesNotMatch(fallback,/class="school-logo"|evil\.test/);
  assert.match(fallback,/<h1 class="school">Curtume/);
@@ -226,4 +226,24 @@ test("adaptive composition preserves physical answers and uses compact only when
   assert.match(html,/\.linha\{height:8mm/);
   assert.match(html,/data-layout="(normal|compacta|espacosa)"/);
  }
+});
+
+test("institutional monochrome composition uses school identity, bold numbers, aligned marks and conditional option columns",()=>{
+ const {alternativesInColumns}=require("../../src/lib/provas/layout.ts");
+ const choices={tipo:"escolha",texto:"Qual?",linhas:0,cotacao_cent:200,alternativas:["Watt","Joule","Newton","Pascal"]};
+ const html=provaHtml({...base,conteudo:[choices]},"Curtume");
+ assert.match(html,/<div class="institution">/);
+ assert.match(html,/Arial,"Liberation Sans",sans-serif/);
+ assert.match(html,/<strong class="question-number">1\.<\/strong>/);
+ assert.match(html,/\.cotacao\{float:right/);
+ assert.match(html,/class="alternativas duas-colunas"/);
+ assert.match(html,/@bottom-right\{content:"Página " counter\(page\) " de " counter\(pages\)/);
+ assert.doesNotMatch(html,/#(?:1F6B3B|E3B23C)/i);
+ assert.equal(alternativesInColumns(choices.alternativas),true);
+ assert.equal(alternativesInColumns(["A","B"]),false);
+ assert.equal(alternativesInColumns(["A","B","C","D".repeat(29)]),false);
+ assert.equal(alternativesInColumns(["A","B","C","D\nE"]),false);
+ const wide=provaHtml({...base,conteudo:[{...choices,alternativas:["A","B","C","D".repeat(29)]}]},"Curtume");
+ assert.match(wide,/class="alternativas"/);
+ assert.doesNotMatch(wide,/class="alternativas duas-colunas"/);
 });
