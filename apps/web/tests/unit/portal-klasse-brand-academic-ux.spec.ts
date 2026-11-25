@@ -23,7 +23,9 @@ test("navegação e área académica explicitam contexto sem inventar estado", a
     read("components/aluno/layout/AlunoBottomNav.tsx"),
     read("components/professor/layout/ProfessorBottomNav.tsx"),
   ]);
-  assert.match(academic, /descriptions\[activeTab\]/);
+  assert.doesNotMatch(academic, /descriptions\[activeTab\]/);
+  assert.match(academic, /layout="compact"/);
+  assert.match(tabs, /grid grid-cols-4/);
   assert.match(academic, /<PortalTabs items=\{sections\}/);
   assert.match(tabs, /border-klasse-gold/);
   assert.match(alunoNav, /klasse-gold/);

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ArrowRight, BookOpen, CalendarDays, FileText, Wallet, Bell, GraduationCap, Clock3 } from "lucide-react";
+import { ArrowRight, BookOpen, FileText, Wallet, Bell, Clock3, ChevronRight, AlertCircle, CalendarCheck } from "lucide-react";
 import { ErrorState } from "@/components/feedback/FeedbackSystem";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { buildStudentAttention, nextLessonLabel, type StudentDocument, type StudentRematricula } from "@/lib/aluno/dashboardPresentation";
@@ -39,8 +39,8 @@ async function fetchJson<T>(path: string, signal: AbortSignal, scopedQuery = "")
 const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 function LoadingDashboard() {
   return <div role="status" aria-live="polite" className="w-full animate-pulse space-y-5 py-2" aria-label="A carregar a tua página"><span className="sr-only">A carregar a tua página</span><div aria-hidden="true">
-    <div className="space-y-4"><div className="h-4 w-40 rounded-lg bg-muted"/><div className="h-9 w-56 rounded-lg bg-muted"/><div className="h-4 w-44 rounded-lg bg-muted"/></div>
-    <div className="grid gap-6 lg:grid-cols-5"><div className="h-52 rounded-2xl bg-muted lg:col-span-3"/><div className="h-52 rounded-2xl bg-muted lg:col-span-2"/></div>
+    <div className="h-28 rounded-xl bg-muted"/>
+    <div className="grid grid-cols-3 gap-2"><div className="h-24 rounded-xl bg-muted"/><div className="h-24 rounded-xl bg-muted"/><div className="h-24 rounded-xl bg-muted"/></div>
     <div className="h-48 rounded-2xl bg-muted"/><div className="h-32 rounded-2xl bg-muted"/>
     </div>
   </div>;
@@ -116,49 +116,31 @@ export default function DashboardLoader() {
   if (error || !screen) return <div className="mx-auto max-w-6xl px-4 py-8"><ErrorState title="Não foi possível carregar" description={error || "Tenta novamente."} onRetry={refresh}/></div>;
   const lesson = nextLessonLabel(screen.dashboard.proxima_aula);
   const firstName = screen.boletim?.nome_aluno?.trim().split(/\s+/)[0] || "aluno";
-  const today = new Intl.DateTimeFormat("pt-AO",{weekday:"long",day:"numeric",month:"long"}).format(new Date());
-  const shortcuts = [
-    {label:"Disciplinas",hint:"Matérias da turma",href:"/aluno/academico?aba=disciplinas",icon:GraduationCap},
-    {label:"Notas",hint:"Avaliações e boletim",href:"/aluno/academico",icon:FileText},
-    {label:"Pagamentos",hint:"Mensalidades e comprovativos",href:"/aluno/financeiro",icon:Wallet},
-    {label:"Horário",hint:"Aulas da semana",href:"/aluno/horario",icon:CalendarDays},
-  ];
-  return <div className="w-full min-w-0 space-y-5 text-foreground sm:space-y-6" data-testid="aluno-dashboard-editorial">
-    <header className="rounded-xl border border-border bg-card px-4 py-4 shadow-sm sm:px-5 sm:py-5">
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1.5">
-          <p className="text-xs capitalize text-muted-foreground">{today}</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-primary">Olá, {firstName}</h1>
-          {(screen.dashboard.turma_nome || screen.dashboard.ano_letivo) && (
-            <p className="text-sm text-muted-foreground">
-              {[screen.dashboard.turma_nome, screen.dashboard.ano_letivo ? `Ano letivo ${screen.dashboard.ano_letivo}` : ""].filter(Boolean).join(" · ")}
-            </p>
-          )}
-          <p className="pt-1 text-sm text-muted-foreground">O que precisas de saber hoje.</p>
-        </div>
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-klasse-green text-white" aria-hidden="true">
-          <BookOpen className="h-5 w-5" />
-        </span>
-      </div>
+  const today = new Intl.DateTimeFormat("pt-AO",{timeZone:"Africa/Luanda",weekday:"long",day:"numeric",month:"long"}).format(new Date());
+  return <div className="w-full min-w-0 space-y-4 text-foreground sm:space-y-6" data-testid="aluno-dashboard-editorial">
+    <header className="rounded-xl bg-klasse-green px-4 py-4 text-white sm:px-6 sm:py-5">
+      <p className="text-xs text-white/90">{today}</p>
+      <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight sm:text-3xl">Olá, {firstName}</h1>
+      {screen.dashboard.ano_letivo && <p className="mt-2 text-sm text-white/90">Ano letivo {screen.dashboard.ano_letivo}</p>}
     </header>
     <PortalSection id="aluno-summary" title="Em resumo">
       <div className="grid grid-cols-3 gap-2 sm:gap-3" data-testid="aluno-summary-cards">
-        <PortalStatCard label="Avisos" accessibleLabel="Consultar avisos recentes"
+        <PortalStatCard label="Avisos" tone="info" accessibleLabel="Consultar avisos recentes"
           icon={<Bell className="h-4 w-4" aria-hidden="true" />}
           value={(screen.dashboard.avisos_recentes ?? []).length} href={go("/aluno/avisos")} />
-        <PortalStatCard label="Notas" accessibleLabel="Consultar o estado das notas"
+        <PortalStatCard label="Notas" tone={screen.boletim?.is_liberado ? "success" : "neutral"} accessibleLabel="Consultar o estado das notas"
           icon={<BookOpen className="h-4 w-4" aria-hidden="true" />}
-          value={typeof screen.boletim?.is_liberado === "boolean" ? (screen.boletim.is_liberado ? "Abertas" : "Por abrir") : null}
+          value={typeof screen.boletim?.is_liberado === "boolean" ? (screen.boletim.is_liberado ? "Acesso livre" : "Protegidas") : null}
           href={go("/aluno/academico")} />
-        <PortalStatCard label="Vencidas" accessibleLabel="Consultar mensalidades vencidas"
+        <PortalStatCard label="Vencidas" tone={screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error ? (screen.dashboard.status_financeiro.pendentes > 0 ? "warning" : "success") : "neutral"} accessibleLabel="Consultar mensalidades vencidas"
           icon={<Wallet className="h-4 w-4" aria-hidden="true" />}
           value={screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error
             ? screen.dashboard.status_financeiro.pendentes : null}
           href={go("/aluno/financeiro")} />
       </div>
     </PortalSection>
-    <div className="grid items-start gap-5 lg:grid-cols-5">
-      <PortalSection id="next-class" title="A tua próxima aula" className="lg:col-span-3">
+    <div className="grid items-start gap-4 lg:grid-cols-5">
+      <PortalSection id="next-class" title="Próxima aula" className="lg:col-span-3">
         <PortalSurface>
           {lesson ? <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-4">
@@ -166,35 +148,30 @@ export default function DashboardLoader() {
               <div className="min-w-0"><p className="text-sm text-muted-foreground">{lesson.day}</p><p className="mt-1 text-lg font-semibold text-foreground">{lesson.subject}</p></div>
             </div>
             {lesson.details.length > 0 && <p className="text-sm text-muted-foreground">{lesson.details.join(" · ")}</p>}
-          </div> : <div className="flex items-start gap-3"><Clock3 className="mt-1 h-5 w-5 shrink-0 text-muted-foreground"/><div><p className="font-medium">Ainda não há uma próxima aula publicada.</p><p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">Podes consultar o horário da tua turma quando a escola o disponibilizar.</p></div></div>}
-          <PortalAction className="mt-3 -ml-3" href={go("/aluno/horario")}>
-            Ver o horário completo <ArrowRight aria-hidden="true" className="h-4 w-4" />
+          </div> : <div className="flex items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-primary"><Clock3 className="h-5 w-5" aria-hidden="true"/></span><p className="text-sm text-muted-foreground">Sem próxima aula publicada.</p></div>}
+          <PortalAction className="mt-1 -ml-3" href={go("/aluno/horario")}>
+            Ver horário <ArrowRight aria-hidden="true" className="h-4 w-4" />
           </PortalAction>
         </PortalSurface>
       </PortalSection>
       {attentions.length > 0 && <PortalSection id="attention-title" title="A acompanhar" className="lg:col-span-2" testId="attention">
         <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           {attentions.slice(0,3).map(item => {
-            const needsAction = item.kind === "rejected" || item.kind === "mensalidade" || item.kind === "rematricula";
-            return <article key={item.kind + item.href} className="flex min-w-0 items-start gap-3 px-4 py-3.5">
-              <span aria-hidden="true" className={needsAction ? "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" : "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-muted-foreground/50"}/>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-semibold leading-5 text-foreground">{item.title}</h3>
-                <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.description}</p>
-                <PortalAction href={go(item.href)} className="-ml-3">{item.action}<ArrowRight aria-hidden="true" className="h-4 w-4"/></PortalAction>
-              </div>
-            </article>;
+            const Icon = item.kind === "mensalidade" ? Wallet : item.kind === "rejected" ? AlertCircle : item.kind === "rematricula" ? CalendarCheck : FileText;
+            const iconStyle = item.kind === "rejected" ? "bg-red-50 text-red-800" : item.kind === "mensalidade" || item.kind === "rematricula" ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-800";
+            return <Link key={item.kind + item.href} href={go(item.href)} className={`flex min-h-14 min-w-0 items-center gap-3 px-3 py-2.5 hover:bg-muted/40 ${focus}`}>
+              <span aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconStyle}`}><Icon className="h-4 w-4"/></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold leading-5 text-foreground">{item.title}</span>
+                <span className="block text-xs leading-4 text-muted-foreground">{item.kind === "rejected" || item.kind === "academico" ? item.description : item.action}</span>
+                {(item.kind === "rejected" || item.kind === "academico") && <span className="sr-only">{item.action}</span>}
+              </span>
+              <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground"/>
+            </Link>;
           })}
         </div>
       </PortalSection>}
     </div>
-    <PortalSection id="school-links" title="A tua vida escolar">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-        {shortcuts.map(({label,hint,href,icon:Icon})=><Link key={label} href={go(href)} className={`flex min-h-24 min-w-0 flex-col gap-2 rounded-xl border border-border p-3 transition-[background-color,border-color,transform] hover:-translate-y-0.5 hover:border-klasse-gold-500/50 motion-reduce:transform-none motion-reduce:transition-none ${focus} bg-card`}>
-          <Icon className="h-5 w-5 text-primary" aria-hidden="true"/><div><p className="text-sm font-semibold text-foreground">{label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">{hint}</p></div>
-        </Link>)}
-      </div>
-    </PortalSection>
     <PortalSection id="notices" title="Avisos da escola" action={
       <PortalAction href={go("/aluno/avisos")}>Ver todos <ArrowRight aria-hidden="true" className="h-4 w-4" /></PortalAction>
     }>
