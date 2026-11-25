@@ -7,6 +7,8 @@ const require=createRequire(import.meta.url);
 const { provaHtml }=require("../../src/lib/provas/print.ts");
 const { PROVA_PAPER:P }=require("../../src/lib/provas/layout.ts");
 const { PDFDocument }=require("pdf-lib");
+const {PROVA_FOOTER}=require("../../src/lib/provas/branding.ts");
+const logo="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==";
 const { chromium }=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
 const base={titulo:"Prova de Matemática",classe:"8.ª Classe",disciplina:"Matemática",ano_lectivo:"2026/2027",trimestre:1,duracao:90,serie:"A"};
 const formula="\\frac{2}{5}+\\sqrt{9}";
@@ -23,7 +25,7 @@ try{
  const page=await browser.newPage({viewport:{width:1024,height:900}});
  const external=[];
  await page.route("**/*",route=>{external.push(route.request().url());return route.abort();});
- await page.setContent(provaHtml({...base,conteudo},"Escola de teste",{draft:true}),{waitUntil:"load"});
+ await page.setContent(provaHtml({...base,conteudo},"Escola de teste",{draft:true,logo}),{waitUntil:"load"});
  assert.equal(await page.locator("math mfrac").count(),1);
  assert.equal(await page.locator("math msqrt").count(),1);
  const math=await page.locator("math").boundingBox();
@@ -31,6 +33,8 @@ try{
  assert.equal(await page.locator(".linha").count(),82);
  assert.equal(await page.locator(".questao.long").count(),1);
  assert.equal(await page.locator(".draft").count(),1);
+ assert.equal(await page.locator(".school-logo").count(),1);
+ assert.equal(await page.locator(".screen-footer").innerText(),PROVA_FOOTER);
  const geometry=await page.evaluate(()=>{
    const paper=document.querySelector(".paper"),q=document.querySelector(".questao"),line=document.querySelector(".linha");
    const first=document.querySelector(".resposta"),box=document.querySelector(".espaco");
@@ -40,7 +44,7 @@ try{
  for(const [actual,expected] of [[parseFloat(geometry.margin),P.marginLeft],[parseFloat(geometry.gap),P.questionGap],[geometry.line,P.lineHeight],[parseFloat(geometry.answerGap),P.answerGap],[geometry.box,4*P.lineHeight]])assert.ok(Math.abs(actual-px(expected))<1.5,JSON.stringify(geometry));
  await mkdir("apps/web/visual-evidence/provas",{recursive:true});
  await page.screenshot({path:"apps/web/visual-evidence/provas/preview.png",fullPage:true});
- await page.setContent(provaHtml({...base,conteudo},"Escola de teste",{nonce:"browser-test"}),{waitUntil:"load"});
+ await page.setContent(provaHtml({...base,conteudo},"Escola de teste",{nonce:"browser-test",logo}),{waitUntil:"load"});
  await page.emulateMedia({media:"print"});
  assert.equal(await page.locator(".controls").isVisible(),false);
  const pdf=await page.pdf({preferCSSPageSize:true,printBackground:true});
@@ -60,18 +64,28 @@ try{
  assert.ok(words.length>100,"PDF text bounds unavailable");
  for(const m of words){
    const [x1,y1,x2,y2]=m.slice(1).map(Number);
-   assert.ok(x1>=points(P.marginLeft)-2&&x2<=points(P.width-P.marginRight)+2&&y1>=points(P.marginTop)-2&&y2<=points(P.height-P.marginBottom)+2,"text outside safe margin: "+m[0]);
+   assert.ok(x1>=points(P.marginLeft)-2&&x2<=points(P.width-P.marginRight)+2&&y1>=points(P.marginTop)-2&&y2<=points(P.height)-points(3),"text outside safe sheet: "+m[0]);
+   if(y2>points(P.height-P.marginBottom)+2)assert.ok(y1>=points(P.height-P.marginBottom)-2,"text crosses body/footer boundary");
  }
+ const checkFooters=path=>{
+  const pages=execFileSync("pdftotext",["-layout",path,"-"],{encoding:"utf8"}).split(String.fromCharCode(12)).filter(s=>s.trim());
+  for(const p of pages){assert.equal(p.split(PROVA_FOOTER).length-1,1,"one footer per physical page");assert.ok(p.replace(PROVA_FOOTER,"").trim(),"no blank footer-only pages");}
+  return pages;
+ };
+ const assertLogo=path=>{const images=execFileSync("pdfimages",["-list",path],{encoding:"utf8"});assert.match(images,/\b80\s+40\b/,"embedded raster in actual PDF");};
+ checkFooters(output);assertLogo(output);
  console.log("Physical text bounds validated:",words.length,"words");
  console.log("A4 browser smoke passed; pages:",doc.getPageCount());
  const one={matricula_id:"b0000000-0000-4000-8000-000000000001",turma_id:"80000000-0000-4000-8000-000000000001",turma:"ESG-8ª Classe-T-Z",letra:"A",curso:"Ensino Geral",turno:"M",sala:"12",nome:"Estudante ALFA",numero_processo:"P-001",numero_chamada:1};
  const two={...one,matricula_id:"b0000000-0000-4000-8000-000000000002",nome:"Estudante BETA",numero_processo:"P-002",numero_chamada:2};
- await page.setContent(provaHtml({...base,tipo_prova:"trimestral",conteudo},"Escola de teste",{nonce:"browser-batch",recipients:[one,two]}),{waitUntil:"load"});
+ await page.setContent(provaHtml({...base,tipo_prova:"trimestral",conteudo},"Escola de teste",{nonce:"browser-batch",recipients:[one,two],logo}),{waitUntil:"load"});
  const batch=await page.pdf({preferCSSPageSize:true,printBackground:true});
  const batchDoc=await PDFDocument.load(batch);
  const batchPath="apps/web/visual-evidence/provas/lote-nominal.pdf";
  await writeFile(batchPath,batch);
- const pages=execFileSync("pdftotext",["-layout",batchPath,"-"],{encoding:"utf8"}).split(String.fromCharCode(12)).filter(s=>s.trim());
+ const pages=checkFooters(batchPath);assertLogo(batchPath);
+ const embedded=execFileSync("pdfimages",["-list",batchPath],{encoding:"utf8"}).split("\n").filter(l=>/\b80\s+40\b/.test(l));
+ assert.ok(embedded.length>=2,"logo appears for each nominal copy");
  assert.equal(pages.length,batchDoc.getPageCount(),"PDF pages must contain content");
  assert.ok(pages.length>=6,"two multi-page copies");
  assert.match(pages[0],/Estudante ALFA/);

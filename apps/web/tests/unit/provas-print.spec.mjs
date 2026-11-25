@@ -154,3 +154,34 @@ test("exam labels use class snapshot, structured letter, full course and normali
  assert.equal(turmaProvaLabels("8ª",{nome:"XYZ-123"}).turma,"Turma sem designação");
  assert.equal(turmaProvaLabels("8ª",{}).turma,"Turma sem designação");
 });
+
+test("institutional branding uses only the school storage path and a bounded image",async()=>{
+ const {schoolLogoSource,safeLogoData,PROVA_FOOTER}=require("../../src/lib/provas/branding.ts");
+ const {loadProvaLogo}=require("../../src/lib/provas/loadLogo.ts");
+ const id="00000000-0000-4000-8000-000000000001",origin="https://project.supabase.co";
+ const url=origin+"/storage/v1/object/public/school-branding/escolas/"+id+"/logo/123.png";
+ const png="iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==";
+ let calls=0;
+ const fetcher=async(input,options)=>{calls++;assert.equal(String(input),url);assert.equal(options.redirect,"error");assert.equal(options.credentials,"omit");return new Response(Buffer.from(png,"base64"),{headers:{"content-type":"image/png"}});};
+ const logo=await loadProvaLogo(url,id,fetcher,[origin]);
+ assert.equal(logo,"data:image/png;base64,"+png);
+ for(const invalid of [null,"https://evil.test/logo.png",url.replace(id,"00000000-0000-4000-8000-000000000002"),url+"?token=abc",url.replace(".png",".svg"),url.replace("https:","http:")]){
+  assert.equal(schoolLogoSource(invalid,id,[origin]),null);
+  assert.equal(await loadProvaLogo(invalid,id,fetcher,[origin]),null);
+ }
+ assert.equal(calls,1);
+ assert.equal(await loadProvaLogo(url,id,async()=>new Response("fake",{headers:{"content-type":"image/png"}}),[origin]),null);
+ assert.equal(await loadProvaLogo(url,id,async()=>new Response("large",{headers:{"content-type":"image/png","content-length":"3000000"}}),[origin]),null);
+ assert.equal(await loadProvaLogo(url,id,async()=>{throw Error("network")},[origin]),null);
+ assert.equal(safeLogoData("data:image/svg+xml;base64,PHN2Zz4="),null);
+ assert.equal(safeLogoData("https://evil.test/track.png"),null);
+ const student={matricula_id:"b0000000-0000-4000-8000-000000000001",turma_id:"80000000-0000-4000-8000-000000000001",turma:"Turma A",letra:"A",curso:"Ensino Geral",turno:"M",sala:"12",nome:"Aluno",numero_processo:"P-1",numero_chamada:1};
+ const html=provaHtml(base,"Curtume",{logo,recipients:[student,{...student,nome:"Outro"}]});
+ assert.equal(html.split(logo).length-1,1,"embed logo once regardless of batch size");
+ assert.equal((html.match(/class="school-logo"/g)||[]).length,2);
+ assert.ok(html.includes(PROVA_FOOTER));
+ assert.match(html,/@bottom-center/);
+ const fallback=provaHtml(base,"Curtume",{logo:"https://evil.test/track.png"});
+ assert.doesNotMatch(fallback,/class="school-logo"|evil\.test/);
+ assert.match(fallback,/<h1 class="school">Curtume/);
+});
