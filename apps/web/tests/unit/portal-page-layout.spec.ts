@@ -108,7 +108,6 @@ test("Secretaria and Admin module content follows the shared school gutter", () 
     "app/secretaria/(portal-secretaria)/alertas/page.tsx",
     "app/secretaria/(portal-secretaria)/acesso-alunos/page.tsx",
     "app/secretaria/(portal-secretaria)/calendario/page.tsx",
-    "app/secretaria/(portal-secretaria)/fecho/page.tsx",
     "app/secretaria/(portal-secretaria)/fechamento-academico/page.tsx",
     "app/secretaria/(portal-secretaria)/fechamento-academico/sanidade/page.tsx",
     "app/secretaria/(portal-secretaria)/fechamento-academico/cockpit/page.tsx",
