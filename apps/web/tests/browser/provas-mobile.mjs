@@ -163,6 +163,8 @@ try{
   }
   await dialog.getByLabel("Enunciado 2",{exact:true}).fill("Qual é a unidade de energia?");
   for(const [i,value] of ["Joule","Watt","Newton","Pascal"].entries())await dialog.getByLabel("Alternativa "+String.fromCharCode(65+i)+" da pergunta 2",{exact:true}).fill(value);
+  await dialog.getByLabel("Cotação da pergunta 2").fill("21,5");
+  assert.match(await dialog.innerText(),/Excesso de 1,5 valores/);
   await dialog.getByLabel("Cotação da pergunta 2").fill("1,25");
   assert.match(await dialog.getByRole("progressbar",{name:"Cotação atribuída"}).getAttribute("aria-valuetext"),/1,25 de 20/);
   if(width<640){
