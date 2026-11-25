@@ -10,7 +10,7 @@ type Report = { date: string; totals: { especie: number; tpa: number; transferen
 const money = (value: number) => new Intl.NumberFormat("pt-AO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value) + " Kz";
 const labels: Record<string, string> = { especie: "Numerário", tpa: "TPA", transferencia: "Transferência", mcx: "MCX", outros: "Não classificado" };
 
-export default function FechoMovimentacoes({ escolaId, date, revision, enabled, children }: { escolaId: string; date: string; revision: number; enabled: boolean; children: ReactNode }) {
+export default function FechoMovimentacoes({ escolaId, date, revision, enabled, hiddenReason, children }: { escolaId: string; date: string; revision: number; enabled: boolean; hiddenReason: string | null; children: ReactNode }) {
   const [scope, setScope] = useState<Scope>("all");
   const [retry, setRetry] = useState(0);
   const [result, setResult] = useState<{ key: string; data?: Report; error?: string } | null>(null);
@@ -36,7 +36,7 @@ export default function FechoMovimentacoes({ escolaId, date, revision, enabled, 
   const totals = report?.totals;
   const digital = totals ? totals.tpa + totals.transferencia + totals.mcx : 0;
   const other = totals ? Math.round((totals.total - totals.especie - digital) * 100) / 100 : 0;
-  if (!enabled) return <>{children}<p className="rounded-xl border border-border p-3 text-sm text-muted-foreground">Os valores do sistema e o extrato ficam disponíveis após a declaração de caixa.</p></>;
+  if (!enabled) return <>{children}{hiddenReason&&<p className="rounded-xl border border-border p-3 text-sm text-muted-foreground">{hiddenReason}</p>}</>;
   return <section className="space-y-4" aria-label="Movimentações financeiras">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h2 className="font-semibold text-foreground">Movimentações do dia</h2><p className="text-xs text-muted-foreground">Consulta atual dos pagamentos liquidados. Não altera o snapshot da declaração.</p></div>
