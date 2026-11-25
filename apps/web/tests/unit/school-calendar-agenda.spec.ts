@@ -63,3 +63,8 @@ test("holiday category is independent of status and official interruption types 
   assert.match(ui, /window.clearInterval\(timer\)/);
   assert.match(ui, /Interrupção pedagógica/);
 });
+
+test("calendar primary action uses the approved high-contrast gold foreground", () => {
+  assert.match(ui, /bg-klasse-gold[^"]*text-klasse-gold-900/);
+  assert.doesNotMatch(ui, /text-slate-950/);
+});
