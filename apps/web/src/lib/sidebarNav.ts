@@ -116,6 +116,7 @@ export const sidebarConfig: SidebarConfig = {
       children: [
         { href: "/escola/[escolaId]/operacoes/documentos", label: "Emissão de Declarações" },
         { href: "/escola/[escolaId]/operacoes/documentos-oficiais", label: "Documentos Oficiais (MED)" },
+        { href: "/escola/[escolaId]/operacoes/provas", label: "Central de provas" },
       ],
     },
     {

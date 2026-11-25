@@ -23,14 +23,14 @@ export function ProfessorBottomNav({ items, activePath }: Props) {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navegação do portal do professor"
     >
-      <div className="mx-auto grid w-full max-w-5xl grid-cols-6 gap-0.5 px-1 py-1.5 sm:gap-1 sm:py-2">
+      <div className="mx-auto grid w-full max-w-5xl grid-flow-col auto-cols-[minmax(44px,1fr)] overflow-x-auto gap-0.5 px-1 py-1.5 sm:gap-1 sm:py-2">
         {items.map(({ href, path, label, icon: Icon }) => {
           const active = activeHref === href;
           return (
             <Link
               key={href}
               href={href}
-              prefetch
+              prefetch={path !== "/professor/provas"}
               aria-label={label}
               aria-current={active ? "page" : undefined}
               className={`relative flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5 text-[9px] font-semibold transition-colors min-[390px]:text-[10px] ${active

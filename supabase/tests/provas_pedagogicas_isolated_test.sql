@@ -88,7 +88,7 @@ $test$;
 DO $$
 DECLARE u text;
 BEGIN
- FOREACH u IN ARRAY ARRAY['10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000004','10000000-0000-4000-8000-000000000005','10000000-0000-4000-8000-000000000006'] LOOP
+ FOREACH u IN ARRAY ARRAY['10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000004','10000000-0000-4000-8000-000000000005','10000000-0000-4000-8000-000000000006','10000000-0000-4000-8000-000000000007','10000000-0000-4000-8000-000000000008'] LOOP
    PERFORM set_config('request.jwt.claim.sub',u,true);
    IF EXISTS(SELECT 1 FROM public.provas_pedagogicas) THEN RAISE EXCEPTION 'draft leak to %',u; END IF;
  END LOOP;
@@ -166,6 +166,20 @@ BEGIN
    IF EXISTS(SELECT 1 FROM public.provas_pedagogicas) THEN RAISE EXCEPTION 'approved leak to %',u; END IF;
  END LOOP;
 END $$;
+DO $print_roles$
+DECLARE u text; school uuid:='00000000-0000-4000-8000-000000000001'; p uuid:=current_setting('test.prova_id')::uuid;
+BEGIN
+ FOREACH u IN ARRAY ARRAY['10000000-0000-4000-8000-000000000007','10000000-0000-4000-8000-000000000008'] LOOP
+  PERFORM set_config('request.jwt.claim.sub',u,true);
+  IF (SELECT count(*) FROM public.provas_pedagogicas)<>1 THEN RAISE EXCEPTION 'approved proof unavailable to print role'; END IF;
+  IF (public.provas_destinatarios(school,p,4,'turmas',ARRAY[]::uuid[],NULL,0)->>'total')::int<>43 THEN RAISE EXCEPTION 'print role missing distribution'; END IF;
+  BEGIN
+   PERFORM public.provas_mutar(school,p,4,'arquivar',NULL);
+   RAISE EXCEPTION 'print role can mutate approved proof';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ END LOOP;
+END;
+$print_roles$;
 RESET ROLE;
 SET LOCAL ROLE anon;
 DO $$

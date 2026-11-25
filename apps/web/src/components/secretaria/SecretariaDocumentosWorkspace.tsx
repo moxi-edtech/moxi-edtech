@@ -3,21 +3,17 @@ import { useState } from "react";
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
+import { buildPortalHref, buildContextualPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import DocumentosEmissaoHubClient from "@/components/secretaria/DocumentosEmissaoHubClient";
 import DocumentosAprovacoesQueue from "@/components/secretaria/DocumentosAprovacoesQueue";
 import DocumentosEmitidosList from "@/components/secretaria/DocumentosEmitidosList";
 import { FaltasJustificacoesQueue } from "@/components/secretaria/FaltasJustificacoesQueue";
-import dynamic from "next/dynamic";
 import { FileText, Inbox, History, CalendarCheck, ClipboardList } from "lucide-react";
-
-const ProvasWorkspace=dynamic(()=>import("@/components/provas/ProvasWorkspace"),{loading:()=> <p className="p-4 text-sm text-muted-foreground">A carregar provas...</p>});
 
 const tabs = [
   { id: "emitir", label: "Emitir", Icon: FileText },
   { id: "solicitacoes", label: "Solicitações", Icon: Inbox },
   { id: "emitidos", label: "Emitidos", Icon: History },
-  { id: "provas", label: "Provas", Icon: ClipboardList },
   { id: "faltas", label: "Justificações de faltas", Icon: CalendarCheck },
 ] as const;
 
@@ -47,11 +43,11 @@ export default function SecretariaDocumentosWorkspace({ escolaId }: { escolaId: 
             {id === "solicitacoes" && pendingCount !== null && pendingCount > 0 && <span className="rounded-full bg-muted px-2 text-xs" aria-label={`${pendingCount} pendentes`}>{pendingCount}</span>}
           </button>
         ))}
+        <Link href={buildContextualPortalHref(escolaParam ?? escolaId, "/secretaria/provas", pathname)} prefetch={false} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"><ClipboardList className="h-4 w-4" aria-hidden="true"/> Provas</Link>
       </nav>
       <div hidden={tab !== "emitir"}><DocumentosEmissaoHubClient key={escolaId} escolaId={escolaId} /></div>
       <div hidden={tab !== "solicitacoes"}><DocumentosAprovacoesQueue key={escolaId} onCountChange={setPendingCount} /></div>
       {tab === "emitidos" && <DocumentosEmitidosList key={escolaId} />}
-      {tab === "provas" && <ProvasWorkspace key={escolaId} escolaId={escolaId} />}
       {tab === "faltas" && <FaltasJustificacoesQueue key={escolaId} />}
     </div>
   );

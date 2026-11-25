@@ -45,7 +45,7 @@ GRANT EXECUTE ON FUNCTION provas_private.provas_papel(uuid,text[]) TO authentica
 CREATE POLICY provas_read ON public.provas_pedagogicas FOR SELECT TO authenticated USING (
  provas_private.provas_papel(escola_id,ARRAY['admin','admin_escola','diretor','admin_secretaria','admin_secretario','staff_admin'])
  OR (autor_id=(SELECT auth.uid()) AND provas_private.provas_papel(escola_id,ARRAY['professor']))
- OR (estado='aprovada' AND provas_private.provas_papel(escola_id,ARRAY['secretaria','secretaria_financeiro']))
+ OR (estado='aprovada' AND provas_private.provas_papel(escola_id,ARRAY['secretaria','secretaria_financeiro','admin_financeiro']))
 );
 
 -- Validate rich v1 at the same RPC boundary; never accept HTML, arbitrary attrs or URLs.
@@ -249,7 +249,7 @@ CREATE FUNCTION public.provas_destinatarios(p_escola uuid,p_prova uuid,p_versao 
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path='' AS $distribution$
 DECLARE r public.provas_pedagogicas; v_items jsonb; v_total integer; v_allowed integer; v_duplicate boolean; v_snapshot text;
 BEGIN
- IF NOT provas_private.provas_papel(p_escola,ARRAY['admin','admin_escola','diretor','admin_secretaria','admin_secretario','staff_admin','secretaria']) THEN
+ IF NOT provas_private.provas_papel(p_escola,ARRAY['admin','admin_escola','diretor','admin_secretaria','admin_secretario','staff_admin','secretaria','secretaria_financeiro','admin_financeiro']) THEN
   RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501';
  END IF;
  IF p_modo IS NULL OR p_modo NOT IN ('turmas','alunos','imprimir') OR p_limit IS NULL OR p_limit NOT IN (1,5,10,20,40) OR p_offset IS NULL OR p_offset<0 OR p_offset>10000 OR p_turmas IS NULL OR cardinality(p_turmas)>10 OR array_position(p_turmas,NULL::uuid) IS NOT NULL OR cardinality(p_turmas)<>(SELECT count(DISTINCT x) FROM unnest(p_turmas) x) THEN

@@ -79,3 +79,6 @@ INSERT INTO public.matriculas SELECT ('b0000000-0000-4000-8000-'||lpad(n::text,1
 GRANT SELECT ON public.turmas,public.turma_disciplinas,public.curso_matriz,public.curso_curriculos,public.matriculas,public.alunos TO authenticated;
 ALTER TABLE public.turmas ENABLE ROW LEVEL SECURITY;
 CREATE POLICY fixture_campus_scope ON public.turmas FOR SELECT TO authenticated USING (id<>'80000000-0000-4000-8000-000000000003');
+
+INSERT INTO auth.users VALUES ('10000000-0000-4000-8000-000000000007'),('10000000-0000-4000-8000-000000000008');
+INSERT INTO public.escola_users VALUES ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000007','k12','admin_financeiro'),('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000008','k12','secretaria_financeiro');

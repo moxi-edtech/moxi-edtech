@@ -18,22 +18,26 @@ export async function GET(req:Request,{params}:Context){
    if(result.error)return json({error:"Contexto académico indisponível. Consulte a Direção."},result.error.code==="42501"?403:result.error.code==="22023"?409:500);
    return json({items:result.data??[]});
  }
+ const printOnly=query.get("aprovadas")==="1";
+ if(printOnly&&!access.distribute)return json({error:"Sem autorização para distribuição."},403);
  const id=query.get("prova");
  if(id){
    if(!z.string().uuid().safeParse(id).success)return json({error:"Identificador inválido."},400);
-   const result=await db.from("provas_pedagogicas").select(detailColumns).eq("escola_id",escolaId).eq("id",id).maybeSingle();
+   const detail=db.from("provas_pedagogicas").select(detailColumns).eq("escola_id",escolaId).eq("id",id);
+   const result=await (printOnly?detail.eq("estado","aprovada"):detail).maybeSingle();
    if(result.error)return json({error:"Não foi possível consultar a prova."},500);
    if(!result.data)return json({error:"Prova não encontrada."},404);
    return json({prova:result.data});
  }
  const offset=Number(query.get("offset")??0);
  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)return json({error:"Página inválida."},400);
+ const list=db.from("provas_pedagogicas").select(summaryColumns).eq("escola_id",escolaId);
  const [result,school]=await Promise.all([
-   db.from("provas_pedagogicas").select(summaryColumns).eq("escola_id",escolaId).order("atualizado_em",{ascending:false}).order("id",{ascending:false}).range(offset,offset+29),
+   (printOnly?list.eq("estado","aprovada"):list).order("atualizado_em",{ascending:false}).order("id",{ascending:false}).range(offset,offset+29),
    db.from("escolas").select("nome").eq("id",escolaId).maybeSingle()
  ]);
  if(result.error||school.error||!school.data)return json({error:"Não foi possível consultar as provas."},500);
- return json({provas:result.data??[],escola:school.data.nome,permissions:{author:access.author,admin:access.admin,distribute:access.distribute,userId:access.userId}});
+ return json({provas:result.data??[],escola:school.data.nome,permissions:{author:!printOnly&&access.author,admin:!printOnly&&access.admin,distribute:access.distribute,userId:access.userId}});
 }
 export async function POST(req:Request,{params}:Context){
  const access=await provaAccess((await params).id);

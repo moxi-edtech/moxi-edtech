@@ -18,7 +18,7 @@ function editable(p:Prova):ProvaInput {
 type Permissions={author:boolean;admin:boolean;distribute?:boolean;userId:string};
 type Action="submeter"|"aprovar"|"devolver"|"arquivar"|"duplicar";
 async function response(r:Response){const b=await r.json();if(!r.ok)throw new Error(b.error||"Não foi possível concluir a operação.");return b;}
-export default function ProvasWorkspace({escolaId}:{escolaId:string}){
+export default function ProvasWorkspace({escolaId,printOnly=false}:{escolaId:string;printOnly?:boolean}){
  const endpoint="/api/escola/"+encodeURIComponent(escolaId)+"/provas";
  const [rows,setRows]=useState<ProvaResumo[]>([]),[school,setSchool]=useState(""),[permissions,setPermissions]=useState<Permissions|null>(null);
  const [offset,setOffset]=useState(0),[revision,setRevision]=useState(0),[loading,setLoading]=useState(true),[listError,setListError]=useState("");
@@ -53,24 +53,24 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
  function finishRich(){setRichIndex(null);requestAnimationFrame(()=>{const target=richTrigger.current;if(target?.isConnected)target.focus();else document.getElementById("provas-rich-"+(richIndex??0))?.focus();});}
  useEffect(()=>{
   const c=new AbortController();setLoading(true);setListError("");
-  fetch(endpoint+"?offset="+offset,{cache:"no-store",signal:c.signal}).then(response).then(b=>{if(!c.signal.aborted){setRows(b.provas);setSchool(b.escola);setPermissions(b.permissions);}}).catch(e=>{if(!c.signal.aborted)setListError(e.message);}).finally(()=>{if(!c.signal.aborted)setLoading(false);});
+  fetch(endpoint+"?offset="+offset+(printOnly?"&aprovadas=1":""),{cache:"no-store",signal:c.signal}).then(response).then(b=>{if(!c.signal.aborted){setRows(b.provas);setSchool(b.escola);setPermissions(printOnly?{...b.permissions,author:false,admin:false}:b.permissions);}}).catch(e=>{if(!c.signal.aborted)setListError(e.message);}).finally(()=>{if(!c.signal.aborted)setLoading(false);});
   return()=>c.abort();
- },[endpoint,offset,revision]);
+ },[endpoint,offset,revision,printOnly]);
  useEffect(()=>()=>request.current?.abort(),[endpoint]);
  function change<K extends keyof ProvaInput>(key:K,value:ProvaInput[K]){setForm(p=>p?{...p,[key]:value}:p);setDirty(true);setError("");}
  function patch(index:number,part:Partial<Bloco>){setForm(p=>p?{...p,conteudo:p.conteudo.map((b,i)=>i===index?{...b,...part}:b)}:p);setDirty(true);setError("");}
  function move(index:number,step:number){if(!form||richIndex!==null)return;const blocks=[...form.conteudo],to=index+step;if(to<0||to>=blocks.length)return;[blocks[index],blocks[to]]=[blocks[to],blocks[index]];change("conteudo",blocks);}
  function close(force=false){if(locked.current)return;if((dirty||richIndex!==null)&&!force){setDiscard(true);return;}setRichIndex(null);setDistribution(false);setForm(null);setSelected(null);setDirty(false);setDiscard(false);setConfirm(null);setError("");}
- function create(){if(locked.current)return;setRichIndex(null);setSelected(null);setDistribution(false);setForm(fresh());setHeaderExpanded(true);setDirty(false);setPreview(false);setError("");setNotice("");}
+ function create(){if(printOnly||locked.current)return;setRichIndex(null);setSelected(null);setDistribution(false);setForm(fresh());setHeaderExpanded(true);setDirty(false);setPreview(false);setError("");setNotice("");}
  async function open(id:string,print=false){
   if(locked.current)return;locked.current=true;setBusy(true);setListError("");setNotice("");
   const c=new AbortController();request.current=c;
-  try{const b=await response(await fetch(endpoint+"?prova="+encodeURIComponent(id),{cache:"no-store",signal:c.signal}));if(c.signal.aborted)return;setRichIndex(null);setSelected(b.prova);setDistribution(print&&b.prova.estado==="aprovada"&&Boolean(permissions?.distribute));setForm(editable(b.prova));setHeaderExpanded(true);setDirty(false);setPreview(b.prova.estado!=="rascunho"||!permissions?.author);setError("");}
+  try{const b=await response(await fetch(endpoint+"?prova="+encodeURIComponent(id)+(printOnly?"&aprovadas=1":""),{cache:"no-store",signal:c.signal}));if(c.signal.aborted)return;setRichIndex(null);setSelected(b.prova);setDistribution(print&&b.prova.estado==="aprovada"&&Boolean(permissions?.distribute));setForm(editable(b.prova));setHeaderExpanded(true);setDirty(false);setPreview(b.prova.estado!=="rascunho"||!permissions?.author);setError("");}
   catch(e){if(!c.signal.aborted)setListError(e instanceof Error?e.message:"Erro ao abrir a prova.");}
   finally{if(request.current===c){request.current=null;locked.current=false;setBusy(false);}}
  }
  async function mutate(action:"criar"|"guardar"|Action){
-  if(locked.current||!form||richIndex!==null)return;
+  if(printOnly||locked.current||!form||richIndex!==null)return;
   let dados:ProvaInput|undefined;
   if(action==="criar"||action==="guardar"){
    const validated=provaWriteSchema.safeParse(form);
@@ -103,7 +103,7 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
  }
  const actionLabels:Record<Action,string>={submeter:"Enviar para revisão",aprovar:"Aprovar prova",devolver:"Devolver para edição",arquivar:"Arquivar",duplicar:"Duplicar"};
  return <section className="min-w-0 space-y-4 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
-  <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="provas-heading" tabIndex={-1} className="break-words text-lg font-semibold text-foreground">Provas e impressos pedagógicos</h2><p className="text-sm text-muted-foreground">{permissions?.author?"Elabore, reveja e imprima avaliações.":"Consulte e imprima as provas aprovadas."}</p></div>{permissions?.author&&<Button tone="gold" className="w-full sm:w-auto" disabled={busy||loading} onClick={e=>{rememberOpener(e.currentTarget);create();}}><Plus/> Nova prova</Button>}</div>
+  <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="provas-heading" tabIndex={-1} className="break-words text-lg font-semibold text-foreground">{printOnly?"Central de impressão de provas":"Provas e impressos pedagógicos"}</h2><p className="text-sm text-muted-foreground">{permissions?.author?"Elabore, reveja e imprima avaliações.":"Consulte e imprima as provas aprovadas."}</p></div>{permissions?.author&&<Button tone="gold" className="w-full sm:w-auto" disabled={busy||loading} onClick={e=>{rememberOpener(e.currentTarget);create();}}><Plus/> Nova prova</Button>}</div>
   {notice&&!form&&<p role="status" className="text-sm text-klasse-green">{notice}</p>}
   {listError&&<div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">{listError}<Button variant="outline" onClick={()=>setRevision(v=>v+1)}>Tentar novamente</Button></div>}
   <div className="overflow-hidden rounded-xl border border-border bg-card">

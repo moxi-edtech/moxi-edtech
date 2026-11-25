@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { HorarioDataProvider } from "@/components/escola/horarios/HorarioDataProvider";
 import { Button } from "@/components/ui/Button";
-import { PlusCircle, UserPlus, FileText, Megaphone, Calendar, Table2, Wallet } from "lucide-react";
+import { PlusCircle, UserPlus, FileText, Megaphone, Calendar, Table2, Wallet, ClipboardCheck } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
 import AvisosNovoPage from "@/app/escola/[id]/(portal)/admin/avisos/novo/page";
 import EventosPage from "@/app/escola/[id]/(portal)/eventos/page";
@@ -37,7 +37,7 @@ function WorkspaceLoading() {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type QuickAction = {
-  key:      "funcionario" | "nota" | "aviso" | "evento" | "migracao_pautas" | "recebimentos" | "importacoes" | "horarios" | "criar_aviso";
+  key:      "funcionario" | "nota" | "aviso" | "evento" | "migracao_pautas" | "recebimentos" | "importacoes" | "horarios" | "criar_aviso" | "provas";
   label:    string;
   href:     string;
   icon:     React.ElementType;
@@ -99,6 +99,12 @@ export default function QuickActionsSection({
           disabled: !turmasOk,
           reason: "Crie turmas antes de gerir horários.",
           variant: "yellow",
+        },
+        {
+          key: "provas",
+          label: "Central de provas",
+          icon: ClipboardCheck,
+          href: buildPortalHref(escolaParam, "/operacoes/provas"),
         },
         {
           key: "criar_aviso",
