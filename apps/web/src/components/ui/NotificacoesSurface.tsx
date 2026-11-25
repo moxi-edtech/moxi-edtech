@@ -171,7 +171,7 @@ export function NotificacoesSurface({ triggerRef, notificacoes, naoLidas, loadin
 
     {mobile ? <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent id={panelId} layout="bottom-sheet" closeButton={false} overlayClassName="bg-black/40"
-        aria-labelledby={titleId} onCloseAutoFocus={event => {
+        aria-modal="true" aria-labelledby={titleId} onCloseAutoFocus={event => {
           event.preventDefault();
           if (restoreFocus.current) requestAnimationFrame(() => triggerRef.current?.focus());
         }}>

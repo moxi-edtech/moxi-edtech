@@ -13,6 +13,9 @@ on:
       - 'apps/web/tests/browser/provas-distribuicao.mjs'
       - 'apps/web/visual-harness/provas*'
       - 'apps/web/src/components/ui/ModalShell.tsx'
+      - 'apps/web/src/components/ui/Notificacoes*.tsx'
+      - 'apps/web/src/components/ui/dialog.tsx'
+      - 'apps/web/tests/browser/notificacoes-responsive.mjs'
       - 'apps/web/src/app/escola/**/professor/provas/**'
       - 'apps/web/src/app/escola/**/secretaria/**/provas/**'
       - 'apps/web/src/app/escola/**/operacoes/provas/**'
@@ -137,6 +140,15 @@ jobs:
           PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
           PROVAS_BROWSER: webkit
         run: node apps/web/tests/browser/provas-mobile.mjs
+      - name: Responsive notification drawer (Chromium)
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
+        run: node apps/web/tests/browser/notificacoes-responsive.mjs
+      - name: Responsive notification drawer (WebKit)
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
+          PROVAS_BROWSER: webkit
+        run: node apps/web/tests/browser/notificacoes-responsive.mjs
       - name: Secretary distribution smoke
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
