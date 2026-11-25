@@ -550,3 +550,19 @@ test("PR #455: autorização da bolsa usa bloco PL/pgSQL com delimitadores váli
   assert.match(migration, /AND NOT \(p\.bolsa_integral/);
   assert.match(migration, /NOT EXISTS \(\s*SELECT 1 FROM public\.pagamentos pg/);
 });
+
+test("PR #477: operational receipt SSOT permits only the audited migration and preserves fiscal freeze", () => {
+  const name = "20271204020000_operational_receipt_batch_ssot.sql";
+  const path = "supabase/migrations/" + name;
+  assert.ok(LIFECYCLE_MIGRATION_ALLOWLIST.has(name));
+  assert.deepEqual(checkFiscalAndSchemaScope([path]), []);
+  const reviewed = readFileSync(path, "utf8");
+  for (const sql of [
+    "UPDATE public.pagamentos SET valor_pago=1;",
+    "UPDATE public.mensalidades SET status='pago';",
+    "ALTER TABLE internal.operational_receipt_reconciliation DISABLE ROW LEVEL SECURITY;",
+    "GRANT EXECUTE ON FUNCTION internal.issue_operational_batch_receipt(uuid,uuid) TO authenticated;",
+    "CREATE TABLE public.fiscal_config(enabled boolean);",
+  ]) assert.ok(checkFiscalAndSchemaScope([path], () => reviewed + "\n" + sql).length > 0, sql);
+  assert.match(checkFiscalAndSchemaScope(["supabase/migrations/20271204020001_unreviewed_receipt.sql"])[0] ?? "", /Unapproved database migration/);
+});
