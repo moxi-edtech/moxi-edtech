@@ -289,10 +289,11 @@ test("class correction stays an audited transactional move, never deletes linked
 test("non-settled payment never masquerades as a deferred operational receipt", () => {
   const route = source("app/api/secretaria/recibos/consultar/route.ts");
   const start = route.indexOf('if (payment.status !== "settled") {');
-  const end = route.indexOf("const batches = candidateReceiptBatchIds", start);
+  const end = route.indexOf("const consolidated = await loadIssuedBatchPaymentReceipt(db,", start);
   assert.ok(start >= 0 && end > start);
   const guard = route.slice(start, end);
   assert.match(guard, /status: "not_settled"/);
   assert.match(guard, /status: 409/);
   assert.doesNotMatch(guard, /return pendingReceipt\(\)/);
+  assert.doesNotMatch(guard, /loadIssuedMonthlyReceipts\(db,/);
 });
