@@ -8,16 +8,20 @@ export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().mi
 });
 export const provaSchema=z.object({
  titulo:z.string().trim().min(1).max(160),classe:z.string().trim().min(1).max(80),disciplina:z.string().trim().min(1).max(120),
- ano_lectivo:z.string().regex(/^\d{4}\/\d{4}$/).refine(v=>Number(v.slice(5))===Number(v.slice(0,4))+1,"Ano lectivo inválido"),
+ ano_lectivo:z.string().regex(/^\d{4}\/\d{4}$/).refine(v=>[Number(v.slice(0,4)),Number(v.slice(0,4))+1].includes(Number(v.slice(5))),"Ano lectivo inválido"),
  trimestre:z.number().int().min(1).max(3),duracao:z.number().int().min(1).max(480),serie:z.string().trim().min(1).max(20),
  conteudo:z.array(blockSchema).min(1).max(80).refine(v=>v.reduce((n,b)=>n+(b.rich?.segments.filter(s=>s.kind==="math").length??0),0)<=80,"Até 80 fórmulas por prova")
 }).strict();
+export const provaWriteSchema=provaSchema.extend({ano_letivo_id:z.string().uuid(),curso_matriz_id:z.string().uuid()});
 export const mutationSchema=z.discriminatedUnion("acao",[
- z.object({acao:z.literal("criar"),dados:provaSchema}).strict(),
- z.object({acao:z.literal("guardar"),id:z.string().uuid(),versao:z.number().int().positive(),dados:provaSchema}).strict(),
+ z.object({acao:z.literal("criar"),dados:provaWriteSchema}).strict(),
+ z.object({acao:z.literal("guardar"),id:z.string().uuid(),versao:z.number().int().positive(),dados:provaWriteSchema}).strict(),
  z.object({acao:z.enum(["submeter","aprovar","devolver","arquivar","duplicar"]),id:z.string().uuid(),versao:z.number().int().positive()}).strict()
 ]);
-export type ProvaInput=z.infer<typeof provaSchema>;
+export type ProvaPrintInput=z.infer<typeof provaSchema>;
+export type ProvaInput=z.infer<typeof provaWriteSchema>;
+export type AnoProva={id:string;label:string;ativo:boolean};
+export type ContextoProva={ano_letivo_id:string;curso_matriz_id:string;ano_lectivo:string;classe:string;disciplina:string;curso:string;trimestre:number};
 export type Bloco=z.infer<typeof blockSchema>;
 export type ProvaEstado="rascunho"|"em_revisao"|"aprovada"|"arquivada";
 export type ProvaResumo=Omit<ProvaInput,"conteudo">&{id:string;autor_id:string;estado:ProvaEstado;versao:number;atualizado_em:string};
