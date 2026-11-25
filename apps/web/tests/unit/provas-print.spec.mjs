@@ -85,7 +85,7 @@ test("shared physical layout reserves print margins and exact writing space",()=
 });
 
 test("nominal distribution uses one identical proof per recipient, escaping student fields",()=>{
- const student={matricula_id:"b0000000-0000-4000-8000-000000000001",turma_id:"80000000-0000-4000-8000-000000000001",turma:"8ª A",turno:"Manhã",sala:"12",nome:"Nome <img src=x>",numero_processo:"P-123",numero_chamada:1};
+ const student={matricula_id:"b0000000-0000-4000-8000-000000000001",turma_id:"80000000-0000-4000-8000-000000000001",turma:"ESG-8ª Classe-T-Z",letra:"A",curso:"Ensino Geral",turno:"M",sala:"12",nome:"Nome <img src=x>",numero_processo:"P-123",numero_chamada:1};
  const second={...student,nome:"Aluno B",numero_processo:"P-456",numero_chamada:2};
  const prova={...base,tipo_prova:"recurso"};
  const html=provaHtml(prova,"Curtume",{recipients:[student,second],nonce:"fixed"});
@@ -102,7 +102,10 @@ test("nominal distribution uses one identical proof per recipient, escaping stud
  const anonymous=provaHtml(prova,"Curtume",{recipients:[student,second],includeName:false});
  assert.doesNotMatch(anonymous,/P-123|P-456|Aluno B|Nome &lt;img/);
  assert.equal((anonymous.match(/class="student-line"/g)||[]).length,2);
- assert.match(anonymous,/Turma: 8ª A/);
+ assert.match(anonymous,/Turma A/);
+ assert.match(html,/8\.ª Classe/);
+ assert.match(html,/Curso: Ensino Geral/);
+ assert.doesNotMatch(html,/ESG-8ª Classe-T-Z|Turma Z/);
 });
 test("distribution query rejects unbounded, duplicate or incompatible selections",()=>{
  const {parseDistribution}=require("../../src/lib/provas/distribution.ts");
@@ -135,4 +138,19 @@ test("portal entry points share the server-authorized central and retain tenant 
  assert.match(teacher,/professorHref\("\/professor\/provas"\)/);
  assert.match(legacy,/buildContextualPortalHref/);
  assert.doesNotMatch(legacy,/<ProvasWorkspace/);
+});
+
+test("exam labels use class snapshot, structured letter, full course and normalized shift",()=>{
+ const {formatClasseProva,turmaProvaLabels}=require("../../src/lib/provas/academicLabels.ts");
+ assert.equal(formatClasseProva("8ª"),"8.ª Classe");
+ assert.equal(formatClasseProva("9"),"9.ª Classe");
+ assert.equal(formatClasseProva("Pré-Escolar"),"Pré-Escolar");
+ assert.equal(formatClasseProva("Classe de Iniciação"),"Classe de Iniciação");
+ assert.equal(turmaProvaLabels("8ª",{nome:"ESG-7ª Classe-T-Z",letra:"A",turno:"M"}).label,"8.ª Classe — Turma A (Manhã)");
+ assert.equal(turmaProvaLabels("10ª",{nome:"TI-10ª Classe-M-B",turno:"T",curso:"Técnico de Informática"}).label,"Técnico de Informática — 10.ª Classe — Turma B (Tarde)");
+ assert.equal(turmaProvaLabels("8ª",{nome:"8ª A",turno:"Manhã"}).turma,"Turma A");
+ assert.equal(turmaProvaLabels("8ª",{nome:"Turma Horizonte",turno:"M"}).turma,"Turma Horizonte");
+ assert.equal(turmaProvaLabels("Pré-Escolar",{nome:"PRE-Pré-Escolar-M-A",letra:"A",turno:"M"}).label,"Pré-Escolar — Turma A (Manhã)");
+ assert.equal(turmaProvaLabels("8ª",{nome:"XYZ-123"}).turma,"Turma sem designação");
+ assert.equal(turmaProvaLabels("8ª",{}).turma,"Turma sem designação");
 });

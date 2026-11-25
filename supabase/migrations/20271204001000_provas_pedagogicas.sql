@@ -264,16 +264,17 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501'; END IF;
  IF p_versao IS DISTINCT FROM r.versao THEN RAISE EXCEPTION 'version_conflict' USING ERRCODE='40001'; END IF;
  WITH eligible AS MATERIALIZED (
-   SELECT t.id,t.nome,t.turno,t.sala
+   SELECT t.id,t.nome,t.letra,t.turno,t.sala,c.nome AS curso
    FROM public.turmas t
    JOIN public.curso_matriz cm ON cm.id=r.curso_matriz_id AND cm.escola_id=t.escola_id AND cm.classe_id=t.classe_id AND cm.curso_id=t.curso_id
    JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id AND cc.escola_id=t.escola_id AND cc.ano_letivo_id=r.ano_letivo_id
+   LEFT JOIN public.cursos c ON c.id=t.curso_id AND c.escola_id=t.escola_id
    WHERE t.escola_id=p_escola AND t.ano_letivo_id=r.ano_letivo_id AND t.session_id=r.ano_letivo_id
      AND (p_modo='turmas' OR t.id=ANY(p_turmas))
      AND EXISTS(SELECT 1 FROM public.turma_disciplinas td WHERE td.escola_id=p_escola AND td.turma_id=t.id AND td.curso_matriz_id=r.curso_matriz_id
       AND (td.periodos_ativos IS NULL OR r.trimestre=ANY(td.periodos_ativos)))
  ), roster AS MATERIALIZED (
-   SELECT m.id AS matricula_id,m.aluno_id,e.id AS turma_id,e.nome AS turma,e.turno,e.sala,
+   SELECT m.id AS matricula_id,m.aluno_id,e.id AS turma_id,e.nome AS turma,e.letra,e.turno,e.sala,e.curso,
      coalesce(nullif(btrim(a.nome_completo),''),a.nome) AS nome,a.numero_processo,m.numero_chamada
    FROM eligible e
    JOIN public.matriculas m ON m.escola_id=p_escola AND m.session_id=r.ano_letivo_id AND m.turma_id=e.id
@@ -285,8 +286,8 @@ BEGIN
  ), payload AS (
    SELECT CASE WHEN p_modo='turmas' THEN (
     SELECT coalesce(jsonb_agg(to_jsonb(q) ORDER BY q.nome,q.id),'[]'::jsonb) FROM (
-      SELECT e.id,e.nome,e.turno,e.sala,count(roster.matricula_id)::integer AS total
-      FROM eligible e LEFT JOIN roster ON roster.turma_id=e.id GROUP BY e.id,e.nome,e.turno,e.sala
+      SELECT e.id,e.nome,e.letra,e.turno,e.sala,e.curso,count(roster.matricula_id)::integer AS total
+      FROM eligible e LEFT JOIN roster ON roster.turma_id=e.id GROUP BY e.id,e.nome,e.letra,e.turno,e.sala,e.curso
       ORDER BY e.nome,e.id LIMIT 501
     ) q
    ) ELSE (

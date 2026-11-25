@@ -133,7 +133,7 @@ BEGIN
  x:=public.provas_destinatarios(sch,p,4,'imprimir',ARRAY[turma,turma_b],NULL,40);
  IF (x->>'total')::int<>43 OR jsonb_array_length(x->'items')<>3 THEN RAISE EXCEPTION 'multi class print failed'; END IF;
  x:=public.provas_destinatarios(sch,p,4,'imprimir',ARRAY[turma],m,0);
- IF (x->>'total')::int<>1 OR x->'items'->0->>'nome'<>'Aluno Completo 1' OR x->'items'->0->>'sala'<>'12' OR x->'items'->0 ? 'aluno_id' THEN RAISE EXCEPTION 'individual context failed'; END IF;
+ IF (x->>'total')::int<>1 OR x->'items'->0->>'nome'<>'Aluno Completo 1' OR x->'items'->0->>'sala'<>'12' OR x->'items'->0->>'letra'<>'A' OR x->'items'->0->>'curso'<>'Ensino Geral' OR x->'items'->0->>'turno'<>'M' OR x->'items'->0 ? 'aluno_id' THEN RAISE EXCEPTION 'individual context failed'; END IF;
  BEGIN
   PERFORM public.provas_destinatarios(sch,p,4,'imprimir',ARRAY[turma_b],m,0);
   RAISE EXCEPTION 'foreign class enrollment accepted';

@@ -64,7 +64,7 @@ try{
  }
  console.log("Physical text bounds validated:",words.length,"words");
  console.log("A4 browser smoke passed; pages:",doc.getPageCount());
- const one={matricula_id:"b0000000-0000-4000-8000-000000000001",turma_id:"80000000-0000-4000-8000-000000000001",turma:"8ª A",turno:"Manhã",sala:"12",nome:"Estudante ALFA",numero_processo:"P-001",numero_chamada:1};
+ const one={matricula_id:"b0000000-0000-4000-8000-000000000001",turma_id:"80000000-0000-4000-8000-000000000001",turma:"ESG-8ª Classe-T-Z",letra:"A",curso:"Ensino Geral",turno:"M",sala:"12",nome:"Estudante ALFA",numero_processo:"P-001",numero_chamada:1};
  const two={...one,matricula_id:"b0000000-0000-4000-8000-000000000002",nome:"Estudante BETA",numero_processo:"P-002",numero_chamada:2};
  await page.setContent(provaHtml({...base,tipo_prova:"trimestral",conteudo},"Escola de teste",{nonce:"browser-batch",recipients:[one,two]}),{waitUntil:"load"});
  const batch=await page.pdf({preferCSSPageSize:true,printBackground:true});
@@ -75,6 +75,9 @@ try{
  assert.equal(pages.length,batchDoc.getPageCount(),"PDF pages must contain content");
  assert.ok(pages.length>=6,"two multi-page copies");
  assert.match(pages[0],/Estudante ALFA/);
+ assert.match(pages[0],/Turma A/);
+ assert.match(pages[0],/Manhã/);
+ assert.doesNotMatch(pages.join("\n"),/ESG-8ª Classe-T-Z/);
  const nextPage=pages.findIndex(p=>p.includes("Estudante BETA"));
  assert.ok(nextPage>=3,"second student starts after first full copy");
  assert.ok(!pages.slice(0,nextPage).some(p=>p.includes("Estudante BETA")));

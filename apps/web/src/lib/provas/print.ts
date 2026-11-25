@@ -1,5 +1,6 @@
 import { tiposProva, type Bloco, type ProvaPrintInput } from "./schema";
 import type { PrintRecipient } from "./distribution";
+import { formatClasseProva, turmaProvaLabels } from "./academicLabels";
 import { mathMarkup } from "./math";
 import { PROVA_PAPER as P,respostaLayout } from "./layout";
 const esc=(s:unknown)=>String(s??"").replace(/[&<>"']/g,c=>(({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"} as Record<string,string>)[c]!));
@@ -38,13 +39,15 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
  const header=(recipient:PrintRecipient|null)=>{
    const named=options.includeName!==false?recipient:null;
    const student=named?'<strong class="student-name">'+esc(named.nome)+'</strong>':'<span class="student-line"></span>';
-   const turma=recipient?'<span>Turma: '+esc(recipient.turma??"—")+'</span>'+(recipient.turno?'<span>Turno: '+esc(recipient.turno)+'</span>':''):'';
+   const labels=recipient?turmaProvaLabels(prova.classe,{nome:recipient.turma,letra:recipient.letra,turno:recipient.turno,curso:recipient.curso}):null;
+   const turma=labels?'<span>'+esc(labels.turma)+'</span>'+(labels.turno?'<span>Turno: '+esc(labels.turno)+'</span>':''):'';
+   const course=labels?.curso?'<span>Curso: '+esc(labels.curso)+'</span>':'';
    const room=recipient?.sala?'<span>Sala da turma: '+esc(recipient.sala)+'</span>':'<span>Sala nº ______</span>';
    const process=named&&named.numero_processo?'<span>N.º de processo: '+esc(named.numero_processo)+'</span>':'';
    const call=named&&named.numero_chamada!==null?'<span>N.º de chamada: '+esc(named.numero_chamada)+'</span>':'';
-   return '<header class="cabecalho"><h1 class="school">'+esc(escola)+'</h1><div class="meta"><span>'+esc(prova.classe)+'</span>'+(showTrim?'<span>'+tr+' Trimestre</span>':'')+'<span>Ano lectivo: '+esc(prova.ano_lectivo)+'</span></div>'+
+   return '<header class="cabecalho"><h1 class="school">'+esc(escola)+'</h1><div class="meta"><span>'+esc(formatClasseProva(prova.classe))+'</span>'+(showTrim?'<span>'+tr+' Trimestre</span>':'')+'<span>Ano lectivo: '+esc(prova.ano_lectivo)+'</span></div>'+
     '<h2 class="title">'+esc(documentTitle)+'</h2>'+(type&&prova.titulo.trim()!=="Prova"&&prova.titulo.trim()!==type?'<p class="subtitle">'+esc(prova.titulo)+'</p>':'')+
-    '<div class="meta"><span>Duração: '+esc(prova.duracao)+' min.</span><span>Série '+esc(prova.serie)+'</span>'+turma+room+'</div><div class="student"><span>Nome do aluno:</span>'+student+'</div>'+(process||call?'<div class="meta">'+process+call+'</div>':'')+'</header>';
+    '<div class="meta"><span>Duração: '+esc(prova.duracao)+' min.</span><span>Série '+esc(prova.serie)+'</span>' +turma+room+course+'</div><div class="student"><span>Nome do aluno:</span>'+student+'</div>'+(process||call?'<div class="meta">'+process+call+'</div>':'')+'</header>';
  };
  const controls=options.nonce?'<div class="controls"><button id="print">Imprimir / Guardar PDF</button><span>Use papel A4. '+(options.recipients?esc(recipients.length)+' prova(s) neste lote. Imprima uma cópia do lote.':'Defina o número de cópias na impressora.')+'</span></div><script nonce="'+esc(options.nonce)+'">document.getElementById("print").addEventListener("click",()=>window.print());</script>':"";
  const sheets=recipients.map(recipient=>'<article class="paper">'+(options.draft?'<p class="draft">RASCUNHO — NÃO DISTRIBUIR</p>':'')+header(recipient)+blocks+'</article>').join("");

@@ -5,8 +5,8 @@ const year="20000000-0000-4000-8000-000000000001",matrix="70000000-0000-4000-800
 const a="80000000-0000-4000-8000-000000000001",b="80000000-0000-4000-8000-000000000002",m="b0000000-0000-4000-8000-000000000001";
 const snapshot="a".repeat(32);
 const prova={id,autor_id:"10000000-0000-4000-8000-000000000001",ano_letivo_id:year,curso_matriz_id:matrix,tipo_prova:"recurso",titulo:"Prova",classe:"8.ª Classe",disciplina:"Física",ano_lectivo:"2026/2027",trimestre:1,duracao:90,serie:"A",estado:"aprovada",versao:4,atualizado_em:"2026-11-25T00:00:00Z",conteudo:[{tipo:"discursiva",texto:"Questão de teste",linhas:3}]};
-const turmas=[{id:a,nome:"8ª A",turno:"Manhã",sala:"12",total:42},{id:b,nome:"8ª B",turno:"Tarde",sala:"13",total:30}];
-const aluno={matricula_id:m,turma_id:a,turma:"8ª A",turno:"Manhã",sala:"12",nome:"Aluno de teste",numero_processo:"P-1",numero_chamada:1};
+const turmas=[{id:a,nome:"ESG-8ª Classe-T-Z",letra:"A",curso:"Ensino Geral",turno:"M",sala:"12",total:42},{id:b,nome:"ESG-8ª Classe-T-B",letra:null,curso:"Ensino Geral",turno:"T",sala:"13",total:30}];
+const aluno={matricula_id:m,turma_id:a,turma:"ESG-8ª Classe-T-Z",letra:"A",curso:"Ensino Geral",turno:"M",sala:"12",nome:"Aluno de teste",numero_processo:"P-1",numero_chamada:1};
 const browser=await chromium.launch({headless:true});
 try{
  for(const width of [390,1280]){
@@ -34,8 +34,9 @@ try{
   assert.equal(await page.getByRole("button",{name:"Nova prova",exact:true}).count(),0,"print-only hides authoring even for admin");
   assert.equal(await dialog.getByRole("button",{name:"Aprovar prova",exact:true}).count(),0);
   await dialog.getByRole("radio",{name:/^Por turma/}).check();
-  await dialog.getByRole("checkbox",{name:/8ª A/}).check();
-  await dialog.getByRole("checkbox",{name:/8ª B/}).check();
+  await dialog.getByRole("checkbox",{name:/8\.ª Classe — Turma A \(Manhã\)/}).check();
+  await dialog.getByRole("checkbox",{name:/8\.ª Classe — Turma B \(Tarde\)/}).check();
+  assert.doesNotMatch(await dialog.innerText(),/ESG-8ª Classe/);
   const link=dialog.getByRole("link",{name:"Imprimir lote"});
   await link.waitFor();
   let href=new URL(await link.getAttribute("href"),page.url());
