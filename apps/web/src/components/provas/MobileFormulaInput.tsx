@@ -89,7 +89,7 @@ export default function MobileFormulaInput({initial,onInsert,onCancel,disabled=f
    <Button type="button" variant="outline" className="w-full" disabled={disabled||parts.length>=12} onClick={()=>{setPicking(true);setChosen(null);setEditing(null);}}><Plus/> Adicionar componente</Button>
    {parts.some(p=>"existing" in p)&&<p className="text-xs text-muted-foreground">A fórmula original é preservada. Pode editar os valores reconhecidos ou substituir a estrutura por um modelo.</p>}
   </div>}
-  <div className="sticky bottom-0 z-10 space-y-2 border-t border-border bg-card pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+  <div className="sticky bottom-0 z-10 space-y-2 border-t border-border bg-card pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 group-data-[keyboard-open=true]/modal:static">
    {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
    <div className="grid grid-cols-2 gap-2">
     <Button type="button" variant="outline" disabled={disabled} onClick={()=>{if(picking&&(parts.length||chosen)){if(parameterSource!==null)leavePicker();else if(chosen)setChosen(null);else leavePicker();}else onCancel();}}>{picking&&(parts.length||chosen)?<><ArrowLeft/> Voltar</>:"Cancelar"}</Button>

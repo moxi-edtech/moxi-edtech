@@ -41,6 +41,12 @@ export function ModalShell({
     if(!open||!mobileFullscreen)return;
     const vv=window.visualViewport;
     const small=window.matchMedia("(max-width: 639px)");
+    if(!keyboardAware){
+      const sync=()=>setViewport(small.matches&&vv&&vv.scale===1?{height:vv.height,top:vv.offsetTop,keyboard:false}:null);
+      sync();
+      vv?.addEventListener("resize",sync);vv?.addEventListener("scroll",sync);small.addEventListener("change",sync);
+      return()=>{vv?.removeEventListener("resize",sync);vv?.removeEventListener("scroll",sync);small.removeEventListener("change",sync);};
+    }
     let baseline=Math.max(window.innerHeight,document.documentElement.clientHeight,vv?.height??0);
     let width=document.documentElement.clientWidth;
     let frame=0,scrollFrame=0,settleFrame=0;
@@ -118,7 +124,7 @@ export function ModalShell({
         }}
         onCloseAutoFocus={onRestoreFocus?event=>{event.preventDefault();onRestoreFocus();}:undefined}
         style={mobileFullscreen&&viewport?{height:viewport.height,top:viewport.top,bottom:"auto"}:undefined}
-        className={mobileFullscreen?"gap-0 border-0 bg-transparent p-0 shadow-none sm:p-6":"gap-0 border-0 bg-transparent p-4 shadow-none sm:p-6"}
+        className={(keyboardAware?"group/modal ":"")+(mobileFullscreen?"gap-0 border-0 bg-transparent p-0 shadow-none sm:p-6":"gap-0 border-0 bg-transparent p-4 shadow-none sm:p-6")}
       >
         <section
           className={[

@@ -53,6 +53,7 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
  useEffect(()=>{changeRef.current=onChange;},[onChange]);
  const [formula,setFormula]=useState<{latex:string;from:number;to:number}|null>(null);
  const [formattingOpen,setFormattingOpen]=useState(false);
+ const surface=useRef<HTMLDivElement>(null);
  const editor=useEditor({
   immediatelyRender:false,extensions:[StarterKit.configure({blockquote:false,bulletList:false,orderedList:false,listItem:false,heading:false,codeBlock:false,code:false,strike:false,link:false,horizontalRule:false,trailingNode:false}),FormulaNode],
   content:toEditor(block),
@@ -62,6 +63,7 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
  });
  const state=useEditorState({editor,selector:({editor:e})=>({bold:e?.isActive("bold")??false,italic:e?.isActive("italic")??false,underline:e?.isActive("underline")??false,formula:e?.isActive("formula")??false})});
  useEffect(()=>{editor?.setEditable(!disabled&&!formula,false);},[editor,disabled,formula]);
+ useEffect(()=>{if(editor){const scroll=surface.current?.closest<HTMLElement>("[data-modal-scroll]");if(scroll)scroll.scrollTop=0;}},[editor,formula]);
  if(!editor)return <p role="status" className="text-sm text-muted-foreground">A carregar editor...</p>;
  const blocked=disabled||Boolean(formula);
  function openFormula(){
@@ -72,7 +74,7 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
   editor.commands.blur();setFormula({latex,from,to});
  }
  const returnFocus=()=>requestAnimationFrame(()=>document.getElementById("provas-formula-trigger")?.focus({preventScroll:true}));
- return <div className="min-w-0 space-y-3 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
+ return <div ref={surface} className="min-w-0 space-y-3 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
   <div className={"flex min-w-0 flex-col overflow-hidden rounded-xl border border-border focus-within:ring-4 focus-within:ring-klasse-gold/20 "+(formula?"hidden":"")}>
    <div className="order-first sm:order-last"><EditorContent editor={editor}/></div>
    <div role="group" aria-label="Formatação do enunciado" className="flex flex-wrap items-center gap-1 border-t border-border bg-muted/30 p-1.5 sm:order-first sm:border-b sm:border-t-0 sm:p-2">

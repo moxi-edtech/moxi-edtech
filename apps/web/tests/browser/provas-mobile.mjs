@@ -109,6 +109,7 @@ try{
    await page.evaluate(()=>{const vv=window.visualViewport;Object.defineProperty(vv,"height",{configurable:true,value:Math.max(220,vv.height-270)});vv.dispatchEvent(new Event("resize"));});
    await page.waitForFunction(()=>document.querySelector("[role=dialog]")?.getAttribute("data-keyboard-open")==="true");
    assert.equal(await math.getByLabel("Denominador",{exact:true}).inputValue(),"5");
+   assert.equal(await math.getByRole("button",{name:"Inserir fórmula",exact:true}).evaluate(el=>getComputedStyle(el.parentElement.parentElement).position),"static","formula actions must not cover focused inputs");
    await noOverflow(page,"formula native keyboard "+width);
    await page.evaluate(()=>{const vv=window.visualViewport;Reflect.deleteProperty(vv,"height");vv.dispatchEvent(new Event("resize"));});
    await page.waitForFunction(()=>document.querySelector("[role=dialog]")?.getAttribute("data-keyboard-open")==="false");
