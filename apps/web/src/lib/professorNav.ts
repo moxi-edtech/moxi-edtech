@@ -22,6 +22,7 @@ export const professorNavItems: ProfessorNavItem[] = [
   { path: "/professor", label: "Início", icon: LayoutDashboard },
   { path: "/professor/frequencias", label: "Frequências", icon: ClipboardCheck },
   { path: "/professor/notas", label: "Notas", icon: FileText },
+  { path: "/professor/provas", label: "Provas", icon: ClipboardCheck },
   { path: "/professor/materiais", label: "Materiais", icon: BookOpenIcon },
   { path: "/professor/calendario", label: "Calendário", icon: CalendarDays },
   { path: "/professor/perfil", label: "Perfil", icon: User },
