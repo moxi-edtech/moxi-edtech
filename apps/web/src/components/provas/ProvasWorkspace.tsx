@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { ArrowDown,ArrowUp,ClipboardList,Copy,Eye,Pencil,Plus,Printer,Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { estados,tipos,provaSchema,type Bloco,type Prova,type ProvaInput,type ProvaResumo,type AnoProva,type ContextoProva } from "@/lib/provas/schema";
+import { estados,tipos,provaWriteSchema,type Bloco,type Prova,type ProvaInput,type ProvaResumo,type AnoProva,type ContextoProva } from "@/lib/provas/schema";
 import { provaHtml } from "@/lib/provas/print";
 const RichQuestionEditor=dynamic(()=>import("./RichQuestionEditor"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar editor...</p>});
 const input="w-full min-w-0 rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold";
@@ -64,7 +64,7 @@ export default function ProvasWorkspace({escolaId}:{escolaId:string}){
   if(locked.current||!form||richIndex!==null)return;
   let dados:ProvaInput|undefined;
   if(action==="criar"||action==="guardar"){
-   const validated=provaSchema.safeParse(form);
+   const validated=provaWriteSchema.safeParse(form);
    if(!validated.success){setError(validated.error.issues.map(i=>i.path[0]==="conteudo"?"Verifique o enunciado, a formatação e os limites das perguntas.":"Verifique "+String(i.path[0]).replace("_"," ")+".").filter((v,i,a)=>a.indexOf(v)===i).join(" "));return;}dados=validated.data;
   }else if(!selected||dirty)return;
   const payload={acao:action,...(action==="criar"?{}:{id:selected?.id,versao:selected?.versao}),...(dados?{dados}:{})};
