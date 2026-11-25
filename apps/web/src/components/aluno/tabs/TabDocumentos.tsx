@@ -301,7 +301,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                      </span>
                    </div>
                    {doc.descricao && (
-                     <p className="break-words text-xs leading-5 text-muted-foreground">{doc.descricao}</p>
+                     <p className="line-clamp-2 break-words text-sm leading-5 text-muted-foreground">{doc.descricao}</p>
                    )}
                    <div className="flex flex-wrap items-center gap-2">
                      {doc.pagamento_configurado !== false && <StatusBadge status={doc.status} />}
@@ -317,7 +317,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                    </div>
                  </div>
                </div>
-               <div className="flex min-w-0 items-center justify-start sm:justify-end">
+               <div className="flex min-w-0 items-center justify-start border-t border-border pt-2 sm:justify-end">
                  {loading === doc.codigo ? (
                    <span role="status" className="inline-flex h-11 items-center gap-2 text-sm text-muted-foreground">
                      <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> A processar

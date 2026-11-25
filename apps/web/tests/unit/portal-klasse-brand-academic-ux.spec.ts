@@ -103,3 +103,43 @@ test("aluno reutiliza os cards de Operações com densidade mobile, sem retirar 
   assert.match(dashboard, /href=\{go\(item.href\)\}/);
   assert.doesNotMatch(dashboard, /<PortalStatCard/);
 });
+
+test("restante portal do aluno usa cards compartilhados sem alterar operações", async () => {
+  const [finance, schedule, attendance, subjects, docs, profile, identity, card, notices, activity, runner] = await Promise.all([
+    read("components/aluno/tabs/TabFinanceiro.tsx"),
+    read("components/aluno/tabs/TabHorario.tsx"),
+    read("components/aluno/tabs/TabFaltas.tsx"),
+    read("components/aluno/disciplinas/DisciplinasList.tsx"),
+    read("components/aluno/tabs/TabDocumentos.tsx"),
+    read("components/aluno/tabs/TabPerfil.tsx"),
+    read("components/aluno/tabs/CartaoEstudante.tsx"),
+    read("components/shared/AcaoRapidaCard.tsx"),
+    read("components/aluno/tabs/TabNotificacoes.tsx"),
+    read("app/(portal-aluno)/aluno/atividades/page.tsx"),
+    read("app/(portal-aluno)/aluno/atividades/[id]/page.tsx"),
+  ]);
+  for (const page of [finance, schedule, attendance, subjects]) assert.match(page, /dashboardCompact mobileCompact/);
+  assert.match(card, /emphasizeSublabel = false/);
+  assert.match(finance, /label="Por pagar"[\s\S]*?resumo\.total_pendente/);
+  assert.match(finance, /<PaymentDrawer/);
+  assert.match(finance, /<StudentAppyPayButton/);
+  assert.doesNotMatch(finance, /Timeline SSOT|Livro Razão/);
+  assert.match(schedule, /aria-pressed=\{activeDay === dia.id\}/);
+  assert.match(schedule, /grid grid-cols-5/);
+  assert.match(schedule, /min-h-11 min-w-0/);
+  assert.match(attendance, /safeData\.can_submit/);
+  assert.match(attendance, /frequencia_id: item.id/);
+  assert.match(docs, /<ServicePaymentDrawer/);
+  assert.match(docs, /doc\.reject_reason/);
+  for (const id of ["nome", "login", "email", "telefone", "morada", "senha-atual", "senha", "confirmacao"]) {
+    assert.ok(profile.includes('htmlFor="aluno-perfil-' + id + '"'));
+    assert.ok(profile.includes('id="aluno-perfil-' + id + '"'));
+  }
+  assert.match(profile, /onSubmit=\{handleSalvarDados\}/);
+  assert.match(profile, /onSubmit=\{handleSalvarSenha\}/);
+  assert.match(identity, /bgColor="#ffffff"/);
+  assert.match(identity, /value=\{data.verification_url\}/);
+  assert.match(notices, /role="alert"/);
+  assert.match(activity, /Retomar Rascunho/);
+  assert.match(runner, /handleSaveSubmission\(true\)/);
+});

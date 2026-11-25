@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { BookOpen, RefreshCw } from "lucide-react";
+import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 
 type Disciplina = { id: string; nome: string };
 
@@ -79,10 +80,7 @@ export function DisciplinasList() {
       ) : (
         <div className="grid min-w-0 gap-3 sm:grid-cols-2">
           {disciplinas.map((disciplina) => (
-            <article key={disciplina.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4">
-              <BookOpen aria-hidden className="h-5 w-5 shrink-0 text-primary" />
-              <h3 className="min-w-0 break-words text-sm font-medium leading-6 text-foreground">{disciplina.nome}</h3>
-            </article>
+            <AcaoRapidaCard key={disciplina.id} dashboardCompact mobileCompact icon={<BookOpen />} label={disciplina.nome} />
           ))}
         </div>
       )}
