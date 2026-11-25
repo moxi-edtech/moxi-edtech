@@ -236,6 +236,27 @@ try{
    await modular.getByRole("button",{name:"Agrupar termos",exact:true}).click();
    await modular.getByRole("button",{name:"Terminar grupo neste termo",exact:true}).first().click();
    assert.ok((await live.locator("annotation").textContent()).startsWith("("));
+   await modular.getByRole("button",{name:"Personalizar estrutura",exact:true}).click();
+   const recursive=dialog.getByRole("region",{name:"Compositor de estruturas"});
+   await recursive.waitFor();
+   // Grouped fraction expression: navigate the first parenthesized section, then numerator.
+   await recursive.getByRole("button",{name:/Elemento 1: Parênteses/}).click();
+   await recursive.getByRole("button",{name:/^Parênteses/}).click();
+   await recursive.getByRole("button",{name:/Elemento 1: Fracção/}).click();
+   await recursive.getByRole("button",{name:/^Numerador/}).click();
+   await recursive.getByRole("button",{name:"Número / variável",exact:true}).click();
+   await recursive.getByLabel("Valor ou variável",{exact:true}).fill("x");
+   await recursive.getByRole("button",{name:"Aplicar",exact:true}).click();
+   await recursive.getByRole("button",{name:"Operador / símbolo",exact:true}).click();
+   await recursive.getByRole("button",{name:"Símbolo +",exact:true}).click();
+   await recursive.getByRole("button",{name:"Número / variável",exact:true}).click();
+   await recursive.getByLabel("Valor ou variável",{exact:true}).fill("2");
+   await recursive.getByRole("button",{name:"Aplicar",exact:true}).click();
+   const nested=recursive.getByLabel("Pré-visualização completa");
+   assert.match(await nested.locator("annotation").textContent(),/5x\+2/);
+   await noOverflow(page,"estrutura matemática "+width);
+   page.once("dialog",d=>d.accept());
+   await recursive.getByRole("button",{name:"Voltar",exact:true}).click();
    await modular.getByRole("button",{name:"Cancelar",exact:true}).click();
    await dialog.getByRole("button",{name:"Concluir edição",exact:true}).click();
    await dialog.getByText("Opções da pergunta",{exact:true}).click();

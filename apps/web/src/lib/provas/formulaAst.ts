@@ -50,10 +50,13 @@ export function mathTreeValid(nodes:readonly MathNode[],allowEmpty=false):boolea
 }
 export function validMathExpression(nodes:readonly MathNode[]):string|null{
  if(!mathTreeValid(nodes))return null;
+ // All required slots must contain visible content, not only whitespace.
+ function filled(list:readonly MathNode[]):boolean{return list.some(n=>n.kind!=="token"||n.value.trim())&&list.every(n=>mathSlots(n).every(s=>filled(s.nodes)));}
+ if(!filled(nodes))return null;
  const latex=serializeMath(nodes);
  // A script must have a base; reject empty required arguments and dangling
  // binary operators, except a final equality reserved for the pupil.
- if(/(?:^|[({[])[\^_]/.test(latex)||/\\(?:frac|dfrac|tfrac|sqrt)\s*\{\s*\}/.test(latex)||/[+\-*/]$/.test(latex)||/\\(?:times|div|pm|leq|geq|neq)\s*$/.test(latex))return null;
+ if(/(?:^|[({\[])[\^_]/.test(latex)||/\\(?:frac|dfrac|tfrac|sqrt)\s*\{\s*\}/.test(latex)||/[+\-*/]$/.test(latex)||/\\(?:times|div|pm|leq|geq|neq)\s*$/.test(latex))return null;
  return safeLatex(latex)&&mathMarkup(latex)?latex:null;
 }
 /** Parse only the supported structural grammar. Unsupported legacy TeX stays unchanged. */

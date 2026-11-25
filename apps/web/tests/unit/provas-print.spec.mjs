@@ -401,3 +401,33 @@ test("groups derive roman headings, totals and membership without rewriting old 
  assert.doesNotMatch(html,/IV Grupo — Aritmética/);
  assert.doesNotMatch(provaHtml({...base,conteudo:[g,{...a,cotacao_cent:undefined}]},"Escola"),/<span class="group-total">/);
 });
+
+test("recursive editor round-trips every model and supports nested arithmetic",()=>{
+ const {formulaModels,modelExpression}=require("../../src/lib/provas/formulaModels.ts");
+ const {parseMath,modelMathTree,serializeMath,validMathExpression,mathAt,replaceMathAt,tokenNode,mathTreeValid}=require("../../src/lib/provas/formulaAst.ts");
+ for(const model of formulaModels){
+  const source=modelExpression(model.id,model.fields.map(f=>f.example)),tree=modelMathTree(model.id);
+  assert.ok(tree,model.id);
+  assert.equal(serializeMath(tree),source,model.id);
+  assert.equal(validMathExpression(tree),source,model.id);
+ }
+ const sources=["\\frac{2x+5}{3x-1}","(2x+3)^{x-1}","\\sqrt{3x^{2}+5x-7}","3x^{3}-2x^{2}+5x-7=0","\\sin(2x+30^{\\circ})-\\cos(x)=0","\\int_{0}^{5}(3x^{2}+2x-1)\\,dx","\\frac{2}{3}\\times \\frac{5}{7}-\\frac{1}{4}=","1+2-4-7="];
+ for(const source of sources){const tree=parseMath(source);assert.ok(tree,source);assert.equal(serializeMath(tree),source);assert.equal(validMathExpression(tree),source);}
+ const fraction=parseMath("\\frac{2}{3}");
+ const numerator=[{index:0,slot:"numerator"}];
+ const next=replaceMathAt(fraction,numerator,[...mathAt(fraction,numerator),tokenNode("x"),tokenNode("+"),tokenNode("5")]);
+ assert.equal(validMathExpression(next),"\\frac{2x+5}{3}");
+ assert.equal(serializeMath(fraction),"\\frac{2}{3}","original immutable");
+ const replaced=replaceMathAt(next,[{index:0,slot:"denominator"}],parseMath("\\sqrt{x+1}"));
+ assert.equal(validMathExpression(replaced),"\\frac{2x+5}{\\sqrt{x+1}}");
+ assert.equal(validMathExpression(replaceMathAt(fraction,numerator,[])),null);
+ assert.equal(parseMath("\\text{2026}+1"),null);
+ assert.equal(parseMath("\\htmlClass{bad}{x}"),null);
+ assert.equal(validMathExpression([tokenNode("x"),tokenNode("+")]),null);
+ assert.equal(validMathExpression([tokenNode("x"),tokenNode("=")]),"x=");
+ assert.equal(validMathExpression([tokenNode("\\sin"),tokenNode("x")]),"\\sin x");
+ let deep=[tokenNode("x")];for(let i=0;i<9;i++)deep=[{kind:"root",body:deep}];
+ assert.equal(mathTreeValid(deep),false);
+ assert.equal(mathTreeValid(Array.from({length:161},()=>tokenNode("x"))),false);
+ assert.equal(mathTreeValid([tokenNode("1".repeat(301))]),false);
+});
