@@ -118,6 +118,13 @@ export default function QuickActionsSection({
       ]
     : [
         {
+          key: "provas",
+          label: "Central de provas",
+          icon: ClipboardCheck,
+          opensModal: true,
+          href: buildPortalHref(escolaParam, "/operacoes/provas"),
+        },
+        {
           key: "funcionario",
           label: "Novo Funcionário",
           icon:  UserPlus,
