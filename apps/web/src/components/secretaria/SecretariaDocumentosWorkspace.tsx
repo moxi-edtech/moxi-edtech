@@ -8,12 +8,16 @@ import DocumentosEmissaoHubClient from "@/components/secretaria/DocumentosEmissa
 import DocumentosAprovacoesQueue from "@/components/secretaria/DocumentosAprovacoesQueue";
 import DocumentosEmitidosList from "@/components/secretaria/DocumentosEmitidosList";
 import { FaltasJustificacoesQueue } from "@/components/secretaria/FaltasJustificacoesQueue";
-import { FileText, Inbox, History, CalendarCheck } from "lucide-react";
+import dynamic from "next/dynamic";
+import { FileText, Inbox, History, CalendarCheck, ClipboardList } from "lucide-react";
+
+const ProvasWorkspace=dynamic(()=>import("@/components/provas/ProvasWorkspace"),{loading:()=> <p className="p-4 text-sm text-muted-foreground">A carregar provas...</p>});
 
 const tabs = [
   { id: "emitir", label: "Emitir", Icon: FileText },
   { id: "solicitacoes", label: "Solicitações", Icon: Inbox },
   { id: "emitidos", label: "Emitidos", Icon: History },
+  { id: "provas", label: "Provas", Icon: ClipboardList },
   { id: "faltas", label: "Justificações de faltas", Icon: CalendarCheck },
 ] as const;
 
@@ -47,6 +51,7 @@ export default function SecretariaDocumentosWorkspace({ escolaId }: { escolaId: 
       <div hidden={tab !== "emitir"}><DocumentosEmissaoHubClient key={escolaId} escolaId={escolaId} /></div>
       <div hidden={tab !== "solicitacoes"}><DocumentosAprovacoesQueue key={escolaId} onCountChange={setPendingCount} /></div>
       {tab === "emitidos" && <DocumentosEmitidosList key={escolaId} />}
+      {tab === "provas" && <ProvasWorkspace key={escolaId} escolaId={escolaId} />}
       {tab === "faltas" && <FaltasJustificacoesQueue key={escolaId} />}
     </div>
   );
