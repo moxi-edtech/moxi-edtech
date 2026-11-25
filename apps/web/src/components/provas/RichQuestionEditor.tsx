@@ -13,7 +13,7 @@ const FormulaInput=dynamic(()=>import("./FormulaInput"),{ssr:false,loading:()=> 
 function FormulaView({node,selected}:NodeViewProps){
  const latex=String(node.attrs.latex??"");
  const html=mathMarkup(latex);
- return <NodeViewWrapper as="span" contentEditable={false} className={"inline-block rounded px-1 align-middle "+(selected?"ring-2 ring-klasse-gold":"")}>
+ return <NodeViewWrapper as="span" contentEditable={false} className={"inline-block max-w-full overflow-x-auto rounded-xl px-1 align-middle "+(selected?"ring-2 ring-klasse-gold":"")}>
   {html?<span aria-label={latex} dangerouslySetInnerHTML={{__html:html}}/>:<span>{latex}</span>}
  </NodeViewWrapper>;
 }
@@ -55,7 +55,7 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
  const editor=useEditor({
   immediatelyRender:false,extensions:[StarterKit.configure({blockquote:false,bulletList:false,orderedList:false,listItem:false,heading:false,codeBlock:false,code:false,strike:false,link:false,horizontalRule:false,trailingNode:false}),FormulaNode],
   content:toEditor(block),
-  editorProps:{attributes:{"aria-label":label,role:"textbox","aria-multiline":"true",class:"min-h-28 px-3 py-2 text-sm leading-relaxed outline-none whitespace-pre-wrap"}},
+  editorProps:{attributes:{"aria-label":label,role:"textbox","aria-multiline":"true",class:"min-h-32 min-w-0 max-w-full break-words px-3 py-3 text-base leading-relaxed outline-none whitespace-pre-wrap sm:text-sm"}},
   onUpdate:({editor})=>{const rich=fromEditor(editor.getJSON());changeRef.current({texto:richText(rich),rich:rich.segments.length?rich:undefined});}
  });
  const state=useEditorState({editor,selector:({editor:e})=>({bold:e?.isActive("bold")??false,italic:e?.isActive("italic")??false,underline:e?.isActive("underline")??false,formula:e?.isActive("formula")??false})});
@@ -67,9 +67,9 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
   const {from,to}=editor.state.selection;
   setFormula({latex:editor.isActive("formula")?String(editor.getAttributes("formula").latex??""):"",from,to});
  }
- return <div className="space-y-2">
-  <div className="rounded-xl border border-border focus-within:ring-4 focus-within:ring-klasse-gold/20">
-   <div className="flex flex-wrap gap-1 border-b border-border bg-muted/30 p-2">
+ return <div className="min-w-0 space-y-3 [&_button]:max-sm:min-h-11 [&_button]:max-sm:whitespace-normal">
+  <div className="min-w-0 overflow-hidden rounded-xl border border-border focus-within:ring-4 focus-within:ring-klasse-gold/20">
+   <div role="group" aria-label="Formatação do enunciado" className="grid grid-cols-2 gap-1 border-b border-border bg-muted/30 p-2 sm:flex sm:flex-wrap">
     <Button type="button" size="sm" variant={state?.bold?"secondary":"ghost"} aria-pressed={state?.bold} disabled={blocked} onClick={()=>editor.chain().focus().toggleBold().run()}><Bold/> Negrito</Button>
     <Button type="button" size="sm" variant={state?.italic?"secondary":"ghost"} aria-pressed={state?.italic} disabled={blocked} onClick={()=>editor.chain().focus().toggleItalic().run()}><Italic/> Itálico</Button>
     <Button type="button" size="sm" variant={state?.underline?"secondary":"ghost"} aria-pressed={state?.underline} disabled={blocked} onClick={()=>editor.chain().focus().toggleUnderline().run()}><Underline/> Sublinhado</Button>
@@ -85,6 +85,6 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
     editor.chain().focus().insertContentAt({from:formula.from,to:formula.to},{type:"formula",attrs:{latex}}).run();
     setFormula(null);
   }}/>}
-  <div className="flex justify-end"><Button type="button" variant="outline" size="sm" disabled={blocked} onClick={onDone}><Check/> Concluir edição</Button></div>
+  <div className="flex justify-end"><Button type="button" className="w-full sm:w-auto" variant="outline" size="sm" disabled={blocked} onClick={onDone}><Check/> Concluir edição</Button></div>
  </div>;
 }
