@@ -185,3 +185,23 @@ test("institutional branding uses only the school storage path and a bounded ima
  assert.doesNotMatch(fallback,/class="school-logo"|evil\.test/);
  assert.match(fallback,/<h1 class="school">Curtume/);
 });
+
+test("question templates are contextual without restricting formats or mutating defaults",()=>{
+ const {questionTemplate,suggestedTypes,structures,formatCotacao}=require("../../src/lib/provas/questionTemplates.ts");
+ assert.equal(questionTemplate("discursiva").linhas,2);
+ assert.equal(questionTemplate("calculo").linhas,6);
+ const a=questionTemplate("escolha"), b=questionTemplate("escolha");a.alternativas[0]="Changed";assert.equal(b.alternativas[0],"");
+ assert.equal(suggestedTypes("Matemática")[0],"calculo");
+ assert.equal(suggestedTypes("Língua Portuguesa")[0],"texto");
+ assert.equal(structures.length,3);
+ assert.equal(formatCotacao(0),"0");assert.equal(formatCotacao(2000),"20");assert.equal(formatCotacao(125),"1,25");
+});
+test("structured questions preserve legacy data, validate alternatives and print escaped labels and marks",()=>{
+ const {blockSchema}=require("../../src/lib/provas/schema.ts");
+ const q={tipo:"escolha",texto:"Qual?",linhas:0,alternativas:["Joule","<script>bad</script>"],cotacao_cent:125};
+ assert.ok(blockSchema.safeParse(q).success);
+ assert.ok(blockSchema.safeParse({tipo:"escolha",texto:"Qual?\\nA) Um",linhas:0}).success);
+ for(const invalid of [{...q,alternativas:[""]},{...q,alternativas:[" ","OK"]},{...q,tipo:"calculo"},{...q,cotacao_cent:2001},{...q,cotacao_cent:1.5},{tipo:"grupo",texto:"G",linhas:0,cotacao_cent:1}])assert.equal(blockSchema.safeParse(invalid).success,false);
+ const html=provaHtml({...base,conteudo:[q]},"Curtume");
+ assert.match(html,/1,25 val\./);assert.match(html,/A\) <\/span>Joule/);assert.match(html,/&lt;script&gt;bad/);assert.doesNotMatch(html,/<script>/);
+});

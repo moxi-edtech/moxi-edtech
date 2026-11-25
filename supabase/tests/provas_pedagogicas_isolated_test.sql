@@ -3,7 +3,7 @@ BEGIN;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
 DO $$
-DECLARE r public.provas_pedagogicas;
+DECLARE r public.provas_pedagogicas; v_bad jsonb;
  v_school uuid:='00000000-0000-4000-8000-000000000001';
  v_data jsonb:='{"ano_letivo_id":"20000000-0000-4000-8000-000000000001","curso_matriz_id":"70000000-0000-4000-8000-000000000001","tipo_prova":"recurso","titulo":"Prova","classe":"8ª","disciplina":"Física","ano_lectivo":"2026/2027","trimestre":1,"duracao":90,"serie":"A","conteudo":[{"tipo":"discursiva","texto":"Questão confidencial","linhas":3}]}';
 BEGIN
@@ -62,7 +62,16 @@ BEGIN
   jsonb_build_object('kind','text','text','Questão confidencial ','marks',jsonb_build_array('bold')),
   jsonb_build_object('kind','math','latex',chr(92)||'frac{1}{2}')
  )));
+ -- Structured choices and marks remain protected against direct RPC bypass.
+ FOR v_bad IN SELECT value FROM jsonb_array_elements('[{"tipo":"escolha","texto":"Q","linhas":0,"alternativas":[""]},{"tipo":"discursiva","texto":"Q","linhas":2,"alternativas":["A","B"]},{"tipo":"escolha","texto":"Q","linhas":0,"alternativas":["A",null]},{"tipo":"discursiva","texto":"Q","linhas":2,"cotacao_cent":2001},{"tipo":"discursiva","texto":"Q","linhas":2,"cotacao_cent":1.5},{"tipo":"grupo","texto":"G","linhas":0,"cotacao_cent":1}]'::jsonb) LOOP
+  BEGIN
+   PERFORM public.provas_mutar(v_school,r.id,r.versao,'guardar',jsonb_set(v_data,'{conteudo}',jsonb_build_array(v_bad)));
+   RAISE EXCEPTION 'invalid structured question accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ END LOOP;
+ v_data:=jsonb_set(v_data,'{conteudo}',(v_data->'conteudo')||'[{"tipo":"escolha","texto":"Qual?","linhas":0,"alternativas":["Joule","Watt"],"cotacao_cent":125}]'::jsonb);
  r:=public.provas_mutar(v_school,r.id,r.versao,'guardar',v_data);
+ IF r.conteudo->1 IS DISTINCT FROM v_data->'conteudo'->1 THEN RAISE EXCEPTION 'structured question persistence failed'; END IF;
  IF r.conteudo->0->'rich' IS DISTINCT FROM v_data->'conteudo'->0->'rich' THEN RAISE EXCEPTION 'rich persistence failed'; END IF;
  IF r.versao<>2 THEN RAISE EXCEPTION 'save failed'; END IF;
  BEGIN

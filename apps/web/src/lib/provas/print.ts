@@ -4,6 +4,7 @@ import { formatClasseProva, turmaProvaLabels } from "./academicLabels";
 import { mathMarkup } from "./math";
 import { PROVA_FOOTER,safeLogoData } from "./branding";
 import { PROVA_PAPER as P,respostaLayout } from "./layout";
+import { formatCotacao } from "./questionTemplates";
 const esc=(s:unknown)=>String(s??"").replace(/[&<>"']/g,c=>(({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"} as Record<string,string>)[c]!));
 export function blocoHtml(b:Bloco):string{
  if(!b.rich)return esc(b.texto);
@@ -24,13 +25,15 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
    if(b.tipo==="texto")return '<div class="apoio">'+blocoHtml(b)+'</div>';
    const prefix=b.tipo==="alinea"?String.fromCharCode(97+(letter++%26))+')':String(++number)+'.';
    if(b.tipo!=="alinea")letter=0;
-   const suffix=b.tipo==="verdadeiro_falso"?'<span class="vf" aria-label="Verdadeiro ou falso">( &nbsp; )</span>':"";
+   const suffix=b.tipo==="verdadeiro_falso"?'<span class="vf" aria-label="Verdadeiro ou falso">( &nbsp; ) V &nbsp; ( &nbsp; ) F</span>':"";
+   const cotacao=b.cotacao_cent===undefined?"":'<span class="cotacao">('+esc(formatCotacao(b.cotacao_cent))+' val.)</span>';
+   const alternatives=b.tipo==="escolha"&&b.alternativas?'<ol class="alternativas">'+b.alternativas.map((a,i)=>'<li><span class="opcao">□ '+String.fromCharCode(65+i)+') </span>'+esc(a)+'</li>').join("")+'</ol>':"";
    const answer=respostaLayout(b.tipo,b.linhas);
    const lines=Array.from({length:answer.count},()=>'<div class="linha"></div>');
    const first=answer.kind==="lines"?'<div class="resposta resposta-inicio">'+lines[0]+'</div>':answer.kind==="box"?'<div class="resposta"><div class="espaco" style="height:'+answer.heightMm+'mm"></div></div>':"";
    const rest=answer.kind==="lines"&&answer.count>1?'<div class="resposta-cont">'+lines.slice(1).join("")+'</div>':"";
-   const long=b.texto.length>1000||answer.heightMm>=104;
-   return '<section class="questao '+(b.tipo==="alinea"?"alinea":"")+(long?" long":"")+'"><div class="questao-inicio"><div class="enunciado">'+esc(prefix)+' '+blocoHtml(b)+suffix+'</div>'+first+'</div>'+rest+'</section>';
+   const long=b.texto.length+(b.alternativas?.reduce((n,a)=>n+a.length,0)??0)>1000||answer.heightMm>=104;
+   return '<section class="questao '+(b.tipo==="alinea"?"alinea":"")+(long?" long":"")+'"><div class="questao-inicio"><div class="enunciado">'+esc(prefix)+' ' +blocoHtml(b)+suffix+cotacao+'</div>'+alternatives+first+'</div>'+rest+'</section>';
  }).join("");
  const tr=["I","II","III"][prova.trimestre-1]??"";
  const recipients=options.recipients??[null];
@@ -74,7 +77,7 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
  .apoio{margin:0 0 ${P.questionGap}mm;orphans:3;widows:3}
  h3{text-align:center;font-size:12pt;margin:6mm 0 4mm;break-after:avoid-page;page-break-after:avoid}
  .formula{display:inline-block;vertical-align:middle;max-width:100%;break-inside:avoid-page}.formula math{font-size:1.05em}
- .alinea{margin-left:5mm}.vf{display:inline-block;white-space:nowrap;margin-left:3mm;min-width:9mm}
+ .cotacao{display:inline-block;margin-left:3mm;font-size:10pt;white-space:nowrap}.alternativas{list-style:none;margin:2mm 0 0;padding:0 0 0 5mm}.alternativas li{white-space:pre-wrap;overflow-wrap:anywhere;break-inside:avoid-page}.opcao{white-space:nowrap}\n .alinea{margin-left:5mm}.vf{display:inline-block;white-space:nowrap;margin-left:3mm;min-width:9mm}
  .resposta{margin-top:${P.answerGap}mm;break-before:avoid-page}.linha,.espaco{break-inside:avoid-page;page-break-inside:avoid}
  .linha{height:${P.lineHeight}mm;border-bottom:0.2mm solid #777}
  .espaco{border:0.25mm solid #777;max-width:100%}

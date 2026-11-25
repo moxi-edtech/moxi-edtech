@@ -24,6 +24,8 @@ try{
     const data=req.postDataJSON();
     assert.equal(data.dados.ano_letivo_id,year);assert.equal(data.dados.curso_matriz_id,matrix);assert.equal(data.dados.conteudo[0].linhas,7);
     assert.ok(data.dados.conteudo[0].rich.segments.some(s=>s.kind==="math"&&s.latex==="2+3"));
+    assert.deepEqual(data.dados.conteudo[1].alternativas,["Joule","Watt","Newton","Pascal"]);
+    assert.equal(data.dados.conteudo[1].cotacao_cent,125);
     saved={...base,...data.dados,id:"30000000-0000-4000-8000-000000000002",estado:"rascunho",versao:1};
     return reply({prova:saved});
    }
@@ -72,10 +74,16 @@ try{
   await page.screenshot({path:"apps/web/visual-evidence/provas/formula-"+width+".png"});
   await dialog.getByRole("button",{name:"Inserir fórmula"}).click();
   await dialog.getByRole("button",{name:"Concluir edição"}).click();
+  await dialog.getByRole("button",{name:"Escolha múltipla",exact:false}).click();
+  await dialog.getByLabel("Enunciado 2",{exact:true}).fill("Qual é a unidade de energia?");
+  for(const [i,value] of ["Joule","Watt","Newton","Pascal"].entries())await dialog.getByLabel("Alternativa "+String.fromCharCode(65+i)+" da pergunta 2",{exact:true}).fill(value);
+  await dialog.getByLabel("Cotação da pergunta 2").fill("1.25");
   await dialog.getByRole("button",{name:"Pré-visualizar"}).click();
   const preview=dialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
   await preview.locator("math").waitFor();
   assert.equal(await preview.locator(".linha").count(),7);
+  assert.equal(await preview.locator(".alternativas li").count(),4);
+  assert.match(await preview.locator(".cotacao").innerText(),/1,25/);
   await noOverflow(page,"preview "+width);
   await dialog.getByRole("button",{name:"Editar",exact:true}).click();
   await dialog.getByRole("button",{name:"Guardar rascunho"}).click();

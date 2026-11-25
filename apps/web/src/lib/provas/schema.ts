@@ -2,7 +2,9 @@ import { z } from "zod";
 import { richSchema,richText } from "./rich";
 import { mathMarkup } from "./math";
 export const TIPOS = ["grupo","texto","discursiva","verdadeiro_falso","lacunas","escolha","calculo","desenho","alinea"] as const;
-export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().min(1).max(3000),linhas:z.number().int().min(0).max(20),rich:richSchema.optional()}).strict().superRefine((b,ctx)=>{
+export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().min(1).max(3000),linhas:z.number().int().min(0).max(20),rich:richSchema.optional(),alternativas:z.array(z.string().trim().min(1).max(500)).min(2).max(8).optional(),cotacao_cent:z.number().int().min(0).max(2000).optional()}).strict().superRefine((b,ctx)=>{
+ if(b.alternativas!==undefined&&b.tipo!=="escolha")ctx.addIssue({code:z.ZodIssueCode.custom,message:"Alternativas apenas em escolha múltipla",path:["alternativas"]});
+ if(b.cotacao_cent!==undefined&&["grupo","texto"].includes(b.tipo))ctx.addIssue({code:z.ZodIssueCode.custom,message:"Cotação apenas em perguntas",path:["cotacao_cent"]});
  if(b.rich&&richText(b.rich)!==b.texto)ctx.addIssue({code:z.ZodIssueCode.custom,message:"Conteúdo formatado inconsistente",path:["rich"]});
  if(b.rich?.segments.some(s=>s.kind==="math"&&!mathMarkup(s.latex)))ctx.addIssue({code:z.ZodIssueCode.custom,message:"Expressão matemática inválida",path:["rich"]});
 });

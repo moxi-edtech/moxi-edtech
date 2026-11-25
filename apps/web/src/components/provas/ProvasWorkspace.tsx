@@ -9,10 +9,11 @@ import { provaHtml } from "@/lib/provas/print";
 import { formatClasseProva } from "@/lib/provas/academicLabels";
 import { safeLogoData } from "@/lib/provas/branding";
 import { PROVA_PAPER,respostaLayout } from "@/lib/provas/layout";
+import { questionTemplate,placeholders,suggestedTypes,structures,isQuestion,formatCotacao } from "@/lib/provas/questionTemplates";
 const ProvasPrintPanel=dynamic(()=>import("./ProvasPrintPanel"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar distribuição...</p>});
 const RichQuestionEditor=dynamic(()=>import("./RichQuestionEditor"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar editor...</p>});
 const input="w-full min-w-0 max-w-full min-h-11 rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold";
-const fresh=():ProvaInput=>({ano_letivo_id:"",curso_matriz_id:"",tipo_prova:"trimestral",titulo:"Prova",classe:"",disciplina:"",ano_lectivo:"",trimestre:1,duracao:90,serie:"A",conteudo:[{tipo:"discursiva",texto:"",linhas:3}]});
+const fresh=():ProvaInput=>({ano_letivo_id:"",curso_matriz_id:"",tipo_prova:"trimestral",titulo:"Prova",classe:"",disciplina:"",ano_lectivo:"",trimestre:1,duracao:90,serie:"A",conteudo:[questionTemplate("discursiva")]});
 function editable(p:Prova):ProvaInput {
  const {ano_letivo_id,curso_matriz_id,tipo_prova,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo}=p;
  return {ano_letivo_id,curso_matriz_id,tipo_prova:tipo_prova??"trimestral",titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo};
@@ -70,6 +71,19 @@ export default function ProvasWorkspace({escolaId,printOnly=false}:{escolaId:str
  useEffect(()=>()=>request.current?.abort(),[endpoint]);
  function change<K extends keyof ProvaInput>(key:K,value:ProvaInput[K]){setForm(p=>p?{...p,[key]:value}:p);setDirty(true);setError("");}
  function patch(index:number,part:Partial<Bloco>){setForm(p=>p?{...p,conteudo:p.conteudo.map((b,i)=>i===index?{...b,...part}:b)}:p);setDirty(true);setError("");}
+ function appendQuestion(tipo:Bloco["tipo"]){
+  if(!form||richIndex!==null||form.conteudo.length>=80)return;
+  const index=form.conteudo.length;
+  change("conteudo",[...form.conteudo,questionTemplate(tipo)]);
+  requestAnimationFrame(()=>document.getElementById("provas-block-"+index)?.focus());
+ }
+ function setQuestionType(index:number,tipo:Bloco["tipo"]){
+  if(!form||richIndex!==null)return;
+  const b=form.conteudo[index];if(!b||b.tipo===tipo)return;
+  if((b.alternativas?.some(a=>a.trim())&&tipo!=="escolha"||b.cotacao_cent!==undefined&&!isQuestion(tipo))&&!window.confirm("Alterar o tipo remove as alternativas ou a cotação incompatíveis. Continuar?"))return;
+  const next:Bloco={...questionTemplate(tipo),texto:b.texto,...(b.rich?{rich:b.rich}:{}),...(isQuestion(tipo)&&b.cotacao_cent!==undefined?{cotacao_cent:b.cotacao_cent}:{})};
+  change("conteudo",form.conteudo.map((item,i)=>i===index?next:item));
+ }
  function move(index:number,step:number){if(!form||richIndex!==null)return;const blocks=[...form.conteudo],to=index+step;if(to<0||to>=blocks.length)return;[blocks[index],blocks[to]]=[blocks[to],blocks[index]];change("conteudo",blocks);}
  function close(force=false){if(locked.current)return;if((dirty||richIndex!==null)&&!force){setDiscard(true);return;}setRichIndex(null);setDistribution(false);setForm(null);setSelected(null);setDirty(false);setDiscard(false);setConfirm(null);setError("");}
  function create(){if(printOnly||locked.current)return;setRichIndex(null);setSelected(null);setDistribution(false);setForm(fresh());setHeaderExpanded(true);setDirty(false);setPreview(false);setError("");setNotice("");}
@@ -85,7 +99,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false}:{escolaId:str
   let dados:ProvaInput|undefined;
   if(action==="criar"||action==="guardar"){
    const validated=provaWriteSchema.safeParse(form);
-   if(!validated.success){setError(validated.error.issues.map(i=>i.path[0]==="conteudo"?"Verifique o enunciado, a formatação e os limites das perguntas.":"Verifique "+String(i.path[0]).replace("_"," ")+".").filter((v,i,a)=>a.indexOf(v)===i).join(" "));return;}dados=validated.data;
+   if(!validated.success){setError(validated.error.issues.map(i=>i.path[0]==="conteudo"?"Verifique o enunciado, as alternativas, a cotação e a formatação das perguntas.":"Verifique "+String(i.path[0]).replace("_"," ")+".").filter((v,i,a)=>a.indexOf(v)===i).join(" "));return;}dados=validated.data;
   }else if(!selected||dirty)return;
   const payload={acao:action,...(action==="criar"?{}:{id:selected?.id,versao:selected?.versao}),...(dados?{dados}:{})};
   locked.current=true;setBusy(true);setError("");setConfirm(null);
@@ -153,17 +167,28 @@ export default function ProvasWorkspace({escolaId,printOnly=false}:{escolaId:str
     </div>
     <fieldset disabled={busy||Boolean(confirm)||discard} className="min-w-0 space-y-3">
      <legend className="mb-3 text-sm font-semibold">Enunciado e perguntas</legend>
+     <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>{form.conteudo.filter(b=>isQuestion(b.tipo)).length} pergunta(s)</span><span className="tabular-nums text-muted-foreground">Cotação atribuída: {formatCotacao(form.conteudo.reduce((n,b)=>n+(b.cotacao_cent??0),0))} valores · {form.conteudo.filter(b=>isQuestion(b.tipo)&&b.cotacao_cent===undefined).length} sem cotação</span></div>
+     {!selected&&form.conteudo.length===1&&!form.conteudo[0].texto&&!form.conteudo[0].rich&&!form.conteudo[0].alternativas&&form.conteudo[0].cotacao_cent===undefined&&<div className="space-y-2 rounded-xl border border-border p-3"><p className="text-sm font-medium">Começar com um modelo</p><p className="text-xs text-muted-foreground">Estrutura pronta, sem enunciados pré-preenchidos.</p><div className="flex flex-wrap gap-2">{structures.map(s=><Button key={s.label} type="button" size="sm" variant="outline" disabled={richIndex!==null} onClick={()=>change("conteudo",s.types.map(questionTemplate))}>{s.label}</Button>)}</div></div>}
      {form.conteudo.map((block,index)=><div key={index} className="min-w-0 space-y-3 rounded-xl border border-border p-3 sm:p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2"><label className="flex w-full min-w-0 items-center gap-2 text-sm sm:w-auto"><span className="font-medium text-muted-foreground">{index+1}.</span><select aria-label={"Tipo do bloco "+(index+1)} className={input} value={block.tipo} onChange={e=>{const tipo=e.target.value as Bloco["tipo"];patch(index,{tipo,linhas:["grupo","texto","verdadeiro_falso","lacunas","escolha"].includes(tipo)?0:3});}}>{Object.entries(tipos).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+      <div className="flex flex-wrap items-center justify-between gap-2"><label className="flex w-full min-w-0 items-center gap-2 text-sm sm:w-auto"><span className="font-medium text-muted-foreground">{index+1}.</span><select aria-label={"Tipo do bloco "+(index+1)} className={input} value={block.tipo} disabled={richIndex!==null} onChange={e=>setQuestionType(index,e.target.value as Bloco["tipo"])}>{Object.entries(tipos).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
        <div className="flex w-full flex-wrap gap-1 sm:w-auto"><Button size="sm" variant="ghost" aria-label={"Subir bloco "+(index+1)} disabled={richIndex!==null||index===0} onClick={()=>move(index,-1)}><ArrowUp/> Subir</Button><Button size="sm" variant="ghost" aria-label={"Descer bloco "+(index+1)} disabled={richIndex!==null||index===form.conteudo.length-1} onClick={()=>move(index,1)}><ArrowDown/> Descer</Button><Button size="sm" variant="ghost" className="text-destructive" aria-label={"Remover bloco "+(index+1)} disabled={richIndex!==null||form.conteudo.length===1} onClick={()=>change("conteudo",form.conteudo.filter((_,i)=>i!==index))}><Trash2/> Remover</Button></div>
       </div>
       {richIndex===index?<RichQuestionEditor key={index} block={block} label={"Enunciado "+(index+1)} disabled={busy||Boolean(confirm)||discard} onChange={part=>patch(index,part)} onDone={finishRich}/>:
        <div className="space-y-2">
-        {block.rich?<div className="min-h-20 min-w-0 break-words whitespace-pre-wrap rounded-xl border border-border bg-muted/20 p-3 text-sm"><span className="mb-1 block text-xs text-muted-foreground">Conteúdo formatado · ver pré-visualização para as fórmulas</span>{block.texto}</div>:<textarea className={input+" resize-y"} id={"provas-block-"+index} aria-label={"Enunciado "+(index+1)} rows={4} maxLength={3000} value={block.texto} placeholder={block.tipo==="grupo"?"Ex.: I GRUPO — Compreensão do texto":block.tipo==="escolha"?"Escreva a pergunta e as alternativas em linhas separadas.":block.tipo==="lacunas"?"Escreva a frase utilizando ____ para as lacunas.":"Escreva o enunciado."} disabled={richIndex!==null} onChange={e=>patch(index,{texto:e.target.value})}/>}
+        {block.rich?<div className="min-h-20 min-w-0 break-words whitespace-pre-wrap rounded-xl border border-border bg-muted/20 p-3 text-sm"><span className="mb-1 block text-xs text-muted-foreground">Conteúdo formatado · ver pré-visualização para as fórmulas</span>{block.texto}</div>:<textarea className={input+" resize-y"} id={"provas-block-"+index} aria-label={"Enunciado "+(index+1)} rows={4} maxLength={3000} value={block.texto} placeholder={placeholders[block.tipo]} disabled={richIndex!==null} onChange={e=>patch(index,{texto:e.target.value})}/>}
         <Button type="button" id={"provas-rich-"+index} size="sm" variant="outline" className="w-full sm:w-auto" disabled={richIndex!==null} onClick={e=>{richTrigger.current=e.currentTarget;setRichIndex(index);}}><Pencil/> {block.rich?"Editar conteúdo formatado":"Formatar / inserir fórmulas"}</Button>
        </div>}
 
-      {!["grupo","texto"].includes(block.tipo)&&<div className="min-w-0 space-y-3 border-t border-border pt-3">
+      {block.tipo==="escolha"&&<div className="space-y-2">
+       {block.alternativas===undefined?<><p className="text-xs text-muted-foreground">Formato anterior: alternativas no enunciado. Pode mantê-las ou activar campos separados e ajustar o enunciado.</p><Button type="button" size="sm" variant="outline" disabled={richIndex!==null} onClick={()=>patch(index,{alternativas:["",""]})}><Plus/> Separar alternativas</Button></>:<>
+       <p className="text-sm font-medium">Alternativas</p>
+       {block.alternativas.map((alternative,j)=><div key={j} className="flex min-w-0 items-center gap-2"><label className="flex min-w-0 flex-1 items-center gap-2 text-sm"><span>{String.fromCharCode(65+j)})</span><input className={input} aria-label={"Alternativa "+String.fromCharCode(65+j)+" da pergunta "+(index+1)} maxLength={500} value={alternative} disabled={richIndex!==null} onChange={e=>patch(index,{alternativas:block.alternativas!.map((a,k)=>j===k?e.target.value:a)})}/></label><Button type="button" size="sm" variant="ghost" disabled={richIndex!==null||block.alternativas!.length<=2} aria-label={"Remover alternativa "+String.fromCharCode(65+j)} onClick={()=>patch(index,{alternativas:block.alternativas!.filter((_,k)=>j!==k)})}><Trash2/><span className="sr-only">Remover</span></Button></div>)}
+       <Button type="button" size="sm" variant="outline" disabled={richIndex!==null||block.alternativas.length>=8} onClick={()=>patch(index,{alternativas:[...block.alternativas!,""]})}><Plus/> Adicionar alternativa</Button></>}
+      </div>}
+      {block.tipo==="verdadeiro_falso"&&<p className="text-sm text-muted-foreground">Na folha: ( ) V  ·  ( ) F</p>}
+      {block.tipo==="lacunas"&&<p className="text-xs text-muted-foreground">Utilize ____ no enunciado para indicar cada lacuna.</p>}
+      {isQuestion(block.tipo)&&<label className="grid max-w-56 gap-1 text-sm">Cotação (valores)<input type="number" inputMode="decimal" min={0} max={20} step="0.01" aria-label={"Cotação da pergunta "+(index+1)} className={input} placeholder="Opcional" value={block.cotacao_cent===undefined?"":block.cotacao_cent/100} disabled={richIndex!==null} onChange={e=>{const v=e.target.value;const n=Number(v);patch(index,{cotacao_cent:v===""||!Number.isFinite(n)?undefined:Math.min(2000,Math.max(0,Math.round(n*100)))});}}/></label>}
+      {(!["grupo","texto","verdadeiro_falso","lacunas","escolha"].includes(block.tipo)||block.linhas>0)&&<div className="min-w-0 space-y-3 border-t border-border pt-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2"><span className="text-sm font-medium">Espaço para resposta</span><span className="text-xs tabular-nums text-muted-foreground">{respostaLayout(block.tipo,block.linhas).kind==="none"?"Sem espaço adicional":respostaLayout(block.tipo,block.linhas).kind==="box"?"Área livre · "+(respostaLayout(block.tipo,block.linhas).heightMm/10).toFixed(1).replace(".",",")+" cm":block.linhas+" linha(s) · "+(respostaLayout(block.tipo,block.linhas).heightMm/10).toFixed(1).replace(".",",")+" cm"}</span></div>
         <div className="flex flex-wrap gap-2" role="group" aria-label={"Espaço da resposta "+(index+1)}>
          {([0,3,6,10] as const).map(n=><Button key={n} type="button" size="sm" variant={block.linhas===n?"secondary":"outline"} aria-pressed={block.linhas===n} className="flex-1 sm:flex-none" onClick={()=>patch(index,{linhas:n})}>{n===0?"Nenhum":n===3?"Curto":n===6?"Médio":"Longo"}</Button>)}
@@ -176,7 +201,12 @@ export default function ProvasWorkspace({escolaId,printOnly=false}:{escolaId:str
         {!block.rich&&richIndex===null&&["calculo","discursiva","alinea"].includes(block.tipo)&&<div className="flex flex-wrap gap-1">{["²","³","√","×","÷","π","½","¼","≤","≥","∪","∩"].map(symbol=><button key={symbol} type="button" aria-label={"Adicionar "+symbol} className="min-h-11 min-w-11 rounded-xl border border-border px-2 py-1 text-base hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" disabled={block.texto.length>=3000} onClick={()=>patch(index,{texto:block.texto+symbol})}>{symbol}</button>)}</div>}
       </div>}
      </div>)}
-     <Button variant="outline" className="w-full sm:w-auto" disabled={richIndex!==null||form.conteudo.length>=80} onClick={()=>{const index=form.conteudo.length;change("conteudo",[...form.conteudo,{tipo:"discursiva",texto:"",linhas:3}]);requestAnimationFrame(()=>document.getElementById("provas-block-"+index)?.focus());}}><Plus/> Adicionar bloco</Button>
+     <div className="space-y-2 rounded-xl border border-dashed border-border p-3">
+      <p className="text-sm font-medium">Adicionar pergunta</p>
+      <p className="text-xs text-muted-foreground">{form.disciplina?"Sugestões para "+form.disciplina:"Escolha um formato para começar."}</p>
+      <div className="flex flex-wrap gap-2">{suggestedTypes(form.disciplina).map(tipo=><Button key={tipo} type="button" size="sm" variant="outline" disabled={richIndex!==null||form.conteudo.length>=80} onClick={()=>appendQuestion(tipo)}><Plus/> {tipos[tipo]}</Button>)}</div>
+      <label className="grid gap-1 text-sm">Todos os formatos<select className={input} aria-label="Adicionar pergunta ou bloco" value="" disabled={richIndex!==null||form.conteudo.length>=80} onChange={e=>{if(e.target.value)appendQuestion(e.target.value as Bloco["tipo"]);}}><option value="">Seleccione o formato</option>{Object.entries(tipos).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+     </div>
     </fieldset>
    </div>)}
   </ModalShell>
