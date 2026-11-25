@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
-const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
+const {chromium,webkit}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
+const isWebKit=process.env.PROVAS_BROWSER==="webkit";
 const year="20000000-0000-4000-8000-000000000001",matrix="70000000-0000-4000-8000-000000000001";
 const user="10000000-0000-4000-8000-000000000001",id="30000000-0000-4000-8000-000000000001";
 const base={id,autor_id:user,ano_letivo_id:year,curso_matriz_id:matrix,titulo:"Prova de Física",classe:"8.ª Classe",disciplina:"Física",ano_lectivo:"2026/2027",trimestre:1,duracao:90,serie:"A",estado:"aprovada",versao:3,atualizado_em:"2026-11-25T00:00:00Z",conteudo:[{tipo:"discursiva",texto:"Questão de teste",linhas:3}]};
-const browser=await chromium.launch({headless:true});
+const browser=await (isWebKit?webkit:chromium).launch({headless:true});
 await mkdir("apps/web/visual-evidence/provas",{recursive:true});
 const noOverflow=async(page,label)=>{
  const metrics=await page.evaluate(()=>({width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth,dialog:document.querySelector('[role="dialog"]')?.getBoundingClientRect().width}));
@@ -13,7 +14,7 @@ const noOverflow=async(page,label)=>{
  if(metrics.dialog!==undefined)assert.ok(metrics.dialog<=metrics.width+2,label+": dialog overflow");
 };
 try{
- for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
+ for(const [width,height] of (isWebKit?[[390,844]]:[[320,568],[390,844],[768,1024],[1280,800]])){
   const page=await browser.newPage({viewport:{width,height},hasTouch:width<640,isMobile:width<640});
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   let saved=null;
@@ -87,6 +88,9 @@ try{
   await math.getByRole("button",{name:"Fracção",exact:false}).click();
   await math.getByLabel("Numerador",{exact:true}).fill("7");
   await math.getByLabel("Denominador",{exact:true}).fill("5");
+  await math.getByRole("button",{name:"Alterar sinal de Numerador",exact:true}).click();
+  assert.equal(await math.getByLabel("Numerador",{exact:true}).inputValue(),"-7");
+  await math.getByRole("button",{name:"Alterar sinal de Numerador",exact:true}).click();
   assert.equal(await math.getByLabel("Pré-visualização do modelo").locator("mfrac").count(),1);
   if(width===320){
    await math.getByRole("button",{name:"Livre",exact:true}).click();
@@ -103,7 +107,8 @@ try{
    await math.getByLabel("Expressão em LaTeX").fill("2+3");
   }
   await noOverflow(page,"formula "+width);
-  await page.screenshot({path:"apps/web/visual-evidence/provas/formula-"+width+".png"});
+  if(width<640){await page.setViewportSize({width,height:360});await noOverflow(page,"short formula viewport "+width);await math.getByRole("button",{name:"Inserir fórmula",exact:true}).scrollIntoViewIfNeeded();await page.setViewportSize({width,height});}
+  await page.screenshot({path:"apps/web/visual-evidence/provas/formula-"+(isWebKit?"webkit-":"")+width+".png"});
   await dialog.getByRole("button",{name:"Inserir fórmula"}).click();
   await dialog.getByRole("group",{name:"Formatação do enunciado"}).waitFor();
   await dialog.getByRole("button",{name:"Concluir edição"}).click();
@@ -131,6 +136,11 @@ try{
    assert.equal(await dialog.getByRole("button",{name:"Subir bloco 2"}).count(),0);
    await dialog.getByRole("button",{name:"Adicionar pergunta",exact:true}).click();
    assert.equal(await dialog.getByLabel("Tipo do bloco 3",{exact:true}).inputValue(),"discursiva");
+   await dialog.getByLabel("Tipo do bloco 3",{exact:true}).selectOption("calculo");
+   await dialog.getByRole("button",{name:"Inserir fórmula",exact:true}).click();
+   await dialog.getByRole("region",{name:"Editor matemático"}).waitFor();
+   await dialog.getByRole("button",{name:"Cancelar",exact:true}).click();
+   await dialog.getByRole("button",{name:"Concluir edição",exact:true}).click();
    await dialog.getByText("Opções da pergunta",{exact:true}).click();
    await dialog.getByRole("button",{name:"Remover bloco 3"}).click();
    assert.equal(await dialog.getByLabel("Alternativa D da pergunta 2").inputValue(),"Pascal");
@@ -154,7 +164,7 @@ try{
    await page.mouse.move(to.x+to.width/2,to.y+to.height/2,{steps:12});
    await page.mouse.up();
    await first.getByText(/Calcula a soma/).waitFor();
-  }else{
+  }else if(!isWebKit){
    // Real touch pointer gesture in Chromium; scroll remains available outside handle.
    const handle=order.getByRole("button",{name:"Arrastar bloco 1"});const from=await handle.boundingBox(),to=await second.boundingBox();
    assert.ok(from&&to);
@@ -165,6 +175,8 @@ try{
    await cdp.send("Input.dispatchTouchEvent",{type:"touchEnd",touchPoints:[]});
    await cdp.detach();
    await first.getByText(/Calcula a soma/).waitFor();
+  }else{
+   await order.getByLabel("Posição do bloco 1").selectOption("1");
   }
   assert.match(await second.innerText(),/Qual é a unidade/);
   await noOverflow(page,"organizer "+width);

@@ -10,10 +10,10 @@ import { mathMarkup } from "@/lib/provas/math";
 import type { Bloco } from "@/lib/provas/schema";
 const FormulaInput=dynamic(()=>import("./FormulaInput"),{ssr:false,loading:()=> <p role="status" className="text-sm text-muted-foreground">A carregar editor matemático...</p>});
 
-function FormulaView({node,selected}:NodeViewProps){
+function FormulaView({node,selected,editor,getPos}:NodeViewProps){
  const latex=String(node.attrs.latex??"");
  const html=mathMarkup(latex);
- return <NodeViewWrapper as="span" contentEditable={false} className={"inline-block max-w-full overflow-x-auto rounded-xl px-1 align-middle "+(selected?"ring-2 ring-klasse-gold":"")}>
+ return <NodeViewWrapper as="span" contentEditable={false} onClick={()=>{if(!editor.isEditable)return;const pos=getPos();if(typeof pos==="number")editor.commands.setNodeSelection(pos);}} className={"inline-block max-w-full cursor-pointer overflow-x-auto rounded-xl px-1 align-middle "+(selected?"ring-2 ring-klasse-gold":"")}>
   {html?<span aria-label={latex} dangerouslySetInnerHTML={{__html:html}}/>:<span>{latex}</span>}
  </NodeViewWrapper>;
 }
@@ -66,7 +66,8 @@ export default function RichQuestionEditor({block,onChange,onDone,disabled,label
  function openFormula(){
   if(!editor)return;
   const {from,to}=editor.state.selection;
-  const latex=editor.isActive("formula")?String(editor.getAttributes("formula").latex??""):"";
+  const selectedNode=editor.state.doc.nodeAt(from);
+  const latex=selectedNode?.type.name==="formula"&&to-from===selectedNode.nodeSize?String(selectedNode.attrs.latex??""):"";
   editor.commands.blur();setFormula({latex,from,to});
  }
  const returnFocus=()=>requestAnimationFrame(()=>document.getElementById("provas-formula-trigger")?.focus({preventScroll:true}));
