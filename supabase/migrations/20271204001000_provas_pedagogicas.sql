@@ -245,14 +245,14 @@ GRANT EXECUTE ON FUNCTION public.provas_mutar(uuid,uuid,integer,text,jsonb) TO a
 
 -- Read-only distribution. SECURITY INVOKER preserves school and campus RLS on
 -- turmas, turma_disciplinas, matriculas and alunos. No service role or names supplied by the caller.
-CREATE FUNCTION public.provas_destinatarios(p_escola uuid,p_prova uuid,p_versao integer,p_modo text,p_turmas uuid[],p_matricula uuid,p_offset integer)
+CREATE FUNCTION public.provas_destinatarios(p_escola uuid,p_prova uuid,p_versao integer,p_modo text,p_turmas uuid[],p_matricula uuid,p_offset integer,p_limit integer DEFAULT 40)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path='' AS $distribution$
 DECLARE r public.provas_pedagogicas; v_items jsonb; v_total integer; v_allowed integer; v_duplicate boolean; v_snapshot text;
 BEGIN
  IF NOT provas_private.provas_papel(p_escola,ARRAY['admin','admin_escola','diretor','admin_secretaria','admin_secretario','staff_admin','secretaria']) THEN
   RAISE EXCEPTION 'not_allowed' USING ERRCODE='42501';
  END IF;
- IF p_modo IS NULL OR p_modo NOT IN ('turmas','alunos','imprimir') OR p_offset IS NULL OR p_offset<0 OR p_offset>10000 OR p_turmas IS NULL OR cardinality(p_turmas)>10 OR array_position(p_turmas,NULL::uuid) IS NOT NULL OR cardinality(p_turmas)<>(SELECT count(DISTINCT x) FROM unnest(p_turmas) x) THEN
+ IF p_modo IS NULL OR p_modo NOT IN ('turmas','alunos','imprimir') OR p_limit IS NULL OR p_limit NOT IN (1,5,10,20,40) OR p_offset IS NULL OR p_offset<0 OR p_offset>10000 OR p_turmas IS NULL OR cardinality(p_turmas)>10 OR array_position(p_turmas,NULL::uuid) IS NOT NULL OR cardinality(p_turmas)<>(SELECT count(DISTINCT x) FROM unnest(p_turmas) x) THEN
   RAISE EXCEPTION 'invalid_distribution' USING ERRCODE='22023';
  END IF;
  IF (p_modo='turmas' AND (cardinality(p_turmas)<>0 OR p_matricula IS NOT NULL OR p_offset<>0))
@@ -292,7 +292,7 @@ BEGIN
    ) ELSE (
     SELECT coalesce(jsonb_agg(to_jsonb(q)-'aluno_id' ORDER BY q.turma,q.numero_chamada NULLS LAST,q.nome,q.matricula_id),'[]'::jsonb) FROM (
       SELECT * FROM roster ORDER BY turma,numero_chamada NULLS LAST,nome,matricula_id
-      LIMIT CASE WHEN p_modo='alunos' THEN 1001 ELSE 40 END OFFSET p_offset
+      LIMIT CASE WHEN p_modo='alunos' THEN 1001 ELSE p_limit END OFFSET p_offset
     ) q
    ) END AS items
  )
@@ -301,9 +301,9 @@ BEGIN
  IF p_modo<>'turmas' AND v_duplicate THEN RAISE EXCEPTION 'duplicate_active_enrollment' USING ERRCODE='22023'; END IF;
  IF (p_modo='turmas' AND v_allowed>500) OR (p_modo='alunos' AND v_total>1000) THEN RAISE EXCEPTION 'distribution_limit' USING ERRCODE='22023'; END IF;
  IF p_modo='imprimir' AND (v_total=0 OR p_offset>=v_total OR (p_matricula IS NOT NULL AND v_total<>1)) THEN RAISE EXCEPTION 'no_eligible_students' USING ERRCODE='22023'; END IF;
- RETURN jsonb_build_object('items',v_items,'total',v_total,'offset',p_offset,'limit',40,'snapshot',v_snapshot);
+ RETURN jsonb_build_object('items',v_items,'total',v_total,'offset',p_offset,'limit',p_limit,'snapshot',v_snapshot);
 END;
 $distribution$;
-REVOKE ALL ON FUNCTION public.provas_destinatarios(uuid,uuid,integer,text,uuid[],uuid,integer) FROM PUBLIC,anon,service_role;
-GRANT EXECUTE ON FUNCTION public.provas_destinatarios(uuid,uuid,integer,text,uuid[],uuid,integer) TO authenticated;
+REVOKE ALL ON FUNCTION public.provas_destinatarios(uuid,uuid,integer,text,uuid[],uuid,integer,integer) FROM PUBLIC,anon,service_role;
+GRANT EXECUTE ON FUNCTION public.provas_destinatarios(uuid,uuid,integer,text,uuid[],uuid,integer,integer) TO authenticated;
 COMMIT;
