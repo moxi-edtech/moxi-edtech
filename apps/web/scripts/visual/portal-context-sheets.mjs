@@ -74,12 +74,12 @@ try {
 
       await page.getByRole("button",{name:"Histórico de avaliações"}).click();
       const history=page.getByRole("dialog",{name:"Histórico de avaliações"});
-      await history.getByText("Nenhuma avaliação anterior publicada neste período.").waitFor();
+      await history.getByText("Avaliação anterior sintética",{exact:true}).waitFor();
       await page.keyboard.press("Escape");
       await history.waitFor({state:"hidden"});
 
       await page.goto(base+"/?story=professor-com-turmas");
-      const turmaButton=page.getByRole("button",{name:/7ª Classe A/}).first();
+      const turmaButton=page.getByRole("button",{name:/Matemática.*Língua Portuguesa/}).first();
       await turmaButton.click();
       const turmaSheet=page.getByRole("dialog");
       await turmaSheet.getByText("Aluno sintético",{exact:true}).waitFor();
@@ -93,7 +93,7 @@ try {
       await aulaSheet.waitFor({state:"hidden"});
 
       await page.goto(base+"/?story=dashboard-clean");
-      const nextLesson=page.locator("#next-class").getByRole("button").first();
+      const nextLesson=page.getByRole("region",{name:"Próxima aula"}).getByRole("button").first();
       await nextLesson.click();
       const daily=page.getByRole("dialog",{name:"Horário diário"});
       await daily.getByRole("button",{name:"Seg",exact:true}).click();

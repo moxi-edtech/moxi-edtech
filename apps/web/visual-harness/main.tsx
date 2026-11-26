@@ -301,7 +301,8 @@ if (name === "professor-calendar-context") {
   window.fetch = (input, init) => {
     if (!String(input).startsWith("/api/professor/calendario")) return previous(input, init);
     return Promise.resolve(new Response(JSON.stringify({ok:true,ano_letivo:null,periodos:[],items:[
-      {id:"fixture-event",escola_id:"fixture",nome:"Reunião pedagógica",descricao:"Informações completas da reunião pedagógica sintética. Consulta sem abandonar o calendário.",data_inicio:"2099-11-26",data_fim:"2099-11-26",tipo:"REUNIAO",publico_alvo:null,cor_hex:null}
+      {id:"fixture-event",escola_id:"fixture",nome:"Reunião pedagógica",descricao:"Informações completas da reunião pedagógica sintética. Consulta sem abandonar o calendário.",data_inicio:"2099-11-26",data_fim:"2099-11-26",tipo:"REUNIAO",publico_alvo:null,cor_hex:null},
+      {id:"fixture-past-assessment",escola_id:"fixture",nome:"Avaliação anterior sintética",descricao:"Evento oficial sintético.",data_inicio:"2000-11-20",data_fim:"2000-11-20",tipo:"AVALIACAO_ESCOLAR",publico_alvo:null,cor_hex:null}
     ]}),{headers:{"Content-Type":"application/json"}}));
   };
 }
