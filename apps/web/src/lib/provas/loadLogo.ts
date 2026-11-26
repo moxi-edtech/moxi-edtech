@@ -45,7 +45,7 @@ export async function loadProvaLogo(value:unknown,escolaId:string,fetcher:typeof
  const url=schoolLogoSource(value,escolaId,origins);
  if(!url)return fail(value?"invalid_storage_source":"not_configured");
  try{
-  const response=await fetcher(url,{cache:"force-cache",redirect:"error",credentials:"omit",signal:AbortSignal.timeout(6000)});
+  const response=await fetcher(url,{cache:"no-store",redirect:"error",credentials:"omit",signal:AbortSignal.timeout(6000)});
   if(!response.ok||!response.body||Number(response.headers.get("content-length")??0)>MAX_LOGO_BYTES){await response.body?.cancel();return fail(!response.ok?"storage_http_"+response.status:!response.body?"empty_response":"size_limit");}
   const reader=response.body.getReader();
   const chunks:Uint8Array[]=[];let size=0;
@@ -62,7 +62,11 @@ export async function loadProvaLogo(value:unknown,escolaId:string,fetcher:typeof
   const type=rasterType(bytes);
   const mime=response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
   if(!type)return fail("invalid_raster_or_dimensions");
-  if(mime!=="image/"+type&&mime!=="application/octet-stream")return fail("mime_mismatch");
+  // Storage metadata may describe the original upload rather than the encoded raster.
+  // The trusted tenant path, bounded bytes and detected raster format define the image data URI.
+  // Never reinterpret an active document (HTML, XML/SVG, script) as an image.
+  const rasterMimes=new Set(["image/png","image/x-png","image/jpeg","image/jpg","image/pjpeg","image/webp","image/gif","image/avif","image/bmp","image/tiff","application/octet-stream","binary/octet-stream"]);
+  if(mime&&!rasterMimes.has(mime))return fail("mime_mismatch");
   return safeLogoData("data:image/"+type+";base64,"+bytes.toString("base64"));
  }catch(e){return fail(e instanceof Error&&e.name==="TimeoutError"?"storage_timeout":"storage_transport");}
 }
