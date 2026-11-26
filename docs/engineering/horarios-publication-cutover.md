@@ -20,3 +20,9 @@ Estado: bloqueado para produção, 2026-11-24.
 - `ensure_horario_versao` e `publish_horario_versao` ainda concedem EXECUTE a anon (SECURITY INVOKER); avaliar acessibilidade efectiva sob RLS e revogar concessão desnecessária no cutover. `log_horario_event` é SECURITY DEFINER, executável por authenticated: testar autorização e integridade do registo. Nenhuma exploração foi executada.
 - Ledger remoto mais recente observado: `20271204030000_provas_pedagogicas`, presente na main. Isto não comprova reconciliação de todo o ledger; CLI indisponível. Não reutilizar versões nem instalar proposta.
 - Auditoria reproduzível em `supabase/ops/tests/horarios_publication_readiness_audit.sql` (somente leitura). A proposta fica isolada; não activar sem cobertura dos escritores directos, slots partilhados, ordem dos locks, sessões concorrentes e homologação do consumidor. Sem alterações em produção.
+
+## Implementação candidata — 26/11/2026
+- Reauditoria: 8/8 slots com equivalentes exactos, 0 destinos ocupados, 0 duplicados, 0 desvios curriculares entre as 266 aulas activas. A correcção proposta só troca a FK do slot, mantém dia/horas/identidades, aborta em ambiguidade e grava auditoria. Nenhuma alteração em produção.
+- Os três escritores de bootstrap/onboarding passam pela RPC atómica. Remoção de rascunho usa FK cascade em uma só operação.
+- A proposta fecha RPCs directas de publicação e de log, retira TRUNCATE das tabelas, verifica actor/tenant/papel, protege snapshots e tempos partilhados. RPCs adquirem lock por escola antes de linhas; triggers usam try-lock e falham com 40001 em concorrência ou isolamento não suportado. Reatribuição docente continua independente de horário.
+- CI sintético ainda necessário; a migração continua candidata, não versionada. Não aplicar nem retirar draft sem comprovar o contrato real de onboarding, compatibilidade do consumidor Vercel, execução PG17 e versão livre no ledger.

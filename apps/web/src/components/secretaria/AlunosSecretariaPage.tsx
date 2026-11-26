@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { StatusPill as StatusBadge } from "@/components/ui/StatusPill";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { downloadAlunosExport } from "@/lib/services/alunosExportDownload.client";
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { OperationalCursorPagination, OperationalTableEmptyState, OperationalTableErrorState } from "@/components/ui/OperationalTableStates";
@@ -1329,26 +1330,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     params.set("tipo", tipo);
     setShowExport(false);
     try {
-      const response = await fetch(`/api/secretaria/alunos/exportar?${params.toString()}`, {
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(typeof payload?.error === "string"
-          ? payload.error : `Falha na exportação (HTTP ${response.status}).`);
-      }
-      const blob = await response.blob();
-      const disposition = response.headers.get("content-disposition") ?? "";
-      const filename = disposition.match(/filename="([^"]+)"/)?.[1]
-        ?? `alunos-filtrados-${Date.now()}.${tipo === "excel" ? "xlsx" : "pdf"}`;
-      const downloadUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = downloadUrl;
-      anchor.download = filename;
-      document.body.append(anchor);
-      anchor.click();
-      anchor.remove();
-      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      await downloadAlunosExport(`/api/secretaria/alunos/exportar?${params.toString()}`, tipo, `alunos-filtrados-${Date.now()}.${tipo === "excel" ? "xlsx" : "pdf"}`);
       success("Exportação concluída", "Lista filtrada descarregada.");
     } catch (cause) {
       error("Erro na exportação", cause instanceof Error ? cause.message

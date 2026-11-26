@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ForeignLanguageConfig } from "./ForeignLanguageConfig";
+import { isLinguaEstrangeira } from "@/lib/academico/lingua-estrangeira";
 import {
   CalendarDays,
   Clock,
@@ -55,6 +57,7 @@ type ClassOption = {
 };
 
 type Props = {
+  escolaId?: string;
   open: boolean;
   embedded?: boolean;
   mode: "create" | "edit";
@@ -149,6 +152,7 @@ function isValidCode(code: string) {
 }
 
 export function DisciplinaModal({
+  escolaId,
   open,
   embedded = false,
   mode,
@@ -477,6 +481,9 @@ export function DisciplinaModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {escolaId && mode === "edit" && initial?.nome && isLinguaEstrangeira(initial.nome) && (
+            <ForeignLanguageConfig key={escolaId} escolaId={escolaId} />
+          )}
           {disciplineSelector && (
             <section className="bg-klasse-green/5 p-5 rounded-xl border border-klasse-green/20 shadow-sm">
               <h3 className="text-xs font-bold uppercase text-klasse-green dark:text-klasse-green-300 mb-3">{disciplineSelector.label}</h3>

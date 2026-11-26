@@ -42,3 +42,26 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN IF SQLERRM <> 'HORARIO_UPSERT_FORBIDDEN' THEN RAISE; END IF; END;
 END $$;
 SELECT 'PASS: draft, historical, overlap, rollback, interval, curriculum, adjacent, optional resources and authorization' AS result;
+
+DO $$ BEGIN
+  IF (SELECT slot_id FROM public.quadro_horarios WHERE versao_id=fixture_id(88))<>fixture_id(76)
+     OR (SELECT count(*) FROM public.audit_logs WHERE action='HORARIO_SLOT_RELINK')<>1
+  THEN RAISE EXCEPTION 'exact slot repair failed'; END IF;
+  IF has_function_privilege('anon','public.ensure_horario_versao(uuid,uuid,uuid,text)','EXECUTE')
+     OR has_function_privilege('authenticated','public.publish_horario_versao(uuid,uuid,uuid)','EXECUTE')
+     OR has_function_privilege('authenticated','public.log_horario_event(uuid,uuid,uuid,text,jsonb)','EXECUTE')
+     OR has_table_privilege('authenticated','public.horario_eventos','INSERT')
+     OR has_table_privilege('authenticated','public.quadro_horarios','TRUNCATE')
+  THEN RAISE EXCEPTION 'direct writer bypass'; END IF;
+END $$;
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub',fixture_id(100)::text,false);
+DO $$ BEGIN
+  BEGIN UPDATE public.horario_versoes SET status='arquivada' WHERE id=fixture_id(81); RAISE EXCEPTION 'direct archive allowed'; EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN DELETE FROM public.quadro_horarios WHERE versao_id=fixture_id(81); RAISE EXCEPTION 'direct delete allowed'; EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN UPDATE public.horario_slots SET inicio='07:50' WHERE id=fixture_id(76); RAISE EXCEPTION 'shared slot mutation allowed'; EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN PERFORM public.ensure_horario_versao(fixture_id(2),fixture_id(23),NULL,'draft'); RAISE EXCEPTION 'cross-school draft allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN PERFORM public.log_horario_event(fixture_id(1),fixture_id(20),fixture_id(81),'PUBLISH','{}'); RAISE EXCEPTION 'fake event allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  IF public.ensure_horario_versao(fixture_id(1),fixture_id(20),NULL,'draft') IS NULL THEN RAISE EXCEPTION 'admin draft failed'; END IF;
+END $$;
+RESET ROLE;

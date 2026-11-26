@@ -1,0 +1,77 @@
+name: Língua Estrangeira · PostgreSQL 17
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20271204030100_lingua_estrangeira_config.sql'
+      - 'supabase/ops/tests/lingua_estrangeira_*'
+      - 'apps/web/src/lib/academico/lingua-estrangeira.ts'
+      - 'apps/web/src/components/escola/settings/_components/ForeignLanguageConfig.tsx'
+      - 'apps/web/src/components/escola/settings/_components/DisciplinaModal.tsx'
+      - 'apps/web/src/app/api/escolas/**/disciplinas/lingua-estrangeira/**'
+      - 'apps/web/tests/unit/lingua-estrangeira.spec.ts'
+      - '.github/workflows/lingua-estrangeira-pg17.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  db:
+    name: PostgreSQL 17 · permissões e dados
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_PASSWORD: isolated-test
+          POSTGRES_DB: lingua_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lingua_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: isolated-test
+      PGDATABASE: lingua_ci
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Testar contrato em banco descartável
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = 127.0.0.1
+          test "$PGDATABASE" = lingua_ci
+          psql -X -v ON_ERROR_STOP=1 -Atc 'SHOW server_version_num' | grep '^17'
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/lingua_estrangeira_fixture.sql
+          echo '2a62230167063d7eea891c2d79b8849c7dee370c0b36bb9c8dc1bc41b3cc5b0d  supabase/migrations/20271204030100_lingua_estrangeira_config.sql' | sha256sum --check
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271204030100_lingua_estrangeira_config.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/lingua_estrangeira_assert.sql
+  web:
+    name: Interface · testes e TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Testar escolhas de idioma
+        working-directory: apps/web
+        run: node --test --import tsx tests/unit/lingua-estrangeira.spec.ts
+      - name: Typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: pnpm -C apps/web typecheck
+

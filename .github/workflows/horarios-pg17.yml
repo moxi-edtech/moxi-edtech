@@ -14,6 +14,9 @@ on:
       - 'apps/web/src/app/api/escolas/**/horarios/**'
       - 'apps/web/src/app/escola/**/horarios/**'
       - 'apps/web/tests/unit/horarios-operational-flow.spec.ts'
+      - 'apps/web/src/app/api/escola/**/admin/setup/auto-resolve/route.ts'
+      - 'apps/web/src/app/api/escola/**/admin/curriculo/publish/route.ts'
+      - 'apps/web/src/app/api/escolas/**/onboarding/core/finalize/route.ts'
   workflow_dispatch:
 permissions:
   contents: read
