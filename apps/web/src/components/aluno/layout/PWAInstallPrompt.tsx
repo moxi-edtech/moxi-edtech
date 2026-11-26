@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download, X, Share, PlusSquare } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+
 
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -61,63 +61,61 @@ export function PWAInstallPrompt() {
   };
 
   return (
-    <AnimatePresence>
+    <>
       {show && (
-        <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          className="fixed bottom-24 inset-x-4 z-40 md:bottom-8 md:right-8 md:left-auto md:w-80"
+        <div
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] inset-x-4 z-40 md:bottom-8 md:right-8 md:left-auto md:w-80"
         >
-          <div className="bg-slate-900 text-white p-5 rounded-3xl shadow-2xl border border-white/10 relative overflow-hidden">
+          <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 text-foreground shadow-lg">
             <button 
               onClick={handleDismiss}
-              className="absolute top-3 right-3 p-1.5 text-white/40 hover:text-white transition bg-white/5 rounded-full"
+              type="button" aria-label="Fechar sugestão de instalação"
+              className="absolute right-1 top-1 flex min-h-11 min-w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
             >
               <X size={14} />
             </button>
 
             <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 shrink-0 bg-gradient-to-br from-emerald to-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald/20">
+              <div className="flex items-center gap-3 pr-8">
+                <div className="h-10 w-10 shrink-0 rounded-xl bg-accent text-accent-foreground flex items-center justify-center">
                   <Download size={24} />
                 </div>
                 <div>
-                  <p className="text-sm font-black tracking-tight">Klasse no seu celular</p>
-                  <p className="text-[11px] text-white/60 font-medium">Instale para acesso rápido e offline.</p>
+                  <p className="text-sm font-semibold tracking-tight">KLASSE no teu telemóvel</p>
+                  <p className="text-xs text-muted-foreground">Instala para acesso rápido.</p>
                 </div>
               </div>
 
               {platform === "ios" ? (
-                <div className="bg-white/5 rounded-2xl p-3 space-y-3">
-                  <p className="text-[10px] font-bold text-white/80 leading-relaxed uppercase tracking-wider">Como instalar no iPhone:</p>
+                <div className="bg-muted/40 rounded-xl p-3 space-y-3">
+                  <p className="text-xs font-medium text-foreground">Como instalar no iPhone:</p>
                   <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-[11px]">
-                      <div className="h-6 w-6 rounded-lg bg-white/10 flex items-center justify-center">
-                        <Share size={12} className="text-blue-400" />
+                    <div className="flex items-center gap-3 text-xs">
+                      <div className="h-6 w-6 rounded-lg bg-card flex items-center justify-center">
+                        <Share size={12} className="text-primary" />
                       </div>
-                      <span>Clique no botão <b>Compartilhar</b> abaixo.</span>
+                      <span>Toca no botão <b>Partilhar</b> abaixo.</span>
                     </div>
-                    <div className="flex items-center gap-3 text-[11px]">
-                      <div className="h-6 w-6 rounded-lg bg-white/10 flex items-center justify-center">
-                        <PlusSquare size={12} className="text-emerald-400" />
+                    <div className="flex items-center gap-3 text-xs">
+                      <div className="h-6 w-6 rounded-lg bg-card flex items-center justify-center">
+                        <PlusSquare size={12} className="text-primary" />
                       </div>
-                      <span>Selecione <b>Adicionar à Tela de Início</b>.</span>
+                      <span>Selecciona <b>Adicionar ao ecrã principal</b>.</span>
                     </div>
                   </div>
                 </div>
               ) : (
                 <button
                   onClick={handleInstall}
-                  className="w-full bg-card text-foreground py-3 rounded-2xl text-xs font-black hover:bg-muted transition active:scale-95 shadow-lg shadow-white/5"
+                  className="min-h-11 w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  Instalar Agora
+                  Instalar
                 </button>
               )}
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

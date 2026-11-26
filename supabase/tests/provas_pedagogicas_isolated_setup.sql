@@ -86,3 +86,17 @@ INSERT INTO public.escola_users VALUES ('00000000-0000-4000-8000-000000000001','
 -- Synthetic regime fixture; production uses the actual canonical resolver.
 ALTER TABLE public.turmas ADD COLUMN fixture_escala text DEFAULT 'quantitativa_secundario';
 CREATE FUNCTION public.resolve_regime_academico(p_turma_id uuid) RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT jsonb_build_object('escala',fixture_escala) FROM public.turmas WHERE id=p_turma_id $$;
+
+-- Existing production audit sink: synthetic fixture only, no extra production table.
+CREATE TABLE public.profiles(user_id uuid PRIMARY KEY);
+INSERT INTO public.profiles SELECT id FROM auth.users;
+CREATE TABLE public.audit_logs(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,escola_id uuid,user_id uuid REFERENCES public.profiles(user_id),actor_id uuid,acao text,tabela text,registro_id text,action text,entity text,entity_id text,details jsonb);
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.audit_logs FROM PUBLIC,anon,authenticated,service_role;
+
+-- Calendar relation fixture: production calendar guards are maintained by its own migrations.
+ALTER TABLE public.turma_disciplinas ADD COLUMN id uuid DEFAULT gen_random_uuid();
+ALTER TABLE public.periodos_letivos ADD COLUMN id uuid DEFAULT gen_random_uuid();
+CREATE TABLE public.calendario_avaliacoes(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),escola_id uuid NOT NULL,ano_letivo_id uuid NOT NULL,periodo_letivo_id uuid NOT NULL,turma_id uuid NOT NULL,turma_disciplina_id uuid NOT NULL,estado text NOT NULL,data date,inicio time,fim time);
+GRANT SELECT,INSERT,UPDATE ON public.calendario_avaliacoes TO authenticated;
+GRANT SELECT ON public.professores,public.turma_disciplinas_professores,public.periodos_letivos TO authenticated;

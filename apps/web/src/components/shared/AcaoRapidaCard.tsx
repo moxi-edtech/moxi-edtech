@@ -8,6 +8,7 @@ type AcaoRapidaCardProps = {
   label: string;
   sublabel?: string;
   href?: string;
+  prefetch?: boolean;
   onClick?: () => void;
   buttonRef?: Ref<HTMLButtonElement>;
   dialogOpen?: boolean;
@@ -17,6 +18,10 @@ type AcaoRapidaCardProps = {
   dashboardCompact?: boolean;
   /** Same dashboard card with reduced spacing for the student mobile portal. */
   mobileCompact?: boolean;
+  /** Opt-in tile layout for dashboard shortcuts; leaves all operational rows unchanged. */
+  portalTile?: boolean;
+  /** Portal home: quiet icon treatments and no decorative shadows. */
+  portalClean?: boolean;
   emphasizeSublabel?: boolean;
   /** Missing data is not a disabled destination. */
   unavailable?: boolean;
@@ -30,6 +35,7 @@ export default function AcaoRapidaCard({
   label,
   sublabel,
   href,
+  prefetch,
   onClick,
   buttonRef,
   dialogOpen,
@@ -38,6 +44,8 @@ export default function AcaoRapidaCard({
   compact = false,
   dashboardCompact = false,
   mobileCompact = false,
+  portalTile = false,
+  portalClean = false,
   emphasizeSublabel = false,
   unavailable = false,
   needsAttention = false,
@@ -49,25 +57,32 @@ export default function AcaoRapidaCard({
 
   if (dashboardCompact) {
     const tone = operationalCardTone({ unavailable: disabled || unavailable, needsAttention });
-    const className = (mobileCompact
+    const iconTone = portalClean
+      ? (tone === "neutral" || tone === "attention" ? "bg-muted text-foreground" : "bg-accent text-accent-foreground")
+      : operationalCardIconClasses[tone];
+    const className = (portalTile
+      ? "group flex h-full min-h-24 w-full min-w-0 flex-col items-start gap-3 rounded-xl border border-border bg-card p-3 text-left"
+      : portalClean
+      ? "group flex h-full min-h-16 w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-3 text-left"
+      : mobileCompact
       ? "group flex h-full min-h-16 w-full min-w-0 items-center gap-2.5 rounded-xl border border-border bg-card p-3 text-left shadow-sm"
-      : "group flex h-full min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-sm") + " transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+      : "group flex h-full min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-sm") + " klasse-portal-operational-card transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
     const content = (
       <>
-        <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl [&>svg]:size-4 ${operationalCardIconClasses[tone]}`}>
+        <span aria-hidden="true" data-portal-tone={tone} className={`flex shrink-0 items-center justify-center rounded-xl ${portalClean ? "h-9 w-9 [&>svg]:size-[18px]" : "h-8 w-8 [&>svg]:size-4"} ${iconTone}`}>
           {disabled ? <Lock className="h-4 w-4" /> : icon}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium leading-snug text-foreground">{label}</span>
-          {sublabel && <span className={`mt-1 block break-words leading-snug ${emphasizeSublabel ? "text-base font-semibold tabular-nums text-foreground" : "text-xs text-muted-foreground"}`}>{sublabel}</span>}
+        <span className={portalTile ? "w-full min-w-0 flex-1" : "min-w-0 flex-1"}>
+          <span className={portalTile ? "block break-words text-[13px] font-medium leading-[1.4] text-foreground sm:text-sm" : "block text-sm font-medium leading-[1.4] text-foreground"}>{label}</span>
+          {sublabel && <span className={`mt-1 block break-words leading-[1.45] ${emphasizeSublabel ? "text-base font-semibold tabular-nums text-foreground" : "text-xs text-muted-foreground"}`}>{sublabel}</span>}
           {disabled && disabledReason && <span className="mt-1 block text-xs leading-snug text-muted-foreground">{disabledReason}</span>}
         </span>
-        {!disabled && (href || onClick) && <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />}
+        {!portalTile && !disabled && (href || onClick) && <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />}
       </>
     );
     if (disabled) return <div aria-disabled="true" className={className + " opacity-60"}>{content}</div>;
     if (onClick) return <button ref={buttonRef} type="button" onClick={onClick} aria-haspopup={dialogOpen !== undefined ? "dialog" : undefined} aria-expanded={dialogOpen} className={className + " hover:border-ring"}>{content}</button>;
-    if (href) return <Link href={href} className={className + " hover:border-ring"}>{content}</Link>;
+    if (href) return <Link href={href} prefetch={prefetch} className={className + " hover:border-ring"}>{content}</Link>;
     return <div className={className}>{content}</div>;
   }
 
@@ -124,7 +139,7 @@ export default function AcaoRapidaCard({
 
   if (href) {
     return (
-      <Link href={href} className="block">
+      <Link href={href} prefetch={prefetch} className="block">
         {inner}
       </Link>
     );

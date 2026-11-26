@@ -64,7 +64,7 @@ export default function ProfessorIntervencoesPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24">
-      <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
+      <div className={`${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 space-y-6`}>
         
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <DashboardHeader
@@ -79,15 +79,15 @@ export default function ProfessorIntervencoesPage() {
         </header>
 
         {loadError ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700"><p className="font-black">Não foi possível carregar as intervenções.</p><p className="mt-1">{loadError}</p><button type="button" onClick={() => void loadData()} className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white">Tentar novamente</button></div>
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700"><p className="font-semibold">Não foi possível carregar as intervenções.</p><p className="mt-1">{loadError}</p><button type="button" onClick={() => void loadData()} className="mt-3 rounded-lg bg-rose-700 px-3 py-2 text-xs font-semibold text-white">Tentar novamente</button></div>
         ) : loading ? (
           <ProfessorIntervencoesSkeleton />
         ) : interventions.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-black text-foreground">Sem intervenções pendentes</h3>
+            <h3 className="text-base font-semibold text-foreground">Sem intervenções pendentes</h3>
             <p className="text-xs font-medium text-muted-foreground max-w-sm mx-auto">
               Todas as ações de acompanhamento pedagógico estão em dia.
             </p>
@@ -97,10 +97,10 @@ export default function ProfessorIntervencoesPage() {
             {interventions.map((item) => (
               <div
                 key={item.id}
-                className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-3"
+                className="rounded-xl border border-border bg-card p-5  space-y-3"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase bg-amber-50 text-amber-800 border border-amber-200">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase bg-amber-50 text-amber-800 border border-amber-200">
                     <AlertTriangle size={14} />
                     {item.tipo.replace("_", " ")}
                   </span>
@@ -110,7 +110,7 @@ export default function ProfessorIntervencoesPage() {
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-black text-foreground">
+                  <h4 className="text-sm font-semibold text-foreground">
                     {item.alunos?.nome || item.alunos?.nome_completo || `Aluno ${item.aluno_id.slice(0, 8)}`}
                   </h4>
                   <p className="text-xs font-semibold text-muted-foreground">Turma: {item.turmas?.nome || item.turma_id.slice(0, 8)}</p>
@@ -129,7 +129,7 @@ export default function ProfessorIntervencoesPage() {
                     type="button"
                     onClick={() => completeIntervention(item.id)}
                     disabled={updatingId === item.id || item.status === "concluida"}
-                    className="klasse-portal-cta inline-flex min-h-11 w-full items-center justify-center px-4 py-2 rounded-xl text-sm font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                    className="klasse-portal-cta inline-flex min-h-11 w-full items-center justify-center px-4 py-2 rounded-xl text-sm font-semibold  disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   >
                     {updatingId === item.id ? "A guardar…" : item.status === "concluida" ? "Concluída" : "Concluir Acção"}
                   </button>

@@ -8,6 +8,7 @@ import { parseDistribution,distributionError,distributionResult,rpcArgs,recipien
 export const dynamic="force-dynamic";
 export const runtime="nodejs";
 const headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow"};
+function reportLogo(escolaId:string,reason:string){if(reason!=="not_configured")console.warn("[provas] print institutional logo unavailable",{escolaId,reason});}
 const fail=(message:string,status:number)=>new Response(message,{status,headers:{...headers,"Content-Type":"text/plain; charset=utf-8"}});
 function printResponse(html:string,nonce:string){
  return new Response(html,{headers:{...headers,"Content-Type":"text/html; charset=utf-8","Content-Security-Policy":"default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'nonce-"+nonce+"'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}});
@@ -25,11 +26,14 @@ export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
   if(school.error)return fail("Não foi possível gerar a folha.",500);
   if(!school.data)return fail("Escola não encontrada.",404);
   const nonce=randomUUID();
-  const logo=await loadProvaLogo(school.data.logo_url,access.escolaId);
+  const logo=await loadProvaLogo(school.data.logo_url,access.escolaId,undefined,undefined,reason=>reportLogo(access.escolaId,reason));
   return printResponse(folhaGenericaHtml(school.data.nome,{nonce,logo}),nonce);
  }
  if(!z.string().uuid().safeParse(id).success)return fail("Identificador inválido.",400);
- if(mode!==null&&mode!=="imprimir")return fail("Modalidade inválida.",400);
+ const conference=mode==="conferencia",historical=mode==="historico";
+ if(historical&&!access.admin)return fail("Sem autorização para reimpressão histórica.",403);
+ if(conference&&!access.admin)return fail("Sem autorização para conferência.",403);
+ if(mode!==null&&mode!=="imprimir"&&!conference&&!historical)return fail("Modalidade inválida.",400);
  let recipients:PrintRecipient[]|undefined;
  let distributionVersion:number|undefined;
  if(mode==="imprimir"){
@@ -47,8 +51,9 @@ export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
   if(!items.success)return fail("Destinatários inválidos.",500);
   recipients=items.data;
  }else if(q.has("turmas")||q.has("matricula")||q.has("snapshot"))return fail("Modalidade inválida.",400);
+ const proof=access.db.from("provas_pedagogicas").select("titulo,tipo_prova,apresentacao,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo,versao,data_realizacao,hora_inicio").eq("escola_id",access.escolaId).eq("id",id);
  const [row,school]=await Promise.all([
-  access.db.from("provas_pedagogicas").select("titulo,tipo_prova,apresentacao,classe,disciplina,ano_lectivo,trimestre,duracao,serie,conteudo,versao").eq("escola_id",access.escolaId).eq("id",id).eq("estado","aprovada").maybeSingle(),
+  (conference?proof.in("estado",["rascunho","em_revisao"]):historical?proof.eq("estado","arquivada").not("aprovado_em","is",null):proof.eq("estado","aprovada")).maybeSingle(),
   access.db.from("escolas").select("nome,logo_url").eq("id",access.escolaId).maybeSingle()
  ]);
  if(row.error||school.error)return fail("Não foi possível gerar a prova.",500);
@@ -58,8 +63,15 @@ export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
  const parsed=provaSchema.safeParse(snapshot);
  if(!parsed.success)return fail("Conteúdo inválido.",422);
  const nonce=randomUUID();
- const logo=await loadProvaLogo(school.data.logo_url,access.escolaId);
- const html=provaHtml(parsed.data,school.data.nome,{nonce,recipients,logo,includeName:q.get("nome")!=="0"});
+ const logo=await loadProvaLogo(school.data.logo_url,access.escolaId,undefined,undefined,reason=>reportLogo(access.escolaId,reason));
+ let schedules:Record<string,{data:string;inicio:string}>|undefined;
+ if(recipients?.length){
+   const ids=[...new Set(recipients.map(r=>r.turma_id))];
+   const events=await access.db.from("calendario_avaliacoes").select("turma_id,data,inicio").eq("escola_id",access.escolaId).eq("prova_id",id).eq("estado","publicado").in("turma_id",ids);
+   if(events.error)return fail("Não foi possível confirmar o agendamento das turmas.",500);
+   schedules=Object.fromEntries((events.data??[]).map((e:{turma_id:string;data:string;inicio:string})=>[e.turma_id,{data:e.data,inicio:e.inicio}]));
+ }
+ const html=provaHtml(parsed.data,school.data.nome,{nonce,recipients,logo,draft:conference,historical,schedules,includeName:q.get("nome")!=="0"});
  if(Buffer.byteLength(html,"utf8")>4*1024*1024)return fail("O lote ultrapassa o limite de impressão. Seleccione um tamanho de lote menor.",413);
  return printResponse(html,nonce);
 }

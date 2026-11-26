@@ -13,7 +13,7 @@ export function PortalSurface({
   as?: "div" | "article" | "section";
 }) {
   return (
-    <Element className={`min-w-0 rounded-xl border border-border bg-card p-3.5 text-foreground sm:p-4 ${className}`}>
+    <Element className={`klasse-portal-surface min-w-0 rounded-xl border border-border bg-card p-3.5 text-foreground sm:p-4 ${className}`}>
       {children}
     </Element>
   );

@@ -163,7 +163,7 @@ test("institutional branding uses only the school storage path and a bounded ima
  const url=origin+"/storage/v1/object/public/school-branding/escolas/"+id+"/logo/123.png";
  const png="iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==";
  let calls=0;
- const fetcher=async(input,options)=>{calls++;assert.equal(String(input),url);assert.equal(options.redirect,"error");assert.equal(options.credentials,"omit");return new Response(Buffer.from(png,"base64"),{headers:{"content-type":"image/png"}});};
+ const fetcher=async(input,options)=>{calls++;assert.equal(String(input),url);assert.equal(options.redirect,"error");assert.equal(options.credentials,"omit");assert.equal(options.cache,"no-store");return new Response(Buffer.from(png,"base64"),{headers:{"content-type":"image/png"}});};
  const logo=await loadProvaLogo(url,id,fetcher,[origin]);
  assert.equal(logo,"data:image/png;base64,"+png);
  for(const invalid of [null,"https://evil.test/logo.png",url.replace(id,"00000000-0000-4000-8000-000000000002"),url+"?token=abc",url.replace(".png",".svg"),url.replace("https:","http:")]){
@@ -171,6 +171,17 @@ test("institutional branding uses only the school storage path and a bounded ima
   assert.equal(await loadProvaLogo(invalid,id,fetcher,[origin]),null);
  }
  assert.equal(calls,1);
+ assert.equal(await loadProvaLogo(url,id,async()=>new Response(Buffer.from(png,"base64"),{headers:{"content-type":"application/octet-stream"}}),[origin]),logo);
+ // Curtume regression: recognized raster with a stale/wrong raster Content-Type.
+ for(const mime of ["image/jpeg","image/webp","image/jpg","image/x-png","binary/octet-stream",null]){
+  const reports=[];
+  assert.equal(await loadProvaLogo(url,id,async()=>new Response(Buffer.from(png,"base64"),{headers:mime?{"content-type":mime}:{}}),[origin],reason=>reports.push(reason)),logo);
+  assert.deepEqual(reports,[]);
+ }
+ for(const mime of ["text/html","image/svg+xml","application/xml","application/javascript","text/plain"]){
+  assert.equal(await loadProvaLogo(url,id,async()=>new Response(Buffer.from(png,"base64"),{headers:{"content-type":mime}}),[origin]),null);
+ }
+ assert.equal(await loadProvaLogo(url,id,async()=>new Response("<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>",{headers:{"content-type":"image/png"}}),[origin]),null);
  assert.equal(await loadProvaLogo(url,id,async()=>new Response("fake",{headers:{"content-type":"image/png"}}),[origin]),null);
  assert.equal(await loadProvaLogo(url,id,async()=>new Response("large",{headers:{"content-type":"image/png","content-length":"3000000"}}),[origin]),null);
  assert.equal(await loadProvaLogo(url,id,async()=>{throw Error("network")},[origin]),null);
@@ -193,7 +204,8 @@ test("question templates are contextual without restricting formats or mutating 
  assert.equal(questionTemplate("calculo").linhas,6);
  const a=questionTemplate("escolha"), b=questionTemplate("escolha");a.alternativas[0]="Changed";assert.equal(b.alternativas[0],"");
  assert.equal(suggestedTypes("Matemática")[0],"calculo");
- assert.equal(suggestedTypes("Língua Portuguesa")[0],"texto");
+ assert.equal(suggestedTypes("Língua Portuguesa")[0],"discursiva");
+ assert.ok(!suggestedTypes("Língua Portuguesa").includes("texto"));
  assert.equal(structures.length,3);
  assert.equal(formatCotacao(0),"0");assert.equal(formatCotacao(2000),"20");assert.equal(formatCotacao(125),"1,25");
 });
@@ -351,4 +363,173 @@ test("standard proof titles are automatic; custom and legacy titles are preserve
  assert.equal(provaDisplayTitle(custom),"Avaliação especial de Física");
  assert.equal(tituloAoMudarTipo(custom,"trimestral"),"Prova Trimestral");
  assert.equal(provaDisplayTitle({...base,tipo_prova:undefined}),"Prova — Física");
+});
+
+test("structure blocks do not consume question numbers or answer spaces",()=>{
+ const {blockNumbering,questionTypes,structureTypes,questionTemplate,suggestedTypes}=require("../../src/lib/provas/questionTemplates.ts");
+ const blocks=["grupo","texto","discursiva","alinea","texto","alinea","discursiva","grupo","texto","discursiva"].map((tipo,i)=>({...questionTemplate(tipo),texto:"Bloco "+i,linhas:0}));
+ assert.deepEqual(blockNumbering(blocks).map(x=>x.prefix),[null,null,"1.","a)",null,"b)","2.",null,null,"1."]);
+ assert.ok(structureTypes.every(x=>!questionTypes.includes(x)&&!suggestedTypes("Português").includes(x)));
+ const html=provaHtml({...base,conteudo:blocks},"Escola");
+ assert.deepEqual([...html.matchAll(/class="question-number">([^<]+)/g)].map(x=>x[1]),["1.","a)","b)","2.","1."]);
+ assert.equal((html.match(/class="apoio"/g)||[]).length,3);
+ assert.equal((html.match(/class="cotacao"/g)||[]).length,0);
+});
+
+test("modular arithmetic starters, editable operators, terminal equality and grouping round-trip",()=>{
+ const {modelStarter,composeExpression}=require("../../src/lib/provas/formulaModels.ts");
+ const {recoverEditableExpression}=require("../../src/lib/provas/formulaRecovery.ts");
+ const seed=modelStarter("soma_fracoes",["2","3","1","4"]).map((p,id)=>({...p,id}));
+ assert.equal(seed.length,2);
+ assert.equal(composeExpression([seed[0],{...seed[1],operator:"-"}],true),"\\frac{2}{3}-\\frac{1}{4}=");
+ for(const source of ["1+2-4-7=","\\frac{2}{3}+\\frac{1}{4}","\\frac{2}{3}\\times \\frac{5}{7}+\\frac{1}{2}=","(5+3)\\times 2-4="]){
+  const recovered=recoverEditableExpression(source);
+  assert.ok(recovered.parts.length>=2,source);
+  assert.ok(recovered.parts.every(p=>!("existing" in p)),source);
+  assert.equal(composeExpression(recovered.parts,recovered.ending),source);
+ }
+ assert.equal(composeExpression([{...seed[0],opens:1}]),null);
+ assert.equal(composeExpression(seed.map((p,i)=>({...p,opens:i===0?1:0,closes:i===1?1:0})),true),"(\\frac{2}{3}+\\frac{1}{4})=");
+});
+
+test("groups derive roman headings, totals and membership without rewriting old titles",()=>{
+ const {groupSummaries,groupHeading,questionTemplate,moveChangesGroup,groupTitleInput}=require("../../src/lib/provas/questionTemplates.ts");
+ const g={tipo:"grupo",texto:"IV Grupo — Aritmética",linhas:0},h={tipo:"grupo",texto:"Grupo",linhas:0};
+ const a={tipo:"discursiva",texto:"A",linhas:2,cotacao_cent:450},b={tipo:"alinea",texto:"B",linhas:1,cotacao_cent:350},c={tipo:"calculo",texto:"C",linhas:3,cotacao_cent:1200},support={tipo:"texto",texto:"Leia",linhas:0};
+ const blocks=[g,support,a,b,h,c];
+ const groups=groupSummaries(blocks);
+ assert.deepEqual(groups.map(x=>[x.title,x.questions,x.total,x.assigned]),[["I Grupo — Aritmética",2,800,2],["II Grupo",1,1200,1]]);
+ assert.equal(groupHeading(4,"II Grupo: Álgebra"),"IV Grupo — Álgebra");
+ assert.equal(groupTitleInput("Aritmética "),"Aritmética ");
+ assert.equal(questionTemplate("grupo").texto,"Grupo");
+ assert.equal(moveChangesGroup(blocks,2,3),false);
+ assert.equal(moveChangesGroup(blocks,2,5),true);
+ assert.equal(moveChangesGroup(blocks,4,1),true);
+ assert.equal(groupSummaries([g,h,c])[0].questions,0);
+ const html=provaHtml({...base,conteudo:blocks},"Escola");
+ assert.match(html,/I Grupo — Aritmética<span class="group-total"> · 8 val\./);
+ assert.match(html,/II Grupo<span class="group-total"> · 12 val\./);
+ assert.doesNotMatch(html,/IV Grupo — Aritmética/);
+ assert.doesNotMatch(provaHtml({...base,conteudo:[g,{...a,cotacao_cent:undefined}]},"Escola"),/<span class="group-total">/);
+});
+
+test("recursive editor round-trips every model and supports nested arithmetic",()=>{
+ const {formulaModels,modelExpression}=require("../../src/lib/provas/formulaModels.ts");
+ const {parseMath,modelMathTree,serializeMath,validMathExpression,mathAt,replaceMathAt,tokenNode,mathTreeValid}=require("../../src/lib/provas/formulaAst.ts");
+ for(const model of formulaModels){
+  const source=modelExpression(model.id,model.fields.map(f=>f.example)),tree=modelMathTree(model.id);
+  assert.ok(tree,model.id);
+  assert.equal(serializeMath(tree),source,model.id);
+  assert.equal(validMathExpression(tree),source,model.id);
+ }
+ const sources=["\\frac{2x+5}{3x-1}","(2x+3)^{x-1}","\\sqrt{3x^{2}+5x-7}","3x^{3}-2x^{2}+5x-7=0","\\sin(2x+30^{\\circ})-\\cos(x)=0","\\int_{0}^{5}(3x^{2}+2x-1)\\,dx","\\frac{2}{3}\\times \\frac{5}{7}-\\frac{1}{4}=","1+2-4-7="];
+ for(const source of sources){const tree=parseMath(source);assert.ok(tree,source);assert.equal(serializeMath(tree),source);assert.equal(validMathExpression(tree),source);}
+ const fraction=parseMath("\\frac{2}{3}");
+ const numerator=[{index:0,slot:"numerator"}];
+ const next=replaceMathAt(fraction,numerator,[...mathAt(fraction,numerator),tokenNode("x"),tokenNode("+"),tokenNode("5")]);
+ assert.equal(validMathExpression(next),"\\frac{2x+5}{3}");
+ assert.equal(serializeMath(fraction),"\\frac{2}{3}","original immutable");
+ const replaced=replaceMathAt(next,[{index:0,slot:"denominator"}],parseMath("\\sqrt{x+1}"));
+ assert.equal(validMathExpression(replaced),"\\frac{2x+5}{\\sqrt{x+1}}");
+ assert.equal(validMathExpression(replaceMathAt(fraction,numerator,[])),null);
+ assert.equal(parseMath("\\text{2026}+1"),null);
+ assert.equal(parseMath("\\htmlClass{bad}{x}"),null);
+ assert.equal(validMathExpression([tokenNode("x"),tokenNode("+")]),null);
+ assert.equal(validMathExpression([tokenNode("x"),tokenNode("=")]),"x=");
+ assert.equal(validMathExpression([tokenNode("\\sin"),tokenNode("x")]),"\\sin x");
+ let deep=[tokenNode("x")];for(let i=0;i<9;i++)deep=[{kind:"root",body:deep}];
+ assert.equal(mathTreeValid(deep),false);
+ assert.equal(mathTreeValid(Array.from({length:161},()=>tokenNode("x"))),false);
+ assert.equal(mathTreeValid([tokenNode("1".repeat(301))]),false);
+});
+
+test("bounded matrix, determinant and system validation and cell editing",()=>{
+ const {safeLatex}=require("../../src/lib/provas/rich.ts");
+ const {parseMath,serializeMath,validMathExpression,replaceMathAt,mathSlots}=require("../../src/lib/provas/formulaAst.ts");
+ const good=["\\begin{cases}2x+y=10\\\\x-y=2\\end{cases}","\\begin{pmatrix}2&3\\\\4&5\\end{pmatrix}","\\begin{vmatrix}\\frac{1}{2}&x\\\\3&4\\end{vmatrix}","\\begin{pmatrix}1&2&3\\\\4&5&6\\end{pmatrix}"];
+ for(const latex of good){assert.ok(safeLatex(latex),latex);const tree=parseMath(latex);assert.ok(tree,latex);assert.equal(serializeMath(tree),latex);assert.equal(validMathExpression(tree),latex);}
+ const invalid=["\\begin{array}1&2\\end{array}","\\begin{pmatrix}1&2\\\\3\\end{pmatrix}","\\begin{vmatrix}1&2&3\\\\4&5&6\\end{vmatrix}","\\begin{cases}x=1\\end{cases}","\\begin{pmatrix}1&\\htmlClass{a}{x}\\\\3&4\\end{pmatrix}","\\begin{pmatrix}1&2\\\\3&4\\end{vmatrix}","x&y","\\begin{pmatrix}1&2\\\\3&\\begin{pmatrix}4\\end{pmatrix}\\end{pmatrix}","\\begin{pmatrix}1&&2\\\\3&4&5\\end{pmatrix}","\\begin{pmatrix}1&2&3&4&5\\end{pmatrix}"];
+ for(const latex of invalid)assert.equal(safeLatex(latex),false,latex);
+ const tree=parseMath(good[1]);assert.equal(mathSlots(tree[0]).length,4);
+ const next=replaceMathAt(tree,[{index:0,slot:"cell:1:0"}],parseMath("\\frac{x+1}{2}"));
+ assert.equal(validMathExpression(next),"\\begin{pmatrix}2&3\\\\\\frac{x+1}{2}&5\\end{pmatrix}");
+ assert.equal(serializeMath(tree),good[1]);
+ assert.equal(validMathExpression(replaceMathAt(tree,[{index:0,slot:"cell:0:0"}],[])),null);
+ const proof=provaHtml({...base,conteudo:good.map(latex=>({tipo:"calculo",texto:latex,linhas:2,rich:{version:1,segments:[{kind:"math",latex}]}}))},"Escola");
+ assert.equal((proof.match(/<mtable/g)||[]).length,4);
+});
+
+test("illustrated qualitative questions retain existing scoring, reject external sources and deduplicate print figures",()=>{
+ const {provaSchema}=require("../../src/lib/provas/schema.ts");
+ const {cotacaoStatus}=require("../../src/lib/provas/cotacao.ts");
+ const {figureDimensions,safeProvaFigure}=require("../../src/lib/provas/figures.ts");
+ const src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==";
+ const figure={src,alt:'Figura <script>alert(1)</script>'};
+ const block={tipo:"desenho",texto:"Observe e pinte.",linhas:0,figuras:[figure,figure]};
+ assert.deepEqual(figureDimensions(src),{width:80,height:40});
+ assert.equal(safeProvaFigure(figure)?.alt,figure.alt);
+ assert.equal(provaSchema.safeParse({...base,conteudo:[block]}).success,true);
+ assert.equal(cotacaoStatus([block],0).ready,true);
+ assert.equal(cotacaoStatus([{...block,cotacao_cent:100}],0).ready,false);
+ for(const bad of ["https://evil.test/x.png","data:image/svg+xml;base64,PHN2Zz4=","data:image/png;base64,AAAA",src+"!"]){
+  const badBlock={...block,figuras:[{src:bad,alt:"Figura"}]};
+  assert.equal(provaSchema.safeParse({...base,conteudo:[badBlock]}).success,false);
+  assert.doesNotMatch(provaHtml({...base,conteudo:[badBlock]},"Escola"),/class="question-figure"/);
+ }
+ assert.equal(provaSchema.safeParse({...base,conteudo:[{...block,tipo:"grupo"}]}).success,false);
+ assert.equal(provaSchema.safeParse({...base,conteudo:[{...block,figuras:Array(7).fill(figure)}]}).success,false);
+ assert.equal(provaSchema.safeParse({...base,conteudo:Array(13).fill(block)}).success,false);
+ const recipient={nome:"Estudante",turma:"A",numero_chamada:null};
+ const html=provaHtml({...base,conteudo:[block]},"Escola",{recipients:[recipient,recipient]});
+ assert.equal(html.split(src).length-1,1,"only one encoded asset in the nominal document");
+ assert.equal((html.match(/class="question-figure"/g)||[]).length,4);
+ assert.match(html,/Figura &lt;script&gt;/);
+ assert.doesNotMatch(html,/<script\b/);
+ assert.doesNotMatch(html,/class="cotacao"/);
+});
+
+
+test("school-local schedule and raster logo in single proof",()=>{
+ const logo="data:image/png;base64,AAAA";
+ const html=provaHtml({...base,data_realizacao:"2026-12-07",hora_inicio:"08:30:00"},"Curtume",{logo,draft:true});
+ assert.match(html,/<img class="school-logo"/);
+ assert.match(html,/07\/12\/2026/);
+ assert.match(html,/Hora: 08:30/);
+ assert.match(html,/RASCUNHO/);
+});
+
+
+test("nominal print applies class-specific dates and labels historical copies",()=>{
+ const one={matricula_id:"1",turma_id:"A",turma:"8ª A",letra:"A",curso:"Geral",turno:"M",sala:null,nome:"Aluno A",numero_processo:null,numero_chamada:null};
+ const two={...one,matricula_id:"2",turma_id:"B",nome:"Aluno B"};
+ const html=provaHtml({...base,data_realizacao:"2026-12-07",hora_inicio:"08:00"},"Curtume",{recipients:[one,two],schedules:{A:{data:"2026-12-08",inicio:"10:30:00"}}});
+ assert.match(html,/08\/12\/2026/);assert.match(html,/Hora: 10:30/);assert.match(html,/07\/12\/2026/);assert.match(html,/Hora: 08:00/);
+ assert.match(provaHtml(base,"Curtume",{historical:true}),/REIMPRESSÃO HISTÓRICA/);
+});
+
+
+test("explicit answer format overrides question type without changing legacy layouts",()=>{
+ const {respostaLayout}=require("../../src/lib/provas/layout.ts");
+ const {blockSchema}=require("../../src/lib/provas/schema.ts");
+ assert.equal(respostaLayout("calculo",6).kind,"box");
+ assert.equal(respostaLayout("discursiva",6).kind,"lines");
+ assert.deepEqual(respostaLayout("alinea",6,"retangulo"),{kind:"box",count:6,heightMm:48});
+ assert.deepEqual(respostaLayout("calculo",3,"linhas"),{kind:"lines",count:3,heightMm:24});
+ assert.equal(respostaLayout("escolha",0,"nenhum").kind,"none");
+ const item={tipo:"alinea",texto:"Mostra os cálculos.",linhas:6,resposta_formato:"retangulo"};
+ assert.ok(blockSchema.safeParse(item).success);
+ for(const patch of [{resposta_formato:"other"},{linhas:0},{linhas:2},{resposta_formato:"nenhum"},{tipo:"grupo"}])assert.equal(blockSchema.safeParse({...item,...patch}).success,false);
+ assert.match(provaHtml({...base,conteudo:[item]},"Curtume"),/class="espaco" style="height:48mm"/);
+ assert.equal((provaHtml({...base,conteudo:[{...item,tipo:"calculo",linhas:3,resposta_formato:"linhas"}]},"Curtume").match(/class="linha"/g)||[]).length,3);
+ assert.doesNotMatch(provaHtml({...base,conteudo:[{...item,linhas:0,resposta_formato:"nenhum"}]},"Curtume"),/class="espaco"|class="linha"/);
+});
+
+
+test("assessment calendar separates class schedules, escapes names and excludes unpublished rows",()=>{
+ const {assessmentCalendarHtml}=require("../../src/lib/academico/assessment-calendar-print.ts");
+ const base={turmaId:"a",turma:"7A <script>",disciplina:"Matemática",tipo:"Prova trimestral",data:"2026-12-07",inicio:"08:00",fim:"09:30",estado:"publicado"};
+ const input={school:"Curtume & Escola",year:"2026/2027",term:1,nonce:"nonce",rows:[base,{...base,turmaId:"b",turma:"7B",inicio:"14:00",fim:"15:30"},{...base,disciplina:"RASCUNHO_TEST",estado:"rascunho"},{...base,disciplina:"CANCELADO_TEST",estado:"cancelado"}]};
+ const html=assessmentCalendarHtml(input);
+ assert.match(html,/@page\{size:A4/);assert.match(html,/7A &lt;script&gt;/);assert.match(html,/Curtume &amp; Escola/);assert.match(html,/08:00 – 09:30/);assert.match(html,/14:00 – 15:30/);assert.equal((html.match(/<section>/g)||[]).length,2);assert.doesNotMatch(html,/RASCUNHO_TEST|CANCELADO_TEST/);
+ const draft=assessmentCalendarHtml({...input,conference:true});assert.match(draft,/DOCUMENTO DE CONFERÊNCIA/);assert.match(draft,/RASCUNHO_TEST/);assert.doesNotMatch(draft,/CANCELADO_TEST/);
 });

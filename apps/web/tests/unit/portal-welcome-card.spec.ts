@@ -1,0 +1,110 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+const read = (path: string) => readFileSync(new URL("../../src/" + path, import.meta.url), "utf8");
+
+test("aluno e professor partilham a identidade institucional sem novas consultas", () => {
+  const student = read("components/aluno/dashboard/DashboardLoader.tsx");
+  const teacher = read("app/professor/page.tsx");
+  const welcome = read("components/portal/ui/PortalWelcomeCard.tsx");
+  assert.match(student, /<PortalWelcomeCard role="aluno"/);
+  assert.match(teacher, /<PortalWelcomeCard[\s\S]*?role="professor"/);
+  assert.match(welcome, /Africa\/Luanda/);
+  assert.match(welcome, /aria-hidden="true"/);
+  assert.match(welcome, /break-words/);
+  assert.doesNotMatch(welcome, /useEffect|useState|fetch\(|"use client"/);
+  assert.match(teacher, /prefetch=\{false\} label="Provas"/);
+});
+
+test("assinatura estática e cores do crachá limitadas ao cartão", () => {
+  const css = read("app/globals.css");
+  const asset = readFileSync(new URL("../../public/icons/klasse-welcome-signature.svg", import.meta.url), "utf8");
+  assert.match(css, /--welcome-amber: #fea513/);
+  assert.match(css, /--welcome-forest: #124527/);
+  assert.match(css, /background-repeat: repeat-x/);
+  assert.match(asset, /viewBox="0 0 96 24"/);
+  assert.doesNotMatch(asset, /<script|https?:\/\/(?!www\.w3\.org)/);
+});
+
+test("professor não mascara indicadores indisponíveis com zero", () => {
+  const teacher = read("app/professor/page.tsx");
+  assert.match(teacher, /pendenciasResumo\?\.avaliacoes_pendentes \?\? null/);
+  assert.match(teacher, /pendenciasResumo\?\.faltas_a_lancar \?\? null/);
+  assert.match(teacher, /Dados indisponíveis/);
+  assert.doesNotMatch(teacher, /animate-ping|blur-3xl/);
+});
+
+test("saudação tem uma única data e a fonte local tem licença e pesos reais", () => {
+  const welcome = read("components/portal/ui/PortalWelcomeCard.tsx");
+  const css = read("app/globals.css");
+  const layout = read("app/layout.tsx");
+  assert.equal((welcome.match(/<time\b/g) ?? []).length, 1);
+  assert.doesNotMatch(welcome, /shortFormatter|shortDate/);
+  assert.match(css, /font-weight: 100 800/);
+  assert.match(css, /sora-variable\.ttf/);
+  assert.match(layout, /rel="preload" href="\/fonts\/sora-variable\.ttf"/);
+  assert.doesNotMatch(layout, /userScalable: false|maximumScale: 1|fonts\.googleapis\.com/);
+  assert.ok(readFileSync(new URL("../../public/fonts/sora-variable.ttf", import.meta.url)).length > 10000);
+  assert.match(readFileSync(new URL("../../public/fonts/OFL-Sora.txt", import.meta.url), "utf8"), /SIL OPEN FONT LICENSE/i);
+});
+
+test("operations shares the cultural signature without changing academic authority or routes", () => {
+  const banner = read("components/layout/escola-admin/EstadoVitalBanner.tsx");
+  assert.match(banner, /<PortalCulturalSignature/);
+  assert.match(banner, /if \(compact\)/);
+  assert.match(banner, /Diário bloqueado/);
+  assert.match(banner, /href=\{calendarHref\}/);
+  assert.match(banner, /<PortalSheet open=\{eventOpen/);
+  const css = read("app/globals.css");
+  assert.match(css, /\.klasse-portal-theme \.klasse-welcome-card,\s*\.klasse-welcome-card\.klasse-operations-academic-card/);
+  assert.match(css, /background-position: center top/);
+  assert.match(css, /background-size: 80px 20px/);
+  const calendar = read("app/professor/calendario/page.tsx");
+  assert.match(calendar, /selectedEvent = items\.find/);
+  assert.match(calendar, /<PortalSheet open=\{eventOpen/);
+  assert.match(calendar, /selectedEvent\.descricao/);
+});
+
+test("contextual financial actions use confirmed scope and an immutable upload selection", () => {
+  const finance = read("components/aluno/tabs/TabFinanceiro.tsx");
+  assert.match(finance, /loadedQuery === query/);
+  assert.match(finance, /controller.signal.aborted \|\| activeRequest.current !== controller/);
+  assert.match(finance, /draftFrom > draftTo/);
+  assert.match(finance, /setPaymentRows\(items.map/);
+  assert.match(finance, /paymentLock.current/);
+  assert.match(finance, /<PortalSheet open=\{detailOpen/);
+  assert.match(finance, /<PaymentDrawer/);
+  const absences = read("components/aluno/tabs/TabFaltas.tsx");
+  assert.match(absences, /scope === query \? data : null/);
+  assert.match(absences, /inFlight.current/);
+  assert.match(absences, /<PortalSheet open=\{detailOpen/);
+  const notes = read("app/professor/notas/page.tsx");
+  assert.match(notes, /loadedPautaScope === raaScope/);
+  assert.match(notes, /mostrarTrimestresInativos: showInactiveTerms/);
+  assert.match(notes, /<PortalSheet open=\{raaOpen/);
+  assert.match(notes, /<PortalSheet open=\{exportOpen/);
+});
+
+test("second round of sheets reuses authorized data without eager roster or timetable queries", () => {
+  const professor = read("app/professor/page.tsx");
+  const roster = read("components/professor/ProfessorTurmaRoster.tsx");
+  const calendar = read("app/professor/calendario/page.tsx");
+  const dashboard = read("components/aluno/dashboard/DashboardLoader.tsx");
+  const schedule = read("components/aluno/tabs/TabHorario.tsx");
+  const grades = read("components/aluno/academico/BoletimGradeGrid.tsx");
+  const notes = read("components/aluno/tabs/TabNotas.tsx");
+  assert.ok(professor.includes("<PortalSheet open={Boolean(selectedTurma)}"));
+  assert.ok(professor.includes("<PortalSheet open={Boolean(selectedLesson)}"));
+  assert.ok(professor.includes("{selectedTurma && <>"));
+  assert.ok(roster.includes("payload.turmaId !== turmaId"));
+  assert.ok(roster.includes("return () => ctrl.abort()"));
+  assert.ok(calendar.includes('item.tipo === "AVALIACAO_ESCOLAR" && item.data_fim < todayIso'));
+  assert.ok(calendar.includes("<PortalSheet open={historyOpen}"));
+  assert.ok(dashboard.includes("{lessonOpen && <TabHorario"));
+  assert.ok(schedule.includes("resolvedRequestKey === requestKey"));
+  assert.ok(grades.includes("const sheetOpen = Boolean(expandedId && sheetSubject && sheetTerm)"));
+  assert.ok(grades.includes("avaliacoes: locked ? [] : subject.avaliacoes"));
+  assert.ok(notes.includes("safeIsLiberado && !historicalRead && matriculaEncontrada"));
+  assert.ok(notes.includes("academicStatusScope === bulletinQuery"));
+});

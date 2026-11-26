@@ -75,6 +75,12 @@ try{
  };
  const assertLogo=path=>{const images=execFileSync("pdfimages",["-list",path],{encoding:"utf8"});assert.match(images,/\b80\s+40\b/,"embedded raster in actual PDF");};
  checkFooters(output);assertLogo(output);
+ const gridFormulas=["\\begin{cases}2x+y=10\\\\x-y=2\\end{cases}","\\begin{pmatrix}2&3\\\\4&5\\end{pmatrix}","\\begin{vmatrix}2&3\\\\4&5\\end{vmatrix}"];
+ const gridProof={...base,conteudo:gridFormulas.map(latex=>({tipo:"calculo",texto:latex,linhas:2,rich:{version:1,segments:[{kind:"math",latex}]}}))};
+ await page.setContent(provaHtml(gridProof,"Escola de teste",{draft:true,logo}),{waitUntil:"load"});
+ assert.equal(await page.locator("math mtable").count(),3);
+ for(const element of await page.locator("math mtable").all()){const box=await element.boundingBox();assert.ok(box&&box.width>0&&box.height>0,"visible mathematical grid");}
+
  await page.setContent(folhaGenericaHtml("Complexo Escolar Privado Adventista de Curtume",{nonce:"generic-test",logo}),{waitUntil:"load"});
  assert.equal(await page.locator(".blank-writing .linha").count(),18);
  const blankPdf=await page.pdf({preferCSSPageSize:true,printBackground:true});
@@ -143,4 +149,23 @@ try{
  assert.equal((await PDFDocument.load(layoutPdf)).getPageCount(),1);
  assert.match(checkFooters(layoutPath)[0],/Define energia/);
 
+
+ // Figures use the same private raster contract in preview and physical print.
+ const illustrated={...base,classe:"Pré-Escolar",disciplina:"Estudo do Meio",duracao:60,conteudo:[
+  {tipo:"desenho",texto:"Observe e pinte a figura.",linhas:0,figuras:[{src:logo,alt:"Figura A"},{src:logo,alt:"Figura B"}]},
+  {tipo:"desenho",texto:"Faça o seu desenho.",linhas:3}
+ ]};
+ await page.setContent(provaHtml(illustrated,"Escola de teste",{recipients:[one,two],nonce:"illustrated"}),{waitUntil:"load"});
+ assert.equal(await page.locator(".question-figure").count(),4);
+ assert.equal(await page.locator(".cotacao").count(),0);
+ for(const element of await page.locator(".question-figure").all()){
+  const bounds=await element.boundingBox();assert.ok(bounds&&bounds.width>0&&bounds.height>0);
+ }
+ const figurePdf=await page.pdf({preferCSSPageSize:true,printBackground:true});
+ const figurePath="apps/web/visual-evidence/provas/figuras-iniciacao.pdf";
+ await writeFile(figurePath,figurePdf);
+ const figureImages=execFileSync("pdfimages",["-list",figurePath],{encoding:"utf8"}).split("\n").filter(l=>/\b80\s+40\b/.test(l));
+ assert.ok(figureImages.length>=4,"all figures appear in actual nominal PDF");
+ assert.equal((await PDFDocument.load(figurePdf)).getPageCount(),2,"one qualitative illustrated page per student");
+ assert.equal(external.length,0,"figures do not make external requests");
 }finally{await browser.close();}

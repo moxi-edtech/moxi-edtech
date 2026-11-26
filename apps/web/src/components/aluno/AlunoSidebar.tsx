@@ -19,11 +19,11 @@ export default function AlunoSidebar({ escolaParam }: { escolaParam?: string | n
       <div data-slot="header">
         <SidebarHeader title="Portal do Aluno" subtitle="MoxiNexa" href={href("/aluno/dashboard")} />
       </div>
-      <div className="px-2">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <SidebarNav items={items} />
       </div>
       <SidebarFooter>
-        <div className="text-xs text-white/80">© 2025 MoxiNexa</div>
+        <div className="text-xs text-white/80">KLASSE</div>
       </SidebarFooter>
     </SidebarContainer>
   );

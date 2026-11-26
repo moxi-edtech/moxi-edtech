@@ -13,6 +13,9 @@ on:
       - 'apps/web/tests/browser/provas-distribuicao.mjs'
       - 'apps/web/visual-harness/provas*'
       - 'apps/web/src/components/ui/ModalShell.tsx'
+      - 'apps/web/src/components/ui/Notificacoes*.tsx'
+      - 'apps/web/src/components/ui/dialog.tsx'
+      - 'apps/web/tests/browser/notificacoes-responsive.mjs'
       - 'apps/web/src/app/escola/**/professor/provas/**'
       - 'apps/web/src/app/escola/**/secretaria/**/provas/**'
       - 'apps/web/src/app/escola/**/operacoes/provas/**'
@@ -57,7 +60,18 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204001000_provas_pedagogicas.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204021000_provas_pedagogicas.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204022000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204023000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204024000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204025000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204026000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204027000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204028000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204029000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204030000_provas_pedagogicas.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_isolated_test.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_system_import_test.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_figures_test.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_assigned_access_test.sql
   print:
     runs-on: ubuntu-latest
     steps:
@@ -136,6 +150,15 @@ jobs:
           PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
           PROVAS_BROWSER: webkit
         run: node apps/web/tests/browser/provas-mobile.mjs
+      - name: Responsive notification drawer (Chromium)
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
+        run: node apps/web/tests/browser/notificacoes-responsive.mjs
+      - name: Responsive notification drawer (WebKit)
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs
+          PROVAS_BROWSER: webkit
+        run: node apps/web/tests/browser/notificacoes-responsive.mjs
       - name: Secretary distribution smoke
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-provas-browser/node_modules/playwright/index.mjs

@@ -138,7 +138,7 @@ export default function ProfessorAtividadeDetalhesPage({
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24">
-      <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
+      <div className={`${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 space-y-6`}>
         
         <Link
           href={professorHref("/professor/atividades")}
@@ -153,19 +153,19 @@ export default function ProfessorAtividadeDetalhesPage({
         ) : !activity ? (
           <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
             <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-2" />
-            <h3 className="text-lg font-black text-foreground">Actividade não encontrada</h3>
+            <h3 className="text-lg font-semibold text-foreground">Actividade não encontrada</h3>
           </div>
         ) : (
           <>
             {/* HERO CARD DA ACTIVIDADE */}
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
+            <div className="rounded-xl border border-border bg-card p-6  space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
                       {activity.tipo}
                     </span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase border ${
                       activity.status === "publicada" ? "bg-emerald-600 text-white border-emerald-600" : "bg-amber-50 text-amber-800 border-amber-200"
                     }`}>
                       {activity.status}
@@ -179,7 +179,7 @@ export default function ProfessorAtividadeDetalhesPage({
                 <button
                   type="button"
                   onClick={handleTogglePublish}
-                  className={`min-h-11 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  className={`min-h-11 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     activity.status === "publicada"
                       ? "bg-muted text-foreground hover:bg-muted"
                       : "klasse-portal-cta shadow-sm"
@@ -190,7 +190,7 @@ export default function ProfessorAtividadeDetalhesPage({
                 {activity.status === "rascunho" && (
                   <Link
                     href={professorHref(`/professor/atividades?edit=${id}`)}
-                    className="inline-flex min-h-11 items-center px-4 py-2.5 rounded-xl border border-border text-xs font-black text-foreground hover:bg-muted/50"
+                    className="inline-flex min-h-11 items-center px-4 py-2.5 rounded-xl border border-border text-xs font-semibold text-foreground hover:bg-muted/50"
                   >
                     Editar rascunho
                   </Link>
@@ -198,33 +198,33 @@ export default function ProfessorAtividadeDetalhesPage({
               </div>
 
               {activity.instrucoes && (
-                <p className="text-xs font-medium text-muted-foreground bg-muted/50 p-3 rounded-2xl border border-border">
+                <p className="text-xs font-medium text-muted-foreground bg-muted/50 p-3 rounded-xl border border-border">
                   {activity.instrucoes}
                 </p>
               )}
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                <div className="rounded-2xl border border-border bg-muted/50 p-3">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Questões</span>
-                  <p className="text-base font-black text-foreground mt-0.5">
+                <div className="rounded-xl border border-border bg-muted/50 p-3">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Questões</span>
+                  <p className="text-base font-semibold text-foreground mt-0.5">
                     {activity.atividade_questoes?.length ?? 0}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-border bg-muted/50 p-3">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Nota Máxima</span>
-                  <p className="text-base font-black text-emerald-700 mt-0.5">
+                <div className="rounded-xl border border-border bg-muted/50 p-3">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Nota Máxima</span>
+                  <p className="text-base font-semibold text-emerald-700 mt-0.5">
                     {activity.nota_maxima} pts
                   </p>
                 </div>
-                <div className="rounded-2xl border border-border bg-muted/50 p-3">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Tentativas</span>
-                  <p className="text-base font-black text-foreground mt-0.5">
+                <div className="rounded-xl border border-border bg-muted/50 p-3">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tentativas</span>
+                  <p className="text-base font-semibold text-foreground mt-0.5">
                     {activity.tentativas_permitidas} máx
                   </p>
                 </div>
-                <div className="rounded-2xl border border-border bg-muted/50 p-3">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Prazo</span>
-                  <p className="text-base font-black text-amber-700 mt-0.5">
+                <div className="rounded-xl border border-border bg-muted/50 p-3">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Prazo</span>
+                  <p className="text-base font-semibold text-amber-700 mt-0.5">
                     {activity.prazo ? new Date(activity.prazo).toLocaleDateString() : "Sem Prazo"}
                   </p>
                 </div>
@@ -232,10 +232,10 @@ export default function ProfessorAtividadeDetalhesPage({
             </div>
 
             {/* TABELA DE SUBMISSÕES DOS ALUNOS */}
-            <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden space-y-3">
+            <div className="rounded-xl border border-border bg-card  overflow-hidden space-y-3">
               <div className="p-4 border-b border-border bg-muted/50 flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-black text-foreground uppercase">Entregas dos Alunos ({entregas.length})</h3>
+                  <h3 className="text-sm font-semibold text-foreground uppercase">Entregas dos Alunos ({entregas.length})</h3>
                   <p className="text-xs text-muted-foreground font-medium">Acompanhe as submissões em tempo real</p>
                 </div>
               </div>
@@ -247,7 +247,7 @@ export default function ProfessorAtividadeDetalhesPage({
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-muted/50 text-muted-foreground font-black uppercase text-[10px] tracking-wider border-b border-border">
+                    <thead className="bg-muted/50 text-muted-foreground font-semibold uppercase text-[10px] tracking-wider border-b border-border">
                       <tr>
                         <th className="px-4 py-3">Aluno</th>
                         <th className="px-4 py-3 text-center">Tentativa</th>
@@ -267,13 +267,13 @@ export default function ProfessorAtividadeDetalhesPage({
                             #{ent.tentativa}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${
+                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase border ${
                               ent.estado === "submetida" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-800 border-amber-200"
                             }`}>
                               {ent.estado}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-center font-black text-foreground">
+                          <td className="px-4 py-3 text-center font-semibold text-foreground">
                             {ent.nota !== null && ent.nota !== undefined ? `${ent.nota} pts` : "—"}
                           </td>
                           <td className="px-4 py-3 min-w-[260px]">

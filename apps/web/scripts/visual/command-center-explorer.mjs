@@ -85,7 +85,13 @@ async function run(size, zoom) {
     "Sort must be keyboard reachable after filter");
   await sort.selectOption("nome_desc");
   await page.getByText("55 encontrados").waitFor();
-  await page.getByText("Aluno Sintético 55").first().waitFor();
+  const firstDescending = page.locator('[data-student-id="00000000-0000-4000-8100-000000000055"]');
+  await firstDescending.waitFor();
+  assert.equal(await page.locator("[data-student-id]").first().getAttribute("data-student-id"), "00000000-0000-4000-8100-000000000055");
+  const descendingName = firstDescending.locator("[data-student-name]");
+  await descendingName.waitFor({state:"visible"});
+  assert.equal(await descendingName.textContent(), "Aluno Sintético 55");
+  assert.ok(await descendingName.evaluate(el => el.getBoundingClientRect().width >= 40 && el.getBoundingClientRect().height > 0), `Student name collapsed at ${size.join("x")}/${zoom}`);
   await capture(page,size,zoom,"ordenacao-z-a");
   await sort.selectOption("pendencias_primeiro");
   await page.getByText("55 encontrados").waitFor();

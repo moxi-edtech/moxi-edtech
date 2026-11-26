@@ -76,24 +76,24 @@ export function ProfessorCalendarSkeleton() {
       <div className="grid gap-3 sm:gap-4 lg:grid-cols-[1.4fr_1fr]">
         <section
           aria-hidden="true"
-          className="rounded-xl border border-klasse-green-700 bg-klasse-green p-4 text-white shadow-sm motion-safe:animate-pulse sm:rounded-[2rem] sm:p-6"
+          className="rounded-xl border border-border bg-card p-4 text-foreground motion-safe:animate-pulse sm:rounded-xl sm:p-6"
         >
           <div className="space-y-3 sm:space-y-6">
             <div className="space-y-2">
-              <ProfessorSkeletonBone inverse className="h-5 w-44 rounded-full" />
-              <ProfessorSkeletonBone inverse className="h-6 w-44 sm:h-7" />
-              <ProfessorSkeletonBone inverse className="h-3 w-60 max-w-full" />
+              <ProfessorSkeletonBone className="h-5 w-44 rounded-full" />
+              <ProfessorSkeletonBone className="h-6 w-44 sm:h-7" />
+              <ProfessorSkeletonBone className="h-3 w-60 max-w-full" />
             </div>
-            <div className="w-full space-y-2 rounded-xl border border-klasse-green-700 bg-klasse-green-700/40 p-3 sm:w-auto sm:rounded-2xl sm:p-4">
-              <ProfessorSkeletonBone inverse className="h-3 w-24" />
-              <ProfessorSkeletonBone inverse className="h-4 w-3/5 max-w-full" />
-              <ProfessorSkeletonBone inverse className="h-3 w-20" />
+            <div className="w-full space-y-2 rounded-xl border border-border bg-muted/40 p-3 sm:w-auto sm:rounded-xl sm:p-4">
+              <ProfessorSkeletonBone className="h-3 w-24" />
+              <ProfessorSkeletonBone className="h-4 w-3/5 max-w-full" />
+              <ProfessorSkeletonBone className="h-3 w-20" />
             </div>
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {[0, 1, 2].map((item) => (
-                <div key={item} className="min-w-0 space-y-2 rounded-xl border border-klasse-green-700 bg-klasse-green-700/40 p-2 sm:rounded-2xl sm:p-4">
-                  <ProfessorSkeletonBone inverse className="h-3 w-4/5" />
-                  <ProfessorSkeletonBone inverse className="h-6 w-9 sm:h-8" />
+                <div key={item} className="min-w-0 space-y-2 rounded-xl border border-border bg-muted/40 p-2 sm:rounded-xl sm:p-4">
+                  <ProfessorSkeletonBone className="h-3 w-4/5" />
+                  <ProfessorSkeletonBone className="h-6 w-9 sm:h-8" />
                 </div>
               ))}
             </div>
@@ -101,7 +101,7 @@ export function ProfessorCalendarSkeleton() {
         </section>
         <aside
           aria-hidden="true"
-          className="rounded-xl border border-border bg-card p-3 shadow-sm motion-safe:animate-pulse sm:rounded-[2rem] sm:p-6"
+          className="rounded-xl border border-border bg-card p-3 motion-safe:animate-pulse sm:rounded-xl sm:p-6"
         >
           <div className="flex items-center gap-2">
             <ProfessorSkeletonBone className="h-5 w-5 rounded-full" />
@@ -123,17 +123,17 @@ export function ProfessorCalendarSkeleton() {
       </div>
       <section
         aria-hidden="true"
-        className="rounded-xl border border-border bg-card p-3 shadow-sm sm:rounded-[2rem] sm:p-6"
+        className="rounded-xl border border-border bg-card p-3 sm:rounded-xl sm:p-6"
       >
         <div className="space-y-1">
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">Linha do tempo</p>
-          <h2 className="text-lg font-bold text-foreground sm:text-xl sm:font-black">Calendário do professor</h2>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Linha do tempo</p>
+          <h2 className="text-lg font-bold text-foreground sm:text-xl sm:font-semibold">Calendário do professor</h2>
         </div>
         <div className="mt-4 space-y-3 motion-safe:animate-pulse sm:mt-8">
           <ProfessorSkeletonBone className="mx-auto h-3 w-36" />
           <div className="grid gap-2 sm:gap-4 lg:grid-cols-2">
             {[0, 1].map((item) => (
-              <div key={item} className="flex items-start gap-3 rounded-xl border border-border bg-muted p-3 sm:rounded-[1.5rem] sm:p-5">
+              <div key={item} className="flex items-start gap-3 rounded-xl border border-border bg-muted p-3 sm:rounded-xl sm:p-5">
                 <div className="flex w-14 shrink-0 flex-col items-center gap-1 rounded-xl border border-border bg-card px-2 py-2">
                   <ProfessorSkeletonBone className="h-5 w-7" />
                   <ProfessorSkeletonBone className="h-2.5 w-7" />

@@ -17,19 +17,37 @@ test("cores KLASSE apenas nos portais, sem alterar tema global", async () => {
 });
 
 test("navegação e área académica explicitam contexto sem inventar estado", async () => {
-  const [academic, tabs, alunoNav, profNav] = await Promise.all([
+  const [academic, tabs, alunoNav, profNav, sharedNav] = await Promise.all([
     read("components/aluno/academico/AcademicoWorkspace.tsx"),
     read("components/portal/ui/PortalTabs.tsx"),
     read("components/aluno/layout/AlunoBottomNav.tsx"),
     read("components/professor/layout/ProfessorBottomNav.tsx"),
+    read("components/layout/klasse/PortalBottomNav.tsx"),
   ]);
   assert.doesNotMatch(academic, /descriptions\[activeTab\]/);
   assert.match(academic, /layout="compact"/);
   assert.match(tabs, /grid grid-cols-4/);
   assert.match(academic, /<PortalTabs items=\{sections\}/);
   assert.match(tabs, /border-klasse-gold/);
-  assert.match(alunoNav, /klasse-gold/);
-  assert.match(profNav, /klasse-gold/);
+  for (const wrapper of [alunoNav, profNav]) {
+    assert.match(wrapper, /import \{ PortalBottomNav, type PortalBottomNavItem \} from "@\/components\/layout\/klasse\/PortalBottomNav"/);
+    assert.match(wrapper, /<PortalBottomNav\b/);
+    assert.match(wrapper, /mainItems=\{mainItems\.map\(toLink\)\}/);
+    assert.match(wrapper, /drawerItems=\{drawerItems\.map\(toLink\)\}/);
+  }
+  assert.match(alunoNav, /activeHref=\{active \? withAlunoParam\(active\.href\) : null\}/);
+  assert.match(profNav, /activeHref=\{activeHref\}/);
+  assert.match(sharedNav, /active \? "bg-accent text-accent-foreground ring-1 ring-primary\/15"/);
+  assert.match(sharedNav, /active \? "border-primary\/20 bg-accent text-accent-foreground"/);
+  assert.match(sharedNav, /isDrawerActive \|\| isMoreOpen \? "bg-accent text-accent-foreground/);
+  assert.match(sharedNav, /aria-current=\{active \? "page" : undefined\}/);
+  assert.match(sharedNav, /min-h-14/);
+  assert.match(sharedNav, /focus-visible:ring-4 focus-visible:ring-klasse-gold\/20/);
+  assert.match(sharedNav, /aria-expanded=\{isMoreOpen\}/);
+  assert.match(sharedNav, /<PortalSheet/);
+  assert.match(sharedNav, /contentId=\{dialogId\}/);
+  assert.match(sharedNav, /safe-area-inset-bottom/);
+  assert.match(sharedNav, /bg-destructive[^"]*text-background/);
 });
 
 test("notas e decisões técnicas conservam ações sem poluir a interface", async () => {
@@ -61,7 +79,7 @@ test("dashboards não apresentam progresso fictício", async () => {
     read("components/aluno/dashboard/DashboardLoader.tsx"),
     read("components/aluno/tabs/TabHome.tsx"),
   ]);
-  assert.match(principal, /bg-klasse-green/);
+  assert.match(principal, /<PortalWelcomeCard role="aluno"/);
   assert.match(home, /Média recente/);
   assert.match(home, /mediaNotas === null/);
   assert.doesNotMatch(home, /\+0\.2|Meta: 90%/);
@@ -93,7 +111,7 @@ test("aluno reutiliza os cards de Operações com densidade mobile, sem retirar 
   ]);
   assert.match(quick, /import AcaoRapidaCard from "@\/components\/shared\/AcaoRapidaCard"/);
   assert.match(dashboard, /import AcaoRapidaCard from "@\/components\/shared\/AcaoRapidaCard"/);
-  assert.match(dashboard, /grid-cols-1 gap-2 md:grid-cols-3/);
+  assert.match(dashboard, /grid-cols-2 gap-3 min-\[380px\]:grid-cols-3/);
   assert.match(card, /mobileCompact = false/);
   assert.match(card, /unavailable: disabled \|\| unavailable/);
   assert.match(card, /min-h-16[^"]*bg-card p-3/);

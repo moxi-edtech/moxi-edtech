@@ -3,6 +3,7 @@ import path from "node:path";
 const dir = path.dirname(fileURLToPath(import.meta.url));
 export default {
   root: dir,
+  publicDir: path.resolve(dir, "../public"),
   resolve: {
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
     alias: [

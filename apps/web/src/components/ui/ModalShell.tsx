@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import {
   Dialog,
   DialogContent,
@@ -74,7 +74,7 @@ export function ModalShell({
       const bounds=body.getBoundingClientRect();
       const top=bounds.top+8,bottom=bounds.bottom-12;
       if(rect.top<top)body.scrollTop+=rect.top-top;
-      else if(rect.bottom>bottom)body.scrollTop+=Math.min(rect.bottom-bottom,Math.max(0,rect.top-top));
+      else if(rect.bottom>bottom)body.scrollTop+=rect.height>bottom-top?Math.max(0,rect.top-top):rect.bottom-bottom;
     }
     function scheduleReveal(){
       cancelAnimationFrame(scrollFrame);cancelAnimationFrame(settleFrame);
@@ -86,7 +86,7 @@ export function ModalShell({
       if(Math.abs(width-nextWidth)>40){width=nextWidth;baseline=Math.max(window.innerHeight,document.documentElement.clientHeight,height);}
       else if(!editable())baseline=Math.max(window.innerHeight,document.documentElement.clientHeight,height,baseline);
       const available=small.matches&&(!vv||Math.abs(vv.scale-1)<0.02);
-      const keyboard=Boolean(keyboardAware&&available&&editable()&&baseline-height>=120);
+      const keyboard=Boolean(keyboardAware&&available&&(editable()||keyboardVisible)&&baseline-height>=120);
       keyboardVisible=keyboard;
       const next=available?{height,top:vv?.offsetTop??0,keyboard}:null;
       setViewport(previous=>previous?.height===next?.height&&previous?.top===next?.top&&previous?.keyboard===next?.keyboard?previous:next);
@@ -97,12 +97,12 @@ export function ModalShell({
     sync();
     vv?.addEventListener("resize",schedule);vv?.addEventListener("scroll",schedule);
     window.addEventListener("resize",schedule);small.addEventListener("change",schedule);
-    if(keyboardAware){document.addEventListener("focusin",schedule);document.addEventListener("focusout",schedule);document.addEventListener("input",onInput);}
+    if(keyboardAware){document.addEventListener("focusin",schedule);document.addEventListener("focusout",schedule);document.addEventListener("input",onInput);document.addEventListener("selectionchange",onInput);}
     return()=>{
       cancelAnimationFrame(frame);cancelAnimationFrame(scrollFrame);cancelAnimationFrame(settleFrame);
       vv?.removeEventListener("resize",schedule);vv?.removeEventListener("scroll",schedule);
       window.removeEventListener("resize",schedule);small.removeEventListener("change",schedule);
-      document.removeEventListener("focusin",schedule);document.removeEventListener("focusout",schedule);document.removeEventListener("input",onInput);
+      document.removeEventListener("focusin",schedule);document.removeEventListener("focusout",schedule);document.removeEventListener("input",onInput);document.removeEventListener("selectionchange",onInput);
     };
   },[open,mobileFullscreen,keyboardAware]);
   const keyboardOpen=Boolean(keyboardAware&&open&&viewport?.keyboard);
@@ -123,7 +123,7 @@ export function ModalShell({
           }
         }}
         onCloseAutoFocus={onRestoreFocus?event=>{event.preventDefault();onRestoreFocus();}:undefined}
-        style={mobileFullscreen&&viewport?{height:viewport.height,top:viewport.top,bottom:"auto"}:undefined}
+        style={mobileFullscreen&&viewport?{height:viewport.height,top:viewport.top,bottom:"auto","--modal-writing-height":Math.max(80,viewport.height-100)+"px"} as CSSProperties:undefined}
         className={(keyboardAware?"group/modal ":"")+(mobileFullscreen?"gap-0 border-0 bg-transparent p-0 shadow-none sm:p-6":"gap-0 border-0 bg-transparent p-4 shadow-none sm:p-6")}
       >
         <section
@@ -142,10 +142,10 @@ export function ModalShell({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={keyboardOpen?()=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur();}:onClose}
               className="min-h-11 shrink-0 rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
             >
-              Fechar
+              {keyboardOpen?"Concluir escrita":"Fechar"}
             </button>
           </div>
           <div ref={scrollRef} data-modal-scroll="" className={mobileFullscreen?"min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-6 sm:py-5":"min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6"}>{children}</div>
