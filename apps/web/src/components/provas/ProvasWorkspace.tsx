@@ -360,7 +360,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
        {currentBlock<form.conteudo.length-1&&<Button type="button" size="sm" variant="ghost" disabled={richIndex!==null||form.conteudo.length>=80} onClick={()=>appendBlock("discursiva")}><Plus/> Nova pergunta</Button>}
       </div>
       <div role="group" aria-label="Navegar pelo conteúdo" className={form.conteudo.length===1?"hidden":"flex max-w-full gap-1.5 overflow-x-auto pb-1"}>
-       {form.conteudo.map((block,index)=><Button key={index} id={"provas-nav-"+index} type="button" size="sm" variant="outline" aria-label={"Ir para bloco "+(index+1)+(mixed?" — "+numbering[index].label:"")} title={numbering[index].label} aria-current={currentBlock===index?"step":undefined} disabled={richIndex!==null} className={"min-h-11 min-w-11 shrink-0 tabular-nums "+(currentBlock===index?"border-klasse-gold bg-klasse-gold/10 ring-1 ring-klasse-gold/25":"")} onClick={()=>navigateBlock(index)}>{block.tipo==="texto"?<FileText aria-hidden="true"/>:numbering[index].short}</Button>)}
+       {form.conteudo.map((block,index)=><Button key={index} id={"provas-nav-"+index} type="button" size="sm" variant="outline" aria-label={"Ir para bloco "+(index+1)+(mixed?" — "+numbering[index].label:"")} title={numbering[index].label} aria-current={currentBlock===index?"step":undefined} disabled={richIndex!==null} className={"min-h-11 min-w-11 shrink-0 tabular-nums "+(currentBlock===index?"border-primary/25 bg-accent text-accent-foreground ring-1 ring-primary/15":"")} onClick={()=>navigateBlock(index)}>{block.tipo==="texto"?<FileText aria-hidden="true"/>:numbering[index].short}</Button>)}
       </div>
      </div>}
      {form.conteudo.map((block,index)=>(singleQuestion&&index!==currentBlock)||(!singleQuestion&&block.tipo!=="grupo"&&collapsedGroups.includes(numbering[index].group))?null:<div key={index} className={"min-w-0 space-y-3 rounded-xl border border-border bg-card p-3 sm:p-4 "+(block.tipo==="grupo"?"border-l-4 border-l-klasse-green":"")}>
@@ -431,7 +431,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
       <Button type="button" variant="outline" disabled={richIndex!==null||currentBlock===0} onClick={()=>navigateBlock(currentBlock-1)}><ArrowLeft/> Anterior</Button>
       {currentBlock<form.conteudo.length-1?<Button type="button" tone="gold" disabled={richIndex!==null} onClick={()=>navigateBlock(currentBlock+1)}>{mixed?"Seguinte":"Próxima"} <ArrowRight/></Button>:<Button type="button" tone="gold" disabled={richIndex!==null||form.conteudo.length>=80} onClick={()=>appendBlock("discursiva")}><Plus/> Adicionar pergunta</Button>}
      </div>}
-     {!singleQuestion&&<div className="space-y-2 rounded-xl border border-dashed border-klasse-gold/50 bg-card p-3">
+     {!singleQuestion&&<div className="space-y-2 rounded-xl border border-dashed border-border bg-card p-4">
       <p className="text-sm font-semibold text-klasse-green dark:text-foreground">Perguntas avaliativas</p>
       
       <div className="flex flex-wrap gap-2">{suggestedTypes(form.disciplina).map(tipo=><Button key={tipo} type="button" size="sm" variant="outline" disabled={richIndex!==null||form.conteudo.length>=80} onClick={()=>appendBlock(tipo)}><Plus/> {tipos[tipo]}</Button>)}</div>

@@ -115,7 +115,7 @@ export default function AlunoAtividadesPage() {
             return (
               <div
                 key={act.id}
-                className="group relative min-w-0 space-y-2 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4 transition-colors hover:border-klasse-gold/40"
+                className="group relative min-w-0 space-y-3 rounded-xl border border-border bg-card p-4  sm:p-4 transition-colors hover:border-primary/30"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="min-w-0 space-y-1">

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { PaymentDrawer } from "../src/components/aluno/financeiro-portal/PaymentDrawer";
 import { emitFixtureAuth } from "./auth-fixture";
 import CommandCenterVisualFixture, { installCommandCenterVisualMocks } from "./CommandCenterVisualFixture";
 import { canUseOperationalCopilot } from "../src/lib/roles/ai-roles";
@@ -365,7 +366,19 @@ function BalcaoFinancialRefreshFixture(){
   </main>;
 }
 
-if (target && name === "roster-export") createRoot(target).render(<RosterExportVisualFixture />);
+function PortalPaymentSheetFixture() {
+  const [open,setOpen]=useState(false);
+  const [received,setReceived]=useState(false);
+  return <main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4">
+    <button type="button" onClick={()=>setOpen(true)} className="min-h-11 rounded-xl border border-border px-4">Pagar propinas</button>
+    <output data-testid="receipt-status">{received?"Recebido":"Por enviar"}</output>
+    <PaymentDrawer open={open} onClose={()=>setOpen(false)} onUploaded={()=>setReceived(true)}
+      mensalidades={[{id:"00000000-0000-4000-8000-000000000401",competencia:"Novembro",valor:5000}]}
+      dadosPagamento={null} studentId="00000000-0000-4000-8000-000000000402" />
+  </main>;
+}
+if (target && name === "portal-payment-sheet") createRoot(target).render(<PortalPaymentSheetFixture />);
+else if (target && name === "roster-export") createRoot(target).render(<RosterExportVisualFixture />);
 else if (target && name === "theme-switcher") createRoot(target).render(<ThemeSwitcherVisualFixture />);
 else if (target && name === "balcao-financial-refresh") createRoot(target).render(<FeedbackProvider><BalcaoFinancialRefreshFixture /></FeedbackProvider>);
 else if (target && name === "school-intelligence") { /* Mounted above with synthetic auth. */ }

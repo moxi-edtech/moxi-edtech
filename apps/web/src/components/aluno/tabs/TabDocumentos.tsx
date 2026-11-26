@@ -259,7 +259,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   if (fetching) return <PortalLoadingState label="A carregar documentos" rows={3} className="pb-4" />;
 
   return (
-    <div className="min-w-0 space-y-3">
+    <div className="min-w-0 space-y-5">
       {/* Cabeçalho */}
       {!embedded && <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Secretaria Digital</h1>
@@ -280,7 +280,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
            description={serviceCode ? "Consulta outros serviços ou contacta a secretaria." : "A secretaria ainda não publicou serviços de documentação."}
          />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {visibleDocs.map((doc) => (
              <PortalSurface key={doc.id} as="article" className="min-w-0 space-y-2 rounded-xl">
                <div className="flex min-w-0 items-start gap-3">
