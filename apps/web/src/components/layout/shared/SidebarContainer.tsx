@@ -35,7 +35,7 @@ export default function SidebarContainer({
       <aside
         className={clsx(
           "group/sidebar fixed top-0 z-40 h-dvh shrink-0 transition-[width] duration-300 ease-in-out",
-          "bg-slate-950 border-r border-slate-800 text-white shadow-xl", // Estilo MoxiNexa Dark
+          "bg-klasse-dark border-r border-klasse-gold/15 text-white shadow-xl", // Estilo MoxiNexa Dark
           className,
         )}
         style={{ width: collapsed ? collapsedWidth : expandedWidth }}
@@ -46,7 +46,7 @@ export default function SidebarContainer({
           type="button"
           aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
           aria-expanded={!collapsed}
-          className="absolute -right-3 top-6 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:bg-muted hover:text-teal-600 transition-colors hidden md:flex"
+          className="absolute -right-3 top-6 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:bg-muted hover:text-klasse-green transition-colors hidden md:flex"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
