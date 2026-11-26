@@ -5,6 +5,10 @@ on:
       - 'apps/web/src/components/aluno/PortalVisualFixtures.stories.tsx'
       - 'apps/web/scripts/visual/portais-screenshot.mjs'
       - 'apps/web/scripts/visual/portal-motion-performance.mjs'
+      - 'apps/web/scripts/visual/portal-context-sheets.mjs'
+      - 'apps/web/src/components/portal/ui/PortalSheet.tsx'
+      - 'apps/web/src/components/aluno/financeiro-portal/PaymentDrawer.tsx'
+      - 'apps/web/src/components/aluno/layout/ServicePaymentDrawer.tsx'
       - 'apps/web/src/components/portal/motion/**'
       - 'apps/web/src/components/portal/ui/PortalTabs.tsx'
       - 'apps/web/src/components/layout/klasse/PortalBottomNav.tsx'
@@ -70,6 +74,10 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
         run: node apps/web/scripts/visual/portal-motion-performance.mjs
+      - name: Contextual sheets and explicit payment confirmation
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/portal-context-sheets.mjs
       - name: Capture synthetic responsive/zoom matrix
         if: ${{ !cancelled() }}
         env:

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { StudentAppyPayButton } from "@/components/financeiro/AppyPayReferenceButton";
 import { Upload, Loader2 } from "lucide-react";
 
@@ -62,6 +62,7 @@ export function ServicePaymentDrawer({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inFlight = useRef(false);
 
   useEffect(() => {
     if (open) {
@@ -96,7 +97,8 @@ export function ServicePaymentDrawer({
   };
 
   const handleUpload = async () => {
-    if (!documento?.intentId || !selectedFile || sending) return;
+    if (!documento?.intentId || !selectedFile || inFlight.current) return;
+    inFlight.current = true;
     const original = selectedFile;
     const fd = new FormData();
     fd.append("intentId", documento.intentId || "");
@@ -117,17 +119,14 @@ export function ServicePaymentDrawer({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao enviar comprovativo");
     } finally {
+      inFlight.current = false;
       setSending(false);
     }
   };
 
   return (
-    <Dialog open={open && Boolean(documento)} onOpenChange={(next) => { if (!next && !sending) onClose(); }}>
-      <DialogContent closeButton={false} overlayClassName="bg-black/40" className="klasse-portal-theme klasse-academic-dialog max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto overscroll-contain rounded-xl bg-card p-4 text-foreground motion-reduce:animate-none sm:p-6">
-        <DialogTitle>Pagamento do serviço</DialogTitle>
-        <DialogDescription>
-          Confere o valor e escolhe o método de pagamento. A confirmação por AppyPay é automática; transferências exigem comprovativo e validação da secretaria.
-        </DialogDescription>
+    <PortalSheet open={open && Boolean(documento)} busy={sending} onClose={onClose} size="expanded" title="Pagamento do serviço"
+      description="Confere o valor e escolhe o método de pagamento. A confirmação por AppyPay é automática; transferências exigem comprovativo e validação da secretaria.">
         {documento && (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-muted/50 p-4">
@@ -162,7 +161,7 @@ export function ServicePaymentDrawer({
                 className="block w-full rounded-xl border border-input bg-background p-3 text-sm text-foreground file:mr-3 file:rounded-xl file:border-0 file:bg-muted file:px-3 file:py-2 file:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
               {selectedFile && <p className="break-all text-sm text-muted-foreground">Selecionado: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB). Ainda não foi enviado.</p>}
             </div>
-            {sending && <p role="status" aria-live="polite" className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> A enviar comprovativo: {progress}%</p>}
+            {sending && <p role="status" aria-live="polite" className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 motion-safe:animate-spin" /> A enviar comprovativo: {progress}%</p>}
             {error && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
             <p className="text-sm text-muted-foreground">O envio não confirma o pagamento. Aguarda a validação da secretaria; não precisas de realizar outra transferência.</p>
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -174,7 +173,6 @@ export function ServicePaymentDrawer({
             </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+    </PortalSheet>
   );
 }

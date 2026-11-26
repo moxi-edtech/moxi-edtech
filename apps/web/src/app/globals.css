@@ -277,3 +277,23 @@
     transition: none;
   }
 }
+
+/* Contextual sheets: Radix Presence waits for CSS exit animation. */
+.klasse-portal-theme.klasse-context-sheet {
+  max-height: min(var(--portal-sheet-limit, 90dvh), calc(100dvh - env(safe-area-inset-top, 0px) - 1rem));
+  padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@keyframes klasse-context-sheet-enter { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes klasse-context-sheet-exit { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@keyframes klasse-context-overlay-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes klasse-context-overlay-exit { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  .klasse-context-sheet[data-state="open"] { animation: klasse-context-sheet-enter var(--portal-motion-sheet) var(--portal-motion-ease) both; }
+  .klasse-context-sheet[data-state="closed"] { animation: klasse-context-sheet-exit var(--portal-motion-sheet) var(--portal-motion-ease) both; pointer-events: none; }
+  .klasse-context-sheet-overlay[data-state="open"] { animation: klasse-context-overlay-enter var(--portal-motion-sheet) var(--portal-motion-ease) both; }
+  .klasse-context-sheet-overlay[data-state="closed"] { animation: klasse-context-overlay-exit var(--portal-motion-sheet) var(--portal-motion-ease) both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .klasse-context-sheet, .klasse-context-sheet-overlay { animation: none !important; }
+}

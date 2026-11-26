@@ -5,6 +5,7 @@ import { ArrowRight, BookOpen, FileText, Wallet, Bell, Clock3, AlertCircle, Cale
 import { ErrorState } from "@/components/feedback/FeedbackSystem";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { buildStudentAttention, nextLessonLabel, type StudentDocument, type StudentRematricula } from "@/lib/aluno/dashboardPresentation";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { PortalAction } from "@/components/portal/ui/PortalAction";
 import { PortalEmptyState } from "@/components/portal/ui/PortalEmptyState";
 import { PortalSection } from "@/components/portal/ui/PortalSection";
@@ -67,6 +68,7 @@ export default function DashboardLoader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  const [lessonOpen, setLessonOpen] = useState(false);
   const refresh = useCallback(() => setReload(n => n + 1), []);
   useEffect(() => {
     const controller = new AbortController();
@@ -140,7 +142,10 @@ export default function DashboardLoader() {
         <AcaoRapidaCard dashboardCompact mobileCompact portalClean icon={<Clock3 className="h-4 w-4"/>}
           label={lesson ? lesson.subject : "Sem próxima aula publicada"}
           sublabel={lesson ? [lesson.day, lesson.time, ...lesson.details].join(" · ") : "Ver horário"}
-          href={go("/aluno/horario")} />
+          href={lesson ? undefined : go("/aluno/horario")} onClick={lesson ? () => setLessonOpen(true) : undefined} dialogOpen={lesson ? lessonOpen : undefined} />
+        <PortalSheet open={lessonOpen && Boolean(lesson)} onClose={() => setLessonOpen(false)} title={lesson?.subject ?? "Próxima aula"} description="Próxima aula publicada no teu horário." size="medium" footer={<PortalAction href={go("/aluno/horario")} variant="primary" className="w-full">Consultar horário completo</PortalAction>}>
+          {lesson && <dl className="space-y-3 text-sm"><div><dt className="text-muted-foreground">Dia</dt><dd className="font-medium">{lesson.day}</dd></div><div><dt className="text-muted-foreground">Horário</dt><dd className="font-medium">{lesson.time}</dd></div>{screen.dashboard.proxima_aula?.professor && <div><dt className="text-muted-foreground">Professor</dt><dd className="font-medium">{screen.dashboard.proxima_aula.professor}</dd></div>}{screen.dashboard.proxima_aula?.sala && <div><dt className="text-muted-foreground">Sala</dt><dd className="font-medium">{screen.dashboard.proxima_aula.sala}</dd></div>}</dl>}
+        </PortalSheet>
       </PortalSection>
       {attentions.length > 0 && <PortalSection id="attention-title" title="A acompanhar" className="lg:col-span-2" testId="attention">
         <div className="grid gap-3">

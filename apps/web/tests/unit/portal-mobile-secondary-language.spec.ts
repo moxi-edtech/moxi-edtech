@@ -6,11 +6,15 @@ test("academic payment flows use accessible constrained dialogs without changing
   const consolidated = read("components/aluno/financeiro-portal/PaymentDrawer.tsx");
   const service = read("components/aluno/layout/ServicePaymentDrawer.tsx");
   for (const ui of [consolidated, service]) {
-    assert.match(ui, /<DialogContent/);
-    assert.match(ui, /max-h-\[90dvh\]/);
-    assert.match(ui, /overflow-y-auto/);
-    assert.match(ui, /!next && !sending/);
+    assert.match(ui, /<PortalSheet/);
+    assert.match(ui, /busy=\{sending\}/);
+    assert.match(ui, /inFlight.current/);
   }
+  const sheet = read("components/portal/ui/PortalSheet.tsx");
+  assert.match(sheet, /<DialogContent layout="bottom-sheet"/);
+  assert.match(sheet, /overflow-y-auto/);
+  assert.match(sheet, /!next && !busy/);
+  assert.match(sheet, /onCloseAutoFocus/);
   assert.match(consolidated, /\/api\/aluno\/financeiro\/comprovativo/);
   assert.match(service, /StudentAppyPayButton/);
 });

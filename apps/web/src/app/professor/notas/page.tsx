@@ -9,6 +9,8 @@ import { resolveGradeEntryAvailability } from "@/lib/academico/grade-entry-avail
 import { useOfflineStatus } from "@/hooks/useOfflineStatus"
 import { useOfficialDocs, type MiniPautaPayload } from "@/hooks/useOfficialDocs"
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
+import { PortalSheet } from "@/components/portal/ui/PortalSheet"
+import { SlidersHorizontal } from "lucide-react"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page"
 import { formatTurmaDisplayName } from "@/utils/formatters"
@@ -173,6 +175,7 @@ function ProfessorNotasContent() {
   const requestedTrimestreValid = requestedTrimestre === 1 || requestedTrimestre === 2 || requestedTrimestre === 3
   const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(requestedTrimestreValid ? requestedTrimestre as 1 | 2 | 3 : 1)
   const [savingNow, setSavingNow] = useState(false)
+  const [contextOpen, setContextOpen] = useState(false)
   const [completingGrades, setCompletingGrades] = useState(false)
   const [gradeDraft, setGradeDraft] = useState<StudentGradeRow[]>([])
   const [completedScopes, setCompletedScopes] = useState<Record<string, boolean>>({})
@@ -953,7 +956,15 @@ function ProfessorNotasContent() {
                 </div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <select
+                  <button type="button" onClick={() => setContextOpen(true)} disabled={hasUnsavedGrades || savingNow} aria-haspopup="dialog" aria-expanded={contextOpen}
+                    className="klasse-portal-press flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-3 text-left disabled:opacity-50 sm:col-span-2">
+                    <SlidersHorizontal className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                    <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">Turma e disciplina</span><span className="block break-words text-xs text-muted-foreground">{[atribs.find(a => a.turma.id === turmaId)?.turma ? formatTurmaDisplayName(atribs.find(a => a.turma.id === turmaId)!.turma) : null, disciplinaNome, turmaId ? trimestreSelecionado + ".º trimestre" : null].filter(Boolean).join(" · ") || "Seleccionar contexto"}</span></span>
+                  </button>
+                  {hasUnsavedGrades && <p className="text-xs text-muted-foreground sm:col-span-2">Guarda as notas antes de mudar o contexto.</p>}
+                  <PortalSheet open={contextOpen} onClose={() => setContextOpen(false)} size="expanded" title="Contexto de lançamento" description="Selecciona a turma, a disciplina e o trimestre." footer={<button type="button" onClick={() => setContextOpen(false)} className="klasse-portal-press min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">Concluir selecção</button>}>
+                    <div className="grid gap-3">
+                  <select aria-label="Turma" disabled={hasUnsavedGrades || savingNow}
                     value={turmaId}
                     onChange={(event) => {
                       setTurmaId(event.target.value)
@@ -974,7 +985,7 @@ function ProfessorNotasContent() {
                       </option>
                     ))}
                   </select>
-                  <select
+                  <select aria-label="Disciplina"
                     value={disciplinaId}
                     onChange={(event) => {
                       const nextId = event.target.value
@@ -984,7 +995,7 @@ function ProfessorNotasContent() {
                       setDisciplinaNome(atrib?.disciplina.nome ?? null)
                     }}
                     className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
-                    disabled={!turmaId}
+                    disabled={!turmaId || hasUnsavedGrades || savingNow}
                   >
                     <option value="">Disciplina</option>
                     {(atribsByTurma.get(turmaId) || [])
@@ -995,11 +1006,11 @@ function ProfessorNotasContent() {
                         </option>
                       ))}
                   </select>
-                  <select
+                  <select aria-label="Trimestre"
                     value={trimestreSelecionado}
                     onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
                     className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
-                    disabled={!turmaId || loadingPeriodos || periodosAtivos.length === 0}
+                    disabled={!turmaId || loadingPeriodos || periodosAtivos.length === 0 || hasUnsavedGrades || savingNow}
                   >
                     {loadingPeriodos && <option value={trimestreSelecionado}>A carregar trimestres...</option>}
                     {!loadingPeriodos && periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Nenhum trimestre configurado</option>}
@@ -1020,6 +1031,8 @@ function ProfessorNotasContent() {
                   {turmaId && !loadingPeriodos && !periodosError && periodosAtivos.length === 0 && (
                     <p className="text-xs text-muted-foreground sm:col-span-2">A secretaria precisa configurar os trimestres deste ano letivo antes do lançamento.</p>
                   )}
+</div>
+                  </PortalSheet>
                   <button
                     type="button"
                     onClick={handleSaveNow}
