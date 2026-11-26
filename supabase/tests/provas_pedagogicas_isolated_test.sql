@@ -33,6 +33,20 @@ BEGIN
  END LOOP;
 END;
 $grids$;
+DO $answer_format$
+DECLARE b jsonb:='{"tipo":"alinea","texto":"Mostra os cálculos.","linhas":6,"resposta_formato":"retangulo"}'; bad jsonb;
+BEGIN
+ PERFORM provas_private.provas_validar_blocos(jsonb_build_array(b));
+ PERFORM provas_private.provas_validar_blocos('[{"tipo":"calculo","texto":"Q","linhas":3,"resposta_formato":"linhas"}]'::jsonb);
+ PERFORM provas_private.provas_validar_blocos('[{"tipo":"calculo","texto":"Q","linhas":0,"resposta_formato":"nenhum"}]'::jsonb);
+ FOR bad IN SELECT value FROM jsonb_array_elements('[{"resposta_formato":"other"},{"linhas":0},{"linhas":2},{"resposta_formato":"nenhum"},{"tipo":"grupo"},{"resposta_formato":null}]'::jsonb) LOOP
+  BEGIN
+   PERFORM provas_private.provas_validar_blocos(jsonb_build_array(b||bad));
+   RAISE EXCEPTION 'invalid answer format accepted';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ END LOOP;
+END;
+$answer_format$;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
 DO $$

@@ -11,7 +11,7 @@ import { prepareProvaFigure } from "@/lib/provas/figureUpload";
 import { mathMarkup } from "@/lib/provas/math";
 import { formatClasseProva } from "@/lib/provas/academicLabels";
 import { safeLogoData } from "@/lib/provas/branding";
-import { PROVA_PAPER,respostaLayout,apresentacoes,type Apresentacao } from "@/lib/provas/layout";
+import { PROVA_PAPER,respostaLayout,apresentacoes,type Apresentacao,type RespostaFormato } from "@/lib/provas/layout";
 import { questionTemplate,placeholders,suggestedTypes,structures,isQuestion,formatCotacao,blockNumbering,blockFieldLabel,questionTypes,structureTypes,structureLabels,structureHelp,groupSummaries,groupTitleInput,UNTITLED_GROUP } from "@/lib/provas/questionTemplates";
 import { cotacaoStatus } from "@/lib/provas/cotacao";
 import CotacaoInput from "./CotacaoInput";
@@ -154,7 +154,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
   if(!form||richIndex!==null)return;
   const b=form.conteudo[index];if(!b||b.tipo===tipo)return;
   if((b.alternativas?.some(a=>a.trim())&&tipo!=="escolha"||b.cotacao_cent!==undefined&&!isQuestion(tipo)||b.figuras?.length&&tipo==="grupo")&&!window.confirm("Alterar o tipo remove dados incompatíveis. Continuar?"))return;
-  const next:Bloco={...questionTemplate(tipo),texto:tipo==="grupo"&&!b.texto.trim()?UNTITLED_GROUP:b.tipo==="grupo"&&b.texto===UNTITLED_GROUP?"":b.texto,...(b.rich?{rich:b.rich}:{}),...(b.figuras&&tipo!=="grupo"?{figuras:b.figuras}:{}),...(isQuestion(tipo)&&b.cotacao_cent!==undefined?{cotacao_cent:b.cotacao_cent}:{})};
+  const next:Bloco={...questionTemplate(tipo),texto:tipo==="grupo"&&!b.texto.trim()?UNTITLED_GROUP:b.tipo==="grupo"&&b.texto===UNTITLED_GROUP?"":b.texto,...(b.rich?{rich:b.rich}:{}),...(b.figuras&&tipo!=="grupo"?{figuras:b.figuras}:{}),...(isQuestion(tipo)&&b.cotacao_cent!==undefined?{cotacao_cent:b.cotacao_cent}:{}),...(isQuestion(tipo)&&isQuestion(b.tipo)&&b.resposta_formato!==undefined?{resposta_formato:b.resposta_formato,linhas:b.linhas}:{})};
   change("conteudo",form.conteudo.map((item,i)=>i===index?next:item));
  }
  function reorder(from:number,to:number){
@@ -355,6 +355,33 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
         {block.rich?<div className="min-h-20 min-w-0 break-words whitespace-pre-wrap rounded-xl border border-border bg-muted/20 p-3 text-sm">{block.rich.segments.map((segment,i)=>segment.kind==="break"?<br key={i}/>:segment.kind==="math"?<span key={i} className="inline-block max-w-full overflow-x-auto px-1 align-middle" aria-label={segment.latex} dangerouslySetInnerHTML={{__html:mathMarkup(segment.latex)??""}}/>:<span key={i} className={(segment.marks.includes("bold")?"font-bold ":"")+(segment.marks.includes("italic")?"italic ":"")+(segment.marks.includes("underline")?"underline":"")}>{segment.text}</span>)}</div>:<textarea className={input+" resize-y group-data-[keyboard-open=true]/modal:max-h-[var(--modal-writing-height)] group-data-[keyboard-open=true]/modal:overflow-y-auto group-data-[keyboard-open=true]/modal:resize-none"} id={"provas-block-"+index} aria-label={fieldLabel(index)} rows={singleQuestion?5:4} maxLength={3000} value={block.tipo==="grupo"?groupTitleInput(block.texto):block.texto} placeholder={placeholders[block.tipo]} disabled={richIndex!==null} onChange={e=>patch(index,{texto:block.tipo==="grupo"&&!e.target.value.trim()?UNTITLED_GROUP:e.target.value})}/>}
         <Button type="button" id={"provas-rich-"+index} size="sm" variant="outline" className="w-full sm:w-auto" disabled={richIndex!==null} onClick={e=>{richTrigger.current=e.currentTarget;setStartFormula(block.tipo==="calculo"&&!block.rich);setActiveBlock(index);setRichIndex(index);}}><Pencil/> {block.rich?"Editar conteúdo formatado":block.tipo==="calculo"?"Inserir fórmula":"Formatar / inserir fórmulas"}</Button>
        </div>}
+ 
+      {isQuestion(block.tipo)&&(()=>{
+        const answer=respostaLayout(block.tipo,block.linhas,block.resposta_formato);
+        const format:RespostaFormato=answer.kind==="box"?"retangulo":answer.kind==="lines"?"linhas":"nenhum";
+        const cm=(mm:number)=>(mm/10).toFixed(1).replace(".",",")+" cm";
+        const setSize=(n:number)=>patch(index,{linhas:n===0?0:format==="retangulo"?Math.max(3,n):n,resposta_formato:n===0?"nenhum":format});
+        return <div className="min-w-0 space-y-2 rounded-xl border border-border p-3" aria-label={"Espaço para resposta "+(index+1)}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2"><span className="text-sm font-medium">Espaço para resposta</span><span className="text-xs font-medium tabular-nums text-muted-foreground">{answer.kind==="none"?"Sem espaço adicional":cm(answer.heightMm)+(answer.kind==="lines"?" · "+answer.count+" linha(s)":"")}</span></div>
+          <div role="group" aria-label={"Formato da resposta "+(index+1)} className="grid grid-cols-3 gap-1.5">
+            {([["linhas","Linhas"],["retangulo","Rectângulo"],["nenhum","Nenhum"]] as const).map(([value,label])=><Button key={value} type="button" size="sm" variant="outline" aria-pressed={format===value} className={"min-h-11 min-w-0 whitespace-normal px-1 "+(format===value?"border-klasse-gold bg-klasse-gold/10 ring-1 ring-klasse-gold/25":"")} onClick={()=>patch(index,{resposta_formato:value,linhas:value==="nenhum"?0:value==="retangulo"?Math.max(3,block.linhas||6):block.linhas||3})}>{label}</Button>)}
+          </div>
+          {answer.kind!=="none"&&<>
+            <div role="img" aria-label={"Pré-visualização da resposta "+(index+1)+" · "+cm(answer.heightMm)} data-testid={"provas-resposta-"+index} data-format={format} data-height-mm={answer.heightMm} className={"w-full bg-white "+(answer.kind==="box"?"border border-slate-400":"flex flex-col")} style={{aspectRatio:(PROVA_PAPER.width-PROVA_PAPER.marginLeft-PROVA_PAPER.marginRight)+"/"+answer.heightMm}}>
+              {answer.kind==="lines"&&Array.from({length:answer.count},(_,i)=><div key={i} className="min-h-0 flex-1 border-b border-slate-300"/>)}
+            </div>
+            <div className="grid grid-cols-3 gap-1.5" role="group" aria-label={"Espaço da resposta "+(index+1)}>
+              {([3,6,10] as const).map(n=><Button key={n} type="button" size="sm" variant="outline" aria-pressed={block.linhas===n} className={"min-h-11 min-w-0 px-1 whitespace-normal "+(block.linhas===n?"border-klasse-gold bg-klasse-gold/10":"")} onClick={()=>setSize(n)}><span className="flex flex-col items-center text-xs"><span>{n===3?"Curto":n===6?"Médio":"Longo"}</span><span className="font-normal">{cm(n*8)}</span></span></Button>)}
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <Button type="button" size="sm" variant="outline" aria-label={"Diminuir espaço da resposta "+(index+1)} className="min-h-11 min-w-11" disabled={block.linhas<=(format==="retangulo"?3:1)} onClick={()=>setSize(block.linhas-1)}><Minus/></Button>
+              {format==="retangulo"?<label className="flex min-w-0 flex-1 items-center gap-2 text-sm"><span>Altura</span><select aria-label={"Altura do rectângulo "+(index+1)} className={input} value={Math.max(3,block.linhas)} onChange={e=>setSize(Number(e.target.value))}>{Array.from({length:18},(_,i)=>i+3).map(n=><option key={n} value={n}>{cm(n*8)}</option>)}</select></label>:<label className="flex min-w-0 items-center gap-2 text-sm"><input type="number" inputMode="numeric" min={1} max={PROVA_PAPER.maxLines} aria-label={"Linhas para resposta "+(index+1)} value={block.linhas} className={input.replace("w-full","w-20")+" text-center"} onChange={e=>setSize(Math.max(1,Math.min(PROVA_PAPER.maxLines,Math.trunc(Number(e.target.value)||1))))}/><span>linhas</span></label>}
+              <Button type="button" size="sm" variant="outline" aria-label={"Aumentar espaço da resposta "+(index+1)} className="min-h-11 min-w-11" disabled={block.linhas>=PROVA_PAPER.maxLines} onClick={()=>setSize(Math.min(PROVA_PAPER.maxLines,Math.max(format==="retangulo"?3:1,block.linhas)+1))}><Plus/></Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Pré-visualização proporcional à largura útil da folha A4.</p>
+          </>}
+        </div>;
+      })()}
 
       {block.tipo!=="grupo"&&<div className="space-y-2 border-t border-border pt-3">
        <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-medium">Figuras</span><label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium focus-within:ring-4 focus-within:ring-klasse-gold/20"><ImagePlus className="size-4 text-muted-foreground"/><span>Inserir imagem</span><input type="file" accept="image/png,image/jpeg,image/webp" aria-label={"Inserir imagem na pergunta "+(index+1)} className="sr-only" disabled={busy||richIndex!==null||(block.figuras?.length??0)>=FIGURE_MAX_PER_BLOCK||figureCount(form.conteudo)>=FIGURE_MAX_PER_EXAM} onChange={e=>{const file=e.currentTarget.files?.[0];e.currentTarget.value="";if(file)void attachFigure(index,file);}}/></label></div>
@@ -375,18 +402,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
       {block.tipo==="verdadeiro_falso"&&<p className="text-sm text-muted-foreground">Na folha: ( ) V  ·  ( ) F</p>}
       {block.tipo==="lacunas"&&<p className="text-xs text-muted-foreground">Utilize ____ no enunciado para indicar cada lacuna.</p>}
        {isQuestion(block.tipo)&&(!cotacao.qualitative||block.cotacao_cent!==undefined)&&<label className="grid max-w-56 gap-1 text-sm">Cotação (valores)<CotacaoInput label={"Cotação da "+numbering[index].label.toLowerCase()} className={input} value={block.cotacao_cent} disabled={richIndex!==null} onChange={v=>patch(index,{cotacao_cent:v})}/>{block.cotacao_cent!==undefined&&cotacaoMax!==null&&block.cotacao_cent>cotacaoMax&&<span className="text-xs text-destructive">Excede a escala da classe.</span>}</label>}
-      {isQuestion(block.tipo)&&(!["verdadeiro_falso","lacunas","escolha"].includes(block.tipo)||block.linhas>0)&&<div className="min-w-0 space-y-3 border-t border-border pt-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2"><span className="text-sm font-medium">Espaço para resposta</span><span className={singleQuestion&&respostaLayout(block.tipo,block.linhas).kind!=="box"?"hidden":"text-xs tabular-nums text-muted-foreground"}>{respostaLayout(block.tipo,block.linhas).kind==="none"?"Sem espaço adicional":respostaLayout(block.tipo,block.linhas).kind==="box"?"Área livre · "+(respostaLayout(block.tipo,block.linhas).heightMm/10).toFixed(1).replace(".",",")+" cm":block.linhas+" linha(s) · "+(respostaLayout(block.tipo,block.linhas).heightMm/10).toFixed(1).replace(".",",")+" cm"}</span></div>
-        <div className={singleQuestion?"hidden":"flex flex-wrap gap-2"} role="group" aria-label={"Espaço da resposta "+(index+1)}>
-         {([0,3,6,10] as const).map(n=><Button key={n} type="button" size="sm" variant={block.linhas===n?"secondary":"outline"} aria-pressed={block.linhas===n} className="flex-1 sm:flex-none" onClick={()=>patch(index,{linhas:n})}>{n===0?"Nenhum":n===3?"Curto":n===6?"Médio":"Longo"}</Button>)}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-         <Button type="button" size="sm" variant="outline" aria-label={"Diminuir espaço da resposta "+(index+1)} className="min-w-11" disabled={block.linhas<=0} onClick={()=>patch(index,{linhas:Math.max(0,block.linhas-1)})}><Minus/></Button>
-         <label className="flex min-w-0 items-center gap-2 text-sm"><input type="number" inputMode="numeric" min={0} max={PROVA_PAPER.maxLines} aria-label={"Linhas para resposta "+(index+1)} value={block.linhas} className={input.replace("w-full","w-20")+" text-center"} onChange={e=>patch(index,{linhas:Math.max(0,Math.min(PROVA_PAPER.maxLines,Math.trunc(Number(e.target.value)||0)))})}/><span>{["calculo","desenho"].includes(block.tipo)?"unidades de 8 mm":"linhas"}</span></label>
-         <Button type="button" size="sm" variant="outline" aria-label={"Aumentar espaço da resposta "+(index+1)} className="min-w-11" disabled={block.linhas>=PROVA_PAPER.maxLines} onClick={()=>patch(index,{linhas:Math.min(PROVA_PAPER.maxLines,block.linhas+1)})}><Plus/></Button>
-        </div>
-        {!block.rich&&richIndex===null&&["calculo","discursiva","alinea"].includes(block.tipo)&&<details key={singleQuestion?"mobile-symbols":"desktop-symbols"} open={!singleQuestion}><summary className={"min-h-11 cursor-pointer py-2 text-sm text-muted-foreground "+(singleQuestion?"":"hidden")}>Símbolos matemáticos</summary><div className="flex flex-wrap gap-1">{["²","³","√","×","÷","π","½","¼","≤","≥","∪","∩"].map(symbol=><button key={symbol} type="button" aria-label={"Adicionar "+symbol} className="min-h-11 min-w-11 rounded-xl border border-border px-2 py-1 text-base hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" disabled={block.texto.length>=3000} onClick={()=>patch(index,{texto:block.texto+symbol})}>{symbol}</button>)}</div></details>}
-      </div>}
+      {isQuestion(block.tipo)&&<div className="min-w-0">{!block.rich&&richIndex===null&&["calculo","discursiva","alinea"].includes(block.tipo)&&<details key={singleQuestion?"mobile-symbols":"desktop-symbols"} open={!singleQuestion}><summary className={"min-h-11 cursor-pointer py-2 text-sm text-muted-foreground "+(singleQuestion?"":"hidden")}>Símbolos matemáticos</summary><div className="flex flex-wrap gap-1">{["²","³","√","×","÷","π","½","¼","≤","≥","∪","∩"].map(symbol=><button key={symbol} type="button" aria-label={"Adicionar "+symbol} className="min-h-11 min-w-11 rounded-xl border border-border px-2 py-1 text-base hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" disabled={block.texto.length>=3000} onClick={()=>patch(index,{texto:block.texto+symbol})}>{symbol}</button>)}</div></details>}</div>}
      </div>)}
      {singleQuestion&&<div className="grid grid-cols-2 gap-2">
       <Button type="button" variant="outline" disabled={richIndex!==null||currentBlock===0} onClick={()=>navigateBlock(currentBlock-1)}><ArrowLeft/> Anterior</Button>

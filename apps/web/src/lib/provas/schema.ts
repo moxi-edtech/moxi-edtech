@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { richSchema,richText } from "./rich";
 import { mathMarkup } from "./math";
-import { APRESENTACOES } from "./layout";
+import { APRESENTACOES,RESPOSTA_FORMATOS } from "./layout";
 import { FIGURE_MAX_PER_BLOCK,safeProvaFigure,contentFits } from "./figures";
 export const figureSchema=z.object({src:z.string(),alt:z.string().trim().min(1).max(160)}).strict().refine(f=>safeProvaFigure(f)!==null,"Figura PNG inválida ou demasiado grande");
 export const TIPOS = ["grupo","texto","discursiva","verdadeiro_falso","lacunas","escolha","calculo","desenho","alinea"] as const;
-export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().min(1).max(3000),linhas:z.number().int().min(0).max(20),rich:richSchema.optional(),figuras:z.array(figureSchema).min(1).max(FIGURE_MAX_PER_BLOCK).optional(),alternativas:z.array(z.string().trim().min(1).max(500)).min(2).max(8).optional(),cotacao_cent:z.number().int().min(0).max(2000).optional()}).strict().superRefine((b,ctx)=>{
+export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().min(1).max(3000),linhas:z.number().int().min(0).max(20),resposta_formato:z.enum(RESPOSTA_FORMATOS).optional(),rich:richSchema.optional(),figuras:z.array(figureSchema).min(1).max(FIGURE_MAX_PER_BLOCK).optional(),alternativas:z.array(z.string().trim().min(1).max(500)).min(2).max(8).optional(),cotacao_cent:z.number().int().min(0).max(2000).optional()}).strict().superRefine((b,ctx)=>{
+ if(b.resposta_formato!==undefined&&(["grupo","texto"].includes(b.tipo)||((b.resposta_formato==="nenhum")!==(b.linhas===0))||(b.resposta_formato==="retangulo"&&b.linhas<3)))ctx.addIssue({code:z.ZodIssueCode.custom,message:"Formato ou dimensão da resposta inválidos",path:["resposta_formato"]});
  if(b.figuras&&b.tipo==="grupo")ctx.addIssue({code:z.ZodIssueCode.custom,message:"Figuras não pertencem ao título do grupo",path:["figuras"]});
  if(b.alternativas!==undefined&&b.tipo!=="escolha")ctx.addIssue({code:z.ZodIssueCode.custom,message:"Alternativas apenas em escolha múltipla",path:["alternativas"]});
  if(b.cotacao_cent!==undefined&&["grupo","texto"].includes(b.tipo))ctx.addIssue({code:z.ZodIssueCode.custom,message:"Cotação apenas em perguntas",path:["cotacao_cent"]});

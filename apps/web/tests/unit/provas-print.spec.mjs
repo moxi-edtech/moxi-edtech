@@ -495,3 +495,20 @@ test("nominal print applies class-specific dates and labels historical copies",(
  assert.match(html,/08\/12\/2026/);assert.match(html,/Hora: 10:30/);assert.match(html,/07\/12\/2026/);assert.match(html,/Hora: 08:00/);
  assert.match(provaHtml(base,"Curtume",{historical:true}),/REIMPRESSÃO HISTÓRICA/);
 });
+
+
+test("explicit answer format overrides question type without changing legacy layouts",()=>{
+ const {respostaLayout}=require("../../src/lib/provas/layout.ts");
+ const {blockSchema}=require("../../src/lib/provas/schema.ts");
+ assert.equal(respostaLayout("calculo",6).kind,"box");
+ assert.equal(respostaLayout("discursiva",6).kind,"lines");
+ assert.deepEqual(respostaLayout("alinea",6,"retangulo"),{kind:"box",count:6,heightMm:48});
+ assert.deepEqual(respostaLayout("calculo",3,"linhas"),{kind:"lines",count:3,heightMm:24});
+ assert.equal(respostaLayout("escolha",0,"nenhum").kind,"none");
+ const item={tipo:"alinea",texto:"Mostra os cálculos.",linhas:6,resposta_formato:"retangulo"};
+ assert.ok(blockSchema.safeParse(item).success);
+ for(const patch of [{resposta_formato:"other"},{linhas:0},{linhas:2},{resposta_formato:"nenhum"},{tipo:"grupo"}])assert.equal(blockSchema.safeParse({...item,...patch}).success,false);
+ assert.match(provaHtml({...base,conteudo:[item]},"Curtume"),/class="espaco" style="height:48mm"/);
+ assert.equal((provaHtml({...base,conteudo:[{...item,tipo:"calculo",linhas:3,resposta_formato:"linhas"}]},"Curtume").match(/class="linha"/g)||[]).length,3);
+ assert.doesNotMatch(provaHtml({...base,conteudo:[{...item,linhas:0,resposta_formato:"nenhum"}]},"Curtume"),/class="espaco"|class="linha"/);
+});

@@ -53,7 +53,7 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
    const suffix=b.tipo==="verdadeiro_falso"?'<span class="vf" aria-label="Verdadeiro ou falso">( &nbsp; ) V &nbsp; ( &nbsp; ) F</span>':"";
    const cotacao=b.cotacao_cent===undefined?"":'<span class="cotacao">('+esc(formatCotacao(b.cotacao_cent))+' val.)</span>';
    const alternatives=b.tipo==="escolha"&&b.alternativas?'<ol class="alternativas'+(alternativesInColumns(b.alternativas)?' duas-colunas':'')+'">'+b.alternativas.map((a,i)=>'<li><span class="opcao">□ '+String.fromCharCode(65+i)+') </span>'+esc(a)+'</li>').join("")+'</ol>':"";
-   const answer=respostaLayout(b.tipo,b.linhas);
+   const answer=respostaLayout(b.tipo,b.linhas,b.resposta_formato);
    const lines=Array.from({length:answer.count},()=>'<div class="linha"></div>');
    const first=answer.kind==="lines"?'<div class="resposta resposta-inicio">'+lines[0]+'</div>':answer.kind==="box"?'<div class="resposta"><div class="espaco" style="height:'+answer.heightMm+'mm"></div></div>':"";
    const rest=answer.kind==="lines"&&answer.count>1?'<div class="resposta-cont">'+lines.slice(1).join("")+'</div>':"";
