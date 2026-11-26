@@ -630,7 +630,7 @@ export default function Page() {
                         <PortalDrawerPushButton frame={operationFrame("materials", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Materiais</PortalDrawerPushButton>
                         <PortalDrawerPushButton frame={{ id: `${escolaParam ?? "default"}:horario:${selectedTurma.id}`, title: "Horário da turma", description: formatTurmaDisplayName({ nome: selectedTurma.nome }), content: <ProfessorTurmaHorario turmaId={selectedTurma.id} embedded /> }} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-2 text-xs font-semibold text-foreground hover:bg-muted">Horário da turma</PortalDrawerPushButton>
             </div>
-            <ProfessorTurmaRoster key={`${escolaParam}:${selectedTurma.id}`} turmaId={selectedTurma.id} />
+            <ProfessorTurmaRoster key={`${operationScope}:${selectedTurma.id}`} turmaId={selectedTurma.id} academicYearId={requestedAcademicYearId} subjects={Array.from(new Map(atribs.filter(item => item.turma.id === selectedTurma.id && item.disciplina.id).map(item => [item.disciplina.id!, { id: item.disciplina.id!, nome: item.disciplina.nome }])).values())} />
           </>,
         }} />
         <PortalDrawerNavigator key={`${operationScope}:lesson`} open={Boolean(selectedLesson)} onClose={() => setSelectedLessonKey(null)} onChanged={loadAgain} root={{ id: `${operationScope}:lesson:${selectedLessonKey ?? "closed"}`, title: selectedLesson?.disciplina_nome ?? "Detalhes da aula", description: "Consulta da agenda de hoje.", size: "medium", content: selectedLesson && <>
