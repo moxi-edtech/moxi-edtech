@@ -72,10 +72,11 @@ export default function DashboardLoader() {
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const drawerScope = `${school}:${scopedQuery}`;
-  const [drawer, setDrawer] = useState<{ scope: string; kind: "daily" | "notices" } | null>(null);
+  const [drawer, setDrawer] = useState<{ scope: string; kind: "daily" | "notices" | "notice"; noticeId?: string } | null>(null);
   const activeDrawer = drawer?.scope === drawerScope ? drawer.kind : null;
   const openDrawer = (kind: "daily" | "notices") => setDrawer({ scope: drawerScope, kind });
   const lessonOpen = activeDrawer === "daily";
+  const selectedNotice = activeDrawer === "notice" ? screen?.dashboard.avisos_recentes.find(item => item.id === drawer?.noticeId) : null;
   const refresh = useCallback(() => setReload(n => n + 1), []);
   useEffect(() => {
     const controller = new AbortController();
@@ -169,11 +170,14 @@ export default function DashboardLoader() {
     }>
       {(screen.dashboard.avisos_recentes??[]).length===0 ? <PortalEmptyState
         icon={<Bell className="h-5 w-5" />} title="Sem avisos recentes" /> : <ul className="divide-y divide-border rounded-xl border border-border bg-card px-4">
-        {screen.dashboard.avisos_recentes.map(a=><li key={a.id} className="py-3"><p className="text-sm font-medium text-foreground">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{a.resumo}</p>}<p className="mt-1 text-xs text-muted-foreground">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></li>)}
+        {screen.dashboard.avisos_recentes.map(a=><li key={a.id}><button type="button" aria-haspopup="dialog" onClick={() => setDrawer({ scope: drawerScope, kind: "notice", noticeId: a.id })} className="klasse-portal-press block w-full py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><p className="text-sm font-medium text-foreground">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{a.resumo}</p>}<p className="mt-1 text-xs text-muted-foreground">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></button></li>)}
       </ul>}
     </PortalSection>
     <PortalDrawerNavigator key={drawerScope} open={activeDrawer !== null} onClose={() => setDrawer(null)}
-      root={activeDrawer === "notices" ? {
+      root={selectedNotice ? {
+        id: `${drawerScope}:notice:${selectedNotice.id}`, title: selectedNotice.titulo || "Aviso da escola", description: selectedNotice.origem || "Comunicação da escola",
+        content: <><AuditPageView portal="aluno" acao="PAGE_VIEW" entity="avisos" /><p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{selectedNotice.resumo || "Sem informação adicional."}</p><PortalDrawerPushButton frame={{ id: `${drawerScope}:notices`, title: "Avisos", description: "Comunicações publicadas pela escola.", content: <TabNotificacoes /> }} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold text-primary">Ver todos os avisos</PortalDrawerPushButton></>,
+      } : activeDrawer === "notices" ? {
         id: `${drawerScope}:notices`, title: "Avisos", description: "Comunicações publicadas pela escola.",
         content: <><AuditPageView portal="aluno" acao="PAGE_VIEW" entity="avisos" /><TabNotificacoes /></>,
       } : {
