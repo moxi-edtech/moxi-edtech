@@ -289,9 +289,11 @@ export async function resolveRaaProgressionForMatricula(
 
   if (!databaseError && databaseResult) {
     const decision = databaseResult.decision as RaaProgressionResult["decision"]
-    const regime = databaseResult.regime as RegimeAcademico
+    const regime = (databaseResult.regime ?? await resolveRegimeAcademico(supabase, matricula.turma_id)) as RegimeAcademico
     const databaseDisciplinas = (databaseResult.disciplinas ?? []) as Array<{ disciplina_id: string; status: RaaAcademicStatus }>
-    const legal = await resolveDecretoDecision(
+    // The database has already resolved eligibility. Re-reading classifications
+    // would incorrectly require a paid boletim to rematriculate.
+    const legal = databaseResult.grade_details_restricted === true ? null : await resolveDecretoDecision(
       supabase,
       escolaId,
       matricula.id,

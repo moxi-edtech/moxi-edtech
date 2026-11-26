@@ -41,20 +41,19 @@ export async function checkBoletimAccess(
   supabase: SupabaseClient<Database>,
   scope: { escolaId: string; alunoId: string; matriculaId: string },
 ): Promise<{ granted: boolean; error: boolean }> {
-  const { data, error } = await supabase
-    .from("servico_pedidos")
-    .select("servico_codigo, valor_cobrado, status, contexto, pagamento_intents(status)")
-    .eq("escola_id", scope.escolaId)
-    .eq("aluno_id", scope.alunoId)
-    .eq("matricula_id", scope.matriculaId)
-    .in("servico_codigo", [...BOLETIM_SERVICE_CODES])
-    .eq("status", "granted")
-    .gt("valor_cobrado", 0)
-    .order("created_at", { ascending: false })
-    .limit(30);
-
-  if (error) return { granted: false, error: true };
-  return { granted: isBoletimPaid((data ?? []) as PaymentOrder[]), error: false };
+  // Generated Database types may lag the versioned migration. Keep this
+  // narrow contract until the next type generation; no fallback to raw orders.
+  const client = supabase as unknown as {
+    rpc(name: "aluno_boletim_pago", args: {
+      p_escola_id: string; p_aluno_id: string; p_matricula_id: string;
+    }): PromiseLike<{ data: boolean | null; error: unknown }>;
+  };
+  const { data, error } = await client.rpc("aluno_boletim_pago", {
+    p_escola_id: scope.escolaId,
+    p_aluno_id: scope.alunoId,
+    p_matricula_id: scope.matriculaId,
+  });
+  return { granted: !error && data === true, error: Boolean(error) || typeof data !== "boolean" };
 }
 
 /** Emissão institucional: apenas o serviço exacto, concedido e liquidado.
