@@ -11,7 +11,7 @@ import {
 } from "../../src/components/professor/ProfessorResourceStates";
 import { matchesProfessorResourceQuery } from "../../src/lib/professor/resource-search";
 
-const source = (file: string) => readFileSync(new URL("../../src/app/professor/" + file, import.meta.url), "utf8");
+const source = (file: string) => readFileSync(new URL("../../src/" + file, import.meta.url), "utf8");
 
 test("resource search ignores accents and supports null descriptions", () => {
   assert.equal(matchesProfessorResourceQuery(" historia ", "História de Angola", null), true);
@@ -51,7 +51,7 @@ test("empty and error states have explicit actions and no fabricated resource ro
 });
 
 test("materials and activities share search, error, loading and empty states", () => {
-  for (const file of ["materiais/page.tsx", "atividades/page.tsx"]) {
+  for (const file of ["components/professor/ProfessorMateriaisWorkspace.tsx", "app/professor/atividades/page.tsx"]) {
     const code = source(file);
     assert.match(code, /matchesProfessorResourceQuery/);
     assert.match(code, /ProfessorResourceGridSkeleton/);
@@ -63,5 +63,6 @@ test("materials and activities share search, error, loading and empty states", (
     assert.match(code, /if \(!(?:mRes|actRes)\.ok/);
     assert.match(code, /type="search"/);
   }
-  assert.match(source("atividades/page.tsx"), /formatDate\(act\.prazo\)/);
+  assert.match(source("app/professor/materiais/page.tsx"), /<ProfessorMateriaisWorkspace/);
+  assert.match(source("app/professor/atividades/page.tsx"), /formatDate\(act\.prazo\)/);
 });
