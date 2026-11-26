@@ -306,7 +306,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
         </>}
         {/* MODAL NOVO MATERIAL */}
         {showModal && (
-          <div className={embedded ? "min-w-0" : "fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4"}>
+          <div className={embedded ? "min-w-0" : "fixed inset-0 z-50 flex items-center justify-center bg-muted-foreground/60 backdrop-blur-xs p-4"}>
             <div className={embedded ? "rounded-xl bg-card p-4 space-y-4 border border-border" : "max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl bg-card p-4 shadow-xl space-y-4 border border-border sm:p-6"}>
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <h3 className="text-base font-black text-foreground">Novo Material Pedagógico</h3>
