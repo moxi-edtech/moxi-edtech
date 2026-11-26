@@ -17,19 +17,37 @@ test("cores KLASSE apenas nos portais, sem alterar tema global", async () => {
 });
 
 test("navegação e área académica explicitam contexto sem inventar estado", async () => {
-  const [academic, tabs, alunoNav, profNav] = await Promise.all([
+  const [academic, tabs, alunoNav, profNav, sharedNav] = await Promise.all([
     read("components/aluno/academico/AcademicoWorkspace.tsx"),
     read("components/portal/ui/PortalTabs.tsx"),
     read("components/aluno/layout/AlunoBottomNav.tsx"),
     read("components/professor/layout/ProfessorBottomNav.tsx"),
+    read("components/layout/klasse/PortalBottomNav.tsx"),
   ]);
   assert.doesNotMatch(academic, /descriptions\[activeTab\]/);
   assert.match(academic, /layout="compact"/);
   assert.match(tabs, /grid grid-cols-4/);
   assert.match(academic, /<PortalTabs items=\{sections\}/);
   assert.match(tabs, /border-klasse-gold/);
-  assert.match(alunoNav, /klasse-gold/);
-  assert.match(profNav, /klasse-gold/);
+  for (const wrapper of [alunoNav, profNav]) {
+    assert.match(wrapper, /import \{ PortalBottomNav, type PortalBottomNavItem \} from "@\/components\/layout\/klasse\/PortalBottomNav"/);
+    assert.match(wrapper, /<PortalBottomNav\b/);
+    assert.match(wrapper, /mainItems=\{mainItems\.map\(toLink\)\}/);
+    assert.match(wrapper, /drawerItems=\{drawerItems\.map\(toLink\)\}/);
+  }
+  assert.match(alunoNav, /activeHref=\{active \? withAlunoParam\(active\.href\) : null\}/);
+  assert.match(profNav, /activeHref=\{activeHref\}/);
+  assert.match(sharedNav, /active \? "bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold\/30"/);
+  assert.match(sharedNav, /active \? "border-klasse-gold\/40 bg-klasse-gold-50 text-klasse-gold-700"/);
+  assert.match(sharedNav, /isDrawerActive \|\| isMoreOpen \? "bg-klasse-gold-50 text-klasse-gold-700/);
+  assert.match(sharedNav, /aria-current=\{active \? "page" : undefined\}/);
+  assert.match(sharedNav, /min-h-12/);
+  assert.match(sharedNav, /focus-visible:ring-4 focus-visible:ring-klasse-gold\/20/);
+  assert.match(sharedNav, /aria-expanded=\{isMoreOpen\}/);
+  assert.match(sharedNav, /aria-modal="true"/);
+  assert.match(sharedNav, /event\.key === "Escape"/);
+  assert.match(sharedNav, /safe-area-inset-bottom/);
+  assert.match(sharedNav, /bg-destructive[^"]*text-background/);
 });
 
 test("notas e decisões técnicas conservam ações sem poluir a interface", async () => {

@@ -17,6 +17,22 @@ BEGIN
  UPDATE public.turmas SET fixture_escala='quantitativa_secundario';
 END;
 $scale_test$;
+
+DO $grids$
+DECLARE v text;
+BEGIN
+ FOREACH v IN ARRAY ARRAY[$tex$\begin{cases}2x+y=10\\x-y=2\end{cases}$tex$,$tex$\begin{pmatrix}2&3\\4&5\end{pmatrix}$tex$,$tex$\begin{vmatrix}\frac{1}{2}&x\\3&4\end{vmatrix}$tex$,$tex$\frac{dy}{dx}=3x^{2}$tex$] LOOP
+  IF provas_private.provas_rich_validate(jsonb_build_object('version',1,'segments',jsonb_build_array(jsonb_build_object('kind','math','latex',v))),v)<>1 THEN RAISE EXCEPTION 'valid grid rejected'; END IF;
+ END LOOP;
+ FOREACH v IN ARRAY ARRAY[$tex$\begin{array}1&2\end{array}$tex$,$tex$\begin{pmatrix}1&2\\3\end{pmatrix}$tex$,$tex$\begin{vmatrix}1&2&3\\4&5&6\end{vmatrix}$tex$,$tex$\begin{cases}x=1\end{cases}$tex$,$tex$\begin{pmatrix}1&\htmlClass{a}{x}\\3&4\end{pmatrix}$tex$,$tex$\begin{pmatrix}1&2\\3&4\end{vmatrix}$tex$,$tex$x&y$tex$,$tex$\begin{pmatrix}1&2\\3&\begin{pmatrix}4\end{pmatrix}\end{pmatrix}$tex$,$tex$\begin{pmatrix}1&&2\\3&4&5\end{pmatrix}$tex$,$tex$\begin{pmatrix}1&2&3&4&5\end{pmatrix}$tex$] LOOP
+  BEGIN
+   PERFORM provas_private.provas_rich_validate(jsonb_build_object('version',1,'segments',jsonb_build_array(jsonb_build_object('kind','math','latex',v))),v);
+   RAISE EXCEPTION 'invalid grid accepted: %',v;
+  EXCEPTION WHEN invalid_parameter_value THEN NULL;
+  END;
+ END LOOP;
+END;
+$grids$;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
 DO $$

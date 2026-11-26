@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { provaAccess,summaryColumns,detailColumns } from "@/lib/provas/access";
-import { mutationSchema } from "@/lib/provas/schema";
+import { mutationSchema,blockSchema } from "@/lib/provas/schema";
+import { groupSummaries } from "@/lib/provas/questionTemplates";
 import { EXAM_REQUEST_MAX_BYTES } from "@/lib/provas/figures";
 import { loadProvaLogo } from "@/lib/provas/loadLogo";
 export const dynamic="force-dynamic";
@@ -62,6 +63,18 @@ export async function POST(req:Request,{params}:Context){
  const parsed=mutationSchema.safeParse(raw);
  if(!parsed.success)return json({error:"Verifique os campos e as perguntas da prova."},400);
  const data=parsed.data;
+ // Check the persisted, tenant-scoped version, never client-provided group totals.
+ // The RPC still validates permissions, state and expected version atomically.
+ if(data.acao==="submeter"||data.acao==="aprovar"){
+   const current=await access.db.from("provas_pedagogicas").select("conteudo,versao").eq("escola_id",access.escolaId).eq("id",data.id).maybeSingle();
+   if(current.error)return json({error:"Não foi possível validar os grupos da prova."},500);
+   if(current.data&&current.data.versao===data.versao){
+     const blocks=blockSchema.array().min(1).max(80).safeParse(current.data.conteudo);
+     if(!blocks.success)return json({error:"Verifique o conteúdo da prova."},400);
+     const empty=groupSummaries(blocks.data).filter(g=>g.questions===0);
+     if(empty.length)return json({error:"Adicione perguntas a "+empty.map(g=>g.label).join(", ")+" antes de continuar."},400);
+   }
+ }
  const result=await access.db.rpc("provas_mutar",{p_escola:access.escolaId,p_id:"id" in data?data.id:null,p_versao:"versao" in data?data.versao:null,p_acao:data.acao,p_dados:"dados" in data?data.dados:null});
  if(result.error){
    const status=result.error.code==="40001"?409:result.error.code==="42501"?403:result.error.code?.startsWith("22")||result.error.code?.startsWith("23")?400:500;

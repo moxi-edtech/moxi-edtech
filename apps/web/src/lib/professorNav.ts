@@ -41,3 +41,11 @@ export function getActiveProfessorNavHref(items: ProfessorNavLink[], activePath:
   );
   return matches.sort((a, b) => b.path.length - a.path.length)[0]?.href ?? null;
 }
+
+/** Primary actions are explicit, independent of desktop menu order. */
+export const professorPrimaryPaths = ["/professor", "/professor/frequencias", "/professor/notas", "/professor/provas"] as const;
+export function splitProfessorMobileNav(items: ProfessorNavLink[]) {
+  const mainItems = professorPrimaryPaths.flatMap(path => items.filter(item => item.path === path));
+  const drawerItems = items.filter(item => !professorPrimaryPaths.some(path => path === item.path));
+  return { mainItems, drawerItems };
+}

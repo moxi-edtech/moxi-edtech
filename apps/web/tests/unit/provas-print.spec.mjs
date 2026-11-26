@@ -193,7 +193,8 @@ test("question templates are contextual without restricting formats or mutating 
  assert.equal(questionTemplate("calculo").linhas,6);
  const a=questionTemplate("escolha"), b=questionTemplate("escolha");a.alternativas[0]="Changed";assert.equal(b.alternativas[0],"");
  assert.equal(suggestedTypes("Matemática")[0],"calculo");
- assert.equal(suggestedTypes("Língua Portuguesa")[0],"texto");
+ assert.equal(suggestedTypes("Língua Portuguesa")[0],"discursiva");
+ assert.ok(!suggestedTypes("Língua Portuguesa").includes("texto"));
  assert.equal(structures.length,3);
  assert.equal(formatCotacao(0),"0");assert.equal(formatCotacao(2000),"20");assert.equal(formatCotacao(125),"1,25");
 });
@@ -351,6 +352,100 @@ test("standard proof titles are automatic; custom and legacy titles are preserve
  assert.equal(provaDisplayTitle(custom),"Avaliação especial de Física");
  assert.equal(tituloAoMudarTipo(custom,"trimestral"),"Prova Trimestral");
  assert.equal(provaDisplayTitle({...base,tipo_prova:undefined}),"Prova — Física");
+});
+
+test("structure blocks do not consume question numbers or answer spaces",()=>{
+ const {blockNumbering,questionTypes,structureTypes,questionTemplate,suggestedTypes}=require("../../src/lib/provas/questionTemplates.ts");
+ const blocks=["grupo","texto","discursiva","alinea","texto","alinea","discursiva","grupo","texto","discursiva"].map((tipo,i)=>({...questionTemplate(tipo),texto:"Bloco "+i,linhas:0}));
+ assert.deepEqual(blockNumbering(blocks).map(x=>x.prefix),[null,null,"1.","a)",null,"b)","2.",null,null,"1."]);
+ assert.ok(structureTypes.every(x=>!questionTypes.includes(x)&&!suggestedTypes("Português").includes(x)));
+ const html=provaHtml({...base,conteudo:blocks},"Escola");
+ assert.deepEqual([...html.matchAll(/class="question-number">([^<]+)/g)].map(x=>x[1]),["1.","a)","b)","2.","1."]);
+ assert.equal((html.match(/class="apoio"/g)||[]).length,3);
+ assert.equal((html.match(/class="cotacao"/g)||[]).length,0);
+});
+
+test("modular arithmetic starters, editable operators, terminal equality and grouping round-trip",()=>{
+ const {modelStarter,composeExpression}=require("../../src/lib/provas/formulaModels.ts");
+ const {recoverEditableExpression}=require("../../src/lib/provas/formulaRecovery.ts");
+ const seed=modelStarter("soma_fracoes",["2","3","1","4"]).map((p,id)=>({...p,id}));
+ assert.equal(seed.length,2);
+ assert.equal(composeExpression([seed[0],{...seed[1],operator:"-"}],true),"\\frac{2}{3}-\\frac{1}{4}=");
+ for(const source of ["1+2-4-7=","\\frac{2}{3}+\\frac{1}{4}","\\frac{2}{3}\\times \\frac{5}{7}+\\frac{1}{2}=","(5+3)\\times 2-4="]){
+  const recovered=recoverEditableExpression(source);
+  assert.ok(recovered.parts.length>=2,source);
+  assert.ok(recovered.parts.every(p=>!("existing" in p)),source);
+  assert.equal(composeExpression(recovered.parts,recovered.ending),source);
+ }
+ assert.equal(composeExpression([{...seed[0],opens:1}]),null);
+ assert.equal(composeExpression(seed.map((p,i)=>({...p,opens:i===0?1:0,closes:i===1?1:0})),true),"(\\frac{2}{3}+\\frac{1}{4})=");
+});
+
+test("groups derive roman headings, totals and membership without rewriting old titles",()=>{
+ const {groupSummaries,groupHeading,questionTemplate,moveChangesGroup,groupTitleInput}=require("../../src/lib/provas/questionTemplates.ts");
+ const g={tipo:"grupo",texto:"IV Grupo — Aritmética",linhas:0},h={tipo:"grupo",texto:"Grupo",linhas:0};
+ const a={tipo:"discursiva",texto:"A",linhas:2,cotacao_cent:450},b={tipo:"alinea",texto:"B",linhas:1,cotacao_cent:350},c={tipo:"calculo",texto:"C",linhas:3,cotacao_cent:1200},support={tipo:"texto",texto:"Leia",linhas:0};
+ const blocks=[g,support,a,b,h,c];
+ const groups=groupSummaries(blocks);
+ assert.deepEqual(groups.map(x=>[x.title,x.questions,x.total,x.assigned]),[["I Grupo — Aritmética",2,800,2],["II Grupo",1,1200,1]]);
+ assert.equal(groupHeading(4,"II Grupo: Álgebra"),"IV Grupo — Álgebra");
+ assert.equal(groupTitleInput("Aritmética "),"Aritmética ");
+ assert.equal(questionTemplate("grupo").texto,"Grupo");
+ assert.equal(moveChangesGroup(blocks,2,3),false);
+ assert.equal(moveChangesGroup(blocks,2,5),true);
+ assert.equal(moveChangesGroup(blocks,4,1),true);
+ assert.equal(groupSummaries([g,h,c])[0].questions,0);
+ const html=provaHtml({...base,conteudo:blocks},"Escola");
+ assert.match(html,/I Grupo — Aritmética<span class="group-total"> · 8 val\./);
+ assert.match(html,/II Grupo<span class="group-total"> · 12 val\./);
+ assert.doesNotMatch(html,/IV Grupo — Aritmética/);
+ assert.doesNotMatch(provaHtml({...base,conteudo:[g,{...a,cotacao_cent:undefined}]},"Escola"),/<span class="group-total">/);
+});
+
+test("recursive editor round-trips every model and supports nested arithmetic",()=>{
+ const {formulaModels,modelExpression}=require("../../src/lib/provas/formulaModels.ts");
+ const {parseMath,modelMathTree,serializeMath,validMathExpression,mathAt,replaceMathAt,tokenNode,mathTreeValid}=require("../../src/lib/provas/formulaAst.ts");
+ for(const model of formulaModels){
+  const source=modelExpression(model.id,model.fields.map(f=>f.example)),tree=modelMathTree(model.id);
+  assert.ok(tree,model.id);
+  assert.equal(serializeMath(tree),source,model.id);
+  assert.equal(validMathExpression(tree),source,model.id);
+ }
+ const sources=["\\frac{2x+5}{3x-1}","(2x+3)^{x-1}","\\sqrt{3x^{2}+5x-7}","3x^{3}-2x^{2}+5x-7=0","\\sin(2x+30^{\\circ})-\\cos(x)=0","\\int_{0}^{5}(3x^{2}+2x-1)\\,dx","\\frac{2}{3}\\times \\frac{5}{7}-\\frac{1}{4}=","1+2-4-7="];
+ for(const source of sources){const tree=parseMath(source);assert.ok(tree,source);assert.equal(serializeMath(tree),source);assert.equal(validMathExpression(tree),source);}
+ const fraction=parseMath("\\frac{2}{3}");
+ const numerator=[{index:0,slot:"numerator"}];
+ const next=replaceMathAt(fraction,numerator,[...mathAt(fraction,numerator),tokenNode("x"),tokenNode("+"),tokenNode("5")]);
+ assert.equal(validMathExpression(next),"\\frac{2x+5}{3}");
+ assert.equal(serializeMath(fraction),"\\frac{2}{3}","original immutable");
+ const replaced=replaceMathAt(next,[{index:0,slot:"denominator"}],parseMath("\\sqrt{x+1}"));
+ assert.equal(validMathExpression(replaced),"\\frac{2x+5}{\\sqrt{x+1}}");
+ assert.equal(validMathExpression(replaceMathAt(fraction,numerator,[])),null);
+ assert.equal(parseMath("\\text{2026}+1"),null);
+ assert.equal(parseMath("\\htmlClass{bad}{x}"),null);
+ assert.equal(validMathExpression([tokenNode("x"),tokenNode("+")]),null);
+ assert.equal(validMathExpression([tokenNode("x"),tokenNode("=")]),"x=");
+ assert.equal(validMathExpression([tokenNode("\\sin"),tokenNode("x")]),"\\sin x");
+ let deep=[tokenNode("x")];for(let i=0;i<9;i++)deep=[{kind:"root",body:deep}];
+ assert.equal(mathTreeValid(deep),false);
+ assert.equal(mathTreeValid(Array.from({length:161},()=>tokenNode("x"))),false);
+ assert.equal(mathTreeValid([tokenNode("1".repeat(301))]),false);
+});
+
+test("bounded matrix, determinant and system validation and cell editing",()=>{
+ const {safeLatex}=require("../../src/lib/provas/rich.ts");
+ const {parseMath,serializeMath,validMathExpression,replaceMathAt,mathSlots}=require("../../src/lib/provas/formulaAst.ts");
+ const good=["\\begin{cases}2x+y=10\\\\x-y=2\\end{cases}","\\begin{pmatrix}2&3\\\\4&5\\end{pmatrix}","\\begin{vmatrix}\\frac{1}{2}&x\\\\3&4\\end{vmatrix}","\\begin{pmatrix}1&2&3\\\\4&5&6\\end{pmatrix}"];
+ for(const latex of good){assert.ok(safeLatex(latex),latex);const tree=parseMath(latex);assert.ok(tree,latex);assert.equal(serializeMath(tree),latex);assert.equal(validMathExpression(tree),latex);}
+ const invalid=["\\begin{array}1&2\\end{array}","\\begin{pmatrix}1&2\\\\3\\end{pmatrix}","\\begin{vmatrix}1&2&3\\\\4&5&6\\end{vmatrix}","\\begin{cases}x=1\\end{cases}","\\begin{pmatrix}1&\\htmlClass{a}{x}\\\\3&4\\end{pmatrix}","\\begin{pmatrix}1&2\\\\3&4\\end{vmatrix}","x&y","\\begin{pmatrix}1&2\\\\3&\\begin{pmatrix}4\\end{pmatrix}\\end{pmatrix}","\\begin{pmatrix}1&&2\\\\3&4&5\\end{pmatrix}","\\begin{pmatrix}1&2&3&4&5\\end{pmatrix}"];
+ for(const latex of invalid)assert.equal(safeLatex(latex),false,latex);
+ const tree=parseMath(good[1]);assert.equal(mathSlots(tree[0]).length,4);
+ const next=replaceMathAt(tree,[{index:0,slot:"cell:1:0"}],parseMath("\\frac{x+1}{2}"));
+ assert.equal(validMathExpression(next),"\\begin{pmatrix}2&3\\\\\\frac{x+1}{2}&5\\end{pmatrix}");
+ assert.equal(serializeMath(tree),good[1]);
+ assert.equal(validMathExpression(replaceMathAt(tree,[{index:0,slot:"cell:0:0"}],[])),null);
+ const proof=provaHtml({...base,conteudo:good.map(latex=>({tipo:"calculo",texto:latex,linhas:2,rich:{version:1,segments:[{kind:"math",latex}]}}))},"Escola");
+ assert.equal((proof.match(/<mtable/g)||[]).length,4);
 });
 
 test("illustrated qualitative questions retain existing scoring, reject external sources and deduplicate print figures",()=>{

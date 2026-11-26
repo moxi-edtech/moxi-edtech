@@ -1,126 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { AlertTriangle, Bell, CheckCheck, Info, X, Zap } from "lucide-react";
 import { ModalShell } from "@/components/ui/ModalShell";
-import {
-  useNotificacoes,
-  type Notificacao,
-  type Prioridade,
-} from "@/hooks/useNotificacoes";
+import { NotificacoesSurface } from "@/components/ui/NotificacoesSurface";
+import { useNotificacoes, type Notificacao } from "@/hooks/useNotificacoes";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
-
-const PRIORIDADE_CONFIG: Record<
-  Prioridade,
-  {
-    icon: ComponentType<{ size?: number; className?: string }>;
-    dot: string;
-    bg: string;
-    text: string;
-  }
-> = {
-  info: {
-    icon: Info,
-    dot: "bg-muted-foreground",
-    bg: "bg-muted",
-    text: "text-muted-foreground",
-  },
-  aviso: {
-    icon: AlertTriangle,
-    dot: "bg-amber",
-    bg: "bg-amber/10",
-    text: "text-foreground",
-  },
-  urgente: {
-    icon: Zap,
-    dot: "bg-destructive",
-    bg: "bg-destructive/10",
-    text: "text-foreground",
-  },
-};
-
-function formatRelativo(dateString: string): string {
-  const diff = Date.now() - new Date(dateString).getTime();
-  const mins = Math.floor(diff / 60000);
-  const horas = Math.floor(diff / 3600000);
-  const dias = Math.floor(diff / 86400000);
-
-  if (mins < 1) return "agora";
-  if (mins < 60) return `${mins}m`;
-  if (horas < 24) return `${horas}h`;
-  return `${dias}d`;
-}
-
-function NotificacaoItem({
-  notificacao,
-  onLida,
-  onAction,
-}: {
-  notificacao: Notificacao;
-  onLida: (id: string) => void;
-  onAction: (notificacao: Notificacao) => void;
-}) {
-  const cfg = PRIORIDADE_CONFIG[notificacao.prioridade];
-  const Icon = cfg.icon;
-
-  return (
-    <div
-      className={`relative flex gap-3 px-4 py-3 border-b border-border last:border-0 transition-colors cursor-pointer ${
-        notificacao.lida ? "opacity-60 hover:opacity-80" : "hover:bg-muted"
-      }`}
-      onClick={() => {
-        if (notificacao.action_url || notificacao.tipo === "A" || notificacao.modal_id) {
-          onAction(notificacao);
-        } else {
-          onLida(notificacao.id);
-        }
-      }}
-    >
-      {!notificacao.lida && (
-        <span className={`absolute left-2 top-4 h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-      )}
-
-      <div className={`flex-shrink-0 mt-0.5 h-8 w-8 rounded-xl flex items-center justify-center ${cfg.bg}`}>
-        <Icon size={14} className={cfg.text} />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <p
-          className={`text-xs font-bold leading-tight ${
-            notificacao.lida ? "text-muted-foreground" : "text-foreground"
-          }`}
-        >
-          {notificacao.titulo}
-        </p>
-        {notificacao.corpo && (
-          <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
-            {notificacao.corpo}
-          </p>
-        )}
-        <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-[10px] text-muted-foreground">{formatRelativo(notificacao.created_at)}</span>
-          {notificacao.action_label && (
-            <span className={`text-[10px] font-bold ${cfg.text}`}>
-              {notificacao.action_label} →
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function NotificacoesDropdown() {
   const router = useRouter();
   const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
-  const ref = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const [modalNotificacao, setModalNotificacao] = useState<Notificacao | null>(null);
-
+  // Both presentations share the same hook, data, and read actions.
   const { notificacoes, naoLidas, loading, marcarLida, marcarTodasLidas } = useNotificacoes();
   const resolveActionUrl = (actionUrl: string) => {
     if (/^\/(aluno|professor)(\/|$)/.test(actionUrl)) {
@@ -128,148 +23,43 @@ export function NotificacoesDropdown() {
     }
     return actionUrl;
   };
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
   const handleAction = (notificacao: Notificacao) => {
     if (notificacao.tipo === "A" || notificacao.modal_id) {
       setModalNotificacao(notificacao);
-      setOpen(false);
       return;
     }
-
-    if (notificacao.action_url) {
-      marcarLida(notificacao.id);
-      setOpen(false);
-      router.push(resolveActionUrl(notificacao.action_url));
-      return;
-    }
-
-    marcarLida(notificacao.id);
-    setOpen(false);
+    void marcarLida(notificacao.id);
+    if (notificacao.action_url) router.push(resolveActionUrl(notificacao.action_url));
   };
-
   const handleModalAction = () => {
     if (!modalNotificacao) return;
-    marcarLida(modalNotificacao.id);
+    void marcarLida(modalNotificacao.id);
     const actionUrl = modalNotificacao.action_url;
     setModalNotificacao(null);
-    if (actionUrl) {
-      router.push(resolveActionUrl(actionUrl));
-    }
+    if (actionUrl) router.push(resolveActionUrl(actionUrl));
   };
 
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((prev) => !prev)}
-        className="relative flex items-center justify-center h-10 w-10 rounded-xl border border-border bg-card hover:bg-muted transition-colors"
-        aria-label="Notificações"
-      >
-        <Bell size={16} className="text-muted-foreground" />
-        {naoLidas > 0 && (
-          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-background text-[9px] font-black flex items-center justify-center border-2 border-card">
-            {naoLidas > 9 ? "9+" : naoLidas}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div className="absolute left-1/2 top-11 z-50 w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl border border-border bg-card shadow-xl overflow-hidden animate-in slide-in-from-top-2 duration-150 sm:left-auto sm:right-0 sm:w-80 sm:translate-x-0">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <div className="flex items-center gap-2">
-              <h3 className="text-xs font-black text-foreground uppercase tracking-wider">Notificações</h3>
-              {naoLidas > 0 && (
-                <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[9px] font-black text-foreground">
-                  {naoLidas} novas
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {naoLidas > 0 && (
-                <button
-                  onClick={marcarTodasLidas}
-                  className="flex items-center gap-1 text-[10px] font-bold text-foreground hover:underline"
-                >
-                  <CheckCheck size={11} />
-                  Marcar todas
-                </button>
-              )}
-              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-
-          <div className="max-h-96 overflow-y-auto">
-            {loading ? (
-              <div className="py-8 text-center">
-                <div className="h-4 w-32 bg-muted animate-pulse rounded-full mx-auto" />
-              </div>
-            ) : notificacoes.length === 0 ? (
-              <div className="py-10 text-center">
-                <Bell size={24} className="text-muted-foreground mx-auto mb-2" />
-                <p className="text-xs font-semibold text-muted-foreground">Nenhuma notificação</p>
-              </div>
-            ) : (
-              notificacoes.map((n) => (
-                <NotificacaoItem
-                  key={n.id}
-                  notificacao={n}
-                  onLida={marcarLida}
-                  onAction={handleAction}
-                />
-              ))
-            )}
-          </div>
-
-          {notificacoes.length > 0 && (
-            <div className="px-4 py-2.5 border-t border-border bg-muted/50">
-              <p className="text-[10px] text-muted-foreground text-center">Últimas 50 notificações</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      <ModalShell
-        open={Boolean(modalNotificacao)}
-        title={modalNotificacao?.titulo ?? "Notificação"}
-        description={undefined}
-        onClose={() => setModalNotificacao(null)}
-        footer={
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setModalNotificacao(null)}
-              className="rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted"
-            >
-              Fechar
-            </button>
-            {modalNotificacao?.action_url && (
-              <button
-                type="button"
-                onClick={handleModalAction}
-                className="rounded-xl bg-klasse-gold px-3 py-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-klasse-gold"
-              >
-                {modalNotificacao?.action_label || "Abrir"}
-              </button>
-            )}
-          </div>
-        }
-      >
-        <div className="space-y-2 text-sm text-muted-foreground">
-          {modalNotificacao?.corpo ? <p>{modalNotificacao.corpo}</p> : null}
-        </div>
-      </ModalShell>
-    </div>
-  );
+  return <>
+    <NotificacoesSurface triggerRef={triggerRef} notificacoes={notificacoes} naoLidas={naoLidas} loading={loading}
+      onLida={marcarLida} onTodasLidas={marcarTodasLidas} onAction={handleAction}/>
+    <ModalShell
+      open={Boolean(modalNotificacao)}
+      title={modalNotificacao?.titulo ?? "Notificação"}
+      mobileFullscreen
+      onRestoreFocus={() => requestAnimationFrame(() => triggerRef.current?.focus())}
+      onClose={() => setModalNotificacao(null)}
+      footer={
+        modalNotificacao?.action_url ? <div className="flex justify-end">
+          <button type="button" onClick={handleModalAction}
+            className="min-h-11 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-klasse-gold-900 hover:brightness-95 focus-visible:ring-4 focus-visible:ring-klasse-gold/20">
+            {modalNotificacao.action_label || "Abrir"}
+          </button>
+        </div> : undefined
+      }
+    >
+      <div className="min-w-0 whitespace-pre-wrap break-words text-sm text-foreground">
+        {modalNotificacao?.corpo ? <p>{modalNotificacao.corpo}</p> : null}
+      </div>
+    </ModalShell>
+  </>;
 }

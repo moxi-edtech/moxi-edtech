@@ -3,7 +3,7 @@ import { z } from "zod";
 // Deliberately small, versioned document format. No HTML, URLs or arbitrary node attrs.
 const marks=["bold","italic","underline"] as const;
 const commands=new Set("frac dfrac tfrac sqrt pi times div pm mp cdot left right sin cos tan log ln exp lim sum prod int infty in notin cup cap subset subseteq supset supseteq le leq ge geq ne neq approx equiv alpha beta gamma delta theta lambda mu sigma omega phi Delta Omega Gamma Sigma vec overline underline hat bar text mathrm mathbf mathit quad qquad degree circ percent".split(" "));
-export function safeLatex(value:string):boolean{
+function safeScalarLatex(value:string):boolean{
  if(!value.trim()||value.length>300||/[\u0000-\u001f\u007f<>&$#%]/u.test(value))return false;
  let depth=0;
  for(const c of value){if(c==="{"){if(++depth>8)return false;}else if(c==="}"&&--depth<0)return false;}
@@ -12,6 +12,29 @@ export function safeLatex(value:string):boolean{
   if(!commands.has(match[1])&&![" ",",",";","!","(",")","[","]","|","{","}","_"].includes(match[1]))return false;
  }
  return !value.endsWith("\\");
+}
+export const mathGridEnvironments=["cases","pmatrix","vmatrix"] as const;
+export type MathGridEnvironment=typeof mathGridEnvironments[number];
+export function validGridDimensions(env:MathGridEnvironment,rows:readonly (readonly unknown[])[]):boolean{
+ const n=rows.length,c=rows[0]?.length??0;
+ return n<=4&&c>=1&&c<=4&&rows.every(row=>row.length===c)&&(env==="cases"?n>=2&&c===1:env==="vmatrix"?n>=2&&n===c:n>=1);
+}
+/** Only exact, bounded math grids may use alignment and row separators.
+ * Other TeX environments, nested grids, escaped separators and arbitrary macros remain rejected. */
+export function safeLatex(value:string):boolean{
+ if(!value.trim()||value.length>300||/[\u0000-\u001f\u007f<>$#%]/u.test(value))return false;
+ let depth=0;for(const c of value){if(c==="{"){if(++depth>8)return false;}else if(c==="}"&&--depth<0)return false;}if(depth!==0)return false;
+ let rest=value;
+ while(rest.includes("\\begin{")){
+  const start=rest.indexOf("\\begin{");
+  const match=/^\\begin\{(cases|pmatrix|vmatrix)\}/.exec(rest.slice(start));if(!match)return false;
+  const env=match[1] as MathGridEnvironment,endTag="\\end{"+env+"}",bodyStart=start+match[0].length;
+  const end=rest.indexOf(endTag,bodyStart);if(end<0)return false;
+  const rows=rest.slice(bodyStart,end).split("\\\\").map(row=>row.split("&"));
+  if(!validGridDimensions(env,rows)||rows.some(row=>row.some(cell=>!safeScalarLatex(cell))))return false;
+  rest=rest.slice(0,start)+"1"+rest.slice(end+endTag.length);
+ }
+ return safeScalarLatex(rest);
 }
 export const richSegmentSchema=z.discriminatedUnion("kind",[
  z.object({kind:z.literal("text"),text:z.string().min(1).max(3000),marks:z.array(z.enum(marks)).max(3).refine(v=>new Set(v).size===v.length)}).strict(),

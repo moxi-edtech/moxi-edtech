@@ -1,9 +1,9 @@
-import { completeExpression,composeExpression,formulaModels,formulaOperators,modelExpression,type FormulaModelId,type FormulaOperator,type FormulaPart } from "./formulaModels";
+import { completeExpression,composeExpression,formulaModels,formulaOperators,modelExpression,modelStarter,MAX_FORMULA_PARTS,type FormulaModelId,type FormulaOperator,type FormulaPart } from "./formulaModels";
 
 type EditablePart=Extract<FormulaPart,{model:FormulaModelId}>;
 const escapeRegex=(s:string)=>s.replace(/[.*+?^{}()|[\]\\]/g,"\\$&");
-const digits=["91827364","82736451","73645182","64518273"];
-const letters=["J","Q","W","Z"];
+const digits=["91827364","82736451","73645182","64518273","55409182","46390871"];
+const letters=["J","Q","W","Z","K","T"];
 const symbols:Record<string,string>={"\\alpha":"α","\\beta":"β","\\theta":"θ","\\pi":"π","\\lambda":"λ","\\mu":"μ","\\omega":"ω"};
 type Matcher={model:FormulaModelId;regex:RegExp;negative:boolean[];variable:boolean[]};
 // Generate reverse matchers from the forward model itself. No user-controlled regex.
@@ -143,4 +143,37 @@ export function updateFormulaValues(source:string,values:readonly string[]):stri
  }
  output+=source.slice(offset);
  return completeExpression(output)?output:null;
+}
+
+/** Recover modular starters, terminal equality and explicit parentheses without changing stored LaTeX. */
+export function recoverEditableExpression(source:string):{parts:FormulaPart[];ending:boolean}{
+ if(!source)return {parts:[],ending:false};
+ const fallback={parts:recoverFormulaParts(source),ending:false};
+ const ending=source.endsWith("=");
+ const expression=ending?source.slice(0,-1):source;
+ function unpack(value:string,operator:FormulaOperator,depth=0):FormulaPart[]|null{
+  if(depth>4||!value)return null;
+  const whole=recognize(value,0,operator);
+  if(whole){
+   if(whole.model==="soma_fracoes")return modelStarter(whole.model,whole.values).map((p,i)=>({...p,id:0,operator:i? p.operator:operator}));
+   return [whole];
+  }
+  const chunks=topLevelParts(value);
+  if(chunks&&chunks.length>1){
+   const children:FormulaPart[]=[];
+   for(const [i,c] of chunks.entries()){const result=unpack(c.value,i?c.operator:operator,depth);if(!result)return null;children.push(...result);if(children.length>MAX_FORMULA_PARTS)return null;}
+   return children;
+  }
+  if(value.startsWith("(")&&value.endsWith(")")){
+   let level=0,wrapped=true;
+   for(let i=0;i<value.length;i++){if(value[i]==="(")level++;else if(value[i]===")")level--;if(level===0&&i<value.length-1){wrapped=false;break;}}
+   if(wrapped&&level===0){
+    const children=unpack(value.slice(1,-1),operator,depth+1);
+    if(children?.length){children[0]={...children[0],opens:(children[0].opens??0)+1};const last=children.length-1;children[last]={...children[last],closes:(children[last].closes??0)+1};return children;}
+   }
+  }
+  return null;
+ }
+ const parts=unpack(expression,"+")?.map((p,id)=>({...p,id}));
+ return parts&&composeExpression(parts,ending)===source?{parts,ending}:fallback;
 }
