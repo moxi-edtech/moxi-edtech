@@ -222,7 +222,7 @@ export default function ProfessorCalendarioPage() {
 
   const periodContent = (<>
                 {periodos.length === 0 ? (
-                  <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-500">
+                  <div className="mt-6 rounded-2xl border border-dashed border-border bg-muted p-4 text-sm font-medium text-muted-foreground">
                     Os períodos lectivos ainda não foram configurados para este ano.
                   </div>
                 ) : (
@@ -233,26 +233,26 @@ export default function ProfessorCalendarioPage() {
                         <div
                           key={periodo.id}
                           className={`rounded-xl border p-3 transition sm:rounded-2xl sm:p-4 ${
-                            isActive ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"
+                            isActive ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40" : "border-border bg-muted"
                           }`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="text-sm font-black text-slate-900">{getPeriodLabel(periodo)}</p>
-                              <p className="mt-1 text-xs font-medium text-slate-500">
+                              <p className="text-sm font-black text-foreground">{getPeriodLabel(periodo)}</p>
+                              <p className="mt-1 text-xs font-medium text-muted-foreground">
                                 {formatDateRange(periodo.data_inicio, periodo.data_fim)}
                               </p>
                             </div>
                             <span
                               className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
-                                isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"
+                                isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200" : "bg-muted text-muted-foreground"
                               }`}
                             >
                               {isActive ? "Em curso" : periodo.data_inicio > todayIso ? "A seguir" : "Fechado"}
                             </span>
                           </div>
                           {periodo.trava_notas_em ? (
-                            <p className="mt-3 text-[11px] font-semibold text-slate-600">
+                            <p className="mt-3 text-[11px] font-semibold text-muted-foreground">
                               Fecho de notas: {formatSingleDate(periodo.trava_notas_em)}
                             </p>
                           ) : null}
@@ -263,10 +263,10 @@ export default function ProfessorCalendarioPage() {
                 )}
 
                 {currentPeriodo ? (
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:mt-6 sm:rounded-2xl sm:p-4">
-                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Período actual</p>
-                    <p className="mt-2 text-sm font-black text-slate-900">{getPeriodLabel(currentPeriodo)}</p>
-                    <p className="mt-1 text-xs font-medium text-slate-600">
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 p-3 sm:mt-6 sm:rounded-2xl sm:p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">Período actual</p>
+                    <p className="mt-2 text-sm font-black text-foreground">{getPeriodLabel(currentPeriodo)}</p>
+                    <p className="mt-1 text-xs font-medium text-muted-foreground">
                       {formatCompactDateRange(currentPeriodo.data_inicio, currentPeriodo.data_fim)}
                     </p>
                   </div>
