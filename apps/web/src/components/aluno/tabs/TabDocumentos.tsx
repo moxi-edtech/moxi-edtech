@@ -157,6 +157,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   }, [hasPending, fetchCatalogo]);
 
   const handleAction = async (doc: DocumentoCatalogo) => {
+    if (navigation && (showDrawer || loading !== null)) return;
     if (doc.pagamento_configurado === false) {
       error("Documento indisponível", doc.indisponivel_motivo ?? "A secretaria precisa definir o valor antes de o aluno fazer o pagamento.");
       return;
@@ -203,6 +204,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
       
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Falha ao solicitar documento');
+      navigation?.notifyChanged();
       
       if (json.pagamento_id) {
         setSelectedDoc({ ...doc, pagamento_intent_id: json.pagamento_id });
