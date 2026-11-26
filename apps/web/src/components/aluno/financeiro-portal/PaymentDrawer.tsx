@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 
 type Mensalidade = { id: string; competencia: string; valor: number };
@@ -76,6 +77,12 @@ export function PaymentDrawer({
   const [mensagem, setMensagem] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const inFlight = useRef(false);
+  const navigation = usePortalDrawerNavigation();
+  usePortalDrawerGuard(open && Boolean(selectedFile || mensagem.trim()), open && sending);
+  const requestClose = () => {
+    if (sending || (navigation && (selectedFile || mensagem.trim()) && !window.confirm("Descartar o comprovativo não enviado?"))) return;
+    onClose();
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -127,7 +134,7 @@ export function PaymentDrawer({
   };
 
   return (
-    <PortalSheet open={open && mensalidades.length > 0} onClose={onClose} busy={sending} size="expanded" title="Pagamento consolidado" description={`${mensalidades.length} mensalidade(s) · Total exacto: ${money.format(total)}`}
+    <PortalSheet open={open && mensalidades.length > 0} inline={Boolean(navigation)} onClose={requestClose} busy={sending} size="expanded" title="Pagamento consolidado" description={`${mensalidades.length} mensalidade(s) · Total exacto: ${money.format(total)}`}
       footer={<button type="button" disabled={!selectedFile || sending || !mensalidades.length} onClick={() => { if (selectedFile) void submitFile(selectedFile); }} className="klasse-portal-press min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? "A enviar…" : "Confirmar e enviar comprovativo"}</button>}>
         <div className="mt-3 flex flex-wrap gap-2">
           {mensalidades.map((item) => <span key={item.id} className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-foreground">{item.competencia} · {money.format(item.valor)}</span>)}
