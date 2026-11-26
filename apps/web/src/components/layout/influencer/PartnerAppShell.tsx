@@ -126,11 +126,11 @@ export default function PartnerAppShell({
 
   return <div className="min-h-screen bg-neutral-50 font-sans flex flex-col md:flex-row">
       {/* SIDEBAR FOR DESKTOP */}
-      <aside className="hidden md:flex shrink-0 overflow-hidden bg-slate-950 border-r border-zinc-900 flex-col fixed inset-y-0 left-0 z-30 text-zinc-300" style={{ width: SIDEBAR_WIDTH.expanded }}>
+      <aside className="klasse-sidebar-theme hidden md:flex shrink-0 overflow-hidden bg-sidebar border-r border-sidebar-border flex-col fixed inset-y-0 left-0 z-30 text-sidebar-foreground" style={{ width: SIDEBAR_WIDTH.expanded }}>
         {/* Brand/Logo Section */}
-        <div className="min-w-0 shrink-0 p-4 border-b border-zinc-900">
+        <div className="min-w-0 shrink-0 p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-3 mb-5">
-            <div className="h-9 w-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+            <div className="h-9 w-9 rounded-lg bg-sidebar-accent border border-sidebar-border flex items-center justify-center">
               <Image
                 src="/logo-klasse-ui.png"
                 alt="KLASSE"
@@ -141,23 +141,23 @@ export default function PartnerAppShell({
             </div>
             <div>
               <div className="font-bold tracking-tight text-white text-sm">KLASSE</div>
-              <div className="text-[10px] text-zinc-500 font-medium tracking-wide uppercase">gestão escolar</div>
+              <div className="text-[10px] text-sidebar-muted-foreground font-medium tracking-wide uppercase">gestão escolar</div>
             </div>
           </div>
 
           {/* User Session Info Card */}
-          <div className="rounded-xl bg-zinc-900/30 border border-zinc-800/40 p-3">
-            <p className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Membro Ativo</p>
-            <p className="text-xs font-semibold truncate text-zinc-100" title={memberName}>{memberName || "Operador"}</p>
+          <div className="rounded-xl bg-sidebar-accent/30 border border-sidebar-border p-3">
+            <p className="text-[9px] font-semibold text-sidebar-muted-foreground uppercase tracking-wider mb-1">Membro Ativo</p>
+            <p className="text-xs font-semibold truncate text-sidebar-foreground" title={memberName}>{memberName || "Operador"}</p>
             <div className="flex min-w-0 items-center gap-1.5 mt-1.5">
               <Badge className={`text-[8px] font-semibold px-1.5 py-0.5 rounded border shadow-none ${
                 memberRole === 'owner'
                   ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                  : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                  : 'bg-sidebar-raised text-sidebar-muted-foreground border-sidebar-border'
               }`}>
                 {memberRole === 'owner' ? 'PROPRIETÁRIO' : memberRole.toUpperCase()}
               </Badge>
-              <span className="min-w-0 truncate text-[9px] font-semibold text-zinc-500 uppercase tracking-wider" title={codigo}>{codigo}</span>
+              <span className="min-w-0 truncate text-[9px] font-semibold text-sidebar-muted-foreground uppercase tracking-wider" title={codigo}>{codigo}</span>
             </div>
           </div>
         </div>
@@ -177,17 +177,17 @@ export default function PartnerAppShell({
                     onClick={() => setExpandedItems(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
                     title={item.label}
                     aria-expanded={isExpanded}
-                    className={`${SIDEBAR_ROW} font-medium text-zinc-400 hover:bg-slate-900 hover:text-klasse-gold`}
+                    className={`${SIDEBAR_ROW} font-medium text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-klasse-gold`}
                   >
                     <div className="flex flex-1 min-w-0 items-center gap-3">
-                      <Icon className="h-5 w-5 shrink-0 text-zinc-500" />
+                      <Icon className="h-5 w-5 shrink-0 text-sidebar-muted-foreground" />
                       <span className={SIDEBAR_LABEL}>{sidebarLabel(item.label)}</span>
                     </div>
-                    <ChevronDown size={12} className={`shrink-0 text-zinc-500 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                    <ChevronDown size={12} className={`shrink-0 text-sidebar-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                   </button>
                   
                   {isExpanded && (
-                    <div className="min-w-0 pl-2 space-y-0.5 border-l border-zinc-900 ml-4 mt-0.5 animate-in slide-in-from-left-1 duration-200">
+                    <div className="min-w-0 pl-2 space-y-0.5 border-l border-sidebar-border ml-4 mt-0.5 animate-in slide-in-from-left-1 duration-200">
                       {item.children!.map((child) => {
                         const ChildIcon = child.icon;
                         const isChildActive = activeTab === child.id;
@@ -199,13 +199,13 @@ export default function PartnerAppShell({
                             title={child.label}
                             className={`${SIDEBAR_SUBROW} font-medium transition-colors ${
                               isChildActive
-                                ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25"
-                                : "text-zinc-500 hover:bg-zinc-900/20 hover:text-zinc-300"
+                                ? "bg-sidebar-accent text-klasse-gold ring-1 ring-klasse-gold/25"
+                                : "text-sidebar-muted-foreground hover:bg-sidebar-accent/20 hover:text-sidebar-foreground"
                             }`}
                           >
                             <ChildIcon
                               className={`h-3.5 w-3.5 shrink-0 transition-colors ${
-                                isChildActive ? "text-emerald-500" : "text-zinc-500"
+                                isChildActive ? "text-klasse-gold" : "text-sidebar-muted-foreground"
                               }`}
                             />
                             <span className={SIDEBAR_LABEL}>{sidebarLabel(child.label)}</span>
@@ -232,16 +232,16 @@ export default function PartnerAppShell({
                 title={item.label}
                   className={`${SIDEBAR_ROW} font-medium transition-colors ${
                   isActive
-                    ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25"
-                    : "text-zinc-400 hover:bg-zinc-900/40 hover:text-zinc-100"
+                    ? "bg-sidebar-accent text-klasse-gold ring-1 ring-klasse-gold/25"
+                    : "text-sidebar-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
                 }`}
               >
                 <Icon
-                  className={`h-4.5 w-4.5 shrink-0 transition-colors ${
-                    isActive ? "text-emerald-500" : "text-zinc-500"
+                  className={`h-5 w-5 shrink-0 transition-colors ${
+                    isActive ? "text-klasse-gold" : "text-sidebar-muted-foreground"
                   }`}
                 />
-                <span className="truncate uppercase tracking-wider">{item.label}</span>
+                <span className={SIDEBAR_LABEL}>{sidebarLabel(item.label)}</span>
                 {item.badge !== undefined && (
                   <span className="ml-auto shrink-0 max-w-[4rem] truncate rounded bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-rose-400 border border-rose-500/20">
                     {item.badge}
@@ -253,11 +253,11 @@ export default function PartnerAppShell({
         </nav>
 
         {/* Sidebar Footer Stats & Logout */}
-        <div className="min-w-0 shrink-0 p-3 border-t border-zinc-900 space-y-3">
-          <div className="rounded-xl bg-zinc-900/30 border border-zinc-800/40 p-3 flex items-center justify-between">
+        <div className="min-w-0 shrink-0 p-3 border-t border-sidebar-border space-y-3">
+          <div className="rounded-xl bg-sidebar-accent/30 border border-sidebar-border p-3 flex items-center justify-between">
             <div>
-              <p className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider leading-none mb-1">Conversão Geral</p>
-              <p className="text-xs font-semibold text-zinc-100 mt-1">{conversionRate}%</p>
+              <p className="text-[9px] font-semibold text-sidebar-muted-foreground uppercase tracking-wider leading-none mb-1">Conversão Geral</p>
+              <p className="text-xs font-semibold text-sidebar-foreground mt-1">{conversionRate}%</p>
             </div>
             <TrendingUp size={14} className="text-emerald-500" />
           </div>
@@ -265,9 +265,9 @@ export default function PartnerAppShell({
           <Button
             onClick={onLogout}
             variant="ghost"
-            className="w-full h-9 rounded-lg text-xs font-semibold text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 flex items-center justify-center gap-2"
+            className="w-full h-9 rounded-lg text-xs font-semibold text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent flex items-center justify-center gap-2"
           >
-            <LogOut size={12} className="text-zinc-500" />
+            <LogOut size={12} className="text-sidebar-muted-foreground" />
             Sair do CRM
           </Button>
         </div>

@@ -131,7 +131,7 @@ export default function Sidebar({
   return (
     <aside
       className={cn(
-        "h-dvh sticky top-0 z-40 shrink-0 max-w-[65vw] md:max-w-none border-r border-klasse-gold/15 bg-klasse-dark text-slate-100 flex flex-col",
+        "klasse-sidebar-theme h-dvh sticky top-0 z-40 shrink-0 max-w-[65vw] md:max-w-none border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col",
         "transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] overflow-x-hidden"
       )}
       style={{ width: collapsed ? SIDEBAR_WIDTH.collapsed : SIDEBAR_WIDTH.expanded }}
@@ -140,7 +140,7 @@ export default function Sidebar({
       data-collapsed={collapsed}
     >
       {/* Header / Brand */}
-      <div className={cn("flex shrink-0 min-w-0 items-center gap-2 border-b border-klasse-gold/15 px-3 py-3", collapsed ? "flex-col justify-center" : "justify-between")}>
+      <div className={cn("flex shrink-0 min-w-0 items-center gap-2 border-b border-sidebar-border px-3 py-3", collapsed ? "flex-col justify-center" : "justify-between")}>
         <Link href={homeHref} className="flex items-center gap-2 min-w-0" aria-label="Ir para a home do portal">
           <div className="h-10 w-10 shrink-0 rounded-xl bg-amber/15 ring-1 ring-amber/30 flex items-center justify-center">
             <Image
@@ -155,7 +155,7 @@ export default function Sidebar({
           {!collapsed && (
             <div className="min-w-0 animate-in fade-in duration-500">
               <div className="truncate font-semibold tracking-tight leading-5">KLASSE</div>
-              <div className="truncate text-xs text-slate-400 font-medium">gestão escolar</div>
+              <div className="truncate text-xs text-sidebar-muted-foreground font-medium">gestão escolar</div>
             </div>
           )}
         </Link>
@@ -164,7 +164,7 @@ export default function Sidebar({
           onClick={() => setCollapsed((v) => !v)}
           className={cn(
             "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-            "hover:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-amber/20"
+            "hover:bg-sidebar-accent focus:outline-none focus:ring-4 focus:ring-amber/20"
           )}
           aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
           aria-expanded={!collapsed}
@@ -199,7 +199,7 @@ export default function Sidebar({
                       "transition-all duration-200",
                       it.active
                         ? "bg-klasse-gold/10 text-klasse-gold ring-1 ring-klasse-gold/25"
-                        : "text-slate-300 hover:bg-slate-900/70 hover:text-white"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-white"
                     )}
                     title={it.label}
                       aria-label={it.label}
@@ -208,7 +208,7 @@ export default function Sidebar({
                     <Icon
                       className={cn(
                         "h-5 w-5 shrink-0 transition-colors",
-                        it.active ? "text-klasse-gold" : "text-white/55 group-hover:text-klasse-gold"
+                        it.active ? "text-klasse-gold" : "text-sidebar-muted-foreground group-hover:text-klasse-gold"
                       )}
                     />
                     {!collapsed && <span className={cn(SIDEBAR_LABEL, "font-medium")}>{sidebarLabel(it.label)}</span>}
@@ -232,7 +232,7 @@ export default function Sidebar({
                         "transition-all duration-200",
                         it.active
                           ? "bg-klasse-gold/10 text-klasse-gold ring-1 ring-klasse-gold/25"
-                          : "text-slate-300 hover:bg-slate-900/70 hover:text-white"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-white"
                       )}
                       title={it.label}
                       aria-label={it.label}
@@ -240,7 +240,7 @@ export default function Sidebar({
                       <Icon
                         className={cn(
                           "h-5 w-5 shrink-0 transition-colors",
-                          it.active ? "text-klasse-gold" : "text-white/55 group-hover:text-klasse-gold"
+                          it.active ? "text-klasse-gold" : "text-sidebar-muted-foreground group-hover:text-klasse-gold"
                         )}
                       />
                       {!collapsed && <span className={cn(SIDEBAR_LABEL, "font-medium")}>{sidebarLabel(it.label)}</span>}
@@ -269,7 +269,7 @@ export default function Sidebar({
                               SIDEBAR_SUBROW, "transition-colors",
                               childActive
                                 ? "bg-klasse-gold/10 text-klasse-gold font-bold"
-                                : "text-slate-400 hover:bg-slate-900/60 hover:text-white"
+                                : "text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-white"
                             )}
                           >
                             <span className={cn(
@@ -295,17 +295,17 @@ export default function Sidebar({
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto shrink-0 min-w-0 p-2 border-t border-klasse-gold/15">
-        <div className={cn("flex min-w-0 items-center gap-2 rounded-xl px-2 py-2", collapsed && "justify-center", "bg-slate-900/40 border border-white/5")}>
-          <div className="h-9 w-9 shrink-0 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-[10px] font-black text-slate-400">
+      <div className="mt-auto shrink-0 min-w-0 p-2 border-t border-sidebar-border">
+        <div className={cn("flex min-w-0 items-center gap-2 rounded-xl px-2 py-2", collapsed && "justify-center", "bg-sidebar-accent/40 border border-sidebar-border")}>
+          <div className="h-9 w-9 shrink-0 rounded-full bg-sidebar-raised border border-sidebar-border flex items-center justify-center text-[10px] font-black text-sidebar-muted-foreground">
             AO
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-bold truncate text-slate-200" title={escolaNome || portalTitle || "Klasse Network"}>
+              <div className="text-sm font-bold truncate text-sidebar-foreground" title={escolaNome || portalTitle || "Klasse Network"}>
                 {escolaNome || portalTitle || "Klasse Network"}
               </div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate">
+              <div className="text-[10px] font-black uppercase tracking-widest text-sidebar-muted-foreground truncate">
                 {planoNome || portalTitle || "SaaS Hub"}
               </div>
             </div>

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 import { mkdir } from "node:fs/promises";
+import { contrastRatio } from "./color-contrast.mjs";
 
 const moduleUrl = process.env.PLAYWRIGHT_MODULE || "playwright";
 const { chromium } = await import(moduleUrl.startsWith("/") ? pathToFileURL(moduleUrl).href : moduleUrl);
@@ -21,6 +22,18 @@ try {
         await sidebar.waitFor();
         await page.evaluate(() => document.fonts.ready);
         const nav = sidebar.getByRole("navigation", { name: "Menus do portal" });
+        // The brand sidebar must stay dark and legible when the surrounding portal changes theme.
+        const stressRow = nav.getByRole("button", { name: "Menu de teste com um título excepcionalmente longo" });
+        const colors = async () => ({
+          surface: await sidebar.evaluate(el => getComputedStyle(el).backgroundColor),
+          text: await stressRow.evaluate(el => getComputedStyle(el).color),
+        });
+        const light = await colors();
+        assert.ok(contrastRatio(light.text, light.surface) >= 4.5, JSON.stringify({ role, width, light }));
+        await page.evaluate(() => document.documentElement.classList.add("dark"));
+        const dark = await colors();
+        assert.deepEqual(dark, light, "Sidebar brand must not follow the surrounding theme");
+        await page.evaluate(() => document.documentElement.classList.remove("dark"));
         const groups = nav.locator("button[aria-expanded=false]");
         while (await groups.count()) await groups.first().click();
         await page.waitForFunction(() => {

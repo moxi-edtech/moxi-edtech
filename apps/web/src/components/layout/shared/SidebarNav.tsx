@@ -32,7 +32,7 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
             aria-current={isActive ? "page" : undefined}
             className={`
               ${SIDEBAR_ROW} relative font-medium transition-colors
-              ${isActive ? "bg-klasse-gold/10 text-klasse-gold ring-1 ring-klasse-gold/25" : "text-slate-400 hover:bg-white/5 hover:text-klasse-gold"}
+              ${isActive ? "bg-klasse-gold/10 text-klasse-gold ring-1 ring-klasse-gold/25" : "text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-klasse-gold"}
               ${collapsed ? "justify-center" : ""}
             `}
           >

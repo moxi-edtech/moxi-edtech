@@ -47,7 +47,7 @@ export function FormacaoRoleShell({ title, items, children }: FormacaoRoleShellP
       </header>
 
       <div className="flex min-h-screen">
-        <aside className="sticky top-0 hidden h-dvh shrink-0 flex-col overflow-hidden bg-slate-950 p-2 md:flex" style={{ width: SIDEBAR_WIDTH.expanded }}>
+        <aside className="klasse-sidebar-theme sticky top-0 hidden h-dvh shrink-0 flex-col overflow-hidden bg-sidebar p-2 md:flex" style={{ width: SIDEBAR_WIDTH.expanded }}>
           <div className="mb-4 shrink-0 truncate px-3 py-3 text-base font-semibold text-white" title={title}>{title}</div>
           <nav className={`${SIDEBAR_NAV} space-y-1 p-1`}>
             {items.map((item) => {
@@ -61,8 +61,8 @@ export function FormacaoRoleShell({ title, items, children }: FormacaoRoleShellP
                   aria-current={active ? "page" : undefined}
                   className={`${SIDEBAR_ROW} ${
                     active
-                      ? 'bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25'
-                      : 'text-slate-400 hover:text-klasse-gold'
+                      ? 'bg-sidebar-accent text-klasse-gold ring-1 ring-klasse-gold/25'
+                      : 'text-sidebar-muted-foreground hover:text-klasse-gold'
                   }`}
                 >
                   <Icon className="h-5 w-5 shrink-0" />

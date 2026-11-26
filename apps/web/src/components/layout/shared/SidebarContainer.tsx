@@ -34,8 +34,8 @@ export default function SidebarContainer({
     <SidebarProvider value={{ collapsed, toggle }}>
       <aside
         className={clsx(
-          "group/sidebar fixed top-0 z-40 h-dvh shrink-0 transition-[width] duration-300 ease-in-out",
-          "bg-klasse-dark border-r border-klasse-gold/15 text-white shadow-xl", // Estilo MoxiNexa Dark
+          "klasse-sidebar-theme group/sidebar fixed top-0 z-40 h-dvh shrink-0 transition-[width] duration-300 ease-in-out",
+          "bg-sidebar border-r border-sidebar-border text-white shadow-xl", // Estilo MoxiNexa Dark
           className,
         )}
         style={{ width: collapsed ? collapsedWidth : expandedWidth }}
