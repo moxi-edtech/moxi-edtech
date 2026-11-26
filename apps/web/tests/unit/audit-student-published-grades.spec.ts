@@ -53,7 +53,12 @@ test("consulta e PDF exigem pagamento confirmado e publicação continua obrigat
   const visual = readFileSync(resolve(process.cwd(), "src/components/aluno/tabs/TabNotas.tsx"), "utf8");
   assert.match(notes, /getAlunoContext\(\)/);
   assert.match(notes, /resolveBoletimMatricula/);
-  assert.match(notes, /publishedTrimestersFromOfficialSheets/);
+  assert.match(notes, /rpc\("aluno_trimestres_publicados",\s*\{\s*p_escola_id: ctx\.escolaId,\s*p_matricula_id: matricula\.id,/);
+  assert.ok(notes.indexOf("if (!access.granted)") < notes.indexOf('rpc("aluno_trimestres_publicados"'));
+  assert.ok(notes.indexOf('rpc("aluno_trimestres_publicados"') < notes.indexOf("const [grades, classifications]"));
+  assert.match(notes, /if \(publicationError \|\| !Array\.isArray\(terms\)\)/);
+  assert.match(notes, /selectPublishedStudentGrades\(grades, classifications, publishedTrimesters\)/);
+  assert.doesNotMatch(notes, /publishedTrimestersFromOfficialSheets/);
   assert.match(notes, /checkBoletimAccess\(/);
   assert.match(notes, /if \(!access\.granted\)/);
   assert.ok(notes.indexOf("if (!access.granted)") < notes.indexOf("const [grades, classifications]"));

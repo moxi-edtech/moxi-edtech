@@ -5,7 +5,7 @@ concurrency:
 on:
   pull_request:
     paths:
-      - 'docs/engineering/horarios-publication-guard.proposed.sql'
+      - 'supabase/migrations/20271204031100_horarios_publication_guard.sql'
       - 'supabase/ops/tests/horarios_pg17_*'
       - '.github/workflows/horarios-pg17.yml'
       - 'apps/web/src/components/escola/horarios/**'
@@ -14,6 +14,9 @@ on:
       - 'apps/web/src/app/api/escolas/**/horarios/**'
       - 'apps/web/src/app/escola/**/horarios/**'
       - 'apps/web/tests/unit/horarios-operational-flow.spec.ts'
+      - 'apps/web/src/app/api/escola/**/admin/setup/auto-resolve/route.ts'
+      - 'apps/web/src/app/api/escola/**/admin/curriculo/publish/route.ts'
+      - 'apps/web/src/app/api/escolas/**/onboarding/core/finalize/route.ts'
   workflow_dispatch:
 permissions:
   contents: read
@@ -48,11 +51,12 @@ jobs:
           persist-credentials: false
       - name: Confirm PostgreSQL 17
         run: psql -X -v ON_ERROR_STOP=1 -c "SELECT version()"
-      - name: Apply candidate SQL in disposable database and validate
+      - name: Verify and apply versioned migration in disposable database
         run: |
           set -euo pipefail
           psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/horarios_pg17_fixture.sql
-          psql -X -v ON_ERROR_STOP=1 -f docs/engineering/horarios-publication-guard.proposed.sql
+          echo '40c42b1eca6b16fa831e440583a769fc335ecf56d2b27f73b907b3913dda3fb7  supabase/migrations/20271204031100_horarios_publication_guard.sql' | sha256sum --check
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271204031100_horarios_publication_guard.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/horarios_pg17_assert.sql
 
       - name: Concurrent publication of the same school resource
@@ -79,6 +83,17 @@ jobs:
             sleep 0.1
           done
           test "$locked" = 1
+          # A holds the school lock; a competing shared-slot edit must fail
+          # without waiting while holding its row lock.
+          if psql -X -v ON_ERROR_STOP=1 > /tmp/horario-slot.log 2>&1 <<'SQL'
+          SET ROLE authenticated;
+          UPDATE public.horario_slots SET inicio='08:00' WHERE id=fixture_id(76);
+          SQL
+          then
+            cat /tmp/horario-slot.log
+            echo 'ERROR: concurrent slot edit succeeded'; exit 1
+          fi
+          grep -q 'HORARIO_RETRY' /tmp/horario-slot.log
           if psql -X -v ON_ERROR_STOP=1 > /tmp/horario-b.log 2>&1 <<'SQL'
           BEGIN;
           SELECT set_config('request.jwt.claim.role','authenticated',true),set_config('request.jwt.claim.sub',fixture_id(100)::text,true);
@@ -125,3 +140,4 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm -C apps/web typecheck
+

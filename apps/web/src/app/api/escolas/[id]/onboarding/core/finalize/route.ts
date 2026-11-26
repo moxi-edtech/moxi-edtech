@@ -240,26 +240,15 @@ async function autoPrepareOperationalBase(supabase: any, escolaId: string) {
       continue
     }
 
-    await supabase
-      .from('quadro_horarios')
-      .delete()
-      .eq('escola_id', escolaId)
-      .eq('turma_id', turma.id)
-      .eq('versao_id', String(versionId))
-
-    const { error: insertErr } = await supabase
-      .from('quadro_horarios')
-      .insert(itemsToInsert)
+    const { error: insertErr } = await supabase.rpc('upsert_quadro_horarios_versao_atomic', {
+      p_escola_id: escolaId, p_turma_id: turma.id, p_versao_id: String(versionId),
+      p_items: itemsToInsert, p_publish: true,
+    })
 
     if (insertErr) {
       horariosPendentesTurmas.push(String(turma.nome || turma.id))
       continue
     }
-
-    await supabase
-      .from('horario_versoes')
-      .update({ status: 'publicada', publicado_em: new Date().toISOString() })
-      .eq('id', String(versionId))
 
     horariosPublicadosTurmas.push(String(turma.nome || turma.id))
   }
