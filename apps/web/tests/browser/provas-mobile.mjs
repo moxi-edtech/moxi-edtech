@@ -344,6 +344,8 @@ try{
   await dialog.getByRole("button",{name:"Pré-visualizar"}).click();
   const preview=dialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
   await preview.locator("math").waitFor();
+  await preview.locator("img.school-logo").waitFor();
+  assert.equal(await preview.locator("img.school-logo").evaluate(img=>img.complete&&img.naturalWidth>0),true,"institutional raster loads inside preview");
   assert.equal(await preview.locator(".question-figure").count(),1);
   assert.equal(await preview.locator(".paper").getAttribute("data-layout"),"espacosa");
   assert.equal(await preview.locator(".linha").count(),7);

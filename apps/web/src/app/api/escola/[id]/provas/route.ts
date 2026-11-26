@@ -13,6 +13,12 @@ export async function GET(req:Request,{params}:Context){
  if(!access.ok)return json({error:"Acesso não autorizado."},access.status);
  const {db,escolaId}=access;
  const query=new URL(req.url).searchParams;
+ if(query.get("professores")==="1"){
+   if(!access.admin)return json({error:"Sem autorização."},403);
+   const r=await db.from("professores").select("id,nome,nome_completo").eq("escola_id",escolaId).order("nome").order("id").limit(1001);
+   if(r.error||r.data?.length>1000)return json({error:"Não foi possível consultar o catálogo docente."},409);
+   return json({items:(r.data??[]).map((p:{id:string;nome:string|null;nome_completo:string|null})=>({id:p.id,nome:p.nome_completo||p.nome||"Professor sem nome"}))});
+ }
  if(query.get("branding")==="1"){
    const school=await db.from("escolas").select("logo_url").eq("id",escolaId).maybeSingle();
    return json({logo:school.error?null:await loadProvaLogo(school.data?.logo_url,escolaId)});
@@ -38,10 +44,11 @@ export async function GET(req:Request,{params}:Context){
  }
  const offset=Number(query.get("offset")??0);
  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)return json({error:"Página inválida."},400);
- const filters=z.object({tipo:z.enum(TIPOS_PROVA).optional(),estado:z.enum(["rascunho","em_revisao","aprovada","arquivada"]).optional(),trimestre:z.enum(["1","2","3"]).optional(),ano:z.string().regex(/^\d{4}\/\d{4}$/).optional(),classe:z.string().trim().min(1).max(80).optional(),disciplina:z.string().trim().min(1).max(120).optional(),autoria:z.enum(["sistema","utilizador"]).optional(),periodo:z.enum(["sem_data","futuras","passadas"]).optional()}).safeParse(Object.fromEntries(["tipo","estado","trimestre","ano","classe","disciplina","autoria","periodo"].flatMap(k=>query.has(k)?[[k,query.get(k)]]:[])));
+ const filters=z.object({professor:z.string().uuid().optional(),tipo:z.enum(TIPOS_PROVA).optional(),estado:z.enum(["rascunho","em_revisao","aprovada","arquivada"]).optional(),trimestre:z.enum(["1","2","3"]).optional(),ano:z.string().regex(/^\d{4}\/\d{4}$/).optional(),classe:z.string().trim().min(1).max(80).optional(),disciplina:z.string().trim().min(1).max(120).optional(),autoria:z.enum(["sistema","utilizador"]).optional(),periodo:z.enum(["sem_data","futuras","passadas"]).optional()}).safeParse(Object.fromEntries(["professor","tipo","estado","trimestre","ano","classe","disciplina","autoria","periodo"].flatMap(k=>query.has(k)?[[k,query.get(k)]]:[])));
  if(!filters.success)return json({error:"Filtros inválidos."},400);
  const f=filters.data;
- let list=db.from("provas_pedagogicas").select(summaryColumns).eq("escola_id",escolaId);
+ if(f.professor&&!access.admin)return json({error:"Sem autorização para filtro docente."},403);
+ let list=(f.professor?db.rpc("provas_por_professor",{p_escola:escolaId,p_professor:f.professor}).select(summaryColumns):db.from("provas_pedagogicas").select(summaryColumns)).eq("escola_id",escolaId);
  if(f.tipo)list=list.eq("tipo_prova",f.tipo);
  if(f.estado)list=list.eq("estado",f.estado);
  if(f.trimestre)list=list.eq("trimestre",Number(f.trimestre));
