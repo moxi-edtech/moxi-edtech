@@ -296,6 +296,10 @@ BEGIN
  -- Link to the existing calendar without copying the questions.
  IF NOT EXISTS(SELECT 1 FROM public.provas_por_professor(sch,'90000000-0000-4000-8000-000000000001') x WHERE x.id=copy.id) THEN RAISE EXCEPTION 'assigned professor filter missed proof'; END IF;
  IF EXISTS(SELECT 1 FROM public.provas_por_professor(sch,'90000000-0000-4000-8000-000000000099')) THEN RAISE EXCEPTION 'unknown professor returned proofs'; END IF;
+ IF NOT ('aprovada'=ANY(public.provas_faceta(sch,'estado',jsonb_build_object('classe',copy.classe,'estado','rascunho'),false))) THEN RAISE EXCEPTION 'facet must ignore its own filter'; END IF;
+ IF cardinality(public.provas_faceta(sch,'disciplina','{"classe":"Classe inexistente"}'::jsonb,false))<>0 THEN RAISE EXCEPTION 'incompatible discipline exposed'; END IF;
+ IF NOT ('90000000-0000-4000-8000-000000000001'=ANY(public.provas_faceta(sch,'professor',jsonb_build_object('classe',copy.classe,'estado','aprovada'),false))) THEN RAISE EXCEPTION 'assigned professor facet missing'; END IF;
+ IF cardinality(public.provas_faceta('00000000-0000-4000-8000-000000000002','classe','{}'::jsonb,false))<>0 THEN RAISE EXCEPTION 'cross-tenant facet exposed'; END IF;
  INSERT INTO public.calendario_avaliacoes(escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id)
  SELECT sch,copy.ano_letivo_id,pl.id,td.turma_id,td.id,'publicado','2026-12-07','08:30','10:00',copy.id
  FROM public.periodos_letivos pl CROSS JOIN public.turma_disciplinas td WHERE pl.escola_id=sch AND pl.ano_letivo_id=copy.ano_letivo_id AND pl.numero=copy.trimestre AND td.escola_id=sch AND td.curso_matriz_id=copy.curso_matriz_id AND td.turma_id='80000000-0000-4000-8000-000000000001';

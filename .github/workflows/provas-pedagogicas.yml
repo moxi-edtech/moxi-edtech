@@ -67,6 +67,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204027000_provas_pedagogicas.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204028000_provas_pedagogicas.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204029000_provas_pedagogicas.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20271204030000_provas_pedagogicas.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_isolated_test.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_system_import_test.sql
           psql -v ON_ERROR_STOP=1 -f supabase/tests/provas_pedagogicas_figures_test.sql
