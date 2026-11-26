@@ -96,6 +96,8 @@ const dayLabel = (day: number) => {
 const AttendanceWorkspace = dynamic(() => import("@/components/professor/ProfessorFrequenciasWorkspace").then(module => module.ProfessorFrequenciasWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar chamada…</p> });
 const PlansWorkspace = dynamic(() => import("@/components/professor/ProfessorPlanosWorkspace").then(module => module.ProfessorPlanosWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar planos…</p> });
 
+const MaterialsWorkspace = dynamic(() => import("@/components/professor/ProfessorMateriaisWorkspace").then(module => module.ProfessorMateriaisWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar materiais…</p> });
+
 export default function Page() {
   const [atribs, setAtribs] = useState<AtribItem[]>([]);
   const [academicYearLabel, setAcademicYearLabel] = useState<string | null>(null);
@@ -335,13 +337,13 @@ export default function Page() {
   const selectedLesson = !loading && !loadError ? (agendaByDay.get(todayKey) ?? []).find(item => `${getSchoolNow(new Date(nowTick)).date}:${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}` === selectedLessonKey) : undefined;
   const lessonQuery = selectedLesson?.turma_id && selectedLesson.disciplina_id ? `?turma_id=${encodeURIComponent(selectedLesson.turma_id)}&disciplina_id=${encodeURIComponent(selectedLesson.disciplina_id)}` : null;
   const operationScope = JSON.stringify([escolaParam ?? "", requestedAcademicYearId]);
-  const operationFrame = (kind: "attendance" | "plans", turmaId?: string | null, disciplinaId?: string | null): PortalDrawerFrame => ({
+  const operationFrame = (kind: "attendance" | "plans" | "materials", turmaId?: string | null, disciplinaId?: string | null): PortalDrawerFrame => ({
     id: JSON.stringify([operationScope, kind, turmaId ?? "", disciplinaId ?? ""]),
-    title: kind === "attendance" ? "Registar chamada" : "Planos de aula",
-    description: kind === "attendance" ? "Regista e guarda as presenças da turma." : "Prepara, guarda e acompanha os planos de aula.",
-    content: kind === "attendance" ? <AttendanceWorkspace embedded requestedAcademicYearId={requestedAcademicYearId} urlTurmaId={turmaId} urlDisciplinaId={disciplinaId} /> : <PlansWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} />,
+    title: kind === "attendance" ? "Registar chamada" : kind === "plans" ? "Planos de aula" : "Materiais pedagógicos",
+    description: kind === "attendance" ? "Regista e guarda as presenças da turma." : kind === "plans" ? "Prepara, guarda e acompanha os planos de aula." : "Cria, consulta e publica os materiais.",
+    content: kind === "attendance" ? <AttendanceWorkspace embedded requestedAcademicYearId={requestedAcademicYearId} urlTurmaId={turmaId} urlDisciplinaId={disciplinaId} /> : kind === "plans" ? <PlansWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : <MaterialsWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} />,
   });
-  const openOperation = (kind: "attendance" | "plans", turmaId?: string | null, disciplinaId?: string | null) => {
+  const openOperation = (kind: "attendance" | "plans" | "materials", turmaId?: string | null, disciplinaId?: string | null) => {
     setExpandedTurmaId(null);
     setSelectedLessonKey(null);
     setOperation({ scope: operationScope, frame: operationFrame(kind, turmaId, disciplinaId) });
@@ -441,7 +443,7 @@ export default function Page() {
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Presenças" icon={<ClipboardCheck className="h-5 w-5" />} onClick={() => openOperation("attendance")} dialogOpen={activeOperation?.title === "Registar chamada"} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Lançar notas" icon={<Pencil className="h-5 w-5" />} href={professorHref("/professor/notas")} />
             {escolaParam && <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Provas" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/provas")} />}
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Materiais" icon={<BookOpen className="h-5 w-5" />} href={professorHref("/professor/materiais")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Materiais" icon={<BookOpen className="h-5 w-5" />} onClick={() => openOperation("materials")} dialogOpen={activeOperation?.title === "Materiais pedagógicos"} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Planos de aula" icon={<ClipboardCheck className="h-5 w-5" />} onClick={() => openOperation("plans")} dialogOpen={activeOperation?.title === "Planos de aula"} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Calendário de Avaliações" icon={<CalendarDays className="h-5 w-5" />} href={professorHref("/professor/calendario#avaliacoes")} />
           </div>
@@ -622,7 +624,7 @@ export default function Page() {
                         <PortalDrawerPushButton frame={operationFrame("attendance", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95">Chamada</PortalDrawerPushButton>
                         <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Notas</Link>
                         <PortalDrawerPushButton frame={operationFrame("plans", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Plano de aula</PortalDrawerPushButton>
-                        <Link href={professorHref(`/professor/materiais?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Materiais</Link>
+                        <PortalDrawerPushButton frame={operationFrame("materials", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Materiais</PortalDrawerPushButton>
                         <PortalDrawerPushButton frame={{ id: `${escolaParam ?? "default"}:horario:${selectedTurma.id}`, title: "Horário da turma", description: formatTurmaDisplayName({ nome: selectedTurma.nome }), content: <ProfessorTurmaHorario turmaId={selectedTurma.id} embedded /> }} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-2 text-xs font-semibold text-foreground hover:bg-muted">Horário da turma</PortalDrawerPushButton>
             </div>
             <ProfessorTurmaRoster key={`${escolaParam}:${selectedTurma.id}`} turmaId={selectedTurma.id} />
