@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { readMotionDuration } from "@/components/portal/motion/motion-tokens";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -73,9 +73,10 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
           // before React commits the retained closing state.
           event.preventDefault();
           if (event.detail.originalEvent.cancelable) event.detail.originalEvent.preventDefault();
-          requestClose();
+          if (busy || closing) header.current?.focus({ preventScroll: true });
+          else requestClose();
         }}
-        onFocusOutside={event => { event.preventDefault(); if (closing) header.current?.focus({ preventScroll: true }); }}
+        onFocusOutside={event => { event.preventDefault(); if (busy || closing) header.current?.focus({ preventScroll: true }); }}
         onInteractOutside={event => { if (busy || closing) event.preventDefault(); }}>
         <header className="shrink-0 border-b border-border px-4 pb-3 pt-3">
           <div aria-hidden="true" className="mx-auto mb-3 h-1 w-8 rounded-full bg-muted-foreground/30" />
