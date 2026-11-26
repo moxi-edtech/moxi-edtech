@@ -53,10 +53,12 @@ test("professor usa o mesmo drawer do aluno; preserva foco, acessos e prefetch",
   assert.match(shared, /grid-cols-5/);
   assert.match(shared, /min-h-14/);
   assert.match(shared, /aria-haspopup="dialog"/);
-  assert.match(shared, /aria-modal="true"/);
-  assert.match(shared, /event\.key === "Escape"/);
-  assert.match(shared, /moreButtonRef\.current\?\.focus\(\)/);
-  assert.match(shared, /document\.body\.style\.overflow = previousOverflow/);
+  assert.match(shared, /<PortalSheet/);
+  const sheet = src("components/portal/ui/PortalSheet.tsx");
+  assert.match(sheet, /aria-modal="true"/);
+  assert.match(sheet, /onEscapeKeyDown/);
+  assert.match(sheet, /onCloseAutoFocus/);
+  assert.match(sheet, /<Dialog open=\{present\}/);
   assert.match(shared, /isDrawerActive \|\| isMoreOpen/);
   assert.match(shared, /safe-area-inset-bottom/);
 });

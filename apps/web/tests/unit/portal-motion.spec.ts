@@ -23,10 +23,12 @@ test("CSS is the sole source of durations; values are short and parse safely", (
   assert.match(tabs, /"--portal-tab-index": selectedIndex/);
   assert.match(tabs, /aria-selected=\{value === tab.id\}/);
   const nav = read("components/layout/klasse/PortalBottomNav.tsx");
-  assert.match(nav, /phase !== "closed"/);
-  assert.match(nav, /onTransitionEnd/);
-  assert.match(nav, /readMotionDuration\(sheet, "sheet"\)/);
-  assert.match(nav, /document\.addEventListener\("focusin"/);
+  assert.match(nav, /<PortalSheet/);
+  const sheet = read("components/portal/ui/PortalSheet.tsx");
+  assert.match(sheet, /present = open \|\| retained/);
+  assert.match(sheet, /onAnimationEnd/);
+  assert.match(sheet, /readMotionDuration\(content.current, "sheet"\)/);
+  assert.match(sheet, /onCloseAutoFocus/);
 });
 
 test("save feedback reflects existing state without timers or network operations", () => {

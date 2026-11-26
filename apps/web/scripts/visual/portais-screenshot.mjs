@@ -250,26 +250,30 @@ try {
       await grid.getByRole("button", { name: "Exibir notas" }).click();
       await grid.getByText("16", { exact: true }).first().waitFor();
       await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
-      await grid.getByText("Prova trimestral").waitFor();
-      await grid.getByRole("button", { name: "Pedir reapreciação" }).click();
+      const assessment = page.getByRole("dialog",{name:"Matemática",exact:true});
+      const details = (page.viewportSize()?.width ?? 0) < 768 ? assessment : grid;
+      await details.getByText("Prova trimestral").waitFor();
+      await details.getByRole("button", { name: "Pedir reapreciação" }).click();
       await page.getByRole("dialog", { name: /Solicitar reapreciação/ }).waitFor();
       await page.keyboard.press("Tab");
       if (!(await page.evaluate(() => {
-        const dialog = document.querySelector('[role="dialog"]');
-        return dialog?.contains(document.activeElement) ?? false;
+        const dialogs = document.querySelectorAll('[role="dialog"]');
+        return Array.from(dialogs).some(dialog=>dialog.contains(document.activeElement));
       }))) errors.push("grade-paid: modal did not retain keyboard focus");
       await page.keyboard.press("Escape");
       await page.getByRole("dialog", { name: /Solicitar reapreciação/ }).waitFor({ state: "hidden" });
-      if (!(await grid.getByRole("button", { name: "Pedir reapreciação" }).evaluate(el => el === document.activeElement))) {
+      if (!(await details.getByRole("button", { name: "Pedir reapreciação" }).evaluate(el => el === document.activeElement))) {
         errors.push("grade-paid: focus not restored after Escape");
       }
-      await grid.getByRole("button", { name: "Solicitar melhoria" }).click();
+      await details.getByRole("button", { name: "Solicitar melhoria" }).click();
       await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor();
       await page.getByRole("button", { name: "Cancelar" }).click();
       await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor({ state: "hidden" });
+      if (details === assessment) { await page.keyboard.press("Escape"); await assessment.waitFor({state:"hidden"}); }
       await grid.getByRole("button", { name: "2.º trimestre" }).click();
       await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
-      await grid.getByText("Exame do período").waitFor();
+      await details.getByText("Exame do período").waitFor();
+      if (details === assessment) { await page.keyboard.press("Escape"); await assessment.waitFor({state:"hidden"}); }
       if (await grid.getByText("Biologia", { exact: true }).count()) errors.push("grade-paid: first-term-only subject appears in second trimester");
       await grid.getByRole("button", { name: "Por disciplina" }).click();
       const selector = grid.getByRole("combobox", { name: "Disciplina" });

@@ -44,8 +44,8 @@ test("navegação e área académica explicitam contexto sem inventar estado", a
   assert.match(sharedNav, /min-h-14/);
   assert.match(sharedNav, /focus-visible:ring-4 focus-visible:ring-klasse-gold\/20/);
   assert.match(sharedNav, /aria-expanded=\{isMoreOpen\}/);
-  assert.match(sharedNav, /aria-modal="true"/);
-  assert.match(sharedNav, /event\.key === "Escape"/);
+  assert.match(sharedNav, /<PortalSheet/);
+  assert.match(sharedNav, /contentId=\{dialogId\}/);
   assert.match(sharedNav, /safe-area-inset-bottom/);
   assert.match(sharedNav, /bg-destructive[^"]*text-background/);
 });

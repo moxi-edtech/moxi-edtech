@@ -77,7 +77,7 @@ async function run(rate, reduced, story) {
         await page.waitForFunction(()=>document.querySelector('[role="dialog"][data-motion-state="open"]')!==null);
         await dialog.evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished.catch(()=>{})))});
         const opened=await page.evaluate(()=>performance.now());
-        const geometry=await dialog.evaluate(el=>{const r=el.getBoundingClientRect();return {fits:r.top>=0&&r.bottom<=innerHeight+1&&r.left>=0&&r.right<=innerWidth+1,focused:el.contains(document.activeElement),locked:document.body.style.overflow==="hidden",duration:parseFloat(getComputedStyle(el).transitionDuration)*1000}});
+        const geometry=await dialog.evaluate(el=>{const r=el.getBoundingClientRect();return {fits:r.top>=0&&r.bottom<=innerHeight+1&&r.left>=0&&r.right<=innerWidth+1,focused:el.contains(document.activeElement),locked:document.body.hasAttribute("data-scroll-locked"),duration:getComputedStyle(el).animationName==="none"?0:parseFloat(getComputedStyle(el).animationDuration)*1000}});
         assert.ok(geometry.fits&&geometry.focused&&geometry.locked,"open drawer geometry, focus or scroll lock");
         const close=dialog.getByRole("button",{name:"Fechar outras áreas"});
         await close.focus();
@@ -89,17 +89,17 @@ async function run(rate, reduced, story) {
         else assert.ok(geometry.duration>0);
         const closeStart=await page.evaluate(()=>performance.now());
         // Dispatch the real close controls. Capture the intermediate state before the transition ends.
-        const state=await dialog.evaluate(async(el,method)=>{
-          if(method==="Escape") document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
-          else if(method==="button") el.querySelector('button[aria-label="Fechar outras áreas"]').click();
-          else el.parentElement.querySelector('button[aria-label="Fechar menu"]').click();
-          await new Promise(resolve=>requestAnimationFrame(resolve));
-          return {mounted:el.isConnected,phase:el.getAttribute("data-motion-state"),locked:document.body.style.overflow==="hidden",inert:!!document.querySelector(".klasse-portal-bottom-nav")?.inert};
-        },method);
-        if(!reduced&&state.mounted)assert.ok(state.phase==="closing"&&state.locked&&state.inert,"exit released focus or scroll lock early");
+        if(method==="Escape") await page.keyboard.press("Escape");
+        else if(method==="button") await close.click();
+        else await page.mouse.click(10,10);
+        const state=await page.evaluate(()=>{
+          const el=document.querySelector('[role="dialog"]');
+          return {mounted:!!el,phase:el?.getAttribute("data-motion-state"),locked:document.body.hasAttribute("data-scroll-locked"),focused:el?.contains(document.activeElement)};
+        });
+        if(!reduced&&state.mounted)assert.ok(state.phase==="closing"&&state.locked&&state.focused,"exit released focus or scroll lock early");
         await dialog.waitFor({state:"hidden"});
         await page.waitForFunction(()=>document.activeElement?.getAttribute("aria-label")==="Mais áreas");
-        assert.ok(await page.evaluate(()=>document.body.style.overflow!=="hidden"&&!document.querySelector(".klasse-portal-bottom-nav")?.inert),"scroll or navigation lock leaked");
+        assert.ok(await page.evaluate(()=>!document.body.hasAttribute("data-scroll-locked")),"scroll or navigation lock leaked");
         row.cycles.push({method,openWallMs:Math.round(opened-start),closeToFocusWallMs:Math.round(await page.evaluate(()=>performance.now())-closeStart),exitObserved:state.phase==="closing"});
       }
     }

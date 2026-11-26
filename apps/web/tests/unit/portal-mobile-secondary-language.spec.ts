@@ -13,7 +13,7 @@ test("academic payment flows use accessible constrained dialogs without changing
   const sheet = read("components/portal/ui/PortalSheet.tsx");
   assert.match(sheet, /<DialogContent layout="bottom-sheet"/);
   assert.match(sheet, /overflow-y-auto/);
-  assert.match(sheet, /!next && !busy/);
+  assert.match(sheet, /!next && !busy && !closing/);
   assert.match(sheet, /onCloseAutoFocus/);
   assert.match(consolidated, /\/api\/aluno\/financeiro\/comprovativo/);
   assert.match(service, /StudentAppyPayButton/);

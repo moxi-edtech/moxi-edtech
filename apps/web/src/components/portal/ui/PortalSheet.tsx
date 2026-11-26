@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { X } from "lucide-react";
+import { readMotionDuration } from "@/components/portal/motion/motion-tokens";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 type Props = {
@@ -22,10 +23,28 @@ const sizes = { compact: "40dvh", medium: "65dvh", expanded: "90dvh" };
 export function PortalSheet({ open, onClose, title, description, size = "medium", busy = false, children, footer, closeLabel = "Fechar", contentId }: Props) {
   const opener = useRef<HTMLElement | null>(null);
   const header = useRef<HTMLHeadingElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const [retained, setRetained] = useState(open);
+  const present = open || retained;
+  const closing = !open && retained;
+  useEffect(() => {
+    if (open) { setRetained(true); return; }
+    if (!retained) return;
+    const duration = content.current ? readMotionDuration(content.current, "sheet") : 0;
+    if (!duration) { setRetained(false); return; }
+    const fallback = window.setTimeout(() => setRetained(false), duration + 80);
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const changed = () => { if (preference.matches) setRetained(false); };
+    preference.addEventListener("change", changed);
+    return () => { window.clearTimeout(fallback); preference.removeEventListener("change", changed); };
+  }, [open, retained]);
   return (
-    <Dialog open={open} onOpenChange={next => { if (!next && !busy) onClose(); }}>
-      <DialogContent layout="bottom-sheet" closeButton={false} id={contentId}
-        overlayClassName="klasse-portal-theme klasse-academic-dialog klasse-context-sheet-overlay bg-muted-foreground/60"
+    <Dialog open={present} onOpenChange={next => { if (!next && !busy && !closing) onClose(); }}>
+      <DialogContent ref={content} layout="bottom-sheet" closeButton={false} {...(contentId ? { id: contentId } : {})} aria-modal="true"
+        data-motion-state={closing ? "closing" : "open"}
+        onAnimationEnd={event => { if (event.target === event.currentTarget && closing && event.animationName === "klasse-context-sheet-exit") setRetained(false); }}
+        onClickCapture={event => { if (closing) { event.preventDefault(); event.stopPropagation(); } }}
+        overlayClassName={"klasse-portal-theme klasse-academic-dialog klasse-context-sheet-overlay bg-muted-foreground/60" + (closing ? " klasse-context-sheet-overlay-closing" : "")}
         style={{ "--portal-sheet-limit": sizes[size] } as CSSProperties}
         className="klasse-portal-theme klasse-academic-dialog klasse-context-sheet gap-0 bg-card text-foreground sm:max-w-xl"
         onOpenAutoFocus={event => {
@@ -40,8 +59,8 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
           }
           opener.current = null;
         }}
-        onEscapeKeyDown={event => { if (busy) event.preventDefault(); }}
-        onInteractOutside={event => { if (busy) event.preventDefault(); }}>
+        onEscapeKeyDown={event => { if (busy || closing) event.preventDefault(); }}
+        onInteractOutside={event => { if (busy || closing) event.preventDefault(); }}>
         <header className="shrink-0 border-b border-border px-4 pb-3 pt-3">
           <div aria-hidden="true" className="mx-auto mb-3 h-1 w-8 rounded-full bg-muted-foreground/30" />
           <div className="flex items-start justify-between gap-3">
@@ -49,7 +68,7 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
               <DialogTitle ref={header} tabIndex={-1} className="break-words text-lg leading-snug text-primary focus:outline-none">{title}</DialogTitle>
               <DialogDescription className="text-xs leading-relaxed">{description}</DialogDescription>
             </div>
-            <button type="button" aria-label={closeLabel} disabled={busy} onClick={onClose}
+            <button type="button" aria-label={closeLabel} disabled={busy || closing} onClick={onClose}
               className="klasse-portal-press flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
               <X size={20} aria-hidden="true" />
             </button>
