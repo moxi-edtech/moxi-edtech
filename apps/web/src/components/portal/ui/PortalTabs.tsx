@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
-import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
-import { portalMotion, portalMotionSeconds } from "@/components/portal/motion/motion-tokens";
+import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 
 export type PortalTabItem<T extends string> = {
   id: T;
@@ -25,8 +23,8 @@ export function PortalTabs<T extends string>({
   testId?: string;
   layout?: "scroll" | "compact";
 }) {
-  const motionId = useId();
-  const reduceMotion = useReducedMotion();
+  const selectedIndex = items.findIndex(tab => tab.id === value);
+  const sliding = layout === "compact" && items.length === 4 && selectedIndex >= 0;
   const refs = useRef<Partial<Record<T, HTMLButtonElement | null>>>({});
   const previous = useRef(value);
   useEffect(() => {
@@ -49,9 +47,11 @@ export function PortalTabs<T extends string>({
   };
 
   return (
-    <LayoutGroup id={motionId}>
     <div role="tablist" aria-label={label} data-testid={testId}
-      className={`klasse-portal-tabs min-w-0 gap-1 border-b border-border ${layout === "compact" ? "grid grid-cols-4" : "flex overflow-x-auto"} ${className}`}>
+      data-sliding={sliding ? "true" : undefined}
+      style={sliding ? { "--portal-tab-index": selectedIndex } as CSSProperties : undefined}
+      className={`klasse-portal-tabs min-w-0 gap-1 border-b border-border ${layout === "compact" ? "relative grid grid-cols-4" : "flex overflow-x-auto"} ${className}`}>
+      {sliding && <span aria-hidden="true" data-portal-motion-indicator="" className="klasse-portal-motion-indicator pointer-events-none absolute bottom-0 left-0 h-0.5" />}
       {items.map((tab) => (
         <button
           key={tab.id}
@@ -64,20 +64,12 @@ export function PortalTabs<T extends string>({
           type="button"
           onClick={() => onChange(tab.id)}
           onKeyDown={(event) => onTabKeyDown(event, tab.id)}
-          className={`klasse-portal-press relative inline-flex min-h-12 min-w-0 flex-1 items-center justify-center border-b-2 font-semibold ${layout === "compact" ? "flex-col gap-1 px-0.5 py-1.5 text-xs leading-[1.35] sm:flex-row sm:gap-2 sm:px-2 sm:text-sm" : "gap-1.5 whitespace-nowrap px-2 text-sm"} transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${layout === "scroll" ? "sm:gap-2 sm:px-4" : ""} ${value === tab.id ? "border-klasse-gold text-klasse-green" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          className={`klasse-portal-press relative inline-flex min-h-12 min-w-0 flex-1 items-center justify-center border-b-2 font-semibold ${layout === "compact" ? "flex-col gap-1 px-0.5 py-1.5 text-xs leading-[1.35] sm:flex-row sm:gap-2 sm:px-2 sm:text-sm" : "gap-1.5 whitespace-nowrap px-2 text-sm"} transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${layout === "scroll" ? "sm:gap-2 sm:px-4" : ""} ${value === tab.id ? (sliding ? "border-transparent text-klasse-green" : "border-klasse-gold text-klasse-green") : "border-transparent text-muted-foreground hover:text-foreground"}`}
         >
-          {layout === "compact" && value === tab.id && (
-            <motion.span aria-hidden="true" data-portal-motion-indicator=""
-              className="pointer-events-none absolute inset-x-1 -bottom-0.5 h-0.5 rounded-full bg-primary"
-              layoutId={reduceMotion ? undefined : "active-tab"}
-              initial={false}
-              transition={{ duration: reduceMotion ? 0 : portalMotionSeconds(portalMotion.tab), ease: [...portalMotion.ease] }} />
-          )}
           {tab.icon && <span aria-hidden="true" className="shrink-0">{tab.icon}</span>}
           <span className={layout === "compact" ? "min-w-0 break-words text-center" : ""}>{tab.label}</span>
         </button>
       ))}
     </div>
-    </LayoutGroup>
   );
 }

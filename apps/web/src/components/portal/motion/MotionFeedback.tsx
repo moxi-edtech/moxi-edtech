@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { portalMotion } from "./motion-tokens";
+import { readMotionDuration } from "./motion-tokens";
 
 /** Reflects the existing save state. Never invents success or delays its announcement. */
 export function MotionFeedback({ label, icon, className = "" }: {
@@ -16,8 +16,11 @@ export function MotionFeedback({ label, icon, className = "" }: {
     previous.current = label;
     const element = iconRef.current;
     if (!element?.closest(".klasse-academic-mobile") || window.matchMedia("(prefers-reduced-motion: reduce)").matches || typeof element.animate !== "function") return;
+    const duration = readMotionDuration(element, "feedback");
+    const easing = getComputedStyle(element).getPropertyValue("--portal-motion-ease").trim();
+    if (!duration || !easing) return;
     const animation = element.animate([{ opacity: 0.55, transform: "translateY(2px)" }, { opacity: 1, transform: "translateY(0)" }], {
-      duration: portalMotion.feedback, easing: "cubic-bezier(.2,.8,.2,1)",
+      duration, easing,
     });
     return () => animation.cancel();
   }, [label]);

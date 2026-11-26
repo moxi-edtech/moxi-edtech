@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { MoreHorizontal, X, ChevronRight } from "lucide-react";
+import { readMotionDuration } from "@/components/portal/motion/motion-tokens";
 
 
 export type PortalBottomNavItem = {
@@ -28,7 +29,9 @@ type Props = {
 };
 
 export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigationLabel, moreLabel, description, hideOnDesktop = false, moreIcon: MoreIcon = MoreHorizontal, onPreload }: Props) {
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [phase, setPhase] = useState<"closed" | "entering" | "open" | "closing">("closed");
+  const isMoreOpen = phase !== "closed";
+  const wasOpen = useRef(false);
   const dialogId = useId();
   const titleId = useId();
   const moreButtonRef = useRef<HTMLButtonElement>(null);
@@ -36,9 +39,41 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
   const isDrawerActive = drawerItems.some(item => item.href === activeHref);
 
   const closeMenu = useCallback(() => {
-    setIsMoreOpen(false);
-    requestAnimationFrame(() => moreButtonRef.current?.focus());
+    const sheet = dialogRef.current;
+    const duration = sheet ? readMotionDuration(sheet, "sheet") : 0;
+    setPhase(current => current === "closed" || current === "closing" ? current : duration ? "closing" : "closed");
   }, []);
+
+  // Keep the dialog mounted, focus trapped and scroll locked through the exit.
+  useEffect(() => {
+    if (phase === "entering") {
+      let second = 0;
+      const first = requestAnimationFrame(() => {
+        second = requestAnimationFrame(() => setPhase(current => current === "entering" ? "open" : current));
+      });
+      return () => { cancelAnimationFrame(first); cancelAnimationFrame(second); };
+    }
+    if (phase !== "closing") return;
+    const sheet = dialogRef.current;
+    const duration = sheet ? readMotionDuration(sheet, "sheet") : 0;
+    if (!duration) { setPhase("closed"); return; }
+    // Fallback for interrupted or suppressed transitionend; buffer is scheduling slack, not a motion token.
+    const fallback = window.setTimeout(() => setPhase(current => current === "closing" ? "closed" : current), duration + 80);
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onPreference = () => { if (preference.matches) setPhase("closed"); };
+    preference.addEventListener("change", onPreference);
+    return () => { window.clearTimeout(fallback); preference.removeEventListener("change", onPreference); };
+  }, [phase]);
+
+  useEffect(() => {
+    if (isMoreOpen) { wasOpen.current = true; return; }
+    if (!wasOpen.current) return;
+    wasOpen.current = false;
+    const frame = requestAnimationFrame(() => {
+      if (moreButtonRef.current?.offsetParent !== null) moreButtonRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isMoreOpen]);
 
   // A navegação secundária é uma caixa de diálogo acessível, não uma segunda homepage.
   useEffect(() => {
@@ -64,12 +99,17 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
         first.focus();
       }
     };
+    const onFocusIn = (event: FocusEvent) => {
+      if (event.target instanceof Node && !dialogRef.current?.contains(event.target)) dialogRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    };
+    document.addEventListener("focusin", onFocusIn);
     document.addEventListener("keydown", onKeyDown);
     const mq = window.matchMedia("(min-width: 768px)");
-    const closeOnDesktop = () => { if (hideOnDesktop && mq.matches) closeMenu(); };
+    const closeOnDesktop = () => { if (hideOnDesktop && mq.matches) setPhase("closed"); };
     mq.addEventListener("change", closeOnDesktop);
     return () => {
       document.body.style.overflow = previousOverflow;
+      document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("keydown", onKeyDown);
       mq.removeEventListener("change", closeOnDesktop);
     };
@@ -78,7 +118,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
   return (
     <>
       {isMoreOpen && (
-        <div className="klasse-portal-motion-overlay fixed inset-0 z-50 flex items-end justify-center bg-muted-foreground/60">
+        <div data-motion-state={phase} className="klasse-portal-motion-overlay fixed inset-0 z-50 flex items-end justify-center bg-muted-foreground/60">
           <button type="button" tabIndex={-1} aria-label="Fechar menu" onClick={closeMenu} className="absolute inset-0 cursor-default" />
           <div
             id={dialogId}
@@ -86,6 +126,9 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
+            data-motion-state={phase}
+            onTransitionEnd={event => { if (event.target === event.currentTarget && event.propertyName === "transform" && phase === "closing") setPhase("closed"); }}
+            onClickCapture={event => { if (phase === "closing") { event.preventDefault(); event.stopPropagation(); } }}
             className="relative z-10 klasse-portal-drawer klasse-portal-motion-sheet max-h-[85dvh] w-full max-w-xl overflow-y-auto overscroll-contain rounded-t-2xl border border-border bg-card px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-4 shadow-lg sm:px-5"
           >
             <div className="mb-3 flex items-start justify-between gap-3 border-b border-border pb-3">
@@ -164,7 +207,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
           <button
             ref={moreButtonRef}
             type="button"
-            onClick={() => setIsMoreOpen(true)}
+            onClick={() => setPhase(current => current === "closed" ? "entering" : current)}
             aria-label={moreLabel}
             aria-haspopup="dialog"
             aria-controls={isMoreOpen ? dialogId : undefined}

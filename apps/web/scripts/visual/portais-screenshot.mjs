@@ -131,6 +131,7 @@ try {
             await more.click();
             const drawer = page.getByRole("dialog", { name: "Outras áreas" });
             await drawer.waitFor();
+            await page.waitForFunction(() => document.querySelector('[role="dialog"][data-motion-state="open"]') !== null);
             await drawer.evaluate(async el => { await Promise.all(el.getAnimations().map(animation => animation.finished.catch(() => {}))); });
             const fits = await drawer.evaluate(el => {
               const box = el.getBoundingClientRect();
@@ -199,7 +200,7 @@ try {
         await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Disciplinas"));
         if (await subjectTab.getAttribute("tabindex") !== "0") errors.push("academic-tabs: roving keyboard focus broken");
         if (!(await page.getByRole("tabpanel", { name: "Disciplinas" }).isVisible())) errors.push("academic-tabs: discipline panel not visible");
-        if (await subjectTab.locator("[data-portal-motion-indicator]").count() !== 1 || await tabs.locator("[data-portal-motion-indicator]").count() !== 1) errors.push("academic-tabs: indicator not associated with selected tab");
+        if (await tabs.locator("[data-portal-motion-indicator]").count() !== 1 || await tabs.evaluate(el => getComputedStyle(el).getPropertyValue("--portal-tab-index").trim() !== "1")) errors.push("academic-tabs: indicator not associated with selected tab");
         await page.keyboard.press("Home");
         await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Notas"));
         await page.keyboard.press("End");
@@ -214,9 +215,10 @@ try {
         await page.goto(`${baseUrl}/?story=academic-tabs`, {waitUntil:"domcontentloaded"});
         await page.getByRole("tab", {name:"Notas"}).focus();
         await page.keyboard.press("ArrowRight");
-        const reducedIndicator = page.getByRole("tab", {name:"Disciplinas"}).locator("[data-portal-motion-indicator]");
+        const reducedIndicator = page.getByRole("tablist", {name:"Área académica"}).locator("[data-portal-motion-indicator]");
+        await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Disciplinas"));
         await reducedIndicator.waitFor();
-        if (await reducedIndicator.evaluate(el => el.getAnimations().length > 0 || getComputedStyle(el).transform !== "none")) errors.push("academic-tabs: indicator animates under reduced motion");
+        if (await reducedIndicator.evaluate(el => el.getAnimations().length > 0 || parseFloat(getComputedStyle(el).transitionDuration) > 0)) errors.push("academic-tabs: indicator animates under reduced motion");
         await page.emulateMedia({reducedMotion:"no-preference"});
       } catch (error) {
         errors.push(`academic-tabs: keyboard/panel/back navigation failed: ${error.message}`);

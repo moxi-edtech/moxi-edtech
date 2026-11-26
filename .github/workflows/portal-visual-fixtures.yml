@@ -4,6 +4,10 @@ on:
     paths:
       - 'apps/web/src/components/aluno/PortalVisualFixtures.stories.tsx'
       - 'apps/web/scripts/visual/portais-screenshot.mjs'
+      - 'apps/web/scripts/visual/portal-motion-performance.mjs'
+      - 'apps/web/src/components/portal/motion/**'
+      - 'apps/web/src/components/portal/ui/PortalTabs.tsx'
+      - 'apps/web/src/components/layout/klasse/PortalBottomNav.tsx'
       - 'apps/web/scripts/visual/theme-switcher-smoke.mjs'
       - 'apps/web/src/components/ThemePreferences.tsx'
       - 'apps/web/src/components/ThemeToggle.tsx'
@@ -62,7 +66,12 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
         run: node apps/web/scripts/visual/theme-switcher-smoke.mjs
+      - name: Motion interaction and CPU baseline (1x and 4x)
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/portal-motion-performance.mjs
       - name: Capture synthetic responsive/zoom matrix
+        if: ${{ !cancelled() }}
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
         run: node apps/web/scripts/visual/portais-screenshot.mjs
