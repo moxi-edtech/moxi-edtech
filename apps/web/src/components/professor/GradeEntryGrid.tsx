@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-table"
 import { CheckCircle2, Loader2, Clipboard, AlertCircle, TrendingUp, Users, CheckCircle } from "lucide-react"
 import { SyncIndicator } from "@/components/feedback/FeedbackSystem"
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator"
 import { MotionFeedback } from "@/components/portal/motion/MotionFeedback"
 
 export type StudentGradeRow = {
@@ -38,6 +39,7 @@ type GradeEntryGridProps = {
   componentesAtivos?: string[]
   showIsento?: boolean
   studentMode?: boolean
+  compact?: boolean
   readOnly?: boolean
   notaMaxima?: number
   notaCorte?: number
@@ -110,6 +112,7 @@ export function GradeEntryGrid({
   componentesAtivos,
   showIsento = false,
   studentMode = false,
+  compact = false,
   readOnly = false,
   notaMaxima = 20,
   notaCorte = 10,
@@ -121,6 +124,10 @@ export function GradeEntryGrid({
   const [showPasteModal, setShowPasteModal] = useState(false)
   const [pasteColumn, setPasteColumn] = useState<typeof INPUT_COLUMNS[number]>("mac1")
   const [pasteText, setPasteText] = useState("")
+  const navigation = usePortalDrawerNavigation()
+  const drawerEmbedded = Boolean(navigation)
+  const hasPendingGrades = data.some(row => row._status !== "synced")
+  usePortalDrawerGuard(hasPendingGrades || (showPasteModal && Boolean(pasteText.trim())), isSaving)
 
   const gradeInputs = useMemo(() => {
     const configured = new Set((componentesAtivos ?? []).map((tipo) => tipo.toUpperCase()))
@@ -278,11 +285,11 @@ export function GradeEntryGrid({
     const flushRef = flushSaveRef
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      if (pendingRef.current.size > 0) {
+      if (!drawerEmbedded && pendingRef.current.size > 0) {
         void flushRef.current()
       }
     }
-  }, [])
+  }, [drawerEmbedded])
 
   const updateGrade = useCallback(
     (rowIndex: number, columnId: typeof INPUT_COLUMNS[number], value: string) => {
@@ -708,7 +715,7 @@ export function GradeEntryGrid({
         )}
 
         {/* VISÃO MOBILE DE CARDS */}
-        <div className="block md:hidden">
+        <div className={compact ? "block" : "block md:hidden"}>
           <div className="divide-y divide-border">
             {table.getRowModel().rows.map((row) => {
               const isHighlighted = highlightId && row.original.id === highlightId
@@ -775,7 +782,7 @@ export function GradeEntryGrid({
         </div>
 
         {/* TABELA DESKTOP COM NAVEGAÇÃO E CORES VIVAS */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className={compact ? "hidden" : "hidden md:block overflow-x-auto"}>
           <table className="w-full text-sm text-left border-collapse">
             <thead className="bg-muted/80 text-muted-foreground font-black uppercase text-[11px] tracking-wider border-b border-border">
               {table.getHeaderGroups().map((headerGroup) => (
