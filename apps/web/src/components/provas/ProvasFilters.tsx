@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from "react";
 import {Filter,ChevronDown,ChevronRight,ArrowLeft,Check,X} from "lucide-react";
 import {Button} from "@/components/ui/Button";
-import {estados,tiposProva} from "@/lib/provas/schema";
+import {tiposProva} from "@/lib/provas/schema";
 import {formatClasseProva} from "@/lib/provas/academicLabels";
 type Option={value:string;label:string};
 type Category="classe"|"disciplina"|"ano"|"trimestre"|"tipo"|"professor"|"periodo"|"autoria";

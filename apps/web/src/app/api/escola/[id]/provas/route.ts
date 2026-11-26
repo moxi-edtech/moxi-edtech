@@ -42,8 +42,7 @@ export async function GET(req:Request,{params}:Context){
  if(query.get("branding")==="1"){
    const school=await db.from("escolas").select("logo_url").eq("id",escolaId).maybeSingle();
    if(school.error)return json({error:"Identidade institucional indisponível."},503);
-   const logo=await loadProvaLogo(school.data?.logo_url,escolaId);
-   if(school.data?.logo_url&&!logo)console.warn("[provas] institutional logo unavailable",{escolaId});
+   const logo=await loadProvaLogo(school.data?.logo_url,escolaId,undefined,undefined,reason=>{if(school.data?.logo_url)console.warn("[provas] institutional logo unavailable",{escolaId,reason});});
    return json({logo});
  }
  if(query.get("contexto")==="1"){

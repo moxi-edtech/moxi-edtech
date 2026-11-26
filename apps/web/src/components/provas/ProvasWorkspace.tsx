@@ -82,14 +82,14 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  const [distribution,setDistribution]=useState(false);
  const [branding,setBranding]=useState<{endpoint:string;logo:string|null}|null>(null),[brandingRetry,setBrandingRetry]=useState(0);
  const logo=branding?.endpoint===endpoint?branding.logo:null;
- const modalOpen=Boolean(form);
+ const modalOpen=Boolean(form)||Boolean(onDismiss);
  useEffect(()=>{
-  if(!modalOpen&&!onDismiss)return;
+  if(!modalOpen)return;
   setBranding(null);
   const controller=new AbortController();
   fetch(endpoint+"?branding=1",{cache:"no-store",signal:controller.signal}).then(response).then(b=>{if(!controller.signal.aborted)setBranding({endpoint,logo:safeLogoData(b.logo)});}).catch(()=>{if(!controller.signal.aborted)setBranding({endpoint,logo:null});});
   return()=>controller.abort();
- },[endpoint,modalOpen,brandingRetry,Boolean(onDismiss)]);
+ },[endpoint,modalOpen,brandingRetry]);
  const [anos,setAnos]=useState<AnoProva[]>([]),[contextos,setContextos]=useState<ContextoProva[]>([]);
  const [anosLoading,setAnosLoading]=useState(false),[contextLoading,setContextLoading]=useState(false);
  const [anosError,setAnosError]=useState(""),[contextError,setContextError]=useState(""),[contextRetry,setContextRetry]=useState(0);
