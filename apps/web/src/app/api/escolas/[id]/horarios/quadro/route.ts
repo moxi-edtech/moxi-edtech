@@ -390,6 +390,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     })
 
     if (ensureVersionError || !versionIdFromDb) {
+      if (ensureVersionError?.code === '40001' || /HORARIO_STALE|HORARIO_RETRY/.test(ensureVersionError?.message || '')) return NextResponse.json({ ok: false, error: 'Versão desactualizada. Recarregue o horário.' }, { status: 409 })
       emitObs('error', 400, { error_code: 'ENSURE_VERSION_FAILED' })
       return NextResponse.json({ ok: false, error: ensureVersionError?.message || 'Falha ao garantir versão' }, { status: 400 })
     }
@@ -405,7 +406,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     })
 
     if (upsertError) {
-      const conflict = /conflito|HORARIO_CONFLICT|HORARIO_STALE/i.test(upsertError.message || '')
+      const conflict = upsertError.code === '40001' || /conflito|HORARIO_CONFLICT|HORARIO_STALE|HORARIO_RETRY/i.test(upsertError.message || '')
       if (conflict) return NextResponse.json({ ok: false, error: upsertError.message }, { status: 409 })
       emitObs('error', 400, { error_code: 'UPSERT_QUADRO_FAILED' })
       return NextResponse.json({ ok: false, error: upsertError.message }, { status: 400 })
@@ -502,7 +503,7 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
       anoLetivoId: academicContext.anoLetivoId,
     })
 
-    const { data: versaoData } = await supabase
+    const { data: versaoData, error: versionError } = await supabase
       .from('horario_versoes')
       .select('status')
       .eq('id', versaoId)
@@ -510,26 +511,17 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
       .eq('turma_id', turmaId)
       .maybeSingle()
 
-    if ((versaoData as { status?: string } | null)?.status === 'publicada') {
-      return NextResponse.json({ ok: false, error: 'Não é permitido remover versão publicada' }, { status: 409 })
+    if (versionError) return NextResponse.json({ ok: false, error: 'Não foi possível consultar a versão.' }, { status: 503 })
+    if ((versaoData as { status?: string } | null)?.status !== 'draft') {
+      return NextResponse.json({ ok: false, error: 'Somente rascunhos podem ser removidos.' }, { status: 409 })
     }
 
-    const { error } = await supabase
-      .from('quadro_horarios')
-      .delete()
-      .eq('escola_id', escolaIdResolved)
-      .eq('versao_id', versaoId)
-      .eq('turma_id', turmaId)
-
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
-
-    await supabase
-      .from('horario_versoes')
-      .delete()
-      .eq('id', versaoId)
-      .eq('escola_id', escolaIdResolved)
-      .eq('turma_id', turmaId)
-      .neq('status', 'publicada')
+    // FK cascades the draft lessons in the same transaction. Never delete rows
+    // first or report success after a competing publication.
+    const { data: deleted, error } = await supabase.from('horario_versoes').delete()
+      .eq('id', versaoId).eq('escola_id', escolaIdResolved).eq('turma_id', turmaId)
+      .eq('status', 'draft').select('id')
+    if (error || deleted?.length !== 1) return NextResponse.json({ ok: false, error: 'Não foi possível remover o rascunho. Recarregue o horário.' }, { status: error && !['40001','23514'].includes(error.code) ? 400 : 409 })
 
     return NextResponse.json({ ok: true, context: academicContext })
   } catch (e) {

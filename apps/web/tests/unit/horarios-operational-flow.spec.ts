@@ -186,3 +186,19 @@ test("horários: compact viewport uses a day editor with shared grid and persist
  assert.match(workspace,/space-y-2 p-2 md:hidden/);
  assert.match(workspace,/hidden overflow-x-auto md:block/);
 });
+
+test("horários: bootstrap and onboarding use atomic writes, not direct publication", () => {
+  for (const path of [
+    "src/app/api/escola/[id]/admin/setup/auto-resolve/route.ts",
+    "src/app/api/escola/[id]/admin/curriculo/publish/route.ts",
+    "src/app/api/escolas/[id]/onboarding/core/finalize/route.ts",
+  ]) {
+    const source=readFileSync(path,"utf8");
+    assert.match(source,/rpc\('upsert_quadro_horarios_versao_atomic'/);
+    assert.doesNotMatch(source,/\.from\('quadro_horarios'\)\s*\.(?:insert|delete|update)\(/);
+    assert.doesNotMatch(source,/\.from\('horario_versoes'\)\s*\.update\(\{ status: 'publicada'/);
+  }
+  const route=readFileSync("src/app/api/escolas/[id]/horarios/quadro/route.ts","utf8");
+  assert.match(route,/\.eq\('status', 'draft'\)\.select\('id'\)/);
+  assert.match(route,/HORARIO_RETRY/);
+});

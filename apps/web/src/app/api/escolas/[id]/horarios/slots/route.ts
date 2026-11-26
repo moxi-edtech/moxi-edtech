@@ -225,6 +225,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .select('id, turno_id, ordem, inicio, fim, dia_semana, is_intervalo')
 
     if (error) {
+      if (error.code === '40001' || /HORARIO_SLOT_REFERENCED|HORARIO_RETRY/.test(error.message || '')) {
+        return NextResponse.json({ ok: false, error: 'Este tempo pertence a uma versão oficial ou está em edição. Recarregue antes de alterar.' }, { status: 409 })
+      }
       if (error.message?.includes('excl_horario_slots_temporal')) {
         return NextResponse.json({ ok: false, error: 'SLOT_TEMPORAL_CONFLICT', detail: error.message }, { status: 409 })
       }
