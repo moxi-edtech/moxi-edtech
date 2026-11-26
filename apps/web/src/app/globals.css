@@ -125,6 +125,12 @@
   background-size: 80px 20px;
 }
 
+/* Operations retains its compact banner; scale only its decorative signature. */
+.klasse-operations-academic-card .klasse-welcome-signature {
+  block-size: 8px;
+  background-size: 32px 8px;
+}
+
 /* Academic mobile only; keep status semantics and desktop layouts. */
 @media (max-width: 767px) {
   .klasse-academic-mobile .klasse-portal-section {
