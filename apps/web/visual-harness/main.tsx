@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { TabFinanceiro } from "../src/components/aluno/tabs/TabFinanceiro";
+import { TabFaltas } from "../src/components/aluno/tabs/TabFaltas";
 import { EstadoVitalBanner } from "../src/components/layout/escola-admin/EstadoVitalBanner";
 import ProfessorCalendarioPage from "../src/app/professor/calendario/page";
 import { PaymentDrawer } from "../src/components/aluno/financeiro-portal/PaymentDrawer";
@@ -388,7 +390,9 @@ function PortalPaymentSheetFixture() {
       dadosPagamento={null} studentId="00000000-0000-4000-8000-000000000402" />
   </main>;
 }
-if (target && name === "operations-academic-card") createRoot(target).render(<main className="mx-auto min-h-screen max-w-6xl p-4"><EstadoVitalBanner compact calendarHref="/escola/fixture/operacoes/calendario" estado={{escola_id:"fixture",session_id:null,ano_ativo:2026,periodo_id:null,periodo_tipo:"TRIMESTRE",periodo_numero:1,hoje_bloqueado_pedagogico:false,evento_hoje_nome:"Reunião pedagógica sintética",fase_operacional:"REGULAR"}} /></main>);
+if (target && name === "portal-finance-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4"><TabFinanceiro /></main>);
+else if (target && name === "portal-absence-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4"><TabFaltas /></main>);
+else if (target && name === "operations-academic-card") createRoot(target).render(<main className="mx-auto min-h-screen max-w-6xl p-4"><EstadoVitalBanner compact calendarHref="/escola/fixture/operacoes/calendario" estado={{escola_id:"fixture",session_id:null,ano_ativo:2026,periodo_id:null,periodo_tipo:"TRIMESTRE",periodo_numero:1,hoje_bloqueado_pedagogico:false,evento_hoje_nome:"Reunião pedagógica sintética",fase_operacional:"REGULAR"}} /></main>);
 else if (target && name === "professor-calendar-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen"><ProfessorCalendarioPage /></main>);
 else if (target && name === "portal-payment-sheet") createRoot(target).render(<PortalPaymentSheetFixture />);
 else if (target && name === "roster-export") createRoot(target).render(<RosterExportVisualFixture />);

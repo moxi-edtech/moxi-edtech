@@ -65,3 +65,23 @@ test("operations shares the cultural signature without changing academic authori
   assert.match(calendar, /<PortalSheet open=\{eventOpen/);
   assert.match(calendar, /selectedEvent\.descricao/);
 });
+
+test("contextual financial actions use confirmed scope and an immutable upload selection", () => {
+  const finance = read("components/aluno/tabs/TabFinanceiro.tsx");
+  assert.match(finance, /loadedQuery === query/);
+  assert.match(finance, /controller.signal.aborted \|\| activeRequest.current !== controller/);
+  assert.match(finance, /draftFrom > draftTo/);
+  assert.match(finance, /setPaymentRows\(items.map/);
+  assert.match(finance, /paymentLock.current/);
+  assert.match(finance, /<PortalSheet open=\{detailOpen/);
+  assert.match(finance, /<PaymentDrawer/);
+  const absences = read("components/aluno/tabs/TabFaltas.tsx");
+  assert.match(absences, /scope === query \? data : null/);
+  assert.match(absences, /inFlight.current/);
+  assert.match(absences, /<PortalSheet open=\{detailOpen/);
+  const notes = read("app/professor/notas/page.tsx");
+  assert.match(notes, /loadedPautaScope === raaScope/);
+  assert.match(notes, /mostrarTrimestresInativos: showInactiveTerms/);
+  assert.match(notes, /<PortalSheet open=\{raaOpen/);
+  assert.match(notes, /<PortalSheet open=\{exportOpen/);
+});

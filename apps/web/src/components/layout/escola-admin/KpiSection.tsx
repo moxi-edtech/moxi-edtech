@@ -74,7 +74,9 @@ export default function KpiSection({
   portalBase = "admin",
   alunoSeries,
 }: Props) {
-  const [detailLabel, setDetailLabel] = useState<string | null>(null);
+  const [detailSelection, setDetailSelection] = useState<{label:string;scope:string} | null>(null);
+  const detailScope = JSON.stringify([escolaId, academicYearId, mode]);
+  const detailLabel = detailSelection?.scope === detailScope ? detailSelection.label : null;
   const [detailOpen, setDetailOpen] = useState(false);
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
@@ -208,7 +210,7 @@ export default function KpiSection({
   return (
     <div className={gridClasses}>
       {kpis.map((kpi) => mode === "operacoes" && (kpi.label === "Alunos" || kpi.label === "Turmas") ? (
-        <OperationalMetricCard key={kpi.label} label={kpi.label} value={kpi.value} icon={kpi.icon} description={kpi.description} onClick={() => { setDetailLabel(kpi.label); setDetailOpen(true); }} dialogOpen={detailOpen && detailLabel === kpi.label} />
+        <OperationalMetricCard key={kpi.label} label={kpi.label} value={kpi.value} icon={kpi.icon} description={kpi.description} onClick={() => { setDetailSelection({label:kpi.label,scope:detailScope}); setDetailOpen(true); }} dialogOpen={detailOpen && detailLabel === kpi.label} />
       ) : (
         <KpiCard
           key={kpi.label}

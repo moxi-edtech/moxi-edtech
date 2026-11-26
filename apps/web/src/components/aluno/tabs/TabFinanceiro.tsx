@@ -103,7 +103,8 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [detail, setDetail] = useState<{ kind: "monthly" | "service"; id: string; scope: string } | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [singlePaymentId, setSinglePaymentId] = useState<string | null>(null);
+  const [paymentRows, setPaymentRows] = useState<Item[]>([]);
+  const paymentLock = useRef(false);
   const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
@@ -125,7 +126,7 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
 
   // One request per scope. A superseded response cannot publish data or errors.
   const refresh = useCallback(async () => {
-    if (activeRequest.current) return;
+    if (activeRequest.current || paymentLock.current) return;
     const controller = new AbortController();
     activeRequest.current = controller;
     setRefreshing(true);
@@ -134,7 +135,10 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
     try {
       const response = await fetch(`/api/aluno/financeiro${query}`, { cache: "no-store", signal: controller.signal });
       const json = await response.json() as ApiResponse;
-      if (!response.ok || !json.ok) throw new Error("Não foi possível consultar o financeiro.");
+      if (!response.ok || !json.ok) {
+        if (response.status === 401 || response.status === 403) { scopeReady.current = null; setLoadedQuery(null); setDetailOpen(false); setSelectedIds([]); }
+        throw new Error("Não foi possível consultar o financeiro.");
+      }
       if (controller.signal.aborted || activeRequest.current !== controller) return;
       const mapped = (json.mensalidades ?? []).map(m => ({ ...m, status: normalizeStatus(m.status) }));
       setRows(mapped);
@@ -182,7 +186,7 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
       activeRequest.current = null;
       scopeReady.current = null;
       setSelectedIds([]);
-      setSinglePaymentId(null);
+      setPaymentRows([]);
       setDetail(null);
       setDetailOpen(false);
       setLoadedQuery(null);
@@ -197,6 +201,14 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
   const selectedMensalidades = useMemo(() => rows.filter((item) => selectedIds.includes(item.id)
     && item.valor > 0 && ["pendente", "atrasado", "pago_parcial"].includes(item.status)), [rows, selectedIds]);
   const selectedTotal = useMemo(() => selectedMensalidades.reduce((sum, item) => sum + item.valor, 0), [selectedMensalidades]);
+  const openPayment = (items: Item[]) => {
+    if (!ready || fetchError || paymentLock.current || !items.length || !items.every(canPay)) return;
+    paymentLock.current = true;
+    activeRequest.current?.abort(); activeRequest.current = null; setRefreshing(false);
+    setPaymentRows(items.map(item => ({...item}))); setPaymentOpen(true);
+  };
+  const closePayment = () => { paymentLock.current = false; setPaymentOpen(false); void refresh(); };
+  const refreshAfterPayment = () => { activeRequest.current?.abort(); activeRequest.current = null; void refresh(); };
 
   const handleReprintRecibo = (reciboId: string | null | undefined) => {
     if (!reciboId) return;
@@ -288,7 +300,7 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
           {selectedMensalidades.length ? (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{selectedMensalidades.length} seleccionada(s) · {money.format(selectedTotal)}</p>
-              <Button tone="gold" className="min-h-11" size="sm" onClick={() => { setSinglePaymentId(null); setPaymentOpen(true); }}>Enviar um comprovativo</Button>
+              <Button tone="gold" className="min-h-11" size="sm" disabled={Boolean(fetchError)} onClick={() => openPayment(selectedMensalidades)}>Enviar um comprovativo</Button>
             </div>
           ) : null}
           {loading ? (
@@ -434,19 +446,19 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
           <dl className="space-y-3 text-sm"><div><dt className="text-muted-foreground">Estado</dt><dd className="font-semibold">{detailStatus[selectedMonthly.status]}</dd></div><div><dt className="text-muted-foreground">Saldo por liquidar</dt><dd className="text-xl font-semibold tabular-nums text-primary">{money.format(selectedMonthly.valor)}</dd></div><div><dt className="text-muted-foreground">Vencimento</dt><dd>{selectedMonthly.vencimento ? selectedMonthly.vencimento.slice(0,10).split("-").reverse().join("/") : "Indisponível"}</dd></div></dl>
           {selectedMonthly.bolsa_isencao_integral && <p className="text-sm text-muted-foreground">Saldo abrangido por bolsa integral.</p>}
           {selectedMonthly.status === "pago" && selectedMonthly.recibo_id && <Button tone="gray" className="min-h-11 w-full" onClick={() => handleReprintRecibo(selectedMonthly.recibo_id)}>Ver recibo</Button>}
-          {canPay(selectedMonthly) && <div className="space-y-2"><StudentAppyPayButton targetId={selectedMonthly.id} kind="monthly" studentId={studentId} descricao={`Propina ${selectedMonthly.competencia}`} onPaid={() => { setSelectedIds(prev => prev.filter(id => id !== selectedMonthly.id)); void refresh(); }} /><Button tone="gold" className="min-h-11 w-full" onClick={() => { setSinglePaymentId(selectedMonthly.id); setPaymentOpen(true); }}>Enviar comprovativo</Button></div>}
+          {!fetchError && canPay(selectedMonthly) && <div className="space-y-2"><StudentAppyPayButton targetId={selectedMonthly.id} kind="monthly" studentId={studentId} descricao={`Propina ${selectedMonthly.competencia}`} onPaid={() => { setSelectedIds(prev => prev.filter(id => id !== selectedMonthly.id)); refreshAfterPayment(); }} /><Button tone="gold" className="min-h-11 w-full" onClick={() => openPayment([selectedMonthly])}>Enviar comprovativo</Button></div>}
           {selectedMonthly.status === "em_verificacao" && <p role="status" className="text-sm text-muted-foreground">A secretaria está a validar o comprovativo. Não pagues novamente.</p>}
         </>}
         {selectedService && <><dl className="space-y-3 text-sm"><div><dt className="text-muted-foreground">Estado</dt><dd className="font-semibold">{selectedService.estado_label}</dd></div><div><dt className="text-muted-foreground">Valor</dt><dd className="text-xl font-semibold tabular-nums text-primary">{money.format(selectedService.valor)}</dd></div><div><dt className="text-muted-foreground">Protocolo</dt><dd className="break-words">{selectedService.protocolo}</dd></div><div><dt className="text-muted-foreground">Data</dt><dd>{new Date(selectedService.data).toLocaleDateString("pt-AO")}</dd></div></dl><p className="text-sm">{selectedService.mensagem_estado}</p><p className="text-sm font-medium">Próximo passo: {selectedService.proximo_passo}</p>
-          {selectedService.status === "pendente" && selectedService.appypay_intent_id && <StudentAppyPayButton targetId={selectedService.appypay_intent_id} kind="service" studentId={studentId} descricao={selectedService.nome} onPaid={() => void refresh()} />}
+          {!fetchError && selectedService.status === "pendente" && selectedService.appypay_intent_id && <StudentAppyPayButton targetId={selectedService.appypay_intent_id} kind="service" studentId={studentId} descricao={selectedService.nome} onPaid={refreshAfterPayment} />}
           {selectedService.acao && <Link href={studentId ? `${selectedService.acao.href}&studentId=${encodeURIComponent(studentId)}` : selectedService.acao.href} className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold text-primary">{selectedService.acao.label} · Secretaria Digital</Link>}
         </>}
       </PortalSheet>
       <PaymentDrawer
-        open={ready && paymentOpen && (singlePaymentId ? rows.some(row => row.id === singlePaymentId && canPay(row)) : selectedMensalidades.length > 0)}
-        mensalidades={singlePaymentId ? rows.filter(row => row.id === singlePaymentId && canPay(row)) : selectedMensalidades}
+        open={ready && paymentOpen && paymentRows.length > 0}
+        mensalidades={paymentRows}
         dadosPagamento={dadosPagamento}
-        onClose={() => { setPaymentOpen(false); }}
+        onClose={closePayment}
         onUploaded={(ids) => { setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds(prev => prev.filter(id => !ids.includes(id))); }}
         studentId={studentId}
       />

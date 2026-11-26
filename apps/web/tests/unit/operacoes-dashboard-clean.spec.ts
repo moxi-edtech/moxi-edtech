@@ -24,7 +24,7 @@ test("academic context retains blocking and event details and finance does not i
   assert.match(banner, /Evento de hoje/);
   assert.match(banner, /estado.evento_hoje_nome/);
   assert.match(dashboard, /Sem previsão definida/);
-  assert.match(dashboard, /revenueDetailsOpen && hasMovimentoReceita/);
+  assert.match(dashboard, /<PortalSheet open=\{revenueDetailsOpen && hasMovimentoReceita\}/);
   assert.match(dashboard, /!isOperacoes \|\| radarAlerts.length > 0/);
 });
 

@@ -545,7 +545,7 @@ export default function EscolaAdminDashboardContent({
                   {hasMetaReceita && rawPercentualReceita > 100 && <p className="mt-2 text-xs text-muted-foreground">Caixa acima do previsto; pode incluir dívidas antigas, adiantamentos ou serviços.</p>}
                 </section>
               )}
-              <PortalSheet open={revenueDetailsOpen} onClose={() => setRevenueDetailsOpen(false)} size="medium" title="Detalhes financeiros do mês" description="Recebimentos em caixa e cobrança da competência">
+              <PortalSheet open={revenueDetailsOpen && hasMovimentoReceita} onClose={() => setRevenueDetailsOpen(false)} size="medium" title="Detalhes financeiros do mês" description="Recebimentos em caixa e cobrança da competência">
                 {hasMovimentoReceita && (
                   <dl className="divide-y divide-border rounded-xl border border-border bg-card px-4">
                     {[

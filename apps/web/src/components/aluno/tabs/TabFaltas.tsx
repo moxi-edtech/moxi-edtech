@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { useSearchParams } from "next/navigation";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
@@ -45,7 +45,7 @@ export function TabFaltas() {
   const [detailScope, setDetailScope] = useState<string | null>(null);
   const inFlight = useRef(false);
   const currentScope = useRef(query);
-  useEffect(() => { currentScope.current = query; }, [query]);
+  useLayoutEffect(() => { currentScope.current = query; }, [query]);
   const [reason, setReason] = useState("");
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -93,7 +93,7 @@ export function TabFaltas() {
       if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível enviar o pedido.");
       if (currentScope.current !== query) return;
       setFeedback(json.message || "Solicitação realizada. Aguardando análise da secretaria.");
-      setDetailOpen(false); setReason("");
+      setLoading(true); setDetailOpen(false); setReason("");
       setRetry((current) => current + 1);
     } catch (err) {
       if (currentScope.current === query) setFeedback(err instanceof Error ? err.message : "O pedido não foi confirmado. Tenta novamente.");
@@ -167,7 +167,7 @@ export function TabFaltas() {
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                   <p>A justificação não foi aceite.{item.justificacao?.decision_reason ? ` Motivo: ${item.justificacao.decision_reason}` : " Podes apresentar um novo pedido."}</p>
                 </div>}
-                <button type="button" aria-haspopup="dialog" aria-expanded={active} disabled={sending || loading} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                <button type="button" aria-haspopup="dialog" aria-expanded={active} disabled={sending} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => { setEditingId(item.id); setDetailScope(query); setReason(""); setFeedback(null); setDetailOpen(true); }}>
                   {safeData.can_submit && status !== "pending" && status !== "approved" ? (status === "rejected" ? "Enviar nova justificação" : "Solicitar justificação") : "Ver detalhes"}
                 </button>
