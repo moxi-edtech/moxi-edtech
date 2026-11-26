@@ -43,8 +43,11 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
     preference.addEventListener("change", changed);
     return () => { window.clearTimeout(fallback); preference.removeEventListener("change", changed); };
   }, [open, retained]);
+  const previousNavigation = useRef({ open, navigationKey });
   useLayoutEffect(() => {
-    if (open && navigationKey) header.current?.focus({ preventScroll: true });
+    const previous = previousNavigation.current;
+    previousNavigation.current = { open, navigationKey };
+    if (open && previous.open && navigationKey && previous.navigationKey !== navigationKey) header.current?.focus({ preventScroll: true });
   }, [open, navigationKey]);
   const requestClose = () => {
     if (busy || closing || !open) return;
@@ -56,6 +59,7 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
     <Dialog open={present} onOpenChange={next => { if (!next && !busy && !closing) requestClose(); }}>
       <DialogContent ref={content} layout="bottom-sheet" closeButton={false} {...(contentId ? { id: contentId } : {})} aria-modal="true"
         data-motion-state={closing ? "closing" : "open"}
+        data-portal-navigator={navigationKey ? "true" : undefined}
         onAnimationEnd={event => { if (event.target === event.currentTarget && closing && event.animationName === "klasse-context-sheet-exit") setRetained(false); }}
         onClickCapture={event => { if (closing) { event.preventDefault(); event.stopPropagation(); } }}
         overlayClassName={"klasse-portal-theme klasse-academic-dialog klasse-context-sheet-overlay bg-muted-foreground/60" + (closing ? " klasse-context-sheet-overlay-closing" : "")}
@@ -85,9 +89,9 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
         onFocusOutside={event => { event.preventDefault(); if (busy || closing) header.current?.focus({ preventScroll: true }); }}
         onInteractOutside={event => { if (busy || closing) event.preventDefault(); }}>
         <header className="shrink-0 border-b border-border px-4 pb-3 pt-3">
-          <div aria-hidden="true" className="mx-auto mb-3 h-1 w-8 rounded-full bg-muted-foreground/30" />
+          <div aria-hidden="true" className={`mx-auto mb-3 h-1 w-8 rounded-full bg-muted-foreground/30 ${navigationKey ? "lg:hidden" : ""}`} />
           <div className="flex items-start justify-between gap-3">
-            {onBack && <button type="button" onClick={onBack} disabled={busy || closing} className="klasse-portal-press flex min-h-11 shrink-0 items-center gap-1 rounded-xl px-2 text-sm font-semibold text-primary focus-visible:ring-2 focus-visible:ring-ring"><ArrowLeft size={18} aria-hidden="true" />Voltar</button>}
+            {onBack && <button type="button" onClick={onBack} aria-label="Voltar" disabled={busy || closing} className="klasse-portal-press flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-xl px-2 text-sm font-semibold text-primary focus-visible:ring-2 focus-visible:ring-ring"><ArrowLeft size={18} aria-hidden="true" /><span className="sr-only sm:not-sr-only">Voltar</span></button>}
             <div className="min-w-0 flex-1 space-y-1">
               <DialogTitle ref={header} tabIndex={-1} className="break-words text-lg leading-snug text-primary focus:outline-none">{title}</DialogTitle>
               <DialogDescription className="text-xs leading-relaxed">{description}</DialogDescription>
