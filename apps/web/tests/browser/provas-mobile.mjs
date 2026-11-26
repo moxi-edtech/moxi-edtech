@@ -27,6 +27,7 @@ try{
     assert.ok(data.dados.conteudo[0].rich.segments.some(s=>s.kind==="math"&&s.latex===(width===320?"\\frac{7}{5}+2^{3}":width===390?"\\frac{7}{5}":"2+3")));
     assert.deepEqual(data.dados.conteudo[1].alternativas,["Joule","Watt","Newton","Pascal"]);
     assert.equal(data.dados.conteudo[1].cotacao_cent,125);
+    assert.equal(data.dados.conteudo[1].figuras?.length,1);assert.equal(data.dados.conteudo[1].figuras[0].alt,"Ilustração de teste");assert.match(data.dados.conteudo[1].figuras[0].src,/^data:image\/png;base64,/);
     assert.equal(data.dados.apresentacao,"espacosa");
     assert.equal(data.dados.titulo,"Prova Trimestral");
     assert.equal(data.dados.serie,"A");
@@ -256,9 +257,17 @@ try{
   assert.match(await second.innerText(),/Qual é a unidade/);
   await noOverflow(page,"organizer "+width);
   await page.screenshot({path:"apps/web/visual-evidence/provas/organizador-"+width+".png"});
+  // Actual file picker, local re-encoding and preview on both browser engines.
+  const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==","base64");
+  const picker=dialog.getByLabel("Inserir imagem na pergunta 2",{exact:true});
+  await picker.setInputFiles({name:"figura.png",mimeType:"image/png",buffer:png});
+  await dialog.getByRole("img",{name:"Figura 1",exact:true}).waitFor();
+  await dialog.getByLabel("Descrição acessível (não revelar a resposta)").fill("Ilustração de teste");
+  await noOverflow(page,"figura "+width);
   await dialog.getByRole("button",{name:"Pré-visualizar"}).click();
   const preview=dialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
   await preview.locator("math").waitFor();
+  assert.equal(await preview.locator(".question-figure").count(),1);
   assert.equal(await preview.locator(".paper").getAttribute("data-layout"),"espacosa");
   assert.equal(await preview.locator(".linha").count(),7);
   assert.equal(await preview.locator(".alternativas li").count(),4);
