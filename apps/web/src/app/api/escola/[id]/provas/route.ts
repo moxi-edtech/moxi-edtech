@@ -13,15 +13,11 @@ export async function GET(req:Request,{params}:Context){
  if(!access.ok)return json({error:"Acesso não autorizado."},access.status);
  const {db,escolaId}=access;
  const query=new URL(req.url).searchParams;
- if(query.get("professores")==="1"){
-   if(!access.admin)return json({error:"Sem autorização."},403);
-   const r=await db.from("professores").select("id,nome,nome_completo").eq("escola_id",escolaId).order("nome").order("id").limit(1001);
-   if(r.error||r.data?.length>1000)return json({error:"Não foi possível consultar o catálogo docente."},409);
-   return json({items:(r.data??[]).map((p:{id:string;nome:string|null;nome_completo:string|null})=>({id:p.id,nome:p.nome_completo||p.nome||"Professor sem nome"}))});
- }
  if(query.get("branding")==="1"){
    const school=await db.from("escolas").select("logo_url").eq("id",escolaId).maybeSingle();
-   return json({logo:school.error?null:await loadProvaLogo(school.data?.logo_url,escolaId)});
+   if(school.error)return json({error:"Identidade institucional indisponível."},503);
+   const logo=await loadProvaLogo(school.data?.logo_url,escolaId,undefined,undefined,reason=>{if(school.data?.logo_url)console.warn("[provas] institutional logo unavailable",{escolaId,reason});});
+   return json({logo});
  }
  if(query.get("contexto")==="1"){
    if(!access.author)return json({error:"Sem autorização para elaborar provas."},403);
@@ -47,6 +43,20 @@ export async function GET(req:Request,{params}:Context){
  const filters=z.object({professor:z.string().uuid().optional(),tipo:z.enum(TIPOS_PROVA).optional(),estado:z.enum(["rascunho","em_revisao","aprovada","arquivada"]).optional(),trimestre:z.enum(["1","2","3"]).optional(),ano:z.string().regex(/^\d{4}\/\d{4}$/).optional(),classe:z.string().trim().min(1).max(80).optional(),disciplina:z.string().trim().min(1).max(120).optional(),autoria:z.enum(["sistema","utilizador"]).optional(),periodo:z.enum(["sem_data","futuras","passadas"]).optional()}).safeParse(Object.fromEntries(["professor","tipo","estado","trimestre","ano","classe","disciplina","autoria","periodo"].flatMap(k=>query.has(k)?[[k,query.get(k)]]:[])));
  if(!filters.success)return json({error:"Filtros inválidos."},400);
  const f=filters.data;
+ const facet=query.get("faceta");
+ if(facet!==null){
+   if(!access.admin||printOnly)return json({error:"Sem autorização."},403);
+   if(!["classe","disciplina","ano","trimestre","tipo","professor","periodo","autoria","estado"].includes(facet))return json({error:"Filtro inválido."},400);
+   const r=await db.rpc("provas_faceta",{p_escola:escolaId,p_categoria:facet,p_filtros:f,p_historico:query.get("historico")==="1"});
+   if(r.error||!Array.isArray(r.data)||r.data.length>2000)return json({error:"Opções de filtro indisponíveis."},409);
+   const values=r.data as string[];
+   if(facet!=="professor")return json({items:values.map(value=>({value,label:value}))});
+   const teachers:{id:string;profile_id:string|null;apelido:string|null}[]=[];
+   for(let i=0;i<values.length;i+=100){const result=await db.from("professores").select("id,profile_id,apelido").eq("escola_id",escolaId).in("id",values.slice(i,i+100));if(result.error)return json({error:"Catálogo docente indisponível."},409);teachers.push(...(result.data??[]));}
+   const ids=[...new Set(teachers.flatMap(p=>p.profile_id?[p.profile_id]:[]))],names=new Map<string,string>();
+   for(let i=0;i<ids.length;i+=100){const result=await db.rpc("tenant_profiles_by_ids",{p_user_ids:ids.slice(i,i+100)});if(result.error)return json({error:"Catálogo docente indisponível."},409);for(const p of (result.data??[]) as {user_id:string;nome:string|null}[])if(p.nome)names.set(p.user_id,p.nome);}
+   return json({items:teachers.map(p=>({value:p.id,label:(p.profile_id?names.get(p.profile_id):null)||p.apelido||"Professor sem nome"})).sort((a,b)=>a.label.localeCompare(b.label,"pt")||a.value.localeCompare(b.value))});
+ }
  if(f.professor&&!access.admin)return json({error:"Sem autorização para filtro docente."},403);
  let list=(f.professor?db.rpc("provas_por_professor",{p_escola:escolaId,p_professor:f.professor}).select(summaryColumns):db.from("provas_pedagogicas").select(summaryColumns)).eq("escola_id",escolaId);
  if(f.tipo)list=list.eq("tipo_prova",f.tipo);

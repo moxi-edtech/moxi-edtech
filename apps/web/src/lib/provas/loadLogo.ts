@@ -40,12 +40,13 @@ function rasterType(bytes:Buffer){
 
 /** Fetch once from the configured storage project. Fail open to name-only branding,
  * bounded read/time, no forwarding of credentials, no redirect/SSRF. */
-export async function loadProvaLogo(value:unknown,escolaId:string,fetcher:typeof fetch=fetch,origins:readonly (string|undefined)[]=[process.env.SUPABASE_URL,process.env.NEXT_PUBLIC_SUPABASE_URL]):Promise<string|null>{
+export async function loadProvaLogo(value:unknown,escolaId:string,fetcher:typeof fetch=fetch,origins:readonly (string|undefined)[]=[process.env.SUPABASE_URL,process.env.NEXT_PUBLIC_SUPABASE_URL],report?:(reason:string)=>void):Promise<string|null>{
+ const fail=(reason:string)=>{report?.(reason);return null;};
  const url=schoolLogoSource(value,escolaId,origins);
- if(!url)return null;
+ if(!url)return fail(value?"invalid_storage_source":"not_configured");
  try{
-  const response=await fetcher(url,{cache:"no-store",redirect:"error",credentials:"omit",signal:AbortSignal.timeout(3000)});
-  if(!response.ok||!response.body||Number(response.headers.get("content-length")??0)>MAX_LOGO_BYTES){await response.body?.cancel();return null;}
+  const response=await fetcher(url,{cache:"force-cache",redirect:"error",credentials:"omit",signal:AbortSignal.timeout(6000)});
+  if(!response.ok||!response.body||Number(response.headers.get("content-length")??0)>MAX_LOGO_BYTES){await response.body?.cancel();return fail(!response.ok?"storage_http_"+response.status:!response.body?"empty_response":"size_limit");}
   const reader=response.body.getReader();
   const chunks:Uint8Array[]=[];let size=0;
   try{
@@ -53,13 +54,15 @@ export async function loadProvaLogo(value:unknown,escolaId:string,fetcher:typeof
     const {done,value:chunk}=await reader.read();
     if(done)break;
     size+=chunk.byteLength;
-    if(size>MAX_LOGO_BYTES){await reader.cancel();return null;}
+    if(size>MAX_LOGO_BYTES){await reader.cancel();return fail("size_limit");}
     chunks.push(chunk);
    }
   }finally{reader.releaseLock();}
   const bytes=Buffer.concat(chunks,size);
   const type=rasterType(bytes);
-  if(!type||response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase()!=="image/"+type)return null;
+  const mime=response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+  if(!type)return fail("invalid_raster_or_dimensions");
+  if(mime!=="image/"+type&&mime!=="application/octet-stream")return fail("mime_mismatch");
   return safeLogoData("data:image/"+type+";base64,"+bytes.toString("base64"));
- }catch{return null;}
+ }catch(e){return fail(e instanceof Error&&e.name==="TimeoutError"?"storage_timeout":"storage_transport");}
 }

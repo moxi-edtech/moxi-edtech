@@ -171,6 +171,8 @@ test("institutional branding uses only the school storage path and a bounded ima
   assert.equal(await loadProvaLogo(invalid,id,fetcher,[origin]),null);
  }
  assert.equal(calls,1);
+ assert.equal(await loadProvaLogo(url,id,async()=>new Response(Buffer.from(png,"base64"),{headers:{"content-type":"application/octet-stream"}}),[origin]),logo);
+ assert.equal(await loadProvaLogo(url,id,async()=>new Response(Buffer.from(png,"base64"),{headers:{"content-type":"text/html"}}),[origin]),null);
  assert.equal(await loadProvaLogo(url,id,async()=>new Response("fake",{headers:{"content-type":"image/png"}}),[origin]),null);
  assert.equal(await loadProvaLogo(url,id,async()=>new Response("large",{headers:{"content-type":"image/png","content-length":"3000000"}}),[origin]),null);
  assert.equal(await loadProvaLogo(url,id,async()=>{throw Error("network")},[origin]),null);

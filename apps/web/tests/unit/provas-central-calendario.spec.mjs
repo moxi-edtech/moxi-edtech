@@ -19,9 +19,12 @@ test("Central de Provas embeds the existing evaluation calendar and preserves po
 
 test("Central de Provas uses progressive disclosure instead of permanent explanatory copy",()=>{
  const w=read("components/provas/ProvasWorkspace.tsx");const c=read("components/academico/CalendarioAvaliacoesClient.tsx");
- assert.match(w,/<details key=\{tab\}/);assert.match(w,/Filtros \{Object.keys\(filters\).length/);
+ const f=read("components/provas/ProvasFilters.tsx");
+ assert.match(w,/<ProvasFilters key=\{tab\}/);assert.match(f,/aria-expanded=\{open&&column===name\}/);assert.match(f,/faceta:category/);assert.match(f,/k!==category/);assert.match(f,/aria-pressed=/);assert.match(f,/aria-label=\{"Filtrar "\+name\}/);assert.match(w,/header\(h\)/);assert.match(w,/header\(h,true\)/);assert.doesNotMatch(f,/aria-label="Estado da prova"/);assert.match(w,/historyFilters:activeFilters/);
  assert.doesNotMatch(w,/Elabore, reveja e imprima avaliações|A leitura no ecrã é contínua/);
  assert.match(c,/useState\(!embedded\)/);assert.match(c,/hidden=\{!planningOpen\}/);
  assert.match(w,/cotacao\.ready/);assert.match(c,/assessmentPlanOverlaps/);
  assert.doesNotMatch(c,/A alteração fica auditada|Apenas turmas ativas do ano letivo/);
 });
+
+ test("Row status changes reuse the existing versioned mutation",()=>{const w=read("components/provas/ProvasWorkspace.tsx"),badge=read("components/provas/ProvaEstadoBadge.tsx");assert.match(w,/JSON.stringify\(\{acao:action,id:prova.id,versao:prova.versao\}\)/);assert.match(w,/permissions\?\.admin&&!printOnly/);assert.match(badge,/aprovada:\[\{action:"arquivar"/);assert.match(badge,/arquivada:\[\]/);assert.match(badge,/Confirmar:/);});
