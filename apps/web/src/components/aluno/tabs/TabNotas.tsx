@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { Lock as LockIcon, ArrowRight } from "lucide-react";
@@ -36,6 +36,17 @@ type BoletimServico = { codigo: string; nome?: string; valor: number; status: st
 
 type MelhoriaSessao = { id: string; data_inicio: string; data_fim: string; estado: string; observacoes?: string | null };
 
+
+function AcademicRequestPanel({ inline, title, description, busy, onClose, onRestoreFocus, children }: {
+  inline: boolean; title: string; description: string; busy: boolean; onClose: () => void; onRestoreFocus: (event: Event) => void; children: ReactNode;
+}) {
+  if (inline) return <PortalSheet inline open title={title} description={description} busy={busy} onClose={onClose}>{children}</PortalSheet>;
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }}>
+    <DialogContent closeButton={false} onCloseAutoFocus={onRestoreFocus} className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-xl bg-background p-5 text-foreground">
+      <DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription>{children}
+    </DialogContent>
+  </Dialog>;
+}
 
 export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boolean; onOpenDocuments?: (serviceCode?: string | null) => void } = {}) {
   const searchParams = useSearchParams();
@@ -374,7 +385,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   if (academicYearId) navParams.set("ano_letivo_id", academicYearId);
   const navQuery = navParams.size ? `?${navParams.toString()}` : "";
   const startBoletimPayment = async () => {
-    if (!boletimServico || boletimPago || !paymentConfigured || paymentBusy || historicalRead) return;
+    if (!boletimServico || boletimPago || !paymentConfigured || paymentBusy || historicalRead || (navigation && (paymentOpen || reapreciacaoDisc || melhoriaDisc))) return;
     setPaymentError(null);
     if (moneyStatus === "pending_payment" || moneyStatus === "rejected") {
       if (!paymentIntentId) {
@@ -509,11 +520,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         </PortalSheet>
       </section>}
       {safeIsLiberado && !historicalRead && reapreciacaoDisc && (
-        <Dialog open onOpenChange={(open) => { if (!open) closeReapreciacao(); }}>
-          <DialogContent closeButton={false} onCloseAutoFocus={restoreDialogFocus}
-            className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-xl bg-background p-5 text-foreground">
-            <DialogTitle>Solicitar reapreciação — {reapreciacaoDisc.nome}</DialogTitle>
-            <DialogDescription>Explica por que pretendes rever esta avaliação.</DialogDescription>
+        <AcademicRequestPanel inline={Boolean(navigation)} busy={reapreciacaoSaving} onClose={closeReapreciacao} onRestoreFocus={restoreDialogFocus} title={`Solicitar reapreciação — ${reapreciacaoDisc.nome}`} description="Explica por que pretendes rever esta avaliação.">
             {reapreciacaoMessage && <p role="status" aria-live="polite" className="rounded-lg bg-muted p-3 text-sm text-foreground">{reapreciacaoMessage}</p>}
             <label htmlFor="aluno-raa-motivo" className="text-sm font-medium">Motivo da reapreciação</label>
             <textarea id="aluno-raa-motivo" required minLength={10} value={reapreciacaoMotivo} disabled={reapreciacaoSaving}
@@ -525,15 +532,10 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
               <button type="button" disabled={reapreciacaoSaving} onClick={() => void solicitarReapreciacao()}
                 className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">{reapreciacaoSaving ? "A enviar..." : "Enviar pedido"}</button>
             </div>
-          </DialogContent>
-        </Dialog>
+        </AcademicRequestPanel>
       )}
       {safeIsLiberado && !historicalRead && melhoriaDisc && (
-        <Dialog open onOpenChange={(open) => { if (!open) closeMelhoria(); }}>
-          <DialogContent closeButton={false} onCloseAutoFocus={restoreDialogFocus}
-            className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-xl bg-background p-5 text-foreground">
-            <DialogTitle>Solicitar melhoria — {melhoriaDisc.nome}</DialogTitle>
-            <DialogDescription>Seleciona uma sessão de recurso e explica o pedido.</DialogDescription>
+        <AcademicRequestPanel inline={Boolean(navigation)} busy={melhoriaSaving} onClose={closeMelhoria} onRestoreFocus={restoreDialogFocus} title={`Solicitar melhoria — ${melhoriaDisc.nome}`} description="Seleciona uma sessão de recurso e explica o pedido.">
             {melhoriaMessage && <p role="status" aria-live="polite" className="rounded-lg bg-muted p-3 text-sm text-foreground">{melhoriaMessage}</p>}
             {melhoriaLoading ? <p role="status" className="text-sm text-muted-foreground">A carregar sessões...</p> : melhoriaSessoes.length > 0 && <>
               <label htmlFor="aluno-melhoria-sessao" className="text-sm font-medium">Sessão de recurso</label>
@@ -556,8 +558,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
                 {melhoriaSaving ? "A enviar..." : "Enviar pedido"}
               </button>
             </div>
-          </DialogContent>
-        </Dialog>
+        </AcademicRequestPanel>
       )}
     </div>
   );
