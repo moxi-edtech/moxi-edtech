@@ -2,6 +2,9 @@
 
 import { Calendar, Clock, Activity, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import { PortalCulturalSignature } from "@/components/portal/ui/PortalWelcomeCard";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 
 type EstadoVital = {
   escola_id: string;
@@ -16,6 +19,7 @@ type EstadoVital = {
 };
 
 export function EstadoVitalBanner({ estado, compact = false, calendarHref }: { estado: EstadoVital | null; compact?: boolean; calendarHref?: string }) {
+  const [eventOpen, setEventOpen] = useState(false);
   if (!estado) return null;
 
   const isExames = estado.fase_operacional === 'EXAMES';
@@ -30,25 +34,34 @@ export function EstadoVitalBanner({ estado, compact = false, calendarHref }: { e
       ? estado.periodo_numero + "º Trimestre"
       : [estado.periodo_tipo, estado.periodo_numero].filter(Boolean).join(" ") || "Intervalo";
     return (
-      <section aria-label="Estado académico" className="rounded-xl border border-border bg-card px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            <span className="font-medium text-foreground">{estado.ano_ativo ?? "—"} · {periodo}</span>
-            <span className="text-muted-foreground">{isBloqueado && !isBoundary ? "Interrupção" : faseLabel}</span>
-            <span className={isBloqueado ? "font-medium text-rose-600 dark:text-rose-300" : "text-emerald dark:text-emerald-300"}>{isBloqueado ? "Diário bloqueado" : "Diário liberado"}</span>
+      <>
+        <section aria-label="Estado académico" data-testid="operations-academic-card" className="klasse-welcome-card min-w-0 overflow-hidden rounded-xl">
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-4 sm:px-5">
+            <div className="klasse-welcome-editorial min-w-0 space-y-1 pl-3">
+              <p className="flex items-center gap-2 text-xs font-medium"><Calendar className="h-4 w-4 shrink-0" aria-hidden="true" /> Estado académico</p>
+              <h2 className="break-words text-lg font-semibold tracking-tight sm:text-xl">{estado.ano_ativo ?? "—"} · {periodo}</h2>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium">
+                <span>{isBloqueado && !isBoundary ? "Interrupção" : faseLabel}</span>
+                <span className={isBloqueado ? "rounded-full bg-white/75 px-2.5 py-1 font-semibold text-red-900" : "rounded-full bg-white/60 px-2.5 py-1 font-semibold text-[#124527]"}>{isBloqueado ? "Diário bloqueado" : "Diário liberado"}</span>
+              </div>
+              {estado.evento_hoje_nome && (isBloqueado || isExames ? (
+                <p className="break-words text-sm font-semibold">{estado.evento_hoje_nome}</p>
+              ) : (
+                <button type="button" aria-haspopup="dialog" aria-expanded={eventOpen} onClick={() => setEventOpen(true)}
+                  className="inline-flex min-h-11 items-center gap-1 rounded-xl px-1 text-xs font-semibold underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#124527]">
+                  Evento de hoje <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+            {calendarHref && <Link href={calendarHref} className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-xl border border-[#124527]/40 bg-white/60 px-3 py-2 text-sm font-semibold text-[#124527] hover:bg-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#124527]">Calendário académico <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" /></Link>}
           </div>
-          {calendarHref && <Link href={calendarHref} className="inline-flex items-center gap-1 text-xs font-medium text-emerald hover:underline">Calendário académico <ChevronRight className="h-3.5 w-3.5" /></Link>}
-        </div>
-        {estado.evento_hoje_nome && (isBloqueado || isExames ? (
-          <p className="mt-2 text-sm font-medium text-foreground">{estado.evento_hoje_nome}</p>
-        ) : (
-          <details className="mt-2 text-xs text-muted-foreground">
-            <summary className="w-fit cursor-pointer hover:text-foreground">Evento de hoje</summary>
-            <p className="mt-1 break-words">{estado.evento_hoje_nome}</p>
-          </details>
-        ))}
-      </section>
+          <PortalCulturalSignature />
+        </section>
+        <PortalSheet open={eventOpen && Boolean(estado.evento_hoje_nome) && !isBloqueado && !isExames} onClose={() => setEventOpen(false)} title="Evento de hoje" description={`${estado.ano_ativo ?? "—"} · ${periodo}`} size="compact">
+          <p className="break-words text-base font-semibold text-foreground">{estado.evento_hoje_nome}</p>
+          <p className="text-sm text-muted-foreground">{faseLabel} · Diário liberado</p>
+        </PortalSheet>
+      </>
     );
   }
 

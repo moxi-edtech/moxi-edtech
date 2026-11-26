@@ -49,6 +49,23 @@ try {
       assert.equal(requests,1,"duplicate or missing upload");
       await page.waitForFunction(()=>document.activeElement?.textContent?.includes("Pagar propinas"));
       results.push({reduced,requests,passed:true});
+      await page.goto(base+"/?story=operations-academic-card");
+      const eventButton=page.getByRole("button",{name:"Evento de hoje"});
+      await eventButton.click();
+      const event=page.getByRole("dialog",{name:"Evento de hoje"});
+      await event.getByText("Reunião pedagógica sintética").waitFor();
+      await page.keyboard.press("Escape");
+      await event.waitFor({state:"hidden"});
+      await page.waitForFunction(()=>document.activeElement?.textContent?.includes("Evento de hoje"));
+      assert.ok((await page.getByRole("link",{name:"Calendário académico"}).getAttribute("href")).endsWith("/operacoes/calendario"));
+      await page.goto(base+"/?story=professor-calendar-context");
+      const details=page.getByRole("button",{name:"Ver detalhes de Reunião pedagógica"});
+      await details.click();
+      const detail=page.getByRole("dialog",{name:"Reunião pedagógica"});
+      await detail.getByText("Informações completas da reunião pedagógica sintética.",{exact:false}).waitFor();
+      await page.keyboard.press("Escape");
+      await detail.waitFor({state:"hidden"});
+      await page.waitForFunction(()=>document.activeElement?.getAttribute("aria-label")==="Ver detalhes de Reunião pedagógica");
     }finally{release();await ctx.close();}
   }
 }finally{await browser.close();await writeFile(dir+"/portal-context-sheets.json",JSON.stringify(results,null,2));}

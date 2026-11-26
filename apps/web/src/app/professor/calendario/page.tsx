@@ -1,5 +1,6 @@
 "use client";
 
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { ProfessorCalendarSkeleton } from "@/components/professor/ProfessorLoadingSkeletons";
@@ -141,6 +142,9 @@ export default function ProfessorCalendarioPage() {
   const [anoLetivo, setAnoLetivo] = useState<AnoLetivo | null>(null);
   const [showPeriodsOnMobile, setShowPeriodsOnMobile] = useState(false);
   const [showPastEvents, setShowPastEvents] = useState(false);
+  const [eventId, setEventId] = useState<string | null>(null);
+  const [eventOpen, setEventOpen] = useState(false);
+  const selectedEvent = items.find(item => item.id === eventId) ?? null;
   const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
@@ -444,14 +448,10 @@ export default function ProfessorCalendarioPage() {
                                   {item.descricao ? (
                                     <>
                                       <p className="mt-1 hidden text-sm leading-relaxed text-muted-foreground sm:block">{item.descricao}</p>
-                                      <details className="group mt-1 text-xs leading-relaxed text-muted-foreground sm:hidden">
-                                        <summary className="cursor-pointer list-none rounded-lg py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold">
-                                          <span className="line-clamp-2 group-open:hidden">{item.descricao}</span>
-                                          <span className="mt-1 inline-flex font-semibold text-klasse-green group-open:hidden">Ver detalhes</span>
-                                          <span className="hidden font-semibold text-klasse-green group-open:inline">Ocultar detalhes</span>
-                                        </summary>
-                                        <p className="mt-1">{item.descricao}</p>
-                                      </details>
+                                      <button type="button" aria-haspopup="dialog" aria-expanded={eventOpen && eventId === item.id} aria-label={`Ver detalhes de ${item.nome}`} onClick={() => { setEventId(item.id); setEventOpen(true); }} className="mt-1 block min-h-11 w-full rounded-xl text-left text-xs text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold sm:hidden">
+                                        <span className="line-clamp-2">{item.descricao}</span>
+                                        <span className="mt-1 inline-flex font-semibold text-klasse-green">Ver detalhes</span>
+                                      </button>
                                     </>
                                   ) : null}
                                 </div>
@@ -465,6 +465,16 @@ export default function ProfessorCalendarioPage() {
                 </div>
               )}
             </section>
+            <PortalSheet open={eventOpen && Boolean(selectedEvent)} onClose={() => setEventOpen(false)}
+              title={selectedEvent?.nome ?? "Evento académico"} description={selectedEvent ? formatDateRange(selectedEvent.data_inicio, selectedEvent.data_fim) : "Calendário académico"} size="medium">
+              {selectedEvent && <>
+                <div className="flex flex-wrap gap-2 text-xs font-medium">
+                  <span className="rounded-full bg-muted px-3 py-1">{capitalize(getEventTypeLabel(selectedEvent.tipo))}</span>
+                  <span className="rounded-full bg-muted px-3 py-1">{getRelativeLabel(selectedEvent.data_inicio, selectedEvent.data_fim, todayIso)}</span>
+                </div>
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">{selectedEvent.descricao || "Sem descrição adicional."}</p>
+              </>}
+            </PortalSheet>
           </>
         )}
       </div>

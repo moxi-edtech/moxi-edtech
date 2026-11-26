@@ -10,6 +10,11 @@ const dayFormatter = new Intl.DateTimeFormat("pt-AO", {
   timeZone: "Africa/Luanda", weekday: "long", day: "numeric", month: "long",
 });
 
+/** Shared decorative signature; clipped by the institutional card, never interactive. */
+export function PortalCulturalSignature() {
+  return <div className="klasse-welcome-signature" data-testid="portal-cultural-signature" aria-hidden="true" />;
+}
+
 /** Institutional identity only: no fetches, effects, interactive content or tenant state. */
 export function PortalWelcomeCard({ role, name, context, date, loading = false }: PortalWelcomeCardProps) {
   const displayName = name?.trim() || (role === "aluno" ? "aluno" : "Professor");
@@ -26,7 +31,7 @@ export function PortalWelcomeCard({ role, name, context, date, loading = false }
         </div>
         <time suppressHydrationWarning className="block text-xs font-medium leading-5">{day}</time>
       </div>
-      <div className="klasse-welcome-signature" aria-hidden="true" />
+      <PortalCulturalSignature />
     </header>
   );
 }
