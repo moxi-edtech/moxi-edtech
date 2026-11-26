@@ -22,8 +22,9 @@ export async function GET(req:Request,{params}:Context){
   db.from("turmas").select("id,nome,turno").eq("escola_id",escolaId).eq("ano_letivo_id",p.data.ano_letivo_id).eq("session_id",p.data.ano_letivo_id).eq("status_validacao","ativo").order("nome").limit(1001),
   db.from("calendario_avaliacoes").select("id,turma_id,data,inicio,fim,estado").eq("escola_id",escolaId).eq("prova_id",id!).neq("estado","cancelado").order("data").limit(1001)
  ]);
- if([td,ts,events].some(r=>r.error||r.data?.length>1000))return json({error:"Catálogo de agendamento indisponível."},409);
- const ids=new Set((td.data??[]).filter((x:{periodos_ativos:number[]|null})=>!x.periodos_ativos||x.periodos_ativos.includes(p.data.trimestre)).map((x:{turma_id:string})=>x.turma_id));
+ if([td,ts,events].some(r=>r.error||(r.data?.length??0)>1000))return json({error:"Catálogo de agendamento indisponível."},409);
+ const trimestre=p.data.trimestre;
+ const ids=new Set((td.data??[]).filter((x:{periodos_ativos:number[]|null})=>!x.periodos_ativos||x.periodos_ativos.includes(trimestre)).map((x:{turma_id:string})=>x.turma_id));
  return json({turmas:(ts.data??[]).filter((t:{id:string})=>ids.has(t.id)),eventos:events.data??[]});
 }
 export async function POST(req:Request,{params}:Context){
@@ -47,7 +48,8 @@ export async function POST(req:Request,{params}:Context){
  ]);
  if([td,t,periods,offerings].some(r=>r.error)||!t.data||td.data?.length!==1||(periods.data?.length??0)>150||(offerings.data?.length??0)>500)return json({error:"Turma ou período académico indisponível."},409);
  const link=td.data[0];if(link.periodos_ativos&&!link.periodos_ativos.includes(p.data.trimestre))return json({error:"Disciplina fora do trimestre."},409);
- const offers=new Set((offerings.data??[]).filter((o:{course_id:string})=>o.course_id===t.data.curso_id).map((o:{id:string})=>o.id));
+ const cursoId=t.data.curso_id;
+ const offers=new Set((offerings.data??[]).filter((o:{course_id:string})=>o.course_id===cursoId).map((o:{id:string})=>o.id));
  const specific=(periods.data??[]).filter((x:{offering_id:string|null})=>x.offering_id&&offers.has(x.offering_id));
  const eligible=specific.length?specific:(periods.data??[]).filter((x:{offering_id:string|null})=>!x.offering_id);
  if(eligible.length!==1)return json({error:"A data não resolve um período lectivo inequívoco."},409);

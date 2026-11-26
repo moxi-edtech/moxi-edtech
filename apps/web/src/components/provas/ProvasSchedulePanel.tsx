@@ -10,7 +10,7 @@ export default function ProvasSchedulePanel({endpoint,prova}:{endpoint:string;pr
  const [turmas,setTurmas]=useState<Turma[]>([]),[events,setEvents]=useState<Event[]>([]),[turma,setTurma]=useState(""),[data,setData]=useState(prova.data_realizacao??""),[inicio,setInicio]=useState(prova.hora_inicio?.slice(0,5)??""),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(""),[revision,setRevision]=useState(0);
  useEffect(()=>{const c=new AbortController();setLoading(true);setError("");fetch(endpoint+"/agendamento?prova="+encodeURIComponent(prova.id),{signal:c.signal,cache:"no-store"}).then(async r=>{const b=await r.json();if(!r.ok)throw Error(b.error);if(!c.signal.aborted){setTurmas(b.turmas);setEvents(b.eventos);}}).catch(e=>{if(!c.signal.aborted)setError(e.message);}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();},[endpoint,prova.id,revision]);
  const pending=turmas.filter(t=>!events.some(e=>e.turma_id===t.id));
- return <section className="space-y-3 rounded-xl border border-border p-3">
+ return <section aria-label="Agendamento por turma" className="space-y-3 rounded-xl border border-border p-3">
   <h3 className="font-semibold text-klasse-green">Agendamento por turma</h3>
   {events.map(e=><div key={e.id} className="rounded-xl border border-border p-3 text-sm"><p className="font-medium">{turmas.find(t=>t.id===e.turma_id)?.nome??"Turma histórica"}</p><p>{e.data.split("-").reverse().join("/")} · {e.inicio.slice(0,5)}–{e.fim?.slice(0,5)??"—"} · {e.estado==="publicado"?"Publicado":"Rascunho"}</p></div>)}
   {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}

@@ -379,7 +379,7 @@ try{
    await dialog.getByRole("button",{name:"Publicar prova",exact:true}).click();
    await dialog.getByRole("button",{name:"Confirmar",exact:true}).click();
    await dialog.getByText("Agendamento por turma",{exact:true}).waitFor();
-   const schedule=dialog.locator("section").filter({has:dialog.getByRole("heading",{name:"Agendamento por turma"})});
+   const schedule=dialog.getByRole("region",{name:"Agendamento por turma",exact:true});
    await schedule.getByLabel("Turma",{exact:true}).selectOption("80000000-0000-4000-8000-000000000001");
    await schedule.getByLabel("Data",{exact:true}).fill("2026-12-07");
    await schedule.getByLabel("Hora",{exact:true}).fill("08:30");
