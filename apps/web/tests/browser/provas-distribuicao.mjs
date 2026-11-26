@@ -83,6 +83,7 @@ try{
  }
  const adminPage=await browser.newPage({viewport:{width:1280,height:844}});
  const review={...prova,estado:"em_revisao",versao:3,conteudo:[{...prova.conteudo[0],cotacao_cent:2000}]};
+ const draft={...review,id:"30000000-0000-4000-8000-000000000009",classe:"9.ª Classe",disciplina:"Matemática",estado:"rascunho"};
  const filterRequests=[];let logoReads=0;
  const png="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==";
  await adminPage.route(/\/api\/escola\/[^/]+\/provas(?:\/[^?]*)?(?:\?.*)?$/,async route=>{
@@ -90,11 +91,12 @@ try{
   assert.equal(q.get("aprovadas"),null,"financial admin must not be reduced to print-only");
   if(q.get("branding")==="1")return route.fulfill({json:{logo:++logoReads>1?png:null}});
   if(q.has("professores"))return route.fulfill({json:{items:[]}});
-  if(q.has("facetas"))return route.fulfill({json:{facetas:{classe:["8.ª Classe","9.ª Classe"],disciplina:["Física","Matemática"],ano:["2026/2027"]}}});
+  const matches=(skip)=>[review,draft].filter(p=>q.get("historico")!=="1"&&q.get("estado")!=="arquivada"&&["classe","disciplina","estado","trimestre"].every(k=>k===skip||!q.has(k)||String(p[k])===q.get(k)));
+  if(q.has("faceta")){const k=q.get("faceta");const values=[...new Set(matches(k).map(p=>String(k==="ano"?p.ano_lectivo:p[k]??"")).filter(Boolean))];return route.fulfill({json:{items:values.map(value=>({value,label:value}))}});}
   if(q.get("contexto")==="1")return route.fulfill({json:{items:q.has("ano")?[{ano_letivo_id:year,curso_matriz_id:matrix,ano_lectivo:"2026/2027",classe:"8.ª Classe",disciplina:"Física",curso:"Ensino Geral",trimestre:1,cotacao_max_cent:2000}]:[{id:year,ativo:true,label:"2026/2027"}]}});
   if(q.has("prova"))return route.fulfill({json:{prova:review}});
   filterRequests.push(Object.fromEntries(q));
-  return route.fulfill({json:{provas:q.get("estado")==="arquivada"||q.get("estado")==="rascunho"||q.get("classe")==="9.ª Classe"?[]:[review],escola:"Escola de teste",permissions:{author:true,admin:true,distribute:true,userId:"10000000-0000-4000-8000-000000000007"}}});
+  return route.fulfill({json:{provas:matches(null),escola:"Escola de teste",permissions:{author:true,admin:true,distribute:true,userId:"10000000-0000-4000-8000-000000000007"}}});
  });
  await adminPage.goto("http://127.0.0.1:6006/provas.html?modal=1");
  await adminPage.getByRole("button",{name:"Abrir central de provas"}).click();
@@ -108,12 +110,20 @@ try{
  const region=adminDialog.getByRole("region",{name:"Opções de filtro"});
  assert.equal(await region.getByRole("button",{name:"Categorias",exact:true}).count(),0,"column opens its own values directly");
  await region.getByRole("button",{name:"9.ª Classe",exact:true}).click();
- await adminDialog.getByText("Nenhuma prova corresponde aos filtros.",{exact:true}).waitFor();
+ await adminDialog.getByText(/Matemática/).first().waitFor();
  assert.ok(filterRequests.some(q=>q.classe==="9.ª Classe"&&q.offset==="0"));
  const filtered=adminPage.waitForResponse(r=>{const q=new URL(r.url()).searchParams;return q.get("estado")==="rascunho"&&q.get("classe")==="9.ª Classe";});
  await adminDialog.getByRole("button",{name:"Filtrar Estado",exact:true}).click();
+ await region.getByRole("button",{name:"Rascunhos",exact:true}).waitFor();
+ assert.equal(await region.getByRole("button",{name:"Em revisão",exact:true}).count(),0,"unavailable state hidden");
+ assert.equal(await region.getByRole("button",{name:"Publicadas",exact:true}).count(),0,"unavailable state hidden");
  await region.getByRole("button",{name:"Rascunhos",exact:true}).click();
  await filtered;
+ await adminDialog.getByRole("button",{name:"Filtrar Prova",exact:true}).click();
+ await region.getByRole("button",{name:"Disciplina",exact:true}).click();
+ await region.getByRole("button",{name:"Matemática",exact:true}).waitFor();
+ assert.equal(await region.getByRole("button",{name:"Física",exact:true}).count(),0,"discipline facet respects class and status");
+ await region.getByRole("button",{name:"Fechar filtros",exact:true}).click();
  await adminDialog.getByRole("tab",{name:"Histórico",exact:true}).click();
  await adminDialog.getByText("Nenhuma prova arquivada.",{exact:true}).waitFor();
  assert.equal(await adminDialog.getByRole("button",{name:"Rascunhos",exact:true}).count(),0);
