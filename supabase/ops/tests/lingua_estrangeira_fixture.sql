@@ -10,6 +10,8 @@ CREATE TABLE public.configuracoes_pedagogicas(escola_id uuid PRIMARY KEY, negati
 CREATE TABLE public.audit_logs(escola_id uuid,user_id uuid,actor_id uuid,portal text,action text,entity text,entity_id text,"before" jsonb,"after" jsonb,acao text,tabela text,registro_id text);
 ALTER TABLE public.configuracoes_pedagogicas ENABLE ROW LEVEL SECURITY;
 GRANT SELECT,UPDATE ON public.configuracoes_pedagogicas TO authenticated;
+-- Match the overly broad legacy production grants observed on 26/11.
+GRANT TRUNCATE ON public.configuracoes_pedagogicas TO anon, authenticated;
 CREATE POLICY read_tenant ON public.configuracoes_pedagogicas FOR SELECT TO authenticated USING(escola_id=public.current_tenant_escola_id());
 INSERT INTO public.profiles VALUES ('00000000-0000-0000-0000-000000000011','admin',null),('00000000-0000-0000-0000-000000000012','professor',null),('00000000-0000-0000-0000-000000000013','admin',now()),('00000000-0000-0000-0000-000000000014','admin',null);
 INSERT INTO public.escola_users VALUES

@@ -1,5 +1,8 @@
 -- Candidate migration. Validate on PostgreSQL 17 before versioning and applying.
 -- One school-level setting in the existing pedagogical configuration SSOT.
+-- TRUNCATE is not covered by RLS. API roles never need table-wide deletion.
+REVOKE TRUNCATE ON TABLE public.configuracoes_pedagogicas FROM PUBLIC, anon, authenticated;
+
 ALTER TABLE public.configuracoes_pedagogicas
   ADD COLUMN IF NOT EXISTS idioma_lingua_estrangeira text,
   ADD COLUMN IF NOT EXISTS idioma_lingua_estrangeira_outro text;

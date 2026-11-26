@@ -33,6 +33,11 @@ DO $$ BEGIN
  (SELECT idioma_lingua_estrangeira FROM public.configuracoes_pedagogicas WHERE escola_id='00000000-0000-0000-0000-000000000001')<>'fr' OR
  (SELECT count(*) FROM public.configuracoes_pedagogicas)<>2 OR (SELECT count(*) FROM public.audit_logs)<>4
  THEN RAISE EXCEPTION 'unexpected config/audit effects'; END IF;
+ IF has_table_privilege('anon','public.configuracoes_pedagogicas','TRUNCATE') OR
+    has_table_privilege('authenticated','public.configuracoes_pedagogicas','TRUNCATE') THEN
+   RAISE EXCEPTION 'RLS cannot protect TRUNCATE';
+ END IF;
+ IF NOT has_table_privilege('authenticated','public.configuracoes_pedagogicas','SELECT') THEN RAISE EXCEPTION 'existing tenant read revoked'; END IF;
  IF has_function_privilege('anon','public.klasse_lingua_estrangeira_config_v1(uuid,boolean,text,text)','EXECUTE') THEN RAISE EXCEPTION 'anon grant'; END IF;
 END $$;
 ROLLBACK;
