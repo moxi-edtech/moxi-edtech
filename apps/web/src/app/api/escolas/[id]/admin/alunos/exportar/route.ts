@@ -16,6 +16,7 @@ import type { AlunoListItem } from "@/lib/schemas/aluno.schema";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
+export const maxDuration = 60;
 
 const EXPORT_ROLES = K12_ADMIN_SECRETARIA_ROLE_GROUP;
 
@@ -56,23 +57,32 @@ function buildDownloadResponse(
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const startedAt = Date.now();
+  const requestId = crypto.randomUUID();
+  let phase = "authorization";
   try {
     const { id } = await ctx.params;
     const context = await resolveContext(req, id);
     if ("error" in context) return context.error;
 
+    phase = "filters";
     const filters = parseAlunoListFilters(context.url);
     const format = parseAlunoExportFormat(context.url.searchParams.get("tipo"));
+    phase = "list";
+    console.info("[alunos export start]", { requestId, format });
     const rows = sortAlunoExportRows(
       await listAllAlunos(context.supabase, context.escolaId, filters, {
         includeFinanceiro: true,
         includeResumo: true,
       })
     );
+    phase = "pdf-context";
     const pdfContext = format === "pdf"
       ? await loadAlunosPdfInstitutionalContext(context.supabase, context.escolaId, filters)
       : undefined;
+    phase = "render";
     const rendered = await renderAlunosExport(rows, format, pdfContext);
+    console.info("[alunos export ready]", { requestId, format, elapsedMs: Date.now() - startedAt });
     const status = filters.status ?? "ativo";
     const segmento = filters.situacaoFinanceira === "em_atraso" ? "inadimplentes" : status;
 
@@ -81,8 +91,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (error instanceof InvalidAlunoFiltersError) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
-    console.error("[admin alunos export error]", error);
-    return NextResponse.json({ ok: false, error: "Não foi possível preparar a exportação. Reaplique os filtros e tente novamente." }, { status: 500 });
+    console.error("[alunos export error]", { requestId, phase, elapsedMs: Date.now() - startedAt, code: (error as { code?: string } | null)?.code });
+    return NextResponse.json({ ok: false, error: "Não foi possível preparar a exportação. Reaplique os filtros e tente novamente.", requestId }, { status: 500 });
   }
 }
 
