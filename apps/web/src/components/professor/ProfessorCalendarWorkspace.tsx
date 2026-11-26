@@ -135,7 +135,7 @@ const getRelativeLabel = (start: string, end: string, todayIso: string) => {
   return "Concluído";
 };
 
-export function ProfessorCalendarWorkspace({ embedded = false, initialView = "calendar" }: { embedded?: boolean; initialView?: "calendar" | "assessments" | "periods" }) {
+export function ProfessorCalendarWorkspace({ embedded = false, initialView = "calendar", academicYearId = "" }: { embedded?: boolean; initialView?: "calendar" | "assessments" | "periods"; academicYearId?: string }) {
   const navigation = usePortalDrawerNavigation();
   const [view, setView] = useState(initialView);
   const [retry, setRetry] = useState(0);
@@ -166,7 +166,8 @@ export function ProfessorCalendarWorkspace({ embedded = false, initialView = "ca
         setLoading(true);
         setError(null);
 
-        const res = await fetch("/api/professor/calendario", { cache: "no-store", signal: controller.signal });
+        const params = new URLSearchParams(); if (academicYearId) params.set("ano_letivo_id", academicYearId);
+        const res = await fetch(`/api/professor/calendario${params.size ? "?" + params.toString() : ""}`, { cache: "no-store", signal: controller.signal });
         const json = (await res.json().catch(() => null)) as CalendarioResponse | null;
 
         if (!res.ok || !json?.ok) {
@@ -190,7 +191,7 @@ export function ProfessorCalendarWorkspace({ embedded = false, initialView = "ca
       active = false;
       controller.abort();
     };
-  }, [retry, escolaParam]);
+  }, [retry, escolaParam, academicYearId]);
 
   const currentPeriodo = useMemo(
     () => periodos.find((periodo) => periodo.data_inicio <= todayIso && periodo.data_fim >= todayIso) ?? null,
@@ -396,7 +397,7 @@ export function ProfessorCalendarWorkspace({ embedded = false, initialView = "ca
             {embedded && view === "periods" && <section aria-label="Períodos lectivos" className="min-w-0">{periodContent}</section>}
 
             {(!embedded || view === "assessments") && <section id="avaliacoes" className="space-y-3 rounded-xl border border-border bg-card p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold text-klasse-green">Calendário de Avaliações</h2><a href="/api/professor/calendario?modo=imprimir" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium"><Printer size={16}/> Imprimir calendário</a></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold text-klasse-green">Calendário de Avaliações</h2><a href={`/api/professor/calendario?modo=imprimir${academicYearId ? "&ano_letivo_id=" + encodeURIComponent(academicYearId) : ""}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium"><Printer size={16}/> Imprimir calendário</a></div>
               {items.filter(e=>e.tipo==="AVALIACAO_ESCOLAR"&&e.data_fim>=todayIso).slice(0, embedded ? undefined : 3).map(e=><div key={e.id} className="border-t border-border pt-2 text-sm"><p className="font-medium">{e.nome}</p><p className="text-xs text-muted-foreground">{e.data_inicio.split("-").reverse().join("/")} · {e.descricao}</p></div>)}
               {!items.some(e=>e.tipo==="AVALIACAO_ESCOLAR"&&e.data_fim>=todayIso)&&<p className="text-sm text-muted-foreground">Nenhuma avaliação próxima na agenda.</p>}
               <button type="button" aria-haspopup="dialog" aria-expanded={historyOpen} onClick={() => { setHistoryPeriod(""); setHistoryOpen(true); }} className="min-h-11 rounded-xl border border-border px-3 text-sm font-semibold text-primary">Histórico de avaliações</button>
