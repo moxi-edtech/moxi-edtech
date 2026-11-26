@@ -7,6 +7,7 @@ import { TabNotas } from "@/components/aluno/tabs/TabNotas";
 import { TabDocumentos } from "@/components/aluno/tabs/TabDocumentos";
 import { TabFaltas } from "@/components/aluno/tabs/TabFaltas";
 import { DisciplinasList } from "@/components/aluno/disciplinas/DisciplinasList";
+import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { PortalTabs } from "@/components/portal/ui/PortalTabs";
 
 export type AcademicTab = "notas" | "disciplinas" | "faltas" | "documentos";
@@ -25,12 +26,15 @@ const sections = [
 
 export function AcademicoWorkspace({ embedded = false, initialTab, onOpenNotices }: { embedded?: boolean; initialTab?: AcademicTab; onOpenNotices?: () => void } = {}) {
   const searchParams = useSearchParams();
+  const navigation = usePortalDrawerNavigation();
+  const guarded = Boolean(embedded && (navigation?.busy || navigation?.dirty));
   const selectedFromUrl = embedded ? initialTab ?? "notas" : resolveAcademicTab(searchParams?.get("aba"));
   const [activeTab, setActiveTab] = useState<AcademicTab>(selectedFromUrl);
   const [visited, setVisited] = useState<AcademicTab[]>([selectedFromUrl]);
   const [focusService, setFocusService] = useState<string | null>(null);
 
   const navigateTab = useCallback((tab: AcademicTab, service?: string) => {
+    if (guarded) return;
     setActiveTab(tab);
     setVisited((current) => current.includes(tab) ? current : [...current, tab]);
     setFocusService(tab === "documentos" ? service ?? null : null);
@@ -41,7 +45,7 @@ export function AcademicoWorkspace({ embedded = false, initialTab, onOpenNotices
     if (tab === "notas") url.searchParams.delete("aba");
     else url.searchParams.set("aba", tab);
     window.history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [embedded]);
+  }, [embedded, guarded]);
 
   useEffect(() => {
     if (embedded) return;
@@ -64,6 +68,7 @@ export function AcademicoWorkspace({ embedded = false, initialTab, onOpenNotices
   return (
     <div className="mx-auto w-full min-w-0 max-w-4xl space-y-5 pb-3">
       {!embedded && <h1 className="text-xl font-semibold tracking-tight text-klasse-green sm:text-2xl">Académico</h1>}
+      {guarded && <p role="status" className="text-xs text-muted-foreground">Conclui ou cancela a operação antes de mudar de separador.</p>}
       <PortalTabs items={sections} value={activeTab} onChange={navigateTab}
         layout="compact" idPrefix="academic" label="Área académica" testId="academic-local-tabs" />
       <section id="academic-panel-notas" role="tabpanel" aria-labelledby="academic-tab-notas" hidden={activeTab !== "notas"} tabIndex={0}>
