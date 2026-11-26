@@ -51,7 +51,7 @@ test("professor usa o mesmo drawer do aluno; preserva foco, acessos e prefetch",
   assert.match(professor, /moreIcon=\{Plus\}/);
   assert.match(professor, /prefetch: item\.path !== "\/professor\/provas"/);
   assert.match(shared, /grid-cols-5/);
-  assert.match(shared, /min-h-12/);
+  assert.match(shared, /min-h-14/);
   assert.match(shared, /aria-haspopup="dialog"/);
   assert.match(shared, /aria-modal="true"/);
   assert.match(shared, /event\.key === "Escape"/);

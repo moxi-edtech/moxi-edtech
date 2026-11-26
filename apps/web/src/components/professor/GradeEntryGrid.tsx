@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-table"
 import { CheckCircle2, Loader2, Clipboard, AlertCircle, TrendingUp, Users, CheckCircle } from "lucide-react"
 import { SyncIndicator } from "@/components/feedback/FeedbackSystem"
+import { MotionFeedback } from "@/components/portal/motion/MotionFeedback"
 
 export type StudentGradeRow = {
   id: string
@@ -491,7 +492,7 @@ export function GradeEntryGrid({
   const hasSaveError = data.some((row) => row._status === "error")
   const hasPendingSave = data.some((row) => row._status === "pending")
   const savingIndicator = isSaving || hasPendingSave
-    ? { label: "A guardar…", icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />, tone: "text-amber-600 bg-amber-50 border-amber-200" }
+    ? { label: "A guardar…", icon: <Loader2 className="w-3.5 h-3.5 motion-safe:animate-spin" />, tone: "text-amber-600 bg-amber-50 border-amber-200" }
     : hasSaveError
       ? { label: "Falha ao guardar", icon: <AlertCircle className="w-3.5 h-3.5" />, tone: "text-red-700 bg-red-50 border-red-200" }
       : { label: "Guardado", icon: <CheckCircle2 className="w-3.5 h-3.5" />, tone: "text-emerald-700 bg-emerald-50 border-emerald-200" }
@@ -505,10 +506,7 @@ export function GradeEntryGrid({
             <h3 className="text-sm font-semibold text-foreground">{title}</h3>
             {subtitle ? <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p> : null}
           </div>
-          <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${savingIndicator.tone}`}>
-            {savingIndicator.icon}
-            <span>{savingIndicator.label}</span>
-          </div>
+          <MotionFeedback label={savingIndicator.label} icon={savingIndicator.icon} className={savingIndicator.tone} />
         </div>
 
         <div className="space-y-4 p-4">
@@ -638,10 +636,7 @@ export function GradeEntryGrid({
               <span>Colar Coluna do Excel</span>
             </button> : null}
 
-            <div className={`text-xs inline-flex items-center gap-1.5 px-3 py-1 rounded-full border font-bold ${savingIndicator.tone}`}>
-              {savingIndicator.icon}
-              <span>{savingIndicator.label}</span>
-            </div>
+            <MotionFeedback label={savingIndicator.label} icon={savingIndicator.icon} className={savingIndicator.tone} />
           </div>
         </div>
 

@@ -41,7 +41,7 @@ test("navegação e área académica explicitam contexto sem inventar estado", a
   assert.match(sharedNav, /active \? "border-primary\/20 bg-accent text-accent-foreground"/);
   assert.match(sharedNav, /isDrawerActive \|\| isMoreOpen \? "bg-accent text-accent-foreground/);
   assert.match(sharedNav, /aria-current=\{active \? "page" : undefined\}/);
-  assert.match(sharedNav, /min-h-12/);
+  assert.match(sharedNav, /min-h-14/);
   assert.match(sharedNav, /focus-visible:ring-4 focus-visible:ring-klasse-gold\/20/);
   assert.match(sharedNav, /aria-expanded=\{isMoreOpen\}/);
   assert.match(sharedNav, /aria-modal="true"/);

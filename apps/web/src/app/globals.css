@@ -171,12 +171,12 @@
 .klasse-academic-mobile .klasse-portal-operational-card:is(a,button):not([aria-disabled="true"]),
 .klasse-academic-mobile .klasse-portal-press,
 .klasse-academic-dialog .klasse-portal-press {
-  transition: background-color 140ms ease, border-color 140ms ease, opacity 140ms ease;
+  transition: background-color var(--portal-motion-press, 100ms) ease, border-color var(--portal-motion-press, 100ms) ease, opacity var(--portal-motion-press, 100ms) ease, transform var(--portal-motion-press, 100ms) ease;
 }
 .klasse-academic-mobile .klasse-portal-operational-card:is(a,button):not([aria-disabled="true"]):active,
 .klasse-academic-mobile .klasse-portal-press:not(:disabled):not([aria-disabled="true"]):active,
 .klasse-academic-dialog .klasse-portal-press:not(:disabled):active {
-  opacity: 0.82;
+  opacity: 0.9;
 }
 @media (prefers-reduced-motion: reduce) {
   .klasse-academic-mobile .klasse-portal-operational-card,
@@ -199,5 +199,63 @@
   }
   .klasse-academic-dialog {
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* KLASSE Motion System: CSS for simple touch/entrance effects; Framer Motion only for shared-layout tabs. */
+.klasse-academic-mobile, .klasse-academic-dialog {
+  --portal-motion-press: 100ms;
+  --portal-motion-tab: 200ms;
+  --portal-motion-sheet: 280ms;
+  --portal-motion-disclosure: 220ms;
+  --portal-motion-ease: cubic-bezier(.2,.8,.2,1);
+}
+.klasse-academic-mobile .klasse-portal-operational-card:is(a,button):focus-visible,
+.klasse-academic-mobile .klasse-portal-press:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.klasse-academic-mobile .klasse-portal-tabs [role="tab"][aria-selected="true"]:has([data-portal-motion-indicator]) {
+  border-bottom-color: transparent;
+}
+@keyframes klasse-portal-sheet-in {
+  from { transform: translateY(16px); opacity: 0.7; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes klasse-portal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes klasse-portal-disclosure-in {
+  from { transform: translateY(-3px); opacity: 0.7; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .klasse-academic-mobile .klasse-portal-motion-sheet {
+    animation: klasse-portal-sheet-in var(--portal-motion-sheet) var(--portal-motion-ease) both;
+  }
+  .klasse-academic-mobile .klasse-portal-motion-overlay {
+    animation: klasse-portal-overlay-in var(--portal-motion-tab) ease-out both;
+  }
+  .klasse-academic-mobile .klasse-portal-motion-disclosure {
+    animation: klasse-portal-disclosure-in var(--portal-motion-disclosure) var(--portal-motion-ease) both;
+  }
+}
+@media (pointer: coarse) and (prefers-reduced-motion: no-preference) {
+  .klasse-academic-mobile .klasse-portal-operational-card:is(a,button):not([aria-disabled="true"]):not(:disabled):active,
+  .klasse-academic-mobile .klasse-portal-press:not(:disabled):not([aria-disabled="true"]):active,
+  .klasse-academic-dialog .klasse-portal-press:not(:disabled):active {
+    transform: scale(0.98);
+  }
+  /* Tabs use the shared-layout indicator: do not transform its parent. */
+  .klasse-academic-mobile .klasse-portal-tabs [role="tab"]:active {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .klasse-academic-mobile .klasse-portal-motion-sheet,
+  .klasse-academic-mobile .klasse-portal-motion-overlay,
+  .klasse-academic-mobile .klasse-portal-motion-disclosure {
+    animation: none;
   }
 }

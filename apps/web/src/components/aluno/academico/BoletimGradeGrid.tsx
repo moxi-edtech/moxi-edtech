@@ -208,7 +208,7 @@ export function BoletimGradeGrid({
                   </td>
                 </tr>
                 {open && <tr id={label} key={`${subject.id}-details`} className="bg-muted/20">
-                  <td colSpan={2} className="px-4 pb-3">{detail(subject, term)}</td>
+                  <td colSpan={2} className="px-4 pb-3"><div className="klasse-portal-motion-disclosure">{detail(subject, term)}</div></td>
                 </tr>}
               </Fragment>;
             })}
@@ -251,9 +251,9 @@ export function BoletimGradeGrid({
               onClick={() => setExpandedId(open ? null : `${selectedSubject.id}:${p}`)}
               className={`mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary ${focus}`}>
               {open ? "Fechar avaliações" : "Ver avaliações"}
-              <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+              <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
             </button>}
-            {open && offered !== false && <div id={label}>{detail(selectedSubject, p)}</div>}
+            {open && offered !== false && <div id={label} className="klasse-portal-motion-disclosure">{detail(selectedSubject, p)}</div>}
           </div>;
         })}
       </div>}

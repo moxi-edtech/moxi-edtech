@@ -100,6 +100,7 @@ try {
           if (name === "dashboard-clean") {
             await links.first().focus();
             await page.keyboard.press("Tab");
+            await page.waitForFunction(() => document.activeElement === document.querySelectorAll('[data-testid="aluno-summary-cards"] a')[1], undefined, { timeout: 3000 }).catch(() => {});
             const focusVisible = await links.nth(1).evaluate(el => {
               const style = getComputedStyle(el);
               return document.activeElement === el && el.matches(":focus-visible") &&
@@ -130,6 +131,7 @@ try {
             await more.click();
             const drawer = page.getByRole("dialog", { name: "Outras áreas" });
             await drawer.waitFor();
+            await drawer.evaluate(async el => { await Promise.all(el.getAnimations().map(animation => animation.finished.catch(() => {}))); });
             const fits = await drawer.evaluate(el => {
               const box = el.getBoundingClientRect();
               return box.top >= 0 && box.bottom <= window.innerHeight + 1 && box.left >= 0 && box.right <= window.innerWidth + 1;
@@ -197,6 +199,7 @@ try {
         await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Disciplinas"));
         if (await subjectTab.getAttribute("tabindex") !== "0") errors.push("academic-tabs: roving keyboard focus broken");
         if (!(await page.getByRole("tabpanel", { name: "Disciplinas" }).isVisible())) errors.push("academic-tabs: discipline panel not visible");
+        if (await subjectTab.locator("[data-portal-motion-indicator]").count() !== 1 || await tabs.locator("[data-portal-motion-indicator]").count() !== 1) errors.push("academic-tabs: indicator not associated with selected tab");
         await page.keyboard.press("Home");
         await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Notas"));
         await page.keyboard.press("End");
@@ -207,9 +210,31 @@ try {
         if ((await page.evaluate(() => (window).__academicFixtureSentinel)) !== "same-document" || !initialDocument) {
           errors.push("academic-tabs: navigation caused full page reload");
         }
+        await page.emulateMedia({reducedMotion:"reduce"});
+        await page.goto(`${baseUrl}/?story=academic-tabs`, {waitUntil:"domcontentloaded"});
+        await page.getByRole("tab", {name:"Notas"}).focus();
+        await page.keyboard.press("ArrowRight");
+        const reducedIndicator = page.getByRole("tab", {name:"Disciplinas"}).locator("[data-portal-motion-indicator]");
+        await reducedIndicator.waitFor();
+        if (await reducedIndicator.evaluate(el => el.getAnimations().length > 0 || getComputedStyle(el).transform !== "none")) errors.push("academic-tabs: indicator animates under reduced motion");
+        await page.emulateMedia({reducedMotion:"no-preference"});
       } catch (error) {
         errors.push(`academic-tabs: keyboard/panel/back navigation failed: ${error.message}`);
       }
+    }
+    if (name === "dashboard-clean" || name === "professor-com-turmas") {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.setViewportSize({width:390,height:844});
+      await page.goto(`${baseUrl}/?story=${name}`, {waitUntil:"domcontentloaded"});
+      const more = page.getByRole("button", {name:"Mais áreas"});
+      await more.click();
+      const sheet = page.getByRole("dialog", {name:"Outras áreas"});
+      await sheet.waitFor();
+      if (await sheet.evaluate(el => getComputedStyle(el).animationName !== "none" || el.getAnimations().length > 0)) errors.push(name + ": reduced-motion drawer still animates");
+      await page.keyboard.press("Escape");
+      await sheet.waitFor({state:"hidden"});
+      await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Mais áreas");
+      await page.emulateMedia({ reducedMotion: "no-preference" });
     }
     if (name === "grade-paid") {
       await page.goto(`${baseUrl}/?story=grade-paid`, { waitUntil: "domcontentloaded" });

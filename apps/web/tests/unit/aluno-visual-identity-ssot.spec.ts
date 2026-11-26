@@ -44,7 +44,7 @@ test("navegação mobile mantém as nove rotas, contexto, preloading e teclado",
   assert.match(nav, /<PortalBottomNav/);
   assert.match(sharedNav, /aria-modal="true"/);
   assert.match(sharedNav, /event\.key === "Escape"/);
-  assert.match(sharedNav, /min-h-12/);
+  assert.match(sharedNav, /min-h-14/);
   assert.match(sharedNav, /klasse-gold/);
   for (const route of [
     "/aluno/dashboard", "/aluno/horario", "/aluno/academico", "/aluno/financeiro",

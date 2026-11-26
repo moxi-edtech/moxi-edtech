@@ -47,6 +47,9 @@ jobs:
           cd "$RUNNER_TEMP/cc-composite"
           pnpm install --frozen-lockfile
       - name: Combined TS application contract
+        env:
+          # Composite tree includes multiple full applications; Node's default heap exhausted in CI.
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           cd "$RUNNER_TEMP/cc-composite"
           pnpm -C apps/web typecheck
