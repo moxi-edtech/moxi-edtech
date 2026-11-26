@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { provaAccess,summaryColumns,detailColumns } from "@/lib/provas/access";
-import { mutationSchema,blockSchema } from "@/lib/provas/schema";
+import { mutationSchema,blockSchema,TIPOS_PROVA } from "@/lib/provas/schema";
 import { groupSummaries } from "@/lib/provas/questionTemplates";
 import { EXAM_REQUEST_MAX_BYTES } from "@/lib/provas/figures";
 import { loadProvaLogo } from "@/lib/provas/loadLogo";
@@ -38,7 +38,22 @@ export async function GET(req:Request,{params}:Context){
  }
  const offset=Number(query.get("offset")??0);
  if(!Number.isSafeInteger(offset)||offset<0||offset>10000)return json({error:"Página inválida."},400);
- const list=db.from("provas_pedagogicas").select(summaryColumns).eq("escola_id",escolaId);
+ const filters=z.object({tipo:z.enum(TIPOS_PROVA).optional(),estado:z.enum(["rascunho","em_revisao","aprovada","arquivada"]).optional(),trimestre:z.enum(["1","2","3"]).optional(),ano:z.string().regex(/^\d{4}\/\d{4}$/).optional(),classe:z.string().trim().min(1).max(80).optional(),disciplina:z.string().trim().min(1).max(120).optional(),autoria:z.enum(["sistema","utilizador"]).optional(),periodo:z.enum(["sem_data","futuras","passadas"]).optional()}).safeParse(Object.fromEntries(["tipo","estado","trimestre","ano","classe","disciplina","autoria","periodo"].flatMap(k=>query.has(k)?[[k,query.get(k)]]:[])));
+ if(!filters.success)return json({error:"Filtros inválidos."},400);
+ const f=filters.data;
+ let list=db.from("provas_pedagogicas").select(summaryColumns).eq("escola_id",escolaId);
+ if(f.tipo)list=list.eq("tipo_prova",f.tipo);
+ if(f.estado)list=list.eq("estado",f.estado);
+ if(f.trimestre)list=list.eq("trimestre",Number(f.trimestre));
+ if(f.ano)list=list.eq("ano_lectivo",f.ano);
+ if(f.classe)list=list.eq("classe",f.classe);
+ if(f.disciplina)list=list.eq("disciplina",f.disciplina);
+ if(f.autoria)list=f.autoria==="sistema"?list.is("autor_id",null):list.not("autor_id","is",null);
+ const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Luanda",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+ const today=["year","month","day"].map(k=>parts.find(p=>p.type===k)?.value).join("-");
+ if(f.periodo==="sem_data")list=list.is("data_realizacao",null);
+ if(f.periodo==="futuras")list=list.gte("data_realizacao",today);
+ if(f.periodo==="passadas")list=list.lt("data_realizacao",today);
  const [result,school]=await Promise.all([
    (printOnly?list.eq("estado","aprovada"):list).order("atualizado_em",{ascending:false}).order("id",{ascending:false}).range(offset,offset+29),
    db.from("escolas").select("nome").eq("id",escolaId).maybeSingle()

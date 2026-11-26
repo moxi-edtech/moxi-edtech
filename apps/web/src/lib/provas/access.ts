@@ -4,8 +4,8 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 const ADMINS=["admin","admin_escola","diretor","admin_secretaria","admin_secretario","staff_admin","admin_financeiro"];
 const DISTRIBUTORS=[...ADMINS,"secretaria","secretaria_financeiro"];
 const ROLES=[...DISTRIBUTORS,"professor"];
-export const summaryColumns="id,autor_id,ano_letivo_id,curso_matriz_id,tipo_prova,apresentacao,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,estado,versao,atualizado_em";
-export const detailColumns="id,autor_id,ano_letivo_id,curso_matriz_id,tipo_prova,apresentacao,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,estado,versao,atualizado_em,conteudo";
+export const summaryColumns="id,autor_id,ano_letivo_id,curso_matriz_id,tipo_prova,apresentacao,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,data_realizacao,hora_inicio,estado,versao,atualizado_em";
+export const detailColumns="id,autor_id,ano_letivo_id,curso_matriz_id,tipo_prova,apresentacao,titulo,classe,disciplina,ano_lectivo,trimestre,duracao,serie,data_realizacao,hora_inicio,estado,versao,atualizado_em,conteudo";
 export async function provaAccess(requested:string){
  const db=await supabaseServerTyped<any>();
  const {data:{user}}=await db.auth.getUser();

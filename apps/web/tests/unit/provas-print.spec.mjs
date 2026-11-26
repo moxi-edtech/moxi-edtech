@@ -476,3 +476,13 @@ test("illustrated qualitative questions retain existing scoring, reject external
  assert.doesNotMatch(html,/<script\b/);
  assert.doesNotMatch(html,/class="cotacao"/);
 });
+
+
+test("school-local schedule and raster logo in single proof",()=>{
+ const logo="data:image/png;base64,AAAA";
+ const html=provaHtml({...base,data_realizacao:"2026-12-07",hora_inicio:"08:30:00"},"Curtume",{logo,draft:true});
+ assert.match(html,/<img class="school-logo"/);
+ assert.match(html,/07\/12\/2026/);
+ assert.match(html,/Hora: 08:30/);
+ assert.match(html,/RASCUNHO/);
+});
