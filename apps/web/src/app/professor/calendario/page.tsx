@@ -1,5 +1,6 @@
 "use client";
 
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { ProfessorCalendarSkeleton } from "@/components/professor/ProfessorLoadingSkeletons";
@@ -141,6 +142,9 @@ export default function ProfessorCalendarioPage() {
   const [anoLetivo, setAnoLetivo] = useState<AnoLetivo | null>(null);
   const [showPeriodsOnMobile, setShowPeriodsOnMobile] = useState(false);
   const [showPastEvents, setShowPastEvents] = useState(false);
+  const [eventId, setEventId] = useState<string | null>(null);
+  const [eventOpen, setEventOpen] = useState(false);
+  const selectedEvent = items.find(item => item.id === eventId) ?? null;
   const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
@@ -216,6 +220,58 @@ export default function ProfessorCalendarioPage() {
     return Array.from(groups.values());
   }, [items, showPastEvents, todayIso]);
 
+  const periodContent = (<>
+                {periodos.length === 0 ? (
+                  <div className="mt-6 rounded-2xl border border-dashed border-border bg-muted p-4 text-sm font-medium text-muted-foreground">
+                    Os períodos lectivos ainda não foram configurados para este ano.
+                  </div>
+                ) : (
+                  <div className="mt-3 space-y-2 sm:mt-6 sm:space-y-3">
+                    {periodos.map((periodo) => {
+                      const isActive = periodo.data_inicio <= todayIso && periodo.data_fim >= todayIso;
+                      return (
+                        <div
+                          key={periodo.id}
+                          className={`rounded-xl border p-3 transition sm:rounded-2xl sm:p-4 ${
+                            isActive ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40" : "border-border bg-muted"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-black text-foreground">{getPeriodLabel(periodo)}</p>
+                              <p className="mt-1 text-xs font-medium text-muted-foreground">
+                                {formatDateRange(periodo.data_inicio, periodo.data_fim)}
+                              </p>
+                            </div>
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
+                                isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200" : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {isActive ? "Em curso" : periodo.data_inicio > todayIso ? "A seguir" : "Fechado"}
+                            </span>
+                          </div>
+                          {periodo.trava_notas_em ? (
+                            <p className="mt-3 text-[11px] font-semibold text-muted-foreground">
+                              Fecho de notas: {formatSingleDate(periodo.trava_notas_em)}
+                            </p>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {currentPeriodo ? (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 p-3 sm:mt-6 sm:rounded-2xl sm:p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">Período actual</p>
+                    <p className="mt-2 text-sm font-black text-foreground">{getPeriodLabel(currentPeriodo)}</p>
+                    <p className="mt-1 text-xs font-medium text-muted-foreground">
+                      {formatCompactDateRange(currentPeriodo.data_inicio, currentPeriodo.data_fim)}
+                    </p>
+                  </div>
+                ) : null}
+                </>);
   return (
     <div className="min-h-screen bg-background">
       <div className={`${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 flex flex-col gap-4 sm:gap-6`}>
@@ -315,63 +371,13 @@ export default function ProfessorCalendarioPage() {
                     <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Ritmo lectivo</p>
                     <h2 className="text-sm font-semibold text-foreground sm:text-lg sm:font-black">Períodos do ano</h2>
                   </div>
-                  <button type="button" onClick={() => setShowPeriodsOnMobile((value) => !value)} aria-expanded={showPeriodsOnMobile} className="ml-auto min-h-10 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-foreground lg:hidden">
-                    {showPeriodsOnMobile ? "Ocultar" : "Ver períodos"}
+                  <button type="button" onClick={() => setShowPeriodsOnMobile(true)} aria-haspopup="dialog" aria-expanded={showPeriodsOnMobile} className="ml-auto min-h-10 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-foreground lg:hidden">
+                    Ver períodos
                   </button>
                 </div>
 
-                <div className={showPeriodsOnMobile ? "block" : "hidden lg:block"}>
-                {periodos.length === 0 ? (
-                  <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-500">
-                    Os períodos lectivos ainda não foram configurados para este ano.
-                  </div>
-                ) : (
-                  <div className="mt-3 space-y-2 sm:mt-6 sm:space-y-3">
-                    {periodos.map((periodo) => {
-                      const isActive = periodo.data_inicio <= todayIso && periodo.data_fim >= todayIso;
-                      return (
-                        <div
-                          key={periodo.id}
-                          className={`rounded-xl border p-3 transition sm:rounded-2xl sm:p-4 ${
-                            isActive ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-black text-slate-900">{getPeriodLabel(periodo)}</p>
-                              <p className="mt-1 text-xs font-medium text-slate-500">
-                                {formatDateRange(periodo.data_inicio, periodo.data_fim)}
-                              </p>
-                            </div>
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
-                                isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"
-                              }`}
-                            >
-                              {isActive ? "Em curso" : periodo.data_inicio > todayIso ? "A seguir" : "Fechado"}
-                            </span>
-                          </div>
-                          {periodo.trava_notas_em ? (
-                            <p className="mt-3 text-[11px] font-semibold text-slate-600">
-                              Fecho de notas: {formatSingleDate(periodo.trava_notas_em)}
-                            </p>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {currentPeriodo ? (
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:mt-6 sm:rounded-2xl sm:p-4">
-                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Período actual</p>
-                    <p className="mt-2 text-sm font-black text-slate-900">{getPeriodLabel(currentPeriodo)}</p>
-                    <p className="mt-1 text-xs font-medium text-slate-600">
-                      {formatCompactDateRange(currentPeriodo.data_inicio, currentPeriodo.data_fim)}
-                    </p>
-                  </div>
-                ) : null}
-                </div>
+                <div className="hidden lg:block">{periodContent}</div>
+                <PortalSheet open={showPeriodsOnMobile} onClose={() => setShowPeriodsOnMobile(false)} title="Períodos lectivos" description={anoLetivo ? `Ano lectivo ${anoLetivo.data_inicio.slice(0,4)}/${anoLetivo.data_fim.slice(0,4)}` : "Calendário académico"} size="expanded">{periodContent}</PortalSheet>
               </aside>
             </div>
 
@@ -444,14 +450,10 @@ export default function ProfessorCalendarioPage() {
                                   {item.descricao ? (
                                     <>
                                       <p className="mt-1 hidden text-sm leading-relaxed text-muted-foreground sm:block">{item.descricao}</p>
-                                      <details className="group mt-1 text-xs leading-relaxed text-muted-foreground sm:hidden">
-                                        <summary className="cursor-pointer list-none rounded-lg py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold">
-                                          <span className="line-clamp-2 group-open:hidden">{item.descricao}</span>
-                                          <span className="mt-1 inline-flex font-semibold text-klasse-green group-open:hidden">Ver detalhes</span>
-                                          <span className="hidden font-semibold text-klasse-green group-open:inline">Ocultar detalhes</span>
-                                        </summary>
-                                        <p className="mt-1">{item.descricao}</p>
-                                      </details>
+                                      <button type="button" aria-haspopup="dialog" aria-expanded={eventOpen && eventId === item.id} aria-label={`Ver detalhes de ${item.nome}`} onClick={() => { setEventId(item.id); setEventOpen(true); }} className="mt-1 block min-h-11 w-full rounded-xl text-left text-xs text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-klasse-gold sm:hidden">
+                                        <span className="line-clamp-2">{item.descricao}</span>
+                                        <span className="mt-1 inline-flex font-semibold text-klasse-green">Ver detalhes</span>
+                                      </button>
                                     </>
                                   ) : null}
                                 </div>
@@ -465,6 +467,16 @@ export default function ProfessorCalendarioPage() {
                 </div>
               )}
             </section>
+            <PortalSheet open={eventOpen && Boolean(selectedEvent)} onClose={() => setEventOpen(false)}
+              title={selectedEvent?.nome ?? "Evento académico"} description={selectedEvent ? formatDateRange(selectedEvent.data_inicio, selectedEvent.data_fim) : "Calendário académico"} size="medium">
+              {selectedEvent && <>
+                <div className="flex flex-wrap gap-2 text-xs font-medium">
+                  <span className="rounded-full bg-muted px-3 py-1">{capitalize(getEventTypeLabel(selectedEvent.tipo))}</span>
+                  <span className="rounded-full bg-muted px-3 py-1">{getRelativeLabel(selectedEvent.data_inicio, selectedEvent.data_fim, todayIso)}</span>
+                </div>
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">{selectedEvent.descricao || "Sem descrição adicional."}</p>
+              </>}
+            </PortalSheet>
           </>
         )}
       </div>

@@ -48,3 +48,40 @@ test("saudação tem uma única data e a fonte local tem licença e pesos reais"
   assert.ok(readFileSync(new URL("../../public/fonts/sora-variable.ttf", import.meta.url)).length > 10000);
   assert.match(readFileSync(new URL("../../public/fonts/OFL-Sora.txt", import.meta.url), "utf8"), /SIL OPEN FONT LICENSE/i);
 });
+
+test("operations shares the cultural signature without changing academic authority or routes", () => {
+  const banner = read("components/layout/escola-admin/EstadoVitalBanner.tsx");
+  assert.match(banner, /<PortalCulturalSignature/);
+  assert.match(banner, /if \(compact\)/);
+  assert.match(banner, /Diário bloqueado/);
+  assert.match(banner, /href=\{calendarHref\}/);
+  assert.match(banner, /<PortalSheet open=\{eventOpen/);
+  const css = read("app/globals.css");
+  assert.match(css, /\.klasse-portal-theme \.klasse-welcome-card,\s*\.klasse-welcome-card\.klasse-operations-academic-card/);
+  assert.match(css, /background-position: center top/);
+  assert.match(css, /background-size: 80px 20px/);
+  const calendar = read("app/professor/calendario/page.tsx");
+  assert.match(calendar, /selectedEvent = items\.find/);
+  assert.match(calendar, /<PortalSheet open=\{eventOpen/);
+  assert.match(calendar, /selectedEvent\.descricao/);
+});
+
+test("contextual financial actions use confirmed scope and an immutable upload selection", () => {
+  const finance = read("components/aluno/tabs/TabFinanceiro.tsx");
+  assert.match(finance, /loadedQuery === query/);
+  assert.match(finance, /controller.signal.aborted \|\| activeRequest.current !== controller/);
+  assert.match(finance, /draftFrom > draftTo/);
+  assert.match(finance, /setPaymentRows\(items.map/);
+  assert.match(finance, /paymentLock.current/);
+  assert.match(finance, /<PortalSheet open=\{detailOpen/);
+  assert.match(finance, /<PaymentDrawer/);
+  const absences = read("components/aluno/tabs/TabFaltas.tsx");
+  assert.match(absences, /scope === query \? data : null/);
+  assert.match(absences, /inFlight.current/);
+  assert.match(absences, /<PortalSheet open=\{detailOpen/);
+  const notes = read("app/professor/notas/page.tsx");
+  assert.match(notes, /loadedPautaScope === raaScope/);
+  assert.match(notes, /mostrarTrimestresInativos: showInactiveTerms/);
+  assert.match(notes, /<PortalSheet open=\{raaOpen/);
+  assert.match(notes, /<PortalSheet open=\{exportOpen/);
+});

@@ -98,7 +98,8 @@
 
 /* Fixed identity artwork, scoped to the institutional card in both themes.
    The rest of the portals continue to consume semantic theme tokens. */
-.klasse-portal-theme .klasse-welcome-card {
+.klasse-portal-theme .klasse-welcome-card,
+.klasse-welcome-card.klasse-operations-academic-card {
   --welcome-amber: #fea513;
   --welcome-forest: #124527;
   background: var(--welcome-amber);
@@ -106,17 +107,29 @@
   box-shadow: inset 0 0 0 1px rgb(18 69 39 / 9%);
 }
 
-.klasse-portal-theme .klasse-welcome-editorial {
+.klasse-welcome-card .klasse-welcome-editorial {
   border-inline-start: 4px solid var(--welcome-forest);
 }
 
-.klasse-portal-theme .klasse-welcome-signature {
-  height: 20px;
-  background-color: #0f1712;
+.klasse-welcome-card .klasse-welcome-signature {
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: 20px;
+  flex: none;
+  /* The opaque SVG owns its artwork colours; use the scoped brand token as fallback. */
+  background-color: var(--welcome-forest);
   background-image: url("/icons/klasse-welcome-signature.svg");
   background-repeat: repeat-x;
-  background-position: left center;
-  background-size: auto 20px;
+  /* Centre whole tiles so the two rounded edges crop at the same height. */
+  background-position: center top;
+  background-size: 80px 20px;
+}
+
+/* Operations retains its compact banner; scale only its decorative signature. */
+.klasse-operations-academic-card .klasse-welcome-signature {
+  block-size: 8px;
+  background-size: 32px 8px;
 }
 
 /* Academic mobile only; keep status semantics and desktop layouts. */

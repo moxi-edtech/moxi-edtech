@@ -9,6 +9,8 @@ const directory = "apps/web/visual-evidence";
 await mkdir(directory, { recursive: true });
 
 const stories = [
+  ["operations-academic-card", "synthetic-operations-academic-card", /2026.*Trimestre/i],
+  ["professor-calendar-context", "synthetic-professor-calendar-context", /Calendário Académico/i],
   ["academic-tabs", "synthetic-academic-tabs", /Académico/i],
   ["documentos-pendentes", "klasse-portal-visual-fixtures--documentos-pendentes", /Boletim/i],
   ["documentos-rejeitados", "klasse-portal-visual-fixtures--documentos-rejeitados", /Boletim/i],
@@ -88,6 +90,43 @@ try {
         await page.evaluate(z => { document.documentElement.style.zoom = String(z); }, zoom);
         await page.waitForTimeout(200);
         await page.evaluate(() => document.fonts.ready);
+        if (name === "operations-academic-card" || name.startsWith("dashboard-") || name === "professor-com-turmas") {
+          const band = page.getByTestId("portal-cultural-signature").first();
+          await band.waitFor({timeout:10000});
+          const aligned = await band.evaluate(el => {
+            const r = el.getBoundingClientRect(), p = el.parentElement.getBoundingClientRect(), s = getComputedStyle(el);
+            return { left:Math.abs(r.left-p.left),right:Math.abs(r.right-p.right),bottom:Math.abs(r.bottom-p.bottom),height:r.height,position:s.backgroundPosition,transform:s.transform };
+          });
+          if (aligned.left > 2 || aligned.right > 2 || aligned.bottom > 2 || aligned.height <= 0 || aligned.position !== "50% 0%" || aligned.transform !== "none") errors.push(`${name}: misaligned cultural signature ${JSON.stringify(aligned)}`);
+        }
+        if (name === "operations-academic-card") {
+          const card = page.getByTestId("operations-academic-card");
+          const geometry = await card.evaluate(el => {
+            const row = el.querySelector('[data-testid="operations-academic-row"]');
+            const indicators = Array.from(row.firstElementChild.querySelectorAll("span"));
+            const calendar = row.querySelector("a");
+            const event = el.querySelector('button[aria-haspopup="dialog"]');
+            const band = el.querySelector(".klasse-welcome-signature");
+            const bounds = node => node.getBoundingClientRect();
+            const center = node => (bounds(node).top + bounds(node).bottom) / 2;
+            const r = bounds(row);
+            return {
+              inline: indicators.length === 3 && indicators.every(node => Math.abs(center(node) - center(calendar)) < 3),
+              calendarRight: Math.abs(bounds(calendar).right - r.right) < 3,
+              eventBelow: bounds(event).top >= r.bottom,
+              height: el.offsetHeight,
+              bandHeight: band.offsetHeight,
+              overflow: [row, row.firstElementChild, event].some(node => node.scrollWidth > node.clientWidth + 1),
+              textSize: getComputedStyle(indicators[0]).fontSize,
+            };
+          });
+          if (geometry.overflow || !geometry.eventBelow || geometry.bandHeight !== 8) {
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: invalid compact banner ${JSON.stringify(geometry)}`);
+          }
+          if (width >= 1366 && (!geometry.inline || !geometry.calendarRight || geometry.height > 100 || geometry.textSize !== "14px")) {
+            errors.push(`${name} ${width}x${height} zoom ${zoom}: desktop layout is no longer compact ${JSON.stringify(geometry)}`);
+          }
+        }
         if (name.startsWith("dashboard-")) {
           const links = page.getByTestId("aluno-summary-cards").getByRole("link");
           if (await links.count() !== 3) errors.push(`${name}: expected exactly three summary cards`);

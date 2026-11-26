@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import Link from "next/link";
@@ -8,7 +8,7 @@ import { Check, Filter, Wallet, ArrowUpCircle, ArrowDownCircle, Printer, Loader2
 import { Button } from "@/components/ui/Button";
 import { StudentAppyPayButton } from "@/components/financeiro/AppyPayReferenceButton";
 import { PaymentDrawer } from "@/components/aluno/financeiro-portal/PaymentDrawer";
-import { usePortalSWR } from "@/components/aluno/usePortalSWR";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import type { AlunoServicoFinanceiro } from "@/lib/financeiro/servicosPagamento";
 
 type Item = {
@@ -18,6 +18,7 @@ type Item = {
   status: "pago" | "pendente" | "atrasado" | "em_verificacao" | "isento" | "cancelado" | "pago_parcial";
   bolsa_isencao_integral?: boolean;
   recibo_id?: string | null;
+  vencimento?: string | null;
 };
 type Movimento = {
   id: string;
@@ -54,17 +55,6 @@ type ApiResponse = {
   comprovativo_status?: ComprovativoStatus;
   dados_pagamento?: DadosPagamento | null;
 };
-type ParsedFinanceiroPayload = {
-  rows: Item[];
-  bolsas: Array<{ ano_letivo: number; vigencia_inicio: string | null; percentagem?: number }>;
-  anoLetivoAtual: number | null;
-  movimentos: Movimento[];
-  resumo: ApiResponse["resumo"];
-  comprovativoStatus: ComprovativoStatus | null;
-  dadosPagamento: DadosPagamento | null;
-  servicos: AlunoServicoFinanceiro[];
-};
-
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 
 function normalizeStatus(value: string): Item["status"] {
@@ -86,7 +76,11 @@ function serviceStatusClass(status: AlunoServicoFinanceiro["status"]): string {
 export function TabFinanceiro() {
   const searchParams = useSearchParams();
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
-  const currentYear = new Date().getFullYear();
+  return <FinanceiroScope key={studentId ?? "default"} studentId={studentId} />;
+}
+
+function FinanceiroScope({ studentId }: { studentId: string | null }) {
+  const currentYear = Number(new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Africa/Luanda" }).format(new Date()));
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Item[]>([]);
@@ -104,6 +98,17 @@ export function TabFinanceiro() {
   const [refreshing, setRefreshing] = useState(false);
   const [fromAno, setFromAno] = useState(currentYear - 1);
   const [toAno, setToAno] = useState(currentYear);
+  const [draftFrom, setDraftFrom] = useState(fromAno);
+  const [draftTo, setDraftTo] = useState(toAno);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [detail, setDetail] = useState<{ kind: "monthly" | "service"; id: string; scope: string } | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [paymentRows, setPaymentRows] = useState<Item[]>([]);
+  const paymentLock = useRef(false);
+  const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const activeRequest = useRef<AbortController | null>(null);
+  const scopeReady = useRef<string | null>(null);
 
   const years = useMemo(() => {
     const list: number[] = [];
@@ -119,51 +124,91 @@ export function TabFinanceiro() {
     return `?${params.toString()}`;
   }, [studentId, fromAno, toAno]);
 
-  const req = usePortalSWR({
-    key: `financeiro-${studentId ?? "default"}-${fromAno}-${toAno}`,
-    url: `/api/aluno/financeiro${query}`,
-    intervalMs: 30000,
-    parse: (payload) => {
-      const json = payload as ApiResponse;
-      const mapped = (json.mensalidades ?? []).map((m) => ({ ...m, status: normalizeStatus(m.status) }));
-      return {
-        rows: mapped,
-        bolsas: json.bolsas ?? [],
-        anoLetivoAtual: json.ano_letivo_atual ?? null,
-        movimentos: json.movimentos ?? [],
-        resumo: json.resumo,
-        comprovativoStatus: json.comprovativo_status ?? null,
-        dadosPagamento: json.dados_pagamento ?? null,
-        servicos: json.servicos ?? [],
-      } satisfies ParsedFinanceiroPayload;
-    },
-    onData: (data) => {
-      setRows(data.rows);
-      setBolsas(data.bolsas);
-      setAnoLetivoAtual(data.anoLetivoAtual);
-      setSelectedIds(ids => ids.filter(id => data.rows.some(row =>
-        row.id === id && row.valor > 0 &&
-        ["pendente", "atrasado", "pago_parcial"].includes(row.status)
-      )));
-      setMovimentos(data.movimentos);
-      setResumo(data.resumo);
-      setComprovativoStatus(data.comprovativoStatus);
-      setDadosPagamento(data.dadosPagamento);
-      setServicos(data.servicos);
-      setLoading(false);
-    },
-  });
+  // One request per scope. A superseded response cannot publish data or errors.
+  const refresh = useCallback(async () => {
+    if (activeRequest.current || paymentLock.current) return;
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    setRefreshing(true);
+    if (scopeReady.current !== query) setLoading(true);
+    setFetchError(null);
+    try {
+      const response = await fetch(`/api/aluno/financeiro${query}`, { cache: "no-store", signal: controller.signal });
+      const json = await response.json() as ApiResponse;
+      if (controller.signal.aborted || activeRequest.current !== controller) return;
+      if (!response.ok || !json.ok) {
+        if (response.status === 401 || response.status === 403) { scopeReady.current = null; setLoadedQuery(null); setDetailOpen(false); setSelectedIds([]); }
+        throw new Error("Não foi possível consultar o financeiro.");
+      }
+      const mapped = (json.mensalidades ?? []).map(m => ({ ...m, status: normalizeStatus(m.status) }));
+      setRows(mapped);
+      setBolsas(json.bolsas ?? []);
+      setAnoLetivoAtual(json.ano_letivo_atual ?? null);
+      setSelectedIds(ids => ids.filter(id => mapped.some(row => row.id === id && row.valor > 0 && ["pendente","atrasado","pago_parcial"].includes(row.status))));
+      setMovimentos(json.movimentos ?? []);
+      setResumo(json.resumo ?? null);
+      setComprovativoStatus(json.comprovativo_status ?? null);
+      setDadosPagamento(json.dados_pagamento ?? null);
+      setServicos(json.servicos ?? []);
+      scopeReady.current = query;
+      setLoadedQuery(query);
+    } catch (error) {
+      if (!controller.signal.aborted && activeRequest.current === controller) setFetchError(error instanceof Error ? error.message : "Não foi possível actualizar.");
+    } finally {
+      if (activeRequest.current === controller) {
+        activeRequest.current = null;
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+  }, [query]);
+  useEffect(() => {
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 30000);
+    const focus = () => void refresh();
+    window.addEventListener("focus", focus);
+    return () => {
+      activeRequest.current?.abort();
+      activeRequest.current = null;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", focus);
+    };
+  }, [refresh]);
+  const ready = loadedQuery === query;
+  const selectedMonthly = ready && detail?.scope === query && detail.kind === "monthly" ? rows.find(item => item.id === detail.id) : undefined;
+  const selectedService = ready && detail?.scope === query && detail.kind === "service" ? servicos.find(item => item.id === detail.id) : undefined;
+  const detailStatus: Record<Item["status"],string> = { pago:"Pago", pendente:"Pendente", atrasado:"Em atraso", em_verificacao:"Em verificação", isento:"Isento", cancelado:"Cancelado", pago_parcial:"Pago parcialmente" };
+  const canPay = (item: Item) => item.valor > 0 && ["pendente","atrasado","pago_parcial"].includes(item.status);
+  const applyFilter = () => {
+    if (draftFrom > draftTo || !years.includes(draftFrom) || !years.includes(draftTo) || paymentOpen) return;
+    if (draftFrom !== fromAno || draftTo !== toAno) {
+      activeRequest.current?.abort();
+      activeRequest.current = null;
+      scopeReady.current = null;
+      setSelectedIds([]);
+      setPaymentRows([]);
+      setDetail(null);
+      setDetailOpen(false);
+      setLoadedQuery(null);
+      setLoading(true);
+      setFromAno(draftFrom);
+      setToAno(draftTo);
+    }
+    setFilterOpen(false);
+  };
 
   const sortedMensalidades = useMemo(() => [...rows].sort((a, b) => b.competencia.localeCompare(a.competencia)), [rows]);
   const selectedMensalidades = useMemo(() => rows.filter((item) => selectedIds.includes(item.id)
     && item.valor > 0 && ["pendente", "atrasado", "pago_parcial"].includes(item.status)), [rows, selectedIds]);
   const selectedTotal = useMemo(() => selectedMensalidades.reduce((sum, item) => sum + item.valor, 0), [selectedMensalidades]);
-
-  const refresh = async () => {
-    setRefreshing(true);
-    await req.refresh();
-    setRefreshing(false);
+  const openPayment = (items: Item[]) => {
+    if (!ready || fetchError || paymentLock.current || !items.length || !items.every(canPay)) return;
+    paymentLock.current = true;
+    activeRequest.current?.abort(); activeRequest.current = null; setRefreshing(false);
+    setPaymentRows(items.map(item => ({...item}))); setPaymentOpen(true);
   };
+  const closePayment = () => { paymentLock.current = false; setPaymentOpen(false); void refresh(); };
+  const refreshAfterPayment = () => { activeRequest.current?.abort(); activeRequest.current = null; void refresh(); };
 
   const handleReprintRecibo = (reciboId: string | null | undefined) => {
     if (!reciboId) return;
@@ -182,6 +227,17 @@ export function TabFinanceiro() {
         </button>
       </div>
 
+      <button type="button" aria-haspopup="dialog" aria-expanded={filterOpen} disabled={paymentOpen} onClick={() => { setDraftFrom(fromAno); setDraftTo(toAno); setFilterOpen(true); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold"><Filter className="h-4 w-4" aria-hidden="true" /> Filtrar período · {fromAno}–{toAno}</button>
+      <PortalSheet open={filterOpen} onClose={() => setFilterOpen(false)} title="Filtrar período" description="Selecciona o intervalo e aplica uma única vez." size="medium">
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-sm font-medium">De<select aria-label="De" value={draftFrom} onChange={e => setDraftFrom(Number(e.target.value))} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-base">{years.map(year => <option key={year} value={year}>{year}</option>)}</select></label>
+          <label className="text-sm font-medium">Até<select aria-label="Até" value={draftTo} onChange={e => setDraftTo(Number(e.target.value))} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-base">{years.map(year => <option key={year} value={year}>{year}</option>)}</select></label>
+        </div>
+        {draftFrom > draftTo && <p role="alert" className="text-sm text-destructive">O ano inicial deve ser anterior ou igual ao final.</p>}
+        <Button tone="gold" className="min-h-11 w-full" disabled={draftFrom > draftTo} onClick={applyFilter}>Aplicar filtro</Button>
+      </PortalSheet>
+      {fetchError && <p role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm text-foreground">{fetchError} <button type="button" onClick={() => void refresh()} className="font-semibold underline">Tentar novamente</button></p>}
+      {!ready ? <p role="status" className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">{loading ? "A carregar o período seleccionado…" : "Dados do período indisponíveis."}</p> : <>
       <div className="grid gap-3 md:grid-cols-3" aria-label="Resumo financeiro">
         <AcaoRapidaCard dashboardCompact mobileCompact emphasizeSublabel label="Por pagar" icon={<Wallet />}
           unavailable={!resumo} needsAttention={Boolean(resumo && resumo.total_pendente > 0)}
@@ -214,39 +270,6 @@ export function TabFinanceiro() {
         </details>
       )}
 
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label htmlFor="fromAno" className="mb-1 block text-xs font-semibold text-muted-foreground">De</label>
-            <select
-              id="fromAno"
-              value={fromAno}
-              onChange={(e) => setFromAno(Number(e.target.value))}
-              className="min-h-11 rounded-xl border border-border bg-card px-3 text-sm text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
-            >
-              {years.map((year) => (
-                <option key={`from-${year}`} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="toAno" className="mb-1 block text-xs font-semibold text-muted-foreground">Até</label>
-            <select
-              id="toAno"
-              value={toAno}
-              onChange={(e) => setToAno(Number(e.target.value))}
-              className="min-h-11 rounded-xl border border-border bg-card px-3 text-sm text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
-            >
-              {years.map((year) => (
-                <option key={`to-${year}`} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-          <Button tone="gray" size="sm" className="min-h-11" onClick={refresh}>
-            <Filter className="h-4 w-4" /> Aplicar filtro
-          </Button>
-        </div>
-      </div>
 
       {comprovativoStatus && comprovativoStatus.pendentes > 0 ? (
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
@@ -277,7 +300,7 @@ export function TabFinanceiro() {
           {selectedMensalidades.length ? (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
               <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{selectedMensalidades.length} seleccionada(s) · {money.format(selectedTotal)}</p>
-              <Button tone="gold" className="min-h-11" size="sm" onClick={() => setPaymentOpen(true)}>Enviar um comprovativo</Button>
+              <Button tone="gold" className="min-h-11" size="sm" disabled={Boolean(fetchError)} onClick={() => openPayment(selectedMensalidades)}>Enviar um comprovativo</Button>
             </div>
           ) : null}
           {loading ? (
@@ -287,7 +310,7 @@ export function TabFinanceiro() {
               {sortedMensalidades.map((item) => (
                 <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-3">
                   <div>
-                    <p className="text-sm font-medium text-foreground">{item.competencia}</p>
+                    <button type="button" aria-haspopup="dialog" aria-expanded={detailOpen && detail?.kind === "monthly" && detail.id === item.id} onClick={() => { setDetail({kind:"monthly",id:item.id,scope:query}); setDetailOpen(true); }} className="min-h-11 break-words text-left text-sm font-semibold text-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring">{item.competencia} <span className="text-xs text-muted-foreground">· Ver detalhes</span></button>
                     <p className="text-xs text-muted-foreground">
                       {item.status === "isento" ? "Propina dispensada" : money.format(item.valor)}
                     </p>
@@ -331,7 +354,6 @@ export function TabFinanceiro() {
                     {item.status === "pago_parcial" && (
                       <span className="text-xs text-muted-foreground">Pago parcialmente · saldo pendente</span>
                     )}
-                    <StudentAppyPayButton targetId={item.id} kind="monthly" studentId={studentId} descricao={`Propina ${item.competencia}`} onPaid={() => { setSelectedIds(prev => prev.filter(id => id !== item.id)); void refresh(); }} />
                     <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-amber-200 px-3 text-xs font-semibold text-amber-800">
                       <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={(event) => setSelectedIds((prev) => event.target.checked ? [...prev, item.id] : prev.filter((id) => id !== item.id))} />
                       <Wallet className="h-4 w-4" /> Seleccionar
@@ -398,7 +420,7 @@ export function TabFinanceiro() {
               <div key={servico.id} className="min-w-0 rounded-xl border border-border p-3">
                 <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-medium text-foreground">{servico.nome}</p>
+                  <button type="button" aria-haspopup="dialog" aria-expanded={detailOpen && detail?.kind === "service" && detail.id === servico.id} onClick={() => { setDetail({kind:"service",id:servico.id,scope:query}); setDetailOpen(true); }} className="min-h-11 break-words text-left text-sm font-semibold text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring">{servico.nome} <span className="text-xs text-muted-foreground">· Ver detalhes</span></button>
                   <p className="text-xs text-muted-foreground">{new Date(servico.data).toLocaleDateString("pt-AO")}</p>
                   <p className="mt-1 text-[10px] text-muted-foreground">Protocolo: {servico.protocolo}</p>
                 </div>
@@ -409,19 +431,7 @@ export function TabFinanceiro() {
                   </span>
                 </div>
                 </div>
-                <div className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">
-                <p>{servico.mensagem_estado}</p>
-                <p className="mt-1 font-medium text-foreground">Próximo passo: {servico.proximo_passo}</p>
-                {servico.status === "pendente" && servico.appypay_intent_id ? <div className="mt-2"><StudentAppyPayButton targetId={servico.appypay_intent_id} kind="service" studentId={studentId} descricao={servico.nome} onPaid={() => { void refresh(); }} /></div> : null}
-                {servico.acao ? (
-                  <Link
-                    href={studentId ? `${servico.acao.href}&studentId=${encodeURIComponent(studentId)}` : servico.acao.href}
-                    className="klasse-portal-cta mt-2 inline-flex min-h-11 items-center rounded-xl px-3 py-2 text-xs font-semibold"
-                  >
-                    {servico.acao.label}
-                  </Link>
-                ) : null}
-              </div>
+
               </div>
             ))}
           </div>
@@ -430,12 +440,26 @@ export function TabFinanceiro() {
         )}
       </section>
 
+      </>}
+      <PortalSheet open={detailOpen && Boolean(selectedMonthly || selectedService)} onClose={() => setDetailOpen(false)} title={selectedMonthly ? `Propina · ${selectedMonthly.competencia}` : selectedService?.nome ?? "Detalhes financeiros"} description={`Período ${fromAno}–${toAno}`} size="medium">
+        {selectedMonthly && <>
+          <dl className="space-y-3 text-sm"><div><dt className="text-muted-foreground">Estado</dt><dd className="font-semibold">{detailStatus[selectedMonthly.status]}</dd></div><div><dt className="text-muted-foreground">Saldo por liquidar</dt><dd className="text-xl font-semibold tabular-nums text-primary">{money.format(selectedMonthly.valor)}</dd></div><div><dt className="text-muted-foreground">Vencimento</dt><dd>{selectedMonthly.vencimento ? selectedMonthly.vencimento.slice(0,10).split("-").reverse().join("/") : "Indisponível"}</dd></div></dl>
+          {selectedMonthly.bolsa_isencao_integral && <p className="text-sm text-muted-foreground">Saldo abrangido por bolsa integral.</p>}
+          {selectedMonthly.status === "pago" && selectedMonthly.recibo_id && <Button tone="gray" className="min-h-11 w-full" onClick={() => handleReprintRecibo(selectedMonthly.recibo_id)}>Ver recibo</Button>}
+          {!fetchError && canPay(selectedMonthly) && <div className="space-y-2"><StudentAppyPayButton targetId={selectedMonthly.id} kind="monthly" studentId={studentId} descricao={`Propina ${selectedMonthly.competencia}`} onPaid={() => { setSelectedIds(prev => prev.filter(id => id !== selectedMonthly.id)); refreshAfterPayment(); }} /><Button tone="gold" className="min-h-11 w-full" onClick={() => openPayment([selectedMonthly])}>Enviar comprovativo</Button></div>}
+          {selectedMonthly.status === "em_verificacao" && <p role="status" className="text-sm text-muted-foreground">A secretaria está a validar o comprovativo. Não pagues novamente.</p>}
+        </>}
+        {selectedService && <><dl className="space-y-3 text-sm"><div><dt className="text-muted-foreground">Estado</dt><dd className="font-semibold">{selectedService.estado_label}</dd></div><div><dt className="text-muted-foreground">Valor</dt><dd className="text-xl font-semibold tabular-nums text-primary">{money.format(selectedService.valor)}</dd></div><div><dt className="text-muted-foreground">Protocolo</dt><dd className="break-words">{selectedService.protocolo}</dd></div><div><dt className="text-muted-foreground">Data</dt><dd>{new Date(selectedService.data).toLocaleDateString("pt-AO")}</dd></div></dl><p className="text-sm">{selectedService.mensagem_estado}</p><p className="text-sm font-medium">Próximo passo: {selectedService.proximo_passo}</p>
+          {!fetchError && selectedService.status === "pendente" && selectedService.appypay_intent_id && <StudentAppyPayButton targetId={selectedService.appypay_intent_id} kind="service" studentId={studentId} descricao={selectedService.nome} onPaid={refreshAfterPayment} />}
+          {selectedService.acao && <Link href={studentId ? `${selectedService.acao.href}&studentId=${encodeURIComponent(studentId)}` : selectedService.acao.href} className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold text-primary">{selectedService.acao.label} · Secretaria Digital</Link>}
+        </>}
+      </PortalSheet>
       <PaymentDrawer
-        open={paymentOpen && selectedMensalidades.length > 0}
-        mensalidades={selectedMensalidades}
+        open={ready && paymentOpen && paymentRows.length > 0}
+        mensalidades={paymentRows}
         dadosPagamento={dadosPagamento}
-        onClose={() => setPaymentOpen(false)}
-        onUploaded={(ids) => { setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds([]); }}
+        onClose={closePayment}
+        onUploaded={(ids) => { setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: "em_verificacao" } : r))); setSelectedIds(prev => prev.filter(id => !ids.includes(id))); }}
         studentId={studentId}
       />
     </div>

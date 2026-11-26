@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertCircle, ArrowRight, Wallet, TrendingUp, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -22,7 +22,7 @@ import { EstadoVazio } from "@/components/harmonia";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildPortalHref } from "@/lib/navigation";
 import PricingConfigurationModal from "@/components/financeiro/PricingConfigurationModal";
-import { ModalShell } from "@/components/ui/ModalShell";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 
 import type {
   KpiStats,
@@ -222,7 +222,6 @@ export default function EscolaAdminDashboardContent({
   const [dynamicPacingTarget, setDynamicPacingTarget] = useState(70);
   const [pricingModalOpen, setPricingModalOpen] = useState(false);
   const [revenueDetailsOpen, setRevenueDetailsOpen] = useState(false);
-  const revenueTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -527,7 +526,7 @@ export default function EscolaAdminDashboardContent({
                 <section aria-label="Recebido neste mês" className="rounded-xl border border-border bg-card p-5 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-sm font-medium text-muted-foreground">Recebido neste mês (caixa)</h2>
-                    <button ref={revenueTriggerRef} type="button" aria-haspopup="dialog" aria-expanded={revenueDetailsOpen} onClick={() => setRevenueDetailsOpen(true)} className="text-sm font-medium text-emerald underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <button type="button" aria-haspopup="dialog" aria-expanded={revenueDetailsOpen} onClick={() => setRevenueDetailsOpen(true)} className="text-sm font-medium text-emerald underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                       Ver detalhes
                     </button>
                   </div>
@@ -546,8 +545,8 @@ export default function EscolaAdminDashboardContent({
                   {hasMetaReceita && rawPercentualReceita > 100 && <p className="mt-2 text-xs text-muted-foreground">Caixa acima do previsto; pode incluir dívidas antigas, adiantamentos ou serviços.</p>}
                 </section>
               )}
-              <ModalShell open={revenueDetailsOpen} onClose={() => { setRevenueDetailsOpen(false); window.requestAnimationFrame(() => revenueTriggerRef.current?.focus({ preventScroll: true })); }} title="Detalhes financeiros do mês" description="Recebimentos em caixa e cobrança da competência">
-                {revenueDetailsOpen && hasMovimentoReceita && (
+              <PortalSheet open={revenueDetailsOpen && hasMovimentoReceita} onClose={() => setRevenueDetailsOpen(false)} size="medium" title="Detalhes financeiros do mês" description="Recebimentos em caixa e cobrança da competência">
+                {hasMovimentoReceita && (
                   <dl className="divide-y divide-border rounded-xl border border-border bg-card px-4">
                     {[
                       ["Recebido no mês (caixa)", realizadoReceita],
@@ -571,7 +570,7 @@ export default function EscolaAdminDashboardContent({
                     {hasMetaReceita && rawPercentualReceita > 100 && <div className="py-3 text-sm text-muted-foreground">O caixa pode incluir propinas de meses anteriores, adiantamentos ou serviços.</div>}
                   </dl>
                 )}
-              </ModalShell>
+              </PortalSheet>
             </>
           }
         />
