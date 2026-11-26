@@ -58,7 +58,7 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
           classificacoes: [{ trimestre: 1, nota: 17, status: "disponivel" }],
           avaliacoes: [{ nome: "Trabalho prático", tipo: "trabalho", trimestre: 1, nota: 17 }] },
       ] : [] },
-      "/api/aluno/minhas-notas": { ok: true, matricula_encontrada: true, is_liberado: true, nome_aluno: mode === "dashboard-empty" ? null : "Aluno de Teste", disciplinas: mode === "grade-empty" ? [] : ["paid", "grade-paid", "grade-unpaid", "grade-pending", "grade-rejected"].includes(mode) ? [
+      "/api/aluno/minhas-notas": { ok: true, matricula_encontrada: true, is_liberado: ["paid", "grade-paid", "grade-empty"].includes(mode), nome_aluno: mode === "dashboard-empty" ? null : "Aluno de Teste", disciplinas: mode === "grade-empty" ? [] : ["paid", "grade-paid"].includes(mode) ? [
         { id: "disc-1", nome: "Matemática",
           classificacoes: [{ trimestre: 1, nota: 16, status: "disponivel" }, { trimestre: 2, nota: 15, status: "disponivel" }],
           avaliacoes: [{ nome: "Prova trimestral", tipo: "prova", trimestre: 1, nota: 16 }, { nome: "Exame do período", tipo: "exame", trimestre: 2, nota: 15 }] },

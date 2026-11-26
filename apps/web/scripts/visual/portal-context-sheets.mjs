@@ -101,21 +101,22 @@ try {
       await page.keyboard.press("Escape");
       await daily.waitFor({state:"hidden"});
 
-      // Published grades are independent from payment for the official PDF.
-      // An empty publication must never disclose scores or offer assessment actions.
-      for(const mode of ["grade-paid","grade-unpaid","grade-empty"]){
+      // Both consultation and the official PDF require payment.
+      for(const mode of ["grade-paid","grade-unpaid","grade-pending","grade-rejected","grade-empty"]){
         await page.goto(base+"/?story="+mode);
         const grid=page.getByTestId("aluno-boletim-grid");
         const trigger=grid.getByRole("button",{name:"Ver detalhes de Matemática"});
         await trigger.waitFor();
-        if(mode==="grade-unpaid"){
-          assert.ok(await grid.getByRole("button",{name:"Boletim oficial requer autorização de pagamento"}).isDisabled(),"unpaid official PDF became available");
+        const locked=["grade-unpaid","grade-pending","grade-rejected"].includes(mode);
+        if(locked){
+          assert.ok(await grid.getByRole("button",{name:"Imprimir boletim indisponível até à liberação"}).isDisabled(),"unpaid official PDF became available");
+          assert.ok(await grid.getByRole("button",{name:"Exibir notas indisponível até à liberação do boletim"}).isDisabled(),"unpaid grades became available");
         }
         await trigger.click();
         const grades=page.getByRole("dialog",{name:"Matemática",exact:true});
-        if(mode==="grade-empty"){
-          await grades.getByText("Sem avaliações publicadas.",{exact:true}).waitFor();
-          assert.equal(await grades.locator('[aria-label^="Nota "]').count(),0,"unpublished scores disclosed");
+        if(locked || mode==="grade-empty"){
+          await grades.getByText(locked?"Consulta o estado do boletim para aceder às notas.":"Sem avaliações publicadas.",{exact:true}).waitFor();
+          assert.equal(await grades.locator('[aria-label^="Nota "]').count(),0,"protected scores disclosed");
           assert.equal(await grades.getByText("Prova trimestral",{exact:true}).count(),0);
           assert.equal(await grades.getByRole("button",{name:"Pedir reapreciação"}).count(),0);
           assert.equal(await grades.getByRole("button",{name:"Solicitar melhoria"}).count(),0);

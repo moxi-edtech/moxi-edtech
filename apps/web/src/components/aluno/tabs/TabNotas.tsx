@@ -259,8 +259,8 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           setPaymentIntentId(servico?.pagamento_intent_id ?? null);
           setBoletimPago(Boolean(catalog.boletim_pago));
           } catch {
-            // A indisponibilidade do catálogo pago não bloqueia a consulta
-            // das notas já publicadas e autorizadas ao educando.
+            // A autorização de consulta vem do servidor, não do catálogo.
+            // Sem confirmação do catálogo, manter o PDF indisponível.
             setBoletimPago(false);
             setPaymentError("Não foi possível consultar o serviço do boletim oficial.");
           }
