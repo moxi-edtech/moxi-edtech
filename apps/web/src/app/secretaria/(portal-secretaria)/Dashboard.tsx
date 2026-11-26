@@ -660,7 +660,7 @@ export function Dashboard({
             aria-haspopup="dialog"
             aria-expanded={balcaoModal === "matricular"}
             disabled={!escolaId}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-klasse-gold-700 px-4 text-sm font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-50"
           >
             <Plus size={16} aria-hidden="true" /> Matricular aluno
           </button>
