@@ -60,7 +60,7 @@ test("operations shares the cultural signature without changing academic authori
   assert.match(css, /\.klasse-portal-theme \.klasse-welcome-card,\s*\.klasse-welcome-card\.klasse-operations-academic-card/);
   assert.match(css, /background-position: center top/);
   assert.match(css, /background-size: 80px 20px/);
-  const calendar = read("app/professor/calendario/page.tsx");
+  const calendar = read("components/professor/ProfessorCalendarWorkspace.tsx");
   assert.match(calendar, /selectedEvent = items\.find/);
   assert.match(calendar, /<PortalSheet open=\{eventOpen/);
   assert.match(calendar, /selectedEvent\.descricao/);
@@ -79,7 +79,7 @@ test("contextual financial actions use confirmed scope and an immutable upload s
   assert.match(absences, /scope === query \? data : null/);
   assert.match(absences, /inFlight.current/);
   assert.match(absences, /<PortalSheet open=\{detailOpen/);
-  const notes = read("app/professor/notas/page.tsx");
+  const notes = read("components/professor/ProfessorGradesWorkspace.tsx");
   assert.match(notes, /loadedPautaScope === raaScope/);
   assert.match(notes, /mostrarTrimestresInativos: showInactiveTerms/);
   assert.match(notes, /<PortalSheet open=\{raaOpen/);
@@ -89,7 +89,7 @@ test("contextual financial actions use confirmed scope and an immutable upload s
 test("second round of sheets reuses authorized data without eager roster or timetable queries", () => {
   const professor = read("app/professor/page.tsx");
   const roster = read("components/professor/ProfessorTurmaRoster.tsx");
-  const calendar = read("app/professor/calendario/page.tsx");
+  const calendar = read("components/professor/ProfessorCalendarWorkspace.tsx");
   const dashboard = read("components/aluno/dashboard/DashboardLoader.tsx");
   const schedule = read("components/aluno/tabs/TabHorario.tsx");
   const grades = read("components/aluno/academico/BoletimGradeGrid.tsx");
