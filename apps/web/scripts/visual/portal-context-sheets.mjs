@@ -72,6 +72,71 @@ try {
       await page.keyboard.press("Escape");
       await periods.waitFor({state:"hidden"});
 
+      await page.getByRole("button",{name:"Histórico de avaliações"}).click();
+      const history=page.getByRole("dialog",{name:"Histórico de avaliações"});
+      await history.getByText("Avaliação anterior sintética",{exact:true}).waitFor();
+      await page.keyboard.press("Escape");
+      await history.waitFor({state:"hidden"});
+
+      await page.goto(base+"/?story=professor-com-turmas");
+      const turmaButton=page.getByRole("button",{name:/Matemática.*Língua Portuguesa/}).first();
+      await turmaButton.click();
+      const turmaSheet=page.getByRole("dialog");
+      await turmaSheet.getByText("Aluno sintético",{exact:true}).waitFor();
+      await page.keyboard.press("Escape");
+      await turmaSheet.waitFor({state:"hidden"});
+      const agendaButton=page.getByRole("button",{name:/08:00.*Matemática/});
+      await agendaButton.click();
+      const aulaSheet=page.getByRole("dialog",{name:"Matemática"});
+      await aulaSheet.getByText("Sala sintética",{exact:true}).waitFor();
+      await page.keyboard.press("Escape");
+      await aulaSheet.waitFor({state:"hidden"});
+
+      await page.goto(base+"/?story=dashboard-clean");
+      const nextLesson=page.getByRole("region",{name:"Próxima aula"}).getByRole("button").first();
+      await nextLesson.click();
+      const daily=page.getByRole("dialog",{name:"Horário diário"});
+      await daily.getByRole("button",{name:"Seg",exact:true}).click();
+      await daily.getByText("Matemática sintética",{exact:true}).waitFor();
+      await page.keyboard.press("Escape");
+      await daily.waitFor({state:"hidden"});
+
+      // Both consultation and the official PDF require payment.
+      for(const mode of ["grade-paid","grade-unpaid","grade-pending","grade-rejected","grade-empty"]){
+        await page.goto(base+"/?story="+mode);
+        const grid=page.getByTestId("aluno-boletim-grid");
+        const trigger=grid.getByRole("button",{name:"Ver detalhes de Matemática"});
+        await trigger.waitFor();
+        const locked=["grade-unpaid","grade-pending","grade-rejected"].includes(mode);
+        if(locked){
+          assert.ok(await grid.getByRole("button",{name:"Imprimir boletim indisponível até à liberação"}).isDisabled(),"unpaid official PDF became available");
+          assert.ok(await grid.getByRole("button",{name:"Exibir notas indisponível até à liberação do boletim"}).isDisabled(),"unpaid grades became available");
+        }
+        await trigger.click();
+        const grades=page.getByRole("dialog",{name:"Matemática",exact:true});
+        if(locked || mode==="grade-empty"){
+          await grades.getByText(locked?"Consulta o estado do boletim para aceder às notas.":"Sem avaliações publicadas.",{exact:true}).waitFor();
+          assert.equal(await grades.locator('[aria-label^="Nota "]').count(),0,"protected scores disclosed");
+          assert.equal(await grades.getByText("Prova trimestral",{exact:true}).count(),0);
+          assert.equal(await grades.getByRole("button",{name:"Pedir reapreciação"}).count(),0);
+          assert.equal(await grades.getByRole("button",{name:"Solicitar melhoria"}).count(),0);
+        } else {
+          await grades.getByText("Prova trimestral",{exact:true}).waitFor();
+          await grades.getByLabel("Nota 16",{exact:true}).waitFor();
+          assert.equal(await grid.getByTestId("boletim-assessment-details").count(),0,"assessment detail duplicated in grid");
+        }
+        await page.keyboard.press("Escape");
+        await grades.waitFor({state:"hidden"});
+        await page.waitForFunction(()=>document.activeElement?.getAttribute("aria-label")==="Ver detalhes de Matemática");
+        if(mode==="grade-paid"){
+          await page.getByRole("button",{name:"Situação académica"}).click();
+          const academic=page.getByRole("dialog",{name:"Situação académica"});
+          await academic.getByText("Nenhuma dependência académica encontrada.").waitFor();
+          await page.keyboard.press("Escape");
+          await academic.waitFor({state:"hidden"});
+        }
+      }
+
       let financeRequests=0;
       await page.route("**/api/aluno/financeiro?*",async route=>{
         financeRequests++;

@@ -85,3 +85,26 @@ test("contextual financial actions use confirmed scope and an immutable upload s
   assert.match(notes, /<PortalSheet open=\{raaOpen/);
   assert.match(notes, /<PortalSheet open=\{exportOpen/);
 });
+
+test("second round of sheets reuses authorized data without eager roster or timetable queries", () => {
+  const professor = read("app/professor/page.tsx");
+  const roster = read("components/professor/ProfessorTurmaRoster.tsx");
+  const calendar = read("app/professor/calendario/page.tsx");
+  const dashboard = read("components/aluno/dashboard/DashboardLoader.tsx");
+  const schedule = read("components/aluno/tabs/TabHorario.tsx");
+  const grades = read("components/aluno/academico/BoletimGradeGrid.tsx");
+  const notes = read("components/aluno/tabs/TabNotas.tsx");
+  assert.ok(professor.includes("<PortalSheet open={Boolean(selectedTurma)}"));
+  assert.ok(professor.includes("<PortalSheet open={Boolean(selectedLesson)}"));
+  assert.ok(professor.includes("{selectedTurma && <>"));
+  assert.ok(roster.includes("payload.turmaId !== turmaId"));
+  assert.ok(roster.includes("return () => ctrl.abort()"));
+  assert.ok(calendar.includes('item.tipo === "AVALIACAO_ESCOLAR" && item.data_fim < todayIso'));
+  assert.ok(calendar.includes("<PortalSheet open={historyOpen}"));
+  assert.ok(dashboard.includes("{lessonOpen && <TabHorario"));
+  assert.ok(schedule.includes("resolvedRequestKey === requestKey"));
+  assert.ok(grades.includes("const sheetOpen = Boolean(expandedId && sheetSubject && sheetTerm)"));
+  assert.ok(grades.includes("avaliacoes: locked ? [] : subject.avaliacoes"));
+  assert.ok(notes.includes("safeIsLiberado && !historicalRead && matriculaEncontrada"));
+  assert.ok(notes.includes("academicStatusScope === bulletinQuery"));
+});

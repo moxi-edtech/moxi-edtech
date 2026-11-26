@@ -58,7 +58,7 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
           classificacoes: [{ trimestre: 1, nota: 17, status: "disponivel" }],
           avaliacoes: [{ nome: "Trabalho prático", tipo: "trabalho", trimestre: 1, nota: 17 }] },
       ] : [] },
-      "/api/aluno/minhas-notas": { ok: true, matricula_encontrada: true, is_liberado: true, nome_aluno: mode === "dashboard-empty" ? null : "Aluno de Teste", disciplinas: mode === "grade-empty" ? [] : ["paid", "grade-paid", "grade-unpaid", "grade-pending", "grade-rejected"].includes(mode) ? [
+      "/api/aluno/minhas-notas": { ok: true, matricula_encontrada: true, is_liberado: ["paid", "grade-paid", "grade-empty"].includes(mode), nome_aluno: mode === "dashboard-empty" ? null : "Aluno de Teste", disciplinas: mode === "grade-empty" ? [] : ["paid", "grade-paid"].includes(mode) ? [
         { id: "disc-1", nome: "Matemática",
           classificacoes: [{ trimestre: 1, nota: 16, status: "disponivel" }, { trimestre: 2, nota: 15, status: "disponivel" }],
           avaliacoes: [{ nome: "Prova trimestral", tipo: "prova", trimestre: 1, nota: 16 }, { nome: "Exame do período", tipo: "exame", trimestre: 2, nota: 15 }] },
@@ -73,7 +73,12 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
         { turma: { id: "turma-fixture", nome: "7ª Classe A" }, disciplina: { id: "disc-mat", nome: "Matemática" } },
         { turma: { id: "turma-fixture", nome: "7ª Classe A" }, disciplina: { id: "disc-por", nome: "Língua Portuguesa" } },
       ] },
-      "/api/professor/agenda": { ok: true, items: [] },
+      "/api/professor/agenda": { ok: true, items: [{
+        turma_id: "turma-fixture", disciplina_id: "disc-mat", turma_nome: "7ª Classe A", disciplina_nome: "Matemática",
+        sala_nome: "Sala sintética", dia_semana: ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Luanda", weekday: "short" }).format(new Date())) || 7, inicio: "08:00", fim: "08:45",
+      }] },
+      "/api/professor/turmas/turma-fixture/alunos": { ok: true, turmaId: "turma-fixture", items: [{ matricula_id: "fixture-enrollment", id: "fixture-student", nome: "Aluno sintético" }] },
+      "/api/aluno/horario": { ok: true, version: "fixture-version", slots: [{ id: "fixture-slot", dia_semana: 1, ordem: 1, inicio: "08:00", fim: "08:45", is_intervalo: false }], assignments: [{ slot_id: "fixture-slot", disciplina: "Matemática sintética", professor: "Professor sintético", sala: "Sala sintética" }] },
       "/api/professor/aulas": { ok: true, items: [] },
       "/api/professor/dashboard/pendencias": { ok: true, avaliacoes_pendentes: 2, faltas_a_lancar: 0 },
       "/api/professor/dashboard/overview": { ok: true, escola_nome: "Escola Fictícia de Testes", primeiro_nome: "Professor" },

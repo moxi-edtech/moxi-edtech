@@ -59,7 +59,7 @@ const DIAS_SEMANA = [
   { id: 5, nome: "Sexta" },
 ];
 
-export function TabHorario() {
+export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) {
   const searchParams = useSearchParams();
   const studentId = searchParams?.get("aluno") ?? null;
   const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
@@ -72,7 +72,10 @@ export function TabHorario() {
   const [resolvedRequestKey, setResolvedRequestKey] = useState<string | null>(null);
   const visibleData = resolvedRequestKey === requestKey ? data : null;
   const timetableLoading = loading || resolvedRequestKey !== requestKey;
-  const [activeDay, setActiveDay] = useState<number>(Math.min(5, Math.max(1, new Date().getDay())));
+  const [activeDay, setActiveDay] = useState<number>(() => {
+    const day = new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Luanda", weekday: "short" }).format(new Date());
+    return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(day);
+  });
   const [activeTab, setActiveTab] = useState<"horario" | "agenda">("horario");
   const [academicEvents, setAcademicEvents] = useState<AcademicEvent[]>([]);
   const [agendaLoading, setAgendaLoading] = useState(false);
@@ -162,7 +165,7 @@ export function TabHorario() {
 
   return (
     <div className="min-w-0 space-y-6">
-      <header className="space-y-1">
+      {!dailyOnly && <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Horário</h1>
         {visibleData?.context?.anoLetivoLabel && (
           <p className="text-xs font-semibold text-primary">
@@ -170,10 +173,10 @@ export function TabHorario() {
             {visibleData.context.mode === "HISTORICAL_READ" ? " · Histórico" : ""}
           </p>
         )}
-      </header>
+      </header>}
 
       {/* Switcher Sóbrio de Modos */}
-      <div role="group" aria-label="Horário e calendário" className="flex w-full rounded-xl bg-muted p-1">
+      {!dailyOnly && <div role="group" aria-label="Horário e calendário" className="flex w-full rounded-xl bg-muted p-1">
         <button
           type="button"
           onClick={() => setActiveTab("horario")}
@@ -198,7 +201,7 @@ export function TabHorario() {
         >
           Próximos eventos
         </button>
-      </div>
+      </div>}
 
       {/* MODO 1: Grade de Aulas Semanal */}
       {activeTab === "horario" && (timetableLoading ? (
@@ -229,6 +232,7 @@ export function TabHorario() {
         </section>
       ) : (
         <div className="space-y-4 animate-in fade-in duration-200">
+          {dailyOnly && visibleData.context?.anoLetivoLabel && <p className="text-xs text-muted-foreground">Ano lectivo {visibleData.context.anoLetivoLabel}</p>}
           {/* Selector de Dias */}
           <div role="group" aria-label="Dia da semana" className="grid grid-cols-5 gap-1.5">
             {DIAS_SEMANA.map((dia) => (

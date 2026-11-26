@@ -209,14 +209,14 @@ try {
             errors.push(`${name} ${width}x${height} zoom ${zoom}: invented schedule or notices`);
         }
         if (name.startsWith("grade-")) {
-          if (["grade-paid","grade-unpaid","grade-pending","grade-rejected"].includes(name) && !metrics.bodyText.includes("Matemática")) errors.push(`${name}: published grades missing`);
+          if (["grade-paid","grade-unpaid","grade-pending","grade-rejected"].includes(name) && !metrics.bodyText.includes("Matemática")) errors.push(`${name}: curriculum missing`);
           if (name === "grade-paid" && (!metrics.bodyText.includes("Matemática") || !metrics.bodyText.includes("16") || !metrics.bodyText.includes("17"))) errors.push(`${name}: paid grades missing from trimester grid`);
           if (name === "grade-pending" && !metrics.bodyText.includes("Comprovativo recebido")) errors.push(`${name}: pending state missing`);
           if (name === "grade-unpaid" && !metrics.bodyText.includes("Solicitar boletim")) errors.push(`${name}: payment CTA missing`);
           if (name === "grade-rejected" && !metrics.bodyText.includes("Reenviar comprovativo")) errors.push(`${name}: resubmit action missing`);
           if (name === "grade-empty" && !metrics.bodyText.includes("Ainda não há avaliações publicadas")) errors.push(`${name}: empty state missing`);
           if (!metrics.bodyText.includes("Minhas notas")) errors.push(`${name}: grade grid missing`);
-          if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && !metrics.bodyText.includes("Prova trimestral") && !metrics.bodyText.includes("16")) errors.push(`${name}: published assessments missing`);
+          if (["grade-unpaid","grade-pending","grade-rejected"].includes(name) && (!metrics.bodyText.includes("Notas protegidas") || metrics.bodyText.includes("Prova trimestral"))) errors.push(`${name}: unpaid grades not protected`);
         }
         if ((name.startsWith("grade-") || name.startsWith("notice-")) && metrics.nestedScrolls) errors.push(`${name}: unnecessary nested scroll`);
         report.push({ name, width, height, zoom, horizontalOverflow: metrics.horizontalOverflow, nestedScrolls: metrics.nestedScrolls, fixtureRendered: visible, output });
@@ -290,8 +290,10 @@ try {
       await grid.getByText("16", { exact: true }).first().waitFor();
       await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
       const assessment = page.getByRole("dialog",{name:"Matemática",exact:true});
-      const details = (page.viewportSize()?.width ?? 0) < 768 ? assessment : grid;
-      await details.getByText("Prova trimestral").waitFor();
+      // PortalSheet renders through a Radix portal on every viewport.
+      const details = assessment;
+      await details.getByText("Prova trimestral",{exact:true}).waitFor();
+      if (await grid.getByTestId("boletim-assessment-details").count()) errors.push("grade-paid: assessment details duplicated in the grid");
       await details.getByRole("button", { name: "Pedir reapreciação" }).click();
       await page.getByRole("dialog", { name: /Solicitar reapreciação/ }).waitFor();
       await page.keyboard.press("Tab");
@@ -308,11 +310,13 @@ try {
       await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor();
       await page.getByRole("button", { name: "Cancelar" }).click();
       await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor({ state: "hidden" });
-      if (details === assessment) { await page.keyboard.press("Escape"); await assessment.waitFor({state:"hidden"}); }
+      await page.keyboard.press("Escape");
+      await assessment.waitFor({state:"hidden"});
       await grid.getByRole("button", { name: "2.º trimestre" }).click();
       await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
       await details.getByText("Exame do período").waitFor();
-      if (details === assessment) { await page.keyboard.press("Escape"); await assessment.waitFor({state:"hidden"}); }
+      await page.keyboard.press("Escape");
+      await assessment.waitFor({state:"hidden"});
       if (await grid.getByText("Biologia", { exact: true }).count()) errors.push("grade-paid: first-term-only subject appears in second trimester");
       await grid.getByRole("button", { name: "Por disciplina" }).click();
       const selector = grid.getByRole("combobox", { name: "Disciplina" });
@@ -325,12 +329,18 @@ try {
       const grid = page.getByTestId("aluno-boletim-grid");
       await grid.waitFor({ timeout: 10000 });
       await grid.getByText("Matemática", { exact: true }).first().waitFor({ timeout: 10000 });
-      if (!(await grid.getByRole("button", { name: /Ocultar notas/ }).isEnabled())) {
-        errors.push("grade-unpaid: published grades unexpectedly blocked");
+      if (!(await grid.getByRole("button", { name: /Exibir notas indisponível até à liberação/ }).isDisabled())) {
+        errors.push("grade-unpaid: published grades unexpectedly available");
       }
-      if (!(await grid.getByRole("button", { name: /Boletim oficial requer autorização de pagamento/ }).isDisabled())) {
+      if (!(await grid.getByRole("button", { name: /Imprimir boletim indisponível até à liberação/ }).isDisabled())) {
         errors.push("grade-unpaid: official PDF unexpectedly enabled");
       }
+      await grid.getByRole("button",{name:"Ver detalhes de Matemática"}).click();
+      const assessment=page.getByRole("dialog",{name:"Matemática",exact:true});
+      await assessment.getByText("Consulta o estado do boletim para aceder às notas.",{exact:true}).waitFor();
+      if (await assessment.locator('[aria-label^="Nota "]').count()) errors.push("grade-unpaid: scores leaked in drawer");
+      await page.keyboard.press("Escape");
+      await assessment.waitFor({state:"hidden"});
     }
     if (["notice-info","notice-attention","notice-finance"].includes(name)) {
       await page.keyboard.press("Tab");
