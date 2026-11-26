@@ -111,3 +111,23 @@ test("second round of sheets reuses authorized data without eager roster or time
   assert.ok(notes.includes("safeIsLiberado && !historicalRead && matriculaEncontrada"));
   assert.ok(notes.includes("academicStatusScope === bulletinQuery"));
 });
+
+test("drawer navigator mantém um único diálogo, isolamento por contexto e retorno à origem", () => {
+  const navigator = read("components/portal/ui/PortalDrawerNavigator.tsx");
+  const sheet = read("components/portal/ui/PortalSheet.tsx");
+  const notices = read("components/aluno/tabs/TabNotificacoes.tsx");
+  const timetable = read("components/professor/ProfessorTurmaHorario.tsx");
+  const direct = read("app/professor/turmas/[turmaId]/horario/page.tsx");
+  assert.equal(navigator.match(/<PortalSheet\b/g)?.length, 1);
+  assert.match(navigator, /stack.rootId === root.id/);
+  assert.match(navigator, /hidden=\{entries.length > 0\}/);
+  assert.match(navigator, /entries.slice\(0, -1\)/);
+  assert.match(navigator, /body.current.scrollTop = target\?\.top/);
+  assert.match(navigator, /target.opener.focus/);
+  assert.match(sheet, /onBack && <button/);
+  assert.match(notices, /navigation.push\(/);
+  assert.match(notices, /!navigation && <PortalSheet/);
+  assert.match(timetable, /\/api\/professor\/turmas\//);
+  assert.match(timetable, /return \(\) => ctrl.abort\(\)/);
+  assert.match(direct, /<ProfessorTurmaHorario/);
+});
