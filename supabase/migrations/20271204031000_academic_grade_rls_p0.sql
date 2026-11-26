@@ -156,6 +156,17 @@ create policy klasse_exame_resultados_read_boundary on public.exame_resultados a
  using (internal.klasse_grade_staff(escola_id) or internal.klasse_grade_teacher(escola_id,turma_disciplina_id)
  or internal.klasse_grade_portal_paid(escola_id,matricula_id));
 
+-- Prevent a second permissive write policy from reopening tenant-wide writes.
+create policy klasse_avaliacoes_insert_boundary on public.avaliacoes as restrictive for insert to authenticated
+ with check (internal.klasse_grade_staff(escola_id) or internal.klasse_grade_teacher(escola_id,turma_disciplina_id));
+create policy klasse_avaliacoes_update_boundary on public.avaliacoes as restrictive for update to authenticated
+ using (internal.klasse_grade_staff(escola_id) or internal.klasse_grade_teacher(escola_id,turma_disciplina_id))
+ with check (internal.klasse_grade_staff(escola_id) or internal.klasse_grade_teacher(escola_id,turma_disciplina_id));
+create policy klasse_avaliacoes_delete_boundary on public.avaliacoes as restrictive for delete to authenticated
+ using (internal.klasse_grade_staff(escola_id) or internal.klasse_grade_teacher(escola_id,turma_disciplina_id));
+create policy klasse_exame_resultados_insert_boundary on public.exame_resultados as restrictive for insert to authenticated
+ with check (internal.klasse_grade_staff(escola_id) or internal.klasse_grade_teacher(escola_id,turma_disciplina_id));
+
 -- A dependency carries the source grade; payment for a different year's
 -- enrollment must not unlock it.
 drop policy if exists dependencias_academicas_transicao_select on public.dependencias_academicas_transicao;
@@ -167,6 +178,10 @@ drop policy if exists dependencias_academicas_eventos_select on public.dependenc
 create policy dependencias_academicas_eventos_select on public.dependencias_academicas_transicao_eventos for select to authenticated
  using (exists(select 1 from public.dependencias_academicas_transicao d
    where d.id=dependencia_id and d.escola_id=dependencias_academicas_transicao_eventos.escola_id));
+
+create policy klasse_dependencias_eventos_read_boundary on public.dependencias_academicas_transicao_eventos as restrictive for select to authenticated
+ using (exists(select 1 from public.dependencias_academicas_transicao d
+ where d.id=dependencia_id and d.escola_id=dependencias_academicas_transicao_eventos.escola_id));
 
 -- Materialized views have no row-level security. Do not expose raw MV access.
 -- Deliberately owner-executed security-barrier view: explicit row authorization

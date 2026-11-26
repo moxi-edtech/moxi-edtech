@@ -1,0 +1,36 @@
+name: Academic Grade RLS P0
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20271204031000_academic_grade_rls_p0.sql'
+      - 'supabase/ops/tests/academic_grade_rls_p0*'
+      - '.github/workflows/academic-grade-rls-p0.yml'
+permissions:
+  contents: read
+jobs:
+  disposable-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: grade_rls_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migration to synthetic data and assert role boundaries
+        run: |
+          psql -h localhost -U postgres -d grade_rls_test -v ON_ERROR_STOP=1 \
+            -f supabase/ops/tests/academic_grade_rls_p0_bootstrap.sql \
+            -f supabase/migrations/20271204031000_academic_grade_rls_p0.sql \
+            -f supabase/ops/tests/academic_grade_rls_p0_regression.sql
