@@ -1,3 +1,4 @@
+import { printAssessmentCalendar,parseAssessmentPrintTerm,assessmentPrintError } from "@/lib/academico/assessment-calendar-print-server";
 import { NextResponse } from "next/server";
 import { readPublishedAssessmentEvents } from "@/lib/academico/published-assessment-events";
 import { getAlunoContext } from "@/lib/alunoContext";
@@ -46,6 +47,11 @@ export async function GET(req: Request) {
       operation: "READ",
     });
 
+    if(params.get("modo")==="imprimir"){
+      const term=parseAssessmentPrintTerm(params);
+      if(term===undefined||params.has("conferencia")||params.has("turma")||params.has("classe"))return assessmentPrintError("Selecção inválida.");
+      return await printAssessmentCalendar(supabase,{escolaId:ctx.escolaId,yearId:context.anoLetivoId,year:context.anoLetivoLabel,term,allowedClassIds:matricula?.turma_id?[matricula.turma_id]:[]});
+    }
     let offeringIds: string[] = [];
     let turmaGrade: string | null = null;
     let isExamClass = false;

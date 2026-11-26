@@ -1,7 +1,9 @@
 "use client";
 import { useEffect,useRef,useState } from "react";
 import dynamic from "next/dynamic";
-import { ClipboardList,Copy,Eye,Pencil,Plus,Printer,Trash2,Minus,ChevronDown,ChevronUp,ArrowLeft,ArrowRight,Ellipsis,ListOrdered,FileText,Heading,ImagePlus } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { buildPortalHref,getEscolaParamFromPath } from "@/lib/navigation";
+import { CalendarDays,ClipboardList,Copy,Eye,Pencil,Plus,Printer,Trash2,Minus,ChevronDown,ChevronUp,ArrowLeft,ArrowRight,Ellipsis,ListOrdered,FileText,Heading,ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { estados,tipos,tiposProva,provaDisplayTitle,provaSubtitle,tituloAoMudarTipo,provaWriteSchema,type Bloco,type Prova,type ProvaInput,type ProvaResumo,type AnoProva,type ContextoProva,type TipoProva } from "@/lib/provas/schema";
@@ -30,6 +32,8 @@ type Action="submeter"|"aprovar"|"devolver"|"arquivar"|"duplicar";
 async function response(r:Response){const b=await r.json();if(!r.ok)throw new Error(b.error||"Não foi possível concluir a operação.");return b;}
 export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=false,onDismiss}:{escolaId:string;printOnly?:boolean;teacherWizard?:boolean;onDismiss?:()=>void}){
  const endpoint="/api/escola/"+encodeURIComponent(escolaId)+"/provas";
+ const pathname=usePathname();
+ const calendarHref=buildPortalHref(getEscolaParamFromPath(pathname)??escolaId,pathname?.includes("/operacoes")?"/operacoes/academico/calendario-avaliacoes":pathname?.includes("/admin/")?"/admin/operacoes-academicas/calendario-avaliacoes":"/secretaria/operacoes-academicas/calendario-avaliacoes");
  const [rows,setRows]=useState<ProvaResumo[]>([]),[school,setSchool]=useState(""),[permissions,setPermissions]=useState<Permissions|null>(null);
  const [offset,setOffset]=useState(0),[revision,setRevision]=useState(0),[loading,setLoading]=useState(true),[listError,setListError]=useState("");
  const [filters,setFilters]=useState<Record<string,string>>({});
@@ -242,7 +246,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  }
  const actionLabels:Record<Action,string>={submeter:"Enviar para revisão",aprovar:"Publicar prova",devolver:"Devolver para edição",arquivar:"Arquivar",duplicar:"Duplicar"};
  const listing=<div className="min-w-0 space-y-4">
-  <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="provas-heading" tabIndex={-1} className="break-words text-lg font-semibold text-klasse-green dark:text-foreground">{printOnly||permissions&&!permissions.author?"Central de impressão de provas":"Provas e impressos pedagógicos"}</h2><p className="text-sm text-muted-foreground">{permissions?.author?"Elabore, reveja e imprima avaliações.":"Consulte e imprima as provas aprovadas."}</p></div><div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">{(permissions?.author||permissions?.distribute)&&<Button asChild variant="outline" className="w-full sm:w-auto"><a href={endpoint+"/print?modo=folha_generica"} target="_blank" rel="noopener noreferrer"><Printer/> Imprimir folha genérica</a></Button>}{permissions?.author&&<Button tone="gold" className="w-full sm:w-auto" disabled={busy||loading} onClick={e=>{rememberOpener(e.currentTarget);create();}}><Plus/> Nova prova</Button>}</div></div>
+  <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="provas-heading" tabIndex={-1} className="break-words text-lg font-semibold text-klasse-green dark:text-foreground">{printOnly||permissions&&!permissions.author?"Central de impressão de provas":"Provas e impressos pedagógicos"}</h2><p className="text-sm text-muted-foreground">{permissions?.author?"Elabore, reveja e imprima avaliações.":"Consulte e imprima as provas aprovadas."}</p></div><div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">{(permissions?.admin||permissions?.distribute)&&!teacherWizard&&<Button asChild variant="outline" className="w-full sm:w-auto"><a href={calendarHref}><CalendarDays/> Calendário de Avaliações</a></Button>}{(permissions?.author||permissions?.distribute)&&<Button asChild variant="outline" className="w-full sm:w-auto"><a href={endpoint+"/print?modo=folha_generica"} target="_blank" rel="noopener noreferrer"><Printer/> Imprimir folha genérica</a></Button>}{permissions?.author&&<Button tone="gold" className="w-full sm:w-auto" disabled={busy||loading} onClick={e=>{rememberOpener(e.currentTarget);create();}}><Plus/> Nova prova</Button>}</div></div>
   {permissions?.admin&&<form className="grid gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-3 lg:grid-cols-4" onSubmit={e=>{e.preventDefault();const fd=new FormData(e.currentTarget);setOffset(0);setFilters(Object.fromEntries(Array.from(fd.entries()).map(([k,v])=>[k,String(v).trim()]).filter(([,v])=>v)));}} onReset={()=>{setOffset(0);setFilters({});}}>
   <label className="grid gap-1 text-sm">Tipo<select name="tipo" className={input}><option value="">Todos os tipos</option>{Object.entries(tiposProva).map(([v,label])=><option key={v} value={v}>{label}</option>)}</select></label>
   <label className="grid gap-1 text-sm">Estado<select name="estado" className={input}><option value="">Todos os estados</option>{Object.entries(estados).map(([v,label])=><option key={v} value={v}>{label}</option>)}</select></label>

@@ -512,3 +512,13 @@ test("explicit answer format overrides question type without changing legacy lay
  assert.equal((provaHtml({...base,conteudo:[{...item,tipo:"calculo",linhas:3,resposta_formato:"linhas"}]},"Curtume").match(/class="linha"/g)||[]).length,3);
  assert.doesNotMatch(provaHtml({...base,conteudo:[{...item,linhas:0,resposta_formato:"nenhum"}]},"Curtume"),/class="espaco"|class="linha"/);
 });
+
+
+test("assessment calendar separates class schedules, escapes names and excludes unpublished rows",()=>{
+ const {assessmentCalendarHtml}=require("../../src/lib/academico/assessment-calendar-print.ts");
+ const base={turmaId:"a",turma:"7A <script>",disciplina:"Matemática",tipo:"Prova trimestral",data:"2026-12-07",inicio:"08:00",fim:"09:30",estado:"publicado"};
+ const input={school:"Curtume & Escola",year:"2026/2027",term:1,nonce:"nonce",rows:[base,{...base,turmaId:"b",turma:"7B",inicio:"14:00",fim:"15:30"},{...base,disciplina:"RASCUNHO_TEST",estado:"rascunho"},{...base,disciplina:"CANCELADO_TEST",estado:"cancelado"}]};
+ const html=assessmentCalendarHtml(input);
+ assert.match(html,/@page\{size:A4/);assert.match(html,/7A &lt;script&gt;/);assert.match(html,/Curtume &amp; Escola/);assert.match(html,/08:00 – 09:30/);assert.match(html,/14:00 – 15:30/);assert.equal((html.match(/<section>/g)||[]).length,2);assert.doesNotMatch(html,/RASCUNHO_TEST|CANCELADO_TEST/);
+ const draft=assessmentCalendarHtml({...input,conference:true});assert.match(draft,/DOCUMENTO DE CONFERÊNCIA/);assert.match(draft,/RASCUNHO_TEST/);assert.doesNotMatch(draft,/CANCELADO_TEST/);
+});

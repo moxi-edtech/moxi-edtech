@@ -3,11 +3,11 @@ import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X, AlertTriangle, Search } from "lucide-react";
+import { CalendarCheck, CalendarDays, Printer, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X, AlertTriangle, Search } from "lucide-react";
 import { assessmentPlanOverlaps, type AssessmentScheduleSlot } from "@/lib/academico/assessment-plan-overlaps";
 
 type Period = { id: string; numero: number; data_inicio: string; data_fim: string; offering_id: string | null };
-type Class = { id: string; nome: string; curso_id: string };
+type Class = { id: string; nome: string; curso_id: string; classe_num?: number | string | null };
 type Subject = { id: string; turma_id: string; nome: string };
 type Entry = { id: string; turma_id: string; turma_disciplina_id: string; periodo_letivo_id: string; data: string; inicio: string; fim: string | null; descricao: string | null; tipo: string; estado: string };
 type ScheduledAssessment = { data: string; inicio: string; fim: string; descricao: string };
@@ -55,6 +55,13 @@ export default function CalendarioAvaliacoesClient() {
   const [week,setWeek] = useState(() => startWeek(today()));
   const [classFilter,setClassFilter] = useState("");
   const [agendaSearch,setAgendaSearch] = useState("");
+  const [printOpen,setPrintOpen]=useState(false);
+  const [printScope,setPrintScope]=useState<"turma"|"classe"|"escola">("turma");
+  const [printClass,setPrintClass]=useState("");
+  const [printTurma,setPrintTurma]=useState("");
+  const [printDraft,setPrintDraft]=useState(false);
+  const printClasses=[...new Set((data?.turmas??[]).flatMap(t=>t.classe_num==null?[]:[String(t.classe_num)]))].sort((a,b)=>Number(a)-Number(b));
+  const printHref=endpoint+"?"+new URLSearchParams({modo:"imprimir",trimestre:String(num),escopo:printScope,...(printScope==="turma"?{turma:printTurma}:printScope==="classe"?{classe:printClass}:{}),...(printDraft?{conferencia:"1"}:{})}).toString();
 
   const reload = useCallback(async () => {
     const result = await fetch(endpoint, { cache: "no-store" });
@@ -215,13 +222,25 @@ export default function CalendarioAvaliacoesClient() {
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
         <p className="text-xs font-semibold uppercase text-muted-foreground">Operações Académicas / Avaliações</p>
-        <h1 className="text-2xl font-bold text-primary">Calendário de avaliações</h1>
+        <h1 className="text-2xl font-bold text-primary">Calendário de Avaliações</h1>
         <p className="text-sm text-muted-foreground">Planear por turma e disciplina, publicar em lote e consultar alterações.</p>
       </div>
+      <div className="flex flex-wrap gap-2"><button type="button" className={action+" min-h-11 border border-border"} disabled={!data?.ano} aria-expanded={printOpen} aria-controls="avaliacoes-impressao" onClick={()=>{setPrintTurma(classFilter||classIds[0]||"");setPrintClass(printClasses[0]??"");setPrintOpen(v=>!v);}}><Printer size={16}/> Imprimir calendário</button>
       <button type="button" className={action + " border border-border"} onClick={() => void reload().catch((e) => setErr(e.message))}>
         <RefreshCw size={16} /> Atualizar
-      </button>
+      </button></div>
     </header>
+    {printOpen&&data?.ano&&<section id="avaliacoes-impressao" aria-label="Imprimir calendário de avaliações" className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <h2 className="font-semibold text-klasse-green">Imprimir calendário de avaliações</h2>
+      <p className="text-sm text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano+1} · {num}.º trimestre. Cada turma mantém o seu próprio horário.</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="grid gap-1 text-sm">Modalidade<select className={control} value={printScope} onChange={e=>setPrintScope(e.target.value as typeof printScope)}><option value="turma">Por turma</option><option value="classe">Por classe</option><option value="escola">Toda a escola</option></select></label>
+        {printScope==="turma"&&<label className="grid gap-1 text-sm">Turma<select className={control} value={printTurma} onChange={e=>setPrintTurma(e.target.value)}><option value="">Seleccione a turma</option>{data.turmas.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}</select></label>}
+        {printScope==="classe"&&<label className="grid gap-1 text-sm">Classe<select className={control} value={printClass} onChange={e=>setPrintClass(e.target.value)}><option value="">Seleccione a classe</option>{printClasses.map(c=><option key={c} value={c}>{c==="0"?"Iniciação":c+".ª Classe"}</option>)}</select></label>}
+      </div>
+      <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={printDraft} onChange={e=>setPrintDraft(e.target.checked)}/> Incluir rascunhos (documento de conferência)</label>
+      {(printScope==="escola"||(printScope==="turma"&&printTurma)||(printScope==="classe"&&printClass))?<a className={action+" min-h-11 bg-klasse-gold text-klasse-gold-900"} href={printHref} target="_blank" rel="noopener noreferrer"><Printer size={16}/> Pré-visualizar calendário</a>:<p className="text-xs text-muted-foreground">Seleccione uma turma ou classe.</p>}
+    </section>}
     {err && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{err}</p>}
     {notice && <p role="status" className="rounded-xl border border-border p-3 text-sm text-primary">{notice}</p>}
     {!data?.ano ? <p className="rounded-xl border p-6 text-sm">Configure um ano letivo ativo antes de planear avaliações.</p> : <>

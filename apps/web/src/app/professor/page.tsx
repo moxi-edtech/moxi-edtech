@@ -374,6 +374,7 @@ export default function Page() {
           <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">Provas</span><span className="block text-xs text-muted-foreground">Elaborar, enviar para revisão e consultar</span></span>
           <span className="shrink-0 text-xs font-semibold text-klasse-green">Abrir</span>
         </Link>}
+        <Link href={professorHref("/professor/calendario#avaliacoes")} prefetch={false} className="flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-3 hover:border-ring focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"><CalendarDays className="h-5 w-5 shrink-0 text-klasse-green"/><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Calendário de Avaliações</span><span className="block text-xs text-muted-foreground">Consultar datas e imprimir</span></span></Link>
         <ProfessorReopeningRequests assignments={atribs} notesHref={professorHref("/professor/notas")} />
 
         {/* Aula actual: só mostra o estado real da aula, não presume que já começou. */}
