@@ -9,9 +9,8 @@ import {
   CalendarX,
   CalendarCheck,
   FileEdit,
-  AlertCircle,
   UserPlus,
-  Building,
+  UsersRound,
   RefreshCcw,
   Upload,
   UserCheck,
@@ -19,8 +18,12 @@ import {
   Printer,
   Share2,
   MessageCircle,
+  Plus,
+  Search,
+  ListOrdered,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -31,63 +34,109 @@ import { BuscaBalcaoRapido } from "@/components/secretaria/BuscaBalcaoRapido";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { DashboardHeader, NoticePanel } from "@/components/dashboard";
 import OperacoesPainelHub from "@/components/layout/operacoes/OperacoesPainelHub";
-import StatCard from "@/components/shared/StatCard";
-import SecaoLabel from "@/components/shared/SecaoLabel";
+import {
+  OperationalMetricCard,
+  OperationalMetricSkeleton,
+} from "@/components/shared/OperationalMetricCard";
+import { EstadoVitalBanner } from "@/components/layout/escola-admin/EstadoVitalBanner";
+import type { EstadoVital } from "@/components/layout/escola-admin/dashboard.types";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import ExpedienteDashboardCard from "@/components/secretaria/ExpedienteDashboardCard";
-import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
+import {
+  RadarOperacional,
+  type OperationalAlert,
+} from "@/components/feedback/FeedbackSystem";
 import { FichaRapidaModal } from "@/components/secretaria/FichaRapidaModal";
 import type { DashboardCounts, DashboardRecentes } from "./types";
 
 const ResumoCaixaSecretaria = dynamic(
-  () => import("@/components/secretaria/ResumoCaixaSecretaria").then((mod) => mod.ResumoCaixaSecretaria),
+  () =>
+    import("@/components/secretaria/ResumoCaixaSecretaria").then(
+      (mod) => mod.ResumoCaixaSecretaria,
+    ),
   {
     ssr: false,
-    loading: () => <div role="status" aria-label="A carregar resumo de caixa" className="h-20 rounded-xl border border-border bg-card motion-safe:animate-pulse" />,
-  }
+    loading: () => (
+      <div
+        role="status"
+        aria-label="A carregar resumo de caixa"
+        className="h-20 rounded-xl border border-border bg-card motion-safe:animate-pulse"
+      />
+    ),
+  },
 );
 
 const MinhaProdutividade = dynamic(
-  () => import("@/components/secretaria/MinhaProdutividade").then((mod) => mod.MinhaProdutividade),
+  () =>
+    import("@/components/secretaria/MinhaProdutividade").then(
+      (mod) => mod.MinhaProdutividade,
+    ),
   {
     ssr: false,
-    loading: () => <div role="status" aria-label="A carregar produtividade" className="h-40 rounded-xl bg-muted motion-safe:animate-pulse" />,
-  }
+    loading: () => (
+      <div
+        role="status"
+        aria-label="A carregar produtividade"
+        className="h-40 rounded-xl bg-muted motion-safe:animate-pulse"
+      />
+    ),
+  },
 );
 
 const FilaAtendimentoModal = dynamic(
-  () => import("@/components/secretaria/FilaAtendimentoModal").then((mod) => mod.FilaAtendimentoModal),
-  { ssr: false }
+  () =>
+    import("@/components/secretaria/FilaAtendimentoModal").then(
+      (mod) => mod.FilaAtendimentoModal,
+    ),
+  { ssr: false },
 );
 
 const AdmissaoWizardClient = dynamic(
   () => import("@/components/secretaria/AdmissaoWizardClient"),
-  { ssr: false, loading: () => <ModalLoading /> }
+  { ssr: false, loading: () => <ModalLoading /> },
 );
 
 const PautaRapidaModal = dynamic(
-  () => import("@/components/secretaria/PautaRapidaModal").then((mod) => mod.PautaRapidaModal),
-  { ssr: false, loading: () => <ModalLoading /> }
+  () =>
+    import("@/components/secretaria/PautaRapidaModal").then(
+      (mod) => mod.PautaRapidaModal,
+    ),
+  { ssr: false, loading: () => <ModalLoading /> },
 );
 
 const JustificarFaltaModal = dynamic(
-  () => import("@/components/secretaria/JustificarFaltaModal").then((mod) => mod.JustificarFaltaModal),
-  { ssr: false, loading: () => <ModalLoading /> }
+  () =>
+    import("@/components/secretaria/JustificarFaltaModal").then(
+      (mod) => mod.JustificarFaltaModal,
+    ),
+  { ssr: false, loading: () => <ModalLoading /> },
 );
 
-const ProvasModal = dynamic(() => import("@/components/provas/ProvasModal"), {ssr:false});
+const ProvasModal = dynamic(() => import("@/components/provas/ProvasModal"), {
+  ssr: false,
+});
 const QuickDocHub = dynamic(
   () => import("@/components/secretaria/QuickDocHub"),
-  { ssr: false, loading: () => <ModalLoading /> }
+  { ssr: false, loading: () => <ModalLoading /> },
 );
 
 const BalcaoWorkspace = dynamic(
-  () => import("@/components/secretaria/BalcaoWorkspace").then((mod) => mod.BalcaoWorkspace),
-  { ssr: false, loading: () => <ModalLoading /> }
+  () =>
+    import("@/components/secretaria/BalcaoWorkspace").then(
+      (mod) => mod.BalcaoWorkspace,
+    ),
+  { ssr: false, loading: () => <ModalLoading /> },
 );
 
 function ModalLoading() {
-  return <div role="status" aria-label="A carregar formulário" className="h-48 rounded-xl bg-muted motion-safe:animate-pulse" />;
+  return (
+    <div
+      role="status"
+      aria-label="A carregar formulário"
+      className="h-48 rounded-xl bg-muted motion-safe:animate-pulse"
+    />
+  );
 }
 
 type BalcaoModal =
@@ -103,42 +152,95 @@ type BalcaoModal =
 export function Dashboard({
   counts,
   recentes,
+  escolaId: resolvedEscolaId,
 }: {
+  escolaId?: string | null;
   counts: DashboardCounts | null;
   recentes: DashboardRecentes | null;
 }) {
-  const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
+  const {
+    escolaId: contextEscolaId,
+    escolaSlug,
+    isLoading: escolaLoading,
+  } = useEscolaId();
+  const escolaId = resolvedEscolaId ?? contextEscolaId;
   const pathname = usePathname();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [metricKey, setMetricKey] = useState<string | null>(null);
   const [filaOpen, setFilaOpen] = useState(false);
-  const [provasOpen,setProvasOpen]=useState(false);
+  const [provasOpen, setProvasOpen] = useState(false);
   const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
   const [nowMs] = useState(() => Date.now());
   const [userName, setUserName] = useState<string | null>(null);
   const [produtividadeAlerts, setProdutividadeAlerts] = useState<any[]>([]);
   const [totalPendentesFicha, setTotalPendentesFicha] = useState(0);
-  const [selectedAlunoIdForFicha, setSelectedAlunoIdForFicha] = useState<string | null>(null);
-  const [selectedAlunoIdForBalcao, setSelectedAlunoIdForBalcao] = useState<string | null>(null);
-  const [selectedCandidaturaId, setSelectedCandidaturaId] = useState<string | null>(null);
+  const [selectedAlunoIdForFicha, setSelectedAlunoIdForFicha] = useState<
+    string | null
+  >(null);
+  const [selectedAlunoIdForBalcao, setSelectedAlunoIdForBalcao] = useState<
+    string | null
+  >(null);
+  const [selectedCandidaturaId, setSelectedCandidaturaId] = useState<
+    string | null
+  >(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showOperationalPanels, setShowOperationalPanels] = useState(false);
 
   const handleProdutividadeData = useCallback((data: any) => {
-    if (data.alertas_notificacoes) setProdutividadeAlerts(data.alertas_notificacoes);
-    if (data.documentos_pendentes !== undefined) setTotalPendentesFicha(data.documentos_pendentes);
+    if (data.alertas_notificacoes)
+      setProdutividadeAlerts(data.alertas_notificacoes);
+    if (data.documentos_pendentes !== undefined)
+      setTotalPendentesFicha(data.documentos_pendentes);
   }, []);
 
-  const refreshProdutividade = useCallback(() => setRefreshKey(prev => prev + 1), []);
+  const refreshProdutividade = useCallback(
+    () => setRefreshKey((prev) => prev + 1),
+    [],
+  );
 
   const escolaParamFromPath = useMemo(() => {
     const match = pathname?.match(/^\/escola\/([^/]+)/);
     return match?.[1] ?? null;
   }, [pathname]);
-  const escolaParam = escolaSlug || escolaParamFromPath || escolaId;
+  const escolaParam = escolaParamFromPath || escolaSlug || escolaId;
+  const {
+    data: academicState,
+    error: academicError,
+    isLoading: academicLoading,
+    mutate: refreshAcademicState,
+  } = useSWR(
+    escolaId
+      ? `/api/escola/${encodeURIComponent(escolaId)}/admin/estado-hoje`
+      : null,
+    async (url: string): Promise<EstadoVital | null> => {
+      const response = await fetch(url, { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok || !body?.ok)
+        throw new Error("Estado académico indisponível");
+      if (body.estado == null) return null;
+      if (
+        body.estado.escola_id !== escolaId ||
+        typeof body.estado.hoje_bloqueado_pedagogico !== "boolean" ||
+        !["PRE_INICIO", "REGULAR", "EXAMES", "POS_ENCERRAMENTO"].includes(
+          body.estado.fase_operacional,
+        )
+      ) {
+        throw new Error("Estado académico inválido");
+      }
+      return body.estado;
+    },
+    {
+      dedupingInterval: 15_000,
+      shouldRetryOnError: false,
+      revalidateOnReconnect: true,
+    },
+  );
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
-      const name = data.user?.user_metadata?.full_name || data.user?.user_metadata?.name;
+      const name =
+        data.user?.user_metadata?.full_name || data.user?.user_metadata?.name;
       if (name) {
         const parts = name.split(" ").filter(Boolean);
         if (parts.length > 1) {
@@ -154,12 +256,18 @@ export function Dashboard({
     if (!escolaId) return;
 
     const idleWindow = window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      requestIdleCallback?: (
+        callback: () => void,
+        options?: { timeout: number },
+      ) => number;
       cancelIdleCallback?: (id: number) => void;
     };
 
     if (idleWindow.requestIdleCallback) {
-      const id = idleWindow.requestIdleCallback(() => setShowOperationalPanels(true), { timeout: 1500 });
+      const id = idleWindow.requestIdleCallback(
+        () => setShowOperationalPanels(true),
+        { timeout: 1500 },
+      );
       return () => idleWindow.cancelIdleCallback?.(id);
     }
 
@@ -175,33 +283,36 @@ export function Dashboard({
   }, []);
 
   const dashboardTitle = userName ? `${greeting}, ${userName}!` : "Secretaria";
-  const anoLetivoLabel = counts?.anoLetivo != null
-    ? `${counts.anoLetivo}/${counts.anoLetivo + 1}`
-    : "ano atual";
+  const anoLetivoLabel =
+    counts?.anoLetivo != null
+      ? `${counts.anoLetivo}/${counts.anoLetivo + 1}`
+      : "ano atual";
   const matriculadosHref = buildPortalHref(
     escolaParam,
-    `/secretaria/alunos${counts?.anoLetivoId ? `?ano_letivo_id=${encodeURIComponent(counts.anoLetivoId)}` : ""}`
+    `/secretaria/alunos${counts?.anoLetivoId ? `?ano_letivo_id=${encodeURIComponent(counts.anoLetivoId)}` : ""}`,
   );
 
   const handleNoticeAction = (item: any) => {
-    if (item.type === 'FICHA_RAPIDA' && item.aluno_id) {
-       setSelectedAlunoIdForFicha(item.aluno_id);
-    } else if (item.type === 'BIRTHDAY_WHATSAPP') {
-       const msg = encodeURIComponent(`Olá! A Escola ${escolaSlug || ''} deseja um feliz aniversário ao aluno ${item.nome_aluno}! Que este dia seja repleto de alegria.`);
-       const phone = item.telefone_whatsapp?.replace(/\D/g, '');
-       if (phone) window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
-    } else if (item.type === 'DEBT_PAYMENT') {
-       // Abre o balcão de atendimento no modal para este aluno
-       setSelectedAlunoIdForBalcao(item.aluno_id);
-       setBalcaoModal("atendimento_aluno");
-    } else if (item.type === 'CANDIDATURA_PENDENTE') {
-       // Abre o wizard de admissão no modal com a candidatura selecionada
-       setSelectedCandidaturaId(item.candidatura_id);
-       setBalcaoModal("matricular");
-    } else if (item.id === 'fecho-trimestre') {
-       setBalcaoModal("notas");
+    if (item.type === "FICHA_RAPIDA" && item.aluno_id) {
+      setSelectedAlunoIdForFicha(item.aluno_id);
+    } else if (item.type === "BIRTHDAY_WHATSAPP") {
+      const msg = encodeURIComponent(
+        `Olá! A Escola ${escolaSlug || ""} deseja um feliz aniversário ao aluno ${item.nome_aluno}! Que este dia seja repleto de alegria.`,
+      );
+      const phone = item.telefone_whatsapp?.replace(/\D/g, "");
+      if (phone) window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+    } else if (item.type === "DEBT_PAYMENT") {
+      // Abre o balcão de atendimento no modal para este aluno
+      setSelectedAlunoIdForBalcao(item.aluno_id);
+      setBalcaoModal("atendimento_aluno");
+    } else if (item.type === "CANDIDATURA_PENDENTE") {
+      // Abre o wizard de admissão no modal com a candidatura selecionada
+      setSelectedCandidaturaId(item.candidatura_id);
+      setBalcaoModal("matricular");
+    } else if (item.id === "fecho-trimestre") {
+      setBalcaoModal("notas");
     } else if (item.action_href) {
-       window.location.href = item.action_href;
+      window.location.href = item.action_href;
     }
   };
 
@@ -213,7 +324,9 @@ export function Dashboard({
     const diffMs = prazo.getTime() - nowMs;
     const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     if (days < 0 || days > 5) return null;
-    const suffix = fecho.numero ? ` do ${fecho.numero}º trimestre` : " do trimestre";
+    const suffix = fecho.numero
+      ? ` do ${fecho.numero}º trimestre`
+      : " do trimestre";
     const diaLabel = days === 1 ? "dia" : "dias";
     const titulo = `Fecho${suffix}`;
     const resumo =
@@ -238,7 +351,8 @@ export function Dashboard({
     return {
       id: "importacao-inicial",
       titulo: "Importar dados da escola",
-      resumo: "Faça a migração inicial de alunos e turmas para começar a operação.",
+      resumo:
+        "Faça a migração inicial de alunos e turmas para começar a operação.",
       data: new Date().toISOString(),
       action_label: "Iniciar importação",
       action_href: buildPortalHref(escolaParam, "/secretaria/migracao/alunos"),
@@ -263,10 +377,13 @@ export function Dashboard({
         ...item,
         id: buildNoticeId("extra", item, `extra-${index}`),
       }));
-    const prodAlerts = produtividadeAlerts.map(a => ({
-       ...a,
-       id: buildNoticeId("prod", a, `prod-${a.type ?? "alert"}`),
-       action_href: buildPortalHref(escolaParam, `/secretaria/alunos?id=${a.aluno_id}`)
+    const prodAlerts = produtividadeAlerts.map((a) => ({
+      ...a,
+      id: buildNoticeId("prod", a, `prod-${a.type ?? "alert"}`),
+      action_href: buildPortalHref(
+        escolaParam,
+        `/secretaria/alunos?id=${a.aluno_id}`,
+      ),
     }));
     const baseNotices = base.map((item, index) => ({
       ...item,
@@ -274,12 +391,22 @@ export function Dashboard({
     }));
 
     const deduped = new Map<string, (typeof base)[number]>();
-    for (const item of [...(extras as typeof base), ...prodAlerts, ...baseNotices]) {
+    for (const item of [
+      ...(extras as typeof base),
+      ...prodAlerts,
+      ...baseNotices,
+    ]) {
       deduped.set(String(item.id), item);
     }
 
     return Array.from(deduped.values());
-  }, [avisoFechoTrimestre, avisoImportacao, recentes?.avisos_recentes, produtividadeAlerts, escolaParam]);
+  }, [
+    avisoFechoTrimestre,
+    avisoImportacao,
+    recentes?.avisos_recentes,
+    produtividadeAlerts,
+    escolaParam,
+  ]);
   const alerts = useMemo(() => {
     const items: OperationalAlert[] = [];
     const pendencias = recentes?.pendencias ?? counts?.pendencias ?? 0;
@@ -316,7 +443,8 @@ export function Dashboard({
         severity: totalPendentesFicha > 20 ? "critical" : "warning",
         categoria: "documentos",
         titulo: `${totalPendentesFicha} alunos com ficha incompleta`,
-        descricao: "Existem alunos ativos com falta de BI, Data de Nasc. ou Documentos.",
+        descricao:
+          "Existem alunos ativos com falta de BI, Data de Nasc. ou Documentos.",
         count: totalPendentesFicha,
         link: buildPortalHref(escolaParam, "/secretaria/alunos"),
         link_label: "Regularizar Fichas",
@@ -324,256 +452,501 @@ export function Dashboard({
     }
 
     return items;
-    }, [counts?.pendencias, escolaParam, recentes?.avisos_recentes?.length, recentes?.pendencias, totalPendentesFicha]);
-
+  }, [
+    counts?.pendencias,
+    escolaParam,
+    recentes?.avisos_recentes?.length,
+    recentes?.pendencias,
+    totalPendentesFicha,
+  ]);
 
   const publicLandingUrl = useMemo(() => {
-    if (!escolaSlug) return null;
+    if (!escolaSlug || escolaId !== contextEscolaId) return null;
     return `https://klasse.ao/admissoes/${escolaSlug}`;
-  }, [escolaSlug]);
+  }, [escolaSlug, escolaId, contextEscolaId]);
 
-  const copyPublicUrl = () => {
-    if (publicLandingUrl) {
-      navigator.clipboard.writeText(publicLandingUrl);
+  const copyPublicUrl = async () => {
+    if (!publicLandingUrl) return;
+    try {
+      await navigator.clipboard.writeText(publicLandingUrl);
       toast.success("Link público copiado!");
+    } catch {
+      toast.error("Não foi possível copiar o link. Tente partilhar.");
     }
   };
 
   const sharePublicUrl = () => {
     if (publicLandingUrl) {
-      const msg = encodeURIComponent(`Olá! Faça a sua inscrição online no Colégio através deste link: ${publicLandingUrl}`);
-      window.open(`https://wa.me/?text=${msg}`, '_blank');
+      const msg = encodeURIComponent(
+        `Olá! Faça a sua inscrição online no Colégio através deste link: ${publicLandingUrl}`,
+      );
+      window.open(`https://wa.me/?text=${msg}`, "_blank");
     }
   };
 
+  const metrics = [
+    {
+      key: "alunos",
+      label: "Matriculados",
+      value: counts?.alunos,
+      icon: Users,
+      description: `Matrículas confirmadas · ${anoLetivoLabel}`,
+      href: matriculadosHref,
+      action: "Ver alunos matriculados",
+    },
+    {
+      key: "matriculas",
+      label: "Matrículas de hoje",
+      value: counts?.matriculas,
+      icon: UserPlus,
+      description: "Matrículas criadas hoje na escola.",
+      href: buildPortalHref(escolaParam, "/secretaria/matriculas"),
+      action: "Consultar matrículas",
+    },
+    {
+      key: "turmas",
+      label: "Turmas",
+      value: counts?.turmas,
+      icon: UsersRound,
+      description: `Turmas do ano lectivo · ${anoLetivoLabel}`,
+      href: buildPortalHref(escolaParam, "/secretaria/turmas"),
+      action: "Consultar turmas",
+    },
+    {
+      key: "pendencias",
+      label: "Pendências",
+      value: recentes?.pendencias ?? counts?.pendencias,
+      icon: FileText,
+      description: "Matrículas e importações que precisam de validação.",
+      href: buildPortalHref(escolaParam, "/secretaria/alertas"),
+      action: "Tratar pendências",
+    },
+  ];
+  const selectedMetric = metrics.find((metric) => metric.key === metricKey);
+
   return (
-    <div className="flex flex-col min-h-full bg-muted font-sans text-foreground">
-      <div className="flex-1 flex">
-        <div className="min-w-0 flex-1 pb-32">
-          <div className={`${PORTAL_PAGE_INSET} space-y-8`}>
-            <DashboardHeader
-              title={dashboardTitle}
-              description="Resumo operacional do dia"
-              breadcrumbs={[
-                { label: "Início", href: "." },
-                { label: "Secretaria" },
-              ]}
-              actions={
-                <div className="flex flex-col gap-3 items-stretch sm:flex-row sm:items-center sm:justify-end">
-                  <GlobalSearch
-                    escolaId={escolaId}
-                    portal="secretaria"
-                    placeholder="Buscar aluno, matrícula ou documento..."
-                    disabledText={escolaLoading ? "Carregando escola..." : "Vincule-se a uma escola para pesquisar"}
-                  />
-                  
-                  {publicLandingUrl && (
-                    <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 shadow-sm">
-                      <button 
-                        onClick={copyPublicUrl}
-                        title="Copiar Link de Admissão"
-                        className="flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                      >
-                        <Share2 size={14} />
-                        LINK PÚBLICO
-                      </button>
-                      <button 
-                        onClick={sharePublicUrl}
-                        title="Partilhar no WhatsApp"
-                        className="p-1.5 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                      >
-                        <MessageCircle size={14} />
-                      </button>
-                    </div>
-                  )}
-
-                  <Link
-                    href={buildPortalHref(escolaParam, "/secretaria/admissoes?nova=1")}
-                    className="
-                      inline-flex items-center justify-center gap-2
-                      rounded-xl bg-amber px-4 py-2
-                      text-sm font-semibold text-white
-                      hover:brightness-95
-                      focus:outline-none focus:ring-4 focus:ring-amber/20
-                    "
-                  >
-                    Nova Matrícula
-                  </Link>
-                </div>
-              }
-            />
-
-            {escolaId && <OperacoesPainelHub escolaId={escolaId} onlyReopen />}
-            <RadarOperacional alerts={alerts} role="secretaria" />
-            
-            <div className="grid grid-cols-1 gap-4">
-              {escolaId && showOperationalPanels ? (
-                <ResumoCaixaSecretaria escolaId={escolaId} />
-              ) : (
-                <div className="h-20 rounded-xl border border-border bg-card animate-pulse" />
-              )}
+    <div
+      className={`${PORTAL_PAGE_INSET} operations-dashboard-flow pb-16`}
+      style={{ containerType: "inline-size" }}
+    >
+      <DashboardHeader
+        title="Secretaria"
+        description={
+          userName
+            ? `${dashboardTitle} Atendimento e expediente do dia.`
+            : "Atendimento e expediente do dia"
+        }
+        actions={
+          publicLandingUrl && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={copyPublicUrl}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs font-medium text-foreground hover:border-ring focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+              >
+                <Share2 size={16} aria-hidden="true" /> Copiar link de admissão
+              </button>
+              <button
+                type="button"
+                onClick={sharePublicUrl}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs font-medium text-foreground hover:border-ring focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+              >
+                <MessageCircle size={16} aria-hidden="true" /> Partilhar
+              </button>
             </div>
+          )
+        }
+      />
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard
-                label={`Matriculados · ${anoLetivoLabel}`}
-                value={counts?.alunos}
-                icon={<Users size={16} />}
-                href={matriculadosHref}
-                tone="default"
-              />
-              <StatCard
-                label="Matrículas criadas hoje"
-                value={counts?.matriculas}
-                icon={<UserPlus size={16} />}
-                tone="default"
-              />
-              <StatCard label={`Turmas · ${anoLetivoLabel}`} value={counts?.turmas} icon={<Building size={16} />} tone="default" />
-              <StatCard
-                label="Pendências"
-                value={recentes?.pendencias ?? counts?.pendencias}
-                icon={<AlertCircle size={16} />}
-                tone={(recentes?.pendencias ?? counts?.pendencias ?? 0) > 0 ? "warning" : "default"}
-              />
-            </div>
-
-
-            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-              <SecaoLabel>Busca rápida para atendimento</SecaoLabel>
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <div className="flex-1 min-w-[280px]">
-                  <BuscaBalcaoRapido escolaId={escolaId} />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFilaOpen(true)}
-                  className="rounded-lg border border-border px-3 py-3 text-xs font-semibold text-foreground hover:bg-muted"
-                >
-                  Abrir fila de atendimento
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <SecaoLabel>Ações rápidas</SecaoLabel>
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {escolaId && <ExpedienteDashboardCard escolaId={escolaId} portal="secretaria" />}
-                <AcaoRapidaCard
-                  icon={<Printer className="h-5 w-5" />}
-                  label="Listas de turmas"
-                  sublabel="Exportação nominal"
-                  onClick={() => setBalcaoModal("turma_docs")}
-                />
-                {escolaParam && <AcaoRapidaCard
-                  icon={<Printer className="h-5 w-5" />}
-                  label="Imprimir provas"
-                  sublabel="Por turma ou aluno"
-                  onClick={()=>setProvasOpen(true)}
-                  dialogOpen={provasOpen}
-                />}
-                {escolaParam && <AcaoRapidaCard icon={<CalendarCheck className="h-5 w-5"/>} label="Calendário de Avaliações" sublabel="Planear e imprimir" href={buildPortalHref(escolaParam,"/secretaria/operacoes-academicas/calendario-avaliacoes")} />}
-                <AcaoRapidaCard
-                  icon={<Banknote className="h-5 w-5" />}
-                  label="Pagar Propina"
-                  sublabel="No Balcão"
-                  onClick={() => setBalcaoModal("cobranca")}
-                />
-                <AcaoRapidaCard
-                  icon={<FileText className="h-5 w-5" />}
-                  label="Emitir Documento"
-                  sublabel="No Balcão"
-                  onClick={() => setBalcaoModal("documentos")}
-                />
-                <AcaoRapidaCard
-                  icon={<UserPlus className="h-5 w-5" />}
-                  label="Matricular"
-                  sublabel="Novo ou confirmação"
-                  onClick={() => setBalcaoModal("matricular")}
-                />
-                <AcaoRapidaCard
-                  icon={<CalendarX className="h-5 w-5" />}
-                  label="Justificar Falta"
-                  sublabel="Registrar ausência"
-                  onClick={() => setBalcaoModal("faltas")}
-                />
-                <AcaoRapidaCard
-                  icon={<FileEdit className="h-5 w-5" />}
-                  label="Lançar Nota"
-                  sublabel="Abrir pauta"
-                  onClick={() => setBalcaoModal("notas")}
-                />
-              </div>
-            </div>
-
-            <div className="grid lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
-                {escolaId && showOperationalPanels ? (
-                  <MinhaProdutividade 
-                    key={refreshKey}
-                    escolaId={escolaId} 
-                    onData={handleProdutividadeData} 
-                    onAtenderAluno={(alunoId) => {
-                       setSelectedAlunoIdForBalcao(alunoId);
-                       setBalcaoModal("atendimento_aluno");
-                    }}
-                  />
-                ) : (
-                  <div className="h-40 rounded-xl bg-muted motion-safe:animate-pulse" />
-                )}
-
-                <div>
-                  <SecaoLabel>Gestão</SecaoLabel>
-                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <AcaoRapidaCard icon={<Users className="h-5 w-5" />} label="Alunos" href={buildPortalHref(escolaParam, "/secretaria/alunos")} />
-                    <AcaoRapidaCard
-                      icon={<UserCheck className="h-5 w-5" />}
-                      label="Professores"
-                      href={buildPortalHref(escolaParam, "/secretaria/professores")}
-                    />
-                    <AcaoRapidaCard icon={<Building className="h-5 w-5" />} label="Turmas" href={buildPortalHref(escolaParam, "/secretaria/turmas")} />
-                    <AcaoRapidaCard
-                      icon={<RefreshCcw className="h-5 w-5" />}
-                      label="Rematrículas"
-                      href={buildPortalHref(escolaParam, "/secretaria/rematricula")}
-                    />
-                    <AcaoRapidaCard
-                      icon={<KeyRound className="h-5 w-5" />}
-                      label="Acesso Alunos"
-                      href={buildPortalHref(escolaParam, "/secretaria/acesso-alunos")}
-                    />
-                    <AcaoRapidaCard
-                      icon={<Upload size={20} className="text-emerald-600" />}
-                      label="Migração"
-                      href={buildPortalHref(escolaParam, "/secretaria/migracao/alunos")}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <SecaoLabel>Avisos gerais</SecaoLabel>
-                  <div className="mt-4">
-                    <NoticePanel 
-                      items={avisos} 
-                      showHeader={false} 
-                      onAction={handleNoticeAction} 
-                      onSnooze={refreshProdutividade}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+      <div className="space-y-4">
+        {academicLoading || (escolaLoading && !escolaId) ? (
+          <div
+            role="status"
+            aria-label="A carregar estado académico"
+            className="h-20 rounded-xl border border-border bg-card motion-safe:animate-pulse"
+          />
+        ) : academicState && !academicError ? (
+          <EstadoVitalBanner
+            estado={academicState}
+            compact
+            showSignature={false}
+            calendarHref={buildPortalHref(
+              escolaParam,
+              "/secretaria/calendario",
+            )}
+          />
+        ) : (
+          <div
+            role="status"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground"
+          >
+            <span>
+              {academicError
+                ? "Estado académico indisponível."
+                : "Sem contexto académico activo."}
+            </span>
+            {academicError ? (
+              <button
+                type="button"
+                onClick={() => void refreshAcademicState()}
+                className="min-h-10 rounded-xl border border-border px-3 font-medium text-foreground"
+              >
+                Tentar novamente
+              </button>
+            ) : (
+              <Link
+                href={buildPortalHref(escolaParam, "/secretaria/calendario")}
+                className="font-medium text-foreground hover:underline"
+              >
+                Consultar calendário
+              </Link>
+            )}
           </div>
-        </div>
+        )}
+        {alerts.length > 0 && (
+          <RadarOperacional
+            alerts={alerts}
+            role="secretaria"
+            variant="compact"
+          />
+        )}
       </div>
 
+      <section
+        aria-labelledby="secretaria-atendimento-title"
+        className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5"
+      >
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2
+              id="secretaria-atendimento-title"
+              className="text-base font-semibold text-foreground"
+            >
+              Atendimento
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Encontre o aluno e conclua a operação no Balcão.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={searchOpen}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+          >
+            <Search size={16} aria-hidden="true" /> Pesquisa global
+          </button>
+        </div>
+        <div className="min-w-0">
+          <BuscaBalcaoRapido
+            escolaId={escolaId}
+            onSuccess={refreshProdutividade}
+          />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => setFilaOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={filaOpen}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+          >
+            <ListOrdered size={16} aria-hidden="true" /> Fila de atendimento
+          </button>
+          <button
+            type="button"
+            onClick={() => setBalcaoModal("matricular")}
+            aria-haspopup="dialog"
+            aria-expanded={balcaoModal === "matricular"}
+            disabled={!escolaId}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-50"
+          >
+            <Plus size={16} aria-hidden="true" /> Matricular aluno
+          </button>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="secretaria-acoes-title"
+        className="min-w-0 space-y-4"
+      >
+        <h2
+          id="secretaria-acoes-title"
+          className="text-base font-semibold text-foreground"
+        >
+          Ações rápidas
+        </h2>
+        <div className="operations-actions-grid grid">
+          {escolaId && (
+            <ExpedienteDashboardCard escolaId={escolaId} portal="secretaria" />
+          )}
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<Banknote className="h-5 w-5" />}
+            label="Pagar propina"
+            sublabel="No Balcão"
+            onClick={() => setBalcaoModal("cobranca")}
+            dialogOpen={balcaoModal === "cobranca"}
+            disabled={!escolaId}
+          />
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<FileText className="h-5 w-5" />}
+            label="Emitir documento"
+            sublabel="No Balcão"
+            onClick={() => setBalcaoModal("documentos")}
+            dialogOpen={balcaoModal === "documentos"}
+            disabled={!escolaId}
+          />
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<Printer className="h-5 w-5" />}
+            label="Listas de turmas"
+            sublabel="Exportação nominal"
+            onClick={() => setBalcaoModal("turma_docs")}
+            dialogOpen={balcaoModal === "turma_docs"}
+            disabled={!escolaId}
+          />
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<Printer className="h-5 w-5" />}
+            label="Imprimir provas"
+            sublabel="Por turma ou aluno"
+            onClick={() => setProvasOpen(true)}
+            dialogOpen={provasOpen}
+            disabled={!escolaId}
+          />
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<CalendarCheck className="h-5 w-5" />}
+            label="Calendário de avaliações"
+            sublabel="Planear e imprimir"
+            href={buildPortalHref(
+              escolaParam,
+              "/secretaria/operacoes-academicas/calendario-avaliacoes",
+            )}
+            disabled={!escolaId}
+          />
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<CalendarX className="h-5 w-5" />}
+            label="Justificar falta"
+            sublabel="Registar ausência"
+            onClick={() => setBalcaoModal("faltas")}
+            dialogOpen={balcaoModal === "faltas"}
+            disabled={!escolaId}
+          />
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<FileEdit className="h-5 w-5" />}
+            label="Lançar nota"
+            sublabel="Abrir pauta"
+            onClick={() => setBalcaoModal("notas")}
+            dialogOpen={balcaoModal === "notas"}
+            disabled={!escolaId}
+          />
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="secretaria-caixa-title"
+        className="min-w-0 space-y-4"
+      >
+        <h2
+          id="secretaria-caixa-title"
+          className="text-base font-semibold text-foreground"
+        >
+          O meu caixa hoje
+        </h2>
+        {escolaId && showOperationalPanels ? (
+          <ResumoCaixaSecretaria escolaId={escolaId} refreshKey={refreshKey} />
+        ) : (
+          <div className="operations-daily-grid grid">
+            {[0, 1, 2].map((key) => (
+              <OperationalMetricSkeleton key={key} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section
+        aria-labelledby="secretaria-resumo-title"
+        className="min-w-0 space-y-4"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2
+            id="secretaria-resumo-title"
+            className="text-base font-semibold text-foreground"
+          >
+            Visão geral da secretaria
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Ano lectivo {anoLetivoLabel}
+          </p>
+        </div>
+        <div className="operations-kpi-grid grid">
+          {metrics.map((metric) => (
+            <OperationalMetricCard
+              key={metric.key}
+              label={metric.label}
+              value={metric.value}
+              icon={metric.icon}
+              description={metric.description}
+              needsAttention={
+                metric.key === "pendencias" && (metric.value ?? 0) > 0
+              }
+              onClick={() => setMetricKey(metric.key)}
+              dialogOpen={metricKey === metric.key}
+            />
+          ))}
+        </div>
+      </section>
+
+      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+        <section
+          aria-label="Acompanhamento do dia"
+          className="min-w-0 space-y-4"
+        >
+          {escolaId && showOperationalPanels ? (
+            <MinhaProdutividade
+              key={refreshKey}
+              escolaId={escolaId}
+              onData={handleProdutividadeData}
+              onAtenderAluno={(alunoId) => {
+                setSelectedAlunoIdForBalcao(alunoId);
+                setBalcaoModal("atendimento_aluno");
+              }}
+            />
+          ) : (
+            <div
+              role="status"
+              aria-label="A carregar atividade do dia"
+              className="h-40 rounded-xl bg-muted motion-safe:animate-pulse"
+            />
+          )}
+          {escolaId && <OperacoesPainelHub escolaId={escolaId} onlyReopen />}
+        </section>
+        <section
+          aria-labelledby="secretaria-avisos-title"
+          className="min-w-0 space-y-4"
+        >
+          <h2
+            id="secretaria-avisos-title"
+            className="text-base font-semibold text-foreground"
+          >
+            Avisos gerais
+          </h2>
+          <NoticePanel
+            items={avisos}
+            showHeader={false}
+            onAction={handleNoticeAction}
+            onSnooze={refreshProdutividade}
+          />
+        </section>
+      </div>
+
+      <section
+        aria-labelledby="secretaria-gestao-title"
+        className="min-w-0 space-y-4"
+      >
+        <h2
+          id="secretaria-gestao-title"
+          className="text-base font-semibold text-foreground"
+        >
+          Gestão
+        </h2>
+        <div className="operations-actions-grid grid">
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<Users className="h-5 w-5" />}
+            label="Alunos"
+            href={buildPortalHref(escolaParam, "/secretaria/alunos")}
+          />
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<UserCheck className="h-5 w-5" />}
+            label="Professores"
+            href={buildPortalHref(escolaParam, "/secretaria/professores")}
+          />
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<UsersRound className="h-5 w-5" />}
+            label="Turmas"
+            href={buildPortalHref(escolaParam, "/secretaria/turmas")}
+          />
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<RefreshCcw className="h-5 w-5" />}
+            label="Rematrículas"
+            href={buildPortalHref(escolaParam, "/secretaria/rematricula")}
+          />
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<KeyRound className="h-5 w-5" />}
+            label="Acesso dos alunos"
+            href={buildPortalHref(escolaParam, "/secretaria/acesso-alunos")}
+          />
+          <AcaoRapidaCard
+            dashboardCompact
+            icon={<Upload className="h-5 w-5" />}
+            label="Migração"
+            href={buildPortalHref(escolaParam, "/secretaria/migracao/alunos")}
+          />
+        </div>
+      </section>
+
+      <PortalSheet
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        title="Pesquisa global"
+        description="Pesquisar alunos, matrículas e documentos"
+        size="medium"
+      >
+        <GlobalSearch
+          escolaId={escolaId}
+          portal="secretaria"
+          placeholder="Buscar aluno, matrícula ou documento..."
+          disabledText={
+            escolaLoading
+              ? "Carregando escola..."
+              : "Vincule-se a uma escola para pesquisar"
+          }
+        />
+      </PortalSheet>
+      <PortalSheet
+        open={Boolean(selectedMetric)}
+        onClose={() => setMetricKey(null)}
+        title={selectedMetric?.label ?? "Indicador"}
+        description={`Secretaria · ${anoLetivoLabel}`}
+        size="compact"
+      >
+        {selectedMetric && (
+          <>
+            <p className="text-3xl font-semibold tabular-nums text-foreground">
+              {selectedMetric.value?.toLocaleString("pt-AO") ?? "—"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {selectedMetric.value == null
+                ? "Dados indisponíveis."
+                : selectedMetric.description}
+            </p>
+            <Link
+              href={selectedMetric.href}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted"
+            >
+              {selectedMetric.action}
+            </Link>
+          </>
+        )}
+      </PortalSheet>
+
       {selectedAlunoIdForFicha && (
-        <FichaRapidaModal 
+        <FichaRapidaModal
           alunoId={selectedAlunoIdForFicha}
           onClose={() => setSelectedAlunoIdForFicha(null)}
           onSuccess={() => {
-             // Opcional: recarregar dados ou apenas deixar o aviso sumir no próximo refresh
+            // Opcional: recarregar dados ou apenas deixar o aviso sumir no próximo refresh
           }}
         />
       )}
@@ -587,8 +960,16 @@ export function Dashboard({
         <QuickDocHub escolaId={escolaId} initialNominal />
       </ModalShell>
 
-      {provasOpen&&escolaParam&&<ProvasModal escolaId={escolaParam} onClose={()=>setProvasOpen(false)}/>}
-      <FilaAtendimentoModal open={filaOpen} onClose={() => setFilaOpen(false)} />
+      {provasOpen && escolaParam && (
+        <ProvasModal
+          escolaId={escolaParam}
+          onClose={() => setProvasOpen(false)}
+        />
+      )}
+      <FilaAtendimentoModal
+        open={filaOpen}
+        onClose={() => setFilaOpen(false)}
+      />
       <ModalShell
         open={balcaoModal === "matricular"}
         title="Nova matrícula"
@@ -600,9 +981,9 @@ export function Dashboard({
       >
         {escolaId ? (
           <div className="space-y-4">
-            <AdmissaoWizardClient 
-              escolaId={escolaId} 
-              initialCandidaturaId={selectedCandidaturaId} 
+            <AdmissaoWizardClient
+              escolaId={escolaId}
+              initialCandidaturaId={selectedCandidaturaId}
             />
             {!selectedCandidaturaId && (
               <Link
@@ -614,15 +995,22 @@ export function Dashboard({
             )}
           </div>
         ) : (
-          <div className="text-sm text-muted-foreground">Escola não identificada.</div>
+          <div className="text-sm text-muted-foreground">
+            Escola não identificada.
+          </div>
         )}
       </ModalShell>
 
-      {balcaoModal === "atendimento_aluno" && escolaId && selectedAlunoIdForBalcao ? (
+      {balcaoModal === "atendimento_aluno" &&
+      escolaId &&
+      selectedAlunoIdForBalcao ? (
         <BalcaoWorkspace
           open
           escolaId={escolaId}
-          aluno={{ id: selectedAlunoIdForBalcao, label: "Atendimento ao aluno" }}
+          aluno={{
+            id: selectedAlunoIdForBalcao,
+            label: "Atendimento ao aluno",
+          }}
           actionId="desk"
           onClose={() => {
             setBalcaoModal(null);
@@ -637,7 +1025,11 @@ export function Dashboard({
         description="Selecione o aluno; o documento será tratado no mesmo Balcão."
         onClose={() => setBalcaoModal(null)}
       >
-        <BuscaBalcaoRapido escolaId={escolaId} initialAction="document" />
+        <BuscaBalcaoRapido
+          escolaId={escolaId}
+          initialAction="document"
+          onSuccess={refreshProdutividade}
+        />
       </ModalShell>
       <ModalShell
         open={balcaoModal === "cobranca"}
@@ -646,9 +1038,14 @@ export function Dashboard({
         onClose={() => setBalcaoModal(null)}
       >
         <div className="space-y-3">
-          <BuscaBalcaoRapido escolaId={escolaId} initialAction="payment" />
+          <BuscaBalcaoRapido
+            escolaId={escolaId}
+            initialAction="payment"
+            onSuccess={refreshProdutividade}
+          />
           <p className="text-xs text-muted-foreground">
-            Localize o aluno; o pagamento será concluído no mesmo Balcão de Atendimento.
+            Localize o aluno; o pagamento será concluído no mesmo Balcão de
+            Atendimento.
           </p>
         </div>
       </ModalShell>

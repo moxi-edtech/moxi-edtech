@@ -143,7 +143,7 @@ test("daily-close shortcut is inside quick actions and modal uses a non-translat
  assert.match(shell,/max-h-full/);
  assert.match(shell,/overflow-y-auto overscroll-contain/);
  assert.match(quick,/<ExpedienteDashboardCard escolaId=\{escolaId\} portal=\{portalBase\} \/>/);
- assert.match(secretaria,/<SecaoLabel>Ações rápidas<\/SecaoLabel>[\s\S]*?<ExpedienteDashboardCard escolaId=\{escolaId\} portal="secretaria"/);
+ assert.match(secretaria,/<h2[^>]*>\s*Ações rápidas\s*<\/h2>[\s\S]*?<ExpedienteDashboardCard\s+escolaId=\{escolaId\}\s+portal="secretaria"/);
  assert.doesNotMatch(src("components/layout/escola-admin/EscolaAdminDashboardContent.tsx"),/ExpedienteDashboardCard/);
  assert.doesNotMatch(src("app/secretaria/(portal-secretaria)/page.tsx"),/ExpedienteDashboardCard/);
 });

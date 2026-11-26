@@ -1,55 +1,63 @@
-"use client";
-
-import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
-import Link from "next/link";
+import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
+import { OperationalMetricSkeleton } from "@/components/shared/OperationalMetricCard";
 
 export default function DashboardSkeleton() {
-  const { escolaSlug } = useEscolaId();
-  
   return (
-    <div role="status" aria-busy="true" aria-label="A carregar painel da Secretaria" className="min-w-0 space-y-6 motion-safe:animate-pulse">
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label="A carregar painel da Secretaria"
+      className={`${PORTAL_PAGE_INSET} operations-dashboard-flow pb-16`}
+      style={{ containerType: "inline-size" }}
+    >
       <span className="sr-only">A carregar painel da Secretaria</span>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-2">
-          <div aria-hidden="true" className="h-8 w-48 bg-muted rounded-lg" />
-          <div aria-hidden="true" className="h-4 w-32 bg-muted/50 rounded-lg" />
-        </div>
-        <div aria-hidden="true" className="h-10 w-32 bg-muted rounded-xl" />
+      <div aria-hidden="true" className="space-y-2 motion-safe:animate-pulse">
+        <div className="h-7 w-40 rounded-xl bg-muted" />
+        <div className="h-4 w-56 max-w-full rounded-xl bg-muted" />
       </div>
-
-      <nav className="flex min-w-0 flex-wrap items-center gap-1 rounded-xl bg-card border border-border px-3 py-2">
-        {[
-          { label: "Início", href: buildPortalHref(escolaSlug, "/secretaria") },
-          { label: "Dashboard" }
-        ].map((item, i, arr) => (
-          <div key={item.label} className="flex items-center gap-1">
-            {item.href ? (
-              <Link href={item.href} className="text-xs font-medium text-muted-foreground">
-                {item.label}
-              </Link>
-            ) : (
-              <span className="text-xs font-bold text-muted-foreground">{item.label}</span>
-            )}
-            {i < arr.length - 1 && <span className="text-muted-foreground/30">/</span>}
-          </div>
-        ))}
-      </nav>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} aria-hidden="true" className="h-24 bg-card border border-border rounded-xl" />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div aria-hidden="true" className="h-64 bg-card border border-border rounded-xl" />
-          <div aria-hidden="true" className="h-96 bg-card border border-border rounded-xl" />
+      <div
+        aria-hidden="true"
+        className="h-20 rounded-xl border border-border bg-card motion-safe:animate-pulse"
+      />
+      <div
+        aria-hidden="true"
+        className="h-56 rounded-xl border border-border bg-card motion-safe:animate-pulse"
+      />
+      <div className="space-y-4">
+        <div
+          aria-hidden="true"
+          className="h-5 w-32 rounded-xl bg-muted motion-safe:animate-pulse"
+        />
+        <div className="operations-actions-grid grid">
+          {Array.from({ length: 8 }, (_, key) => (
+            <div
+              key={key}
+              aria-hidden="true"
+              className="min-h-[88px] rounded-xl border border-border bg-card motion-safe:animate-pulse"
+            />
+          ))}
         </div>
-        <div className="space-y-6">
-          <div aria-hidden="true" className="h-48 bg-card border border-border rounded-xl" />
-          <div aria-hidden="true" className="h-96 bg-card border border-border rounded-xl" />
+      </div>
+      <div className="space-y-4">
+        <div
+          aria-hidden="true"
+          className="h-5 w-36 rounded-xl bg-muted motion-safe:animate-pulse"
+        />
+        <div className="operations-daily-grid grid">
+          {[0, 1, 2].map((key) => (
+            <OperationalMetricSkeleton key={key} />
+          ))}
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div
+          aria-hidden="true"
+          className="h-5 w-48 rounded-xl bg-muted motion-safe:animate-pulse"
+        />
+        <div className="operations-kpi-grid grid">
+          {[0, 1, 2, 3].map((key) => (
+            <OperationalMetricSkeleton key={key} />
+          ))}
         </div>
       </div>
     </div>

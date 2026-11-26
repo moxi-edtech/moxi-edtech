@@ -20,9 +20,11 @@ type AlunoResult = {
 export function BuscaBalcaoRapido({
   escolaId,
   initialAction = "desk",
+  onSuccess,
 }: {
   escolaId: string | null;
   initialAction?: BalcaoActionId;
+  onSuccess?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [resultados, setResultados] = useState<AlunoResult[]>([]);
@@ -128,6 +130,7 @@ export function BuscaBalcaoRapido({
           }}
           actionId={initialAction}
           onClose={handleCloseWorkspace}
+          onSuccess={onSuccess}
         />
       ) : null}
     </div>
