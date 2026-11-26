@@ -131,3 +131,28 @@ test("drawer navigator mantém um único diálogo, isolamento por contexto e ret
   assert.match(timetable, /return \(\) => ctrl.abort\(\)/);
   assert.match(direct, /<ProfessorTurmaHorario/);
 });
+
+test("dashboard operational drawers reuse authorized workspaces and guard mutations", () => {
+  const dashboard = read("app/professor/page.tsx");
+  const navigator = read("components/portal/ui/PortalDrawerNavigator.tsx");
+  const attendance = read("components/professor/ProfessorFrequenciasWorkspace.tsx");
+  const plans = read("components/professor/ProfessorPlanosWorkspace.tsx");
+  const materials = read("components/professor/ProfessorMateriaisWorkspace.tsx");
+  const student = read("components/aluno/dashboard/DashboardLoader.tsx");
+  for (const operation of ["attendance", "plans", "materials"]) {
+    assert.ok(dashboard.includes('openOperation("' + operation + '")'));
+    assert.ok(dashboard.includes('operationFrame("' + operation + '", selectedTurma.id)'));
+  }
+  assert.match(navigator, /registerGuard/);
+  assert.match(navigator, /canLeave\(activeIds\)/);
+  assert.match(navigator, /canLeave\(\[last.frame.id\]\)/);
+  assert.match(navigator, /busy=\{busy\}/);
+  assert.match(attendance, /usePortalDrawerGuard\(attendanceDirty, saving\)/);
+  assert.match(attendance, /mobile && !embedded/);
+  assert.match(plans, /usePortalDrawerGuard\(dirty, saving\)/);
+  assert.match(materials, /usePortalDrawerGuard\(dirty, saving \|\| updatingId !== null\)/);
+  assert.match(student, /kind: "notice", noticeId: a.id/);
+  assert.match(read("app/professor/frequencias/page.tsx"), /<ProfessorFrequenciasWorkspace/);
+  assert.match(read("app/professor/planos-aula/page.tsx"), /<ProfessorPlanosWorkspace/);
+  assert.match(read("app/professor/materiais/page.tsx"), /<ProfessorMateriaisWorkspace/);
+});
