@@ -131,10 +131,10 @@ function friendlyGradeError(cause: unknown) {
 export default function ProfessorNotasPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-muted flex items-center justify-center p-6">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
-          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">A carregar pauta...</p>
+          <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
+          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">A carregar pauta...</p>
         </div>
       </div>
     }>
@@ -830,7 +830,7 @@ function ProfessorNotasContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className={`${PORTAL_PAGE_INSET} space-y-4 sm:space-y-6`}>
+      <div className={`${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 space-y-4 sm:space-y-6`}>
         <div>
           <DashboardHeader
             title="Lançamento de Notas"
@@ -846,17 +846,17 @@ function ProfessorNotasContent() {
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">
           <aside className="hidden space-y-3 sm:space-y-4 relative z-10 overflow-visible md:block">
             {loadingAtribs ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3 animate-pulse">
-                <div className="h-4 w-32 rounded-md bg-slate-200" />
-                <div className="h-9 w-full rounded-xl bg-slate-100" />
-                <div className="h-9 w-full rounded-xl bg-slate-100" />
-                <div className="h-9 w-full rounded-xl bg-slate-100" />
+              <div className="rounded-xl border border-border bg-card p-3 sm:p-4 space-y-3 animate-pulse">
+                <div className="h-4 w-32 rounded-md bg-muted" />
+                <div className="h-9 w-full rounded-xl bg-muted" />
+                <div className="h-9 w-full rounded-xl bg-muted" />
+                <div className="h-9 w-full rounded-xl bg-muted" />
                 <div className="h-10 w-full rounded-xl bg-amber/20" />
               </div>
             ) : (
               <>
-                <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3 overflow-visible">
-                  <div className="text-sm font-semibold text-slate-900">Turma e disciplina</div>
+                <div className="rounded-xl border border-border bg-card p-3 sm:p-4 space-y-3 overflow-visible">
+                  <div className="text-sm font-semibold text-foreground">Turma e disciplina</div>
                   <select
                     value={turmaId}
                     onChange={(event) => {
@@ -866,7 +866,7 @@ function ProfessorNotasContent() {
                       setDisciplinaNome(null)
                       setPauta([])
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                     required
                   >
                     <option value="">Turma</option>
@@ -888,7 +888,7 @@ function ProfessorNotasContent() {
                       setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
                       setDisciplinaNome(atrib?.disciplina.nome ?? null)
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                     required
                     disabled={!turmaId}
                   >
@@ -904,7 +904,7 @@ function ProfessorNotasContent() {
                   <select
                     value={trimestreSelecionado}
                     onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                     disabled={!turmaId || loadingPeriodos || periodosAtivos.length === 0}
                   >
                     {loadingPeriodos && <option value={trimestreSelecionado}>A carregar trimestres...</option>}
@@ -924,16 +924,16 @@ function ProfessorNotasContent() {
                     </div>
                   )}
                   {turmaId && !loadingPeriodos && !periodosError && periodosAtivos.length === 0 && (
-                    <p className="text-xs text-slate-600">A secretaria precisa configurar os trimestres deste ano letivo antes do lançamento.</p>
+                    <p className="text-xs text-muted-foreground">A secretaria precisa configurar os trimestres deste ano letivo antes do lançamento.</p>
                   )}
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-2 text-sm text-slate-600">
-                  <div className="font-semibold text-slate-900">Ações</div>
+                <div className="rounded-xl border border-border bg-card p-3 sm:p-4 space-y-2 text-sm text-muted-foreground">
+                  <div className="font-semibold text-foreground">Ações</div>
                   <button
                     type="button"
                     onClick={handleExportMiniPauta}
                     disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting || notasBloqueadas}
-                    className="w-full rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                    className="w-full rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                   >
                     {exporting ? "Gerando PDF..." : "Exportar mini‑pauta"}
                   </button>
@@ -943,13 +943,13 @@ function ProfessorNotasContent() {
           </aside>
 
           <section>
-            <div className="md:hidden sticky top-0 z-20 mb-3 sm:mb-4 rounded-xl border border-slate-200 bg-white/95 p-3 sm:p-4 shadow-sm backdrop-blur">
+            <div className="md:hidden sticky top-0 z-20 mb-3 sm:mb-4 rounded-xl border border-border bg-card/95 p-3 sm:p-4  backdrop-blur">
               {loadingAtribs ? (
                 <div className="grid gap-3 sm:grid-cols-2 animate-pulse">
-                  <div className="h-10 rounded-xl bg-slate-100" />
-                  <div className="h-10 rounded-xl bg-slate-100" />
-                  <div className="h-10 rounded-xl bg-slate-100" />
-                  <div className="h-10 rounded-xl bg-slate-200" />
+                  <div className="h-10 rounded-xl bg-muted" />
+                  <div className="h-10 rounded-xl bg-muted" />
+                  <div className="h-10 rounded-xl bg-muted" />
+                  <div className="h-10 rounded-xl bg-muted" />
                 </div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -962,7 +962,7 @@ function ProfessorNotasContent() {
                       setDisciplinaNome(null)
                       setPauta([])
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                   >
                     <option value="">Turma</option>
                     {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
@@ -983,7 +983,7 @@ function ProfessorNotasContent() {
                       setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
                       setDisciplinaNome(atrib?.disciplina.nome ?? null)
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                     disabled={!turmaId}
                   >
                     <option value="">Disciplina</option>
@@ -998,7 +998,7 @@ function ProfessorNotasContent() {
                   <select
                     value={trimestreSelecionado}
                     onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                     disabled={!turmaId || loadingPeriodos || periodosAtivos.length === 0}
                   >
                     {loadingPeriodos && <option value={trimestreSelecionado}>A carregar trimestres...</option>}
@@ -1018,7 +1018,7 @@ function ProfessorNotasContent() {
                     </div>
                   )}
                   {turmaId && !loadingPeriodos && !periodosError && periodosAtivos.length === 0 && (
-                    <p className="text-xs text-slate-600 sm:col-span-2">A secretaria precisa configurar os trimestres deste ano letivo antes do lançamento.</p>
+                    <p className="text-xs text-muted-foreground sm:col-span-2">A secretaria precisa configurar os trimestres deste ano letivo antes do lançamento.</p>
                   )}
                   <button
                     type="button"
@@ -1047,13 +1047,13 @@ function ProfessorNotasContent() {
               )}
             </div>
             {loading ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 animate-pulse space-y-2">
-                <div className="h-4 w-40 rounded-md bg-slate-200" />
-                <div className="h-3 w-full rounded-md bg-slate-200" />
-                <div className="h-3 w-5/6 rounded-md bg-slate-200" />
+              <div className="rounded-xl border border-border bg-card p-3 sm:p-4 animate-pulse space-y-2">
+                <div className="h-4 w-40 rounded-md bg-muted" />
+                <div className="h-3 w-full rounded-md bg-muted" />
+                <div className="h-3 w-5/6 rounded-md bg-muted" />
               </div>
             ) : data.length === 0 ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+              <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
                 Selecione a turma e disciplina para carregar os alunos.
               </div>
             ) : notasBloqueadas ? (
@@ -1073,20 +1073,20 @@ function ProfessorNotasContent() {
                     readOnly
                   />
                 </div>
-                {reopenHistory.length > 0 && <details className="mt-4 rounded-xl border border-amber-200 bg-white/70 p-3"><summary className="cursor-pointer text-xs font-bold text-amber-800">Ver histórico de solicitações ({reopenHistory.length})</summary><div className="mt-3 space-y-2">{reopenHistory.map((item) => <div key={item.id} className="rounded-lg border border-slate-100 p-3 text-xs"><div className="flex flex-wrap justify-between gap-2"><span className="font-bold text-slate-800">{item.status}</span><span className="text-slate-500">{new Date(item.created_at).toLocaleString("pt-PT")}</span></div><p className="mt-1 text-slate-600">{item.motivo}</p>{item.decisao_motivo && <p className="mt-1 text-slate-500">Decisão: {item.decisao_motivo}</p>}</div>)}</div></details>}
+                {reopenHistory.length > 0 && <details className="mt-4 rounded-xl border border-amber-200 bg-card/70 p-3"><summary className="cursor-pointer text-xs font-bold text-amber-800">Ver histórico de solicitações ({reopenHistory.length})</summary><div className="mt-3 space-y-2">{reopenHistory.map((item) => <div key={item.id} className="rounded-lg border border-border p-3 text-xs"><div className="flex flex-wrap justify-between gap-2"><span className="font-bold text-foreground">{item.status}</span><span className="text-muted-foreground">{new Date(item.created_at).toLocaleString("pt-PT")}</span></div><p className="mt-1 text-muted-foreground">{item.motivo}</p>{item.decisao_motivo && <p className="mt-1 text-muted-foreground">Decisão: {item.decisao_motivo}</p>}</div>)}</div></details>}
               </div>
             ) : (
               <div className="space-y-3">
                 {reaberturaAtiva && reopenRequest?.expira_em && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><p className="font-bold">Reabertura aprovada.</p><p>Podes lançar notas até {new Intl.DateTimeFormat("pt-AO", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Luanda" }).format(new Date(reopenRequest.expira_em))}.</p></div>}
                 {turmaId && disciplinaId && pauta.length > 0 && (
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="rounded-xl border border-border bg-card p-4 ">
                     <div>
-                      <p className="text-sm font-bold text-slate-900">Análise RAA do aluno</p>
-                      <p className="mt-1 text-xs text-slate-500">Consulte a elegibilidade sem sair da turma ou da disciplina atual.</p>
+                      <p className="text-sm font-bold text-foreground">Análise RAA do aluno</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Consulte a elegibilidade sem sair da turma ou da disciplina atual.</p>
                     </div>
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-                      <label className="flex-1 text-xs font-semibold text-slate-600">Aluno<select value={raaStudentId} onChange={(event) => { setRaaStudentId(event.target.value); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo("") }} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900"><option value="">Selecione um aluno</option>{pauta.map((student) => <option key={student.id} value={student.id}>{student.nome}</option>)}</select></label>
-                      <button type="button" onClick={() => void handleLoadRaaEligibility()} disabled={!raaStudentId || loadingRaa} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">{loadingRaa ? "A consultar..." : "Consultar elegibilidade"}</button>
+                      <label className="flex-1 text-xs font-semibold text-muted-foreground">Aluno<select value={raaStudentId} onChange={(event) => { setRaaStudentId(event.target.value); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo("") }} className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-foreground"><option value="">Selecione um aluno</option>{pauta.map((student) => <option key={student.id} value={student.id}>{student.nome}</option>)}</select></label>
+                      <button type="button" onClick={() => void handleLoadRaaEligibility()} disabled={!raaStudentId || loadingRaa} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">{loadingRaa ? "A consultar..." : "Consultar elegibilidade"}</button>
                     </div>
                     {raaResult && (() => {
                       const result = raaResult.canonical_result
@@ -1094,26 +1094,26 @@ function ProfessorNotasContent() {
                       const formulaText = formula && typeof formula === "object" ? Object.values(formula).find((value) => typeof value === "string" && value.includes("*")) : null
                       const isPendingFormula = result?.status === "pendente_formula"
                       const statusLabel = ({ aprovado: "Aprovado", reprovado: "Não aprovado", recurso: "Recurso previsto", reprovado_por_faltas: "Resultado por faltas", reprovado_por_indisciplina: "Situação em análise", pendente_formula: "Resultado em apuramento", pendente: "Em apuramento" } as Record<string, string>)[result?.status ?? raaResult.eligibility.status] ?? "Situação em análise"
-                      return <div className={`mt-3 rounded-xl border p-3 text-sm ${isPendingFormula ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-slate-50"}`}>
+                      return <div className={`mt-3 rounded-xl border p-3 text-sm ${isPendingFormula ? "border-amber-200 bg-amber-50" : "border-border bg-muted"}`}>
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="font-semibold text-foreground">{statusLabel}</span>
-                          <span className="text-xs text-slate-500">{raaResult.facts.quantidade_negativas} negativa(s) · {raaResult.facts.percentual_presenca == null ? "frequência pendente" : `${raaResult.facts.percentual_presenca}% presença`}</span>
+                          <span className="text-xs text-muted-foreground">{raaResult.facts.quantidade_negativas} negativa(s) · {raaResult.facts.percentual_presenca == null ? "frequência pendente" : `${raaResult.facts.percentual_presenca}% presença`}</span>
                         </div>
                         {isPendingFormula ? <><p className="mt-2 font-semibold text-amber-900">O resultado final aguarda as notas do exame.</p><p className="mt-1 text-xs text-amber-800">Confirma a sessão e lança as notas do exame.</p></> : <p className="mt-2 text-xs text-muted-foreground">{raaResult.next_action}</p>}
                         {result?.regime?.codigo_regime && <details className="mt-3 rounded-xl border border-border bg-card p-3"><summary className="cursor-pointer text-xs font-semibold text-muted-foreground">Ver critérios do resultado</summary><p className="mt-2 text-xs text-muted-foreground">Regime: {result.regime.codigo_regime}{formulaText ? ` · Fórmula: ${formulaText}` : ""}</p></details>}
                         {(result?.status === "reprovado" || raaResult.eligibility.status === "reprovado") && (
-                          <div className="mt-3 rounded-lg border border-rose-200 bg-white p-3">
+                          <div className="mt-3 rounded-lg border border-rose-200 bg-card p-3">
                             {reapreciacaoItem ? (
-                              <div className="text-xs text-slate-700">
-                                <p className="font-black text-slate-900">Reapreciação {reapreciacaoItem.estado.replace(/_/g, " ")}</p>
+                              <div className="text-xs text-foreground">
+                                <p className="font-black text-foreground">Reapreciação {reapreciacaoItem.estado.replace(/_/g, " ")}</p>
                                 <p className="mt-1">Protocolo: <span className="font-mono font-bold">{reapreciacaoItem.protocolo_publico}</span></p>
                                 <p className="mt-1">Prazo: {new Date(reapreciacaoItem.prazo_em).toLocaleString("pt-PT")}</p>
                               </div>
                             ) : (
                               <>
                                 <p className="text-xs font-bold text-rose-800">Pode solicitar reapreciação deste resultado.</p>
-                                <textarea value={reapreciacaoMotivo} onChange={(event) => setReapreciacaoMotivo(event.target.value)} rows={2} placeholder="Explique o motivo da reapreciação (mínimo 10 caracteres)." className="mt-2 w-full rounded-lg border border-rose-200 px-3 py-2 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-rose-200" />
-                                <button type="button" onClick={() => void handleRequestReapreciacao()} disabled={submittingReapreciacao || reapreciacaoMotivo.trim().length < 10} className="mt-2 rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">{submittingReapreciacao ? "A registar…" : "Solicitar reapreciação"}</button>
+                                <textarea value={reapreciacaoMotivo} onChange={(event) => setReapreciacaoMotivo(event.target.value)} rows={2} placeholder="Explique o motivo da reapreciação (mínimo 10 caracteres)." className="mt-2 w-full rounded-lg border border-rose-200 px-3 py-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-rose-200" />
+                                <button type="button" onClick={() => void handleRequestReapreciacao()} disabled={submittingReapreciacao || reapreciacaoMotivo.trim().length < 10} className="mt-2 rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">{submittingReapreciacao ? "A registar…" : "Solicitar reapreciação"}</button>
                               </>
                             )}
                           </div>
@@ -1123,22 +1123,22 @@ function ProfessorNotasContent() {
                   </div>
                 )}
                 {turmaId && disciplinaId && (loadingRaaRisks || raaRisksLoaded || raaRisksError) && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 ">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-foreground">Alunos que precisam de atenção</p>
                         <p className="mt-1 text-xs text-muted-foreground">{raaViewerScope === "school_management" ? "Pendências desta turma e disciplina." : "Pendências nas tuas turmas e disciplinas."}</p>
                       </div>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-amber-900" aria-live="polite">{loadingRaaRisks ? "A atualizar…" : raaRisksError ? "Ação necessária" : `${raaRisks.length} pendência(s)`}</span>
+                      <span className="rounded-full bg-card px-3 py-1 text-xs font-black text-amber-900" aria-live="polite">{loadingRaaRisks ? "A atualizar…" : raaRisksError ? "Ação necessária" : `${raaRisks.length} pendência(s)`}</span>
                     </div>
                     {raaRisksError ? (
-                      <div className="mt-3 rounded-lg border border-amber-200 bg-white p-3 text-sm text-slate-700">
+                      <div className="mt-3 rounded-lg border border-amber-200 bg-card p-3 text-sm text-foreground">
                         <p>{raaRisksError}</p>
                         <button type="button" onClick={() => setRaaRisksRetry((value) => value + 1)} className="mt-3 min-h-11 w-full rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white sm:w-auto">Tentar novamente</button>
                       </div>
                     ) : loadingRaaRisks ? (
                       <div className="mt-3 grid gap-2 sm:grid-cols-2" aria-label="A carregar riscos RAA">
-                        {[1, 2].map((item) => <div key={item} className="h-20 animate-pulse rounded-lg bg-white/80" />)}
+                        {[1, 2].map((item) => <div key={item} className="h-20 animate-pulse rounded-lg bg-card/80" />)}
                       </div>
                     ) : raaRisks.length === 0 ? (
                       <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
@@ -1148,9 +1148,9 @@ function ProfessorNotasContent() {
                     ) : (
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
                         {raaRisks.map((item) => (
-                          <button key={item.matricula_id} type="button" aria-label={`Ver elegibilidade de ${item.aluno_nome}`} onClick={() => { setRaaStudentId(item.aluno_id); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); void handleLoadRaaEligibility(item.aluno_id) }} className="min-h-20 rounded-lg border border-amber-200 bg-white p-3 text-left transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
-                            <div className="flex items-start justify-between gap-2"><span className="min-w-0 break-words text-sm font-bold text-slate-900">{item.aluno_nome}</span><span className="shrink-0 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black uppercase text-amber-800">{item.risco?.label ?? "Atenção"}</span></div>
-                            <div className="mt-2 flex items-end justify-between gap-2"><p className="text-xs leading-5 text-slate-600">{item.risco?.action ?? "Consultar elegibilidade e completar os dados."}</p><span className="shrink-0 text-[10px] font-black uppercase text-slate-400">Ver detalhe →</span></div>
+                          <button key={item.matricula_id} type="button" aria-label={`Ver elegibilidade de ${item.aluno_nome}`} onClick={() => { setRaaStudentId(item.aluno_id); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); void handleLoadRaaEligibility(item.aluno_id) }} className="min-h-20 rounded-lg border border-amber-200 bg-card p-3 text-left transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
+                            <div className="flex items-start justify-between gap-2"><span className="min-w-0 break-words text-sm font-bold text-foreground">{item.aluno_nome}</span><span className="shrink-0 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black uppercase text-amber-800">{item.risco?.label ?? "Atenção"}</span></div>
+                            <div className="mt-2 flex items-end justify-between gap-2"><p className="text-xs leading-5 text-muted-foreground">{item.risco?.action ?? "Consultar elegibilidade e completar os dados."}</p><span className="shrink-0 text-[10px] font-black uppercase text-muted-foreground">Ver detalhe →</span></div>
                           </button>
                         ))}
                       </div>
@@ -1158,20 +1158,20 @@ function ProfessorNotasContent() {
                   </div>
                 )}
                 {turmaId && disciplinaId && (loadingExamSessions || examSessions.length > 0) && (
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="rounded-xl border border-border bg-card p-4 ">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-bold text-slate-900">Exames e recurso</p>
-                        <p className="mt-1 text-xs text-slate-500">Sessões configuradas para esta turma. O lançamento permanece no contexto da disciplina selecionada.</p>
+                        <p className="text-sm font-bold text-foreground">Exames e recurso</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Sessões configuradas para esta turma. O lançamento permanece no contexto da disciplina selecionada.</p>
                       </div>
-                      {selectedExamSession && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase ${examLocked ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald-700"}`}>{selectedExamSession.estado}</span>}
+                      {selectedExamSession && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase ${examLocked ? "bg-muted text-muted-foreground" : "bg-emerald-50 text-emerald-700"}`}>{selectedExamSession.estado}</span>}
                     </div>
                     {loadingExamSessions ? (
-                      <div className="mt-3 h-10 animate-pulse rounded-xl bg-slate-100" />
+                      <div className="mt-3 h-10 animate-pulse rounded-xl bg-muted" />
                     ) : (
                       <div className="mt-4 space-y-3">
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <label className="text-xs font-semibold text-slate-600">
+                          <label className="text-xs font-semibold text-muted-foreground">
                             Sessão
                             <select
                               value={selectedExamSessionId}
@@ -1181,17 +1181,17 @@ function ProfessorNotasContent() {
                                 setSelectedExamComponentId(next?.exame_componentes?.[0]?.id ?? "")
                                 setExamNotes({})
                               }}
-                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900"
+                              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-foreground"
                             >
                               {examSessions.map((session) => <option key={session.id} value={session.id}>{session.tipo.replace("_", " ")} · {session.data_inicio} a {session.data_fim}</option>)}
                             </select>
                           </label>
-                          <label className="text-xs font-semibold text-slate-600">
+                          <label className="text-xs font-semibold text-muted-foreground">
                             Componente
                             <select
                               value={selectedExamComponentId}
                               onChange={(event) => setSelectedExamComponentId(event.target.value)}
-                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900"
+                              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-foreground"
                               disabled={examLocked}
                             >
                               {(selectedExamSession?.exame_componentes ?? []).map((component) => <option key={component.id} value={component.id}>{component.codigo} · máximo {component.nota_maxima}</option>)}
@@ -1199,20 +1199,20 @@ function ProfessorNotasContent() {
                           </label>
                         </div>
                         {examLocked ? (
-                          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">Esta sessão está {selectedExamSession?.estado}. Consulte a secretaria para corrigir a configuração.</p>
+                          <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Esta sessão está {selectedExamSession?.estado}. Consulte a secretaria para corrigir a configuração.</p>
                         ) : !selectedExamComponent ? (
                           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">A sessão ainda não tem componentes configurados.</p>
                         ) : (
-                          <div className="overflow-x-auto rounded-xl border border-slate-100">
+                          <div className="overflow-x-auto rounded-xl border border-border">
                             <table className="min-w-full text-left text-sm">
-                              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-3 py-2">Aluno</th><th className="w-32 px-3 py-2">Nota</th></tr></thead>
+                              <thead className="bg-muted text-xs uppercase text-muted-foreground"><tr><th className="px-3 py-2">Aluno</th><th className="w-32 px-3 py-2">Nota</th></tr></thead>
                               <tbody className="divide-y divide-slate-100">
-                                {pauta.map((student) => <tr key={student.id}><td className="px-3 py-2 font-medium text-slate-800">{student.nome}</td><td className="px-3 py-2"><input type="number" min="0" max={selectedExamComponent.nota_maxima} step="0.01" value={examNotes[student.id] ?? ""} onChange={(event) => setExamNotes((current) => ({ ...current, [student.id]: event.target.value }))} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20" aria-label={`Nota de exame de ${student.nome}`} /></td></tr>)}
+                                {pauta.map((student) => <tr key={student.id}><td className="px-3 py-2 font-medium text-foreground">{student.nome}</td><td className="px-3 py-2"><input type="number" min="0" max={selectedExamComponent.nota_maxima} step="0.01" value={examNotes[student.id] ?? ""} onChange={(event) => setExamNotes((current) => ({ ...current, [student.id]: event.target.value }))} className="w-24 rounded-lg border border-border px-2 py-1.5 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20" aria-label={`Nota de exame de ${student.nome}`} /></td></tr>)}
                               </tbody>
                             </table>
                           </div>
                         )}
-                        {!examLocked && selectedExamComponent && <button type="button" onClick={() => void handleSaveExamResults()} disabled={savingExam || !turmaDisciplinaId} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">{savingExam ? "Guardando resultados..." : "Guardar resultados do exame"}</button>}
+                        {!examLocked && selectedExamComponent && <button type="button" onClick={() => void handleSaveExamResults()} disabled={savingExam || !turmaDisciplinaId} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">{savingExam ? "Guardando resultados..." : "Guardar resultados do exame"}</button>}
                       </div>
                     )}
                   </div>

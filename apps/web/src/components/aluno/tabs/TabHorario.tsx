@@ -161,7 +161,7 @@ export function TabHorario() {
   }, [studentId, academicYearId, activeTab, agendaRetry]);
 
   return (
-    <div className="min-w-0 space-y-4">
+    <div className="min-w-0 space-y-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Horário</h1>
         {visibleData?.context?.anoLetivoLabel && (
@@ -180,7 +180,7 @@ export function TabHorario() {
           aria-pressed={activeTab === "horario"}
           className={`min-h-11 flex-1 rounded-xl py-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring transition-colors ${
             activeTab === "horario"
-              ? "bg-card text-primary shadow-sm ring-1 ring-klasse-gold/40"
+              ? "bg-accent text-accent-foreground ring-1 ring-primary/15"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -192,7 +192,7 @@ export function TabHorario() {
           aria-pressed={activeTab === "agenda"}
           className={`min-h-11 flex-1 rounded-xl py-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring transition-colors ${
             activeTab === "agenda"
-              ? "bg-card text-primary shadow-sm ring-1 ring-klasse-gold/40"
+              ? "bg-accent text-accent-foreground ring-1 ring-primary/15"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -240,7 +240,7 @@ export function TabHorario() {
                 onClick={() => setActiveDay(dia.id)}
                 className={`min-h-11 min-w-0 rounded-xl px-1 py-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-ring transition-colors ${
                   activeDay === dia.id
-                    ? "bg-klasse-gold text-klasse-gold-900 shadow-sm"
+                    ? "bg-accent text-accent-foreground ring-1 ring-primary/15"
                     : "bg-card text-foreground border border-border hover:bg-muted"
                 }`}
               >

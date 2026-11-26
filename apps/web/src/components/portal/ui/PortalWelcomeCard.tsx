@@ -1,5 +1,3 @@
-import styles from "./PortalWelcomeCard.module.css";
-
 type PortalWelcomeCardProps = {
   role: "aluno" | "professor";
   name?: string | null;
@@ -21,13 +19,13 @@ export function PortalWelcomeCard({ role, name, context, date, loading = false }
   const day = dayFormatter.format(date);
   const shortDate = shortFormatter.format(date).replace(/\s+de\s+/g, " ").replace(/\./g, "");
   return (
-    <header aria-busy={loading} data-testid="portal-welcome-card" className={`${styles.card} min-w-0 overflow-hidden rounded-xl`}>
+    <header aria-busy={loading} data-testid="portal-welcome-card" className="klasse-welcome-card min-w-0 overflow-hidden rounded-xl">
       <div className="space-y-3 px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <p className="text-[11px] font-semibold uppercase tracking-wide">Portal do {role}</p>
           <time aria-hidden="true" suppressHydrationWarning className="text-[11px] font-semibold uppercase tracking-wide">{shortDate}</time>
         </div>
-        <div className={`${styles.editorial} min-w-0 space-y-1 pl-3`}>
+        <div className="klasse-welcome-editorial min-w-0 space-y-1 pl-3">
           <h1 className="break-words text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
             {loading ? "A carregar…" : `Olá, ${displayName}`}
           </h1>
@@ -35,7 +33,7 @@ export function PortalWelcomeCard({ role, name, context, date, loading = false }
         </div>
         <p suppressHydrationWarning className="text-xs leading-relaxed">{day}</p>
       </div>
-      <div className={styles.signature} aria-hidden="true" />
+      <div className="klasse-welcome-signature" aria-hidden="true" />
     </header>
   );
 }

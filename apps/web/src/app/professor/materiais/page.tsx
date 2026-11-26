@@ -172,7 +172,7 @@ export default function ProfessorMateriaisPage() {
 
   return (
     <div className="min-h-screen bg-background pb-24 text-foreground">
-      <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
+      <div className={`${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 space-y-6`}>
         {/* HEADER DA PÁGINA */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <DashboardHeader
@@ -194,7 +194,7 @@ export default function ProfessorMateriaisPage() {
           </button>
         </header>
 
-        <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4">
           <label htmlFor="pesquisa-materiais" className="sr-only">Pesquisar materiais</label>
           <input
             id="pesquisa-materiais"
@@ -236,7 +236,7 @@ export default function ProfessorMateriaisPage() {
               return (
                 <div
                   key={m.id}
-                  className="rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md hover:border-emerald-500/40 transition-all flex flex-col justify-between"
+                  className="rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors flex flex-col justify-between"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
@@ -297,7 +297,7 @@ export default function ProfessorMateriaisPage() {
         {/* MODAL NOVO MATERIAL */}
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-            <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl space-y-4 border border-border">
+            <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl bg-card p-4 shadow-xl space-y-4 border border-border sm:p-6">
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <h3 className="text-base font-black text-foreground">Novo Material Pedagógico</h3>
                 <button

@@ -396,14 +396,14 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   };
   const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
   return (
-    <div className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-3 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
+    <div className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-5 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
       {!embedded && <header className="space-y-3">
-        <p className="text-sm font-medium text-[#2B6044]">KLASSE / Portal do aluno</p>
+        <p className="text-sm font-medium text-primary">KLASSE / Portal do aluno</p>
         <h1 className="text-2xl font-semibold tracking-tight text-primary sm:text-3xl">As tuas notas</h1>
         <p className="text-base leading-7 text-muted-foreground">Acompanha as avaliações que já foram lançadas.</p>
         {academicYear !== null && <p className="text-sm text-muted-foreground">Ano letivo {academicYear}</p>}
         <nav aria-label="Navegação académica" className="flex flex-wrap gap-x-5 gap-y-2 border-b border-border pt-2 text-sm">
-          <Link aria-current="page" href={buildPortalHref(escolaSlug, `/aluno/academico${navQuery}`)} className={`inline-flex min-h-11 items-center border-b-2 border-[#2B6044] font-semibold text-[#2B6044] ${focus}`}>Notas</Link>
+          <Link aria-current="page" href={buildPortalHref(escolaSlug, `/aluno/academico${navQuery}`)} className={`inline-flex min-h-11 items-center border-b-2 border-primary font-semibold text-primary ${focus}`}>Notas</Link>
           <Link href={buildPortalHref(escolaSlug, `/aluno/disciplinas${navQuery}`)} className={`inline-flex min-h-11 items-center text-foreground ${focus}`}>Disciplinas</Link>
           <Link href={buildPortalHref(escolaSlug, `/aluno/documentos${navQuery}`)} className={`inline-flex min-h-11 items-center text-foreground ${focus}`}>Documentos</Link>
         </nav>

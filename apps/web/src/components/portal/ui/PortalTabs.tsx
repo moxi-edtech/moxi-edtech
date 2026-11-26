@@ -46,7 +46,7 @@ export function PortalTabs<T extends string>({
 
   return (
     <div role="tablist" aria-label={label} data-testid={testId}
-      className={`min-w-0 gap-1 border-b border-border ${layout === "compact" ? "grid grid-cols-4" : "flex overflow-x-auto"} ${className}`}>
+      className={`klasse-portal-tabs min-w-0 gap-1 border-b border-border ${layout === "compact" ? "grid grid-cols-4" : "flex overflow-x-auto"} ${className}`}>
       {items.map((tab) => (
         <button
           key={tab.id}

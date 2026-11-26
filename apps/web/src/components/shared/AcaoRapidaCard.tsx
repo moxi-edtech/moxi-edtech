@@ -66,10 +66,10 @@ export default function AcaoRapidaCard({
       ? "group flex h-full min-h-16 w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-3 text-left"
       : mobileCompact
       ? "group flex h-full min-h-16 w-full min-w-0 items-center gap-2.5 rounded-xl border border-border bg-card p-3 text-left shadow-sm"
-      : "group flex h-full min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-sm") + " transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+      : "group flex h-full min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-sm") + " klasse-portal-operational-card transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
     const content = (
       <>
-        <span aria-hidden="true" className={`flex shrink-0 items-center justify-center rounded-xl ${portalClean ? "h-9 w-9 [&>svg]:size-[18px]" : "h-8 w-8 [&>svg]:size-4"} ${iconTone}`}>
+        <span aria-hidden="true" data-portal-tone={tone} className={`flex shrink-0 items-center justify-center rounded-xl ${portalClean ? "h-9 w-9 [&>svg]:size-[18px]" : "h-8 w-8 [&>svg]:size-4"} ${iconTone}`}>
           {disabled ? <Lock className="h-4 w-4" /> : icon}
         </span>
         <span className={portalTile ? "w-full min-w-0 flex-1" : "min-w-0 flex-1"}>

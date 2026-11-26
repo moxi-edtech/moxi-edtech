@@ -8,5 +8,5 @@ export default async function ProvasPortalPage({escolaParam,portal}:{escolaParam
  const access=await provaAccess(escolaParam);
  if(!access.ok||!access.distribute)notFound();
  const printOnly=!access.admin;
- return <div className={PORTAL_PAGE_INSET+" max-sm:px-2 max-sm:py-4"}><ProvasWorkspace key={access.escolaId+":"+portal} escolaId={access.escolaId} printOnly={printOnly}/></div>;
+ return <div className={PORTAL_PAGE_INSET+(portal === "professor" ? " max-md:px-0 max-md:py-0" : " max-sm:px-2 max-sm:py-4")}><ProvasWorkspace key={access.escolaId+":"+portal} escolaId={access.escolaId} printOnly={printOnly}/></div>;
 }

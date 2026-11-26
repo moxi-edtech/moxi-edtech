@@ -18,7 +18,7 @@ test("aluno e professor partilham a identidade institucional sem novas consultas
 });
 
 test("assinatura estática e cores do crachá limitadas ao cartão", () => {
-  const css = read("components/portal/ui/PortalWelcomeCard.module.css");
+  const css = read("app/globals.css");
   const asset = readFileSync(new URL("../../public/icons/klasse-welcome-signature.svg", import.meta.url), "utf8");
   assert.match(css, /--welcome-amber: #fea513/);
   assert.match(css, /--welcome-forest: #124527/);

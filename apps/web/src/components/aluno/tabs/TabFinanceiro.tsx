@@ -171,7 +171,7 @@ export function TabFinanceiro() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Financeiro</h1>
         <button
@@ -182,7 +182,7 @@ export function TabFinanceiro() {
         </button>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-3" aria-label="Resumo financeiro">
+      <div className="grid gap-3 md:grid-cols-3" aria-label="Resumo financeiro">
         <AcaoRapidaCard dashboardCompact mobileCompact emphasizeSublabel label="Por pagar" icon={<Wallet />}
           unavailable={!resumo} needsAttention={Boolean(resumo && resumo.total_pendente > 0)}
           sublabel={resumo ? money.format(resumo.total_pendente) : "Dados indisponíveis"} />
@@ -214,7 +214,7 @@ export function TabFinanceiro() {
         </details>
       )}
 
-      <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="fromAno" className="mb-1 block text-xs font-semibold text-muted-foreground">De</label>

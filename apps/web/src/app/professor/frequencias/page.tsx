@@ -200,7 +200,7 @@ export default function ProfessorFrequenciasPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-5 sm:p-6 space-y-4">
+    <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 md:p-6">
       <div className="mb-3 sm:mb-4">
         <DashboardHeader
           title="Frequências & Diário de Classe"
@@ -220,8 +220,8 @@ export default function ProfessorFrequenciasPage() {
           </div>
         )}
         <aside className="space-y-3 sm:space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-            <div className="text-xs font-black uppercase tracking-wider text-slate-400">Turma e Disciplina</div>
+          <div className="rounded-xl border border-border bg-card p-4  space-y-3">
+            <div className="text-xs font-black uppercase tracking-wider text-muted-foreground">Turma e Disciplina</div>
             
             <div className="space-y-2">
               <select
@@ -230,7 +230,7 @@ export default function ProfessorFrequenciasPage() {
                   setTurmaId(e.target.value)
                   setDisciplinaId('')
                 }}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                className="min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                 required
               >
                 <option value="">Selecione a Turma</option>
@@ -247,7 +247,7 @@ export default function ProfessorFrequenciasPage() {
               <select
                 value={disciplinaId}
                 onChange={(e) => setDisciplinaId(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 disabled:opacity-50"
+                className="min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 disabled:opacity-50"
                 required
                 disabled={!turmaId}
               >
@@ -263,28 +263,28 @@ export default function ProfessorFrequenciasPage() {
                 type="date"
                 value={data}
                 onChange={(e) => setData(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                className="min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                 required
               />
             </div>
           </div>
 
           {/* Status da Sincronização */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2 text-xs font-semibold text-slate-600 shadow-sm">
-            <div className="font-black uppercase tracking-wider text-slate-400 text-[10px]">Status da Chamada</div>
+          <div className="rounded-xl border border-border bg-card p-4 space-y-2 text-xs font-semibold text-muted-foreground ">
+            <div className="font-black uppercase tracking-wider text-muted-foreground text-[10px]">Status da Chamada</div>
             {submitStatus === 'saved' && <div className="flex items-center gap-1.5 text-emerald-700 font-bold"><CheckCircle2 size={16} /> Presenças sincronizadas com a escola.</div>}
             {submitStatus === 'pending' && <div className="flex items-center gap-1.5 text-amber-700 font-bold"><Clock size={16} /> Salvo offline (sincronizará ao reconectar).</div>}
             {submitStatus === 'failed' && <div className="flex flex-wrap items-center gap-2 text-rose-600 font-bold"><XCircle size={16} /> <span>Falha ao sincronizar.</span><button type="submit" className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-black uppercase text-rose-700 hover:bg-rose-200">Tentar novamente</button></div>}
-            {submitStatus === 'idle' && <div className="text-slate-500">Selecione a turma para iniciar o diário.</div>}
+            {submitStatus === 'idle' && <div className="text-muted-foreground">Selecione a turma para iniciar o diário.</div>}
           </div>
 
           {/* Relatório de Mapa de Frequência */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-sm">
-            <div className="text-xs font-black uppercase tracking-wider text-slate-400">Mapa de Frequência PDF</div>
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3 ">
+            <div className="text-xs font-black uppercase tracking-wider text-muted-foreground">Mapa de Frequência PDF</div>
             <select
               value={reportMonth}
               onChange={(e) => setReportMonth(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-600"
+              className="min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-emerald-600"
             >
               {[
                 { v: '01', l: 'Janeiro' },
@@ -311,7 +311,7 @@ export default function ProfessorFrequenciasPage() {
                 window.open(url, '_blank');
               }}
               disabled={!turmaId}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-xs font-black text-foreground hover:bg-muted disabled:opacity-50 transition-colors"
             >
               <Printer className="w-4 h-4" />
               Imprimir Mapa
@@ -321,7 +321,7 @@ export default function ProfessorFrequenciasPage() {
           <button
             type="submit"
             disabled={saving || !turmaId || !disciplinaId}
-            className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md transition-all active:scale-95 disabled:opacity-50 ${submitStatus === 'failed' ? 'bg-rose-600 hover:bg-rose-700' : submitStatus === 'saved' ? 'bg-emerald-700 hover:bg-emerald-800' : submitStatus === 'pending' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-wider text-white  transition-all active:scale-95 disabled:opacity-50 ${submitStatus === 'failed' ? 'bg-rose-600 hover:bg-rose-700' : submitStatus === 'saved' ? 'bg-emerald-700 hover:bg-emerald-800' : submitStatus === 'pending' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
           >
             {saving ? 'A Guardar Chamada...' : submitStatus === 'saved' ? <><CheckCircle2 className="h-4 w-4" /> Chamada Guardada</> : submitStatus === 'pending' ? 'Chamada Guardada Offline' : submitStatus === 'failed' ? 'Tentar Novamente' : 'Finalizar & Guardar Chamada'}
           </button>
@@ -339,13 +339,13 @@ export default function ProfessorFrequenciasPage() {
           
           {/* BARRA DE AÇÕES EM LOTE (Chamada por Exceção) */}
           {alunos.length > 0 && (
-            <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm space-y-3">
+            <div className="rounded-xl border border-border bg-card p-4  space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={handleMarcarTodosPresentes}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-2xs transition-all active:scale-95 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black  transition-all active:scale-95 cursor-pointer"
                   >
                     <UserCheck size={16} />
                     <span>Marcar Todos Presentes (1-Click)</span>
@@ -363,7 +363,7 @@ export default function ProfessorFrequenciasPage() {
                   <button
                     type="button"
                     onClick={handleResetStatus}
-                    className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl bg-muted hover:bg-muted text-muted-foreground text-xs font-semibold transition-colors"
                     title="Resetar Seleções"
                   >
                     <RotateCcw size={14} />
@@ -391,13 +391,13 @@ export default function ProfessorFrequenciasPage() {
               {/* Filtro de Pesquisa Rápida por Aluno */}
               {alunos.length > 8 && (
                 <div className="relative">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <input
                     type="text"
                     value={searchFilter}
                     onChange={(e) => setSearchFilter(e.target.value)}
                     placeholder="Filtrar aluno por nome..."
-                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-700 outline-none focus:bg-white focus:border-emerald-600"
+                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-muted text-xs text-foreground outline-none focus:bg-card focus:border-emerald-600"
                   />
                 </div>
               )}
@@ -405,7 +405,7 @@ export default function ProfessorFrequenciasPage() {
           )}
 
           {/* Chamada por exceção: a desistência fica nas opções secundárias. */}
-          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="overflow-hidden rounded-xl border border-border bg-card ">
             {alunos.length === 0 ? (
               <div className="space-y-2 px-4 py-8 text-center">
                 <UserCheck size={24} className="mx-auto text-muted-foreground" aria-hidden="true" />

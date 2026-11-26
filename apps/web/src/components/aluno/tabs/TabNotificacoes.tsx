@@ -31,7 +31,7 @@ export function TabNotificacoes() {
   }, [retry]);
 
   return (
-    <section className="space-y-4" aria-labelledby="aluno-avisos-title">
+    <section className="space-y-6" aria-labelledby="aluno-avisos-title">
       <div className="space-y-1">
         <h1 id="aluno-avisos-title" className="text-2xl font-semibold tracking-tight text-primary">Avisos</h1>
       </div>
@@ -51,7 +51,7 @@ export function TabNotificacoes() {
           <p className="text-sm text-muted-foreground">Ainda não há avisos publicados.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {items.map(a => (
             <article key={a.id} className="flex min-w-0 items-start gap-3 rounded-xl border border-border bg-card p-3 sm:p-4">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300"><Bell className="h-4 w-4" aria-hidden="true" /></span>
