@@ -96,7 +96,7 @@ test("second round of sheets reuses authorized data without eager roster or time
   const notes = read("components/aluno/tabs/TabNotas.tsx");
   assert.match(professor, /<PortalDrawerNavigator[^>]*open=\{Boolean\(selectedTurma\)\}/);
   assert.ok(professor.includes("<ProfessorTurmaHorario turmaId={selectedTurma.id} embedded />"));
-  assert.ok(professor.includes("<PortalSheet open={Boolean(selectedLesson)}"));
+  assert.match(professor, /<PortalDrawerNavigator[^>]*open=\{Boolean\(selectedLesson\)\}/);
   assert.ok(professor.includes("content: selectedTurma && <>"));
   assert.ok(roster.includes("payload.turmaId !== turmaId"));
   assert.ok(roster.includes("return () => ctrl.abort()"));
