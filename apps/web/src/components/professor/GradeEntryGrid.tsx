@@ -349,6 +349,11 @@ export function GradeEntryGrid({
     [pesoPorTipo, componentesAtivos, scheduleSave, notaMaxima]
   )
 
+  const closePaste = () => {
+    if (drawerEmbedded && pasteText.trim() && !window.confirm("Descartar valores ainda não aplicados?")) return
+    setPasteText("")
+    setShowPasteModal(false)
+  }
   const handleApplyPasteModal = () => {
     if (!pasteText.trim()) return
     handleBatchPaste(0, pasteColumn, pasteText)
@@ -649,15 +654,15 @@ export function GradeEntryGrid({
 
         {/* MODAL DE COLAR DO EXCEL */}
         {showPasteModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/60 backdrop-blur-xs p-4">
-            <div className="w-full max-w-lg rounded-2xl bg-card p-6 shadow-2xl space-y-4 border border-border animate-in fade-in zoom-in-95 duration-200">
+          <div className={drawerEmbedded ? "border-b border-border bg-muted/40 p-3" : "fixed inset-0 z-50 flex items-center justify-center bg-klasse-dark/60 backdrop-blur-xs p-4"}>
+            <div role={drawerEmbedded ? "region" : undefined} aria-label={drawerEmbedded ? "Colar coluna do Excel" : undefined} className={drawerEmbedded ? "w-full min-w-0 space-y-4 rounded-xl border border-border bg-card p-3" : "w-full max-w-lg rounded-2xl bg-card p-6 shadow-2xl space-y-4 border border-border animate-in fade-in zoom-in-95 duration-200"}>
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <div className="flex items-center gap-2">
                   <Clipboard className="text-emerald-600" size={20} />
                   <h3 className="text-base font-black text-foreground">Colar Coluna do Excel / Sheets</h3>
                 </div>
                 <button
-                  onClick={() => setShowPasteModal(false)}
+                  onClick={closePaste}
                   className="text-muted-foreground hover:text-muted-foreground text-sm font-bold"
                 >
                   ✕
@@ -688,7 +693,7 @@ export function GradeEntryGrid({
                     className="w-full rounded-xl border border-border p-3 text-xs font-mono text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                   />
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Valores como "145" serão corrigidos automaticamente para 14.5 (Escala 0 a 20).
+                    {notaMaxima === 20 ? 'Valores como "145" serão corrigidos automaticamente para 14,5 (escala de 0 a 20).' : `A escala desta turma é de 0 a ${notaMaxima}.`}
                   </p>
                 </div>
               </div>
@@ -696,7 +701,7 @@ export function GradeEntryGrid({
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowPasteModal(false)}
+                  onClick={closePaste}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground bg-muted hover:bg-muted-foreground/20"
                 >
                   Cancelar
