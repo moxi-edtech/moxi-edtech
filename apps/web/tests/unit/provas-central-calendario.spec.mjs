@@ -26,3 +26,5 @@ test("Central de Provas uses progressive disclosure instead of permanent explana
  assert.match(w,/cotacao\.ready/);assert.match(c,/assessmentPlanOverlaps/);
  assert.doesNotMatch(c,/A alteração fica auditada|Apenas turmas ativas do ano letivo/);
 });
+
+ test("Row status changes reuse the existing versioned mutation",()=>{const w=read("components/provas/ProvasWorkspace.tsx"),badge=read("components/provas/ProvaEstadoBadge.tsx");assert.match(w,/JSON.stringify\(\{acao:action,id:prova.id,versao:prova.versao\}\)/);assert.match(w,/permissions\?\.admin&&!printOnly/);assert.match(badge,/aprovada:\[\{action:"arquivar"/);assert.match(badge,/arquivada:\[\]/);assert.match(badge,/Confirmar:/);});

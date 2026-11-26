@@ -84,11 +84,13 @@ try{
  const adminPage=await browser.newPage({viewport:{width:1280,height:844}});
  const review={...prova,estado:"em_revisao",versao:3,conteudo:[{...prova.conteudo[0],cotacao_cent:2000}]};
  const draft={...review,id:"30000000-0000-4000-8000-000000000009",classe:"9.ª Classe",disciplina:"Matemática",estado:"rascunho"};
+ let statusWrites=0;
  const filterRequests=[];let logoReads=0;
  const png="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==";
  await adminPage.route(/\/api\/escola\/[^/]+\/provas(?:\/[^?]*)?(?:\?.*)?$/,async route=>{
   const q=new URL(route.request().url()).searchParams;
   assert.equal(q.get("aprovadas"),null,"financial admin must not be reduced to print-only");
+  if(route.request().method()==="POST"){const body=route.request().postDataJSON();assert.equal(body.id,draft.id);assert.equal(body.versao,draft.versao);assert.equal(body.acao,"submeter");assert.deepEqual(Object.keys(body).sort(),["acao","id","versao"]);statusWrites++;draft.estado="em_revisao";draft.versao++;return route.fulfill({json:{prova:draft}});}
   if(q.get("branding")==="1")return route.fulfill({json:{logo:++logoReads>1?png:null}});
   if(q.has("professores"))return route.fulfill({json:{items:[]}});
   const matches=(skip)=>[review,draft].filter(p=>q.get("historico")!=="1"&&q.get("estado")!=="arquivada"&&["classe","disciplina","estado","trimestre"].every(k=>k===skip||!q.has(k)||String(p[k])===q.get(k)));
@@ -138,7 +140,14 @@ try{
  await region.getByRole("button",{name:"1.º trimestre",exact:true}).click();
  await adminDialog.getByRole("button",{name:"Remover filtro Trimestre"}).click();
  await adminPage.setViewportSize({width:1280,height:844});
- await adminDialog.getByRole("button",{name:"Consultar",exact:true}).click();
+ await adminDialog.getByRole("button",{name:"Alterar estado: Matemática — Rascunho",exact:true}).click();
+ const statusMenu=adminDialog.getByRole("group",{name:"Alterar estado da prova",exact:true});
+ await statusMenu.getByRole("button",{name:"Em revisão",exact:true}).click();
+ assert.equal(statusWrites,0,"requires confirmation");
+ await statusMenu.getByRole("button",{name:"Confirmar",exact:true}).click();
+ await adminDialog.getByRole("button",{name:"Alterar estado: Matemática — Em revisão",exact:true}).waitFor();
+ assert.equal(statusWrites,1,"row status uses the existing mutation endpoint");
+ await adminDialog.getByRole("row").filter({hasText:"Física"}).getByRole("button",{name:"Consultar",exact:true}).click();
  await adminDialog.getByRole("button",{name:"Recarregar logótipo",exact:true}).click();
  const preview=adminDialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
  await preview.locator("img.school-logo").waitFor();
