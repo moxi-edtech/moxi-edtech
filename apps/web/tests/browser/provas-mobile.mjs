@@ -18,12 +18,13 @@ try{
   const isAdmin=width===1280;
   const page=await browser.newPage({viewport:{width,height},hasTouch:width<640,isMobile:width<640});
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
-  let saved=null;let calendar=[];
-  await page.route("**/api/escola/**/provas**",async route=>{
+  let saved=null;let calendar=[];let scheduleReads=0;
+  await page.route(/\/api\/escola\/[^/]+\/provas(?:\/[^?]*)?(?:\?.*)?$/,async route=>{
    const req=route.request(),url=new URL(req.url());
    const reply=body=>route.fulfill({json:body});
    if(url.pathname.endsWith("/agendamento")){
     if(req.method()==="POST"){const payload=req.postDataJSON();assert.equal(payload.prova,saved.id);assert.equal(payload.versao,saved.versao);assert.equal(payload.data,"2026-12-07");calendar=[{id:"event",turma_id:payload.turma,data:payload.data,inicio:payload.inicio,fim:"10:00",estado:"publicado"}];return reply({id:"event"});}
+    scheduleReads++;assert.equal(url.searchParams.get("prova"),saved.id);
     return reply({turmas:[{id:"80000000-0000-4000-8000-000000000001",nome:"8ª A",turno:"Manhã"}],eventos:calendar});
    }
    if(url.searchParams.has("professores"))return reply({items:[{id:user,nome:"Professor de teste"}]});
@@ -377,15 +378,21 @@ try{
   if(isAdmin){
    assert.equal(saved.conteudo.reduce((n,b)=>n+(b.cotacao_cent??0),0),2000);
    await dialog.getByRole("button",{name:"Publicar prova",exact:true}).click();
+   const scheduleResponse=page.waitForResponse(r=>new URL(r.url()).pathname.endsWith("/provas/agendamento")&&r.request().method()==="GET");
    await dialog.getByRole("button",{name:"Confirmar",exact:true}).click();
+   const loaded=await scheduleResponse;assert.equal(loaded.ok(),true,"schedule GET must succeed");assert.equal((await loaded.json()).turmas.length,1,"schedule GET must return eligible class");assert.ok(scheduleReads>0,"schedule request must reach the mocked endpoint");
    await dialog.getByText("Agendamento por turma",{exact:true}).waitFor();
    const schedule=dialog.getByRole("region",{name:"Agendamento por turma",exact:true});
-   await schedule.getByLabel("Turma",{exact:true}).selectOption("80000000-0000-4000-8000-000000000001");
+   const classSelect=schedule.getByRole("combobox",{name:"Turma",exact:true});
+   await classSelect.locator('option[value="80000000-0000-4000-8000-000000000001"]').waitFor({state:"attached"});
+   await classSelect.selectOption("80000000-0000-4000-8000-000000000001");
+   assert.equal(await classSelect.inputValue(),"80000000-0000-4000-8000-000000000001");
    await schedule.getByLabel("Data",{exact:true}).fill("2026-12-07");
    await schedule.getByLabel("Hora",{exact:true}).fill("08:30");
    await schedule.getByRole("button",{name:"Agendar e publicar no calendário"}).click();
    await schedule.getByText(/07\/12\/2026/).waitFor();
    assert.equal(calendar.length,1);
+   await schedule.getByText("Todas as turmas já estão agendadas.",{exact:true}).waitFor();
   }
   await dialog.getByRole("button",{name:"Fechar",exact:true}).click();
   await dialog.waitFor({state:"hidden"});
