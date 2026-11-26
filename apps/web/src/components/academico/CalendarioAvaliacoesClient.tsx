@@ -56,6 +56,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
   const [classFilter,setClassFilter] = useState("");
   const [agendaSearch,setAgendaSearch] = useState("");
   const [printOpen,setPrintOpen]=useState(false);
+  const [planningOpen,setPlanningOpen]=useState(!embedded);
   const [printScope,setPrintScope]=useState<"turma"|"classe"|"escola">("turma");
   const [printClass,setPrintClass]=useState("");
   const [printTurma,setPrintTurma]=useState("");
@@ -179,7 +180,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
     if (await mutate({ action: "create", items: rows.map(({ id: _localId, ...row }) => row) },
       "Avaliações guardadas como rascunho.")) {
       setChosen([]); setSchedule({}); setSharedDate("");
-      setMode("lista"); setClassFilter(rows[0]?.turma_id ?? ""); setAgendaSearch(""); setSelectedIds([]);
+      setMode("lista"); setClassFilter(rows[0]?.turma_id ?? ""); setAgendaSearch(""); setSelectedIds([]); if(embedded)setPlanningOpen(false);
     }
   };
 
@@ -226,16 +227,16 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
       <div>
         {!embedded&&<p className="text-xs font-semibold uppercase text-muted-foreground">Operações Académicas / Avaliações</p>}
         {embedded?<h2 className="text-lg font-semibold text-klasse-green">Calendário de Avaliações</h2>:<h1 className="text-2xl font-bold text-primary">Calendário de Avaliações</h1>}
-        <p className="text-sm text-muted-foreground">Planear por turma e disciplina, publicar em lote e consultar alterações.</p>
+        
       </div>
-      <div className="flex flex-wrap gap-2"><button type="button" className={action+" min-h-11 border border-border"} disabled={!data?.ano} aria-expanded={printOpen} aria-controls="avaliacoes-impressao" onClick={()=>{setPrintTurma(classFilter||classIds[0]||"");setPrintClass(printClasses[0]??"");setPrintOpen(v=>!v);}}><Printer size={16}/> Imprimir calendário</button>
+      <div className="flex flex-wrap gap-2">{embedded&&<button type="button" className={action+" min-h-11 bg-klasse-gold text-klasse-gold-900"} disabled={!data?.ano||Boolean(editing)} aria-expanded={planningOpen} aria-controls="avaliacoes-planeamento" onClick={()=>{setPlanningOpen(v=>!v);setPrintOpen(false);}}>{planningOpen?<X size={16}/>:<Plus size={16}/>} {planningOpen?"Recolher planeamento":"Planear avaliações"}</button>}<button type="button" className={action+" min-h-11 border border-border"} disabled={!data?.ano} aria-expanded={printOpen} aria-controls="avaliacoes-impressao" onClick={()=>{setPrintTurma(classFilter||classIds[0]||"");setPrintClass(printClasses[0]??"");setPrintOpen(v=>!v);if(embedded&&!editing)setPlanningOpen(false);}}><Printer size={16}/> Imprimir calendário</button>
       <button type="button" className={action + " border border-border"} onClick={() => void reload().catch((e) => setErr(e.message))}>
         <RefreshCw size={16} /> Atualizar
       </button></div>
     </header>
     {printOpen&&data?.ano&&<section id="avaliacoes-impressao" aria-label="Imprimir calendário de avaliações" className="space-y-3 rounded-xl border border-border bg-card p-4">
       <h2 className="font-semibold text-klasse-green">Imprimir calendário de avaliações</h2>
-      <p className="text-sm text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano+1} · {num}.º trimestre. Cada turma mantém o seu próprio horário.</p>
+      <p className="text-sm text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano+1} · {num}.º trimestre</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-1 text-sm">Modalidade<select className={control} value={printScope} onChange={e=>setPrintScope(e.target.value as typeof printScope)}><option value="turma">Por turma</option><option value="classe">Por classe</option><option value="escola">Toda a escola</option></select></label>
         {printScope==="turma"&&<label className="grid gap-1 text-sm">Turma<select className={control} value={printTurma} onChange={e=>setPrintTurma(e.target.value)}><option value="">Seleccione a turma</option>{data.turmas.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}</select></label>}
@@ -263,7 +264,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
           <span><strong className="text-lg font-semibold text-foreground">{draft.length}</strong> rascunhos</span>
           <span><strong className="text-lg font-semibold text-foreground">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</span>
         </div>
-        <a href="#avaliacoes-agenda" className={action + " min-h-10 border border-border bg-card text-foreground hover:bg-muted"}>Ver agenda</a>
+        {(!embedded||planningOpen)&&<a href="#avaliacoes-agenda" className={action + " min-h-10 border border-border bg-card text-foreground hover:bg-muted"}>Ver agenda</a>}
       </section>
 
       {editing ? (
@@ -271,7 +272,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
           <div className="flex items-start justify-between gap-2">
             <div>
               <h2 className="flex items-center gap-2 font-semibold text-primary"><Pencil size={17} /> Editar avaliação</h2>
-              <p className="mt-1 text-xs text-muted-foreground">A alteração fica auditada. A turma e disciplina permanecem vinculadas ao registo.</p>
+              
             </div>
             <button type="button" className={action + " border border-border"} onClick={() => setEditing(null)}><X size={16} /> Sair da edição</button>
           </div>
@@ -291,12 +292,12 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
           </div>
         </section>
       ) : (
-        <section className="space-y-5 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-5">
+        <section id="avaliacoes-planeamento" hidden={!planningOpen} className="space-y-4 rounded-xl border border-border bg-card p-3 sm:p-5">
           <div className="flex items-start gap-2">
             <Plus size={20} className="mt-0.5 text-primary" aria-hidden="true" />
             <div>
               <h2 className="font-semibold text-primary">Planear avaliações</h2>
-              <p className="text-xs text-muted-foreground">Várias disciplinas numa operação, cada uma com a sua data e horário.</p>
+              
             </div>
           </div>
 
@@ -322,7 +323,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
                 </select>
               </label>
             </div>
-            <p className="text-xs text-muted-foreground">Apenas turmas ativas do ano letivo {data.ano.ano}/{data.ano.ano + 1}, conforme os vínculos curriculares.</p>
+            
           </div>
 
           <div className="space-y-2 border-t border-border pt-4">
@@ -355,7 +356,7 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-sm font-semibold text-foreground">3 · Agendar por disciplina</h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">Sem hora de fim, considera-se uma duração de 60 minutos.</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Fim em branco: 60 min.</p>
               </div>
               <label className="text-xs font-semibold text-foreground">Tipo de avaliação
                 <select className={control + " mt-1"} value={kind} onChange={(e) => setKind(e.target.value)}>
@@ -450,13 +451,12 @@ export default function CalendarioAvaliacoesClient({escolaId,embedded=false,acti
               <Check size={16} /> Guardar rascunhos ({rows.length})
             </button>
           </div>
-          {rows.length > 0 && !ready && <p className="text-xs text-muted-foreground">Preencha as datas e horas de todas as disciplinas e resolva os conflitos antes de guardar.</p>}
+          {rows.length > 0 && !ready && <p className="text-xs text-muted-foreground">Complete os horários e resolva os conflitos.</p>}
         </section>
       )}
       <section id="avaliacoes-agenda" className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex justify-between gap-2 border-b border-border p-4">
-          <div><h2 className="font-semibold text-primary">Avaliações do trimestre</h2>
-          <p className="text-xs text-muted-foreground">Só avaliações publicadas aparecem nos portais.</p></div>
+          <h2 className="font-semibold text-primary">Avaliações do trimestre</h2>
           <span className="text-xs text-muted-foreground">{items.length} registo(s)</span>
         </div>
         <div className="space-y-3 border-b border-border p-4">
