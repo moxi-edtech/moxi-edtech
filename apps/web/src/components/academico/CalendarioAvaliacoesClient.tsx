@@ -1,7 +1,7 @@
 "use client";
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { CalendarCheck, CalendarDays, Printer, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X, AlertTriangle, Search } from "lucide-react";
 import { assessmentPlanOverlaps, type AssessmentScheduleSlot } from "@/lib/academico/assessment-plan-overlaps";
@@ -27,9 +27,9 @@ const fmt = (v: string) => v ? v.slice(0, 10).split("-").reverse().join("/") : "
 const stepDay = (s:string,n:number) => { const d=new Date(s+"T12:00:00Z"); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
 const startWeek = (s:string) => stepDay(s,-((new Date(s+"T12:00:00Z").getUTCDay()+6)%7));
 
-export default function CalendarioAvaliacoesClient() {
+export default function CalendarioAvaliacoesClient({escolaId,embedded=false,active=true}:{escolaId?:string;embedded?:boolean;active?:boolean}={}) {
   const params = useParams<{ id: string }>();
-  const endpoint = "/api/escola/" + encodeURIComponent(params?.id ?? "") + "/calendario-avaliacoes";
+  const endpoint = "/api/escola/" + encodeURIComponent(escolaId ?? params?.id ?? "") + "/calendario-avaliacoes";
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -85,6 +85,9 @@ export default function CalendarioAvaliacoesClient() {
     return () => { alive = false; };
   }, [reload]);
 
+  const wasActive=useRef(active);
+  useEffect(()=>{if(active&&!wasActive.current)void reload().catch(e=>setErr(e.message));wasActive.current=active;},[active,reload]);
+  const Container=embedded?"div":"main";
   const numbers = useMemo(() => [...new Set((data?.periodos || []).map((p) => p.numero))].sort(), [data]);
   const periods = (data?.periodos || []).filter((p) => p.numero === num);
   const classMap = new Map((data?.turmas || []).map((t) => [t.id, t]));
@@ -196,7 +199,7 @@ export default function CalendarioAvaliacoesClient() {
   };
 
   if (loading) return (
-    <main role="status" aria-label="A carregar calendário de avaliações" className={`${PORTAL_PAGE_INSET} space-y-4` }>
+    <Container role="status" aria-label="A carregar calendário de avaliações" className={`${embedded?"":PORTAL_PAGE_INSET} space-y-4` }>
       <span className="sr-only">A carregar calendário de avaliações</span>
       <div aria-hidden="true" className="space-y-4 motion-safe:animate-pulse">
         <div className="space-y-2"><div className="h-5 w-40 rounded-lg bg-muted" /><div className="h-8 w-64 max-w-full rounded-lg bg-muted" /></div>
@@ -216,13 +219,13 @@ export default function CalendarioAvaliacoesClient() {
           <div className="h-32 rounded-xl border border-border bg-muted/50" />
         </div>
       </div>
-    </main>
+    </Container>
   );
-  return <main className={`${PORTAL_PAGE_INSET} space-y-5`}>
+  return <Container className={`${embedded?"":PORTAL_PAGE_INSET} min-w-0 space-y-5`}>
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p className="text-xs font-semibold uppercase text-muted-foreground">Operações Académicas / Avaliações</p>
-        <h1 className="text-2xl font-bold text-primary">Calendário de Avaliações</h1>
+        {!embedded&&<p className="text-xs font-semibold uppercase text-muted-foreground">Operações Académicas / Avaliações</p>}
+        {embedded?<h2 className="text-lg font-semibold text-klasse-green">Calendário de Avaliações</h2>:<h1 className="text-2xl font-bold text-primary">Calendário de Avaliações</h1>}
         <p className="text-sm text-muted-foreground">Planear por turma e disciplina, publicar em lote e consultar alterações.</p>
       </div>
       <div className="flex flex-wrap gap-2"><button type="button" className={action+" min-h-11 border border-border"} disabled={!data?.ano} aria-expanded={printOpen} aria-controls="avaliacoes-impressao" onClick={()=>{setPrintTurma(classFilter||classIds[0]||"");setPrintClass(printClasses[0]??"");setPrintOpen(v=>!v);}}><Printer size={16}/> Imprimir calendário</button>
@@ -536,5 +539,5 @@ export default function CalendarioAvaliacoesClient() {
         </div>}</div>
       </section>
     </>}
-  </main>;
+  </Container>;
 }

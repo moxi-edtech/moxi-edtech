@@ -109,12 +109,6 @@ export default function QuickActionsSection({
           href: buildPortalHref(escolaParam, "/operacoes/provas"),
         },
         {
-          key: "calendario_avaliacoes",
-          label: "Calendário de Avaliações",
-          icon: Calendar,
-          href: buildPortalHref(escolaParam, "/operacoes/academico/calendario-avaliacoes"),
-        },
-        {
           key: "criar_aviso",
           label: "Criar Aviso",
           icon: Megaphone,

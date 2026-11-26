@@ -51,6 +51,7 @@ export async function GET(req:Request,{params}:Context){
  let list=(f.professor?db.rpc("provas_por_professor",{p_escola:escolaId,p_professor:f.professor}).select(summaryColumns):db.from("provas_pedagogicas").select(summaryColumns)).eq("escola_id",escolaId);
  if(f.tipo)list=list.eq("tipo_prova",f.tipo);
  if(f.estado)list=list.eq("estado",f.estado);
+ if(query.get("ativas")==="1")list=list.neq("estado","arquivada");
  if(f.trimestre)list=list.eq("trimestre",Number(f.trimestre));
  if(f.ano)list=list.eq("ano_lectivo",f.ano);
  if(f.classe)list=list.eq("classe",f.classe);
