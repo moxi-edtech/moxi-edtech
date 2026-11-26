@@ -1,7 +1,7 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
+import { ArrowLeft, X } from "lucide-react";
 import { readMotionDuration } from "@/components/portal/motion/motion-tokens";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
@@ -16,11 +16,14 @@ type Props = {
   footer?: ReactNode;
   closeLabel?: string;
   contentId?: string;
+  onBack?: () => void;
+  navigationKey?: string;
+  bodyRef?: Ref<HTMLDivElement>;
 };
 const sizes = { compact: "40dvh", medium: "65dvh", expanded: "90dvh" };
 
 /** Radix owns modality, focus trapping and nested dialogs; CSS owns motion. */
-export function PortalSheet({ open, onClose, title, description, size = "medium", busy = false, children, footer, closeLabel = "Fechar", contentId }: Props) {
+export function PortalSheet({ open, onClose, title, description, size = "medium", busy = false, children, footer, closeLabel = "Fechar", contentId, onBack, navigationKey, bodyRef }: Props) {
   const opener = useRef<HTMLElement | null>(null);
   const header = useRef<HTMLHeadingElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -40,6 +43,9 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
     preference.addEventListener("change", changed);
     return () => { window.clearTimeout(fallback); preference.removeEventListener("change", changed); };
   }, [open, retained]);
+  useLayoutEffect(() => {
+    if (open && navigationKey) header.current?.focus({ preventScroll: true });
+  }, [open, navigationKey]);
   const requestClose = () => {
     if (busy || closing || !open) return;
     // Move focus before the initiating pointer event can blur a control.
@@ -81,7 +87,8 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
         <header className="shrink-0 border-b border-border px-4 pb-3 pt-3">
           <div aria-hidden="true" className="mx-auto mb-3 h-1 w-8 rounded-full bg-muted-foreground/30" />
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1">
+            {onBack && <button type="button" onClick={onBack} disabled={busy || closing} className="klasse-portal-press flex min-h-11 shrink-0 items-center gap-1 rounded-xl px-2 text-sm font-semibold text-primary focus-visible:ring-2 focus-visible:ring-ring"><ArrowLeft size={18} aria-hidden="true" />Voltar</button>}
+            <div className="min-w-0 flex-1 space-y-1">
               <DialogTitle ref={header} tabIndex={-1} className="break-words text-lg leading-snug text-primary focus:outline-none">{title}</DialogTitle>
               <DialogDescription className="text-xs leading-relaxed">{description}</DialogDescription>
             </div>
@@ -91,7 +98,7 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
             </button>
           </div>
         </header>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">{children}</div>
+        <div ref={bodyRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">{children}</div>
         {footer && <footer className="shrink-0 border-t border-border p-4">{footer}</footer>}
       </DialogContent>
     </Dialog>
