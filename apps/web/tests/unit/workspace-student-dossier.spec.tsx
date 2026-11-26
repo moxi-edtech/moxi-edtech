@@ -93,7 +93,13 @@ test("the existing full profile and the workspace use exactly the same dossier l
   assert.match(dossierRoute, /loadAlunoDossierData\(/);
   assert.match(dossierLoader, /get_aluno_dossier/);
   assert.match(dossierLoader, /normalizeDossier/);
-  assert.match(dossierLoader, /documentos_emitidos/);
+  assert.match(dossierLoader, /loadIssuedMonthlyReceipts\(supabase,\s*\{\s*escolaId:\s*resolvedEscolaId,\s*alunoId,\s*mensalidadeIds\s*\}\)/);
+  const receiptResolver = source("lib/financeiro/issued-monthly-receipts.ts");
+  assert.match(receiptResolver, /\.from\("documentos_emitidos"\)/);
+  assert.match(receiptResolver, /\.eq\("escola_id", escolaId\)\.eq\("aluno_id", alunoId\)/);
+  assert.match(receiptResolver, /\.is\("revoked_at", null\)/);
+  assert.match(receiptResolver, /\.eq\("status", "settled"\)/);
+  assert.doesNotMatch(receiptResolver, /supabaseServerRole|\.insert\(|\.update\(|\.upsert\(|\.delete\(|\.rpc\(/);
   assert.match(dossierLoader, /extractServicosFromPagamentos/);
 });
 

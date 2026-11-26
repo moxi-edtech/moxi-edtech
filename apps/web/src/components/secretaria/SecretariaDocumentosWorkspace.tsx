@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import dynamic from "next/dynamic";
+const ProvasModal=dynamic(()=>import("@/components/provas/ProvasModal"),{ssr:false});
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -8,7 +10,7 @@ import DocumentosEmissaoHubClient from "@/components/secretaria/DocumentosEmissa
 import DocumentosAprovacoesQueue from "@/components/secretaria/DocumentosAprovacoesQueue";
 import DocumentosEmitidosList from "@/components/secretaria/DocumentosEmitidosList";
 import { FaltasJustificacoesQueue } from "@/components/secretaria/FaltasJustificacoesQueue";
-import { FileText, Inbox, History, CalendarCheck } from "lucide-react";
+import { FileText, Inbox, History, CalendarCheck, ClipboardList } from "lucide-react";
 
 const tabs = [
   { id: "emitir", label: "Emitir", Icon: FileText },
@@ -23,6 +25,7 @@ export default function SecretariaDocumentosWorkspace({ escolaId }: { escolaId: 
   const recebimentosHref = buildPortalHref(escolaParam, "/secretaria/recebimentos");
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("emitir");
   const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [provasOpen,setProvasOpen]=useState(false);
 
   return (
     <div className={PORTAL_PAGE_INSET}>
@@ -43,7 +46,9 @@ export default function SecretariaDocumentosWorkspace({ escolaId }: { escolaId: 
             {id === "solicitacoes" && pendingCount !== null && pendingCount > 0 && <span className="rounded-full bg-muted px-2 text-xs" aria-label={`${pendingCount} pendentes`}>{pendingCount}</span>}
           </button>
         ))}
+        <button type="button" aria-haspopup="dialog" aria-expanded={provasOpen} onClick={()=>setProvasOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"><ClipboardList className="h-4 w-4" aria-hidden="true"/> Provas</button>
       </nav>
+      {provasOpen&&<ProvasModal escolaId={escolaId} onClose={()=>setProvasOpen(false)}/>}
       <div hidden={tab !== "emitir"}><DocumentosEmissaoHubClient key={escolaId} escolaId={escolaId} /></div>
       <div hidden={tab !== "solicitacoes"}><DocumentosAprovacoesQueue key={escolaId} onCountChange={setPendingCount} /></div>
       {tab === "emitidos" && <DocumentosEmitidosList key={escolaId} />}

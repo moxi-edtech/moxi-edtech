@@ -47,6 +47,9 @@ jobs:
           cd "$RUNNER_TEMP/cc-composite"
           pnpm install --frozen-lockfile
       - name: Combined TS application contract
+        env:
+          # Composite tree includes multiple full applications; Node's default heap exhausted in CI.
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           cd "$RUNNER_TEMP/cc-composite"
           pnpm -C apps/web typecheck
@@ -77,7 +80,8 @@ jobs:
             /tmp/cc-d-all-unit-tests.txt
           retention-days: 14
   synthetic-three-attendances:
-    runs-on: ubuntu-latest
+    # Playwright 1.57 does not provide Chromium builds for Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4

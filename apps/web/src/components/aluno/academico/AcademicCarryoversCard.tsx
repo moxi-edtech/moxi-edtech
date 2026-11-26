@@ -69,6 +69,7 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
   const [items, setItems] = useState<CarryoverItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
 
   const endpoint = useMemo(
     () => `/api/aluno/raa/dependencias${studentId ? `?studentId=${encodeURIComponent(studentId)}` : ""}`,
@@ -84,9 +85,9 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
       if (!response.ok || !json?.ok) {
         throw new Error(json?.error || "Não foi possível carregar as dependências académicas.");
       }
-      setItems(json.items ?? []);
+      if (!signal?.aborted) setItems(json.items ?? []);
     } catch (caught) {
-      if (caught instanceof DOMException && caught.name === "AbortError") return;
+      if (signal?.aborted || (caught instanceof DOMException && caught.name === "AbortError")) return;
       setError(caught instanceof Error ? caught.message : "Não foi possível carregar as dependências académicas.");
     } finally {
       if (!signal?.aborted) setLoading(false);
@@ -97,7 +98,7 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
     const ctrl = new AbortController();
     void load(ctrl.signal);
     return () => ctrl.abort();
-  }, [endpoint]);
+  }, [endpoint, retry]);
 
   if (loading) {
     return <div className="h-28 animate-pulse rounded-3xl border border-border bg-card" aria-label="A carregar dependências académicas" />;
@@ -110,7 +111,7 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
         <p className="mt-1 text-xs text-rose-800">{error}</p>
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={() => setRetry(value => value + 1)}
           className="mt-3 inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-bold text-rose-800 shadow-sm"
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -120,7 +121,7 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
     );
   }
 
-  if (items.length === 0) return null;
+  if (items.length === 0) return <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">Nenhuma dependência académica encontrada.</p>;
 
   const abertas = items.filter((item) => !item.presentation.terminal).length;
 

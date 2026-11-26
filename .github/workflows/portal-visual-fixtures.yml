@@ -4,12 +4,26 @@ on:
     paths:
       - 'apps/web/src/components/aluno/PortalVisualFixtures.stories.tsx'
       - 'apps/web/scripts/visual/portais-screenshot.mjs'
+      - 'apps/web/scripts/visual/portal-motion-performance.mjs'
+      - 'apps/web/scripts/visual/portal-context-sheets.mjs'
+      - 'apps/web/src/components/portal/ui/PortalSheet.tsx'
+      - 'apps/web/src/components/aluno/financeiro-portal/PaymentDrawer.tsx'
+      - 'apps/web/src/components/aluno/layout/ServicePaymentDrawer.tsx'
+      - 'apps/web/src/components/portal/motion/**'
+      - 'apps/web/src/components/portal/ui/PortalTabs.tsx'
+      - 'apps/web/src/components/layout/klasse/PortalBottomNav.tsx'
       - 'apps/web/scripts/visual/theme-switcher-smoke.mjs'
       - 'apps/web/src/components/ThemePreferences.tsx'
       - 'apps/web/src/components/ThemeToggle.tsx'
       - 'apps/web/src/components/providers/ThemeProvider.tsx'
       - 'apps/web/src/app/globals.css'
       - 'apps/web/visual-harness/**'
+      - 'apps/web/src/lib/sidebarPresentation.ts'
+      - 'apps/web/src/lib/sidebarNav.ts'
+      - 'apps/web/src/components/layout/klasse/Sidebar.tsx'
+      - 'apps/web/src/components/layout/shared/Sidebar*.tsx'
+      - 'apps/web/scripts/visual/sidebar-overflow.mjs'
+      - 'apps/web/tests/unit/sidebar-presentation.spec.ts'
       - 'apps/web/src/components/aluno/tabs/TabDocumentos.tsx'
       - 'apps/web/src/components/aluno/tabs/TabNotas.tsx'
       - 'apps/web/src/app/professor/page.tsx'
@@ -62,7 +76,22 @@ jobs:
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
         run: node apps/web/scripts/visual/theme-switcher-smoke.mjs
+      - name: Motion interaction and CPU baseline (1x and 4x)
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/portal-motion-performance.mjs
+      - name: Contextual sheets and explicit payment confirmation
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/portal-context-sheets.mjs
+      - name: Sidebar geometry and label contract
+        run: node --test --import tsx apps/web/tests/unit/sidebar-presentation.spec.ts
+      - name: Sidebar overflow matrix (synthetic)
+        env:
+          PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
+        run: node apps/web/scripts/visual/sidebar-overflow.mjs
       - name: Capture synthetic responsive/zoom matrix
+        if: ${{ !cancelled() }}
         env:
           PLAYWRIGHT_MODULE: /tmp/klasse-visual/node_modules/playwright/index.mjs
         run: node apps/web/scripts/visual/portais-screenshot.mjs

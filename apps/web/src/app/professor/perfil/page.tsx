@@ -103,7 +103,7 @@ export default function ProfessorPerfilPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 md:p-6">
         <div>
           <DashboardHeader
             title="Perfil do Professor"
@@ -170,7 +170,7 @@ export default function ProfessorPerfilPage() {
                 </label>
                 <div className="text-xs text-muted-foreground">E-mail de acesso: {form.email || "—"}. Para alterá-lo, contacte a gestão da escola. Nome, BI e vínculo são validados pela escola.</div>
                 <button type="button" disabled={saving} onClick={savePersonal}
-                  className="min-h-11 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60">
+                  className="min-h-11 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:brightness-95 disabled:opacity-60">
                   {saving ? "A guardar…" : "Guardar os meus dados"}
                 </button>
               </div>
@@ -192,7 +192,7 @@ export default function ProfessorPerfilPage() {
                       form.turnos_disponiveis.map((turno) => (
                         <span
                           key={turno}
-                          className="rounded-full border border-amber/40 bg-amber/10 px-3 py-1 text-xs font-semibold text-foreground"
+                          className="rounded-full border border-primary/20 bg-accent px-3 py-1 text-xs font-medium text-accent-foreground"
                         >
                           {turno}
                         </span>

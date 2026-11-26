@@ -5,6 +5,11 @@ on:
     paths:
       - 'supabase/migrations/20271202030000_bolsa_integral_matricula_ssot.sql'
       - 'supabase/ops/tests/bolsa_integral_pg17_*'
+      - 'supabase/migrations/20271204010000_bolsa_parcial_por_competencia.sql'
+      - 'supabase/ops/tests/bolsa_parcial_pg17_*'
+      - 'apps/web/src/components/aluno/BolsaIntegralCard.tsx'
+      - 'apps/web/src/components/aluno/tabs/TabFinanceiro.tsx'
+      - 'apps/web/src/app/api/aluno/financeiro/route.ts'
       - '.github/workflows/bolsa-integral-pg17.yml'
       - 'apps/web/tests/unit/alunos-filtros-bolsa-ssot.spec.mjs'
       - 'apps/web/src/lib/services/alunos.service.ts'
@@ -60,3 +65,5 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/bolsa_integral_pg17_fixture.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271202030000_bolsa_integral_matricula_ssot.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/bolsa_integral_pg17_assert.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271204010000_bolsa_parcial_por_competencia.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/bolsa_parcial_pg17_assert.sql

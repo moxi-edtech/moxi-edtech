@@ -42,6 +42,7 @@ export const alunoListItemSchema = z.object({
   classe_nome: z.string().nullable().optional(),
   turno: z.string().nullable().optional(),
   bolsa_integral: z.boolean().nullable().optional(),
+  bolseiro: z.boolean().nullable().optional(),
   situacao_financeira: z.string().nullable().optional(),
   meses_atraso: z.number().optional(),
   valor_em_divida: z.number().optional(),

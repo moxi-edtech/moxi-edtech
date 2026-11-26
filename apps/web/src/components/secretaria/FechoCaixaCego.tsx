@@ -1,360 +1,104 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import {
-  Lock,
-  Banknote,
-  CreditCard,
-  ArrowRight,
-  AlertTriangle,
-  CheckCircle2,
-  Loader2,
-  Calculator,
-  Wallet,
-} from "lucide-react";
+import { useRef, useState, type FormEvent } from "react";
+import { Banknote, CreditCard, CheckCircle2, AlertTriangle, Loader2, Calculator } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
-const KWANZA_NOTES = [
-  { value: 5000, label: "5.000 Kz", color: "text-foreground bg-muted" },
-  { value: 2000, label: "2.000 Kz", color: "text-foreground bg-muted" },
-  { value: 1000, label: "1.000 Kz", color: "text-rose-700 bg-rose-50" },
-  { value: 500, label: "500 Kz", color: "text-amber-700 bg-amber-50" },
-  { value: 200, label: "200 Kz", color: "text-cyan-700 bg-cyan-50" },
-  { value: 100, label: "100 Kz", color: "text-foreground bg-muted" },
-];
-
-const kwanza = new Intl.NumberFormat("pt-AO", {
-  style: "currency",
-  currency: "AOA",
-  maximumFractionDigits: 0,
-});
-
-type ResultadoFecho = {
-  sistema: { numerario: number; tpa: number; transferencia: number; mcx: number };
-  diferenca_total: number;
-  status: "MATCH" | "DIVERGENT";
-};
-
-interface FechoCaixaCegoProps {
-  onConfirm: (data: {
-    numerario_declarado: number;
-    tpa_declarado: number;
-    transferencia_declarada: number;
-    mcx_declarado: number;
-    detalhe_notas: Record<string, number>;
-  }) => Promise<ResultadoFecho>;
+const NOTES = [5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05];
+const format = (value: number) => new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+const inputClass = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20 disabled:opacity-60";
+type Channels = { numerario: number; tpa: number; transferencia: number; mcx: number };
+type ResultadoFecho = { sistema: Channels; declarado: Channels; diferenca_total: number; outros?: number; outros_count?: number; status: "MATCH" | "DIVERGENT" };
+type Props = {
+  onConfirm: (data: { numerario_declarado: number; tpa_declarado: number; transferencia_declarada: number; mcx_declarado: number; detalhe_notas: Record<string, number> }) => Promise<ResultadoFecho>;
   onClose: () => void;
-}
+  completionLabel?:string;
+  compact?:boolean;
+  onCompleted?:()=>void;
+};
+const CHANNELS = [["numerario", "Numerário"], ["tpa", "TPA"], ["transferencia", "Transferências"], ["mcx", "Multicaixa Express"]] as const;
 
-export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoProps) {
-  const [step, setStep] = useState<"contagem" | "conferencia">("contagem");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
+export default function FechoCaixaCego({ onConfirm, onClose, completionLabel="Voltar à secretaria", compact=false, onCompleted }: Props) {
+  const [cashMode,setCashMode]=useState<"total"|"count">("total");
+  const [cashTotal,setCashTotal]=useState("");
   const [counts, setCounts] = useState<Record<number, string>>({});
-  const [tpaTotal, setTpaTotal] = useState<string>("");
-  const [transferTotal, setTransferTotal] = useState<string>("");
-  const [mcxTotal, setMcxTotal] = useState<string>("");
+  const [digital, setDigital] = useState({ tpa: "", transferencia: "", mcx: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const pending = useRef(false);
+  const [error, setError] = useState<string | null>(null);
+  const [zeroConfirmed,setZeroConfirmed]=useState(false);
+  const [result, setResult] = useState<ResultadoFecho | null>(null);
+  const cash = cashMode==="total"?Number(cashTotal||0):NOTES.reduce((sum, note) => sum + Math.round(note*100) * Number(counts[note] || 0), 0)/100;
 
-  const [resultado, setResultado] = useState<ResultadoFecho | null>(null);
-
-  const totalNumerario = useMemo(() => {
-    return Object.entries(counts).reduce((acc, [val, qtd]) => {
-      const quantity = parseInt(qtd) || 0;
-      return acc + Number(val) * quantity;
-    }, 0);
-  }, [counts]);
-
-  const handleCountChange = (val: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
-    setCounts((prev) => ({ ...prev, [val]: value }));
-  };
-
-  const handleSubmit = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-
-    const declaracao = {
-      numerario_declarado: totalNumerario,
-      tpa_declarado: Number(tpaTotal) || 0,
-      transferencia_declarada: Number(transferTotal) || 0,
-      mcx_declarado: Number(mcxTotal) || 0,
-      detalhe_notas: Object.fromEntries(
-        Object.entries(counts).map(([k, v]) => [k, Number(v) || 0])
-      ),
-    };
-
-    try {
-      const response = await onConfirm(declaracao);
-      setResultado(response);
-      setStep("conferencia");
-    } catch (error) {
-      console.error("Erro no fecho", error);
-    } finally {
-      setIsSubmitting(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending.current || result) return;
+    const values = [cash, ...Object.values(digital).map(Number)];
+    if (!values.every(value => Number.isFinite(value) && value >= 0 && value <= 9999999999.99 && Math.abs(value*100-Math.round(value*100))<0.0001)) {
+      setError("Informe valores válidos e não negativos.");
+      return;
     }
-  };
+    if(values.every(value=>value===0)&&!zeroConfirmed){setError("Confirme que não houve movimento financeiro.");return;}
+    pending.current = true;
+    setSubmitting(true);
+    setError(null);
+    try {
+      setResult(await onConfirm({
+        numerario_declarado: cash,
+        tpa_declarado: Number(digital.tpa),
+        transferencia_declarada: Number(digital.transferencia),
+        mcx_declarado: Number(digital.mcx),
+        detalhe_notas: cashMode==="total"?{}:Object.fromEntries(NOTES.map(note => [String(note), Number(counts[note] || 0)])),
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível registar o fecho. Tente novamente.");
+    } finally {
+      pending.current = false;
+      setSubmitting(false);
+    }
+  }
+
+  if (result) return (
+    <section className={compact?"space-y-4":"space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6"}>
+      <div role="status" className="flex items-start gap-3">
+        {result.status === "MATCH" ? <CheckCircle2 className="h-5 w-5 text-klasse-green" /> : <AlertTriangle className="h-5 w-5 text-red-600" />}
+        <div><h2 className="font-semibold text-foreground">{result.status === "MATCH" ? "Fecho sem divergências" : "Fecho com divergências"}</h2><p className="text-sm text-muted-foreground">Declaração registada. Consulte os valores por meio de pagamento.</p></div>
+      </div>
+      <details open={!compact||result.status==="DIVERGENT"} className="text-sm"><summary className="cursor-pointer font-medium">Valores por meio de pagamento</summary>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b border-border text-muted-foreground"><tr><th scope="col" className="p-2 text-left">Meio</th><th scope="col" className="p-2 text-right">Declarado</th><th scope="col" className="p-2 text-right">Sistema</th><th scope="col" className="p-2 text-right">Diferença</th></tr></thead>
+          <tbody className="divide-y divide-border">{CHANNELS.map(([key, label]) => {
+            const delta = Math.round((result.declarado[key] - result.sistema[key]) * 100) / 100;
+            return <tr key={key}><th scope="row" className="p-2 text-left font-medium">{label}</th><td className="p-2 text-right font-mono">{format(result.declarado[key])}</td><td className="p-2 text-right font-mono">{format(result.sistema[key])}</td><td className={`p-2 text-right font-mono ${delta !== 0 ? "text-red-600" : "text-foreground"}`}>{format(delta)}</td></tr>;
+          })}</tbody>
+        </table>
+      </div></details>
+      {!!result.outros_count&&<p role="status" className="rounded-xl border border-amber-200 p-3 text-sm">Pagamentos sem meio classificado: {format(result.outros??0)} ({result.outros_count}). A conferência exige justificação.</p>}
+      <p className="text-sm text-muted-foreground">Diferença líquida dos quatro meios: <span className="font-mono text-foreground">{format(result.diferenca_total)}</span></p>
+      <Button tone="gold" onClick={()=>{onClose();onCompleted?.();}}>{completionLabel}</Button>
+    </section>
+  );
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-      <div className="bg-card w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="bg-klasse-dark p-6 flex justify-between items-center text-white shrink-0 border-b border-border">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Lock className="w-4 h-4 text-amber-300" />
-              <span className="text-[10px] font-bold text-amber-300 uppercase tracking-widest">
-                Procedimento de Auditoria
-              </span>
-            </div>
-            <h2 className="text-xl font-bold text-white">Fecho de Caixa Cego</h2>
-            <p className="text-muted-foreground text-xs mt-1">Declare os valores físicos antes de ver o sistema.</p>
-          </div>
-
-          {step === "contagem" && (
-            <div className="text-right bg-muted-foreground/20 p-3 rounded-xl border border-border">
-              <div className="text-[10px] text-muted-foreground uppercase font-bold">Total Físico (Cash)</div>
-              <div className="text-2xl font-mono font-bold text-emerald-300">
-                {kwanza.format(totalNumerario)}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-muted">
-          {step === "contagem" && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 space-y-8">
-              <section className="bg-card p-5 rounded-2xl border border-border shadow-sm">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-4 pb-2 border-b border-border">
-                  <Banknote className="w-4 h-4 text-muted-foreground" />
-                  1. Contagem de Numerário (Cédulas)
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {KWANZA_NOTES.map((note) => {
-                    const qtd = Number(counts[note.value] || 0);
-                    const subtotal = qtd * note.value;
-
-                    return (
-                      <div
-                        key={note.value}
-                        className={`p-3 rounded-xl border transition-all ${
-                          qtd > 0
-                            ? "bg-card border-emerald/30 shadow-sm ring-1 ring-emerald/10"
-                            : "bg-muted border-border"
-                        }`}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${note.color}`}>
-                            {note.label}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="0"
-                            className="w-full bg-card border border-border rounded-lg py-1.5 px-2 text-center font-bold text-foreground focus:ring-2 focus:ring-ring focus:border-ring outline-none text-lg"
-                            value={counts[note.value] || ""}
-                            onChange={(e) => handleCountChange(note.value, e.target.value)}
-                          />
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase">un</span>
-                        </div>
-                        <div
-                          className={`text-right text-xs font-mono font-bold mt-2 ${
-                            subtotal > 0 ? "text-foreground" : "text-muted-foreground"
-                          }`}
-                        >
-                          {kwanza.format(subtotal)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section className="bg-card p-5 rounded-2xl border border-border shadow-sm">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-4 pb-2 border-b border-border">
-                  <CreditCard className="w-4 h-4 text-muted-foreground" />
-                  2. Valores Digitais (Soma dos Comprovativos)
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-foreground uppercase">Soma dos Talões TPA</label>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-foreground">
-                        <CreditCard className="h-5 w-5" />
-                      </div>
-                      <input
-                        type="number"
-                        value={tpaTotal}
-                        onChange={(e) => setTpaTotal(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-ring focus:ring-2 focus:ring-ring/20 outline-none transition-all placeholder:text-muted-foreground"
-                        placeholder="0"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
-                        KZ
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Some o valor impresso em todos os papéis do TPA.</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-foreground uppercase">Soma Transferências</label>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-foreground">
-                        <Wallet className="h-5 w-5" />
-                      </div>
-                      <input
-                        type="number"
-                        value={transferTotal}
-                        onChange={(e) => setTransferTotal(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-ring focus:ring-2 focus:ring-ring/20 outline-none transition-all placeholder:text-muted-foreground"
-                        placeholder="0"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
-                        KZ
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Some o valor dos bordereaux físicos recebidos.</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-foreground uppercase">Soma MCX/KIWK</label>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-foreground">
-                        <Wallet className="h-5 w-5" />
-                      </div>
-                      <input
-                        type="number"
-                        value={mcxTotal}
-                        onChange={(e) => setMcxTotal(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-muted font-mono text-lg font-bold text-foreground focus:bg-card focus:border-ring focus:ring-2 focus:ring-ring/20 outline-none transition-all placeholder:text-muted-foreground"
-                        placeholder="0"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
-                        KZ
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Some o valor dos pagamentos MCX/KIWK.</p>
-                  </div>
-                </div>
-              </section>
-            </div>
-          )}
-
-          {step === "conferencia" && resultado && (
-            <div className="animate-in zoom-in-95 duration-300 flex flex-col items-center justify-center py-8">
-              <div className="mb-6 relative">
-                <div
-                  className={`w-24 h-24 rounded-full flex items-center justify-center ${
-                    resultado.diferenca_total === 0
-                      ? "bg-emerald/10 text-foreground"
-                      : "bg-red-50 text-red-600"
-                  }`}
-                >
-                  {resultado.diferenca_total === 0 ? (
-                    <CheckCircle2 className="w-12 h-12" />
-                  ) : (
-                    <AlertTriangle className="w-12 h-12" />
-                  )}
-                </div>
-                {resultado.diferenca_total === 0 && (
-                  <div className="absolute -bottom-2 -right-2 bg-amber text-amber-900 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">
-                    PERFEITO
-                  </div>
-                )}
-              </div>
-
-              <h3 className="text-2xl font-bold text-foreground mb-2">
-                {resultado.diferenca_total === 0 ? "Caixa Batido com Sucesso!" : "Divergência Detectada"}
-              </h3>
-              <p className="text-muted-foreground text-sm mb-8 text-center max-w-md">
-                O relatório de fecho foi gerado e enviado para a administração.
-              </p>
-
-              <div className="w-full bg-card rounded-xl border border-border overflow-hidden shadow-sm mb-6">
-                <div className="grid grid-cols-3 bg-muted p-4 text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
-                  <div>Canal</div>
-                  <div className="text-right">Declarado</div>
-                  <div className="text-right">Sistema</div>
-                </div>
-                <div className="divide-y divide-border">
-                  <div className="grid grid-cols-3 p-4 text-sm">
-                    <span className="font-bold text-foreground">Numerário</span>
-                    <span className="text-right font-mono text-muted-foreground">{kwanza.format(totalNumerario)}</span>
-                    <span className="text-right font-mono text-muted-foreground">
-                      {kwanza.format(resultado.sistema.numerario)}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 p-4 text-sm">
-                    <span className="font-bold text-foreground">TPA</span>
-                    <span className="text-right font-mono text-muted-foreground">
-                      {kwanza.format(Number(tpaTotal) || 0)}
-                    </span>
-                    <span className="text-right font-mono text-muted-foreground">{kwanza.format(resultado.sistema.tpa)}</span>
-                  </div>
-                  <div className="grid grid-cols-3 p-4 text-sm">
-                    <span className="font-bold text-foreground">Transferência</span>
-                    <span className="text-right font-mono text-muted-foreground">
-                      {kwanza.format(Number(transferTotal) || 0)}
-                    </span>
-                    <span className="text-right font-mono text-muted-foreground">
-                      {kwanza.format(resultado.sistema.transferencia)}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 p-4 text-sm">
-                    <span className="font-bold text-foreground">MCX</span>
-                    <span className="text-right font-mono text-muted-foreground">
-                      {kwanza.format(Number(mcxTotal) || 0)}
-                    </span>
-                    <span className="text-right font-mono text-muted-foreground">{kwanza.format(resultado.sistema.mcx)}</span>
-                  </div>
-                  <div className="grid grid-cols-3 p-4 bg-muted/50">
-                    <span className="font-bold text-foreground">Resultado Final</span>
-                    <div className="col-span-2 text-right">
-                      <span
-                        className={`text-base font-black font-mono px-3 py-1 rounded-lg ${
-                          resultado.diferenca_total === 0
-                            ? "bg-emerald/10 text-foreground"
-                            : "bg-red-50 text-red-600"
-                        }`}
-                      >
-                        {resultado.diferenca_total > 0 ? "+" : ""}
-                        {kwanza.format(resultado.diferenca_total)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="p-6 bg-card border-t border-border shrink-0 flex justify-between items-center gap-4">
-          {step === "contagem" ? (
-            <>
-              <button
-                onClick={onClose}
-                className="px-6 py-3 rounded-xl border border-border text-muted-foreground text-sm font-bold hover:bg-muted hover:text-foreground transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="flex-1 bg-amber text-amber-900 px-6 py-3 rounded-xl text-sm font-bold hover:brightness-105 shadow-md shadow-orange-900/10 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
-              >
-                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Calculator className="w-5 h-5" />}
-                {isSubmitting ? "Validando..." : "Conferir Caixa"}
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={onClose}
-              className="w-full bg-emerald text-white px-6 py-4 rounded-xl text-sm font-bold hover:brightness-110 shadow-lg flex items-center justify-center gap-2 transition-all"
-            >
-              Concluir e Sair <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+    <form onSubmit={submit} className={compact?"space-y-5":"space-y-4"} aria-busy={submitting}>
+      <section className={compact?"space-y-3":"space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6"}>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-2 font-semibold text-foreground"><Banknote className="h-5 w-5 text-klasse-green" /> Numerário</h2>{!compact&&<p className="mt-1 text-sm text-muted-foreground">Informe o total contado ou utilize a contagem por denominação.</p>}</div>{(!compact||cashMode==="count")&&<div className="text-right"><p className="text-xs text-muted-foreground">Total contado</p><p className="font-mono text-xl font-semibold text-foreground">{format(cash)}</p></div>}</div>
+        <div className="flex flex-wrap gap-2"><Button type="button" aria-pressed={cashMode==="total"} variant={cashMode==="total"?"default":"outline"} disabled={submitting} onClick={()=>{setCashMode("total");setZeroConfirmed(false);}}>Valor total</Button><Button type="button" aria-pressed={cashMode==="count"} variant={cashMode==="count"?"default":"outline"} disabled={submitting} onClick={()=>{setCashMode("count");setZeroConfirmed(false);}}>Contar notas e moedas</Button></div>{cashMode==="total"?<label className="block space-y-1 text-sm">Numerário contado (Kz)<input type="number" min="0" max="9999999999.99" step="0.01" inputMode="decimal" className={inputClass} value={cashTotal} placeholder="0,00" disabled={submitting} onChange={e=>{setCashTotal(e.target.value);setZeroConfirmed(false);}}/></label>:<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{NOTES.map(note => <label key={note} className="space-y-1 rounded-xl border border-border p-3 text-sm"><span className="font-medium">{format(note)}</span><input className={inputClass} inputMode="numeric" pattern="[0-9]*" maxLength={8} placeholder="0" value={counts[note] || ""} disabled={submitting} onChange={event => { if (/^\d*$/.test(event.target.value)) {setCounts(prev => ({ ...prev, [note]: event.target.value }));setZeroConfirmed(false);} }} /><span className="block text-xs text-muted-foreground">{format(note * Number(counts[note] || 0))}</span></label>)}</div>}
+      </section>
+      <section className={compact?"space-y-3 border-t border-border pt-4":"space-y-4 rounded-xl border border-border bg-card p-4 sm:p-6"}>
+        <div><h2 className="flex items-center gap-2 font-semibold text-foreground"><CreditCard className="h-5 w-5 text-klasse-green" /> Pagamentos digitais</h2><p className="mt-1 text-xs text-muted-foreground">Deixe vazio se não houve movimento.</p></div>
+        <div className="grid gap-3 sm:grid-cols-3">{CHANNELS.slice(1).map(([key, label]) => {
+          const channel = key as keyof typeof digital;
+          return <label key={channel} className="space-y-1 text-sm"><span className="font-medium">{label} (Kz)</span><input type="number" min="0" max="9999999999.99" step="0.01" inputMode="decimal" className={inputClass} value={digital[channel]} placeholder="0,00" disabled={submitting} onChange={event=>{setDigital(prev=>({...prev,[channel]:event.target.value}));setZeroConfirmed(false);}} /></label>;
+        })}</div>
+      </section>
+      {cash===0&&Object.values(digital).every(v=>Number(v)===0)&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={zeroConfirmed} disabled={submitting} onChange={e=>setZeroConfirmed(e.target.checked)}/> Confirmo que não houve movimento financeiro.</label>}
+      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" disabled={submitting} onClick={onClose} variant="outline">Cancelar</Button>
+        <Button type="submit" disabled={submitting} tone="gold">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}{submitting ? "A registar..." : "Declarar fecho"}</Button>
       </div>
-    </div>
+    </form>
   );
 }

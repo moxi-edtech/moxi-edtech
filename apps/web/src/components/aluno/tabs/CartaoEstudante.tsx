@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { usePortalMobile } from "@/components/portal/ui/usePortalMobile";
 import QRCode from "react-qr-code";
 import { User, ShieldCheck, Calendar, GraduationCap, Wallet, WifiOff, Info } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -31,6 +33,8 @@ export function CartaoEstudante() {
   const [isOffline, setIsOffline] = useState(false);
   const [error, setError] = useState<{ type: string; message: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"card" | "qr">("card");
+  const [qrOpen, setQrOpen] = useState(false);
+  const mobile = usePortalMobile();
 
   useEffect(() => {
     const handleOnlineStatus = () => setIsOffline(!navigator.onLine);
@@ -48,6 +52,7 @@ export function CartaoEstudante() {
     const controller = new AbortController();
     setLoading(true);
     setData(null);
+    setQrOpen(false);
     setError(null);
     setIsServedFromCache(false);
 
@@ -104,8 +109,8 @@ export function CartaoEstudante() {
   if (error?.type === "PENDING_PAYMENT") {
     return (
       <div className="py-8 px-4 max-w-sm mx-auto text-center">
-        <div className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm">
-          <div className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center mx-auto">
+        <div className="space-y-4 rounded-xl border border-border bg-card p-4 ">
+          <div className="h-11 w-11 rounded-xl bg-accent text-accent-foreground border border-primary/15 flex items-center justify-center mx-auto">
             <Wallet size={20} />
           </div>
           <div className="space-y-1">
@@ -121,14 +126,48 @@ export function CartaoEstudante() {
 
   if (!data) return <div role="alert" className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">{error?.message || "Falha ao carregar identidade."}</div>;
 
+  const qrContent = (<div className="w-full max-w-[340px] mx-auto space-y-6">
+          <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center  sm:p-6">
+            
+            {/* The QR is a machine-readable document, not a themed surface.
+                Its own SVG includes a quiet zone of at least four modules
+                (36 units for a 180-unit symbol, even at QR version 1). */}
+            <svg viewBox="0 0 252 252" width={252} height={252}
+              className="block h-auto w-full max-w-[252px]"
+              role="img" aria-label="Código QR de validação do cartão do estudante">
+              <rect width={252} height={252} rx={8} fill="#ffffff" />
+              <QRCode
+                x={36}
+                y={36}
+                value={data.verification_url}
+                size={180}
+                bgColor="#ffffff"
+                fgColor="#0f172a"
+                aria-hidden="true"
+              />
+            </svg>
+
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">Validação em tempo real</h3>
+              <p className="text-sm leading-5 text-muted-foreground">
+                Apresenta o código para validar a tua identidade.
+              </p>
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald/10 border border-emerald/20 px-3.5 py-1 text-xs font-medium text-emerald dark:text-emerald-300">
+              <ShieldCheck size={12} /> Válido até {new Date(data.validade).toLocaleDateString("pt-PT")}
+            </div>
+
+          </div>
+        </div>);
   return (
-    <div className="flex flex-col items-center space-y-6 py-6 px-2 max-w-md mx-auto">
+    <div className="mx-auto flex w-full min-w-0 max-w-md flex-col items-center space-y-4">
 
       {/* Offline Status Badge */}
       {(isServedFromCache || isOffline) && (
-        <div className="flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200/80 px-4 py-1.5 text-xs font-bold text-amber-800 shadow-sm animate-in fade-in duration-300">
+        <div className="flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200/80 px-4 py-1.5 text-xs font-bold text-amber-800  animate-in fade-in duration-300">
           <WifiOff size={14} className="text-amber-600 shrink-0" />
-          <span>Modo Offline — Cartão Salvo no Dispositivo</span>
+          <span>Offline · Cartão guardado</span>
         </div>
       )}
 
@@ -137,7 +176,7 @@ export function CartaoEstudante() {
         <button
           type="button"
           onClick={() => setActiveTab("card")}
-          aria-pressed={activeTab === "card"}
+          aria-pressed={activeTab === "card" || mobile}
           className={`min-h-11 flex-1 rounded-xl px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
             activeTab === "card"
               ? "bg-card text-primary ring-1 ring-klasse-gold/30 shadow-sm"
@@ -148,8 +187,10 @@ export function CartaoEstudante() {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("qr")}
-          aria-pressed={activeTab === "qr"}
+          onClick={() => { if (mobile) setQrOpen(true); else setActiveTab("qr"); }}
+          aria-haspopup={mobile ? "dialog" : undefined}
+          aria-pressed={mobile ? undefined : activeTab === "qr"}
+          aria-expanded={mobile ? qrOpen : undefined}
           className={`min-h-11 flex-1 rounded-xl px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
             activeTab === "qr"
               ? "bg-card text-primary ring-1 ring-klasse-gold/30 shadow-sm"
@@ -161,41 +202,38 @@ export function CartaoEstudante() {
       </div>
 
       {/* TAB 1: Visual do Cartão Estudantil */}
-      {activeTab === "card" && (
+      {(activeTab === "card" || mobile) && (
         <div className="w-full max-w-[360px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
-          <div className="relative aspect-[1.58/1] w-full overflow-hidden rounded-[2.5rem] bg-[#0d1711] p-6 text-white shadow-xl ring-1 ring-white/10 flex flex-col justify-between">
+          <div className="relative min-h-[215px] w-full rounded-xl border border-border bg-card p-4 text-foreground  flex flex-col justify-between">
             
-            {/* Ambient Lighting Ornaments */}
-            <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-amber/10 blur-[50px]" />
-            <div className="absolute -left-12 -bottom-12 h-44 w-44 rounded-full bg-emerald-500/10 blur-[50px]" />
 
             {/* Header do Cartão */}
-            <div className="relative flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 backdrop-blur-md p-1">
+            <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted p-1">
                   {data.escola_logo ? (
                     <img src={data.escola_logo} alt="Logo" className="h-full w-full object-contain" />
                   ) : (
-                    <GraduationCap className="h-5 w-5 text-amber" />
+                    <GraduationCap className="h-5 w-5 text-primary" />
                   )}
                 </div>
-                <h3 className="text-xs font-black uppercase tracking-tight text-white truncate max-w-[170px]">
+                <h3 className="min-w-0 break-words text-sm font-semibold text-foreground">
                   {data.escola}
                 </h3>
               </div>
-              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[9px] font-black uppercase text-amber backdrop-blur-sm">
+              <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
                 {data.ano_letivo}
               </span>
             </div>
 
             {/* Corpo do Cartão */}
-            <div className="relative my-auto flex items-center gap-4">
+            <div className="relative my-3 flex items-center gap-3">
               {/* Foto do Aluno */}
-              <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-800 ring-1 ring-white/20 shadow-lg">
+              <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
                 {data.foto ? (
                   <img src={data.foto} alt={data.nome} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-slate-800 text-white/20">
+                  <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
                     <User size={36} />
                   </div>
                 )}
@@ -203,16 +241,16 @@ export function CartaoEstudante() {
 
               {/* Dados Principais */}
               <div className="min-w-0 flex-1 space-y-1">
-                <h2 className="text-sm font-black text-white leading-tight truncate">{data.nome}</h2>
-                <p className="text-[10px] font-bold text-slate-400">
-                  Proc: <span className="text-emerald-400 font-mono">{data.processo}</span>
+                <h2 className="break-words text-sm font-semibold leading-tight text-foreground">{data.nome}</h2>
+                <p className="text-xs font-medium text-muted-foreground">
+                  Proc: <span className="text-foreground font-mono">{data.processo}</span>
                 </p>
                 
                 <div className="pt-2 space-y-0.5">
-                  <p className="text-[9px] font-black uppercase text-amber tracking-tight truncate">
+                  <p className="break-words text-xs font-medium text-primary">
                     {data.curso}
                   </p>
-                  <p className="text-[10px] font-medium text-white/80">
+                  <p className="text-xs text-muted-foreground">
                     Turma: {data.turma}
                   </p>
                 </div>
@@ -220,8 +258,8 @@ export function CartaoEstudante() {
             </div>
 
             {/* Footer do Cartão */}
-            <div className="relative flex items-center justify-between border-t border-white/10 pt-2.5 text-[9px] font-bold text-slate-400">
-              <span className="flex items-center gap-1 text-emerald-400">
+            <div className="relative flex flex-wrap items-center justify-between gap-1 border-t border-border pt-2.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1 text-primary">
                 <ShieldCheck size={12} /> Documento Oficial
               </span>
               <span>Validade: {new Date(data.validade).toLocaleDateString("pt-PT")}</span>
@@ -229,42 +267,20 @@ export function CartaoEstudante() {
 
           </div>
 
-          <p className="text-center text-[11px] font-medium text-slate-400">
+          <p className="text-center text-xs text-muted-foreground">
             Apresente este cartão digital para identificação nas instalações escolares.
           </p>
         </div>
       )}
 
       {/* TAB 2: QR Code de Validação (Espaçoso e Limpo) */}
-      {activeTab === "qr" && (
-        <div className="w-full max-w-[340px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
-          <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center shadow-sm sm:p-6">
-            
-            <div className="rounded-xl border border-border bg-card p-5">
-              <QRCode
-                value={data.verification_url}
-                size={180}
-                style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                viewBox={`0 0 256 256`}
-                fgColor="#0f172a"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">Validação em tempo real</h3>
-              <p className="text-sm leading-5 text-muted-foreground">
-                Código para leitura nos leitos de acesso ou conferência de presença.
-              </p>
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-100 px-3.5 py-1 text-[10px] font-bold text-emerald-700">
-              <ShieldCheck size={12} /> Válido até {new Date(data.validade).toLocaleDateString("pt-PT")}
-            </div>
-
-          </div>
-        </div>
+      {activeTab === "qr" && !mobile && (
+        qrContent
       )}
 
+      <PortalSheet open={mobile && qrOpen} onClose={()=>setQrOpen(false)} title="QR de validação" description="Apresenta o código para validar a tua identidade." size="expanded">
+                {qrContent}
+      </PortalSheet>
     </div>
   );
 }

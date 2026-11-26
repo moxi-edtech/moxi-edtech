@@ -259,15 +259,11 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   if (fetching) return <PortalLoadingState label="A carregar documentos" rows={3} className="pb-4" />;
 
   return (
-    <div className="min-w-0 space-y-4 pb-8">
+    <div className="min-w-0 space-y-5">
       {/* Cabeçalho */}
-      {!embedded && <header className="px-1 space-y-1">
+      {!embedded && <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Secretaria Digital</h1>
-        <p className="text-sm leading-5 text-muted-foreground">
-          Solicita documentos e acompanha os teus pedidos.
-        </p>
       </header>}
-      {embedded && <p className="text-sm leading-6 text-muted-foreground">Solicita documentos e acompanha o estado dos teus pedidos.</p>}
 
       {catalogError ? (
         <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-foreground" role="alert">
@@ -284,18 +280,18 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
            description={serviceCode ? "Consulta outros serviços ou contacta a secretaria." : "A secretaria ainda não publicou serviços de documentação."}
          />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {visibleDocs.map((doc) => (
              <PortalSurface key={doc.id} as="article" className="min-w-0 space-y-2 rounded-xl">
                <div className="flex min-w-0 items-start gap-3">
-                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
-                   doc.status === "granted" ? "border-emerald-100 bg-emerald-50 text-emerald-700" :
-                   doc.status === "pending_payment" ? "border-amber-100 bg-amber-50 text-amber-700" :
-                   doc.status === "pending" || doc.status === "blocked" ? "border-blue-100 bg-blue-50 text-blue-700" :
-                   doc.status === "rejected" ? "border-rose-100 bg-rose-50 text-rose-700" :
-                   "border-border bg-muted text-muted-foreground"
+                 <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                   doc.status === "granted" ? "bg-emerald/10 text-emerald dark:text-emerald-300" :
+                   doc.status === "pending_payment" ? "bg-amber/15 text-amber-700 dark:text-amber-300" :
+                   doc.status === "pending" || doc.status === "blocked" ? "bg-amber/15 text-amber-700 dark:text-amber-300" :
+                   doc.status === "rejected" ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300" :
+                   "bg-muted text-muted-foreground"
                  }`}>
-                   <FileText aria-hidden="true" className="h-5 w-5" />
+                   <FileText aria-hidden="true" className="h-4 w-4" />
                  </div>
                  <div className="min-w-0 flex-1 space-y-1.5">
                    <div className="flex flex-wrap items-start gap-2">

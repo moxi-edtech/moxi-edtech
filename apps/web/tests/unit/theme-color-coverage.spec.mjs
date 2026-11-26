@@ -13,6 +13,8 @@ const paths = [
   "apps/web/src/components/fiscal/FiscalLedgerTable.tsx",
   "apps/web/src/components/fiscal/FiscalRowActions.tsx",
   "apps/web/src/components/ui/NotificacoesDropdown.tsx",
+  "apps/web/src/components/ui/NotificacoesSurface.tsx",
+  "apps/web/src/components/layout/klasse/PortalBottomNav.tsx",
   "apps/web/src/components/ui/alert.tsx",
   "apps/web/src/components/dashboard/TaskList.tsx",
   "apps/web/src/app/professor/perfil/page.tsx",
@@ -38,13 +40,24 @@ test("fiscal document state is semantic while text stays legible on both themes"
 
 test("notices and notifications retain semantic warning, danger and success indicators", () => {
   const notice = repoFile("apps/web/src/components/ui/alert.tsx");
-  const notifications = repoFile("apps/web/src/components/ui/NotificacoesDropdown.tsx");
+  const dropdown = repoFile("apps/web/src/components/ui/NotificacoesDropdown.tsx");
+  const notifications = repoFile("apps/web/src/components/ui/NotificacoesSurface.tsx");
+  const dialog = repoFile("apps/web/src/components/ui/dialog.tsx");
   assert.match(notice, /border-amber\/40 bg-card text-foreground/);
   assert.match(notice, /border-destructive\/40 bg-card text-foreground/);
   assert.match(notice, /border-emerald\/30 bg-card text-foreground/);
-  assert.match(notifications, /bg-destructive text-background/);
-  assert.match(notifications, /bg-amber\/10/);
-  assert.match(notifications, /bg-destructive\/10/);
+  assert.match(dropdown, /import \{ NotificacoesSurface \} from "@\/components\/ui\/NotificacoesSurface"/);
+  assert.match(dropdown, /<NotificacoesSurface\b/);
+  assert.match(notifications, /naoLidas > 0 && <span[^>]*className="[^"]*bg-destructive [^"]*text-background"/);
+  assert.match(notifications, /aviso: \{[\s\S]*?dot: "bg-amber",\s*bg: "bg-amber\/10",\s*text: "text-foreground"/);
+  assert.match(notifications, /urgente: \{[\s\S]*?dot: "bg-destructive",\s*bg: "bg-destructive\/10",\s*text: "text-foreground"/);
+  assert.match(notifications, /aria-label=\{naoLidas > 0 \?/);
+  assert.match(notifications, /aria-expanded=\{open\}/);
+  assert.match(notifications, /<DialogContent[^>]*layout="bottom-sheet"/);
+  assert.match(notifications, /max-w-\[calc\(100vw-2rem\)\]/);
+  assert.match(notifications, /focus-visible:ring-4 focus-visible:ring-klasse-gold\/20/);
+  assert.match(notifications, /onCloseAutoFocus=/);
+  assert.match(dialog, /layout === "bottom-sheet" \? "fixed inset-x-0 bottom-0[^"]*max-h-\[85dvh\][^"]*bg-card/);
 });
 
 test("shared surface recipes honor app CSS theme tokens instead of a frozen light palette", () => {

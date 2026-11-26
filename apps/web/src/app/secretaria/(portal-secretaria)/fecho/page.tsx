@@ -1,83 +1,19 @@
-"use client";
-import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
+import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { daySchema, todayLuanda } from "@/lib/secretaria/expediente";
 
-import { useMemo } from "react";
-import { useRouter } from "next/navigation";
-import FechoCaixaCego from "@/components/secretaria/FechoCaixaCego";
-import { useToast } from "@/components/feedback/FeedbackSystem";
-import { DashboardHeader } from "@/components/layout/DashboardHeader";
+export const dynamic = "force-dynamic";
 
-export default function SecretariaFechoPage() {
-  const router = useRouter();
-  const { success } = useToast();
-  const dayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
-
-  const handleConfirm = async (declaracao: {
-    numerario_declarado: number;
-    tpa_declarado: number;
-    transferencia_declarada: number;
-    mcx_declarado: number;
-    detalhe_notas: Record<string, number>;
-  }) => {
-    const response = await fetch("/api/financeiro/fecho/declarar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        day_key: dayKey,
-        declared: {
-          cash: declaracao.numerario_declarado,
-          tpa: declaracao.tpa_declarado,
-          transfer: declaracao.transferencia_declarada,
-          mcx: declaracao.mcx_declarado,
-        },
-        meta: { origem: "secretaria_fecho", detalhe_notas: declaracao.detalhe_notas },
-      }),
-    });
-
-    const json = await response.json().catch(() => ({}));
-    if (!response.ok || !json?.ok) {
-      throw new Error(json?.error || "Falha ao declarar fecho.");
-    }
-
-    const data = json.data || {};
-    const sistema = {
-      numerario: Number(data.system_cash ?? 0),
-      tpa: Number(data.system_tpa ?? 0),
-      transferencia: Number(data.system_transfer ?? 0),
-      mcx: Number(data.system_mcx ?? 0),
-    };
-
-    const declaradoTotal =
-      declaracao.numerario_declarado +
-      declaracao.tpa_declarado +
-      declaracao.transferencia_declarada +
-      declaracao.mcx_declarado;
-    const sistemaTotal = sistema.numerario + sistema.tpa + sistema.transferencia + sistema.mcx;
-    const diferencaTotal = declaradoTotal - sistemaTotal;
-
-    success("Fecho declarado.", "Aguardando aprovação do financeiro.");
-
-    return {
-      sistema,
-      diferenca_total: diferencaTotal,
-      status: diferencaTotal === 0 ? "MATCH" : "DIVERGENT",
-    } as const;
-  };
-
-  return (
-    <div className={`${PORTAL_PAGE_INSET} space-y-4`}>
-      <DashboardHeader
-        title="Fecho de Caixa (Secretaria)"
-        breadcrumbs={[
-          { label: "Início", href: "/" },
-          { label: "Secretaria", href: "/secretaria" },
-          { label: "Fecho" },
-        ]}
-      />
-      <FechoCaixaCego
-        onConfirm={handleConfirm}
-        onClose={() => router.back()}
-      />
-    </div>
-  );
+export default async function SecretariaFechoRedirect({searchParams}:{
+  searchParams:Promise<{date?:string}>;
+}) {
+  const supabase=await supabaseServer();
+  const {data:{user}}=await supabase.auth.getUser();
+  if(!user)redirect("/redirect");
+  const escolaId=await resolveEscolaIdForUser(supabase,user.id);
+  if(!escolaId)redirect("/redirect");
+  const parsed=daySchema.safeParse((await searchParams).date);
+  const date=parsed.success&&parsed.data<=todayLuanda()?"&date="+encodeURIComponent(parsed.data):"";
+  redirect("/escola/"+encodeURIComponent(escolaId)+"/secretaria/fecho-diario?view=cash"+date);
 }

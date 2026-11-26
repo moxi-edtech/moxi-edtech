@@ -29,9 +29,9 @@ test("partilhados: elementos compactos usam tokens, estado acessível e action a
 test("resumo não inventa média nem transforma mensalidades futuras em atraso", async () => {
   const dashboard = await source("components/aluno/dashboard/DashboardLoader.tsx");
   assert.match(dashboard, /data-testid="aluno-summary-cards"/);
-  assert.match(dashboard, /<PortalStatCard label="Avisos"/);
-  assert.match(dashboard, /<PortalStatCard label="Notas"/);
-  assert.match(dashboard, /<PortalStatCard label="Vencidas"/);
+  assert.match(dashboard, /<AcaoRapidaCard dashboardCompact mobileCompact label="Avisos"/);
+  assert.match(dashboard, /<AcaoRapidaCard dashboardCompact mobileCompact label="Notas"/);
+  assert.match(dashboard, /<AcaoRapidaCard dashboardCompact mobileCompact label="Propinas vencidas"/);
   assert.match(dashboard, /typeof screen.boletim\?\.is_liberado === "boolean"/);
   assert.match(dashboard, /screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error/);
   assert.match(dashboard, /href=\{go\("\/aluno\/academico"\)\}/);

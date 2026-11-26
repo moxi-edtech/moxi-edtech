@@ -36,6 +36,7 @@ type MatriculaResumo = {
   updated_at?: string | null;
   numero_chamada?: number | null;
   bolsa_integral?: boolean | null;
+  bolsa_parcial_percentagem?: number | null;
 };
 
 type MensalidadeResumo = {
@@ -267,7 +268,7 @@ export async function listAlunos(
       let matriculasQuery = supabase
         .from("matriculas")
         .select(
-          "id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id, bolsa_integral"
+          "id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id, bolsa_integral, bolsa_parcial_percentagem"
         )
         .eq("escola_id", escolaId)
         .in("aluno_id", alunoIds)
@@ -339,6 +340,7 @@ export async function listAlunos(
           classe_nome: string | null;
           turno: string | null;
           bolsa_integral: boolean;
+          bolseiro: boolean;
         }
       >();
 
@@ -356,6 +358,7 @@ export async function listAlunos(
           classe_nome: turma?.classe_nome ?? null,
           turno: turma?.turno ?? null,
           bolsa_integral: row.bolsa_integral === true,
+          bolseiro: row.bolsa_integral === true || Number(row.bolsa_parcial_percentagem ?? 0) > 0,
         });
       });
 
@@ -408,6 +411,7 @@ export async function listAlunos(
             classe_nome: null,
             turno: null,
             bolsa_integral: null,
+            bolseiro: null,
             situacao_financeira: "sem_registo",
             meses_atraso: 0,
             valor_em_divida: 0,
@@ -441,6 +445,7 @@ export async function listAlunos(
           classe_nome: matricula?.classe_nome ?? null,
           turno: matricula?.turno ?? null,
           bolsa_integral: matricula?.bolsa_integral ?? null,
+          bolseiro: matricula?.bolseiro ?? null,
           situacao_financeira: financeiro.situacao,
           meses_atraso: financeiro.meses,
           valor_em_divida: financeiro.valor,
@@ -464,7 +469,7 @@ export async function listAlunos(
 
     // Apenas matrículas do ano selecionado: ausência de matrícula não é "não bolseiro".
     if (filters.bolsa) {
-      enriched = enriched.filter((row) => row.bolsa_integral === (filters.bolsa === "sim"));
+      enriched = enriched.filter((row) => row.bolseiro === (filters.bolsa === "sim"));
     }
 
     if (filters.situacaoFinanceira) {
@@ -598,7 +603,8 @@ export async function preselectExportAlunoIds(
       if (options.academicYearId) query = query.eq("session_id", options.academicYearId);
       if (chunk !== null) query = chunk.length === 1
         ? query.eq("turma_id", chunk[0]) : query.in("turma_id", chunk);
-      if (filters.bolsa) query = query.eq("bolsa_integral", filters.bolsa === "sim");
+      if (filters.bolsa === "sim") query = query.or("bolsa_integral.eq.true,bolsa_parcial_percentagem.gt.0");
+      else if (filters.bolsa === "nao") query = query.eq("bolsa_integral", false).eq("bolsa_parcial_percentagem", 0);
       const { data, error } = await query;
       if (error) throw error;
       const matriculas = data ?? [];

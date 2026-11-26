@@ -1,6 +1,7 @@
 import type { supabaseServer } from "@/lib/supabaseServer";
 import { normalizeDossier } from "@/lib/aluno/normalize";
 import type { RawDossier, RawDossierMensalidade } from "@/lib/aluno/types";
+import { loadIssuedMonthlyReceipts } from "@/lib/financeiro/issued-monthly-receipts";
 import { extractServicosFromPagamentos, extractServicosFromPedidos } from "@/lib/financeiro/servicosPagamento";
 
 /**
@@ -36,31 +37,17 @@ export async function loadAlunoDossierData({
     .filter((item): item is string => Boolean(item));
 
   if (mensalidadeIds.length > 0) {
-    const [{ data: recibos }, { data: pagamentos }] = await Promise.all([
-      supabase
-        .from("documentos_emitidos")
-        .select("id, mensalidade_id, created_at")
-        .eq("escola_id", resolvedEscolaId)
-        .eq("tipo", "recibo")
-        .in("mensalidade_id", mensalidadeIds)
-        .order("created_at", { ascending: false }),
+    const [reciboByMensalidadeId, { data: pagamentos }] = await Promise.all([
+      loadIssuedMonthlyReceipts(supabase, { escolaId: resolvedEscolaId, alunoId, mensalidadeIds }),
       supabase
         .from("pagamentos")
         .select("id, mensalidade_id, status, created_at")
         .eq("escola_id", resolvedEscolaId)
+        .eq("aluno_id", alunoId)
         .in("mensalidade_id", mensalidadeIds)
         .in("status", ["settled", "concluido", "pago"])
         .order("created_at", { ascending: false }),
     ]);
-
-    const reciboByMensalidadeId = new Map<string, string>();
-    for (const recibo of recibos ?? []) {
-      const mensalidadeId =
-        typeof recibo.mensalidade_id === "string" ? recibo.mensalidade_id : null;
-      if (mensalidadeId && !reciboByMensalidadeId.has(mensalidadeId)) {
-        reciboByMensalidadeId.set(mensalidadeId, recibo.id);
-      }
-    }
 
     const pagamentoByMensalidadeId = new Map<string, string>();
     for (const pagamento of pagamentos ?? []) {

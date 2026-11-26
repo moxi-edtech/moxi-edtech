@@ -37,13 +37,14 @@ export default async function FechoPrintPage({
         <div className="space-y-5">
           <header className="text-center space-y-1">
             <h1 className="text-lg font-semibold">{data.escola_nome}</h1>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Fecho de Caixa Diário</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Resumo de movimentações financeiras</p>
           </header>
 
           <section className="text-xs text-slate-600 space-y-1">
             <p>Data: {data.date}</p>
             <p>Hora de emissão: {time}</p>
             <p>Operador: {data.operador_label}</p>
+            <p>Consulta atual de pagamentos liquidados; não substitui o snapshot do fecho.</p>
           </section>
 
           <section>
@@ -67,6 +68,8 @@ export default async function FechoPrintPage({
                   <td className="py-2">Transferência</td>
                   <td className="py-2 text-right font-semibold">{formatKz(data.totals.transferencia)}</td>
                 </tr>
+                <tr><td className="py-2">MCX</td><td className="py-2 text-right font-semibold">{formatKz(data.totals.mcx)}</td></tr>
+                <tr><td className="py-2">Não classificado</td><td className="py-2 text-right font-semibold">{formatKz(Math.round((data.totals.total-data.totals.especie-data.totals.tpa-data.totals.transferencia-data.totals.mcx)*100)/100)}</td></tr>
               </tbody>
               <tfoot>
                 <tr className="border-t border-slate-300">

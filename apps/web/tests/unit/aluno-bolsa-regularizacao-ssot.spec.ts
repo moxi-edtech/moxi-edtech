@@ -73,3 +73,31 @@ test("a gestão da bolsa aparece no financeiro com prévia e histórico por matr
   assert.match(portal, /bolsaVigente/);
   assert.match(portal, /Histórico de bolsas/);
 });
+
+
+test("bolsa percentual: barra e campo exacto partilham estado; a RPC calcula o valor definitivo", () => {
+  assert.match(gestao, /type="range" min="0.01" max="99.99" step="0.01" value=\{valorBarra\}/);
+  assert.match(gestao, /type="number" inputMode="decimal" min="0.01" max="99.99" step="0.01" value=\{percentagem\}/);
+  assert.match(gestao, /aria-valuetext=/);
+  assert.match(gestao, /onChange=\{e => setPercentagem\(e.target.value\)\}/);
+  assert.match(gestao, /percentagem: taxa/);
+  assert.match(gestao, /O valor definitivo é calculado e validado no servidor/);
+  assert.match(apiGestao, /klasse_definir_bolsa_parcial/);
+  assert.match(apiGestao, /p_percentagem: parsed.data.percentagem/);
+});
+
+
+test("percentual refinado mantém entrada precisa e indica a parcela a pagar", () => {
+  assert.match(gestao, /pointer-events-none absolute inset-x-2\.5 h-1\.5/);
+  assert.match(gestao, /Percentual a pagar/);
+  assert.match(gestao, /aria-pressed=\{taxaValida && taxa === valor\}/);
+  assert.match(gestao, /aria-describedby=\{\x60\$\{percentagemId\}-ajuda\x60\}/);
+});
+
+test("a linha financeira usa o estado de vencimento partilhado e não mostra atraso após liquidar", () => {
+  const row = source("components/aluno/DossierSeccoes.tsx");
+  assert.match(row, /const \{ open, days, overdue \} = mensalidadeDueState\(m\)/);
+  assert.match(row, /const vencimentoInfo = overdue && days !== null/);
+  assert.match(row, /m.status === "pago" && m.pago_em/);
+  assert.match(row, /\{open && \(/);
+});

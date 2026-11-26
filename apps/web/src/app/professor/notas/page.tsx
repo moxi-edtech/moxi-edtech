@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, Suspense } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { enqueueOfflineAction } from "@/lib/offline/queue"
 import { createIdempotencyKey } from "@/lib/idempotency"
@@ -9,6 +9,8 @@ import { resolveGradeEntryAvailability } from "@/lib/academico/grade-entry-avail
 import { useOfflineStatus } from "@/hooks/useOfflineStatus"
 import { useOfficialDocs, type MiniPautaPayload } from "@/hooks/useOfficialDocs"
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
+import { PortalSheet } from "@/components/portal/ui/PortalSheet"
+import { SlidersHorizontal } from "lucide-react"
 import { DashboardHeader } from "@/components/layout/DashboardHeader"
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page"
 import { formatTurmaDisplayName } from "@/utils/formatters"
@@ -131,10 +133,10 @@ function friendlyGradeError(cause: unknown) {
 export default function ProfessorNotasPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-muted flex items-center justify-center p-6">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
-          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">A carregar pauta...</p>
+          <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
+          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">A carregar pauta...</p>
         </div>
       </div>
     }>
@@ -169,10 +171,14 @@ function ProfessorNotasContent() {
   const [periodosRetry, setPeriodosRetry] = useState(0)
   const [turmaStatusFecho, setTurmaStatusFecho] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
+  const [showInactiveTerms, setShowInactiveTerms] = useState(false)
+  const exportInFlight = useRef(false)
   const requestedTrimestre = Number(searchParams?.get("trimestre"))
   const requestedTrimestreValid = requestedTrimestre === 1 || requestedTrimestre === 2 || requestedTrimestre === 3
   const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(requestedTrimestreValid ? requestedTrimestre as 1 | 2 | 3 : 1)
   const [savingNow, setSavingNow] = useState(false)
+  const [contextOpen, setContextOpen] = useState(false)
   const [completingGrades, setCompletingGrades] = useState(false)
   const [gradeDraft, setGradeDraft] = useState<StudentGradeRow[]>([])
   const [completedScopes, setCompletedScopes] = useState<Record<string, boolean>>({})
@@ -180,6 +186,7 @@ function ProfessorNotasContent() {
   const [reopenHistory, setReopenHistory] = useState<ReopenRequest[]>([])
   const [requestReason, setRequestReason] = useState("")
   const [requestingReopen, setRequestingReopen] = useState(false)
+  const [reopenSheet, setReopenSheet] = useState(false)
   const [matriculaIds, setMatriculaIds] = useState<Record<string, string>>({})
   const [examSessions, setExamSessions] = useState<ExamSession[]>([])
   const [selectedExamSessionId, setSelectedExamSessionId] = useState("")
@@ -188,6 +195,12 @@ function ProfessorNotasContent() {
   const [loadingExamSessions, setLoadingExamSessions] = useState(false)
   const [savingExam, setSavingExam] = useState(false)
   const [raaStudentId, setRaaStudentId] = useState("")
+  const [raaOpen, setRaaOpen] = useState(false)
+  const raaInFlight = useRef(false)
+  const raaScope = JSON.stringify([turmaId, disciplinaId, anoLetivoId, turmaDisciplinaId, trimestreSelecionado])
+  const [loadedPautaScope, setLoadedPautaScope] = useState<string | null>(null)
+  const pautaReady = loadedPautaScope === raaScope
+  const raaScopeRef = useRef(raaScope)
   const [raaResult, setRaaResult] = useState<RaaEligibilityResponse | null>(null)
   const [loadingRaa, setLoadingRaa] = useState(false)
   const [raaRisks, setRaaRisks] = useState<RaaRiskItem[]>([])
@@ -200,6 +213,7 @@ function ProfessorNotasContent() {
   const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("")
   const [submittingReapreciacao, setSubmittingReapreciacao] = useState(false)
 
+  useLayoutEffect(() => { raaScopeRef.current = raaScope; setRaaOpen(false); setRaaStudentId(""); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); setExportOpen(false) }, [raaScope])
   const { online } = useOfflineStatus()
   const { success, error: toastError, warning } = useToast()
   const { gerarMiniPauta } = useOfficialDocs()
@@ -267,6 +281,7 @@ function ProfessorNotasContent() {
   }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId])
 
   const handleRequestReopen = async () => {
+    if (requestingReopen) return
     if (!turmaId || !disciplinaId || !anoLetivoId || requestReason.trim().length < 5) {
       warning("Explique o motivo da reabertura (mínimo de 5 caracteres).")
       return
@@ -278,6 +293,7 @@ function ProfessorNotasContent() {
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível enviar a solicitação.")
       setReopenRequest(payload.item)
       setRequestReason("")
+      setReopenSheet(false)
       success("Solicitação enviada para análise da escola.")
     } catch (cause) {
       toastError("Não foi possível solicitar", cause instanceof Error ? cause.message : "Tente novamente.")
@@ -287,12 +303,15 @@ function ProfessorNotasContent() {
   useEffect(() => {
     if (!turmaId || !disciplinaId) {
       setPauta([])
+      setMatriculaIds({}); setLoadedPautaScope(null)
       return
     }
 
     let active = true
     const load = async () => {
       setLoading(true)
+      setLoadedPautaScope(null)
+      setMatriculaIds({})
       try {
         const params = new URLSearchParams({
           turmaId,
@@ -347,6 +366,7 @@ function ProfessorNotasContent() {
             }))
           )
           setMatriculaIds(nextMatriculaIds)
+          setLoadedPautaScope(raaScope)
         } else {
           setPauta([])
         }
@@ -441,7 +461,9 @@ function ProfessorNotasContent() {
 
   const handleLoadRaaEligibility = async (studentId = raaStudentId) => {
     const matriculaId = matriculaIds[studentId]
-    if (!matriculaId) return
+    if (!pautaReady || !matriculaId || raaInFlight.current) return
+    const scope = raaScope
+    raaInFlight.current = true
     setLoadingRaa(true)
     try {
       const params = new URLSearchParams({ matricula_id: matriculaId })
@@ -450,24 +472,28 @@ function ProfessorNotasContent() {
       const response = await fetch(`/api/academico/raa/elegibilidade?${params.toString()}`, { cache: "no-store" })
       const payload = await response.json().catch(() => null)
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível consultar a elegibilidade.")
+      if (raaScopeRef.current !== scope) return
       setRaaResult(payload as RaaEligibilityResponse)
       const existingResponse = await fetch(`/api/academico/raa/reapreciacao?matricula_id=${encodeURIComponent(matriculaId)}&disciplina_id=${encodeURIComponent(disciplinaId)}`, { cache: "no-store" })
       const existingPayload = await existingResponse.json().catch(() => null)
-      if (existingResponse.ok && existingPayload?.ok) setReapreciacaoItem(existingPayload.items?.[0] ?? null)
+      if (raaScopeRef.current === scope && existingResponse.ok && existingPayload?.ok) setReapreciacaoItem(existingPayload.items?.[0] ?? null)
     } catch (cause) {
       toastError("Não foi possível consultar o RAA", cause instanceof Error ? cause.message : "Tente novamente.")
-      setRaaResult(null)
+      if (raaScopeRef.current === scope) setRaaResult(null)
     } finally {
+      raaInFlight.current = false
       setLoadingRaa(false)
     }
   }
 
   const handleRequestReapreciacao = async () => {
     const matriculaId = matriculaIds[raaStudentId]
-    if (!matriculaId || !disciplinaId || reapreciacaoMotivo.trim().length < 10) {
+    if (!pautaReady || !matriculaId || !disciplinaId || !raaResult || loadingRaa || raaInFlight.current || reapreciacaoMotivo.trim().length < 10) {
       warning("Explique o motivo da reapreciação com pelo menos 10 caracteres.")
       return
     }
+    const scope = raaScope
+    raaInFlight.current = true
     setSubmittingReapreciacao(true)
     try {
       const response = await fetch("/api/academico/raa/reapreciacao", {
@@ -483,12 +509,14 @@ function ProfessorNotasContent() {
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível enviar a reapreciação.")
+      if (raaScopeRef.current !== scope) return
       setReapreciacaoItem(payload.item)
       setReapreciacaoMotivo("")
       success(payload.duplicate ? "Pedido já registado" : "Reapreciação registada", `Protocolo ${payload.item?.protocolo_publico ?? "gerado"}.`)
     } catch (cause) {
       toastError("Não foi possível pedir reapreciação", cause instanceof Error ? cause.message : "Tente novamente.")
     } finally {
+      raaInFlight.current = false
       setSubmittingReapreciacao(false)
     }
   }
@@ -664,7 +692,7 @@ function ProfessorNotasContent() {
   }
 
   const handleSaveNow = async () => {
-    if (!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading) return
+    if (!pautaReady || !turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading) return
     if (notasBloqueadas) return
     setSavingNow(true)
     try {
@@ -752,7 +780,7 @@ function ProfessorNotasContent() {
   }
 
   const handleExportMiniPauta = async () => {
-    if (!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId) return
+    if (!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading || savingNow || hasUnsavedGrades || notasBloqueadas || exportInFlight.current) return
     const turma = atribs.find((a) => a.turma.id === turmaId)?.turma
     const turmaNome = turma ? formatTurmaDisplayName(turma) : turmaId
     const disciplinaNomeResolved =
@@ -762,7 +790,6 @@ function ProfessorNotasContent() {
 
     const alunos: MiniPautaPayload["alunos"] = pauta.map((row, index) => {
       const t = row.mt1 ?? null
-      const mfd = t !== null ? Number(t) : null
       const trim1 = {
         mac: trimestreSelecionado === 1 ? row.mac1 ?? null : null,
         npt: trimestreSelecionado === 1 ? row.npt1 ?? null : null,
@@ -780,13 +807,13 @@ function ProfessorNotasContent() {
       }
       return {
         id: row.id,
-        numero: index + 1,
+        numero: row.numero ?? index + 1,
         nome: row.nome,
         genero: "M",
         trim1,
         trim2,
         trim3,
-        mfd: mfd === null ? null : Number(mfd.toFixed(1)),
+        mfd: null,
         obs: "",
       }
     })
@@ -803,15 +830,21 @@ function ProfessorNotasContent() {
         emissao,
         hash,
         trimestresAtivos: [trimestreSelecionado],
-        mostrarTrimestresInativos: false,
+        mostrarTrimestresInativos: showInactiveTerms,
+        conferencia: true,
       },
       alunos,
     }
 
+    exportInFlight.current = true
     setExporting(true)
     try {
       await gerarMiniPauta(payload, `MiniPauta_${disciplinaNomeResolved}_${Date.now()}.pdf`)
+      setExportOpen(false)
+    } catch (cause) {
+      toastError("Não foi possível exportar", cause instanceof Error ? cause.message : "Tente novamente.")
     } finally {
+      exportInFlight.current = false
       setExporting(false)
     }
   }
@@ -830,7 +863,7 @@ function ProfessorNotasContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className={`${PORTAL_PAGE_INSET} space-y-4 sm:space-y-6`}>
+      <div className={`${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 space-y-4 sm:space-y-6`}>
         <div>
           <DashboardHeader
             title="Lançamento de Notas"
@@ -846,17 +879,17 @@ function ProfessorNotasContent() {
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">
           <aside className="hidden space-y-3 sm:space-y-4 relative z-10 overflow-visible md:block">
             {loadingAtribs ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3 animate-pulse">
-                <div className="h-4 w-32 rounded-md bg-slate-200" />
-                <div className="h-9 w-full rounded-xl bg-slate-100" />
-                <div className="h-9 w-full rounded-xl bg-slate-100" />
-                <div className="h-9 w-full rounded-xl bg-slate-100" />
+              <div className="rounded-xl border border-border bg-card p-3 sm:p-4 space-y-3 animate-pulse">
+                <div className="h-4 w-32 rounded-md bg-muted" />
+                <div className="h-9 w-full rounded-xl bg-muted" />
+                <div className="h-9 w-full rounded-xl bg-muted" />
+                <div className="h-9 w-full rounded-xl bg-muted" />
                 <div className="h-10 w-full rounded-xl bg-amber/20" />
               </div>
             ) : (
               <>
-                <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3 overflow-visible">
-                  <div className="text-sm font-semibold text-slate-900">Turma e disciplina</div>
+                <div className="rounded-xl border border-border bg-card p-3 sm:p-4 space-y-3 overflow-visible">
+                  <div className="text-sm font-semibold text-foreground">Turma e disciplina</div>
                   <select
                     value={turmaId}
                     onChange={(event) => {
@@ -866,7 +899,7 @@ function ProfessorNotasContent() {
                       setDisciplinaNome(null)
                       setPauta([])
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                     required
                   >
                     <option value="">Turma</option>
@@ -888,7 +921,7 @@ function ProfessorNotasContent() {
                       setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
                       setDisciplinaNome(atrib?.disciplina.nome ?? null)
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                     required
                     disabled={!turmaId}
                   >
@@ -904,7 +937,7 @@ function ProfessorNotasContent() {
                   <select
                     value={trimestreSelecionado}
                     onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                     disabled={!turmaId || loadingPeriodos || periodosAtivos.length === 0}
                   >
                     {loadingPeriodos && <option value={trimestreSelecionado}>A carregar trimestres...</option>}
@@ -924,16 +957,16 @@ function ProfessorNotasContent() {
                     </div>
                   )}
                   {turmaId && !loadingPeriodos && !periodosError && periodosAtivos.length === 0 && (
-                    <p className="text-xs text-slate-600">A secretaria precisa configurar os trimestres deste ano letivo antes do lançamento.</p>
+                    <p className="text-xs text-muted-foreground">A secretaria precisa configurar os trimestres deste ano letivo antes do lançamento.</p>
                   )}
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-2 text-sm text-slate-600">
-                  <div className="font-semibold text-slate-900">Ações</div>
+                <div className="rounded-xl border border-border bg-card p-3 sm:p-4 space-y-2 text-sm text-muted-foreground">
+                  <div className="font-semibold text-foreground">Ações</div>
                   <button
                     type="button"
-                    onClick={handleExportMiniPauta}
-                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting || notasBloqueadas}
-                    className="w-full rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                    onClick={() => { setShowInactiveTerms(false); setExportOpen(true) }} aria-haspopup="dialog" aria-expanded={exportOpen}
+                    disabled={!pautaReady || !turmaId || !disciplinaId || !anoLetivoId || pauta.length === 0 || exporting || loading || savingNow || hasUnsavedGrades || notasBloqueadas}
+                    className="w-full rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                   >
                     {exporting ? "Gerando PDF..." : "Exportar mini‑pauta"}
                   </button>
@@ -943,17 +976,25 @@ function ProfessorNotasContent() {
           </aside>
 
           <section>
-            <div className="md:hidden sticky top-0 z-20 mb-3 sm:mb-4 rounded-xl border border-slate-200 bg-white/95 p-3 sm:p-4 shadow-sm backdrop-blur">
+            <div className="md:hidden sticky top-0 z-20 mb-3 sm:mb-4 rounded-xl border border-border bg-card/95 p-3 sm:p-4  backdrop-blur">
               {loadingAtribs ? (
                 <div className="grid gap-3 sm:grid-cols-2 animate-pulse">
-                  <div className="h-10 rounded-xl bg-slate-100" />
-                  <div className="h-10 rounded-xl bg-slate-100" />
-                  <div className="h-10 rounded-xl bg-slate-100" />
-                  <div className="h-10 rounded-xl bg-slate-200" />
+                  <div className="h-10 rounded-xl bg-muted" />
+                  <div className="h-10 rounded-xl bg-muted" />
+                  <div className="h-10 rounded-xl bg-muted" />
+                  <div className="h-10 rounded-xl bg-muted" />
                 </div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <select
+                  <button type="button" onClick={() => setContextOpen(true)} disabled={hasUnsavedGrades || savingNow} aria-haspopup="dialog" aria-expanded={contextOpen}
+                    className="klasse-portal-press flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-3 text-left disabled:opacity-50 sm:col-span-2">
+                    <SlidersHorizontal className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                    <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">Turma e disciplina</span><span className="block break-words text-xs text-muted-foreground">{[atribs.find(a => a.turma.id === turmaId)?.turma ? formatTurmaDisplayName(atribs.find(a => a.turma.id === turmaId)!.turma) : null, disciplinaNome, turmaId ? trimestreSelecionado + ".º trimestre" : null].filter(Boolean).join(" · ") || "Seleccionar contexto"}</span></span>
+                  </button>
+                  {hasUnsavedGrades && <p className="text-xs text-muted-foreground sm:col-span-2">Guarda as notas antes de mudar o contexto.</p>}
+                  <PortalSheet open={contextOpen} onClose={() => setContextOpen(false)} size="expanded" title="Contexto de lançamento" description="Selecciona a turma, a disciplina e o trimestre." footer={<button type="button" onClick={() => setContextOpen(false)} className="klasse-portal-press min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">Concluir selecção</button>}>
+                    <div className="grid gap-3">
+                  <select aria-label="Turma" disabled={hasUnsavedGrades || savingNow}
                     value={turmaId}
                     onChange={(event) => {
                       setTurmaId(event.target.value)
@@ -962,7 +1003,7 @@ function ProfessorNotasContent() {
                       setDisciplinaNome(null)
                       setPauta([])
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
                   >
                     <option value="">Turma</option>
                     {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
@@ -974,7 +1015,7 @@ function ProfessorNotasContent() {
                       </option>
                     ))}
                   </select>
-                  <select
+                  <select aria-label="Disciplina"
                     value={disciplinaId}
                     onChange={(event) => {
                       const nextId = event.target.value
@@ -983,8 +1024,8 @@ function ProfessorNotasContent() {
                       setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
                       setDisciplinaNome(atrib?.disciplina.nome ?? null)
                     }}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
-                    disabled={!turmaId}
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    disabled={!turmaId || hasUnsavedGrades || savingNow}
                   >
                     <option value="">Disciplina</option>
                     {(atribsByTurma.get(turmaId) || [])
@@ -995,11 +1036,11 @@ function ProfessorNotasContent() {
                         </option>
                       ))}
                   </select>
-                  <select
+                  <select aria-label="Trimestre"
                     value={trimestreSelecionado}
                     onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
-                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
-                    disabled={!turmaId || loadingPeriodos || periodosAtivos.length === 0}
+                    className="w-full cursor-pointer rounded-xl border border-border bg-card px-3 py-3 text-sm outline-none focus:border-amber focus:ring-4 focus:ring-amber/20"
+                    disabled={!turmaId || loadingPeriodos || periodosAtivos.length === 0 || hasUnsavedGrades || savingNow}
                   >
                     {loadingPeriodos && <option value={trimestreSelecionado}>A carregar trimestres...</option>}
                     {!loadingPeriodos && periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Nenhum trimestre configurado</option>}
@@ -1018,8 +1059,10 @@ function ProfessorNotasContent() {
                     </div>
                   )}
                   {turmaId && !loadingPeriodos && !periodosError && periodosAtivos.length === 0 && (
-                    <p className="text-xs text-slate-600 sm:col-span-2">A secretaria precisa configurar os trimestres deste ano letivo antes do lançamento.</p>
+                    <p className="text-xs text-muted-foreground sm:col-span-2">A secretaria precisa configurar os trimestres deste ano letivo antes do lançamento.</p>
                   )}
+</div>
+                  </PortalSheet>
                   <button
                     type="button"
                     onClick={handleSaveNow}
@@ -1028,6 +1071,7 @@ function ProfessorNotasContent() {
                   >
                     {savingNow ? "Salvando..." : "Salvar agora"}
                   </button>
+                  <button type="button" aria-haspopup="dialog" aria-expanded={exportOpen} disabled={!pautaReady || !turmaId || !disciplinaId || !anoLetivoId || pauta.length === 0 || exporting || loading || savingNow || hasUnsavedGrades || notasBloqueadas} onClick={() => { setShowInactiveTerms(false); setExportOpen(true) }} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-50">Exportar mini-pauta</button>
                   {turmaId && disciplinaId && (
                     <div className={`rounded-lg px-3 py-2 text-xs ${notasBloqueadas ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"}`}>
                       <p className="font-bold">
@@ -1046,21 +1090,29 @@ function ProfessorNotasContent() {
                 </div>
               )}
             </div>
+            <PortalSheet open={exportOpen} busy={exporting} onClose={() => setExportOpen(false)} title="Exportar mini-pauta" description="Confirma o âmbito da mini-pauta de conferência. Não é uma pauta final." size="medium">
+              <dl className="space-y-2 text-sm"><div><dt className="text-muted-foreground">Turma</dt><dd className="font-medium">{atribs.find(a => a.turma.id === turmaId)?.turma.nome ?? "—"}</dd></div><div><dt className="text-muted-foreground">Disciplina</dt><dd className="font-medium">{disciplinaNome ?? "—"}</dd></div><div><dt className="text-muted-foreground">Trimestre</dt><dd>{trimestreSelecionado}.º · {pauta.length} alunos</dd></div></dl>
+              <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={showInactiveTerms} disabled={exporting} onChange={e => setShowInactiveTerms(e.target.checked)} /> Mostrar colunas dos outros trimestres (sem notas)</label>
+              <button type="button" disabled={!pautaReady || exporting || loading || savingNow || hasUnsavedGrades || notasBloqueadas} onClick={() => void handleExportMiniPauta()} className="min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">{exporting ? "A gerar PDF…" : "Descarregar PDF"}</button>
+            </PortalSheet>
+            <PortalSheet open={reopenSheet} busy={requestingReopen} onClose={()=>setReopenSheet(false)} title="Solicitar reabertura" description={`${disciplinaNome ?? "Disciplina"} · ${trimestreSelecionado}.º trimestre`} size="expanded">
+              <textarea aria-label="Motivo da reabertura" disabled={requestingReopen} value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId || requestReason.trim().length < 5} className="rounded-xl bg-amber px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "A enviar..." : "Solicitar reabertura"}</button>
+            </PortalSheet>
             {loading ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 animate-pulse space-y-2">
-                <div className="h-4 w-40 rounded-md bg-slate-200" />
-                <div className="h-3 w-full rounded-md bg-slate-200" />
-                <div className="h-3 w-5/6 rounded-md bg-slate-200" />
+              <div className="rounded-xl border border-border bg-card p-3 sm:p-4 animate-pulse space-y-2">
+                <div className="h-4 w-40 rounded-md bg-muted" />
+                <div className="h-3 w-full rounded-md bg-muted" />
+                <div className="h-3 w-5/6 rounded-md bg-muted" />
               </div>
             ) : data.length === 0 ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+              <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
                 Selecione a turma e disciplina para carregar os alunos.
               </div>
             ) : notasBloqueadas ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
                 <p className="font-bold">Lançamento de notas indisponível</p>
                 <p className="mt-1">{gradeAvailability.explanation}</p>
-                {!gradeAvailability.canRequestReopen ? <p className="mt-1">{reopenRequest?.status === "PENDENTE" ? "A solicitação aguarda decisão da escola." : "Consulta o calendário oficial ou selecciona outro trimestre."}</p> : reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : <div className="mt-4 space-y-3"><p className="text-sm text-muted-foreground">{reopenRequest?.status === "REJEITADO" ? "A solicitação anterior foi rejeitada. Envie uma nova justificativa para continuar." : reopenRequest?.status === "EXPIRADO" ? "O prazo da solicitação anterior terminou. Podes apresentar novo pedido." : reopenRequest?.status === "REVOGADO" ? "A autorização anterior foi revogada pela escola. Consulta o motivo antes de apresentar outro pedido." : "Solicite à escola a abertura temporária deste trimestre."}</p><textarea value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId} className="rounded-xl bg-amber px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "A enviar..." : "Solicitar reabertura"}</button></div>}
+                {!gradeAvailability.canRequestReopen ? <p className="mt-1">{reopenRequest?.status === "PENDENTE" ? "A solicitação aguarda decisão da escola." : "Consulta o calendário oficial ou selecciona outro trimestre."}</p> : reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : <div className="mt-4 space-y-3"><p className="text-sm text-muted-foreground">{reopenRequest?.status === "REJEITADO" ? "A solicitação anterior foi rejeitada. Envie uma nova justificativa para continuar." : reopenRequest?.status === "EXPIRADO" ? "O prazo da solicitação anterior terminou. Podes apresentar novo pedido." : reopenRequest?.status === "REVOGADO" ? "A autorização anterior foi revogada pela escola. Consulta o motivo antes de apresentar outro pedido." : "Solicite à escola a abertura temporária deste trimestre."}</p><button type="button" aria-haspopup="dialog" onClick={()=>setReopenSheet(true)} className="klasse-portal-press min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">Solicitar reabertura</button></div>}
                 <div className="mt-4">
                   <GradeEntryGrid
                     initialData={data}
@@ -1073,20 +1125,22 @@ function ProfessorNotasContent() {
                     readOnly
                   />
                 </div>
-                {reopenHistory.length > 0 && <details className="mt-4 rounded-xl border border-amber-200 bg-white/70 p-3"><summary className="cursor-pointer text-xs font-bold text-amber-800">Ver histórico de solicitações ({reopenHistory.length})</summary><div className="mt-3 space-y-2">{reopenHistory.map((item) => <div key={item.id} className="rounded-lg border border-slate-100 p-3 text-xs"><div className="flex flex-wrap justify-between gap-2"><span className="font-bold text-slate-800">{item.status}</span><span className="text-slate-500">{new Date(item.created_at).toLocaleString("pt-PT")}</span></div><p className="mt-1 text-slate-600">{item.motivo}</p>{item.decisao_motivo && <p className="mt-1 text-slate-500">Decisão: {item.decisao_motivo}</p>}</div>)}</div></details>}
+                {reopenHistory.length > 0 && <details className="mt-4 rounded-xl border border-amber-200 bg-card/70 p-3"><summary className="cursor-pointer text-xs font-bold text-amber-800">Ver histórico de solicitações ({reopenHistory.length})</summary><div className="mt-3 space-y-2">{reopenHistory.map((item) => <div key={item.id} className="rounded-lg border border-border p-3 text-xs"><div className="flex flex-wrap justify-between gap-2"><span className="font-bold text-foreground">{item.status}</span><span className="text-muted-foreground">{new Date(item.created_at).toLocaleString("pt-PT")}</span></div><p className="mt-1 text-muted-foreground">{item.motivo}</p>{item.decisao_motivo && <p className="mt-1 text-muted-foreground">Decisão: {item.decisao_motivo}</p>}</div>)}</div></details>}
               </div>
             ) : (
               <div className="space-y-3">
                 {reaberturaAtiva && reopenRequest?.expira_em && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><p className="font-bold">Reabertura aprovada.</p><p>Podes lançar notas até {new Intl.DateTimeFormat("pt-AO", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Luanda" }).format(new Date(reopenRequest.expira_em))}.</p></div>}
                 {turmaId && disciplinaId && pauta.length > 0 && (
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="rounded-xl border border-border bg-card p-4 ">
                     <div>
-                      <p className="text-sm font-bold text-slate-900">Análise RAA do aluno</p>
-                      <p className="mt-1 text-xs text-slate-500">Consulte a elegibilidade sem sair da turma ou da disciplina atual.</p>
+                      <p className="text-sm font-bold text-foreground">Análise RAA do aluno</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Consulte a elegibilidade sem sair da turma ou da disciplina atual.</p>
                     </div>
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-                      <label className="flex-1 text-xs font-semibold text-slate-600">Aluno<select value={raaStudentId} onChange={(event) => { setRaaStudentId(event.target.value); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo("") }} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900"><option value="">Selecione um aluno</option>{pauta.map((student) => <option key={student.id} value={student.id}>{student.nome}</option>)}</select></label>
-                      <button type="button" onClick={() => void handleLoadRaaEligibility()} disabled={!raaStudentId || loadingRaa} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">{loadingRaa ? "A consultar..." : "Consultar elegibilidade"}</button>
+                    <button type="button" aria-haspopup="dialog" aria-expanded={raaOpen} disabled={!pautaReady || loadingRaa || submittingReapreciacao} onClick={() => setRaaOpen(true)} className="mt-3 min-h-11 rounded-xl border border-border px-4 text-sm font-semibold">Consultar aluno</button>
+                    <PortalSheet open={raaOpen} busy={loadingRaa || submittingReapreciacao} onClose={() => setRaaOpen(false)} title="Análise RAA do aluno" description={disciplinaNome ?? "Disciplina seleccionada"} size="expanded">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                      <label className="flex-1 text-xs font-semibold text-muted-foreground">Aluno<select value={raaStudentId} disabled={loadingRaa || submittingReapreciacao} onChange={(event) => { setRaaStudentId(event.target.value); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo("") }} className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-foreground"><option value="">Selecione um aluno</option>{pauta.map((student) => <option key={student.id} value={student.id}>{student.nome}</option>)}</select></label>
+                      <button type="button" onClick={() => void handleLoadRaaEligibility()} disabled={!raaStudentId || loadingRaa} className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">{loadingRaa ? "A consultar..." : "Consultar elegibilidade"}</button>
                     </div>
                     {raaResult && (() => {
                       const result = raaResult.canonical_result
@@ -1094,51 +1148,52 @@ function ProfessorNotasContent() {
                       const formulaText = formula && typeof formula === "object" ? Object.values(formula).find((value) => typeof value === "string" && value.includes("*")) : null
                       const isPendingFormula = result?.status === "pendente_formula"
                       const statusLabel = ({ aprovado: "Aprovado", reprovado: "Não aprovado", recurso: "Recurso previsto", reprovado_por_faltas: "Resultado por faltas", reprovado_por_indisciplina: "Situação em análise", pendente_formula: "Resultado em apuramento", pendente: "Em apuramento" } as Record<string, string>)[result?.status ?? raaResult.eligibility.status] ?? "Situação em análise"
-                      return <div className={`mt-3 rounded-xl border p-3 text-sm ${isPendingFormula ? "border-amber-200 bg-amber-50" : "border-slate-100 bg-slate-50"}`}>
+                      return <div className={`mt-3 rounded-xl border p-3 text-sm ${isPendingFormula ? "border-amber-200 bg-amber-50" : "border-border bg-muted"}`}>
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="font-semibold text-foreground">{statusLabel}</span>
-                          <span className="text-xs text-slate-500">{raaResult.facts.quantidade_negativas} negativa(s) · {raaResult.facts.percentual_presenca == null ? "frequência pendente" : `${raaResult.facts.percentual_presenca}% presença`}</span>
+                          <span className="text-xs text-muted-foreground">{raaResult.facts.quantidade_negativas} negativa(s) · {raaResult.facts.percentual_presenca == null ? "frequência pendente" : `${raaResult.facts.percentual_presenca}% presença`}</span>
                         </div>
                         {isPendingFormula ? <><p className="mt-2 font-semibold text-amber-900">O resultado final aguarda as notas do exame.</p><p className="mt-1 text-xs text-amber-800">Confirma a sessão e lança as notas do exame.</p></> : <p className="mt-2 text-xs text-muted-foreground">{raaResult.next_action}</p>}
                         {result?.regime?.codigo_regime && <details className="mt-3 rounded-xl border border-border bg-card p-3"><summary className="cursor-pointer text-xs font-semibold text-muted-foreground">Ver critérios do resultado</summary><p className="mt-2 text-xs text-muted-foreground">Regime: {result.regime.codigo_regime}{formulaText ? ` · Fórmula: ${formulaText}` : ""}</p></details>}
                         {(result?.status === "reprovado" || raaResult.eligibility.status === "reprovado") && (
-                          <div className="mt-3 rounded-lg border border-rose-200 bg-white p-3">
+                          <div className="mt-3 rounded-lg border border-rose-200 bg-card p-3">
                             {reapreciacaoItem ? (
-                              <div className="text-xs text-slate-700">
-                                <p className="font-black text-slate-900">Reapreciação {reapreciacaoItem.estado.replace(/_/g, " ")}</p>
+                              <div className="text-xs text-foreground">
+                                <p className="font-black text-foreground">Reapreciação {reapreciacaoItem.estado.replace(/_/g, " ")}</p>
                                 <p className="mt-1">Protocolo: <span className="font-mono font-bold">{reapreciacaoItem.protocolo_publico}</span></p>
                                 <p className="mt-1">Prazo: {new Date(reapreciacaoItem.prazo_em).toLocaleString("pt-PT")}</p>
                               </div>
                             ) : (
                               <>
                                 <p className="text-xs font-bold text-rose-800">Pode solicitar reapreciação deste resultado.</p>
-                                <textarea value={reapreciacaoMotivo} onChange={(event) => setReapreciacaoMotivo(event.target.value)} rows={2} placeholder="Explique o motivo da reapreciação (mínimo 10 caracteres)." className="mt-2 w-full rounded-lg border border-rose-200 px-3 py-2 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-rose-200" />
-                                <button type="button" onClick={() => void handleRequestReapreciacao()} disabled={submittingReapreciacao || reapreciacaoMotivo.trim().length < 10} className="mt-2 rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">{submittingReapreciacao ? "A registar…" : "Solicitar reapreciação"}</button>
+                                <textarea value={reapreciacaoMotivo} onChange={(event) => setReapreciacaoMotivo(event.target.value)} rows={2} placeholder="Explique o motivo da reapreciação (mínimo 10 caracteres)." className="mt-2 w-full rounded-lg border border-rose-200 px-3 py-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-rose-200" />
+                                <button type="button" onClick={() => void handleRequestReapreciacao()} disabled={submittingReapreciacao || reapreciacaoMotivo.trim().length < 10} className="mt-2 rounded-lg bg-rose-700 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">{submittingReapreciacao ? "A registar…" : "Solicitar reapreciação"}</button>
                               </>
                             )}
                           </div>
                         )}
                       </div>
                     })()}
+                    </PortalSheet>
                   </div>
                 )}
                 {turmaId && disciplinaId && (loadingRaaRisks || raaRisksLoaded || raaRisksError) && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 ">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-foreground">Alunos que precisam de atenção</p>
                         <p className="mt-1 text-xs text-muted-foreground">{raaViewerScope === "school_management" ? "Pendências desta turma e disciplina." : "Pendências nas tuas turmas e disciplinas."}</p>
                       </div>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-amber-900" aria-live="polite">{loadingRaaRisks ? "A atualizar…" : raaRisksError ? "Ação necessária" : `${raaRisks.length} pendência(s)`}</span>
+                      <span className="rounded-full bg-card px-3 py-1 text-xs font-black text-amber-900" aria-live="polite">{loadingRaaRisks ? "A atualizar…" : raaRisksError ? "Ação necessária" : `${raaRisks.length} pendência(s)`}</span>
                     </div>
                     {raaRisksError ? (
-                      <div className="mt-3 rounded-lg border border-amber-200 bg-white p-3 text-sm text-slate-700">
+                      <div className="mt-3 rounded-lg border border-amber-200 bg-card p-3 text-sm text-foreground">
                         <p>{raaRisksError}</p>
                         <button type="button" onClick={() => setRaaRisksRetry((value) => value + 1)} className="mt-3 min-h-11 w-full rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white sm:w-auto">Tentar novamente</button>
                       </div>
                     ) : loadingRaaRisks ? (
                       <div className="mt-3 grid gap-2 sm:grid-cols-2" aria-label="A carregar riscos RAA">
-                        {[1, 2].map((item) => <div key={item} className="h-20 animate-pulse rounded-lg bg-white/80" />)}
+                        {[1, 2].map((item) => <div key={item} className="h-20 animate-pulse rounded-lg bg-card/80" />)}
                       </div>
                     ) : raaRisks.length === 0 ? (
                       <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
@@ -1148,9 +1203,9 @@ function ProfessorNotasContent() {
                     ) : (
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
                         {raaRisks.map((item) => (
-                          <button key={item.matricula_id} type="button" aria-label={`Ver elegibilidade de ${item.aluno_nome}`} onClick={() => { setRaaStudentId(item.aluno_id); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); void handleLoadRaaEligibility(item.aluno_id) }} className="min-h-20 rounded-lg border border-amber-200 bg-white p-3 text-left transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
-                            <div className="flex items-start justify-between gap-2"><span className="min-w-0 break-words text-sm font-bold text-slate-900">{item.aluno_nome}</span><span className="shrink-0 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black uppercase text-amber-800">{item.risco?.label ?? "Atenção"}</span></div>
-                            <div className="mt-2 flex items-end justify-between gap-2"><p className="text-xs leading-5 text-slate-600">{item.risco?.action ?? "Consultar elegibilidade e completar os dados."}</p><span className="shrink-0 text-[10px] font-black uppercase text-slate-400">Ver detalhe →</span></div>
+                          <button key={item.matricula_id} type="button" aria-label={`Ver elegibilidade de ${item.aluno_nome}`} disabled={!pautaReady || loadingRaa || submittingReapreciacao || !matriculaIds[item.aluno_id]} onClick={() => { setRaaOpen(true); setRaaStudentId(item.aluno_id); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); void handleLoadRaaEligibility(item.aluno_id) }} className="min-h-20 rounded-lg border border-amber-200 bg-card p-3 text-left transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
+                            <div className="flex items-start justify-between gap-2"><span className="min-w-0 break-words text-sm font-bold text-foreground">{item.aluno_nome}</span><span className="shrink-0 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black uppercase text-amber-800">{item.risco?.label ?? "Atenção"}</span></div>
+                            <div className="mt-2 flex items-end justify-between gap-2"><p className="text-xs leading-5 text-muted-foreground">{item.risco?.action ?? "Consultar elegibilidade e completar os dados."}</p><span className="shrink-0 text-[10px] font-black uppercase text-muted-foreground">Ver detalhe →</span></div>
                           </button>
                         ))}
                       </div>
@@ -1158,20 +1213,20 @@ function ProfessorNotasContent() {
                   </div>
                 )}
                 {turmaId && disciplinaId && (loadingExamSessions || examSessions.length > 0) && (
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="rounded-xl border border-border bg-card p-4 ">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-bold text-slate-900">Exames e recurso</p>
-                        <p className="mt-1 text-xs text-slate-500">Sessões configuradas para esta turma. O lançamento permanece no contexto da disciplina selecionada.</p>
+                        <p className="text-sm font-bold text-foreground">Exames e recurso</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Sessões configuradas para esta turma. O lançamento permanece no contexto da disciplina selecionada.</p>
                       </div>
-                      {selectedExamSession && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase ${examLocked ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald-700"}`}>{selectedExamSession.estado}</span>}
+                      {selectedExamSession && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase ${examLocked ? "bg-muted text-muted-foreground" : "bg-emerald-50 text-emerald-700"}`}>{selectedExamSession.estado}</span>}
                     </div>
                     {loadingExamSessions ? (
-                      <div className="mt-3 h-10 animate-pulse rounded-xl bg-slate-100" />
+                      <div className="mt-3 h-10 animate-pulse rounded-xl bg-muted" />
                     ) : (
                       <div className="mt-4 space-y-3">
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <label className="text-xs font-semibold text-slate-600">
+                          <label className="text-xs font-semibold text-muted-foreground">
                             Sessão
                             <select
                               value={selectedExamSessionId}
@@ -1181,17 +1236,17 @@ function ProfessorNotasContent() {
                                 setSelectedExamComponentId(next?.exame_componentes?.[0]?.id ?? "")
                                 setExamNotes({})
                               }}
-                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900"
+                              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-foreground"
                             >
                               {examSessions.map((session) => <option key={session.id} value={session.id}>{session.tipo.replace("_", " ")} · {session.data_inicio} a {session.data_fim}</option>)}
                             </select>
                           </label>
-                          <label className="text-xs font-semibold text-slate-600">
+                          <label className="text-xs font-semibold text-muted-foreground">
                             Componente
                             <select
                               value={selectedExamComponentId}
                               onChange={(event) => setSelectedExamComponentId(event.target.value)}
-                              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-normal text-slate-900"
+                              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-foreground"
                               disabled={examLocked}
                             >
                               {(selectedExamSession?.exame_componentes ?? []).map((component) => <option key={component.id} value={component.id}>{component.codigo} · máximo {component.nota_maxima}</option>)}
@@ -1199,20 +1254,20 @@ function ProfessorNotasContent() {
                           </label>
                         </div>
                         {examLocked ? (
-                          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">Esta sessão está {selectedExamSession?.estado}. Consulte a secretaria para corrigir a configuração.</p>
+                          <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Esta sessão está {selectedExamSession?.estado}. Consulte a secretaria para corrigir a configuração.</p>
                         ) : !selectedExamComponent ? (
                           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">A sessão ainda não tem componentes configurados.</p>
                         ) : (
-                          <div className="overflow-x-auto rounded-xl border border-slate-100">
+                          <div className="overflow-x-auto rounded-xl border border-border">
                             <table className="min-w-full text-left text-sm">
-                              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-3 py-2">Aluno</th><th className="w-32 px-3 py-2">Nota</th></tr></thead>
+                              <thead className="bg-muted text-xs uppercase text-muted-foreground"><tr><th className="px-3 py-2">Aluno</th><th className="w-32 px-3 py-2">Nota</th></tr></thead>
                               <tbody className="divide-y divide-slate-100">
-                                {pauta.map((student) => <tr key={student.id}><td className="px-3 py-2 font-medium text-slate-800">{student.nome}</td><td className="px-3 py-2"><input type="number" min="0" max={selectedExamComponent.nota_maxima} step="0.01" value={examNotes[student.id] ?? ""} onChange={(event) => setExamNotes((current) => ({ ...current, [student.id]: event.target.value }))} className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20" aria-label={`Nota de exame de ${student.nome}`} /></td></tr>)}
+                                {pauta.map((student) => <tr key={student.id}><td className="px-3 py-2 font-medium text-foreground">{student.nome}</td><td className="px-3 py-2"><input type="number" min="0" max={selectedExamComponent.nota_maxima} step="0.01" value={examNotes[student.id] ?? ""} onChange={(event) => setExamNotes((current) => ({ ...current, [student.id]: event.target.value }))} className="w-24 rounded-lg border border-border px-2 py-1.5 text-sm outline-none focus:border-amber focus:ring-2 focus:ring-amber/20" aria-label={`Nota de exame de ${student.nome}`} /></td></tr>)}
                               </tbody>
                             </table>
                           </div>
                         )}
-                        {!examLocked && selectedExamComponent && <button type="button" onClick={() => void handleSaveExamResults()} disabled={savingExam || !turmaDisciplinaId} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">{savingExam ? "Guardando resultados..." : "Guardar resultados do exame"}</button>}
+                        {!examLocked && selectedExamComponent && <button type="button" onClick={() => void handleSaveExamResults()} disabled={savingExam || !turmaDisciplinaId} className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">{savingExam ? "Guardando resultados..." : "Guardar resultados do exame"}</button>}
                       </div>
                     )}
                   </div>

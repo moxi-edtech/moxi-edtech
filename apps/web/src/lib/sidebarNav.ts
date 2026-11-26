@@ -50,6 +50,7 @@ export const sidebarConfig: SidebarConfig = {
   ],
   operacoes: [
     { href: "/escola/[escolaId]/operacoes/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+    { href: "/escola/[escolaId]/operacoes/fecho-diario", label: "Fecho diário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/operacoes/alunos", label: "Alunos", icon: "Users" },
     {
       href: "/escola/[escolaId]/operacoes/matriculas",
@@ -115,6 +116,7 @@ export const sidebarConfig: SidebarConfig = {
       children: [
         { href: "/escola/[escolaId]/operacoes/documentos", label: "Emissão de Declarações" },
         { href: "/escola/[escolaId]/operacoes/documentos-oficiais", label: "Documentos Oficiais (MED)" },
+        { href: "/escola/[escolaId]/operacoes/provas", label: "Central de provas" },
       ],
     },
     {
@@ -125,7 +127,7 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/escola/[escolaId]/operacoes/financeiro", label: "Visão geral" },
         { href: "/escola/[escolaId]/operacoes/radar", label: "Radar de inadimplência" },
         { href: "/escola/[escolaId]/operacoes/financeiro/recebimentos", label: "Recebimentos" },
-        { href: "/escola/[escolaId]/operacoes/financeiro/controle-caixa", label: "Controlo de caixa" },
+        { href: "/escola/[escolaId]/operacoes/financeiro/conciliacao", label: "Conciliação bancária" },
         { href: "/escola/[escolaId]/operacoes/financeiro/cobrancas", label: "Cobranças" },
         { href: "/escola/[escolaId]/operacoes/financeiro/tabelas-mensalidade", label: "Mensalidades e preços" },
         { href: "/escola/[escolaId]/operacoes/financeiro/fiscal", label: "Fiscal" },
@@ -133,13 +135,10 @@ export const sidebarConfig: SidebarConfig = {
       ],
     },
     {
-      href: "/escola/[escolaId]/operacoes/acessos",
+      href: "/escola/[escolaId]/operacoes/acesso-alunos",
       label: "Acessos ao Portal",
       icon: "KeyRound",
-      children: [
-        { href: "/escola/[escolaId]/operacoes/acessos", label: "Gestão de acessos" },
-        { href: "/escola/[escolaId]/operacoes/acesso-alunos", label: "Acesso dos alunos" },
-      ],
+      activePrefixes: ["/escola/[escolaId]/operacoes/acessos"],
     },
     {
       href: "/escola/[escolaId]/operacoes/relatorios",
@@ -207,6 +206,7 @@ export const sidebarConfig: SidebarConfig = {
   ],
   admin: [
     { href: "/escola/[escolaId]/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+    { href: "/escola/[escolaId]/admin/fecho-diario", label: "Fecho diário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/admin/alunos", label: "Alunos", icon: "Users" },
     {
       href: "/escola/[escolaId]/secretaria/admissoes",
@@ -295,7 +295,7 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/escola/[escolaId]/secretaria/rematricula/reconciliacao", label: "Pendências de reconciliação", badge: "Resolver" },
       ],
     },
-    { href: "/escola/[escolaId]/secretaria/fecho", label: "Fecho de Caixa", icon: "Lock" },
+    { href: "/escola/[escolaId]/secretaria/fecho-diario", label: "Fecho diário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/secretaria/recebimentos", label: "Recebimentos", icon: "Wallet" },
     { href: "/escola/[escolaId]/secretaria/acesso", label: "Acesso ao Portal", icon: "KeyRound" },
     { href: "/escola/[escolaId]/admin/comunicacao/whatsapp", label: "WhatsApp KLASSE", icon: "MessageSquare" },
@@ -358,7 +358,7 @@ export const sidebarConfig: SidebarConfig = {
       children: [
         { href: "/escola/[escolaId]/financeiro/pagamentos", label: "Lista" },
         { href: "/escola/[escolaId]/financeiro/cobrancas", label: "Cobranças" },
-        { href: "/escola/[escolaId]/financeiro/fecho", label: "Fecho de Caixa" },
+        { href: "/escola/[escolaId]/financeiro/fecho-diario", label: "Fecho diário" },
         { href: "/escola/[escolaId]/financeiro/conciliacao", label: "Conciliação" },
         { href: "/escola/[escolaId]/secretaria/rematricula/reconciliacao", label: "Pendências de reconciliação", badge: "Resolver" },
       ],
@@ -399,6 +399,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/escola/[escolaId]/professor", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/escola/[escolaId]/professor/frequencias", label: "Frequências", icon: "BookOpen" },
     { href: "/escola/[escolaId]/professor/notas", label: "Lançar Notas", icon: "FileText" },
+    { href: "/escola/[escolaId]/professor/provas", label: "Provas", icon: "FileText" },
     { href: "/escola/[escolaId]/professor/calendario", label: "Calendário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/professor/perfil", label: "Perfil", icon: "User" },
   ],

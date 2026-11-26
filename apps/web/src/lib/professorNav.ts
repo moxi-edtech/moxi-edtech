@@ -22,6 +22,7 @@ export const professorNavItems: ProfessorNavItem[] = [
   { path: "/professor", label: "Início", icon: LayoutDashboard },
   { path: "/professor/frequencias", label: "Frequências", icon: ClipboardCheck },
   { path: "/professor/notas", label: "Notas", icon: FileText },
+  { path: "/professor/provas", label: "Provas", icon: ClipboardCheck },
   { path: "/professor/materiais", label: "Materiais", icon: BookOpenIcon },
   { path: "/professor/calendario", label: "Calendário", icon: CalendarDays },
   { path: "/professor/perfil", label: "Perfil", icon: User },
@@ -39,4 +40,12 @@ export function getActiveProfessorNavHref(items: ProfessorNavLink[], activePath:
     activePath.startsWith(`${path}/`),
   );
   return matches.sort((a, b) => b.path.length - a.path.length)[0]?.href ?? null;
+}
+
+/** Primary actions are explicit, independent of desktop menu order. */
+export const professorPrimaryPaths = ["/professor", "/professor/frequencias", "/professor/notas", "/professor/provas"] as const;
+export function splitProfessorMobileNav(items: ProfessorNavLink[]) {
+  const mainItems = professorPrimaryPaths.flatMap(path => items.filter(item => item.path === path));
+  const drawerItems = items.filter(item => !professorPrimaryPaths.some(path => path === item.path));
+  return { mainItems, drawerItems };
 }

@@ -10,3 +10,13 @@ Estado: bloqueado para produção, 2026-11-24.
 - Antes de versionar: confirmar ledger/repositório, gerar migration com CLI, alinhar permissões das RPCs com os papéis administrativos/secretaria e a autorização exacta do tenant, proteger log de eventos, rever chamadas directas a ensure/publish e escritores de atribuição docente. Cobrir alteração de tempos partilhados, ordem de locks e concorrência. Não transformar a proposta existente em migration executável sem estes testes.
 - Sequência de release: API compatível em produção -> smoke autenticado de criação/edição/publicação sem mutar versões oficiais indevidamente -> diagnosticar e regularizar oito slots com aprovação escolar -> CI PG17 com RLS e concorrência dos escritores -> aplicação apenas da migration validada, verificação do ledger e contagens.
 - Importação XLSX não faz parte do escopo. Sem alteração de produção nesta auditoria.
+
+
+## Reauditoria de 26/11/2026 — main `f85931ba`
+
+- A API em main resolve a versão de origem e envia apenas um rascunho a `upsert_quadro_horarios_versao_atomic`; não foi homologado o consumidor em produção nesta ronda.
+- Auditoria de leitura no PostgreSQL 17: **573** aulas publicadas, **266** activas, **8** slots incompatíveis em **3** turmas, **0** pares de sobreposição activa. Os oito slots continuam por regularizar; preservar horários existentes. A consulta não valida todo o currículo.
+- O trigger `trg_horario_publication_guard` não está instalado. O upsert remoto tem referência a advisory lock mas não ao erro HORARIO_STALE da proposta. O trigger de conflitos existente não tem referência a advisory lock. Estes marcadores são diagnósticos, não prova de segurança.
+- `ensure_horario_versao` e `publish_horario_versao` ainda concedem EXECUTE a anon (SECURITY INVOKER); avaliar acessibilidade efectiva sob RLS e revogar concessão desnecessária no cutover. `log_horario_event` é SECURITY DEFINER, executável por authenticated: testar autorização e integridade do registo. Nenhuma exploração foi executada.
+- Ledger remoto mais recente observado: `20271204030000_provas_pedagogicas`, presente na main. Isto não comprova reconciliação de todo o ledger; CLI indisponível. Não reutilizar versões nem instalar proposta.
+- Auditoria reproduzível em `supabase/ops/tests/horarios_publication_readiness_audit.sql` (somente leitura). A proposta fica isolada; não activar sem cobertura dos escritores directos, slots partilhados, ordem dos locks, sessões concorrentes e homologação do consumidor. Sem alterações em produção.

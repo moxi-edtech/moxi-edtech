@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useId, useMemo, useState } from "react";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { ChevronDown, Download, Eye, EyeOff, FileText, Loader2, LockKeyhole } from "lucide-react";
 import {
   formatPublishedGrade,
@@ -43,9 +44,9 @@ function TermValue({ subject, term, locked, showGrades }: {
   </span>;
   if (!showGrades) return <span aria-label="Notas ocultadas"><EyeOff aria-hidden="true" className="inline h-4 w-4 text-muted-foreground" /></span>;
   const final = trimesterClassification(subject, term);
-  if (final) return <span className="text-base font-semibold tabular-nums text-foreground">{formatPublishedGrade(final.nota!)}</span>;
+  if (final) return <span className="inline-flex min-w-10 items-center justify-center rounded-lg bg-klasse-green-50 px-2 py-1 text-base font-semibold tabular-nums text-klasse-green">{formatPublishedGrade(final.nota!)}</span>;
   if (trimesterStatus(subject, term) === "pendente") return <span className="text-xs text-muted-foreground">Em apuramento</span>;
-  return <span className="text-xs text-muted-foreground">Sem classificação</span>;
+  return <span className="text-xs text-muted-foreground" aria-label="Sem classificação">—</span>;
 }
 
 export function BoletimGradeGrid({
@@ -81,6 +82,10 @@ export function BoletimGradeGrid({
   const hasPublishedAssessments = safeSubjects.some((s) => s.avaliacoes.length > 0);
   const hasFinals = safeSubjects.some(s => s.classificacoes.some(c => c.status === "disponivel"));
   const valuesVisible = !locked && showGrades;
+  const sheetSubject = view === "trimestre" ? quarterSubjects.find(s => s.id === expandedId) : selectedSubject;
+  const sheetTerm = view === "trimestre" ? term : [1,2,3].find(p => expandedId === `${selectedSubject?.id}:${p}`);
+  const sheetOpen = Boolean(expandedId && sheetSubject && sheetTerm);
+  const sheetScope = `${scope}:${view}:${term}`;
 
   const selectView = (next: View) => {
     setView(next);
@@ -94,7 +99,7 @@ export function BoletimGradeGrid({
     return <div className="space-y-3 py-2" data-testid="boletim-assessment-details">
       {locked ? <p className="text-sm text-muted-foreground">Consulta o estado do boletim para aceder às notas.</p>
         : !showGrades ? <p className="text-sm text-muted-foreground">Seleciona «Exibir notas» para consultar os detalhes.</p>
-        : entries.length === 0 ? <p className="text-sm text-muted-foreground">Ainda não há avaliações publicadas neste período.</p>
+        : entries.length === 0 ? <p className="text-sm text-muted-foreground">Sem avaliações publicadas.</p>
         : <ul className="space-y-2">
           {entries.map((grade, index) => <li key={`${grade.trimestre}-${grade.nome}-${index}`}
             className="flex items-start justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm">
@@ -118,48 +123,48 @@ export function BoletimGradeGrid({
     </div>;
   };
 
-  return <section aria-labelledby={`${prefix}-heading`} className="min-w-0 space-y-4" data-testid="aluno-boletim-grid">
+  return <section aria-labelledby={`${prefix}-heading`} className="min-w-0 space-y-3" data-testid="aluno-boletim-grid">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 space-y-1">
-        <h2 id={`${prefix}-heading`} className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+        <h2 id={`${prefix}-heading`} className="text-lg font-semibold tracking-tight text-primary sm:text-xl">
           {mode === "grades" ? "Minhas notas" : "Boletim de notas"}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {yearLabel ? `Ano letivo ${yearLabel} · ` : ""}
+          {yearLabel ? `${yearLabel} · ` : ""}
           {safeSubjects.length} disciplinas{locked ? " · Notas protegidas" : ""}
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         <button type="button" onClick={() => setShowGrades(visible => !visible)} disabled={locked}
           aria-pressed={valuesVisible} aria-label={locked ? "Exibir notas indisponível até à liberação do boletim" : valuesVisible ? "Ocultar notas" : "Exibir notas"}
-          className={`inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 ${focus}`}>
+          className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 text-xs font-semibold sm:px-3 sm:text-sm text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 ${focus}`}>
           {valuesVisible ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
-          {valuesVisible ? "Ocultar notas" : "Exibir notas"}
+          <span>{valuesVisible ? "Ocultar" : "Exibir"}</span>
         </button>
         <button type="button" disabled={locked || downloading || !canDownloadOfficial} onClick={onDownload}
           aria-label={locked ? "Imprimir boletim indisponível até à liberação" : !canDownloadOfficial ? "Boletim oficial requer autorização de pagamento" : "Descarregar boletim em PDF para imprimir"}
-          className={`inline-flex min-h-11 items-center gap-2 klasse-portal-cta rounded-xl px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${focus}`}>
+          className={`inline-flex min-h-11 items-center gap-1.5 klasse-portal-cta rounded-xl px-2.5 text-xs font-semibold sm:px-3 sm:text-sm disabled:cursor-not-allowed disabled:opacity-60 ${focus}`}>
           {downloading ? <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" /> : <Download aria-hidden="true" className="h-4 w-4" />}
-          {downloading ? "A preparar PDF…" : "Imprimir / PDF"}
+          {downloading ? "A preparar…" : "PDF"}
         </button>
       </div>
     </div>
 
     {locked && <p className="flex items-center gap-2 text-sm text-muted-foreground">
-      <LockKeyhole aria-hidden="true" className="h-4 w-4 shrink-0" /> As notas ainda não estão disponíveis. Vê o próximo passo abaixo.
+      <LockKeyhole aria-hidden="true" className="h-4 w-4 shrink-0" /> Notas protegidas. Consulta o estado do boletim abaixo.
     </p>}
     {!locked && !hasPublishedAssessments && !hasFinals && <p className="text-sm text-muted-foreground">
       Ainda não há avaliações publicadas neste período.
     </p>}
     {!locked && !showGrades && <p role="status" className="text-sm text-muted-foreground">
-      As notas estão ocultas neste ecrã; o PDF mantém as classificações autorizadas.
+      Notas ocultas no ecrã. O PDF não é alterado.
     </p>}
     {downloadError && <p role="alert" className="text-sm text-destructive">{downloadError}</p>}
 
-    <div className="flex w-full flex-wrap gap-1 rounded-xl border border-border bg-muted/40 p-1" role="group" aria-label="Modo de consulta do boletim">
+    <div className="flex w-full gap-1 rounded-xl bg-muted/50 p-1" role="group" aria-label="Modo de consulta do boletim">
       {([["trimestre", "Por trimestre"], ["disciplina", "Por disciplina"]] as const).map(([id,label]) =>
         <button key={id} type="button" aria-pressed={view === id} onClick={() => selectView(id)}
-          className={`min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold ${view === id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"} ${focus}`}>{label}</button>)}
+          className={`min-h-11 min-w-0 flex-1 rounded-xl px-2 text-xs font-semibold sm:px-3 sm:text-sm ${view === id ? "bg-accent text-accent-foreground ring-1 ring-primary/15" : "text-muted-foreground hover:text-foreground"} ${focus}`}>{label}</button>)}
     </div>
 
     {loadingSubjects ? <div role="status" aria-live="polite" className="space-y-2">
@@ -175,7 +180,7 @@ export function BoletimGradeGrid({
       <div className="grid grid-cols-3 gap-2" role="group" aria-label="Selecionar trimestre">
         {[1, 2, 3].map(p => <button type="button" key={p} onClick={() => { setTerm(p); setExpandedId(null); }}
           aria-pressed={term === p}
-          className={`min-h-11 rounded-lg border px-1.5 py-2 text-xs font-semibold sm:px-3 sm:text-sm ${term === p ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:bg-muted"} ${focus}`}>
+          className={`min-h-11 rounded-xl border px-1.5 py-1.5 text-xs font-semibold sm:px-3 sm:text-sm ${term === p ? "border-primary/25 bg-accent text-accent-foreground" : "border-border bg-card text-foreground hover:bg-muted"} ${focus}`}>
           {p}.º trimestre
         </button>)}
       </div>
@@ -185,17 +190,17 @@ export function BoletimGradeGrid({
           <colgroup><col style={{ width: "68%" }} /><col style={{ width: "32%" }} /></colgroup>
           <thead className="bg-muted/50"><tr>
             <th scope="col" className="px-3 py-3 text-left text-sm font-semibold text-foreground sm:px-4">Disciplina</th>
-            <th scope="col" className="px-2 py-3 text-right text-xs font-semibold text-foreground sm:px-4 sm:text-sm">Classificação</th>
+            <th scope="col" className="px-2 py-3 text-right text-xs font-semibold text-foreground sm:px-4 sm:text-sm">Nota</th>
           </tr></thead>
           <tbody className="divide-y divide-border">
             {quarterSubjects.map(subject => {
               const open = expandedId === subject.id;
-              const label = `${prefix}-term-${term}-${subject.id}`;
+
               return <Fragment key={subject.id}>
                 <tr key={`${subject.id}-main`}>
                   <th scope="row" className="px-2 py-1 text-left font-normal sm:px-3">
                     <button type="button" onClick={() => setExpandedId(open ? null : subject.id)}
-                      aria-expanded={open} aria-controls={label}
+                      aria-expanded={open} aria-haspopup="dialog"
                       aria-label={`${open ? "Fechar" : "Ver"} detalhes de ${subject.nome}`}
                       className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-1 py-2 text-left text-sm font-medium text-foreground hover:text-primary ${focus}`}>
                       <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
@@ -207,9 +212,7 @@ export function BoletimGradeGrid({
                     {isSubjectOffered(subject, term) === null && <span className="block text-[10px] text-muted-foreground">Período por confirmar</span>}
                   </td>
                 </tr>
-                {open && <tr id={label} key={`${subject.id}-details`} className="bg-muted/20">
-                  <td colSpan={2} className="px-4 pb-3">{detail(subject, term)}</td>
-                </tr>}
+
               </Fragment>;
             })}
           </tbody>
@@ -219,7 +222,7 @@ export function BoletimGradeGrid({
         </p>}
       </div>
       <p className="text-xs leading-5 text-muted-foreground">
-        A classificação apresentada é a do trimestre, não a nota de uma prova. Seleciona uma disciplina para ver as avaliações.
+        Classificação do trimestre. Toca numa disciplina para ver as avaliações.
       </p>
     </> : <>
       <label htmlFor={`${prefix}-subject`} className="block text-sm font-medium text-foreground">
@@ -233,7 +236,7 @@ export function BoletimGradeGrid({
         {[1, 2, 3].map(p => {
           const offered = isSubjectOffered(selectedSubject, p);
           const open = expandedId === `${selectedSubject.id}:${p}`;
-          const label = `${prefix}-annual-${selectedSubject.id}-${p}`;
+
           return <div key={p} className="px-3 py-3 sm:px-4">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 space-y-0.5">
@@ -247,19 +250,22 @@ export function BoletimGradeGrid({
                 <TermValue subject={selectedSubject} term={p} locked={locked} showGrades={showGrades} />
               </div>
             </div>
-            {offered !== false && <button type="button" aria-expanded={open} aria-controls={label}
+            {offered !== false && <button type="button" aria-expanded={open} aria-haspopup="dialog"
               onClick={() => setExpandedId(open ? null : `${selectedSubject.id}:${p}`)}
               className={`mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary ${focus}`}>
               {open ? "Fechar avaliações" : "Ver avaliações"}
-              <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+              <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
             </button>}
-            {open && offered !== false && <div id={label}>{detail(selectedSubject, p)}</div>}
+
           </div>;
         })}
       </div>}
       <p className="text-xs leading-5 text-muted-foreground">
-        A vista anual mostra os trimestres de cada disciplina, incluindo aqueles em que não foi lecionada. Não são calculadas médias anuais.
+        Classificações trimestrais, sem média anual.
       </p>
     </>}
+    <PortalSheet key={sheetScope} open={sheetOpen} onClose={() => setExpandedId(null)} title={sheetSubject?.nome ?? "Avaliações"} description={sheetTerm ? `${sheetTerm}.º trimestre` : "Avaliações"} size="expanded">
+      {sheetOpen && sheetSubject && sheetTerm ? detail(sheetSubject, sheetTerm) : null}
+    </PortalSheet>
   </section>;
 }

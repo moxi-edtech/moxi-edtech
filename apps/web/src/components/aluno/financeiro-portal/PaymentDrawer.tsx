@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { useEffect, useRef, useState } from "react";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 
 type Mensalidade = { id: string; competencia: string; valor: number };
 type DadosPagamento = {
@@ -74,22 +74,31 @@ export function PaymentDrawer({
   const [progress, setProgress] = useState(0);
   const [friendlyError, setFriendlyError] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const inFlight = useRef(false);
 
   useEffect(() => {
-    if (!open || !mensalidades.length) return;
+    if (!open) return;
     setMensagem("");
-  }, [open, mensalidades]);
+    setSelectedFile(null);
+    setFriendlyError(null);
+    setProgress(0);
+  }, [open, studentId]);
 
-  if (!open || !mensalidades.length) return null;
   const total = mensalidades.reduce((sum, item) => sum + item.valor, 0);
 
   const submitFile = async (original: File) => {
+    if (inFlight.current || !mensalidades.length) return;
     setFriendlyError(null);
-    if (!ALLOWED.includes(original.type)) {
+    if (!ALLOWED.includes(original.type) || original.size === 0) {
       setFriendlyError("Tipo inválido. Envie PDF, JPG, PNG ou WEBP.");
       return;
     }
 
+    inFlight.current = true;
+    setSending(true);
+    setProgress(0);
+    try {
     const file = await compressImage(original);
     if (file.size > MAX_BYTES) {
       setFriendlyError("Arquivo muito grande. Limite de 5MB após compressão.");
@@ -104,9 +113,6 @@ export function PaymentDrawer({
     }
     if (studentId) fd.append("studentId", studentId);
 
-    setSending(true);
-    setProgress(0);
-    try {
       const json = await uploadWithProgress("/api/aluno/financeiro/comprovativo", fd, setProgress);
       if (!json?.ok) throw new Error(json?.error ?? "Falha ao anexar comprovativo");
       onUploaded(mensalidades.map((item) => item.id));
@@ -115,27 +121,26 @@ export function PaymentDrawer({
       const message = e instanceof Error ? e.message : "Não foi possível anexar o comprovativo. Tente novamente.";
       setFriendlyError(message);
     } finally {
+      inFlight.current = false;
       setSending(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose}>
-      <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-card p-4 shadow-xl" style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }} onClick={(e) => e.stopPropagation()}>
-        <p className="text-sm font-semibold text-foreground">Pagamento consolidado</p>
-        <p className="text-xs text-muted-foreground">{mensalidades.length} mensalidade(s) · Total exacto: {money.format(total)}</p>
+    <PortalSheet open={open && mensalidades.length > 0} onClose={onClose} busy={sending} size="expanded" title="Pagamento consolidado" description={`${mensalidades.length} mensalidade(s) · Total exacto: ${money.format(total)}`}
+      footer={<button type="button" disabled={!selectedFile || sending || !mensalidades.length} onClick={() => { if (selectedFile) void submitFile(selectedFile); }} className="klasse-portal-press min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? "A enviar…" : "Confirmar e enviar comprovativo"}</button>}>
         <div className="mt-3 flex flex-wrap gap-2">
           {mensalidades.map((item) => <span key={item.id} className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-foreground">{item.competencia} · {money.format(item.valor)}</span>)}
         </div>
         <div className="mt-4 rounded-xl bg-muted p-3 text-sm text-foreground">
           <p className="font-medium text-foreground">Coordenadas bancárias</p>
           <p>Banco: {dadosPagamento?.banco || "Consultar secretaria"}</p>
-          <p>IBAN: {dadosPagamento?.iban || "Indisponível no momento"}</p>
+          <p className="break-all">IBAN: {dadosPagamento?.iban || "Indisponível no momento"}</p>
           {(dadosPagamento?.titular_conta || dadosPagamento?.titular) && (
             <p>Titular: {dadosPagamento?.titular_conta || dadosPagamento?.titular}</p>
           )}
           {dadosPagamento?.kwik_chave && <p>KWIK: {dadosPagamento.kwik_chave}</p>}
-          <p>Referência: LOTE-{mensalidades[0].id.slice(0, 8).toUpperCase()}</p>
+          {mensalidades[0] && <p>Referência: LOTE-{mensalidades[0].id.slice(0, 8).toUpperCase()}</p>}
         </div>
         <label className="mt-4 block">
           <span className="mb-2 block text-xs text-muted-foreground">Mensagem para a secretaria (opcional)</span>
@@ -151,12 +156,12 @@ export function PaymentDrawer({
         </label>
         <label className="mt-4 block">
           <span className="mb-2 block text-xs text-muted-foreground">Comprovativo (PDF/Imagem)</span>
-          <input type="file" className="block w-full text-sm" accept=".pdf,image/jpeg,image/png,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) void submitFile(f); }} disabled={sending} />
+          <input type="file" className="block min-h-11 w-full rounded-xl border border-border bg-card p-2 text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-muted file:px-3 file:py-2 file:text-foreground focus-visible:ring-2 focus-visible:ring-ring" accept=".pdf,image/jpeg,image/png,image/webp" onChange={(e) => { setFriendlyError(null); setSelectedFile(e.target.files?.[0] ?? null); }} disabled={sending} />
         </label>
-        {sending && <p className="mt-2 text-xs text-muted-foreground">Upload: {progress}%</p>}
-        {friendlyError && <p className="mt-2 text-xs text-red-600">{friendlyError}</p>}
-        <Button tone="green" className="mt-4 min-h-11 w-full" disabled={sending}>{sending ? "A anexar..." : "Anexar Comprovativo"}</Button>
-      </div>
-    </div>
+        {sending && <p role="status" aria-live="polite" className="mt-2 text-sm text-muted-foreground">A enviar comprovativo: {progress}%</p>}
+        {friendlyError && <p role="alert" className="mt-2 text-sm text-destructive">{friendlyError}</p>}
+        {selectedFile && <p className="break-all text-sm text-muted-foreground">Ficheiro seleccionado: {selectedFile.name}</p>}
+        <p className="text-xs text-muted-foreground">Confirma o envio. O comprovativo será validado pela secretaria.</p>
+    </PortalSheet>
   );
 }

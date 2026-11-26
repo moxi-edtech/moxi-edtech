@@ -274,9 +274,9 @@ export function TurmaContextView({
 <div key={student.id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-border px-2 py-1 last:border-0">
               <button type="button"
                 data-student-id={student.id} aria-current={selectedStudentId === student.id ? "true" : undefined} onClick={() => selectStudent({ id: student.id, label: student.nome })}
-                className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
-                <span className="w-8 shrink-0 text-xs tabular-nums text-muted-foreground">{student.numeroChamada ?? "—"}</span>
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground">{student.nome}</span>
+                className="flex min-w-0 flex-[1_1_12rem] items-center gap-2 px-2 py-3 text-left transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600 sm:gap-3 sm:px-3">
+                <span className="w-6 shrink-0 text-xs tabular-nums text-muted-foreground sm:w-8">{student.numeroChamada ?? "—"}</span>
+                <span data-student-name className="min-w-0 flex-1 break-words font-medium text-foreground">{student.nome}</span>
                 {searchActive && "situacaoMatricula" in student && isSituacaoMatriculaContextual(student.situacaoMatricula) && (
                   <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
                     {rotuloSituacaoMatricula(student.situacaoMatricula)}

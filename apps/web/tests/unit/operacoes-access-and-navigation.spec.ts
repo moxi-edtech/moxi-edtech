@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { roleMatchesAllowedRoles } from "../../src/lib/permissions";
 import { K12_OPERACOES_ROLE_GROUP } from "../../src/lib/roles";
 import { isOperationsPortalPath, sidebarConfig } from "../../src/lib/sidebarNav";
-import { toContextualPortalPath } from "../../src/lib/navigation";
+import { toContextualPortalPath, buildFinancialWorkspaceHref } from "../../src/lib/navigation";
 
 test("matriz de acesso de Operações preserva o grupo autorizado", () => {
   for (const role of [
@@ -52,7 +52,7 @@ test("sidebar de Operações simplifica o Financeiro sem expor rotas legadas", (
     { href: "/escola/[escolaId]/operacoes/financeiro", label: "Visão geral" },
     { href: "/escola/[escolaId]/operacoes/radar", label: "Radar de inadimplência" },
     { href: "/escola/[escolaId]/operacoes/financeiro/recebimentos", label: "Recebimentos" },
-    { href: "/escola/[escolaId]/operacoes/financeiro/controle-caixa", label: "Controlo de caixa" },
+    { href: "/escola/[escolaId]/operacoes/financeiro/conciliacao", label: "Conciliação bancária" },
     { href: "/escola/[escolaId]/operacoes/financeiro/cobrancas", label: "Cobranças" },
     { href: "/escola/[escolaId]/operacoes/financeiro/tabelas-mensalidade", label: "Mensalidades e preços" },
     { href: "/escola/[escolaId]/operacoes/financeiro/fiscal", label: "Fiscal" },
@@ -177,4 +177,46 @@ test("rotas nos sidebars reutilizam a página canónica e o admin conserva redir
   const config = readFileSync(resolve(testDir, "../../next.config.ts"), "utf8");
   assert.match(config, /source: "\/escola\/:id\/admin\/operacoes-academicas\/:path\*"/);
   assert.match(config, /destination: "\/escola\/:id\/operacoes\/academico\/:path\*"/);
+});
+
+test("overdue card and radar tabs use canonical school workspaces with the same academic year", () => {
+  const school = "complexo-escolar-privado-advetista-de-curtume";
+  const year = "a76b3468-0a31-484b-b9bf-4969b6fc39fe";
+  const base = "/escola/" + school;
+  const query = "?ano_letivo_id=" + year;
+  assert.equal(buildFinancialWorkspaceHref(school, "cobrancas", base + "/operacoes/dashboard", year), base + "/operacoes/financeiro/cobrancas" + query);
+  assert.equal(buildFinancialWorkspaceHref(school, "turmas-alunos", base + "/operacoes/radar", year), base + "/operacoes/turmas-alunos" + query);
+  assert.equal(buildFinancialWorkspaceHref(school, "radar", base + "/operacoes/turmas-alunos", year), base + "/operacoes/radar" + query);
+  assert.equal(buildFinancialWorkspaceHref(school, "turmas-alunos", base + "/financeiro/radar", year), base + "/financeiro/turmas-alunos" + query);
+  assert.equal(buildFinancialWorkspaceHref(school, "radar", base + "/financeiro/turmas-alunos", null), base + "/financeiro/radar");
+  const src = (path: string) => readFileSync(new URL("../../src/" + path, import.meta.url), "utf8");
+  const radar = src("app/escola/[id]/(portal)/financeiro/radar/page.tsx");
+  const turmas = src("app/escola/[id]/(portal)/financeiro/turmas-alunos/page.tsx");
+  const kpi = src("components/layout/escola-admin/KpiSection.tsx");
+  const data = src("components/layout/escola-admin/EscolaAdminDashboardData.tsx");
+  const dashboard = src("components/layout/escola-admin/EscolaAdminDashboardContent.tsx");
+  assert.match(radar, /buildFinancialWorkspaceHref\(escolaId, "turmas-alunos", pathname, academicYearId\)/);
+  assert.doesNotMatch(radar, /new URL\("\.\.\/turmas-alunos"/);
+  assert.match(turmas, /buildFinancialWorkspaceHref\(escolaParam, 'radar', pathname, anoLetivoId\)/);
+  assert.match(kpi, /buildFinancialWorkspaceHref\(escolaParam, "cobrancas", "\/operacoes\/dashboard", academicYearId\)/);
+  assert.match(kpi, /label: "Propinas em atraso"[\s\S]*?href: overdueHref/);
+  assert.match(data, /academicYearId=\{activeYear\?\.id \?\? null\}/);
+  assert.match(dashboard, /academicYearId=\{academicYearId\}/);
+  assert.match(src("app/escola/[id]/(portal)/operacoes/turmas-alunos/page.tsx"), /financeiro\/turmas-alunos\/page/);
+  assert.match(src("app/escola/[id]/(portal)/operacoes/radar/page.tsx"), /financeiro\/radar\/page/);
+  const context = src("lib/academic-year/navigation.ts");
+  assert.match(context, /"\/operacoes\/radar"/);
+  assert.match(context, /"\/operacoes\/turmas-alunos"/);
+});
+
+test("Acessos ao Portal is a single entry pointing to the complete student access workspace", () => {
+  const entries = sidebarConfig.operacoes?.filter((item) => item.label === "Acessos ao Portal") ?? [];
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.href, "/escola/[escolaId]/operacoes/acesso-alunos");
+  assert.equal(entries[0]?.children, undefined);
+  assert.deepEqual(entries[0]?.activePrefixes, ["/escola/[escolaId]/operacoes/acessos"]);
+  const source = readFileSync(new URL("../../src/app/secretaria/(portal-secretaria)/acesso-alunos/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /<MetricasAcessoAlunos/);
+  assert.match(source, /<AcessoPortalManager/);
+  assert.match(source, /initialAlunoId=\{params.alunoId \?\? null\}/);
 });

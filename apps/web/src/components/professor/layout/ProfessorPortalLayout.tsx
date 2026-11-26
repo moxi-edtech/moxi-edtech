@@ -29,7 +29,7 @@ export default function ProfessorPortalLayout({ children }: { children: React.Re
   );
 
   return (
-    <div className="klasse-portal-theme">
+    <div className="klasse-portal-theme klasse-academic-mobile">
       <AppShell
         mobileNav={<ProfessorBottomNav items={mobileNavItems} activePath={pathname} />}
         hideSidebarOnMobile

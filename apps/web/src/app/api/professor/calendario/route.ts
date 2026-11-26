@@ -1,3 +1,4 @@
+import { printAssessmentCalendar,parseAssessmentPrintTerm,assessmentPrintError } from "@/lib/academico/assessment-calendar-print-server";
 import { NextResponse } from "next/server";
 import { readPublishedAssessmentEvents } from "@/lib/academico/published-assessment-events";
 import { applyKf2ListInvariants } from "@/lib/kf2";
@@ -161,6 +162,12 @@ export async function GET(req: Request) {
       }, { status: 409 });
     }
     const teacherClasses = [...(linkedClasses ?? []), ...(directedClasses ?? [])];
+    const printParams=new URL(req.url).searchParams;
+    if(printParams.get("modo")==="imprimir"){
+      const term=parseAssessmentPrintTerm(printParams);
+      if(term===undefined||printParams.has("conferencia")||printParams.has("turma")||printParams.has("classe"))return assessmentPrintError("Selecção inválida.");
+      return await printAssessmentCalendar(supabase,{escolaId,yearId:academicContext.anoLetivoId,year:academicContext.anoLetivoLabel,term,allowedClassIds:teacherClasses.map((c:{id:string})=>c.id)});
+    }
     if (teacherClasses.some((row: { curso_id: string | null }) => !row.curso_id)) {
       return NextResponse.json({
         ok: false, code: "CALENDAR_COURSE_NOT_MAPPED",

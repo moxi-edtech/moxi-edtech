@@ -4,6 +4,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import type { Database, Json } from "~types/supabase";
+import { loadIssuedMonthlyReceipts } from "@/lib/financeiro/issued-monthly-receipts";
 import { extractServicosFromPagamentos, extractServicosFromPedidos } from "@/lib/financeiro/servicosPagamento";
 
 export const dynamic = "force-dynamic";
@@ -59,10 +60,10 @@ export async function GET(request: Request) {
     // O estado da bolsa é por matrícula/ano; nunca inferir bolsa a partir do saldo 0.
     const { data: matriculasBolsa, error: bolsaError } = await supabase
       .from("matriculas")
-      .select("id, ano_letivo, bolsa_integral, bolsa_integral_inicio")
+      .select("id, ano_letivo, bolsa_integral, bolsa_integral_inicio, bolsa_parcial_percentagem, bolsa_parcial_periodos")
       .eq("escola_id", ctx.escolaId)
       .eq("aluno_id", alunoId)
-      .eq("bolsa_integral", true)
+      .or("bolsa_integral.eq.true,bolsa_parcial_percentagem.gt.0")
       .gte("ano_letivo", fromAno)
       .lte("ano_letivo", toAno)
       .order("ano_letivo", { ascending: false });
@@ -75,23 +76,9 @@ export async function GET(request: Request) {
     if (anoAtivoError) throw anoAtivoError;
 
     const mensalidadeIds = (mensalidades ?? []).map((m) => m.id);
-    const reciboByMensalidadeId = new Map<string, string>();
-
-    if (mensalidadeIds.length) {
-      const { data: recibos } = await supabase
-        .from("documentos_emitidos")
-        .select("id, mensalidade_id, created_at")
-        .eq("tipo", "recibo").eq("escola_id", ctx.escolaId)
-        .in("mensalidade_id", mensalidadeIds)
-        .order("created_at", { ascending: false }).order("id", { ascending: false });
-
-      for (const recibo of recibos ?? []) {
-        const mensalidadeId = String(recibo.mensalidade_id ?? "");
-        if (mensalidadeId && !reciboByMensalidadeId.has(mensalidadeId)) {
-          reciboByMensalidadeId.set(mensalidadeId, recibo.id);
-        }
-      }
-    }
+    const reciboByMensalidadeId = await loadIssuedMonthlyReceipts(supabase, {
+      escolaId: ctx.escolaId, alunoId, mensalidadeIds,
+    });
 
     // 2. Buscar Movimentos do Ledger (SSOT)
     const { data: movimentos, error: ledgerError } = await supabase
@@ -179,7 +166,8 @@ export async function GET(request: Request) {
       ano_letivo_atual: anoAtivo?.ano ?? null,
       bolsas: (matriculasBolsa ?? []).map(m => ({
         ano_letivo: m.ano_letivo,
-        vigencia_inicio: m.bolsa_integral_inicio,
+        vigencia_inicio: m.bolsa_integral ? m.bolsa_integral_inicio : (Array.isArray(m.bolsa_parcial_periodos) ? (m.bolsa_parcial_periodos[m.bolsa_parcial_periodos.length - 1] as { inicio?: string } | undefined)?.inicio ?? null : null),
+        percentagem: m.bolsa_integral ? 100 : Number(m.bolsa_parcial_percentagem),
       })),
       servicos,
       movimentos: ledgerMovimentos,

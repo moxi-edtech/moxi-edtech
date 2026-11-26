@@ -12,7 +12,7 @@ const EXPORT_HEADERS = [
   { key: "turma_nome", label: "Turma" },
   { key: "classe_nome", label: "Classe" },
   { key: "turno", label: "Turno" },
-  { key: "bolsa_integral", label: "Bolseiro" },
+  { key: "bolseiro", label: "Bolseiro" },
   { key: "total_em_atraso", label: "Total em atraso" },
   { key: "numero_processo_login", label: "Login" },
   { key: "numero_processo", label: "Processo" },
@@ -39,10 +39,10 @@ export function sortAlunoExportRows(items: AlunoListItem[]) {
 }
 
 function valueFor(row: AlunoListItem, key: (typeof EXPORT_HEADERS)[number]["key"]) {
-  const value = (row as Record<string, unknown>)[key];
+  const value = key === "bolseiro" ? row.bolseiro ?? row.bolsa_integral : (row as Record<string, unknown>)[key];
   if (value === null || value === undefined) return "";
   if (key === "created_at" && typeof value === "string") return value.slice(0, 10);
-  if (key === "bolsa_integral") return value === true ? "Sim" : value === false ? "Não" : "";
+  if (key === "bolseiro") return value === true ? "Sim" : value === false ? "Não" : "";
   if (key === "turno" && typeof value === "string") {
     const normalized = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (normalized === "m" || normalized.startsWith("manha")) return "Manhã";
@@ -107,7 +107,7 @@ export async function renderAlunosPdf(
     turma: row.turma_nome || "—",
     classe: row.classe_nome || "—",
     turno: valueFor(row, "turno") || "—",
-    bolsa: valueFor(row, "bolsa_integral") || "—",
+    bolsa: valueFor(row, "bolseiro") || "—",
   }));
 
   const pdf = await renderNominalA4({

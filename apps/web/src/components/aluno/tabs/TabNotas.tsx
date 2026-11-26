@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { Lock as LockIcon, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { AcademicCarryoversCard } from "@/components/aluno/academico/AcademicCarryoversCard";
 import { BoletimGradeGrid } from "@/components/aluno/academico/BoletimGradeGrid";
 import { ServicePaymentDrawer } from "@/components/aluno/layout/ServicePaymentDrawer";
@@ -44,6 +45,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   if (studentId) bulletinParams.set("studentId", studentId);
   if (academicYearId) bulletinParams.set("ano_letivo_id", academicYearId);
   const bulletinQuery = bulletinParams.toString() ? `?${bulletinParams.toString()}` : "";
+  const [academicStatusScope, setAcademicStatusScope] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLiberado, setIsLiberado] = useState(false);
   const [boletimPago, setBoletimPago] = useState(false);
@@ -257,8 +259,8 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
           setPaymentIntentId(servico?.pagamento_intent_id ?? null);
           setBoletimPago(Boolean(catalog.boletim_pago));
           } catch {
-            // A indisponibilidade do catálogo pago não bloqueia a consulta
-            // das notas já publicadas e autorizadas ao educando.
+            // A autorização de consulta vem do servidor, não do catálogo.
+            // Sem confirmação do catálogo, manter o PDF indisponível.
             setBoletimPago(false);
             setPaymentError("Não foi possível consultar o serviço do boletim oficial.");
           }
@@ -396,19 +398,18 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   };
   const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
   return (
-    <div className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-3 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
+    <div className={embedded ? "mx-auto min-w-0 max-w-4xl space-y-5 pb-3 text-foreground" : "mx-auto min-w-0 max-w-4xl space-y-6 pb-6 text-foreground"} data-testid="aluno-pauta-editorial">
       {!embedded && <header className="space-y-3">
-        <p className="text-sm font-medium text-[#2B6044]">KLASSE / Portal do aluno</p>
+        <p className="text-sm font-medium text-primary">KLASSE / Portal do aluno</p>
         <h1 className="text-2xl font-semibold tracking-tight text-primary sm:text-3xl">As tuas notas</h1>
         <p className="text-base leading-7 text-muted-foreground">Acompanha as avaliações que já foram lançadas.</p>
         {academicYear !== null && <p className="text-sm text-muted-foreground">Ano letivo {academicYear}</p>}
         <nav aria-label="Navegação académica" className="flex flex-wrap gap-x-5 gap-y-2 border-b border-border pt-2 text-sm">
-          <Link aria-current="page" href={buildPortalHref(escolaSlug, `/aluno/academico${navQuery}`)} className={`inline-flex min-h-11 items-center border-b-2 border-[#2B6044] font-semibold text-[#2B6044] ${focus}`}>Notas</Link>
+          <Link aria-current="page" href={buildPortalHref(escolaSlug, `/aluno/academico${navQuery}`)} className={`inline-flex min-h-11 items-center border-b-2 border-primary font-semibold text-primary ${focus}`}>Notas</Link>
           <Link href={buildPortalHref(escolaSlug, `/aluno/disciplinas${navQuery}`)} className={`inline-flex min-h-11 items-center text-foreground ${focus}`}>Disciplinas</Link>
           <Link href={buildPortalHref(escolaSlug, `/aluno/documentos${navQuery}`)} className={`inline-flex min-h-11 items-center text-foreground ${focus}`}>Documentos</Link>
         </nav>
       </header>}
-      {embedded && academicYear !== null && <p className="text-xs font-medium text-muted-foreground">Ano letivo {academicYear}</p>}
       {visibleLoading ? <section aria-label="A carregar as tuas notas" role="status" aria-live="polite" className="space-y-2 motion-safe:animate-pulse">
         <span className="sr-only">A carregar as tuas notas</span><div aria-hidden="true" className="h-5 w-36 rounded-lg bg-muted"/><div aria-hidden="true" className="h-24 rounded-xl bg-muted"/>
       </section> : accessError ? <section role="alert" className="space-y-2 rounded-xl border border-destructive/40 bg-card p-4">
@@ -488,7 +489,15 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         } : null}
       />
       {safeIsLiberado && refreshing && <p role="status" className="text-xs text-muted-foreground">A verificar novas avaliações…</p>}
-      {safeIsLiberado && !historicalRead && <section aria-label="Situação académica" className="border-t border-border pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
+      {safeIsLiberado && !historicalRead && matriculaEncontrada && <section aria-label="Situação académica" className="border-t border-border pt-4">
+        <button type="button" aria-haspopup="dialog" aria-expanded={academicStatusScope === bulletinQuery} onClick={() => setAcademicStatusScope(bulletinQuery)} className="flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-card px-4 text-left text-sm font-semibold text-primary">Situação académica <ArrowRight className="h-4 w-4" aria-hidden="true" /></button>
+        <PortalSheet open={academicStatusScope === bulletinQuery} onClose={() => setAcademicStatusScope(null)} title="Situação académica" description="Contexto da matrícula e dependências de anos anteriores." size="expanded">
+          {academicStatusScope === bulletinQuery && <>
+            <p className="text-sm text-muted-foreground">Matrícula encontrada{gridYearLabel ? ` · ${gridYearLabel}` : ""}. Consulta as dependências abaixo; este resumo não certifica a aprovação.</p>
+            <AcademicCarryoversCard key={bulletinQuery} studentId={studentId} />
+          </>}
+        </PortalSheet>
+      </section>}
       {safeIsLiberado && !historicalRead && reapreciacaoDisc && (
         <Dialog open onOpenChange={(open) => { if (!open) setReapreciacaoDisc(null); }}>
           <DialogContent closeButton={false} onCloseAutoFocus={restoreDialogFocus}

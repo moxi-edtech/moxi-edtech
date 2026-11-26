@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { printAssessmentCalendar,parseAssessmentPrintTerm,assessmentPrintError } from "@/lib/academico/assessment-calendar-print-server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -81,10 +82,15 @@ export async function GET(req: Request, context: Context) {
       return NextResponse.json({ ok: false, error: "O calendário apresenta apenas o ano letivo ativo desta escola." }, { status: 409 });
     }
 
+    if(search.get("modo")==="imprimir"){
+      const term=parseAssessmentPrintTerm(search),scope=search.get("escopo"),turma=search.get("turma"),classe=search.get("classe"),draft=search.get("conferencia");
+      if(term===undefined||!["turma","classe","escola"].includes(scope??"")||(scope==="turma"?!uuid.safeParse(turma).success:turma!==null)||(scope==="classe"?!/^(0|[1-9][0-9]?)$/.test(classe??""):classe!==null)||(draft!==null&&draft!=="1"))return assessmentPrintError("Selecção inválida.");
+      return await printAssessmentCalendar(db,{escolaId,yearId:ano.id,year:ano.ano+"/"+(ano.ano+1),term,turma:turma??undefined,classe:classe??undefined,conference:draft==="1"});
+    }
     const [periods, classes, saved, offerings] = await Promise.all([
       db.from("periodos_letivos").select("id,numero,data_inicio,data_fim,offering_id")
         .eq("escola_id", escolaId).eq("ano_letivo_id", ano.id).order("numero").limit(150),
-      db.from("turmas").select("id,nome,curso_id")
+      db.from("turmas").select("id,nome,curso_id,classe_num")
         .eq("escola_id", escolaId)
         .eq("ano_letivo_id", ano.id)
         .eq("session_id", ano.id)

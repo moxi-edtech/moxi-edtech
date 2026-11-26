@@ -14,11 +14,11 @@ const classe = "00000000-0000-4000-8000-000000000031";
 const outraClasse = "00000000-0000-4000-8000-000000000032";
 
 const matriculas = [
-  { escola_id: escola, session_id: sessao, ano_letivo: 2026, aluno_id: "aluno1", turma_id: turmaManha, bolsa_integral: true, status: "ativa" },
-  { escola_id: escola, session_id: sessao, ano_letivo: 2026, aluno_id: "aluno2", turma_id: turmaTarde, bolsa_integral: false, status: "ativa" },
-  { escola_id: escola, session_id: sessao, ano_letivo: 2026, aluno_id: "aluno3", turma_id: turmaManha, bolsa_integral: false, status: "inativa" },
-  { escola_id: outraEscola, session_id: sessao, ano_letivo: 2026, aluno_id: "intruso", turma_id: turmaManha, bolsa_integral: true, status: "ativa" },
-  { escola_id: escola, session_id: sessao, ano_letivo: 2025, aluno_id: "alunoAntigo", turma_id: turmaManha, bolsa_integral: true, status: "ativa" },
+  { escola_id: escola, session_id: sessao, ano_letivo: 2026, aluno_id: "aluno1", turma_id: turmaManha, bolsa_integral: true, bolsa_parcial_percentagem: 0, status: "ativa" },
+  { escola_id: escola, session_id: sessao, ano_letivo: 2026, aluno_id: "aluno2", turma_id: turmaTarde, bolsa_integral: false, bolsa_parcial_percentagem: 0, status: "ativa" },
+  { escola_id: escola, session_id: sessao, ano_letivo: 2026, aluno_id: "aluno3", turma_id: turmaManha, bolsa_integral: false, bolsa_parcial_percentagem: 0, status: "inativa" },
+  { escola_id: outraEscola, session_id: sessao, ano_letivo: 2026, aluno_id: "intruso", turma_id: turmaManha, bolsa_integral: true, bolsa_parcial_percentagem: 0, status: "ativa" },
+  { escola_id: escola, session_id: sessao, ano_letivo: 2025, aluno_id: "alunoAntigo", turma_id: turmaManha, bolsa_integral: true, bolsa_parcial_percentagem: 0, status: "ativa" },
 ];
 const turmas = [
   { id: turmaManha, escola_id: escola, session_id: sessao, ano_letivo: 2026, classe_id: classe, turno: "M", nome: "A" },
@@ -41,6 +41,21 @@ function createFixture() {
     select(_columns: string) { return this; }
     eq(col: string, val: unknown) {
       this.filters.push(row => row[col] === val); this.descriptions.push(`${col}=${String(val)}`); return this;
+    }
+    or(expression: string) {
+      // Interpret the PostgREST predicates used by the service, never return an
+      // unfiltered result for an unsupported expression.
+      const predicates = expression.split(",").map(part => {
+        const [col, op, value] = part.split(".");
+        if (op === "eq" && (value === "true" || value === "false"))
+          return (row: RecordRow) => row[col] === (value === "true");
+        if (op === "gt" && /^\d+$/.test(value))
+          return (row: RecordRow) => typeof row[col] === "number" && Number(row[col]) > Number(value);
+        throw new Error("Unsupported fixture filter: " + part);
+      });
+      this.filters.push(row => predicates.some(predicate => predicate(row)));
+      this.descriptions.push("or:" + expression);
+      return this;
     }
     in(col: string, vals: unknown[]) {
       this.filters.push(row => vals.includes(row[col])); this.descriptions.push(`${col} IN`); return this;
@@ -86,6 +101,22 @@ test("pré-seleção de turma, classe, turno, ano e bolsa não mistura escolas n
   assert.deepEqual([...turmasContraditorias ?? []], []);
   const anoErrado = await preselectExportAlunoIds(client, escola, { turmaId: turmaManha, ano: 2024 });
   assert.deepEqual([...anoErrado ?? []], []);
+});
+
+test("bolsas parciais entram nos bolseiros e não entram nos não bolseiros", async () => {
+  const { client, calls, records } = createFixture();
+  records.matriculas = [
+    ...records.matriculas,
+    { escola_id: escola, session_id: sessao, ano_letivo: 2026, aluno_id: "parcial", turma_id: turmaManha, bolsa_integral: false, bolsa_parcial_percentagem: 50, status: "ativa" },
+    { escola_id: outraEscola, session_id: sessao, ano_letivo: 2026, aluno_id: "parcialExterno", turma_id: turmaManha, bolsa_integral: false, bolsa_parcial_percentagem: 25, status: "ativa" },
+    { escola_id: escola, session_id: sessao, ano_letivo: 2026, aluno_id: "parcialInativo", turma_id: turmaManha, bolsa_integral: false, bolsa_parcial_percentagem: 75, status: "inativa" },
+  ];
+  const ids = await preselectExportAlunoIds(client, escola, { bolsa: "sim", classeId: classe, turno: "manha" }, { academicYearId: sessao });
+  assert.deepEqual([...ids ?? []].sort(), ["aluno1", "parcial"]);
+  const naoBolseiros = await preselectExportAlunoIds(client, escola, { bolsa: "nao" });
+  assert.deepEqual([...naoBolseiros ?? []], ["aluno2"]);
+  assert.ok(calls.every(c => c.filters.includes(`escola_id=${escola}`)));
+  assert.ok(calls.some(c => c.filters.includes("or:bolsa_integral.eq.true,bolsa_parcial_percentagem.gt.0")));
 });
 
 test("camada de exportação filtra antes das consultas pesadas sem cortar o último lote", async () => {

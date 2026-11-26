@@ -536,27 +536,8 @@ export default async function EscolaAdminDashboardData({
       else if (status === "ajuste") pagamentosResumo.ajuste += total;
     });
 
-    const activeAno = Number(anoLetivoResult.data?.ano ?? currentYear);
-    const currentMonthKey = currentMonthStart.slice(0, 7);
-    const monthlyRows = ((financeiroMensalSeriesResult.data ?? []) as FinanceiroPropinasMensalRow[])
-      .filter((row) => Number(row.ano_letivo ?? 0) === activeAno)
-      .sort((a, b) => String(a.competencia_mes ?? "").localeCompare(String(b.competencia_mes ?? "")));
-    const selectedMonthlyRow =
-      monthlyRows.find((row) => String(row.competencia_mes ?? "").slice(0, 7) >= currentMonthKey) ??
-      monthlyRows[monthlyRows.length - 1] ??
-      null;
-    const mensalidadesPendentesMes = selectedMonthlyRow
-      ? Math.max(
-          0,
-          Number(selectedMonthlyRow.qtd_mensalidades ?? 0) -
-            Number(selectedMonthlyRow.qtd_pagas_adiantadas ?? 0)
-        )
-      : 0;
-    const mensalidadesCompetencia = selectedMonthlyRow?.competencia_mes
-      ? new Intl.DateTimeFormat("pt-PT", { month: "2-digit", year: "numeric" }).format(
-          new Date(`${String(selectedMonthlyRow.competencia_mes).slice(0, 7)}-01T00:00:00Z`)
-        )
-      : null;
+    // Both cards use the same active-school-year operational status read model.
+    const mensalidadesStatusDisponivel = !mensalidadesStatusResult.error && Boolean(anoLetivoResult.data?.ano);
 
     const setupBlockers = [
       !setupStatus.anoLetivoOk,
@@ -593,8 +574,9 @@ export default async function EscolaAdminDashboardData({
     const turmasSemHorarioPublicado = Math.max(0, turmasDoAnoAtivo.length - turmasComHorarioPublicadoNoAno);
 
     const operationalSnapshot: OperationalSnapshot = {
-      mensalidadesPendentes: mensalidadesPendentesMes,
-      mensalidadesCompetencia,
+      mensalidadesStatusDisponivel,
+      mensalidadesPendentes: pagamentosResumo.pendente,
+      mensalidadesCompetencia: null,
       mensalidadesInadimplentes: pagamentosResumo.inadimplente,
       turmasPendentes: pendingTurmasCount,
       curriculoHorarioPendencias: curriculoPendencias.horario + curriculoPendencias.avaliacao,
@@ -654,6 +636,7 @@ export default async function EscolaAdminDashboardData({
         mode={mode}
         escolaNome={escolaNome ?? escolaNomeResult.data?.nome ?? undefined}
         anoLetivo={anoLetivo}
+        academicYearId={activeYear?.id ?? null}
         loading={false}
         error={null}
         stats={stats}
@@ -694,6 +677,7 @@ export default async function EscolaAdminDashboardData({
         stats={emptyKpis}
         pendingTurmasCount={0}
         operationalSnapshot={{
+          mensalidadesStatusDisponivel: false,
           mensalidadesPendentes: 0,
           mensalidadesCompetencia: null,
           mensalidadesInadimplentes: 0,

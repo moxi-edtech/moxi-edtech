@@ -44,21 +44,24 @@ test("somente pauta trimestral oficialmente emitida autoriza a consulta", () => 
 test("sem pauta publicada, nenhuma avaliação ou classificação definitiva é exposta", () => {
   assert.deepEqual(selectPublishedStudentGrades(grades,classifications,new Set()),[]);
 });
-test("as rotas de consulta e documento mantêm contratos distintos", () => {
+test("consulta e documento exigem a mesma autorização financeira", () => {
   const src=(path:string)=>readFileSync(resolve(process.cwd(),"src",path),"utf8");
-  const free=src("app/api/aluno/minhas-notas/route.ts");
+  const consultation=src("app/api/aluno/minhas-notas/route.ts");
   const paid=src("app/api/aluno/boletim/route.ts");
   const pdf=src("app/api/aluno/boletim/pdf/route.ts");
   const ui=src("components/aluno/tabs/TabNotas.tsx");
   const grid=src("components/aluno/academico/BoletimGradeGrid.tsx");
-  for(const source of [free,paid,pdf]) {
+  for(const source of [consultation,paid,pdf]) {
     assert.match(source,/getAlunoContext\(\)/);
     assert.match(source,/resolveBoletimMatricula\(/);
     assert.match(source,/resolveSelectedStudentId\(/);
   }
-  assert.doesNotMatch(free,/checkBoletimAccess|servico_pedidos|pagamento_intents/);
-  assert.match(free,/publishedTrimestersFromOfficialSheets/);
-  assert.match(free,/ano_letivo_id", context\.anoLetivoId/);
+  assert.match(consultation,/checkBoletimAccess\(/);
+  assert.match(consultation,/if \(!access\.granted\)/);
+  assert.ok(consultation.indexOf("if (!access.granted)") < consultation.indexOf('supabase.from("pautas_oficiais")'));
+  assert.match(consultation,/is_liberado: false, matricula_encontrada: true, context,\s*disciplinas: \[\]/);
+  assert.match(consultation,/publishedTrimestersFromOfficialSheets/);
+  assert.match(consultation,/ano_letivo_id", context\.anoLetivoId/);
   assert.match(paid,/checkBoletimAccess\(/);
   assert.match(pdf,/checkBoletimAccess\(/);
   assert.match(ui,/fetch\(`\/api\/aluno\/minhas-notas/);

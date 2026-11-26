@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
+import { checkBoletimAccess } from "@/lib/aluno/boletimAccess";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -7,10 +8,13 @@ export const revalidate = 0;
 export async function GET() {
   try {
     const { supabase, ctx } = await getAlunoContext();
-    if (!ctx?.userId || !ctx.escolaId || !ctx.matriculaId || !ctx.turmaId) {
+    if (!ctx?.userId || !ctx.escolaId || !ctx.matriculaId || !ctx.turmaId || !ctx.alunoId) {
       return NextResponse.json({ ok: true, result: null });
     }
 
+    const access = await checkBoletimAccess(supabase, { escolaId: ctx.escolaId, alunoId: ctx.alunoId, matriculaId: ctx.matriculaId });
+    if (access.error) return NextResponse.json({ ok: false, error: "Não foi possível verificar o pagamento do boletim." }, { status: 503 });
+    if (!access.granted) return NextResponse.json({ ok: true, result: null, disciplinas: [], restricted: true }, { headers: { "Cache-Control": "private, no-store" } });
     const { data: disciplinas, error } = await supabase
       .from("turma_disciplinas")
       .select("avaliacao_disciplina_id")

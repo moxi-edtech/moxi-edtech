@@ -2,18 +2,24 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { recordAuditServer } from "@/lib/audit";
+import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
+const WRITE_ROLES = [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP, "admin_secretaria", "admin_secretario"];
+const READ_ROLES = [...WRITE_ROLES, "diretor"];
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const date = new Date(value + "T00:00:00Z"); return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value; }, "Data inválida");
+const snapshotColumns = "id, escola_id, day_key, status, declared_by, declared_at, declared_cash, declared_tpa, declared_transfer, declared_mcx, system_cash, system_tpa, system_transfer, system_mcx, system_other, system_other_count, revision, revision_reason, approval_note";
 const payloadSchema = z.object({
-  day_key: z.string().min(10),
+  escolaId: z.string().min(1).optional(),
+  day_key: dateSchema,
+  correction: z.object({ expectedRevision: z.number().int().positive(), requestId: z.string().uuid(), reason: z.string().trim().min(1).max(255) }).optional(),
   declared: z.object({
-    cash: z.number().nonnegative(),
-    tpa: z.number().nonnegative(),
-    transfer: z.number().nonnegative(),
-    mcx: z.number().nonnegative(),
+    cash: z.number().finite().nonnegative().max(9999999999.99),
+    tpa: z.number().finite().nonnegative().max(9999999999.99),
+    transfer: z.number().finite().nonnegative().max(9999999999.99),
+    mcx: z.number().finite().nonnegative().max(9999999999.99),
   }),
 });
 
@@ -37,33 +43,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const body = await request.json().catch(() => null);
+    const parsed = payloadSchema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ ok: false, error: "Dados do fecho inválidos" }, { status: 400 });
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, parsed.data.escolaId);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
     }
 
-    const body = await request.json().catch(() => null);
-    const parsed = payloadSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { ok: false, error: parsed.error.issues?.[0]?.message || "Payload inválido" },
-        { status: 400 }
-      );
+    const { data: membership, error: membershipError } = await supabase.from("escola_users").select("papel").eq("escola_id", escolaId).eq("user_id", user.id).eq("tenant_type", "k12").limit(20);
+    if (membershipError || !membership?.some((row: { papel: string }) => WRITE_ROLES.includes(row.papel))) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const { day_key, declared } = parsed.data;
+    const { day_key, declared, correction } = parsed.data;
 
-    const { data: existing } = await supabase
-      .from("fecho_caixa")
-      .select("id, escola_id, day_key, status, declared_by, declared_at")
-      .eq("escola_id", escolaId)
-      .eq("day_key", day_key)
-      .maybeSingle();
-    if (existing) {
-      return NextResponse.json({ ok: true, data: existing, idempotent: true });
-    }
-
-    const { data, error } = await supabase.rpc("financeiro_fecho_declarar_e_snapshot", {
+    const { data, error } = await supabase.rpc(correction ? "financeiro_fecho_regularizar" : "financeiro_fecho_declarar_e_snapshot", {
+      ...(correction ? { p_expected_revision: correction.expectedRevision, p_request_id: correction.requestId, p_reason: correction.reason } : {}),
       p_escola_id: escolaId,
       p_day_key: day_key,
       p_cash: declared.cash,
@@ -73,21 +69,30 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: false, error: error.code === "23505" ? "A declaração foi alterada ou já existe. Atualize o fecho antes de continuar." : "Não foi possível declarar o fecho." }, { status: error.code === "42501" ? 403 : error.code === "22023" ? 400 : error.code === "23505" ? 409 : 500 });
     }
-
-    recordAuditServer({
-      escolaId,
-      portal: "financeiro",
-      acao: "FECHO_DECLARADO",
-      entity: "fecho_caixa",
-      entityId: (data as any)?.id ?? null,
-      details: { day_key, declared },
-    }).catch(() => null);
 
     return NextResponse.json({ ok: true, data });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const date = dateSchema.safeParse(url.searchParams.get("date"));
+  if (!date.success) return NextResponse.json({ ok: false, error: "Data inválida" }, { status: 400 });
+  const supabase = await supabaseServerTyped<any>();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+  const escolaId = await resolveEscolaIdForUser(supabase, user.id, url.searchParams.get("escolaId"));
+  if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
+  const { data: membership, error: membershipError } = await supabase.from("escola_users").select("papel").eq("escola_id", escolaId).eq("user_id", user.id).eq("tenant_type", "k12").limit(20);
+  if (membershipError || !membership?.some((row: { papel: string }) => READ_ROLES.includes(row.papel))) {
+    return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+  }
+  const { data, error } = await supabase.from("fecho_caixa").select(snapshotColumns).eq("escola_id", escolaId).eq("day_key", date.data).maybeSingle();
+  if (error) return NextResponse.json({ ok: false, error: "Não foi possível carregar a declaração." }, { status: 500 });
+  return NextResponse.json({ ok: true, data }, { headers: { "Cache-Control": "private, no-store" } });
 }
