@@ -43,7 +43,7 @@ test("contextual sheets retain existing permissions, routes and roster protectio
   assert.match(grades, /locked \? \[\] : subject\.avaliacoes/);
   assert.match(grades, /<PortalSheet key=\{sheetScope\}/);
   assert.match(grades, /!locked && showGrades && entries\.length > 0 && !historicalRead/);
-  const attendance = read("app/professor/frequencias/page.tsx");
+  const attendance = read("components/professor/ProfessorFrequenciasWorkspace.tsx");
   assert.match(attendance, /loadedRosterKey === JSON\.stringify/);
   assert.match(attendance, /contextLocked = saving \|\| attendanceDirty/);
   assert.match(attendance, /if \(!rosterReady \|\| alunos\.length === 0\)/);
