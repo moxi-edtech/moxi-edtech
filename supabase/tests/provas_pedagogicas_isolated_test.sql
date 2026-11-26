@@ -302,7 +302,7 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.calendario_avaliacoes WHERE prova_id=copy.id AND estado='publicado') THEN RAISE EXCEPTION 'calendar link missing'; END IF;
  BEGIN
   INSERT INTO public.calendario_avaliacoes(escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id)
-  SELECT escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id FROM public.calendario_avaliacoes WHERE prova_id=copy.id;
+  SELECT ca.escola_id,ca.ano_letivo_id,ca.periodo_letivo_id,ca.turma_id,ca.turma_disciplina_id,ca.estado,ca.data,ca.inicio,ca.fim,ca.prova_id FROM public.calendario_avaliacoes ca WHERE ca.prova_id=copy.id;
   RAISE EXCEPTION 'duplicate class schedule accepted';
  EXCEPTION WHEN unique_violation THEN NULL; END;
  BEGIN
@@ -311,14 +311,14 @@ BEGIN
  EXCEPTION WHEN check_violation THEN NULL; END;
  BEGIN
   INSERT INTO public.calendario_avaliacoes(escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id)
-  SELECT '00000000-0000-4000-8000-000000000002',ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id FROM public.calendario_avaliacoes WHERE prova_id=copy.id;
+  SELECT '00000000-0000-4000-8000-000000000002',ca.ano_letivo_id,ca.periodo_letivo_id,ca.turma_id,ca.turma_disciplina_id,ca.estado,ca.data,ca.inicio,ca.fim,ca.prova_id FROM public.calendario_avaliacoes ca WHERE ca.prova_id=copy.id;
   RAISE EXCEPTION 'cross tenant calendar link accepted';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  PERFORM set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
  IF EXISTS(SELECT 1 FROM public.provas_por_professor(sch,'90000000-0000-4000-8000-000000000001')) THEN RAISE EXCEPTION 'teacher could use admin filter'; END IF;
  BEGIN
   INSERT INTO public.calendario_avaliacoes(escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id)
-  SELECT escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id FROM public.calendario_avaliacoes WHERE prova_id=copy.id;
+  SELECT ca.escola_id,ca.ano_letivo_id,ca.periodo_letivo_id,ca.turma_id,ca.turma_disciplina_id,ca.estado,ca.data,ca.inicio,ca.fim,ca.prova_id FROM public.calendario_avaliacoes ca WHERE ca.prova_id=copy.id;
   RAISE EXCEPTION 'teacher linked calendar event';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  PERFORM set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000007',true);
