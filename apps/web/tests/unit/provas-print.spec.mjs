@@ -163,7 +163,7 @@ test("institutional branding uses only the school storage path and a bounded ima
  const url=origin+"/storage/v1/object/public/school-branding/escolas/"+id+"/logo/123.png";
  const png="iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==";
  let calls=0;
- const fetcher=async(input,options)=>{calls++;assert.equal(String(input),url);assert.equal(options.redirect,"error");assert.equal(options.credentials,"omit");return new Response(Buffer.from(png,"base64"),{headers:{"content-type":"image/png"}});};
+ const fetcher=async(input,options)=>{calls++;assert.equal(String(input),url);assert.equal(options.redirect,"error");assert.equal(options.credentials,"omit");assert.equal(options.cache,"no-store");return new Response(Buffer.from(png,"base64"),{headers:{"content-type":"image/png"}});};
  const logo=await loadProvaLogo(url,id,fetcher,[origin]);
  assert.equal(logo,"data:image/png;base64,"+png);
  for(const invalid of [null,"https://evil.test/logo.png",url.replace(id,"00000000-0000-4000-8000-000000000002"),url+"?token=abc",url.replace(".png",".svg"),url.replace("https:","http:")]){
@@ -172,7 +172,16 @@ test("institutional branding uses only the school storage path and a bounded ima
  }
  assert.equal(calls,1);
  assert.equal(await loadProvaLogo(url,id,async()=>new Response(Buffer.from(png,"base64"),{headers:{"content-type":"application/octet-stream"}}),[origin]),logo);
- assert.equal(await loadProvaLogo(url,id,async()=>new Response(Buffer.from(png,"base64"),{headers:{"content-type":"text/html"}}),[origin]),null);
+ // Curtume regression: recognized raster with a stale/wrong raster Content-Type.
+ for(const mime of ["image/jpeg","image/webp","image/jpg","image/x-png","binary/octet-stream",null]){
+  const reports=[];
+  assert.equal(await loadProvaLogo(url,id,async()=>new Response(Buffer.from(png,"base64"),{headers:mime?{"content-type":mime}:{}}),[origin],reason=>reports.push(reason)),logo);
+  assert.deepEqual(reports,[]);
+ }
+ for(const mime of ["text/html","image/svg+xml","application/xml","application/javascript","text/plain"]){
+  assert.equal(await loadProvaLogo(url,id,async()=>new Response(Buffer.from(png,"base64"),{headers:{"content-type":mime}}),[origin]),null);
+ }
+ assert.equal(await loadProvaLogo(url,id,async()=>new Response("<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>",{headers:{"content-type":"image/png"}}),[origin]),null);
  assert.equal(await loadProvaLogo(url,id,async()=>new Response("fake",{headers:{"content-type":"image/png"}}),[origin]),null);
  assert.equal(await loadProvaLogo(url,id,async()=>new Response("large",{headers:{"content-type":"image/png","content-length":"3000000"}}),[origin]),null);
  assert.equal(await loadProvaLogo(url,id,async()=>{throw Error("network")},[origin]),null);

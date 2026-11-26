@@ -8,6 +8,7 @@ import { parseDistribution,distributionError,distributionResult,rpcArgs,recipien
 export const dynamic="force-dynamic";
 export const runtime="nodejs";
 const headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow"};
+function reportLogo(escolaId:string,reason:string){if(reason!=="not_configured")console.warn("[provas] print institutional logo unavailable",{escolaId,reason});}
 const fail=(message:string,status:number)=>new Response(message,{status,headers:{...headers,"Content-Type":"text/plain; charset=utf-8"}});
 function printResponse(html:string,nonce:string){
  return new Response(html,{headers:{...headers,"Content-Type":"text/html; charset=utf-8","Content-Security-Policy":"default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'nonce-"+nonce+"'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"}});
@@ -25,7 +26,7 @@ export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
   if(school.error)return fail("Não foi possível gerar a folha.",500);
   if(!school.data)return fail("Escola não encontrada.",404);
   const nonce=randomUUID();
-  const logo=await loadProvaLogo(school.data.logo_url,access.escolaId);
+  const logo=await loadProvaLogo(school.data.logo_url,access.escolaId,undefined,undefined,reason=>reportLogo(access.escolaId,reason));
   return printResponse(folhaGenericaHtml(school.data.nome,{nonce,logo}),nonce);
  }
  if(!z.string().uuid().safeParse(id).success)return fail("Identificador inválido.",400);
@@ -62,7 +63,7 @@ export async function GET(req:Request,{params}:{params:Promise<{id:string}>}){
  const parsed=provaSchema.safeParse(snapshot);
  if(!parsed.success)return fail("Conteúdo inválido.",422);
  const nonce=randomUUID();
- const logo=await loadProvaLogo(school.data.logo_url,access.escolaId);
+ const logo=await loadProvaLogo(school.data.logo_url,access.escolaId,undefined,undefined,reason=>reportLogo(access.escolaId,reason));
  let schedules:Record<string,{data:string;inicio:string}>|undefined;
  if(recipients?.length){
    const ids=[...new Set(recipients.map(r=>r.turma_id))];
