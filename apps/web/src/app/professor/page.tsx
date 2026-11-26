@@ -416,6 +416,7 @@ export default function Page() {
             {escolaParam && <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Provas" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/provas")} />}
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Materiais" icon={<BookOpen className="h-5 w-5" />} href={professorHref("/professor/materiais")} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Planos de aula" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/planos-aula")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Calendário de Avaliações" icon={<CalendarDays className="h-5 w-5" />} href={professorHref("/professor/calendario#avaliacoes")} />
           </div>
         </PortalSection>
 

@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { richSchema,richText } from "./rich";
 import { mathMarkup } from "./math";
-import { APRESENTACOES } from "./layout";
+import { APRESENTACOES,RESPOSTA_FORMATOS } from "./layout";
 import { FIGURE_MAX_PER_BLOCK,safeProvaFigure,contentFits } from "./figures";
 export const figureSchema=z.object({src:z.string(),alt:z.string().trim().min(1).max(160)}).strict().refine(f=>safeProvaFigure(f)!==null,"Figura PNG inválida ou demasiado grande");
 export const TIPOS = ["grupo","texto","discursiva","verdadeiro_falso","lacunas","escolha","calculo","desenho","alinea"] as const;
-export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().min(1).max(3000),linhas:z.number().int().min(0).max(20),rich:richSchema.optional(),figuras:z.array(figureSchema).min(1).max(FIGURE_MAX_PER_BLOCK).optional(),alternativas:z.array(z.string().trim().min(1).max(500)).min(2).max(8).optional(),cotacao_cent:z.number().int().min(0).max(2000).optional()}).strict().superRefine((b,ctx)=>{
+export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().min(1).max(3000),linhas:z.number().int().min(0).max(20),resposta_formato:z.enum(RESPOSTA_FORMATOS).optional(),rich:richSchema.optional(),figuras:z.array(figureSchema).min(1).max(FIGURE_MAX_PER_BLOCK).optional(),alternativas:z.array(z.string().trim().min(1).max(500)).min(2).max(8).optional(),cotacao_cent:z.number().int().min(0).max(2000).optional()}).strict().superRefine((b,ctx)=>{
+ if(b.resposta_formato!==undefined&&(["grupo","texto"].includes(b.tipo)||((b.resposta_formato==="nenhum")!==(b.linhas===0))||(b.resposta_formato==="retangulo"&&b.linhas<3)))ctx.addIssue({code:z.ZodIssueCode.custom,message:"Formato ou dimensão da resposta inválidos",path:["resposta_formato"]});
  if(b.figuras&&b.tipo==="grupo")ctx.addIssue({code:z.ZodIssueCode.custom,message:"Figuras não pertencem ao título do grupo",path:["figuras"]});
  if(b.alternativas!==undefined&&b.tipo!=="escolha")ctx.addIssue({code:z.ZodIssueCode.custom,message:"Alternativas apenas em escolha múltipla",path:["alternativas"]});
  if(b.cotacao_cent!==undefined&&["grupo","texto"].includes(b.tipo))ctx.addIssue({code:z.ZodIssueCode.custom,message:"Cotação apenas em perguntas",path:["cotacao_cent"]});
@@ -35,7 +36,10 @@ export function tituloAoMudarTipo(previous:TitleContext,next:TipoProva):string{
  if(next==="outro")return "";
  return previous.tipo_prova!=="outro"&&provaSubtitle(previous)?previous.titulo:tiposProva[next];
 }
+const dateValue=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>{const d=new Date(v+"T00:00:00Z");return v>="1900-01-01"&&v<="2200-12-31"&&Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===v;},"Data inválida");
 export const provaSchema=z.object({
+ data_realizacao:dateValue.nullable().optional(),
+ hora_inicio:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(?::00)?$/).nullable().optional(),
  tipo_prova:z.enum(TIPOS_PROVA).optional(),
  apresentacao:z.enum(APRESENTACOES).optional(),
  titulo:z.string().trim().min(1).max(160),classe:z.string().trim().min(1).max(80),disciplina:z.string().trim().min(1).max(120),
@@ -45,8 +49,8 @@ export const provaSchema=z.object({
 }).strict();
 export const provaWriteSchema=provaSchema.extend({tipo_prova:z.enum(TIPOS_PROVA).default("trimestral"),apresentacao:z.enum(APRESENTACOES).optional(),ano_letivo_id:z.string().uuid(),curso_matriz_id:z.string().uuid()});
 export const mutationSchema=z.discriminatedUnion("acao",[
- z.object({acao:z.literal("criar"),dados:provaWriteSchema}).strict(),
- z.object({acao:z.literal("guardar"),id:z.string().uuid(),versao:z.number().int().positive(),dados:provaWriteSchema}).strict(),
+ z.object({acao:z.literal("criar"),dados:provaWriteSchema.refine(v=>!v.hora_inicio||Boolean(v.data_realizacao),"Seleccione a data")}).strict(),
+ z.object({acao:z.literal("guardar"),id:z.string().uuid(),versao:z.number().int().positive(),dados:provaWriteSchema.refine(v=>!v.hora_inicio||Boolean(v.data_realizacao),"Seleccione a data")}).strict(),
  z.object({acao:z.enum(["submeter","aprovar","devolver","arquivar","duplicar"]),id:z.string().uuid(),versao:z.number().int().positive()}).strict()
 ]);
 export type ProvaPrintInput=z.infer<typeof provaSchema>;
@@ -55,7 +59,7 @@ export type AnoProva={id:string;label:string;ativo:boolean};
 export type ContextoProva={ano_letivo_id:string;curso_matriz_id:string;ano_lectivo:string;classe:string;disciplina:string;curso:string;trimestre:number;cotacao_max_cent:number|null};
 export type Bloco=z.infer<typeof blockSchema>;
 export type ProvaEstado="rascunho"|"em_revisao"|"aprovada"|"arquivada";
-export type ProvaResumo=Omit<ProvaInput,"conteudo">&{id:string;autor_id:string|null;estado:ProvaEstado;versao:number;atualizado_em:string};
+export type ProvaResumo=Omit<ProvaInput,"conteudo">&{id:string;autor_id:string|null;estado:ProvaEstado;aprovado_em?:string|null;versao:number;atualizado_em:string};
 export type Prova=ProvaResumo&{conteudo:Bloco[]};
-export const estados:Record<ProvaEstado,string>={rascunho:"Rascunho",em_revisao:"Em revisão",aprovada:"Aprovada",arquivada:"Arquivada"};
+export const estados:Record<ProvaEstado,string>={rascunho:"Rascunho",em_revisao:"Em revisão",aprovada:"Publicada",arquivada:"Arquivada"};
 export const tipos:Record<Bloco["tipo"],string>={grupo:"Grupo",texto:"Texto de apoio",discursiva:"Pergunta discursiva",verdadeiro_falso:"Verdadeiro ou falso",lacunas:"Preencher lacunas",escolha:"Escolha múltipla",calculo:"Cálculo",desenho:"Desenho",alinea:"Alínea"};

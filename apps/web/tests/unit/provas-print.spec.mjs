@@ -476,3 +476,49 @@ test("illustrated qualitative questions retain existing scoring, reject external
  assert.doesNotMatch(html,/<script\b/);
  assert.doesNotMatch(html,/class="cotacao"/);
 });
+
+
+test("school-local schedule and raster logo in single proof",()=>{
+ const logo="data:image/png;base64,AAAA";
+ const html=provaHtml({...base,data_realizacao:"2026-12-07",hora_inicio:"08:30:00"},"Curtume",{logo,draft:true});
+ assert.match(html,/<img class="school-logo"/);
+ assert.match(html,/07\/12\/2026/);
+ assert.match(html,/Hora: 08:30/);
+ assert.match(html,/RASCUNHO/);
+});
+
+
+test("nominal print applies class-specific dates and labels historical copies",()=>{
+ const one={matricula_id:"1",turma_id:"A",turma:"8ª A",letra:"A",curso:"Geral",turno:"M",sala:null,nome:"Aluno A",numero_processo:null,numero_chamada:null};
+ const two={...one,matricula_id:"2",turma_id:"B",nome:"Aluno B"};
+ const html=provaHtml({...base,data_realizacao:"2026-12-07",hora_inicio:"08:00"},"Curtume",{recipients:[one,two],schedules:{A:{data:"2026-12-08",inicio:"10:30:00"}}});
+ assert.match(html,/08\/12\/2026/);assert.match(html,/Hora: 10:30/);assert.match(html,/07\/12\/2026/);assert.match(html,/Hora: 08:00/);
+ assert.match(provaHtml(base,"Curtume",{historical:true}),/REIMPRESSÃO HISTÓRICA/);
+});
+
+
+test("explicit answer format overrides question type without changing legacy layouts",()=>{
+ const {respostaLayout}=require("../../src/lib/provas/layout.ts");
+ const {blockSchema}=require("../../src/lib/provas/schema.ts");
+ assert.equal(respostaLayout("calculo",6).kind,"box");
+ assert.equal(respostaLayout("discursiva",6).kind,"lines");
+ assert.deepEqual(respostaLayout("alinea",6,"retangulo"),{kind:"box",count:6,heightMm:48});
+ assert.deepEqual(respostaLayout("calculo",3,"linhas"),{kind:"lines",count:3,heightMm:24});
+ assert.equal(respostaLayout("escolha",0,"nenhum").kind,"none");
+ const item={tipo:"alinea",texto:"Mostra os cálculos.",linhas:6,resposta_formato:"retangulo"};
+ assert.ok(blockSchema.safeParse(item).success);
+ for(const patch of [{resposta_formato:"other"},{linhas:0},{linhas:2},{resposta_formato:"nenhum"},{tipo:"grupo"}])assert.equal(blockSchema.safeParse({...item,...patch}).success,false);
+ assert.match(provaHtml({...base,conteudo:[item]},"Curtume"),/class="espaco" style="height:48mm"/);
+ assert.equal((provaHtml({...base,conteudo:[{...item,tipo:"calculo",linhas:3,resposta_formato:"linhas"}]},"Curtume").match(/class="linha"/g)||[]).length,3);
+ assert.doesNotMatch(provaHtml({...base,conteudo:[{...item,linhas:0,resposta_formato:"nenhum"}]},"Curtume"),/class="espaco"|class="linha"/);
+});
+
+
+test("assessment calendar separates class schedules, escapes names and excludes unpublished rows",()=>{
+ const {assessmentCalendarHtml}=require("../../src/lib/academico/assessment-calendar-print.ts");
+ const base={turmaId:"a",turma:"7A <script>",disciplina:"Matemática",tipo:"Prova trimestral",data:"2026-12-07",inicio:"08:00",fim:"09:30",estado:"publicado"};
+ const input={school:"Curtume & Escola",year:"2026/2027",term:1,nonce:"nonce",rows:[base,{...base,turmaId:"b",turma:"7B",inicio:"14:00",fim:"15:30"},{...base,disciplina:"RASCUNHO_TEST",estado:"rascunho"},{...base,disciplina:"CANCELADO_TEST",estado:"cancelado"}]};
+ const html=assessmentCalendarHtml(input);
+ assert.match(html,/@page\{size:A4/);assert.match(html,/7A &lt;script&gt;/);assert.match(html,/Curtume &amp; Escola/);assert.match(html,/08:00 – 09:30/);assert.match(html,/14:00 – 15:30/);assert.equal((html.match(/<section>/g)||[]).length,2);assert.doesNotMatch(html,/RASCUNHO_TEST|CANCELADO_TEST/);
+ const draft=assessmentCalendarHtml({...input,conference:true});assert.match(draft,/DOCUMENTO DE CONFERÊNCIA/);assert.match(draft,/RASCUNHO_TEST/);assert.doesNotMatch(draft,/CANCELADO_TEST/);
+});

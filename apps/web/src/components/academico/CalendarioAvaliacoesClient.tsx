@@ -1,13 +1,13 @@
 "use client";
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { CalendarCheck, CalendarDays, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X, AlertTriangle, Search } from "lucide-react";
+import { CalendarCheck, CalendarDays, Printer, Check, ChevronLeft, ChevronRight, History, List, Pencil, Plus, RefreshCw, X, AlertTriangle, Search } from "lucide-react";
 import { assessmentPlanOverlaps, type AssessmentScheduleSlot } from "@/lib/academico/assessment-plan-overlaps";
 
 type Period = { id: string; numero: number; data_inicio: string; data_fim: string; offering_id: string | null };
-type Class = { id: string; nome: string; curso_id: string };
+type Class = { id: string; nome: string; curso_id: string; classe_num?: number | string | null };
 type Subject = { id: string; turma_id: string; nome: string };
 type Entry = { id: string; turma_id: string; turma_disciplina_id: string; periodo_letivo_id: string; data: string; inicio: string; fim: string | null; descricao: string | null; tipo: string; estado: string };
 type ScheduledAssessment = { data: string; inicio: string; fim: string; descricao: string };
@@ -27,9 +27,9 @@ const fmt = (v: string) => v ? v.slice(0, 10).split("-").reverse().join("/") : "
 const stepDay = (s:string,n:number) => { const d=new Date(s+"T12:00:00Z"); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
 const startWeek = (s:string) => stepDay(s,-((new Date(s+"T12:00:00Z").getUTCDay()+6)%7));
 
-export default function CalendarioAvaliacoesClient() {
+export default function CalendarioAvaliacoesClient({escolaId,embedded=false,active=true}:{escolaId?:string;embedded?:boolean;active?:boolean}={}) {
   const params = useParams<{ id: string }>();
-  const endpoint = "/api/escola/" + encodeURIComponent(params?.id ?? "") + "/calendario-avaliacoes";
+  const endpoint = "/api/escola/" + encodeURIComponent(escolaId ?? params?.id ?? "") + "/calendario-avaliacoes";
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,6 +55,14 @@ export default function CalendarioAvaliacoesClient() {
   const [week,setWeek] = useState(() => startWeek(today()));
   const [classFilter,setClassFilter] = useState("");
   const [agendaSearch,setAgendaSearch] = useState("");
+  const [printOpen,setPrintOpen]=useState(false);
+  const [planningOpen,setPlanningOpen]=useState(!embedded);
+  const [printScope,setPrintScope]=useState<"turma"|"classe"|"escola">("turma");
+  const [printClass,setPrintClass]=useState("");
+  const [printTurma,setPrintTurma]=useState("");
+  const [printDraft,setPrintDraft]=useState(false);
+  const printClasses=[...new Set((data?.turmas??[]).flatMap(t=>t.classe_num==null?[]:[String(t.classe_num)]))].sort((a,b)=>Number(a)-Number(b));
+  const printHref=endpoint+"?"+new URLSearchParams({modo:"imprimir",trimestre:String(num),escopo:printScope,...(printScope==="turma"?{turma:printTurma}:printScope==="classe"?{classe:printClass}:{}),...(printDraft?{conferencia:"1"}:{})}).toString();
 
   const reload = useCallback(async () => {
     const result = await fetch(endpoint, { cache: "no-store" });
@@ -78,6 +86,9 @@ export default function CalendarioAvaliacoesClient() {
     return () => { alive = false; };
   }, [reload]);
 
+  const wasActive=useRef(active);
+  useEffect(()=>{if(active&&!wasActive.current)void reload().catch(e=>setErr(e.message));wasActive.current=active;},[active,reload]);
+  const Container=embedded?"div":"main";
   const numbers = useMemo(() => [...new Set((data?.periodos || []).map((p) => p.numero))].sort(), [data]);
   const periods = (data?.periodos || []).filter((p) => p.numero === num);
   const classMap = new Map((data?.turmas || []).map((t) => [t.id, t]));
@@ -169,7 +180,7 @@ export default function CalendarioAvaliacoesClient() {
     if (await mutate({ action: "create", items: rows.map(({ id: _localId, ...row }) => row) },
       "Avaliações guardadas como rascunho.")) {
       setChosen([]); setSchedule({}); setSharedDate("");
-      setMode("lista"); setClassFilter(rows[0]?.turma_id ?? ""); setAgendaSearch(""); setSelectedIds([]);
+      setMode("lista"); setClassFilter(rows[0]?.turma_id ?? ""); setAgendaSearch(""); setSelectedIds([]); if(embedded)setPlanningOpen(false);
     }
   };
 
@@ -189,7 +200,7 @@ export default function CalendarioAvaliacoesClient() {
   };
 
   if (loading) return (
-    <main role="status" aria-label="A carregar calendário de avaliações" className={`${PORTAL_PAGE_INSET} space-y-4` }>
+    <Container role="status" aria-label="A carregar calendário de avaliações" className={`${embedded?"":PORTAL_PAGE_INSET} space-y-4` }>
       <span className="sr-only">A carregar calendário de avaliações</span>
       <div aria-hidden="true" className="space-y-4 motion-safe:animate-pulse">
         <div className="space-y-2"><div className="h-5 w-40 rounded-lg bg-muted" /><div className="h-8 w-64 max-w-full rounded-lg bg-muted" /></div>
@@ -209,19 +220,31 @@ export default function CalendarioAvaliacoesClient() {
           <div className="h-32 rounded-xl border border-border bg-muted/50" />
         </div>
       </div>
-    </main>
+    </Container>
   );
-  return <main className={`${PORTAL_PAGE_INSET} space-y-5`}>
+  return <Container className={`${embedded?"":PORTAL_PAGE_INSET} min-w-0 space-y-5`}>
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p className="text-xs font-semibold uppercase text-muted-foreground">Operações Académicas / Avaliações</p>
-        <h1 className="text-2xl font-bold text-primary">Calendário de avaliações</h1>
-        <p className="text-sm text-muted-foreground">Planear por turma e disciplina, publicar em lote e consultar alterações.</p>
+        {!embedded&&<p className="text-xs font-semibold uppercase text-muted-foreground">Operações Académicas / Avaliações</p>}
+        {embedded?<h2 className="text-lg font-semibold text-klasse-green">Calendário de Avaliações</h2>:<h1 className="text-2xl font-bold text-primary">Calendário de Avaliações</h1>}
+        
       </div>
+      <div className="flex flex-wrap gap-2">{embedded&&<button type="button" className={action+" min-h-11 bg-klasse-gold text-klasse-gold-900"} disabled={!data?.ano||Boolean(editing)} aria-expanded={planningOpen} aria-controls="avaliacoes-planeamento" onClick={()=>{setPlanningOpen(v=>!v);setPrintOpen(false);}}>{planningOpen?<X size={16}/>:<Plus size={16}/>} {planningOpen?"Recolher planeamento":"Planear avaliações"}</button>}<button type="button" className={action+" min-h-11 border border-border"} disabled={!data?.ano} aria-expanded={printOpen} aria-controls="avaliacoes-impressao" onClick={()=>{setPrintTurma(classFilter||classIds[0]||"");setPrintClass(printClasses[0]??"");setPrintOpen(v=>!v);if(embedded&&!editing)setPlanningOpen(false);}}><Printer size={16}/> Imprimir calendário</button>
       <button type="button" className={action + " border border-border"} onClick={() => void reload().catch((e) => setErr(e.message))}>
         <RefreshCw size={16} /> Atualizar
-      </button>
+      </button></div>
     </header>
+    {printOpen&&data?.ano&&<section id="avaliacoes-impressao" aria-label="Imprimir calendário de avaliações" className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <h2 className="font-semibold text-klasse-green">Imprimir calendário de avaliações</h2>
+      <p className="text-sm text-muted-foreground">Ano letivo {data.ano.ano}/{data.ano.ano+1} · {num}.º trimestre</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="grid gap-1 text-sm">Modalidade<select className={control} value={printScope} onChange={e=>setPrintScope(e.target.value as typeof printScope)}><option value="turma">Por turma</option><option value="classe">Por classe</option><option value="escola">Toda a escola</option></select></label>
+        {printScope==="turma"&&<label className="grid gap-1 text-sm">Turma<select className={control} value={printTurma} onChange={e=>setPrintTurma(e.target.value)}><option value="">Seleccione a turma</option>{data.turmas.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}</select></label>}
+        {printScope==="classe"&&<label className="grid gap-1 text-sm">Classe<select className={control} value={printClass} onChange={e=>setPrintClass(e.target.value)}><option value="">Seleccione a classe</option>{printClasses.map(c=><option key={c} value={c}>{c==="0"?"Iniciação":c+".ª Classe"}</option>)}</select></label>}
+      </div>
+      <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={printDraft} onChange={e=>setPrintDraft(e.target.checked)}/> Incluir rascunhos (documento de conferência)</label>
+      {(printScope==="escola"||(printScope==="turma"&&printTurma)||(printScope==="classe"&&printClass))?<a className={action+" min-h-11 bg-klasse-gold text-klasse-gold-900"} href={printHref} target="_blank" rel="noopener noreferrer"><Printer size={16}/> Pré-visualizar calendário</a>:<p className="text-xs text-muted-foreground">Seleccione uma turma ou classe.</p>}
+    </section>}
     {err && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">{err}</p>}
     {notice && <p role="status" className="rounded-xl border border-border p-3 text-sm text-primary">{notice}</p>}
     {!data?.ano ? <p className="rounded-xl border p-6 text-sm">Configure um ano letivo ativo antes de planear avaliações.</p> : <>
@@ -241,7 +264,7 @@ export default function CalendarioAvaliacoesClient() {
           <span><strong className="text-lg font-semibold text-foreground">{draft.length}</strong> rascunhos</span>
           <span><strong className="text-lg font-semibold text-foreground">{items.filter((i) => i.estado === "publicado").length}</strong> publicados</span>
         </div>
-        <a href="#avaliacoes-agenda" className={action + " min-h-10 border border-border bg-card text-foreground hover:bg-muted"}>Ver agenda</a>
+        {(!embedded||planningOpen)&&<a href="#avaliacoes-agenda" className={action + " min-h-10 border border-border bg-card text-foreground hover:bg-muted"}>Ver agenda</a>}
       </section>
 
       {editing ? (
@@ -249,7 +272,7 @@ export default function CalendarioAvaliacoesClient() {
           <div className="flex items-start justify-between gap-2">
             <div>
               <h2 className="flex items-center gap-2 font-semibold text-primary"><Pencil size={17} /> Editar avaliação</h2>
-              <p className="mt-1 text-xs text-muted-foreground">A alteração fica auditada. A turma e disciplina permanecem vinculadas ao registo.</p>
+              
             </div>
             <button type="button" className={action + " border border-border"} onClick={() => setEditing(null)}><X size={16} /> Sair da edição</button>
           </div>
@@ -269,12 +292,12 @@ export default function CalendarioAvaliacoesClient() {
           </div>
         </section>
       ) : (
-        <section className="space-y-5 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-5">
+        <section id="avaliacoes-planeamento" hidden={!planningOpen} className="space-y-4 rounded-xl border border-border bg-card p-3 sm:p-5">
           <div className="flex items-start gap-2">
             <Plus size={20} className="mt-0.5 text-primary" aria-hidden="true" />
             <div>
               <h2 className="font-semibold text-primary">Planear avaliações</h2>
-              <p className="text-xs text-muted-foreground">Várias disciplinas numa operação, cada uma com a sua data e horário.</p>
+              
             </div>
           </div>
 
@@ -300,7 +323,7 @@ export default function CalendarioAvaliacoesClient() {
                 </select>
               </label>
             </div>
-            <p className="text-xs text-muted-foreground">Apenas turmas ativas do ano letivo {data.ano.ano}/{data.ano.ano + 1}, conforme os vínculos curriculares.</p>
+            
           </div>
 
           <div className="space-y-2 border-t border-border pt-4">
@@ -333,7 +356,7 @@ export default function CalendarioAvaliacoesClient() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-sm font-semibold text-foreground">3 · Agendar por disciplina</h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">Sem hora de fim, considera-se uma duração de 60 minutos.</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Fim em branco: 60 min.</p>
               </div>
               <label className="text-xs font-semibold text-foreground">Tipo de avaliação
                 <select className={control + " mt-1"} value={kind} onChange={(e) => setKind(e.target.value)}>
@@ -428,13 +451,12 @@ export default function CalendarioAvaliacoesClient() {
               <Check size={16} /> Guardar rascunhos ({rows.length})
             </button>
           </div>
-          {rows.length > 0 && !ready && <p className="text-xs text-muted-foreground">Preencha as datas e horas de todas as disciplinas e resolva os conflitos antes de guardar.</p>}
+          {rows.length > 0 && !ready && <p className="text-xs text-muted-foreground">Complete os horários e resolva os conflitos.</p>}
         </section>
       )}
       <section id="avaliacoes-agenda" className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex justify-between gap-2 border-b border-border p-4">
-          <div><h2 className="font-semibold text-primary">Avaliações do trimestre</h2>
-          <p className="text-xs text-muted-foreground">Só avaliações publicadas aparecem nos portais.</p></div>
+          <h2 className="font-semibold text-primary">Avaliações do trimestre</h2>
           <span className="text-xs text-muted-foreground">{items.length} registo(s)</span>
         </div>
         <div className="space-y-3 border-b border-border p-4">
@@ -517,5 +539,5 @@ export default function CalendarioAvaliacoesClient() {
         </div>}</div>
       </section>
     </>}
-  </main>;
+  </Container>;
 }
