@@ -13,7 +13,7 @@ export type PortalDrawerFrame = {
 
 type Entry = { frame: PortalDrawerFrame; previousScroll: number; opener: HTMLElement | null };
 type Guard = { dirty: boolean; busy: boolean };
-type Navigation = { push: (frame: PortalDrawerFrame) => void; registerGuard: (frameId: string, sourceId: string, guard: Guard | null) => void; notifyChanged: () => void };
+type Navigation = { push: (frame: PortalDrawerFrame) => void; registerGuard: (frameId: string, sourceId: string, guard: Guard | null) => void; notifyChanged: () => void; busy: boolean; dirty: boolean };
 const FrameContext = createContext<string | null>(null);
 const Context = createContext<Navigation | null>(null);
 
@@ -61,6 +61,7 @@ export function PortalDrawerNavigator({ root, open, onClose, onChanged }: {
   const activeIds = [root.id, ...entries.map(entry => entry.frame.id)];
   const hasGuard = (ids: string[], kind: keyof Guard) => ids.some(id => Object.values(guards[id] ?? {}).some(guard => guard[kind]));
   const busy = hasGuard(activeIds, "busy");
+  const dirty = hasGuard(activeIds, "dirty");
   const canLeave = (ids: string[]) => {
     if (hasGuard(ids, "busy")) return false;
     return !hasGuard(ids, "dirty") || window.confirm("Existem alterações não guardadas. Pretende descartá-las?");
@@ -68,7 +69,7 @@ export function PortalDrawerNavigator({ root, open, onClose, onChanged }: {
   const body = useRef<HTMLDivElement>(null);
   const restore = useRef<{ top: number; opener: HTMLElement | null } | null>(null);
   const push = useCallback((frame: PortalDrawerFrame) => {
-    if (!open || frame.id === root.id) return;
+    if (!open || busy || dirty || frame.id === root.id) return;
     const previousScroll = body.current?.scrollTop ?? 0;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setStack(current => {
@@ -76,7 +77,7 @@ export function PortalDrawerNavigator({ root, open, onClose, onChanged }: {
       if (prior.some(entry => entry.frame.id === frame.id)) return current;
       return { rootId: root.id, entries: [...prior, { frame, previousScroll, opener }] };
     });
-  }, [open, root.id]);
+  }, [open, root.id, busy, dirty]);
 
   const back = () => {
     const last = entries[entries.length - 1];
@@ -108,7 +109,7 @@ export function PortalDrawerNavigator({ root, open, onClose, onChanged }: {
   return (
     <PortalSheet open={open} onClose={close} title={active.title} description={active.description}
       size={active.size ?? "expanded"} busy={busy} onBack={entries.length ? back : undefined} navigationKey={active.id} bodyRef={body}>
-      <Context.Provider value={{ push, registerGuard, notifyChanged }}>
+      <Context.Provider value={{ push, registerGuard, notifyChanged, busy, dirty }}>
         <div key={root.id} hidden={entries.length > 0} className={entries.length ? "hidden" : "space-y-4"}>
           <FrameContext.Provider value={root.id}>{root.content}</FrameContext.Provider>
         </div>
