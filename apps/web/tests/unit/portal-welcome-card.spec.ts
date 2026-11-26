@@ -156,3 +156,36 @@ test("dashboard operational drawers reuse authorized workspaces and guard mutati
   assert.match(read("app/professor/planos-aula/page.tsx"), /<ProfessorPlanosWorkspace/);
   assert.match(read("app/professor/materiais/page.tsx"), /<ProfessorMateriaisWorkspace/);
 });
+
+test("student dashboard reuses guarded academic and financial workspaces", () => {
+  const dashboard = read("components/aluno/dashboard/DashboardLoader.tsx");
+  const workspace = read("components/aluno/dashboard/StudentDrawerWorkspace.tsx");
+  const academic = read("components/aluno/academico/AcademicoWorkspace.tsx");
+  const navigator = read("components/portal/ui/PortalDrawerNavigator.tsx");
+  const sheet = read("components/portal/ui/PortalSheet.tsx");
+  const finance = read("components/aluno/tabs/TabFinanceiro.tsx");
+  const notes = read("components/aluno/tabs/TabNotas.tsx");
+  const absences = read("components/aluno/tabs/TabFaltas.tsx");
+  const documents = read("components/aluno/tabs/TabDocumentos.tsx");
+  const consolidated = read("components/aluno/financeiro-portal/PaymentDrawer.tsx");
+  const service = read("components/aluno/layout/ServicePaymentDrawer.tsx");
+  assert.match(dashboard, /openDrawer\("academic"\)/);
+  assert.match(dashboard, /openDrawer\("finance"\)/);
+  assert.match(dashboard, /onChanged=\{refresh\}/);
+  assert.match(workspace, /<Academic embedded/);
+  assert.match(workspace, /<Finance onOpenDocuments=/);
+  assert.match(workspace, /<Documents embedded/);
+  assert.match(academic, /if \(embedded\) return;\s*const url = new URL/);
+  assert.match(academic, /if \(guarded\) return/);
+  assert.match(navigator, /register\(id, sourceId, \{ dirty, busy \}\)/);
+  assert.match(navigator, /notifyChanged/);
+  assert.match(sheet, /props.inline \? <InlinePortalPanel/);
+  assert.match(finance, /inert=\{Boolean\(navigation && paymentOpen\)\}/);
+  assert.match(notes, /<AcademicRequestPanel inline=\{Boolean\(navigation\)\}/);
+  assert.match(absences, /usePortalDrawerGuard\(detailOpen && Boolean\(reason.trim\(\)\), sending\)/);
+  assert.match(documents, /if \(onOpenNotices\) \{ onOpenNotices\(\); return; \}/);
+  for (const payment of [consolidated, service]) {
+    assert.match(payment, /inline=\{Boolean\(navigation\)\}/);
+    assert.match(payment, /usePortalDrawerGuard\(open && Boolean\(selectedFile \|\| mensagem.trim\(\)\), open && sending\)/);
+  }
+});
