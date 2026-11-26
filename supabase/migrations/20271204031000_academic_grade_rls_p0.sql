@@ -241,5 +241,7 @@ begin
  execute replace(src,anchor, E'BEGIN\n  IF NOT (coalesce(current_setting(''role'',true),'''') = ''service_role'' OR (auth.uid() IS NULL AND coalesce(current_setting(''role'',true),'''') IN (''none'',''postgres'',''supabase_admin'') AND session_user IN (''postgres'',''supabase_admin''))) AND NOT EXISTS (SELECT 1 FROM public.matriculas m WHERE m.id=p_matricula_id AND internal.klasse_grade_scope(m.escola_id,m.id,p_disciplina_id)) THEN\n    RAISE EXCEPTION ''ACADEMIC_FORBIDDEN'' USING ERRCODE=''42501'';\n  END IF;\n  SELECT m.escola_id, m.turma_id, al.id');
 end $migration$;
 revoke execute on function public.resolve_estado_resultado_academico_base(uuid,uuid) from public,anon;
+-- Explicit ACL: authenticated callers enter the guarded resolver, never the raw read model.
+grant execute on function public.resolve_estado_resultado_academico_base(uuid,uuid) to authenticated,service_role;
 
 commit;
