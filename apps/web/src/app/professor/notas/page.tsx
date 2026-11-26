@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, Suspense } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { enqueueOfflineAction } from "@/lib/offline/queue"
 import { createIdempotencyKey } from "@/lib/idempotency"
@@ -171,6 +171,9 @@ function ProfessorNotasContent() {
   const [periodosRetry, setPeriodosRetry] = useState(0)
   const [turmaStatusFecho, setTurmaStatusFecho] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
+  const [showInactiveTerms, setShowInactiveTerms] = useState(false)
+  const exportInFlight = useRef(false)
   const requestedTrimestre = Number(searchParams?.get("trimestre"))
   const requestedTrimestreValid = requestedTrimestre === 1 || requestedTrimestre === 2 || requestedTrimestre === 3
   const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(requestedTrimestreValid ? requestedTrimestre as 1 | 2 | 3 : 1)
@@ -192,6 +195,10 @@ function ProfessorNotasContent() {
   const [loadingExamSessions, setLoadingExamSessions] = useState(false)
   const [savingExam, setSavingExam] = useState(false)
   const [raaStudentId, setRaaStudentId] = useState("")
+  const [raaOpen, setRaaOpen] = useState(false)
+  const raaInFlight = useRef(false)
+  const raaScope = JSON.stringify([turmaId, disciplinaId, anoLetivoId, turmaDisciplinaId])
+  const raaScopeRef = useRef(raaScope)
   const [raaResult, setRaaResult] = useState<RaaEligibilityResponse | null>(null)
   const [loadingRaa, setLoadingRaa] = useState(false)
   const [raaRisks, setRaaRisks] = useState<RaaRiskItem[]>([])
@@ -204,6 +211,7 @@ function ProfessorNotasContent() {
   const [reapreciacaoMotivo, setReapreciacaoMotivo] = useState("")
   const [submittingReapreciacao, setSubmittingReapreciacao] = useState(false)
 
+  useLayoutEffect(() => { raaScopeRef.current = raaScope; setRaaOpen(false); setRaaStudentId(""); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); setExportOpen(false) }, [raaScope])
   const { online } = useOfflineStatus()
   const { success, error: toastError, warning } = useToast()
   const { gerarMiniPauta } = useOfficialDocs()
@@ -447,7 +455,9 @@ function ProfessorNotasContent() {
 
   const handleLoadRaaEligibility = async (studentId = raaStudentId) => {
     const matriculaId = matriculaIds[studentId]
-    if (!matriculaId) return
+    if (!matriculaId || raaInFlight.current) return
+    const scope = raaScope
+    raaInFlight.current = true
     setLoadingRaa(true)
     try {
       const params = new URLSearchParams({ matricula_id: matriculaId })
@@ -456,24 +466,28 @@ function ProfessorNotasContent() {
       const response = await fetch(`/api/academico/raa/elegibilidade?${params.toString()}`, { cache: "no-store" })
       const payload = await response.json().catch(() => null)
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível consultar a elegibilidade.")
+      if (raaScopeRef.current !== scope) return
       setRaaResult(payload as RaaEligibilityResponse)
       const existingResponse = await fetch(`/api/academico/raa/reapreciacao?matricula_id=${encodeURIComponent(matriculaId)}&disciplina_id=${encodeURIComponent(disciplinaId)}`, { cache: "no-store" })
       const existingPayload = await existingResponse.json().catch(() => null)
-      if (existingResponse.ok && existingPayload?.ok) setReapreciacaoItem(existingPayload.items?.[0] ?? null)
+      if (raaScopeRef.current === scope && existingResponse.ok && existingPayload?.ok) setReapreciacaoItem(existingPayload.items?.[0] ?? null)
     } catch (cause) {
       toastError("Não foi possível consultar o RAA", cause instanceof Error ? cause.message : "Tente novamente.")
-      setRaaResult(null)
+      if (raaScopeRef.current === scope) setRaaResult(null)
     } finally {
+      raaInFlight.current = false
       setLoadingRaa(false)
     }
   }
 
   const handleRequestReapreciacao = async () => {
     const matriculaId = matriculaIds[raaStudentId]
-    if (!matriculaId || !disciplinaId || reapreciacaoMotivo.trim().length < 10) {
+    if (!matriculaId || !disciplinaId || !raaResult || loadingRaa || raaInFlight.current || reapreciacaoMotivo.trim().length < 10) {
       warning("Explique o motivo da reapreciação com pelo menos 10 caracteres.")
       return
     }
+    const scope = raaScope
+    raaInFlight.current = true
     setSubmittingReapreciacao(true)
     try {
       const response = await fetch("/api/academico/raa/reapreciacao", {
@@ -489,12 +503,14 @@ function ProfessorNotasContent() {
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível enviar a reapreciação.")
+      if (raaScopeRef.current !== scope) return
       setReapreciacaoItem(payload.item)
       setReapreciacaoMotivo("")
       success(payload.duplicate ? "Pedido já registado" : "Reapreciação registada", `Protocolo ${payload.item?.protocolo_publico ?? "gerado"}.`)
     } catch (cause) {
       toastError("Não foi possível pedir reapreciação", cause instanceof Error ? cause.message : "Tente novamente.")
     } finally {
+      raaInFlight.current = false
       setSubmittingReapreciacao(false)
     }
   }
@@ -758,7 +774,7 @@ function ProfessorNotasContent() {
   }
 
   const handleExportMiniPauta = async () => {
-    if (!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId) return
+    if (!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading || savingNow || hasUnsavedGrades || notasBloqueadas || exportInFlight.current) return
     const turma = atribs.find((a) => a.turma.id === turmaId)?.turma
     const turmaNome = turma ? formatTurmaDisplayName(turma) : turmaId
     const disciplinaNomeResolved =
@@ -809,15 +825,20 @@ function ProfessorNotasContent() {
         emissao,
         hash,
         trimestresAtivos: [trimestreSelecionado],
-        mostrarTrimestresInativos: false,
+        mostrarTrimestresInativos: showInactiveTerms,
       },
       alunos,
     }
 
+    exportInFlight.current = true
     setExporting(true)
     try {
       await gerarMiniPauta(payload, `MiniPauta_${disciplinaNomeResolved}_${Date.now()}.pdf`)
+      setExportOpen(false)
+    } catch (cause) {
+      toastError("Não foi possível exportar", cause instanceof Error ? cause.message : "Tente novamente.")
     } finally {
+      exportInFlight.current = false
       setExporting(false)
     }
   }
@@ -937,8 +958,8 @@ function ProfessorNotasContent() {
                   <div className="font-semibold text-foreground">Ações</div>
                   <button
                     type="button"
-                    onClick={handleExportMiniPauta}
-                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting || notasBloqueadas}
+                    onClick={() => { setShowInactiveTerms(false); setExportOpen(true) }} aria-haspopup="dialog" aria-expanded={exportOpen}
+                    disabled={!turmaId || !disciplinaId || !anoLetivoId || pauta.length === 0 || exporting || loading || savingNow || hasUnsavedGrades || notasBloqueadas}
                     className="w-full rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                   >
                     {exporting ? "Gerando PDF..." : "Exportar mini‑pauta"}
@@ -1044,6 +1065,7 @@ function ProfessorNotasContent() {
                   >
                     {savingNow ? "Salvando..." : "Salvar agora"}
                   </button>
+                  <button type="button" aria-haspopup="dialog" aria-expanded={exportOpen} disabled={!turmaId || !disciplinaId || !anoLetivoId || pauta.length === 0 || exporting || loading || savingNow || hasUnsavedGrades || notasBloqueadas} onClick={() => { setShowInactiveTerms(false); setExportOpen(true) }} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-50">Exportar mini-pauta</button>
                   {turmaId && disciplinaId && (
                     <div className={`rounded-lg px-3 py-2 text-xs ${notasBloqueadas ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"}`}>
                       <p className="font-bold">
@@ -1062,6 +1084,11 @@ function ProfessorNotasContent() {
                 </div>
               )}
             </div>
+            <PortalSheet open={exportOpen} busy={exporting} onClose={() => setExportOpen(false)} title="Exportar mini-pauta" description="Confirma o âmbito e a apresentação do PDF." size="medium">
+              <dl className="space-y-2 text-sm"><div><dt className="text-muted-foreground">Turma</dt><dd className="font-medium">{atribs.find(a => a.turma.id === turmaId)?.turma.nome ?? "—"}</dd></div><div><dt className="text-muted-foreground">Disciplina</dt><dd className="font-medium">{disciplinaNome ?? "—"}</dd></div><div><dt className="text-muted-foreground">Trimestre</dt><dd>{trimestreSelecionado}.º · {pauta.length} alunos</dd></div></dl>
+              <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={showInactiveTerms} disabled={exporting} onChange={e => setShowInactiveTerms(e.target.checked)} /> Mostrar colunas dos outros trimestres (sem notas)</label>
+              <button type="button" disabled={exporting || loading || savingNow || hasUnsavedGrades || notasBloqueadas} onClick={() => void handleExportMiniPauta()} className="min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">{exporting ? "A gerar PDF…" : "Descarregar PDF"}</button>
+            </PortalSheet>
             <PortalSheet open={reopenSheet} busy={requestingReopen} onClose={()=>setReopenSheet(false)} title="Solicitar reabertura" description={`${disciplinaNome ?? "Disciplina"} · ${trimestreSelecionado}.º trimestre`} size="expanded">
               <textarea aria-label="Motivo da reabertura" disabled={requestingReopen} value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId || requestReason.trim().length < 5} className="rounded-xl bg-amber px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "A enviar..." : "Solicitar reabertura"}</button>
             </PortalSheet>
@@ -1103,8 +1130,10 @@ function ProfessorNotasContent() {
                       <p className="text-sm font-bold text-foreground">Análise RAA do aluno</p>
                       <p className="mt-1 text-xs text-muted-foreground">Consulte a elegibilidade sem sair da turma ou da disciplina atual.</p>
                     </div>
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-                      <label className="flex-1 text-xs font-semibold text-muted-foreground">Aluno<select value={raaStudentId} onChange={(event) => { setRaaStudentId(event.target.value); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo("") }} className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-foreground"><option value="">Selecione um aluno</option>{pauta.map((student) => <option key={student.id} value={student.id}>{student.nome}</option>)}</select></label>
+                    <button type="button" aria-haspopup="dialog" aria-expanded={raaOpen} disabled={loadingRaa || submittingReapreciacao} onClick={() => setRaaOpen(true)} className="mt-3 min-h-11 rounded-xl border border-border px-4 text-sm font-semibold">Consultar aluno</button>
+                    <PortalSheet open={raaOpen} busy={loadingRaa || submittingReapreciacao} onClose={() => setRaaOpen(false)} title="Análise RAA do aluno" description={disciplinaNome ?? "Disciplina seleccionada"} size="expanded">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                      <label className="flex-1 text-xs font-semibold text-muted-foreground">Aluno<select value={raaStudentId} disabled={loadingRaa || submittingReapreciacao} onChange={(event) => { setRaaStudentId(event.target.value); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo("") }} className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-foreground"><option value="">Selecione um aluno</option>{pauta.map((student) => <option key={student.id} value={student.id}>{student.nome}</option>)}</select></label>
                       <button type="button" onClick={() => void handleLoadRaaEligibility()} disabled={!raaStudentId || loadingRaa} className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">{loadingRaa ? "A consultar..." : "Consultar elegibilidade"}</button>
                     </div>
                     {raaResult && (() => {
@@ -1139,6 +1168,7 @@ function ProfessorNotasContent() {
                         )}
                       </div>
                     })()}
+                    </PortalSheet>
                   </div>
                 )}
                 {turmaId && disciplinaId && (loadingRaaRisks || raaRisksLoaded || raaRisksError) && (
@@ -1167,7 +1197,7 @@ function ProfessorNotasContent() {
                     ) : (
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
                         {raaRisks.map((item) => (
-                          <button key={item.matricula_id} type="button" aria-label={`Ver elegibilidade de ${item.aluno_nome}`} onClick={() => { setRaaStudentId(item.aluno_id); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); void handleLoadRaaEligibility(item.aluno_id) }} className="min-h-20 rounded-lg border border-amber-200 bg-card p-3 text-left transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
+                          <button key={item.matricula_id} type="button" aria-label={`Ver elegibilidade de ${item.aluno_nome}`} disabled={loadingRaa || submittingReapreciacao} onClick={() => { setRaaOpen(true); setRaaStudentId(item.aluno_id); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo(""); void handleLoadRaaEligibility(item.aluno_id) }} className="min-h-20 rounded-lg border border-amber-200 bg-card p-3 text-left transition hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1">
                             <div className="flex items-start justify-between gap-2"><span className="min-w-0 break-words text-sm font-bold text-foreground">{item.aluno_nome}</span><span className="shrink-0 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black uppercase text-amber-800">{item.risco?.label ?? "Atenção"}</span></div>
                             <div className="mt-2 flex items-end justify-between gap-2"><p className="text-xs leading-5 text-muted-foreground">{item.risco?.action ?? "Consultar elegibilidade e completar os dados."}</p><span className="shrink-0 text-[10px] font-black uppercase text-muted-foreground">Ver detalhe →</span></div>
                           </button>
