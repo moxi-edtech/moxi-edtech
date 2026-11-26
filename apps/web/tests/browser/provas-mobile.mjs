@@ -15,15 +15,23 @@ const noOverflow=async(page,label)=>{
 };
 try{
  for(const [width,height] of (isWebKit?[[390,844]]:[[320,568],[390,844],[768,1024],[1280,800]])){
+  const isAdmin=width===1280;
   const page=await browser.newPage({viewport:{width,height},hasTouch:width<640,isMobile:width<640});
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
-  let saved=null;
-  await page.route("**/api/escola/**/provas**",async route=>{
+  let saved=null;let calendar=[];let scheduleReads=0;
+  await page.route(/\/api\/escola\/[^/]+\/provas(?:\/[^?]*)?(?:\?.*)?$/,async route=>{
    const req=route.request(),url=new URL(req.url());
    const reply=body=>route.fulfill({json:body});
+   if(url.pathname.endsWith("/agendamento")){
+    if(req.method()==="POST"){const payload=req.postDataJSON();assert.equal(payload.prova,saved.id);assert.equal(payload.versao,saved.versao);assert.equal(payload.data,"2026-12-07");calendar=[{id:"event",turma_id:payload.turma,data:payload.data,inicio:payload.inicio,fim:"10:00",estado:"publicado"}];return reply({id:"event"});}
+    scheduleReads++;assert.equal(url.searchParams.get("prova"),saved.id);
+    return reply({turmas:[{id:"80000000-0000-4000-8000-000000000001",nome:"8ª A",turno:"Manhã"}],eventos:calendar});
+   }
+   if(url.searchParams.has("professores"))return reply({items:[{id:user,nome:"Professor de teste"}]});
    if(req.method()==="POST"){
     const data=req.postDataJSON();
-    assert.equal(data.dados.ano_letivo_id,year);assert.equal(data.dados.curso_matriz_id,matrix);assert.equal(data.dados.conteudo[0].linhas,7);
+    if(data.acao==="aprovar"){assert.ok(isAdmin);assert.equal(data.id,saved.id);saved={...saved,estado:"aprovada",versao:2,aprovado_em:"2026-11-26T00:00:00Z"};return reply({prova:saved});}
+    assert.equal(data.dados.ano_letivo_id,year);assert.equal(data.dados.curso_matriz_id,matrix);assert.equal(data.dados.conteudo[0].linhas,7);assert.equal(data.dados.conteudo[0].resposta_formato,"linhas");
     assert.ok(data.dados.conteudo[0].rich.segments.some(s=>s.kind==="math"&&s.latex===(width===320?"\\frac{7}{5}+2^{3}":width===390?"\\frac{7}{5}":"2+3")));
     assert.deepEqual(data.dados.conteudo[1].alternativas,["Joule","Watt","Newton","Pascal"]);
     assert.equal(data.dados.conteudo[1].cotacao_cent,125);
@@ -37,9 +45,9 @@ try{
    if(url.searchParams.get("branding")==="1")return reply({logo:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg=="});
    if(url.searchParams.get("contexto")==="1")return reply({items:url.searchParams.has("ano")?[{ano_letivo_id:year,curso_matriz_id:matrix,ano_lectivo:"2026/2027",classe:"8.ª Classe",disciplina:"Física",curso:"Ensino Geral",trimestre:1,cotacao_max_cent:2000}]:[{id:year,ativo:true,label:"2026/2027"}]});
    if(url.searchParams.has("prova"))return reply({prova:base});
-   return reply({provas:saved?[base,saved]:[base],escola:"Escola de teste",permissions:{author:true,admin:false,userId:user}});
+   return reply({provas:saved?[base,saved]:[base],escola:"Escola de teste",permissions:{author:true,admin:isAdmin,userId:user}});
   });
-  await page.goto("http://127.0.0.1:6006/provas.html");
+  await page.goto("http://127.0.0.1:6006/provas.html"+(isAdmin?"?portal=admin":""));
   const create=page.getByRole("button",{name:"Nova prova",exact:true});
   await create.waitFor();await noOverflow(page,"list "+width);
   if(width<640){assert.equal(await page.getByRole("list",{name:"Provas"}).isVisible(),true);assert.equal(await page.getByRole("table").isVisible(),false);}
@@ -92,14 +100,24 @@ try{
    assert.equal(await dialog.getByRole("button",{name:/Cabeçalho da prova/}).getAttribute("aria-expanded"),"false");
   }
   if(width<640){
-   assert.equal(await dialog.getByRole("button",{name:"Médio",exact:true}).isVisible(),false);
+   assert.equal(await dialog.getByRole("group",{name:"Espaço da resposta 1"}).getByRole("button",{name:/Médio/}).isVisible(),true);
    assert.equal(await dialog.getByRole("button",{name:"Subir bloco 1"}).count(),0);
    assert.equal(await dialog.getByRole("button",{name:"Adicionar √",exact:true}).isVisible(),false);
    await dialog.getByText("Símbolos matemáticos",{exact:true}).click();
    assert.equal(await dialog.getByRole("button",{name:"Adicionar √",exact:true}).isVisible(),true);
    await dialog.getByText("Símbolos matemáticos",{exact:true}).click();
    await dialog.getByRole("spinbutton",{name:"Linhas para resposta 1"}).fill("6");
-  }else await dialog.getByRole("group",{name:"Espaço da resposta 1"}).getByRole("button",{name:"Médio",exact:true}).click();
+  }else await dialog.getByRole("group",{name:"Espaço da resposta 1"}).getByRole("button",{name:/Médio/}).click();
+  const formatGroup=dialog.getByRole("group",{name:"Formato da resposta 1"});
+  await formatGroup.getByRole("button",{name:"Rectângulo",exact:true}).click();
+  assert.equal(await dialog.getByTestId("provas-resposta-0").getAttribute("data-format"),"retangulo");
+  assert.equal(await dialog.getByTestId("provas-resposta-0").getAttribute("data-height-mm"),"48");
+  await dialog.getByLabel("Altura do rectângulo 1").selectOption("10");
+  assert.equal(await dialog.getByTestId("provas-resposta-0").getAttribute("data-height-mm"),"80");
+  await formatGroup.getByRole("button",{name:"Nenhum",exact:true}).click();
+  assert.equal(await dialog.getByTestId("provas-resposta-0").count(),0);
+  await formatGroup.getByRole("button",{name:"Linhas",exact:true}).click();
+  await dialog.getByRole("group",{name:"Espaço da resposta 1"}).getByRole("button",{name:/Médio/}).click();
   await dialog.getByRole("button",{name:"Aumentar espaço da resposta 1"}).click();
   assert.equal(await dialog.getByRole("spinbutton",{name:"Linhas para resposta 1"}).inputValue(),"7");
   await noOverflow(page,"editor "+width);
@@ -344,6 +362,8 @@ try{
   await dialog.getByRole("button",{name:"Pré-visualizar"}).click();
   const preview=dialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
   await preview.locator("math").waitFor();
+  await preview.locator("img.school-logo").waitFor();
+  assert.equal(await preview.locator("img.school-logo").evaluate(async img=>{await img.decode();return img.naturalWidth>0;}),true,"institutional raster loads inside preview");
   assert.equal(await preview.locator(".question-figure").count(),1);
   assert.equal(await preview.locator(".paper").getAttribute("data-layout"),"espacosa");
   assert.equal(await preview.locator(".linha").count(),7);
@@ -352,8 +372,28 @@ try{
   await noOverflow(page,"preview "+width);
   await dialog.getByRole("button",{name:"Editar",exact:true}).click();
   if(width<640)assert.equal(await dialog.getByLabel("Alternativa B da pergunta 2").inputValue(),"Watt","preview returns to active block");
+  if(isAdmin)await dialog.getByLabel("Cotação da pergunta 1").fill("18,75");
   await dialog.getByRole("button",{name:"Guardar rascunho"}).click();
   await dialog.getByRole("status").filter({hasText:"Prova guardada."}).waitFor();
+  if(isAdmin){
+   assert.equal(saved.conteudo.reduce((n,b)=>n+(b.cotacao_cent??0),0),2000);
+   await dialog.getByRole("button",{name:"Publicar prova",exact:true}).click();
+   const scheduleResponse=page.waitForResponse(r=>new URL(r.url()).pathname.endsWith("/provas/agendamento")&&r.request().method()==="GET");
+   await dialog.getByRole("button",{name:"Confirmar",exact:true}).click();
+   const loaded=await scheduleResponse;assert.equal(loaded.ok(),true,"schedule GET must succeed");assert.equal((await loaded.json()).turmas.length,1,"schedule GET must return eligible class");assert.ok(scheduleReads>0,"schedule request must reach the mocked endpoint");
+   await dialog.getByText("Agendamento por turma",{exact:true}).waitFor();
+   const schedule=dialog.getByRole("region",{name:"Agendamento por turma",exact:true});
+   const classSelect=schedule.getByRole("combobox",{name:"Turma",exact:true});
+   await classSelect.locator('option[value="80000000-0000-4000-8000-000000000001"]').waitFor({state:"attached"});
+   await classSelect.selectOption("80000000-0000-4000-8000-000000000001");
+   assert.equal(await classSelect.inputValue(),"80000000-0000-4000-8000-000000000001");
+   await schedule.getByLabel("Data",{exact:true}).fill("2026-12-07");
+   await schedule.getByLabel("Hora",{exact:true}).fill("08:30");
+   await schedule.getByRole("button",{name:"Agendar e publicar no calendário"}).click();
+   await schedule.getByText(/07\/12\/2026/).waitFor();
+   assert.equal(calendar.length,1);
+   await schedule.getByText("Todas as turmas já estão agendadas.",{exact:true}).waitFor();
+  }
   await dialog.getByRole("button",{name:"Fechar",exact:true}).click();
   await dialog.waitFor({state:"hidden"});
   await page.waitForFunction(()=>document.activeElement?.textContent?.includes("Nova prova"));

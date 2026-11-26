@@ -38,7 +38,7 @@ function WorkspaceLoading() {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type QuickAction = {
-  key:      "funcionario" | "nota" | "aviso" | "evento" | "migracao_pautas" | "recebimentos" | "importacoes" | "horarios" | "criar_aviso" | "provas";
+  key:      "funcionario" | "nota" | "aviso" | "evento" | "migracao_pautas" | "recebimentos" | "importacoes" | "horarios" | "criar_aviso" | "provas" | "calendario_avaliacoes";
   label:    string;
   href:     string;
   icon:     React.ElementType;
@@ -123,6 +123,12 @@ export default function QuickActionsSection({
           icon: ClipboardCheck,
           opensModal: true,
           href: buildPortalHref(escolaParam, "/operacoes/provas"),
+        },
+        {
+          key: "calendario_avaliacoes",
+          label: "Calendário de Avaliações",
+          icon: Calendar,
+          href: buildPortalHref(escolaParam, "/admin/operacoes-academicas/calendario-avaliacoes"),
         },
         {
           key: "funcionario",
