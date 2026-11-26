@@ -117,7 +117,8 @@
   inline-size: 100%;
   block-size: 20px;
   flex: none;
-  background-color: #0f1712;
+  /* The opaque SVG owns its artwork colours; use the scoped brand token as fallback. */
+  background-color: var(--welcome-forest);
   background-image: url("/icons/klasse-welcome-signature.svg");
   background-repeat: repeat-x;
   /* Centre whole tiles so the two rounded edges crop at the same height. */
