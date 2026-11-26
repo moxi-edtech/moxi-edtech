@@ -12,7 +12,7 @@ export default function DashboardSkeleton() {
     >
       <span className="sr-only">A carregar painel da Secretaria</span>
       <div aria-hidden="true" className="space-y-2 motion-safe:animate-pulse">
-        <div className="h-7 w-40 rounded-xl bg-muted" />
+        <div className="h-7 lg:h-8 w-40 rounded-xl bg-muted" />
         <div className="h-4 w-56 max-w-full rounded-xl bg-muted" />
       </div>
       <div
@@ -21,7 +21,7 @@ export default function DashboardSkeleton() {
       />
       <div
         aria-hidden="true"
-        className="h-56 rounded-xl border border-border bg-card motion-safe:animate-pulse"
+        className="h-56 @min-[920px]:h-36 rounded-xl border border-border bg-card motion-safe:animate-pulse"
       />
       <div className="space-y-4">
         <div

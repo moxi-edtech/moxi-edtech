@@ -10,6 +10,7 @@ type Breadcrumb = {
 type DashboardHeaderProps = {
   title: string;
   description?: string;
+  largeDesktopTitle?: boolean;
   breadcrumbs?: Breadcrumb[];
   actions?: React.ReactNode;
 };
@@ -17,6 +18,7 @@ type DashboardHeaderProps = {
 export function DashboardHeader({
   title,
   description,
+  largeDesktopTitle = false,
   breadcrumbs,
   actions,
 }: DashboardHeaderProps) {
@@ -48,7 +50,7 @@ export function DashboardHeader({
       {/* Title + Actions */}
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="klasse-dashboard-header-title text-xl font-semibold text-foreground tracking-tight">
+          <h1 className={`klasse-dashboard-header-title text-xl font-semibold text-foreground tracking-tight ${largeDesktopTitle ? "lg:text-2xl" : ""}`}>
             {title}
           </h1>
           {description && (

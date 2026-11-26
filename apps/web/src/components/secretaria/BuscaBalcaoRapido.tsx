@@ -20,10 +20,12 @@ type AlunoResult = {
 export function BuscaBalcaoRapido({
   escolaId,
   initialAction = "desk",
+  inline = false,
   onSuccess,
 }: {
   escolaId: string | null;
   initialAction?: BalcaoActionId;
+  inline?: boolean;
   onSuccess?: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -95,7 +97,7 @@ export function BuscaBalcaoRapido({
 
   return (
     <div className="relative">
-      <div className="mx-auto w-full max-w-2xl">
+      <div className={inline ? "w-full" : "mx-auto w-full max-w-2xl"}>
         <OmniSearchInput
           query={query}
           setQuery={setQuery}
@@ -108,7 +110,7 @@ export function BuscaBalcaoRapido({
           setActiveIndex={setActiveIndex}
           placeholder="Digite o nome, processo ou BI do aluno..."
           size="lg"
-          autoFocus
+          autoFocus={!inline}
           inputRef={idleInputRef}
         />
       </div>

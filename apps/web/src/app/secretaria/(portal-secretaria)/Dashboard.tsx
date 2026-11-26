@@ -531,6 +531,7 @@ export function Dashboard({
     >
       <DashboardHeader
         title="Secretaria"
+        largeDesktopTitle
         description={
           userName
             ? `${dashboardTitle} Atendimento e expediente do dia.`
@@ -638,32 +639,35 @@ export function Dashboard({
             <Search size={16} aria-hidden="true" /> Pesquisa global
           </button>
         </div>
-        <div className="min-w-0">
-          <BuscaBalcaoRapido
-            escolaId={escolaId}
-            onSuccess={refreshProdutividade}
-          />
-        </div>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setFilaOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={filaOpen}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
-          >
-            <ListOrdered size={16} aria-hidden="true" /> Fila de atendimento
-          </button>
-          <button
-            type="button"
-            onClick={() => setBalcaoModal("matricular")}
-            aria-haspopup="dialog"
-            aria-expanded={balcaoModal === "matricular"}
-            disabled={!escolaId}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-klasse-gold-700 px-4 text-sm font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-50"
-          >
-            <Plus size={16} aria-hidden="true" /> Matricular aluno
-          </button>
+        <div className="grid min-w-0 gap-4 @min-[920px]:grid-cols-[minmax(0,1fr)_auto] @min-[920px]:items-center">
+          <div className="min-w-0">
+            <BuscaBalcaoRapido
+              inline
+              escolaId={escolaId}
+              onSuccess={refreshProdutividade}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setFilaOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={filaOpen}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
+            >
+              <ListOrdered size={16} aria-hidden="true" /> Fila de atendimento
+            </button>
+            <button
+              type="button"
+              onClick={() => setBalcaoModal("matricular")}
+              aria-haspopup="dialog"
+              aria-expanded={balcaoModal === "matricular"}
+              disabled={!escolaId}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-klasse-gold-700 px-4 text-sm font-semibold text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 disabled:opacity-50"
+            >
+              <Plus size={16} aria-hidden="true" /> Matricular aluno
+            </button>
+          </div>
         </div>
       </section>
 
@@ -803,7 +807,7 @@ export function Dashboard({
         </div>
       </section>
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-6 @min-[920px]:grid-cols-2">
         <section
           aria-label="Acompanhamento do dia"
           className="min-w-0 space-y-4"
