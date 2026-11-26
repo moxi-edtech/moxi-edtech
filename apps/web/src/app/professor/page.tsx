@@ -326,7 +326,7 @@ export default function Page() {
 
   return (
     <div className="min-w-0 text-foreground">
-      <div className="mx-auto w-full min-w-0 max-w-6xl space-y-4 p-3 sm:space-y-6 sm:p-6">
+      <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 sm:space-y-8">
         
         <PortalWelcomeCard
           role="professor"
@@ -394,7 +394,7 @@ export default function Page() {
         )}
 
         <PortalSection id="professor-today" title="Hoje">
-          <div aria-busy={loading} className="grid grid-cols-2 gap-2 sm:gap-3">
+          <div aria-busy={loading} className="grid grid-cols-2 gap-3">
             {[
               { label: "Aulas hoje", value: loadError ? null : aulasHoje },
               { label: "Turmas", value: loadError ? null : turmasAtivas },
@@ -410,30 +410,30 @@ export default function Page() {
         </PortalSection>
 
         <PortalSection id="professor-shortcuts" title="Acesso rápido">
-          <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 md:gap-3">
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile label="Presenças" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/frequencias")} />
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile label="Lançar notas" icon={<Pencil className="h-5 w-5" />} href={professorHref("/professor/notas")} />
-            {escolaParam && <AcaoRapidaCard dashboardCompact mobileCompact portalTile prefetch={false} label="Provas" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/provas")} />}
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile label="Materiais" icon={<BookOpen className="h-5 w-5" />} href={professorHref("/professor/materiais")} />
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile label="Planos de aula" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/planos-aula")} />
+          <div className="grid grid-cols-2 gap-3 min-[380px]:grid-cols-3">
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Presenças" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/frequencias")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Lançar notas" icon={<Pencil className="h-5 w-5" />} href={professorHref("/professor/notas")} />
+            {escolaParam && <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Provas" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/provas")} />}
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Materiais" icon={<BookOpen className="h-5 w-5" />} href={professorHref("/professor/materiais")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Planos de aula" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/planos-aula")} />
           </div>
         </PortalSection>
 
         <PortalSection id="professor-attention" title="A acompanhar">
-          <div aria-busy={loading} className="grid gap-2 md:grid-cols-3">
-            <AcaoRapidaCard dashboardCompact mobileCompact label="Avaliações pendentes"
+          <div aria-busy={loading} className="grid gap-3 md:grid-cols-3">
+            <AcaoRapidaCard dashboardCompact mobileCompact portalClean label="Avaliações pendentes"
               icon={<Pencil className="h-4 w-4" />}
               unavailable={!loading && (loadError !== null || avaliacoesPendentes === null)}
               needsAttention={!loading && !loadError && avaliacoesPendentes !== null && avaliacoesPendentes > 0}
               sublabel={loading ? "A carregar…" : loadError || avaliacoesPendentes === null ? "Dados indisponíveis" : String(avaliacoesPendentes)}
               href={professorHref("/professor/notas")} />
-            <AcaoRapidaCard dashboardCompact mobileCompact label="Faltas a lançar"
+            <AcaoRapidaCard dashboardCompact mobileCompact portalClean label="Faltas a lançar"
               icon={<ClipboardCheck className="h-4 w-4" />}
               unavailable={!loading && (loadError !== null || faltasALancar === null)}
               needsAttention={!loading && !loadError && faltasALancar !== null && faltasALancar > 0}
               sublabel={loading ? "A carregar…" : loadError || faltasALancar === null ? "Dados indisponíveis" : String(faltasALancar)}
               href={professorHref("/professor/frequencias")} />
-            <AcaoRapidaCard dashboardCompact mobileCompact label="Calendário académico"
+            <AcaoRapidaCard dashboardCompact mobileCompact portalClean label="Calendário académico"
               icon={<CalendarDays className="h-4 w-4" />} sublabel="Consultar eventos e avaliações"
               href={professorHref("/professor/calendario")} />
           </div>

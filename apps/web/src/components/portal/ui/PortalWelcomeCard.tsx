@@ -22,7 +22,7 @@ export function PortalWelcomeCard({ role, name, context, date, loading = false }
   const shortDate = shortFormatter.format(date).replace(/\s+de\s+/g, " ").replace(/\./g, "");
   return (
     <header aria-busy={loading} data-testid="portal-welcome-card" className={`${styles.card} min-w-0 overflow-hidden rounded-xl`}>
-      <div className="space-y-3 px-4 pb-4 pt-4 sm:px-6 sm:pb-5 sm:pt-5">
+      <div className="space-y-3 px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <p className="text-[11px] font-semibold uppercase tracking-wide">Portal do {role}</p>
           <time aria-hidden="true" suppressHydrationWarning className="text-[11px] font-semibold uppercase tracking-wide">{shortDate}</time>

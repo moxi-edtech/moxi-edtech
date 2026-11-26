@@ -37,9 +37,9 @@ test("navegação e área académica explicitam contexto sem inventar estado", a
   }
   assert.match(alunoNav, /activeHref=\{active \? withAlunoParam\(active\.href\) : null\}/);
   assert.match(profNav, /activeHref=\{activeHref\}/);
-  assert.match(sharedNav, /active \? "bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold\/30"/);
-  assert.match(sharedNav, /active \? "border-klasse-gold\/40 bg-klasse-gold-50 text-klasse-gold-700"/);
-  assert.match(sharedNav, /isDrawerActive \|\| isMoreOpen \? "bg-klasse-gold-50 text-klasse-gold-700/);
+  assert.match(sharedNav, /active \? "bg-accent text-accent-foreground ring-1 ring-primary\/15"/);
+  assert.match(sharedNav, /active \? "border-primary\/20 bg-accent text-accent-foreground"/);
+  assert.match(sharedNav, /isDrawerActive \|\| isMoreOpen \? "bg-accent text-accent-foreground/);
   assert.match(sharedNav, /aria-current=\{active \? "page" : undefined\}/);
   assert.match(sharedNav, /min-h-12/);
   assert.match(sharedNav, /focus-visible:ring-4 focus-visible:ring-klasse-gold\/20/);
@@ -111,7 +111,7 @@ test("aluno reutiliza os cards de Operações com densidade mobile, sem retirar 
   ]);
   assert.match(quick, /import AcaoRapidaCard from "@\/components\/shared\/AcaoRapidaCard"/);
   assert.match(dashboard, /import AcaoRapidaCard from "@\/components\/shared\/AcaoRapidaCard"/);
-  assert.match(dashboard, /grid-cols-2 gap-2 min-\[380px\]:grid-cols-3/);
+  assert.match(dashboard, /grid-cols-2 gap-3 min-\[380px\]:grid-cols-3/);
   assert.match(card, /mobileCompact = false/);
   assert.match(card, /unavailable: disabled \|\| unavailable/);
   assert.match(card, /min-h-16[^"]*bg-card p-3/);

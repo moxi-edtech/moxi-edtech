@@ -115,18 +115,18 @@ export default function DashboardLoader() {
   const lesson = nextLessonLabel(screen.dashboard.proxima_aula);
   const firstName = screen.boletim?.nome_aluno?.trim().split(/\s+/)[0] || "aluno";
   const today = new Date();
-  return <div className="w-full min-w-0 space-y-4 text-foreground sm:space-y-6" data-testid="aluno-dashboard-editorial">
+  return <div className="w-full min-w-0 space-y-6 text-foreground sm:space-y-8" data-testid="aluno-dashboard-editorial">
     <PortalWelcomeCard role="aluno" name={firstName} context={screen.dashboard.ano_letivo ? `Ano lectivo ${screen.dashboard.ano_letivo}` : null} date={today} />
     <PortalSection id="aluno-summary" title="Em resumo">
-      <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 md:gap-3" data-testid="aluno-summary-cards">
-        <AcaoRapidaCard dashboardCompact mobileCompact label="Avisos" portalTile
+      <div className="grid grid-cols-2 gap-3 min-[380px]:grid-cols-3" data-testid="aluno-summary-cards">
+        <AcaoRapidaCard dashboardCompact mobileCompact label="Avisos" portalTile portalClean
           icon={<Bell className="h-4 w-4" />} sublabel={`${(screen.dashboard.avisos_recentes ?? []).length} recentes`}
           href={go("/aluno/avisos")} />
-        <AcaoRapidaCard dashboardCompact mobileCompact label="Notas" portalTile
+        <AcaoRapidaCard dashboardCompact mobileCompact label="Notas" portalTile portalClean
           icon={<BookOpen className="h-4 w-4" />} unavailable={typeof screen.boletim?.is_liberado !== "boolean"}
           sublabel={typeof screen.boletim?.is_liberado === "boolean" ? (screen.boletim.is_liberado ? "Acesso livre" : "Protegidas") : "Dados indisponíveis"}
           href={go("/aluno/academico")} />
-        <AcaoRapidaCard dashboardCompact mobileCompact label="Propinas vencidas" portalTile
+        <AcaoRapidaCard dashboardCompact mobileCompact label="Propinas vencidas" portalTile portalClean
           icon={<Wallet className="h-4 w-4" />}
           unavailable={!screen.dashboard.status_financeiro || Boolean(screen.dashboard.status_financeiro.error)}
           needsAttention={Boolean(screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error && screen.dashboard.status_financeiro.pendentes > 0)}
@@ -135,19 +135,19 @@ export default function DashboardLoader() {
           href={go("/aluno/financeiro")} />
       </div>
     </PortalSection>
-    <div className="grid items-start gap-4 lg:grid-cols-5">
+    <div className="grid items-start gap-6 lg:grid-cols-5">
       <PortalSection id="next-class" title="Próxima aula" className="lg:col-span-3">
-        <AcaoRapidaCard dashboardCompact mobileCompact icon={<Clock3 className="h-4 w-4"/>}
+        <AcaoRapidaCard dashboardCompact mobileCompact portalClean icon={<Clock3 className="h-4 w-4"/>}
           label={lesson ? lesson.subject : "Sem próxima aula publicada"}
           sublabel={lesson ? [lesson.day, lesson.time, ...lesson.details].join(" · ") : "Ver horário"}
           href={go("/aluno/horario")} />
       </PortalSection>
       {attentions.length > 0 && <PortalSection id="attention-title" title="A acompanhar" className="lg:col-span-2" testId="attention">
-        <div className="grid gap-2">
+        <div className="grid gap-3">
           {attentions.slice(0,3).map(item => {
             const Icon = item.kind === "mensalidade" ? Wallet : item.kind === "rejected" ? AlertCircle : item.kind === "rematricula" ? CalendarCheck : FileText;
             const needsAttention = item.kind === "rejected" || item.kind === "mensalidade" || item.kind === "rematricula" || item.kind === "academico";
-            return <AcaoRapidaCard key={item.kind + item.href} dashboardCompact mobileCompact
+            return <AcaoRapidaCard key={item.kind + item.href} dashboardCompact mobileCompact portalClean
               icon={<Icon className="h-4 w-4"/>} label={item.title} needsAttention={needsAttention}
               sublabel={item.kind === "rejected" || item.kind === "academico" ? [item.description, item.action].filter(Boolean).join(" · ") : item.action}
               href={go(item.href)} />;

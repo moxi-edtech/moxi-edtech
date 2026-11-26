@@ -20,6 +20,8 @@ type AcaoRapidaCardProps = {
   mobileCompact?: boolean;
   /** Opt-in tile layout for dashboard shortcuts; leaves all operational rows unchanged. */
   portalTile?: boolean;
+  /** Portal home: quiet icon treatments and no decorative shadows. */
+  portalClean?: boolean;
   emphasizeSublabel?: boolean;
   /** Missing data is not a disabled destination. */
   unavailable?: boolean;
@@ -43,6 +45,7 @@ export default function AcaoRapidaCard({
   dashboardCompact = false,
   mobileCompact = false,
   portalTile = false,
+  portalClean = false,
   emphasizeSublabel = false,
   unavailable = false,
   needsAttention = false,
@@ -54,14 +57,19 @@ export default function AcaoRapidaCard({
 
   if (dashboardCompact) {
     const tone = operationalCardTone({ unavailable: disabled || unavailable, needsAttention });
+    const iconTone = portalClean
+      ? (tone === "neutral" || tone === "attention" ? "bg-muted text-foreground" : "bg-accent text-accent-foreground")
+      : operationalCardIconClasses[tone];
     const className = (portalTile
-      ? "group flex h-full min-h-24 w-full min-w-0 flex-col items-start gap-2 rounded-xl border border-border bg-card p-3 text-left"
+      ? "group flex h-full min-h-24 w-full min-w-0 flex-col items-start gap-3 rounded-xl border border-border bg-card p-3 text-left"
+      : portalClean
+      ? "group flex h-full min-h-16 w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-3 text-left"
       : mobileCompact
       ? "group flex h-full min-h-16 w-full min-w-0 items-center gap-2.5 rounded-xl border border-border bg-card p-3 text-left shadow-sm"
       : "group flex h-full min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-sm") + " transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
     const content = (
       <>
-        <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl [&>svg]:size-4 ${operationalCardIconClasses[tone]}`}>
+        <span aria-hidden="true" className={`flex shrink-0 items-center justify-center rounded-xl ${portalClean ? "h-9 w-9 [&>svg]:size-[18px]" : "h-8 w-8 [&>svg]:size-4"} ${iconTone}`}>
           {disabled ? <Lock className="h-4 w-4" /> : icon}
         </span>
         <span className={portalTile ? "w-full min-w-0 flex-1" : "min-w-0 flex-1"}>

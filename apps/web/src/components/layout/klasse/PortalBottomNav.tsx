@@ -116,9 +116,9 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
                     onTouchStart={() => onPreload?.(item)}
                     aria-current={active ? "page" : undefined}
                     className={"flex min-h-14 min-w-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 " +
-                      (active ? "border-klasse-gold/40 bg-klasse-gold-50 text-klasse-gold-700" : "border-border bg-card text-foreground hover:bg-muted")}
+                      (active ? "border-primary/20 bg-accent text-accent-foreground" : "border-border bg-card text-foreground hover:bg-muted")}
                   >
-                    <Icon className={"h-5 w-5 shrink-0 " + (active ? "text-klasse-gold-700" : "text-muted-foreground")} aria-hidden="true" />
+                    <Icon className={"h-5 w-5 shrink-0 " + (active ? "text-accent-foreground" : "text-muted-foreground")} aria-hidden="true" />
                     <span className="min-w-0 flex-1 truncate">{label}</span>
                     {badge && badge > 0
                       ? <span className="rounded-full bg-destructive px-1.5 text-xs font-semibold text-background">{badge}</span>
@@ -133,11 +133,11 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
 
       <nav
         inert={isMoreOpen ? true : undefined}
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label={navigationLabel}
       >
-        <div className="mx-auto grid w-full max-w-[1200px] grid-cols-5 gap-0.5 px-1 py-1 sm:gap-1 sm:px-2">
+        <div className="mx-auto grid w-full max-w-[1200px] grid-cols-5 gap-1 px-2 py-1.5 sm:px-3">
           {mainItems.map((item) => {
             const { href, label, icon: Icon, badge } = item;
             const active = item.href === activeHref;
@@ -151,7 +151,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
                 aria-label={badge && badge > 0 ? `${label}, ${badge}` : label}
                 aria-current={active ? "page" : undefined}
                 className={"relative flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 " +
-                  (active ? "bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold/30" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+                  (active ? "bg-accent text-accent-foreground ring-1 ring-primary/15" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
               >
                 <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
                 <span className="max-w-full truncate text-center">{item.compactLabel ?? label}</span>
@@ -170,7 +170,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
             aria-controls={isMoreOpen ? dialogId : undefined}
             aria-expanded={isMoreOpen}
             className={"relative flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 " +
-              (isDrawerActive || isMoreOpen ? "bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold/30" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+              (isDrawerActive || isMoreOpen ? "bg-accent text-accent-foreground ring-1 ring-primary/15" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
             <MoreIcon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
             <span>Mais</span>
