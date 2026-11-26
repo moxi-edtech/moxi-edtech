@@ -89,9 +89,14 @@ $$;
 create or replace function internal.klasse_grade_teacher_subjects(p_escola uuid)
 returns table(turma_id uuid,disciplina_id uuid) language sql stable security definer set search_path = '' as $$
  select distinct td.turma_id,d.disciplina_id
- from public.turma_disciplinas td join public.curso_matriz cm on cm.id=td.curso_matriz_id and cm.escola_id=td.escola_id
+ from public.professores pr join public.escola_users eu on eu.escola_id=pr.escola_id and eu.user_id=pr.profile_id and eu.papel::text='professor'
+ join public.turma_disciplinas td on td.escola_id=pr.escola_id
+ join public.curso_matriz cm on cm.id=td.curso_matriz_id and cm.escola_id=td.escola_id
  cross join lateral (values (cm.disciplina_id),(td.avaliacao_disciplina_id),(cm.avaliacao_disciplina_id)) d(disciplina_id)
- where td.escola_id=p_escola and d.disciplina_id is not null and internal.klasse_grade_teacher(p_escola,td.id);
+ where pr.escola_id=p_escola and p_escola=public.current_tenant_escola_id() and pr.profile_id=(select auth.uid())
+ and d.disciplina_id is not null
+ and (td.professor_id=pr.id or exists (select 1 from public.turma_disciplinas_professores tdp
+ where tdp.escola_id=td.escola_id and tdp.turma_id=td.turma_id and tdp.disciplina_id=cm.disciplina_id and tdp.professor_id=pr.id));
 $$;
 
 -- Only privileged server sessions may bypass identity checks, never payment.
@@ -258,8 +263,8 @@ create or replace view public.vw_boletim_por_matricula
  from internal.mv_boletim_por_matricula b
  where b.escola_id=(select public.current_tenant_escola_id())
  and ((select internal.klasse_grade_staff(public.current_tenant_escola_id()))
- or b.matricula_id in (select internal.klasse_grade_paid_matriculas(public.current_tenant_escola_id()))
- or ((b.turma_id,b.disciplina_id) in (select t.turma_id,t.disciplina_id from internal.klasse_grade_teacher_subjects(public.current_tenant_escola_id()) t)
+ or ((b.matricula_id in (select internal.klasse_grade_paid_matriculas(public.current_tenant_escola_id()))
+ or (b.turma_id,b.disciplina_id) in (select t.turma_id,t.disciplina_id from internal.klasse_grade_teacher_subjects(public.current_tenant_escola_id()) t))
  and exists (select 1 from public.matriculas m where m.id=b.matricula_id and m.escola_id=b.escola_id and m.turma_id=b.turma_id and m.aluno_id=b.aluno_id)));
 revoke all on internal.mv_boletim_por_matricula from public,anon,authenticated;
 grant select on internal.mv_boletim_por_matricula to service_role;
