@@ -20,6 +20,19 @@ function bancoFalso(tabelas, errorTable = null) {
   const queries = [];
   return {
     queries,
+    rpc(name, args) {
+      assert.equal(name, 'aluno_boletim_pago');
+      const filtros = [
+        (row) => row.escola_id === args.p_escola_id,
+        (row) => row.aluno_id === args.p_aluno_id,
+        (row) => row.matricula_id === args.p_matricula_id,
+        (row) => row.status === 'granted',
+      ];
+      queries.push({ tabela: name, filtros });
+      return Promise.resolve(errorTable === 'servico_pedidos'
+        ? { data: null, error: { message: 'sem conexão' } }
+        : { data: isBoletimPaid((tabelas.servico_pedidos ?? []).filter((row) => filtros.every((filter) => filter(row)))), error: null });
+    },
     from(nome) {
       const filtros = [];
       queries.push({ tabela: nome, filtros });

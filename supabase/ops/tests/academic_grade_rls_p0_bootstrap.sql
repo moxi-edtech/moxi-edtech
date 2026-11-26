@@ -70,6 +70,7 @@ create materialized view internal.mv_boletim_por_matricula as
  1::bigint as total_avaliacoes,1::bigint as total_notas,0::bigint as missing_count,false as has_missing
  from public.notas n join public.matriculas m on m.id=n.matricula_id join public.avaliacoes av on av.id=n.avaliacao_id
  join public.turma_disciplinas td on td.id=av.turma_disciplina_id join public.curso_matriz cm on cm.id=td.curso_matriz_id;
+create unique index ux_mv_boletim_por_matricula on internal.mv_boletim_por_matricula(escola_id,matricula_id,disciplina_id,trimestre);
 create view public.vw_boletim_por_matricula with(security_invoker=true) as select * from internal.mv_boletim_por_matricula where escola_id=public.current_tenant_escola_id();
 create view public.vw_boletim_consolidado with(security_invoker=true) as select * from public.notas;
 create view public.vw_boletim_por_matricula_legacy with(security_invoker=true) as select * from public.notas;
@@ -78,8 +79,44 @@ language plpgsql security definer set search_path='public' as $$
 declare v_escola uuid; v_turma uuid; v_ano uuid;
 BEGIN
   SELECT m.escola_id, m.turma_id, al.id into v_escola,v_turma,v_ano from public.matriculas m cross join (select null::uuid as id) al where m.id=p_matricula_id;
-  return jsonb_build_object('nota',16);
+  return jsonb_build_object('nota',16,'status','aprovado');
 end $$;
+-- Synthetic legal-engine shapes mirror production call graph; actual migration
+-- clones them and replaces the public entry points.
+create function public.resolve_estado_resultado(p_matricula_id uuid,p_disciplina_id uuid) returns jsonb
+language sql stable as $$ select public.resolve_estado_resultado_academico_base(p_matricula_id,p_disciplina_id) $$;
+create function public.resolve_raa_eja_oficial(p_escola_id uuid,p_matricula_id uuid) returns jsonb
+language plpgsql stable security definer as $$
+begin
+ IF NOT EXISTS(SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id AND eu.user_id=auth.uid() AND eu.papel='secretaria')
+ AND NOT (auth.uid() IS NULL AND coalesce(current_setting('role',true),'')='service_role') THEN
+ raise exception 'ACADEMIC_FORBIDDEN' using errcode='42501'; end if;
+ return jsonb_build_object('decision','transitou','destino','proxima_etapa','disciplinas',jsonb_build_array(jsonb_build_object('suficiente',true,'evidence_id',fixture_id(81))));
+end $$;
+create function public.resolve_raa_decreto_for_matricula(p_escola_id uuid,p_matricula_id uuid) returns jsonb
+language sql stable security definer as $$
+ select jsonb_build_object('decision','transitou','destino','proxima_etapa','motivo','sem_pendencias',
+ 'regime',jsonb_build_object('nivel_ensino','secundario','classe_num',7),'disciplinas',
+ jsonb_build_array(public.resolve_estado_resultado(p_matricula_id,fixture_id(81)) || jsonb_build_object('nota_final',16)),
+ 'disciplina_ids_pendentes','[]'::jsonb,'efetivacao_matricula_bloqueada',false)
+$$;
+create function public.resolve_raa_progression_for_matricula_generic(p_escola_id uuid,p_matricula_id uuid) returns jsonb
+language sql stable security definer as $$ select public.resolve_raa_decreto_for_matricula(p_escola_id,p_matricula_id) $$;
+create function public.resolve_raa_progression_for_matricula(p_escola_id uuid,p_matricula_id uuid) returns jsonb
+language sql stable security definer as $$ select public.resolve_raa_decreto_for_matricula(p_escola_id,p_matricula_id) $$;
+create function public.aluno_iniciar_rematricula(p_matricula_id uuid,p_servicos_ids uuid[]) returns jsonb
+language sql security definer as $$ select jsonb_build_object('eligible',public.resolve_raa_progression_for_matricula(public.current_tenant_escola_id(),p_matricula_id)->>'decision'='transitou') $$;
+create table public.periodos_letivos(id uuid primary key,escola_id uuid,ano_letivo_id uuid);
+insert into public.periodos_letivos values(fixture_id(181),fixture_id(1),fixture_id(191)),(fixture_id(182),fixture_id(2),fixture_id(192));
+create function public.get_teacher_compliance_status(p_teacher_ids uuid[],p_trimestre_id uuid) returns table(teacher_id uuid,status text)
+language plpgsql security definer as $$
+declare v_escola_id uuid; v_ano_letivo_id uuid;
+begin
+ select escola_id,ano_letivo_id into v_escola_id,v_ano_letivo_id from public.periodos_letivos where id=p_trimestre_id;
+  -- Se não encontrar o trimestre, retorna tudo como OK para não alarmar
+ return query select unnest(p_teacher_ids),'OK'::text;
+end $$;
+
 grant select,insert,update,delete on all tables in schema public,storage to authenticated,anon;
 grant select on internal.mv_boletim_por_matricula to authenticated,anon;
 alter table public.notas enable row level security;
