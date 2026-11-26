@@ -189,3 +189,31 @@ test("student dashboard reuses guarded academic and financial workspaces", () =>
     assert.match(payment, /usePortalDrawerGuard\(open && Boolean\(selectedFile \|\| mensagem.trim\(\)\), open && sending\)/);
   }
 });
+
+test("professor drawer-first calendar, grade entry and student lookup preserve scope and direct routes", () => {
+  const dashboard = read("app/professor/page.tsx");
+  const calendar = read("components/professor/ProfessorCalendarWorkspace.tsx");
+  const grades = read("components/professor/ProfessorGradesWorkspace.tsx");
+  const grid = read("components/professor/GradeEntryGrid.tsx");
+  const roster = read("components/professor/ProfessorTurmaRoster.tsx");
+  const student = read("components/professor/ProfessorStudentGrades.tsx");
+  assert.match(dashboard, /openOperation\("calendar"\)/);
+  assert.match(dashboard, /openOperation\("assessments"\)/);
+  assert.match(dashboard, /openOperation\("grades"\)/);
+  assert.match(dashboard, /operationFrame\("grades", selectedTurma.id\)/);
+  assert.match(dashboard, /academicYearId=\{requestedAcademicYearId\}/);
+  assert.match(dashboard, /href=\{professorHref\("\/professor\/provas"\)\}/);
+  assert.match(calendar, /view === "periods"/);
+  assert.match(calendar, /view === "assessments"/);
+  assert.match(calendar, /controller.abort\(\)/);
+  assert.match(grades, /usePortalDrawerGuard\(hasUnsavedGrades \|\| otherDraft, mutationBusy\)/);
+  assert.match(grades, /!pautaReady \|\| !turmaId \|\| !disciplinaId/);
+  assert.match(grades, /<PortalSheet open=\{exportOpen\} busy=\{exporting\} inline=\{embedded\}/);
+  assert.match(grid, /!drawerEmbedded && pendingRef.current.size > 0/);
+  assert.match(grid, /usePortalDrawerGuard\(hasPendingGrades/);
+  assert.match(roster, /studentId=\{item.id\} matriculaId=\{item.matricula_id\}/);
+  assert.match(student, /item.aluno_id === studentId && item.matricula_id === matriculaId/);
+  assert.doesNotMatch(student, /method: "POST"|method: "PATCH"|method: "DELETE"/);
+  assert.match(read("app/professor/calendario/page.tsx"), /<ProfessorCalendarWorkspace/);
+  assert.match(read("app/professor/notas/page.tsx"), /<ProfessorGradesWorkspace/);
+});
