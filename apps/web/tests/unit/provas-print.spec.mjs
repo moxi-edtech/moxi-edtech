@@ -486,3 +486,12 @@ test("school-local schedule and raster logo in single proof",()=>{
  assert.match(html,/Hora: 08:30/);
  assert.match(html,/RASCUNHO/);
 });
+
+
+test("nominal print applies class-specific dates and labels historical copies",()=>{
+ const one={matricula_id:"1",turma_id:"A",turma:"8ª A",letra:"A",curso:"Geral",turno:"M",sala:null,nome:"Aluno A",numero_processo:null,numero_chamada:null};
+ const two={...one,matricula_id:"2",turma_id:"B",nome:"Aluno B"};
+ const html=provaHtml({...base,data_realizacao:"2026-12-07",hora_inicio:"08:00"},"Curtume",{recipients:[one,two],schedules:{A:{data:"2026-12-08",inicio:"10:30:00"}}});
+ assert.match(html,/08\/12\/2026/);assert.match(html,/Hora: 10:30/);assert.match(html,/07\/12\/2026/);assert.match(html,/Hora: 08:00/);
+ assert.match(provaHtml(base,"Curtume",{historical:true}),/REIMPRESSÃO HISTÓRICA/);
+});

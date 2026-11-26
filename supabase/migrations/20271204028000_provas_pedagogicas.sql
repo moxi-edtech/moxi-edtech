@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION provas_private.calendario_prova_guard()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 BEGIN
  IF TG_OP='UPDATE' THEN
-   IF NEW.prova_id IS DISTINCT FROM OLD.prova_id THEN RAISE EXCEPTION 'immutable_proof_link' USING ERRCODE='23514'; END IF;
+   IF NEW.prova_id IS DISTINCT FROM OLD.prova_id OR (OLD.prova_id IS NOT NULL AND NEW.periodo_letivo_id IS DISTINCT FROM OLD.periodo_letivo_id) THEN RAISE EXCEPTION 'immutable_proof_link' USING ERRCODE='23514'; END IF;
    RETURN NEW;
  END IF;
  IF NEW.prova_id IS NULL THEN RETURN NEW; END IF;
@@ -15,6 +15,7 @@ BEGIN
   SELECT 1 FROM public.provas_pedagogicas p
   JOIN public.turma_disciplinas td ON td.id=NEW.turma_disciplina_id AND td.escola_id=p.escola_id AND td.turma_id=NEW.turma_id AND td.curso_matriz_id=p.curso_matriz_id
   JOIN public.turmas t ON t.id=td.turma_id AND t.escola_id=p.escola_id AND t.ano_letivo_id=p.ano_letivo_id AND t.session_id=p.ano_letivo_id
+  JOIN public.curso_matriz cm ON cm.id=p.curso_matriz_id AND cm.escola_id=p.escola_id AND cm.classe_id=t.classe_id AND cm.curso_id=t.curso_id
   JOIN public.periodos_letivos pl ON pl.id=NEW.periodo_letivo_id AND pl.escola_id=p.escola_id AND pl.ano_letivo_id=p.ano_letivo_id AND pl.tipo='TRIMESTRE' AND pl.numero=p.trimestre
   WHERE p.id=NEW.prova_id AND p.escola_id=NEW.escola_id AND p.ano_letivo_id=NEW.ano_letivo_id AND p.estado='aprovada'
    AND (td.periodos_ativos IS NULL OR p.trimestre=ANY(td.periodos_ativos))

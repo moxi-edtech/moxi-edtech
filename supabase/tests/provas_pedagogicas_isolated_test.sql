@@ -279,6 +279,35 @@ BEGIN
  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  copy:=public.provas_mutar(sch,copy.id,copy.versao,'aprovar',NULL);
  IF copy.estado<>'aprovada' OR copy.aprovado_por IS DISTINCT FROM auth.uid() OR copy.data_realizacao IS DISTINCT FROM DATE '2026-12-07' THEN RAISE EXCEPTION 'direct publication failed'; END IF;
+ -- Link to the existing calendar without copying the questions.
+ IF NOT EXISTS(SELECT 1 FROM public.provas_por_professor(sch,'90000000-0000-4000-8000-000000000001') x WHERE x.id=copy.id) THEN RAISE EXCEPTION 'assigned professor filter missed proof'; END IF;
+ IF EXISTS(SELECT 1 FROM public.provas_por_professor(sch,'90000000-0000-4000-8000-000000000099')) THEN RAISE EXCEPTION 'unknown professor returned proofs'; END IF;
+ INSERT INTO public.calendario_avaliacoes(escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id)
+ SELECT sch,copy.ano_letivo_id,pl.id,td.turma_id,td.id,'publicado','2026-12-07','08:30','10:00',copy.id
+ FROM public.periodos_letivos pl CROSS JOIN public.turma_disciplinas td WHERE pl.escola_id=sch AND pl.ano_letivo_id=copy.ano_letivo_id AND pl.numero=copy.trimestre AND td.escola_id=sch AND td.curso_matriz_id=copy.curso_matriz_id AND td.turma_id='80000000-0000-4000-8000-000000000001';
+ IF NOT EXISTS(SELECT 1 FROM public.calendario_avaliacoes WHERE prova_id=copy.id AND estado='publicado') THEN RAISE EXCEPTION 'calendar link missing'; END IF;
+ BEGIN
+  INSERT INTO public.calendario_avaliacoes(escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id)
+  SELECT escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id FROM public.calendario_avaliacoes WHERE prova_id=copy.id;
+  RAISE EXCEPTION 'duplicate class schedule accepted';
+ EXCEPTION WHEN unique_violation THEN NULL; END;
+ BEGIN
+  UPDATE public.calendario_avaliacoes SET prova_id=NULL WHERE prova_id=copy.id;
+  RAISE EXCEPTION 'link was mutable';
+ EXCEPTION WHEN check_violation THEN NULL; END;
+ BEGIN
+  INSERT INTO public.calendario_avaliacoes(escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id)
+  SELECT '00000000-0000-4000-8000-000000000002',ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id FROM public.calendario_avaliacoes WHERE prova_id=copy.id;
+  RAISE EXCEPTION 'cross tenant calendar link accepted';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
+ IF EXISTS(SELECT 1 FROM public.provas_por_professor(sch,'90000000-0000-4000-8000-000000000001')) THEN RAISE EXCEPTION 'teacher could use admin filter'; END IF;
+ BEGIN
+  INSERT INTO public.calendario_avaliacoes(escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id)
+  SELECT escola_id,ano_letivo_id,periodo_letivo_id,turma_id,turma_disciplina_id,estado,data,inicio,fim,prova_id FROM public.calendario_avaliacoes WHERE prova_id=copy.id;
+  RAISE EXCEPTION 'teacher linked calendar event';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000007',true);
  BEGIN
    PERFORM public.provas_mutar(sch,copy.id,copy.versao-1,'aprovar',NULL);
    RAISE EXCEPTION 'stale direct publication accepted';

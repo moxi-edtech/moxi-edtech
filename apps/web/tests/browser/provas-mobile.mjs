@@ -15,14 +15,21 @@ const noOverflow=async(page,label)=>{
 };
 try{
  for(const [width,height] of (isWebKit?[[390,844]]:[[320,568],[390,844],[768,1024],[1280,800]])){
+  const isAdmin=width===1280;
   const page=await browser.newPage({viewport:{width,height},hasTouch:width<640,isMobile:width<640});
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
-  let saved=null;
+  let saved=null;let calendar=[];
   await page.route("**/api/escola/**/provas**",async route=>{
    const req=route.request(),url=new URL(req.url());
    const reply=body=>route.fulfill({json:body});
+   if(url.pathname.endsWith("/agendamento")){
+    if(req.method()==="POST"){const payload=req.postDataJSON();assert.equal(payload.prova,saved.id);assert.equal(payload.versao,saved.versao);assert.equal(payload.data,"2026-12-07");calendar=[{id:"event",turma_id:payload.turma,data:payload.data,inicio:payload.inicio,fim:"10:00",estado:"publicado"}];return reply({id:"event"});}
+    return reply({turmas:[{id:"80000000-0000-4000-8000-000000000001",nome:"8ª A",turno:"Manhã"}],eventos:calendar});
+   }
+   if(url.searchParams.has("professores"))return reply({items:[{id:user,nome:"Professor de teste"}]});
    if(req.method()==="POST"){
     const data=req.postDataJSON();
+    if(data.acao==="aprovar"){assert.ok(isAdmin);assert.equal(data.id,saved.id);saved={...saved,estado:"aprovada",versao:2,aprovado_em:"2026-11-26T00:00:00Z"};return reply({prova:saved});}
     assert.equal(data.dados.ano_letivo_id,year);assert.equal(data.dados.curso_matriz_id,matrix);assert.equal(data.dados.conteudo[0].linhas,7);
     assert.ok(data.dados.conteudo[0].rich.segments.some(s=>s.kind==="math"&&s.latex===(width===320?"\\frac{7}{5}+2^{3}":width===390?"\\frac{7}{5}":"2+3")));
     assert.deepEqual(data.dados.conteudo[1].alternativas,["Joule","Watt","Newton","Pascal"]);
@@ -37,9 +44,9 @@ try{
    if(url.searchParams.get("branding")==="1")return reply({logo:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg=="});
    if(url.searchParams.get("contexto")==="1")return reply({items:url.searchParams.has("ano")?[{ano_letivo_id:year,curso_matriz_id:matrix,ano_lectivo:"2026/2027",classe:"8.ª Classe",disciplina:"Física",curso:"Ensino Geral",trimestre:1,cotacao_max_cent:2000}]:[{id:year,ativo:true,label:"2026/2027"}]});
    if(url.searchParams.has("prova"))return reply({prova:base});
-   return reply({provas:saved?[base,saved]:[base],escola:"Escola de teste",permissions:{author:true,admin:false,userId:user}});
+   return reply({provas:saved?[base,saved]:[base],escola:"Escola de teste",permissions:{author:true,admin:isAdmin,userId:user}});
   });
-  await page.goto("http://127.0.0.1:6006/provas.html");
+  await page.goto("http://127.0.0.1:6006/provas.html"+(isAdmin?"?portal=admin":""));
   const create=page.getByRole("button",{name:"Nova prova",exact:true});
   await create.waitFor();await noOverflow(page,"list "+width);
   if(width<640){assert.equal(await page.getByRole("list",{name:"Provas"}).isVisible(),true);assert.equal(await page.getByRole("table").isVisible(),false);}
@@ -345,7 +352,7 @@ try{
   const preview=dialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
   await preview.locator("math").waitFor();
   await preview.locator("img.school-logo").waitFor();
-  assert.equal(await preview.locator("img.school-logo").evaluate(img=>img.complete&&img.naturalWidth>0),true,"institutional raster loads inside preview");
+  assert.equal(await preview.locator("img.school-logo").evaluate(async img=>{await img.decode();return img.naturalWidth>0;}),true,"institutional raster loads inside preview");
   assert.equal(await preview.locator(".question-figure").count(),1);
   assert.equal(await preview.locator(".paper").getAttribute("data-layout"),"espacosa");
   assert.equal(await preview.locator(".linha").count(),7);
@@ -354,8 +361,22 @@ try{
   await noOverflow(page,"preview "+width);
   await dialog.getByRole("button",{name:"Editar",exact:true}).click();
   if(width<640)assert.equal(await dialog.getByLabel("Alternativa B da pergunta 2").inputValue(),"Watt","preview returns to active block");
+  if(isAdmin)await dialog.getByLabel("Cotação da pergunta 1").fill("18,75");
   await dialog.getByRole("button",{name:"Guardar rascunho"}).click();
   await dialog.getByRole("status").filter({hasText:"Prova guardada."}).waitFor();
+  if(isAdmin){
+   assert.equal(saved.conteudo.reduce((n,b)=>n+(b.cotacao_cent??0),0),2000);
+   await dialog.getByRole("button",{name:"Publicar prova",exact:true}).click();
+   await dialog.getByRole("button",{name:"Confirmar",exact:true}).click();
+   await dialog.getByText("Agendamento por turma",{exact:true}).waitFor();
+   const schedule=dialog.locator("section").filter({has:dialog.getByRole("heading",{name:"Agendamento por turma"})});
+   await schedule.getByLabel("Turma",{exact:true}).selectOption("80000000-0000-4000-8000-000000000001");
+   await schedule.getByLabel("Data",{exact:true}).fill("2026-12-07");
+   await schedule.getByLabel("Hora",{exact:true}).fill("08:30");
+   await schedule.getByRole("button",{name:"Agendar e publicar no calendário"}).click();
+   await schedule.getByText(/07\/12\/2026/).waitFor();
+   assert.equal(calendar.length,1);
+  }
   await dialog.getByRole("button",{name:"Fechar",exact:true}).click();
   await dialog.waitFor({state:"hidden"});
   await page.waitForFunction(()=>document.activeElement?.textContent?.includes("Nova prova"));
