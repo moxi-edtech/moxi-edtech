@@ -82,7 +82,7 @@ export default function ProfessorReopeningRequests({
   if (!loading && !error && recent.length === 0) return null;
 
   return (
-    <section aria-label="Pedidos de reabertura de notas" className="rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4">
+    <section aria-label="Pedidos de reabertura de notas" className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2">
         <ClipboardCheck className="h-4 w-4 text-klasse-green" aria-hidden="true" />
         <h2 className="text-sm font-semibold text-foreground">Pedidos de reabertura</h2>

@@ -17,7 +17,7 @@ export function PortalSection({
   testId?: string;
 }) {
   return (
-    <section aria-labelledby={id} data-testid={testId} className={`min-w-0 space-y-2 ${className}`}>
+    <section aria-labelledby={id} data-testid={testId} className={`klasse-portal-section min-w-0 space-y-2 ${className}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id={id} className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{title}</h2>
         {action}

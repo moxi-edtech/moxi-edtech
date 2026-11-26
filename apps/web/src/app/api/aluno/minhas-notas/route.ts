@@ -3,6 +3,7 @@ import { getAlunoContext } from "@/lib/alunoContext";
 import { resolveSelectedStudentId } from "@/lib/portalAlunoAuth";
 import { AcademicYearContextError } from "@/lib/academic-year/context";
 import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
+import { checkBoletimAccess } from "@/lib/aluno/boletimAccess";
 import { loadClassificacoesTrimestrais, loadNotasLancadas } from "@/lib/aluno/boletimNotas";
 import { publishedTrimestersFromOfficialSheets, selectPublishedStudentGrades } from "@/lib/aluno/published-notes";
 
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     });
     const { matricula, context } = resolved;
     if (!matricula?.id || !matricula.turma_id) return NextResponse.json({
-      ok: true, is_liberado: true, matricula_encontrada: false,
+      ok: true, is_liberado: false, matricula_encontrada: false,
       disciplinas: [], publicado_trimestres: [], context,
     }, { headers: { "Cache-Control": "no-store" } });
 
@@ -47,6 +48,15 @@ export async function GET(request: Request) {
     if (turmaError || !turma) return NextResponse.json({
       ok: false, error: "A matrícula não pertence a uma turma válida deste ano letivo.",
     }, { status: 409 });
+
+    // The same settled, granted payment authorizes consultation and PDF.
+    // Do not query published sheets or grades before checking access.
+    const access = await checkBoletimAccess(supabase, { escolaId: ctx.escolaId, alunoId, matriculaId: matricula.id });
+    if (access.error) return NextResponse.json({ ok: false, error: "Não foi possível verificar o pagamento do boletim." }, { status: 503, headers: { "Cache-Control": "private, no-store" } });
+    if (!access.granted) return NextResponse.json({
+      ok: true, is_liberado: false, matricula_encontrada: true, context,
+      disciplinas: [], publicado_trimestres: [],
+    }, { headers: { "Cache-Control": "private, no-store" } });
 
     const [{ data: sheets, error: sheetsError }, { data: periods, error: periodsError }] = await Promise.all([
       supabase.from("pautas_oficiais").select("periodo_letivo_id, pdf_path, tipo, status")
@@ -78,7 +88,7 @@ export async function GET(request: Request) {
     // Dados da turma por ID; este contexto é apenas leitura e não cria publicação.
     return NextResponse.json({
       ok: true,
-      is_liberado: true, // consultar nunca depende de um pedido financeiro
+      is_liberado: true, // pagamento confirmado; só notas oficialmente publicadas
       matricula_encontrada: true,
       context,
       turma_nome: turma.nome,

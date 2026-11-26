@@ -7,6 +7,7 @@ import {
   FileText,
   Banknote,
   CalendarX,
+  CalendarCheck,
   FileEdit,
   AlertCircle,
   UserPlus,
@@ -470,6 +471,7 @@ export function Dashboard({
                   onClick={()=>setProvasOpen(true)}
                   dialogOpen={provasOpen}
                 />}
+                {escolaParam && <AcaoRapidaCard icon={<CalendarCheck className="h-5 w-5"/>} label="Calendário de Avaliações" sublabel="Planear e imprimir" href={buildPortalHref(escolaParam,"/secretaria/operacoes-academicas/calendario-avaliacoes")} />}
                 <AcaoRapidaCard
                   icon={<Banknote className="h-5 w-5" />}
                   label="Pagar Propina"

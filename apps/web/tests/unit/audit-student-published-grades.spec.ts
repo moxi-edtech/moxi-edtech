@@ -47,14 +47,17 @@ test("uma classificação incompleta não é apresentada como definitiva", () =>
   assert.equal(selected[0].classificacoes[0].nota, null);
 });
 
-test("a consulta académica não cobra; a emissão do PDF mantém o controlo financeiro", () => {
+test("consulta e PDF exigem pagamento confirmado e publicação continua obrigatória", () => {
   const notes = readFileSync(resolve(process.cwd(), "src/app/api/aluno/minhas-notas/route.ts"), "utf8");
   const pdf = readFileSync(resolve(process.cwd(), "src/app/api/aluno/boletim/pdf/route.ts"), "utf8");
   const visual = readFileSync(resolve(process.cwd(), "src/components/aluno/tabs/TabNotas.tsx"), "utf8");
   assert.match(notes, /getAlunoContext\(\)/);
   assert.match(notes, /resolveBoletimMatricula/);
   assert.match(notes, /publishedTrimestersFromOfficialSheets/);
-  assert.doesNotMatch(notes, /checkBoletimAccess|isBoletimPaid|servico_pedidos/);
+  assert.match(notes, /checkBoletimAccess\(/);
+  assert.match(notes, /if \(!access\.granted\)/);
+  assert.ok(notes.indexOf("if (!access.granted)") < notes.indexOf("const [grades, classifications]"));
+  assert.match(notes, /is_liberado: false, matricula_encontrada: true, context,\s*disciplinas: \[\]/);
   assert.match(pdf, /checkBoletimAccess/);
   assert.match(pdf, /if \(!access\.granted\)/);
   assert.match(visual, /fetch\(`\/api\/aluno\/minhas-notas/);

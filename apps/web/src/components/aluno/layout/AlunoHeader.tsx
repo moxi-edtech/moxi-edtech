@@ -30,19 +30,20 @@ export function AlunoHeader({
   const schoolLabel = escolaNome?.trim() || "KLASSE";
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-border border-t-[3px] border-t-klasse-green bg-card/95 backdrop-blur-sm">
-      <div className="mx-auto flex min-h-14 w-full max-w-[1200px] items-center justify-between gap-2 px-3 md:px-6">
+    <header className="klasse-academic-topbar sticky top-0 z-30 w-full border-b border-border border-t-[3px] border-t-klasse-green bg-card">
+      <div className="mx-auto flex min-h-16 w-full max-w-[1200px] items-center justify-between gap-2 px-3 md:px-6">
         <Link
           href={homeHref}
           aria-label="Ir para o início do Portal do Aluno"
           className="group flex min-w-0 items-center gap-2 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
-            <Image src="/logo-klasse-ui.png" alt="KLASSE" width={24} height={24} className="h-6 w-6 object-contain" />
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+            <Image src="/logo-klasse-ui.png" alt="KLASSE" width={32} height={32} className="h-8 w-8 object-contain" />
           </span>
           <span className="min-w-0">
+            <span className="block text-sm font-bold leading-tight tracking-tight text-primary">KLASSE</span>
             <span className="sr-only">Portal do Aluno</span>
-            <span className="block max-w-[46vw] truncate text-sm font-semibold leading-5 text-primary sm:max-w-72" title={schoolLabel}>
+            <span className="block max-w-[42vw] truncate text-[11px] leading-4 text-muted-foreground sm:max-w-72" title={schoolLabel}>
               {schoolLabel}
             </span>
           </span>

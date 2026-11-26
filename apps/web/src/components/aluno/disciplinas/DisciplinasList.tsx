@@ -57,7 +57,7 @@ export function DisciplinasList() {
 
   const isCurrent = !loading && scope === query && !error;
   return (
-    <div className="min-w-0 space-y-4" data-testid="aluno-disciplinas">
+    <div className="min-w-0 space-y-5" data-testid="aluno-disciplinas">
       <div className="space-y-1">
         <h2 className="text-lg font-semibold text-foreground">As tuas disciplinas</h2>
         {isCurrent && <p className="text-sm text-muted-foreground">{yearLabel ? `Ano letivo ${yearLabel} · ` : ""}${disciplinas.length} disciplinas da tua turma</p>}

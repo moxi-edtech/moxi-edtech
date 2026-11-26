@@ -1,4 +1,9 @@
 import React, { useState } from "react";
+import { TabFinanceiro } from "../src/components/aluno/tabs/TabFinanceiro";
+import { TabFaltas } from "../src/components/aluno/tabs/TabFaltas";
+import { EstadoVitalBanner } from "../src/components/layout/escola-admin/EstadoVitalBanner";
+import ProfessorCalendarioPage from "../src/app/professor/calendario/page";
+import { PaymentDrawer } from "../src/components/aluno/financeiro-portal/PaymentDrawer";
 import { emitFixtureAuth } from "./auth-fixture";
 import CommandCenterVisualFixture, { installCommandCenterVisualMocks } from "./CommandCenterVisualFixture";
 import { canUseOperationalCopilot } from "../src/lib/roles/ai-roles";
@@ -291,6 +296,16 @@ if (name === "school-intelligence") {
     return originalFetch(input, init);
   };
 }
+if (name === "professor-calendar-context") {
+  const previous = window.fetch.bind(window);
+  window.fetch = (input, init) => {
+    if (!String(input).startsWith("/api/professor/calendario")) return previous(input, init);
+    return Promise.resolve(new Response(JSON.stringify({ok:true,ano_letivo:null,periodos:[],items:[
+      {id:"fixture-event",escola_id:"fixture",nome:"Reunião pedagógica",descricao:"Informações completas da reunião pedagógica sintética. Consulta sem abandonar o calendário.",data_inicio:"2099-11-26",data_fim:"2099-11-26",tipo:"REUNIAO",publico_alvo:null,cor_hex:null},
+      {id:"fixture-past-assessment",escola_id:"fixture",nome:"Avaliação anterior sintética",descricao:"Evento oficial sintético.",data_inicio:"2000-11-20",data_fim:"2000-11-20",tipo:"AVALIACAO_ESCOLAR",publico_alvo:null,cor_hex:null}
+    ]}),{headers:{"Content-Type":"application/json"}}));
+  };
+}
 const Scene = stories[name]?.render;
 const target = document.getElementById("root");
 if (target && name === "school-intelligence") {
@@ -365,7 +380,23 @@ function BalcaoFinancialRefreshFixture(){
   </main>;
 }
 
-if (target && name === "roster-export") createRoot(target).render(<RosterExportVisualFixture />);
+function PortalPaymentSheetFixture() {
+  const [open,setOpen]=useState(false);
+  const [received,setReceived]=useState(false);
+  return <main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4">
+    <button type="button" onClick={()=>setOpen(true)} className="min-h-11 rounded-xl border border-border px-4">Pagar propinas</button>
+    <output data-testid="receipt-status">{received?"Recebido":"Por enviar"}</output>
+    <PaymentDrawer open={open} onClose={()=>setOpen(false)} onUploaded={()=>setReceived(true)}
+      mensalidades={[{id:"00000000-0000-4000-8000-000000000401",competencia:"Novembro",valor:5000}]}
+      dadosPagamento={null} studentId="00000000-0000-4000-8000-000000000402" />
+  </main>;
+}
+if (target && name === "portal-finance-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4"><TabFinanceiro /></main>);
+else if (target && name === "portal-absence-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen p-4"><TabFaltas /></main>);
+else if (target && name === "operations-academic-card") createRoot(target).render(<main className="mx-auto min-h-screen max-w-6xl p-4"><EstadoVitalBanner compact calendarHref="/escola/fixture/operacoes/calendario" estado={{escola_id:"fixture",session_id:null,ano_ativo:2026,periodo_id:null,periodo_tipo:"TRIMESTRE",periodo_numero:1,hoje_bloqueado_pedagogico:false,evento_hoje_nome:"Reunião pedagógica sintética",fase_operacional:"REGULAR"}} /></main>);
+else if (target && name === "professor-calendar-context") createRoot(target).render(<main className="klasse-portal-theme klasse-academic-mobile min-h-screen"><ProfessorCalendarioPage /></main>);
+else if (target && name === "portal-payment-sheet") createRoot(target).render(<PortalPaymentSheetFixture />);
+else if (target && name === "roster-export") createRoot(target).render(<RosterExportVisualFixture />);
 else if (target && name === "theme-switcher") createRoot(target).render(<ThemeSwitcherVisualFixture />);
 else if (target && name === "balcao-financial-refresh") createRoot(target).render(<FeedbackProvider><BalcaoFinancialRefreshFixture /></FeedbackProvider>);
 else if (target && name === "school-intelligence") { /* Mounted above with synthetic auth. */ }

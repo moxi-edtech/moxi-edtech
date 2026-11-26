@@ -7,6 +7,8 @@ const read = (path) => readFileSync(new URL(path, root), 'utf8');
 test('todos os caminhos de visualização e emissão de notas usam a mesma autorização paga', () => {
   for (const path of [
     'app/api/aluno/boletim/route.ts',
+    'app/api/aluno/minhas-notas/route.ts',
+    'app/api/aluno/home/raa-status/route.ts',
     'app/api/aluno/boletim/pdf/route.ts',
     'app/api/aluno/dashboard/route.ts',
     'app/api/aluno/home/recent-grades/route.ts',

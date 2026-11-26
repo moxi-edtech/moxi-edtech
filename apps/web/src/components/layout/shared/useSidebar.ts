@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { SIDEBAR_WIDTH } from "@/lib/sidebarPresentation";
 
 type Opts = {
   storageKey: string;
@@ -13,8 +14,8 @@ type Opts = {
 export function useSidebar({
   storageKey,
   cssVar,
-  collapsedWidth = "80px",
-  expandedWidth = "256px",
+  collapsedWidth = SIDEBAR_WIDTH.collapsed,
+  expandedWidth = SIDEBAR_WIDTH.expanded,
   initialCollapsed = false,
 }: Opts) {
   const [collapsed, setCollapsed] = useState(() => {

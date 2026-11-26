@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { useSearchParams } from "next/navigation";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { CalendarClock, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
@@ -40,6 +41,11 @@ export function TabFaltas() {
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailScope, setDetailScope] = useState<string | null>(null);
+  const inFlight = useRef(false);
+  const currentScope = useRef(query);
+  useLayoutEffect(() => { currentScope.current = query; }, [query]);
   const [reason, setReason] = useState("");
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -54,11 +60,12 @@ export function TabFaltas() {
   useEffect(() => {
     const controller = new AbortController();
     let mounted = true;
-    setLoading(true); setData(null); setScope(null); setError(null);
+    setLoading(true); setError(null);
     void load(controller.signal).then((result) => {
       if (mounted) { setData(result); setScope(query); }
     }).catch((err: unknown) => {
       if (mounted && !controller.signal.aborted) {
+        setData(null); setScope(null);
         setError(err instanceof Error ? err.message : "Não foi possível carregar as faltas.");
       }
     }).finally(() => { if (mounted) setLoading(false); });
@@ -66,15 +73,17 @@ export function TabFaltas() {
   }, [load, query, retry]);
 
   // A manual refresh never discards an unfinished justification draft.
-  useEffect(() => { setFeedback(null); setEditingId(null); setReason(""); }, [query]);
+  useEffect(() => { setFeedback(null); setEditingId(null); setDetailOpen(false); setReason(""); }, [query]);
 
   const safeData = scope === query ? data : null;
+  const selected = detailScope === query ? safeData?.items.find(item => item.id === editingId) ?? null : null;
+  const canJustify = Boolean(safeData?.can_submit && selected && !loading && !error && selected.justificacao?.status !== "pending" && selected.justificacao?.status !== "approved");
   const submit = async (item: Absence) => {
-    if (!safeData?.can_submit || sending || reason.trim().length < 15) {
+    if (!canJustify || selected?.id !== item.id || inFlight.current || reason.trim().length < 15) {
       setFeedback("Explica o motivo com pelo menos 15 caracteres.");
       return;
     }
-    setSending(true); setFeedback(null);
+    inFlight.current = true; setSending(true); setFeedback(null);
     try {
       const response = await fetch(`/api/aluno/faltas?${query}`, {
         method: "POST",
@@ -83,16 +92,17 @@ export function TabFaltas() {
       });
       const json = await response.json().catch(() => null);
       if (!response.ok || !json?.ok) throw new Error(json?.error || "Não foi possível enviar o pedido.");
+      if (currentScope.current !== query) return;
       setFeedback(json.message || "Solicitação realizada. Aguardando análise da secretaria.");
-      setEditingId(null); setReason("");
+      setLoading(true); setDetailOpen(false); setReason("");
       setRetry((current) => current + 1);
     } catch (err) {
-      setFeedback(err instanceof Error ? err.message : "O pedido não foi confirmado. Tenta novamente.");
-    } finally { setSending(false); }
+      if (currentScope.current === query) setFeedback(err instanceof Error ? err.message : "O pedido não foi confirmado. Tenta novamente.");
+    } finally { inFlight.current = false; setSending(false); }
   };
 
   return (
-    <section className="space-y-4" aria-labelledby="aluno-faltas-heading" data-testid="aluno-faltas">
+    <section className="space-y-6" aria-labelledby="aluno-faltas-heading" data-testid="aluno-faltas">
       <header className="space-y-1">
         <h2 id="aluno-faltas-heading" className="text-xl font-semibold text-foreground">As minhas faltas</h2>
         {safeData?.context?.anoLetivoLabel && <p className="text-xs text-muted-foreground">Ano letivo {safeData.context.anoLetivoLabel}</p>}
@@ -102,9 +112,17 @@ export function TabFaltas() {
         <p className="text-sm text-foreground">{error}</p>
         <button type="button" className="min-h-11 rounded-lg border border-border px-4 text-sm" onClick={() => setRetry((n) => n + 1)}>Tentar novamente</button>
       </div>}
+      <PortalSheet open={detailOpen && Boolean(selected)} busy={sending} onClose={() => setDetailOpen(false)} title={selected?.disciplina_nome || "Detalhes da falta"} description={selected ? displayDate(selected.data) : "Assiduidade"} size="expanded">
+        {selected && <div className="space-y-3">
+          <p className="font-semibold">{statusLabel(selected.justificacao?.status)}</p>
+          {selected.justificacao && <><p className="text-xs text-muted-foreground">Motivo apresentado</p><p className="whitespace-pre-wrap break-words text-sm">{selected.justificacao.motivo}</p>{selected.justificacao.decision_reason && <p className="break-words text-sm">Decisão: {selected.justificacao.decision_reason}</p>}</>}
+          {canJustify && <><label htmlFor={`falta-motivo-${selected.id}`} className="block text-sm font-medium">Motivo da ausência</label><textarea id={`falta-motivo-${selected.id}`} rows={4} maxLength={2000} minLength={15} value={reason} disabled={sending} onChange={event => setReason(event.target.value)} className="w-full rounded-xl border border-input bg-background p-3 text-base focus-visible:ring-2 focus-visible:ring-ring" /><p className="text-xs text-muted-foreground">A escola analisará o pedido. A falta continua registada.</p><button type="button" disabled={sending || reason.trim().length < 15} onClick={() => void submit(selected)} className="min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? "A enviar…" : "Enviar justificação"}</button></>}
+          {feedback && <p role="status" className="text-sm text-foreground">{feedback}</p>}
+        </div>}
+      </PortalSheet>
       {safeData && (
         <>
-          <div className="grid gap-2 md:grid-cols-3" aria-label="Resumo de assiduidade">
+          <div className="grid gap-3 md:grid-cols-3" aria-label="Resumo de assiduidade">
             <AcaoRapidaCard dashboardCompact mobileCompact emphasizeSublabel label="Faltas" icon={<CalendarClock />} sublabel={String(safeData.resumo.faltas)} needsAttention={safeData.resumo.faltas > 0} />
             <AcaoRapidaCard dashboardCompact mobileCompact emphasizeSublabel label="Presenças" icon={<CheckCircle2 />} sublabel={String(safeData.resumo.presencas)} />
             <AcaoRapidaCard dashboardCompact mobileCompact emphasizeSublabel label="Atrasos" icon={<AlertTriangle />} sublabel={String(safeData.resumo.atrasos)} needsAttention={safeData.resumo.atrasos > 0} />
@@ -129,7 +147,7 @@ export function TabFaltas() {
             </div>
             {safeData.items.map((item) => {
               const status = item.justificacao?.status;
-              const active = editingId === item.id;
+              const active = detailOpen && detailScope === query && editingId === item.id;
               return <article key={item.id} className="space-y-2 rounded-xl border border-border bg-card p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex items-start gap-2">
@@ -150,28 +168,10 @@ export function TabFaltas() {
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                   <p>A justificação não foi aceite.{item.justificacao?.decision_reason ? ` Motivo: ${item.justificacao.decision_reason}` : " Podes apresentar um novo pedido."}</p>
                 </div>}
-                {safeData.can_submit && status !== "pending" && status !== "approved" && !active && (
-                  <button type="button" className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => { setEditingId(item.id); setReason(""); setFeedback(null); }}>
-                    {status === "rejected" ? "Enviar nova justificação" : "Solicitar justificação"}
-                  </button>
-                )}
-                {active && safeData.can_submit && <div className="space-y-2 border-t border-border pt-3">
-                  <label htmlFor={`falta-motivo-${item.id}`} className="block text-sm font-medium">Motivo da ausência</label>
-                  <textarea id={`falta-motivo-${item.id}`} rows={3} maxLength={2000} minLength={15}
-                    value={reason} disabled={sending} onChange={(event) => setReason(event.target.value)}
-                    placeholder="Descreve o motivo para a direção da escola analisar."
-                    className="w-full rounded-lg border border-input bg-background p-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-                  <p className="text-xs text-muted-foreground">O pedido será analisado pela escola. Enviar não altera automaticamente a falta.</p>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" disabled={sending} onClick={() => { setEditingId(null); setReason(""); }}
-                      className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold">Cancelar</button>
-                    <button type="button" disabled={sending || reason.trim().length < 15} onClick={() => void submit(item)}
-                      className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-                      {sending ? "A enviar…" : "Enviar justificação"}
-                    </button>
-                  </div>
-                </div>}
+                <button type="button" aria-haspopup="dialog" aria-expanded={active} disabled={sending} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => { setEditingId(item.id); setDetailScope(query); setReason(""); setFeedback(null); setDetailOpen(true); }}>
+                  {safeData.can_submit && status !== "pending" && status !== "approved" ? (status === "rejected" ? "Enviar nova justificação" : "Solicitar justificação") : "Ver detalhes"}
+                </button>
               </article>;
             })}
             {safeData.has_more && <p className="text-xs text-muted-foreground">A mostrar as 100 faltas mais recentes. Para consultar o histórico completo, contacta a secretaria.</p>}

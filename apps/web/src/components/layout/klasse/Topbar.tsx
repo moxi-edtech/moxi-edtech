@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import { ChevronDown, Search, Settings } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -58,10 +59,9 @@ function ScopedTopbar({
 
   // The student and teacher portals do not yet support theme selection.
   const showThemeControls = portal !== "aluno" && portal !== "professor";
-
-  // Teachers use class-scoped searches in their workspaces. The global
-  // index is an internal operator feature; do not mount its keyboard listener.
+  // Professor searches are contextual; do not mount the global keyboard listener.
   const showCommandCenter = portal !== "professor";
+  const academicPortal = portal === "aluno" || portal === "professor";
 
   const userInitial =
     (userName || portalSubtitle || "U")
@@ -72,9 +72,18 @@ function ScopedTopbar({
   return (
     <>
 
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
-        <div className="flex h-16 items-center gap-3 px-3 sm:gap-4 sm:px-4">
-          {showCommandCenter ? (
+      <header className={cn("sticky top-0 z-30 border-b border-border", academicPortal ? "klasse-academic-topbar bg-card" : "bg-background/80 backdrop-blur")}>
+        <div className={cn("flex min-h-16 items-center px-3 sm:px-4", academicPortal ? "gap-1.5 sm:gap-4" : "gap-3 sm:gap-4")}>
+          {academicPortal && (
+            <div className="flex min-w-0 items-center gap-2 md:hidden">
+              <Image src="/logo-klasse-ui.png" alt="KLASSE" width={32} height={32} className="h-8 w-8 shrink-0 object-contain" />
+              <div className="hidden min-w-0 min-[430px]:block">
+                <p className="text-sm font-bold leading-tight tracking-tight text-primary">KLASSE</p>
+                {_escolaNome && <p title={_escolaNome} className="max-w-[110px] truncate text-[11px] leading-4 text-muted-foreground">{_escolaNome}</p>}
+              </div>
+            </div>
+          )}
+          {showCommandCenter && (
             <>
               <div className="hidden min-w-0 md:block md:w-[clamp(230px,27vw,420px)]">
                 <button
@@ -122,11 +131,9 @@ function ScopedTopbar({
                 }}
               />
             </>
-          ) : (
-            <span className="min-w-0 truncate text-sm font-semibold text-primary">{portalTitle}</span>
           )}
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className={cn("ml-auto flex shrink-0 items-center", academicPortal ? "gap-1 sm:gap-2" : "gap-2")}>
             {showThemeControls && <ThemeToggle className="hidden sm:inline-flex" />}
             <NotificacoesDropdown />
             <LockScreenButton
@@ -138,7 +145,8 @@ function ScopedTopbar({
               <button
                 onClick={() => setMenuOpen((prev) => !prev)}
                 className={cn(
-                  "flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-3",
+                  "flex h-10 items-center gap-2 rounded-xl border border-border bg-card",
+                  academicPortal ? "px-2 sm:px-3" : "px-3",
                   "hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/20",
                 )}
                 aria-label={`Menu do usuário - ${portalTitle}`}

@@ -1,10 +1,12 @@
 import type { Bloco } from "./schema";
 // Physical units shared by authoring controls and the single print renderer.
 export const PROVA_PAPER = {width:210,height:297,marginTop:18,marginBottom:18,marginLeft:20,marginRight:20,questionGap:6,answerGap:3,lineHeight:8,maxLines:20,minBoxHeight:24} as const;
-export function respostaLayout(tipo:Bloco["tipo"],linhas:number){
+export const RESPOSTA_FORMATOS=["nenhum","linhas","retangulo"] as const;
+export type RespostaFormato=typeof RESPOSTA_FORMATOS[number];
+export function respostaLayout(tipo:Bloco["tipo"],linhas:number,formato?:RespostaFormato){
  const count=Number.isFinite(linhas)?Math.max(0,Math.min(PROVA_PAPER.maxLines,Math.trunc(linhas))):0;
- if(tipo==="grupo"||tipo==="texto"||count===0)return {kind:"none" as const,count:0,heightMm:0};
- if(tipo==="calculo"||tipo==="desenho")return {kind:"box" as const,count,heightMm:Math.max(PROVA_PAPER.minBoxHeight,count*PROVA_PAPER.lineHeight)};
+ if(tipo==="grupo"||tipo==="texto"||count===0||formato==="nenhum")return {kind:"none" as const,count:0,heightMm:0};
+ if(formato==="retangulo"||(!formato&&(tipo==="calculo"||tipo==="desenho")))return {kind:"box" as const,count,heightMm:Math.max(PROVA_PAPER.minBoxHeight,count*PROVA_PAPER.lineHeight)};
  return {kind:"lines" as const,count,heightMm:count*PROVA_PAPER.lineHeight};
 }
 
@@ -33,12 +35,14 @@ export function estimatedPages(blocks:readonly Bloco[],mode:Composicao,hasLogo=f
  const p=COMPOSICAO[mode], line=12*25.4/72*p.lineHeight;
  let pages=1, used=70+(hasLogo?25:0)+(mode==="espacosa"?2:mode==="compacta"?-2:0);
  for(const b of blocks){
-  const answer=respostaLayout(b.tipo,b.linhas);
+  const answer=respostaLayout(b.tipo,b.linhas,b.resposta_formato);
   const maths=b.rich?.segments.filter(s=>s.kind==="math").length??0;
   const content=textLines(b.texto,b.tipo==="alinea"?78:82)*line+maths*6;
   const alternatives=(alternativesInColumns(b.alternativas)?Math.ceil(b.alternativas!.length/2)*line:(b.alternativas??[]).reduce((n,a)=>n+textLines(a,76)*line,0))+(b.alternativas?.length?p.alternativeGap:0);
   const gap=b.tipo==="grupo"?p.groupTop+p.groupBottom:p.questionGap;
-  const height=content+alternatives+gap+answer.heightMm+(answer.kind==="none"?0:p.answerGap);
+  const figures=b.figuras?.length??0;
+  const figureHeight=figures===1?71:figures>1?Math.ceil(figures/3)*43+3:0;
+  const height=content+alternatives+figureHeight+gap+answer.heightMm+(answer.kind==="none"?0:p.answerGap);
   // Estimate keep-together for ordinary questions; long material may flow across sheets.
   if(height<=BODY_MM&&used+height>BODY_MM){pages++;used=0;}
   const total=used+height;

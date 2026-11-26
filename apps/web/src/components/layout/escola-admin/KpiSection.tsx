@@ -3,7 +3,10 @@
 
 import { UsersRound, Users, UserCheck, Wallet, AlertCircle } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
-import { OperationalMetricSkeleton } from "@/components/shared/OperationalMetricCard";
+import { useState } from "react";
+import Link from "next/link";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { OperationalMetricCard, OperationalMetricSkeleton } from "@/components/shared/OperationalMetricCard";
 import type { SetupStatus } from "./setupStatus";
 import type { KpiStats, OperationalSnapshot } from "./dashboard.types";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -71,6 +74,10 @@ export default function KpiSection({
   portalBase = "admin",
   alunoSeries,
 }: Props) {
+  const [detailSelection, setDetailSelection] = useState<{label:string;scope:string} | null>(null);
+  const detailScope = JSON.stringify([escolaId, academicYearId, mode]);
+  const detailLabel = detailSelection?.scope === detailScope ? detailSelection.label : null;
+  const [detailOpen, setDetailOpen] = useState(false);
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
 
@@ -199,9 +206,12 @@ export default function KpiSection({
         },
       ];
 
+  const detail = kpis.find(kpi => kpi.label === detailLabel);
   return (
     <div className={gridClasses}>
-      {kpis.map((kpi) => (
+      {kpis.map((kpi) => mode === "operacoes" && (kpi.label === "Alunos" || kpi.label === "Turmas") ? (
+        <OperationalMetricCard key={kpi.label} label={kpi.label} value={kpi.value} icon={kpi.icon} description={kpi.description} onClick={() => { setDetailSelection({label:kpi.label,scope:detailScope}); setDetailOpen(true); }} dialogOpen={detailOpen && detailLabel === kpi.label} />
+      ) : (
         <KpiCard
           key={kpi.label}
           label={kpi.label}
@@ -216,6 +226,9 @@ export default function KpiSection({
           responsiveDensity={mode === "admin"}
         />
       ))}
+      {mode === "operacoes" && <PortalSheet open={detailOpen && Boolean(detail)} onClose={() => setDetailOpen(false)} title={detail?.label ?? "Indicador"} description="Visão geral da escola" size="compact">
+        {detail && <><p className="text-3xl font-semibold tabular-nums text-primary">{detail.value ?? "—"}</p><p className="text-sm text-muted-foreground">Total apresentado no painel da escola.</p><Link href={detail.href} className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold text-primary">Abrir listagem de {detail.label.toLowerCase()}</Link></>}
+      </PortalSheet>}
     </div>
   );
 }

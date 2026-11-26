@@ -59,7 +59,7 @@ export function AcademicoWorkspace() {
   }, []);
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-4xl space-y-3 pb-3">
+    <div className="mx-auto w-full min-w-0 max-w-4xl space-y-5 pb-3">
       <h1 className="text-xl font-semibold tracking-tight text-klasse-green sm:text-2xl">Académico</h1>
       <PortalTabs items={sections} value={activeTab} onChange={navigateTab}
         layout="compact" idPrefix="academic" label="Área académica" testId="academic-local-tabs" />

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { usePortalMobile } from "@/components/portal/ui/usePortalMobile";
 import QRCode from "react-qr-code";
 import { User, ShieldCheck, Calendar, GraduationCap, Wallet, WifiOff, Info } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -31,6 +33,8 @@ export function CartaoEstudante() {
   const [isOffline, setIsOffline] = useState(false);
   const [error, setError] = useState<{ type: string; message: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"card" | "qr">("card");
+  const [qrOpen, setQrOpen] = useState(false);
+  const mobile = usePortalMobile();
 
   useEffect(() => {
     const handleOnlineStatus = () => setIsOffline(!navigator.onLine);
@@ -48,6 +52,7 @@ export function CartaoEstudante() {
     const controller = new AbortController();
     setLoading(true);
     setData(null);
+    setQrOpen(false);
     setError(null);
     setIsServedFromCache(false);
 
@@ -104,8 +109,8 @@ export function CartaoEstudante() {
   if (error?.type === "PENDING_PAYMENT") {
     return (
       <div className="py-8 px-4 max-w-sm mx-auto text-center">
-        <div className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm">
-          <div className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center mx-auto">
+        <div className="space-y-4 rounded-xl border border-border bg-card p-4 ">
+          <div className="h-11 w-11 rounded-xl bg-accent text-accent-foreground border border-primary/15 flex items-center justify-center mx-auto">
             <Wallet size={20} />
           </div>
           <div className="space-y-1">
@@ -121,12 +126,46 @@ export function CartaoEstudante() {
 
   if (!data) return <div role="alert" className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">{error?.message || "Falha ao carregar identidade."}</div>;
 
+  const qrContent = (<div className="w-full max-w-[340px] mx-auto space-y-6">
+          <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center  sm:p-6">
+            
+            {/* The QR is a machine-readable document, not a themed surface.
+                Its own SVG includes a quiet zone of at least four modules
+                (36 units for a 180-unit symbol, even at QR version 1). */}
+            <svg viewBox="0 0 252 252" width={252} height={252}
+              className="block h-auto w-full max-w-[252px]"
+              role="img" aria-label="Código QR de validação do cartão do estudante">
+              <rect width={252} height={252} rx={8} fill="#ffffff" />
+              <QRCode
+                x={36}
+                y={36}
+                value={data.verification_url}
+                size={180}
+                bgColor="#ffffff"
+                fgColor="#0f172a"
+                aria-hidden="true"
+              />
+            </svg>
+
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">Validação em tempo real</h3>
+              <p className="text-sm leading-5 text-muted-foreground">
+                Apresenta o código para validar a tua identidade.
+              </p>
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald/10 border border-emerald/20 px-3.5 py-1 text-xs font-medium text-emerald dark:text-emerald-300">
+              <ShieldCheck size={12} /> Válido até {new Date(data.validade).toLocaleDateString("pt-PT")}
+            </div>
+
+          </div>
+        </div>);
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-md flex-col items-center space-y-4">
 
       {/* Offline Status Badge */}
       {(isServedFromCache || isOffline) && (
-        <div className="flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200/80 px-4 py-1.5 text-xs font-bold text-amber-800 shadow-sm animate-in fade-in duration-300">
+        <div className="flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200/80 px-4 py-1.5 text-xs font-bold text-amber-800  animate-in fade-in duration-300">
           <WifiOff size={14} className="text-amber-600 shrink-0" />
           <span>Offline · Cartão guardado</span>
         </div>
@@ -137,7 +176,7 @@ export function CartaoEstudante() {
         <button
           type="button"
           onClick={() => setActiveTab("card")}
-          aria-pressed={activeTab === "card"}
+          aria-pressed={activeTab === "card" || mobile}
           className={`min-h-11 flex-1 rounded-xl px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
             activeTab === "card"
               ? "bg-card text-primary ring-1 ring-klasse-gold/30 shadow-sm"
@@ -148,8 +187,10 @@ export function CartaoEstudante() {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("qr")}
-          aria-pressed={activeTab === "qr"}
+          onClick={() => { if (mobile) setQrOpen(true); else setActiveTab("qr"); }}
+          aria-haspopup={mobile ? "dialog" : undefined}
+          aria-pressed={mobile ? undefined : activeTab === "qr"}
+          aria-expanded={mobile ? qrOpen : undefined}
           className={`min-h-11 flex-1 rounded-xl px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
             activeTab === "qr"
               ? "bg-card text-primary ring-1 ring-klasse-gold/30 shadow-sm"
@@ -161,9 +202,9 @@ export function CartaoEstudante() {
       </div>
 
       {/* TAB 1: Visual do Cartão Estudantil */}
-      {activeTab === "card" && (
+      {(activeTab === "card" || mobile) && (
         <div className="w-full max-w-[360px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
-          <div className="relative min-h-[215px] w-full rounded-xl border border-border bg-card p-4 text-foreground shadow-sm flex flex-col justify-between">
+          <div className="relative min-h-[215px] w-full rounded-xl border border-border bg-card p-4 text-foreground  flex flex-col justify-between">
             
 
             {/* Header do Cartão */}
@@ -233,43 +274,13 @@ export function CartaoEstudante() {
       )}
 
       {/* TAB 2: QR Code de Validação (Espaçoso e Limpo) */}
-      {activeTab === "qr" && (
-        <div className="w-full max-w-[340px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
-          <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center shadow-sm sm:p-6">
-            
-            {/* The QR is a machine-readable document, not a themed surface.
-                Its own SVG includes a quiet zone of at least four modules
-                (36 units for a 180-unit symbol, even at QR version 1). */}
-            <svg viewBox="0 0 252 252" width={252} height={252}
-              className="block h-auto w-full max-w-[252px]"
-              role="img" aria-label="Código QR de validação do cartão do estudante">
-              <rect width={252} height={252} rx={8} fill="#ffffff" />
-              <QRCode
-                x={36}
-                y={36}
-                value={data.verification_url}
-                size={180}
-                bgColor="#ffffff"
-                fgColor="#0f172a"
-                aria-hidden="true"
-              />
-            </svg>
-
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">Validação em tempo real</h3>
-              <p className="text-sm leading-5 text-muted-foreground">
-                Apresenta o código para validar a tua identidade.
-              </p>
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald/10 border border-emerald/20 px-3.5 py-1 text-xs font-medium text-emerald dark:text-emerald-300">
-              <ShieldCheck size={12} /> Válido até {new Date(data.validade).toLocaleDateString("pt-PT")}
-            </div>
-
-          </div>
-        </div>
+      {activeTab === "qr" && !mobile && (
+        qrContent
       )}
 
+      <PortalSheet open={mobile && qrOpen} onClose={()=>setQrOpen(false)} title="QR de validação" description="Apresenta o código para validar a tua identidade." size="expanded">
+                {qrContent}
+      </PortalSheet>
     </div>
   );
 }
