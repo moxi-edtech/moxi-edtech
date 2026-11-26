@@ -119,7 +119,8 @@ test("aluno reutiliza os cards de Operações com densidade mobile e navegação
   assert.match(card, /if \(href\) return <Link href=\{href\}/);
   assert.match(dashboard, /<PortalDrawerPushButton[\s\S]*?content: <TabHorario \/>/);
   assert.doesNotMatch(dashboard, /href=\{go\("\/aluno\/horario"\)\}/);
-  assert.match(dashboard, /href=\{go\(item.href\)\}/);
+  assert.match(dashboard, /contextual \? \{ onClick: \(\) => openDrawer\(contextual\)/);
+  assert.match(dashboard, /href: go\(item.href\)/);
   assert.doesNotMatch(dashboard, /<PortalStatCard/);
 });
 
