@@ -111,12 +111,12 @@
 }
 
 .klasse-portal-theme .klasse-welcome-signature {
-  height: 24px;
+  height: 20px;
   background-color: #0f1712;
   background-image: url("/icons/klasse-welcome-signature.svg");
   background-repeat: repeat-x;
   background-position: left center;
-  background-size: 96px 24px;
+  background-size: auto 20px;
 }
 
 /* Academic mobile only; keep status semantics and desktop layouts. */
@@ -146,5 +146,58 @@
     font-size: 1.5rem;
     line-height: 1.3;
     overflow-wrap: anywhere;
+  }
+}
+
+/* Sora variable from Google Fonts (SIL OFL 1.1); public/fonts/OFL-Sora.txt. */
+@font-face {
+  font-family: Sora;
+  src: url("/fonts/sora-variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+}
+.klasse-portal-theme {
+  font-family: Sora, system-ui, sans-serif;
+}
+.klasse-academic-mobile, .klasse-academic-dialog {
+  font-synthesis: none;
+}
+.klasse-academic-mobile .klasse-portal-section h2 {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.35;
+}
+.klasse-academic-mobile .klasse-portal-operational-card:is(a,button):not([aria-disabled="true"]),
+.klasse-academic-mobile .klasse-portal-press,
+.klasse-academic-dialog .klasse-portal-press {
+  transition: background-color 140ms ease, border-color 140ms ease, opacity 140ms ease;
+}
+.klasse-academic-mobile .klasse-portal-operational-card:is(a,button):not([aria-disabled="true"]):active,
+.klasse-academic-mobile .klasse-portal-press:not(:disabled):not([aria-disabled="true"]):active,
+.klasse-academic-dialog .klasse-portal-press:not(:disabled):active {
+  opacity: 0.82;
+}
+@media (prefers-reduced-motion: reduce) {
+  .klasse-academic-mobile .klasse-portal-operational-card,
+  .klasse-academic-mobile .klasse-portal-press,
+  .klasse-academic-dialog .klasse-portal-press {
+    transition: none;
+  }
+}
+@media (max-width: 767px) {
+  .klasse-academic-mobile .klasse-academic-topbar { padding-top: env(safe-area-inset-top, 0px); }
+  .klasse-academic-mobile .klasse-portal-bottom-nav {
+    padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+  }
+  .klasse-academic-mobile .klasse-portal-drawer {
+    padding-inline: max(1rem, env(safe-area-inset-left, 0px)) max(1rem, env(safe-area-inset-right, 0px));
+  }
+  .klasse-academic-mobile :is(input:not([type]),input[type="text"],input[type="email"],input[type="tel"],input[type="search"],input[type="password"],input[type="number"],textarea,select),
+  .klasse-academic-dialog :is(input:not([type]),input[type="text"],input[type="email"],input[type="tel"],input[type="search"],input[type="password"],input[type="number"],textarea,select) {
+    font-size: 1rem;
+  }
+  .klasse-academic-dialog {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
 }

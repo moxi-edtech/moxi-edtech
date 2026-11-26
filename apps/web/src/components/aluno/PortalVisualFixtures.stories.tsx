@@ -1,6 +1,8 @@
 "use client";
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { Home, Clock, BookOpen, Wallet, ClipboardCheck, Pencil, FileText, CalendarDays, User } from "lucide-react";
+import { PortalBottomNav } from "@/components/layout/klasse/PortalBottomNav";
 import { ToastProvider } from "@/components/feedback/FeedbackSystem";
 import { TabDocumentos } from "@/components/aluno/tabs/TabDocumentos";
 import { AcademicoWorkspace } from "@/components/aluno/academico/AcademicoWorkspace";
@@ -85,8 +87,28 @@ if (typeof window !== "undefined" && !window.__klasseVisualFetchInstalled) {
   };
 }
 
-const Surface = ({ children }: { mode: FixtureMode; children: React.ReactNode }) => {
-  return <ToastProvider><main className="klasse-portal-theme mx-auto min-h-screen max-w-[1200px] bg-muted/25 p-4 text-foreground sm:p-6">{children}</main></ToastProvider>;
+const Surface = ({ children, mode }: { mode: FixtureMode; children: React.ReactNode }) => {
+  const teacher = mode === "professor";
+  const hasNav = teacher || mode.startsWith("dashboard-");
+  const mainItems = teacher ? [
+    { href: "/professor", label: "Início", icon: Home },
+    { href: "/professor/frequencias", label: "Chamada", icon: ClipboardCheck },
+    { href: "/professor/notas", label: "Notas", icon: Pencil },
+    { href: "/professor/provas", label: "Provas", icon: FileText },
+  ] : [
+    { href: "/aluno/dashboard", label: "Início", icon: Home },
+    { href: "/aluno/horario", label: "Horário", icon: Clock },
+    { href: "/aluno/academico", label: "Académico", icon: BookOpen },
+    { href: "/aluno/financeiro", label: "Financeiro", icon: Wallet },
+  ];
+  const drawerItems = teacher ? [
+    { href: "/professor/calendario", label: "Calendário", icon: CalendarDays },
+    { href: "/professor/perfil", label: "Perfil", icon: User },
+  ] : [
+    { href: "/aluno/avisos", label: "Avisos", icon: FileText },
+    { href: "/aluno/perfil", label: "Perfil", icon: User },
+  ];
+  return <ToastProvider><div className="klasse-portal-theme klasse-academic-mobile min-h-screen bg-muted/25 text-foreground"><main className={"mx-auto min-w-0 max-w-[1200px] p-4 sm:p-6"+(hasNav?" pb-[calc(88px+env(safe-area-inset-bottom))] md:pb-6":"")}>{children}</main>{hasNav && <div className="md:hidden"><PortalBottomNav mainItems={mainItems} drawerItems={drawerItems} activeHref={mainItems[0].href} navigationLabel="Navegação do portal" moreLabel="Mais áreas" hideOnDesktop /></div>}</div></ToastProvider>;
 };
 
 const meta: Meta = { title: "KLASSE/Portal Visual Fixtures", parameters: { nextjs: { appDirectory: true }, layout: "fullscreen" } };

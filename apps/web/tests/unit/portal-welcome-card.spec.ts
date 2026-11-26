@@ -34,3 +34,17 @@ test("professor não mascara indicadores indisponíveis com zero", () => {
   assert.match(teacher, /Dados indisponíveis/);
   assert.doesNotMatch(teacher, /animate-ping|blur-3xl/);
 });
+
+test("saudação tem uma única data e a fonte local tem licença e pesos reais", () => {
+  const welcome = read("components/portal/ui/PortalWelcomeCard.tsx");
+  const css = read("app/globals.css");
+  const layout = read("app/layout.tsx");
+  assert.equal((welcome.match(/<time\b/g) ?? []).length, 1);
+  assert.doesNotMatch(welcome, /shortFormatter|shortDate/);
+  assert.match(css, /font-weight: 100 800/);
+  assert.match(css, /sora-variable\.ttf/);
+  assert.match(layout, /rel="preload" href="\/fonts\/sora-variable\.ttf"/);
+  assert.doesNotMatch(layout, /userScalable: false|maximumScale: 1|fonts\.googleapis\.com/);
+  assert.ok(readFileSync(new URL("../../public/fonts/sora-variable.ttf", import.meta.url)).length > 10000);
+  assert.match(readFileSync(new URL("../../public/fonts/OFL-Sora.txt", import.meta.url), "utf8"), /SIL OPEN FONT LICENSE/i);
+});

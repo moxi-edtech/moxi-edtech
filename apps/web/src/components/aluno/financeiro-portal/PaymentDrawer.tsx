@@ -121,7 +121,7 @@ export function PaymentDrawer({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next && !sending) onClose(); }}>
-      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto overscroll-contain rounded-xl bg-card p-4 text-foreground sm:p-6">
+      <DialogContent closeButton={false} overlayClassName="bg-black/40" className="klasse-portal-theme klasse-academic-dialog max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto overscroll-contain rounded-xl bg-card p-4 text-foreground motion-reduce:animate-none sm:p-6">
         <DialogTitle>Pagamento consolidado</DialogTitle>
         <DialogDescription>{mensalidades.length} mensalidade(s) · Total exacto: {money.format(total)}</DialogDescription>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -156,7 +156,7 @@ export function PaymentDrawer({
         {sending && <p role="status" aria-live="polite" className="mt-2 text-sm text-muted-foreground">A enviar comprovativo: {progress}%</p>}
         {friendlyError && <p role="alert" className="mt-2 text-sm text-destructive">{friendlyError}</p>}
         <p className="text-xs text-muted-foreground">O comprovativo é enviado ao seleccionar o ficheiro. Aguarda a validação da secretaria.</p>
-        <button type="button" onClick={onClose} disabled={sending} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-50">Fechar</button>
+        <button type="button" onClick={onClose} disabled={sending} className="klasse-portal-press min-h-11 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-50">Fechar</button>
       </DialogContent>
     </Dialog>
   );

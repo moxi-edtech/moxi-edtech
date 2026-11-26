@@ -70,7 +70,7 @@ function ScopedTopbar({
   return (
     <>
 
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
+      <header className={cn("sticky top-0 z-30 border-b border-border", academicPortal ? "klasse-academic-topbar bg-card" : "bg-background/80 backdrop-blur")}>
         <div className={cn("flex min-h-16 items-center px-3 sm:px-4", academicPortal ? "gap-1.5 sm:gap-4" : "gap-3 sm:gap-4")}>
           {academicPortal && (
             <div className="flex min-w-0 items-center gap-2 md:hidden">

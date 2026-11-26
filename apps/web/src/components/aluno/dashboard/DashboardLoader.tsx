@@ -36,10 +36,10 @@ async function fetchJson<T>(path: string, signal: AbortSignal, scopedQuery = "")
   }
 }
 function LoadingDashboard() {
-  return <div role="status" aria-live="polite" className="w-full animate-pulse space-y-5 py-2" aria-label="A carregar a tua página"><span className="sr-only">A carregar a tua página</span><div aria-hidden="true">
+  return <div role="status" aria-live="polite" className="w-full motion-safe:animate-pulse space-y-5 py-2" aria-label="A carregar a tua página"><span className="sr-only">A carregar a tua página</span><div aria-hidden="true">
     <div className="h-36 rounded-xl bg-muted"/>
     <div className="grid gap-2 md:grid-cols-3"><div className="h-16 rounded-xl bg-muted"/><div className="h-16 rounded-xl bg-muted"/><div className="h-16 rounded-xl bg-muted"/></div>
-    <div className="h-48 rounded-2xl bg-muted"/><div className="h-32 rounded-2xl bg-muted"/>
+    <div className="h-48 rounded-xl bg-muted"/><div className="h-32 rounded-xl bg-muted"/>
     </div>
   </div>;
 }

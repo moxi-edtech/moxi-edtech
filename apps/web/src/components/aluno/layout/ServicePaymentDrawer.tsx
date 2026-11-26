@@ -123,7 +123,7 @@ export function ServicePaymentDrawer({
 
   return (
     <Dialog open={open && Boolean(documento)} onOpenChange={(next) => { if (!next && !sending) onClose(); }}>
-      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto overscroll-contain rounded-xl bg-card p-4 text-foreground sm:p-6">
+      <DialogContent closeButton={false} overlayClassName="bg-black/40" className="klasse-portal-theme klasse-academic-dialog max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto overscroll-contain rounded-xl bg-card p-4 text-foreground motion-reduce:animate-none sm:p-6">
         <DialogTitle>Pagamento do serviço</DialogTitle>
         <DialogDescription>
           Confere o valor e escolhe o método de pagamento. A confirmação por AppyPay é automática; transferências exigem comprovativo e validação da secretaria.
@@ -166,9 +166,9 @@ export function ServicePaymentDrawer({
             {error && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
             <p className="text-sm text-muted-foreground">O envio não confirma o pagamento. Aguarda a validação da secretaria; não precisas de realizar outra transferência.</p>
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button type="button" onClick={onClose} disabled={sending} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-50">Cancelar</button>
+              <button type="button" onClick={onClose} disabled={sending} className="klasse-portal-press min-h-11 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-50">Cancelar</button>
               <button type="button" onClick={() => void handleUpload()} disabled={!selectedFile || !documento.intentId || sending}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+                className="klasse-portal-press inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
                 <Upload className="h-4 w-4" /> {sending ? "A enviar…" : "Confirmar e enviar comprovativo"}
               </button>
             </div>

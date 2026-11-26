@@ -59,7 +59,7 @@ export function PortalTabs<T extends string>({
           type="button"
           onClick={() => onChange(tab.id)}
           onKeyDown={(event) => onTabKeyDown(event, tab.id)}
-          className={`inline-flex min-h-12 min-w-0 flex-1 items-center justify-center border-b-2 font-semibold ${layout === "compact" ? "flex-col gap-1 px-0.5 py-1.5 text-[11px] leading-tight sm:flex-row sm:gap-2 sm:px-2 sm:text-sm" : "gap-1.5 whitespace-nowrap px-2 text-sm"} transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${layout === "scroll" ? "sm:gap-2 sm:px-4" : ""} ${value === tab.id ? "border-klasse-gold text-klasse-green" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          className={`klasse-portal-press inline-flex min-h-12 min-w-0 flex-1 items-center justify-center border-b-2 font-semibold ${layout === "compact" ? "flex-col gap-1 px-0.5 py-1.5 text-xs leading-[1.35] sm:flex-row sm:gap-2 sm:px-2 sm:text-sm" : "gap-1.5 whitespace-nowrap px-2 text-sm"} transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${layout === "scroll" ? "sm:gap-2 sm:px-4" : ""} ${value === tab.id ? "border-klasse-gold text-klasse-green" : "border-transparent text-muted-foreground hover:text-foreground"}`}
         >
           {tab.icon && <span aria-hidden="true" className="shrink-0">{tab.icon}</span>}
           <span className={layout === "compact" ? "min-w-0 break-words text-center" : ""}>{tab.label}</span>

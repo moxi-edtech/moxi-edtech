@@ -73,8 +73,8 @@ export default function AcaoRapidaCard({
           {disabled ? <Lock className="h-4 w-4" /> : icon}
         </span>
         <span className={portalTile ? "w-full min-w-0 flex-1" : "min-w-0 flex-1"}>
-          <span className={portalTile ? "block break-words text-xs font-semibold leading-snug text-foreground sm:text-sm" : "block text-sm font-medium leading-snug text-foreground"}>{label}</span>
-          {sublabel && <span className={`mt-1 block break-words leading-snug ${emphasizeSublabel ? "text-base font-semibold tabular-nums text-foreground" : "text-xs text-muted-foreground"}`}>{sublabel}</span>}
+          <span className={portalTile ? "block break-words text-[13px] font-medium leading-[1.4] text-foreground sm:text-sm" : "block text-sm font-medium leading-[1.4] text-foreground"}>{label}</span>
+          {sublabel && <span className={`mt-1 block break-words leading-[1.45] ${emphasizeSublabel ? "text-base font-semibold tabular-nums text-foreground" : "text-xs text-muted-foreground"}`}>{sublabel}</span>}
           {disabled && disabledReason && <span className="mt-1 block text-xs leading-snug text-muted-foreground">{disabledReason}</span>}
         </span>
         {!portalTile && !disabled && (href || onClick) && <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />}

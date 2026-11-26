@@ -87,6 +87,7 @@ try {
         if (expectedState) await page.getByText(expectedState, { exact: false }).first().waitFor({ timeout: 8000 }).catch(() => {});
         await page.evaluate(z => { document.documentElement.style.zoom = String(z); }, zoom);
         await page.waitForTimeout(200);
+        await page.evaluate(() => document.fonts.ready);
         if (name.startsWith("dashboard-")) {
           const links = page.getByTestId("aluno-summary-cards").getByRole("link");
           if (await links.count() !== 3) errors.push(`${name}: expected exactly three summary cards`);
@@ -106,6 +107,37 @@ try {
             });
             if (!focusVisible) errors.push(`${name} ${width}x${height} zoom ${zoom}: card keyboard focus not visible`);
             await links.nth(1).evaluate(el => el.blur());
+          }
+        }
+        if ((name.startsWith("dashboard-") || name === "professor-com-turmas") && width === 390 && zoom === 1) {
+          const welcome = page.getByTestId("portal-welcome-card");
+          await welcome.waitFor({timeout:10000});
+          const identity = await welcome.evaluate(async el => {
+            const faces = await document.fonts.load("600 16px Sora");
+            const signature = el.querySelector(".klasse-welcome-signature");
+            const img = new Image();
+            img.src = "/icons/klasse-welcome-signature.svg";
+            try { await img.decode(); } catch { /* reported below */ }
+            return {
+              font: faces.some(face => face.status === "loaded") && getComputedStyle(el).fontFamily.includes("Sora"),
+              signature: Boolean(signature && signature.getBoundingClientRect().height > 0 && getComputedStyle(signature).backgroundImage.includes("klasse-welcome-signature.svg") && img.naturalWidth > 0),
+              dates: el.querySelectorAll("time").length,
+            };
+          });
+          if (!identity.font || !identity.signature || identity.dates !== 1) errors.push(name + ": invalid welcome identity " + JSON.stringify(identity));
+          if (name === "dashboard-clean" || name === "professor-com-turmas") {
+            const more = page.getByRole("button", { name: "Mais áreas" });
+            await more.click();
+            const drawer = page.getByRole("dialog", { name: "Outras áreas" });
+            await drawer.waitFor();
+            const fits = await drawer.evaluate(el => {
+              const box = el.getBoundingClientRect();
+              return box.top >= 0 && box.bottom <= window.innerHeight + 1 && box.left >= 0 && box.right <= window.innerWidth + 1;
+            });
+            if (!fits) errors.push(name + ": drawer exceeds mobile viewport");
+            await page.keyboard.press("Escape");
+            await drawer.waitFor({state:"hidden"});
+            await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Mais áreas");
           }
         }
         const metrics = await page.evaluate(() => {

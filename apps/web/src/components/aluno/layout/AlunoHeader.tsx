@@ -30,7 +30,7 @@ export function AlunoHeader({
   const schoolLabel = escolaNome?.trim() || "KLASSE";
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-border border-t-[3px] border-t-klasse-green bg-card">
+    <header className="klasse-academic-topbar sticky top-0 z-30 w-full border-b border-border border-t-[3px] border-t-klasse-green bg-card">
       <div className="mx-auto flex min-h-16 w-full max-w-[1200px] items-center justify-between gap-2 px-3 md:px-6">
         <Link
           href={homeHref}

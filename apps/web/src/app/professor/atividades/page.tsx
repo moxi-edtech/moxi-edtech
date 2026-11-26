@@ -544,7 +544,7 @@ export default function ProfessorAtividadesPage() {
                   {nextActionError.next_action && (
                     <Link
                       href={nextActionError.next_action.href}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-semibold text-xs hover:bg-amber-300"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
                     >
                       <span>{nextActionError.next_action.label}</span>
                       <ChevronRight size={14} />

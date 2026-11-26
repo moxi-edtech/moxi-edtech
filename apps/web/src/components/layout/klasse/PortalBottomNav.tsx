@@ -86,7 +86,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="relative z-10 max-h-[85dvh] w-full max-w-xl overflow-y-auto overscroll-contain rounded-t-2xl border border-border bg-card px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-4 shadow-lg sm:px-5"
+            className="relative z-10 klasse-portal-drawer max-h-[85dvh] w-full max-w-xl overflow-y-auto overscroll-contain rounded-t-2xl border border-border bg-card px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-4 shadow-lg sm:px-5"
           >
             <div className="mb-3 flex items-start justify-between gap-3 border-b border-border pb-3">
               <div>
@@ -102,7 +102,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               {drawerItems.map((item) => {
                 const { href, label, icon: Icon, badge } = item;
                 const active = item.href === activeHref;
@@ -119,7 +119,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
                       (active ? "border-primary/20 bg-accent text-accent-foreground" : "border-border bg-card text-foreground hover:bg-muted")}
                   >
                     <Icon className={"h-5 w-5 shrink-0 " + (active ? "text-accent-foreground" : "text-muted-foreground")} aria-hidden="true" />
-                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                    <span className="min-w-0 flex-1 break-words leading-snug">{label}</span>
                     {badge && badge > 0
                       ? <span className="rounded-full bg-destructive px-1.5 text-xs font-semibold text-background">{badge}</span>
                       : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
@@ -133,7 +133,7 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
 
       <nav
         inert={isMoreOpen ? true : undefined}
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card"
+        className="klasse-portal-bottom-nav fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label={navigationLabel}
       >
@@ -150,11 +150,11 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
                 onTouchStart={() => onPreload?.(item)}
                 aria-label={badge && badge > 0 ? `${label}, ${badge}` : label}
                 aria-current={active ? "page" : undefined}
-                className={"relative flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 " +
+                className={"klasse-portal-press relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5 text-[11px] font-medium leading-tight transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 " +
                   (active ? "bg-accent text-accent-foreground ring-1 ring-primary/15" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
               >
-                <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-                <span className="max-w-full truncate text-center">{item.compactLabel ?? label}</span>
+                <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <span className="max-w-full break-words text-center">{item.compactLabel ?? label}</span>
                 {badge && badge > 0 && (
                   <span className="absolute right-1 top-0 rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-background">{badge}</span>
                 )}
@@ -169,10 +169,10 @@ export function PortalBottomNav({ mainItems, drawerItems, activeHref, navigation
             aria-haspopup="dialog"
             aria-controls={isMoreOpen ? dialogId : undefined}
             aria-expanded={isMoreOpen}
-            className={"relative flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 " +
+            className={"klasse-portal-press relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-1.5 text-[11px] font-medium leading-tight transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 " +
               (isDrawerActive || isMoreOpen ? "bg-accent text-accent-foreground ring-1 ring-primary/15" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
           >
-            <MoreIcon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+            <MoreIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
             <span>Mais</span>
             {drawerItems.some((item) => (item.badge ?? 0) > 0) && (
               <span className="absolute right-2 top-1 h-2 w-2 rounded-full bg-destructive" aria-hidden="true" />
