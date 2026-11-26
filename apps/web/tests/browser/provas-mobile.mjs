@@ -208,6 +208,13 @@ try{
    await noOverflow(page,"single question "+width);
    await page.screenshot({path:"apps/web/visual-evidence/provas/pergunta-individual-"+width+".png"});
   }
+  // Actual file picker, local re-encoding and preview on both browser engines.
+  const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==","base64");
+  const picker=dialog.getByLabel("Inserir imagem na pergunta 2",{exact:true});
+  await picker.setInputFiles({name:"figura.png",mimeType:"image/png",buffer:png});
+  await dialog.getByRole("img",{name:"Figura 1",exact:true}).waitFor();
+  await dialog.getByLabel("Descrição acessível (não revelar a resposta)").fill("Ilustração de teste");
+  await noOverflow(page,"figura "+width);
   await dialog.getByRole("button",{name:"Organizar perguntas",exact:true}).click();
   const order=dialog.getByRole("region",{name:"Organizar perguntas",exact:true});
   await order.getByRole("list",{name:"Ordem dos blocos"}).waitFor();
@@ -257,13 +264,6 @@ try{
   assert.match(await second.innerText(),/Qual é a unidade/);
   await noOverflow(page,"organizer "+width);
   await page.screenshot({path:"apps/web/visual-evidence/provas/organizador-"+width+".png"});
-  // Actual file picker, local re-encoding and preview on both browser engines.
-  const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==","base64");
-  const picker=dialog.getByLabel("Inserir imagem na pergunta 2",{exact:true});
-  await picker.setInputFiles({name:"figura.png",mimeType:"image/png",buffer:png});
-  await dialog.getByRole("img",{name:"Figura 1",exact:true}).waitFor();
-  await dialog.getByLabel("Descrição acessível (não revelar a resposta)").fill("Ilustração de teste");
-  await noOverflow(page,"figura "+width);
   await dialog.getByRole("button",{name:"Pré-visualizar"}).click();
   const preview=dialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
   await preview.locator("math").waitFor();
