@@ -1399,7 +1399,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           }}
         />
         {details && (
-          <DisciplinaModal
+          <DisciplinaModal escolaId={escolaId ?? undefined}
             open={disciplinaModalOpen}
             mode={disciplinaModalMode}
             initial={disciplinaEditing}

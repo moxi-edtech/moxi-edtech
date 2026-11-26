@@ -1683,7 +1683,7 @@ export default function TurmasConfiguracoesPage() {
         </ModalShell>
       )}
 
-      <DisciplinaModal
+      <DisciplinaModal escolaId={escolaId ?? undefined}
         open={disciplinaModalOpen}
         mode={disciplinaModalMode}
         initial={disciplinaEditing}
