@@ -19,8 +19,10 @@ type EstadoVital = {
 };
 
 export function EstadoVitalBanner({ estado, compact = false, calendarHref }: { estado: EstadoVital | null; compact?: boolean; calendarHref?: string }) {
-  const [eventOpen, setEventOpen] = useState(false);
+  const [openedEventKey, setOpenedEventKey] = useState<string | null>(null);
   if (!estado) return null;
+  const eventKey = JSON.stringify([estado.escola_id, estado.session_id, estado.periodo_id, estado.evento_hoje_nome]);
+  const eventOpen = openedEventKey === eventKey;
 
   const isExames = estado.fase_operacional === 'EXAMES';
   const isBoundary = estado.fase_operacional === 'PRE_INICIO' || estado.fase_operacional === 'POS_ENCERRAMENTO';
@@ -35,7 +37,7 @@ export function EstadoVitalBanner({ estado, compact = false, calendarHref }: { e
       : [estado.periodo_tipo, estado.periodo_numero].filter(Boolean).join(" ") || "Intervalo";
     return (
       <>
-        <section aria-label="Estado académico" data-testid="operations-academic-card" className="klasse-welcome-card min-w-0 overflow-hidden rounded-xl">
+        <section aria-label="Estado académico" data-testid="operations-academic-card" className="klasse-welcome-card klasse-operations-academic-card min-w-0 overflow-hidden rounded-xl">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-4 sm:px-5">
             <div className="klasse-welcome-editorial min-w-0 space-y-1 pl-3">
               <p className="flex items-center gap-2 text-xs font-medium"><Calendar className="h-4 w-4 shrink-0" aria-hidden="true" /> Estado académico</p>
@@ -47,7 +49,7 @@ export function EstadoVitalBanner({ estado, compact = false, calendarHref }: { e
               {estado.evento_hoje_nome && (isBloqueado || isExames ? (
                 <p className="break-words text-sm font-semibold">{estado.evento_hoje_nome}</p>
               ) : (
-                <button type="button" aria-haspopup="dialog" aria-expanded={eventOpen} onClick={() => setEventOpen(true)}
+                <button type="button" aria-haspopup="dialog" aria-expanded={eventOpen} onClick={() => setOpenedEventKey(eventKey)}
                   className="inline-flex min-h-11 items-center gap-1 rounded-xl px-1 text-xs font-semibold underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#124527]">
                   Evento de hoje <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -57,7 +59,7 @@ export function EstadoVitalBanner({ estado, compact = false, calendarHref }: { e
           </div>
           <PortalCulturalSignature />
         </section>
-        <PortalSheet open={eventOpen && Boolean(estado.evento_hoje_nome) && !isBloqueado && !isExames} onClose={() => setEventOpen(false)} title="Evento de hoje" description={`${estado.ano_ativo ?? "—"} · ${periodo}`} size="compact">
+        <PortalSheet open={eventOpen && Boolean(estado.evento_hoje_nome) && !isBloqueado && !isExames} onClose={() => setOpenedEventKey(null)} title="Evento de hoje" description={`${estado.ano_ativo ?? "—"} · ${periodo}`} size="compact">
           <p className="break-words text-base font-semibold text-foreground">{estado.evento_hoje_nome}</p>
           <p className="text-sm text-muted-foreground">{faseLabel} · Diário liberado</p>
         </PortalSheet>

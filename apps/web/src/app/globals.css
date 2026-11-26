@@ -98,7 +98,8 @@
 
 /* Fixed identity artwork, scoped to the institutional card in both themes.
    The rest of the portals continue to consume semantic theme tokens. */
-.klasse-welcome-card {
+.klasse-portal-theme .klasse-welcome-card,
+.klasse-welcome-card.klasse-operations-academic-card {
   --welcome-amber: #fea513;
   --welcome-forest: #124527;
   background: var(--welcome-amber);

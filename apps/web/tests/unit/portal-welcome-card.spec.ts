@@ -57,6 +57,7 @@ test("operations shares the cultural signature without changing academic authori
   assert.match(banner, /href=\{calendarHref\}/);
   assert.match(banner, /<PortalSheet open=\{eventOpen/);
   const css = read("app/globals.css");
+  assert.match(css, /\.klasse-portal-theme \.klasse-welcome-card,\s*\.klasse-welcome-card\.klasse-operations-academic-card/);
   assert.match(css, /background-position: center top/);
   assert.match(css, /background-size: 80px 20px/);
   const calendar = read("app/professor/calendario/page.tsx");
