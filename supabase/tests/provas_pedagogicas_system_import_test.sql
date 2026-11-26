@@ -29,10 +29,10 @@ SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001'
 DO $$
 DECLARE v_id uuid:=current_setting('test.system_exam_id')::uuid;
 BEGIN
- IF EXISTS(SELECT 1 FROM public.provas_pedagogicas WHERE id=v_id) THEN RAISE EXCEPTION 'system draft leaked to teacher'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.provas_pedagogicas WHERE id=v_id) THEN RAISE EXCEPTION 'assigned system draft unavailable to teacher'; END IF;
  BEGIN
   PERFORM public.provas_mutar('00000000-0000-4000-8000-000000000001',v_id,1,'arquivar',NULL);
-  RAISE EXCEPTION 'NULL author authorization bypass';
+  RAISE EXCEPTION 'teacher archived shared system draft';
  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 END $$;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
