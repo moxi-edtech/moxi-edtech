@@ -6,7 +6,9 @@ import { ErrorState } from "@/components/feedback/FeedbackSystem";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { buildStudentAttention, nextLessonLabel, type StudentDocument, type StudentRematricula } from "@/lib/aluno/dashboardPresentation";
 import { TabHorario } from "@/components/aluno/tabs/TabHorario";
-import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { PortalDrawerNavigator, PortalDrawerPushButton } from "@/components/portal/ui/PortalDrawerNavigator";
+import { TabNotificacoes } from "@/components/aluno/tabs/TabNotificacoes";
+import AuditPageView from "@/components/audit/AuditPageView";
 import { PortalAction } from "@/components/portal/ui/PortalAction";
 import { PortalEmptyState } from "@/components/portal/ui/PortalEmptyState";
 import { PortalSection } from "@/components/portal/ui/PortalSection";
@@ -69,8 +71,11 @@ export default function DashboardLoader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
-  const [lessonScope, setLessonScope] = useState<string | null>(null);
-  const lessonOpen = lessonScope === `${school}:${scopedQuery}`;
+  const drawerScope = `${school}:${scopedQuery}`;
+  const [drawer, setDrawer] = useState<{ scope: string; kind: "daily" | "notices" } | null>(null);
+  const activeDrawer = drawer?.scope === drawerScope ? drawer.kind : null;
+  const openDrawer = (kind: "daily" | "notices") => setDrawer({ scope: drawerScope, kind });
+  const lessonOpen = activeDrawer === "daily";
   const refresh = useCallback(() => setReload(n => n + 1), []);
   useEffect(() => {
     const controller = new AbortController();
@@ -125,7 +130,7 @@ export default function DashboardLoader() {
       <div className="grid grid-cols-2 gap-3 min-[380px]:grid-cols-3" data-testid="aluno-summary-cards">
         <AcaoRapidaCard dashboardCompact mobileCompact label="Avisos" portalTile portalClean
           icon={<Bell className="h-4 w-4" />} sublabel={`${(screen.dashboard.avisos_recentes ?? []).length} recentes`}
-          href={go("/aluno/avisos")} />
+          onClick={() => openDrawer("notices")} dialogOpen={activeDrawer === "notices"} />
         <AcaoRapidaCard dashboardCompact mobileCompact label="Notas" portalTile portalClean
           icon={<BookOpen className="h-4 w-4" />} unavailable={typeof screen.boletim?.is_liberado !== "boolean"}
           sublabel={typeof screen.boletim?.is_liberado === "boolean" ? (screen.boletim.is_liberado ? "Acesso livre" : "Protegidas") : "Dados indisponíveis"}
@@ -144,10 +149,7 @@ export default function DashboardLoader() {
         <AcaoRapidaCard dashboardCompact mobileCompact portalClean icon={<Clock3 className="h-4 w-4"/>}
           label={lesson ? lesson.subject : "Sem próxima aula publicada"}
           sublabel={lesson ? [lesson.day, lesson.time, ...lesson.details].join(" · ") : "Ver horário"}
-          onClick={() => setLessonScope(`${school}:${scopedQuery}`)} dialogOpen={lessonOpen} />
-        <PortalSheet open={lessonOpen} onClose={() => setLessonScope(null)} title="Horário diário" description="Consulta as aulas publicadas por dia da semana." size="expanded" footer={<PortalAction href={go("/aluno/horario")} variant="primary" className="w-full">Consultar horário completo</PortalAction>}>
-          {lessonOpen && <TabHorario key={`${school}:${scopedQuery}`} dailyOnly /> }
-        </PortalSheet>
+          onClick={() => openDrawer("daily")} dialogOpen={lessonOpen} />
       </PortalSection>
       {attentions.length > 0 && <PortalSection id="attention-title" title="A acompanhar" className="lg:col-span-2" testId="attention">
         <div className="grid gap-3">
@@ -163,12 +165,26 @@ export default function DashboardLoader() {
       </PortalSection>}
     </div>
     <PortalSection id="notices" title="Avisos da escola" action={
-      <PortalAction href={go("/aluno/avisos")}>Ver todos <ArrowRight aria-hidden="true" className="h-4 w-4" /></PortalAction>
+      <PortalAction onClick={() => openDrawer("notices")}>Ver todos <ArrowRight aria-hidden="true" className="h-4 w-4" /></PortalAction>
     }>
       {(screen.dashboard.avisos_recentes??[]).length===0 ? <PortalEmptyState
         icon={<Bell className="h-5 w-5" />} title="Sem avisos recentes" /> : <ul className="divide-y divide-border rounded-xl border border-border bg-card px-4">
         {screen.dashboard.avisos_recentes.map(a=><li key={a.id} className="py-3"><p className="text-sm font-medium text-foreground">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{a.resumo}</p>}<p className="mt-1 text-xs text-muted-foreground">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></li>)}
       </ul>}
     </PortalSection>
+    <PortalDrawerNavigator key={drawerScope} open={activeDrawer !== null} onClose={() => setDrawer(null)}
+      root={activeDrawer === "notices" ? {
+        id: `${drawerScope}:notices`, title: "Avisos", description: "Comunicações publicadas pela escola.",
+        content: <><AuditPageView portal="aluno" acao="PAGE_VIEW" entity="avisos" /><TabNotificacoes /></>,
+      } : {
+        id: `${drawerScope}:daily`, title: "Horário diário", description: "Consulta as aulas publicadas por dia da semana.",
+        content: lessonOpen ? <>
+          <TabHorario dailyOnly />
+          <PortalDrawerPushButton className="klasse-portal-cta min-h-11 w-full rounded-xl px-4 py-2 text-sm font-semibold"
+            frame={{ id: `${drawerScope}:weekly`, title: "Horário completo", description: "Consulta todas as aulas da semana.", content: <TabHorario /> }}>
+            Consultar horário completo
+          </PortalDrawerPushButton>
+        </> : null,
+      }} />
   </div>;
 }
