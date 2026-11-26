@@ -50,14 +50,15 @@ export function ProfessorPlanosWorkspace({ embedded = false, requestedTurmaId = 
         const key = `${item.turma_id}:${item.disciplina_id}`;
         if (!map.has(key)) map.set(key, { turma_id: item.turma_id, disciplina_id: item.disciplina_id, turma_nome: item.turma_nome ?? "Turma", disciplina_nome: item.disciplina_nome ?? "Disciplina" });
       }
-      const nextAssignments = Array.from(map.values());
+      const nextAssignments = Array.from(map.values()).filter(item => !embedded || ((!requestedTurmaId || item.turma_id === requestedTurmaId) && (!requestedDisciplinaId || item.disciplina_id === requestedDisciplinaId)));
       setAssignments(nextAssignments);
-      setPlans(planData.items ?? []);
-      const requestedAssignment = nextAssignments.find((item) => item.turma_id === requestedTurmaId && (!requestedDisciplinaId || item.disciplina_id === requestedDisciplinaId));
+      setPlans((planData.items as Plan[] ?? []).filter(item => !embedded || ((!requestedTurmaId || item.turma_id === requestedTurmaId) && (!requestedDisciplinaId || item.disciplina_id === requestedDisciplinaId))));
+      const matching = nextAssignments.filter((item) => item.turma_id === requestedTurmaId && (!requestedDisciplinaId || item.disciplina_id === requestedDisciplinaId));
+      const requestedAssignment = matching.length === 1 ? matching[0] : undefined;
       if (requestedAssignment) setForm((current) => current.turma_id ? current : { ...current, turma_id: requestedAssignment.turma_id, disciplina_id: requestedAssignment.disciplina_id });
     } catch (cause) { setLoadError(cause instanceof Error ? cause.message : "Não foi possível carregar os planos."); }
     finally { setLoading(false); }
-  }, [requestedTurmaId, requestedDisciplinaId]);
+  }, [embedded, requestedTurmaId, requestedDisciplinaId]);
 
   useEffect(() => { void load(); }, [load]);
 
