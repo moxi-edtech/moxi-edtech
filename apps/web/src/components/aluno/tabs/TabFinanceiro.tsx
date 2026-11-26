@@ -135,11 +135,11 @@ function FinanceiroScope({ studentId }: { studentId: string | null }) {
     try {
       const response = await fetch(`/api/aluno/financeiro${query}`, { cache: "no-store", signal: controller.signal });
       const json = await response.json() as ApiResponse;
+      if (controller.signal.aborted || activeRequest.current !== controller) return;
       if (!response.ok || !json.ok) {
         if (response.status === 401 || response.status === 403) { scopeReady.current = null; setLoadedQuery(null); setDetailOpen(false); setSelectedIds([]); }
         throw new Error("Não foi possível consultar o financeiro.");
       }
-      if (controller.signal.aborted || activeRequest.current !== controller) return;
       const mapped = (json.mensalidades ?? []).map(m => ({ ...m, status: normalizeStatus(m.status) }));
       setRows(mapped);
       setBolsas(json.bolsas ?? []);

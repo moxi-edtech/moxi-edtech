@@ -65,6 +65,7 @@ export function TabFaltas() {
       if (mounted) { setData(result); setScope(query); }
     }).catch((err: unknown) => {
       if (mounted && !controller.signal.aborted) {
+        setData(null); setScope(null);
         setError(err instanceof Error ? err.message : "Não foi possível carregar as faltas.");
       }
     }).finally(() => { if (mounted) setLoading(false); });

@@ -831,6 +831,7 @@ function ProfessorNotasContent() {
         hash,
         trimestresAtivos: [trimestreSelecionado],
         mostrarTrimestresInativos: showInactiveTerms,
+        conferencia: true,
       },
       alunos,
     }

@@ -113,7 +113,7 @@ try {
       await service.waitFor({state:"hidden"});
 
       let absencePosted=0;
-      await page.route("**/api/aluno/faltas?*",async route=>{
+      await page.route(/\/api\/aluno\/faltas(?:\?.*)?$/,async route=>{
         if(route.request().method()==="POST"){
           absencePosted++;
           assert.equal(route.request().postDataJSON().frequencia_id,"fixture-absence");
