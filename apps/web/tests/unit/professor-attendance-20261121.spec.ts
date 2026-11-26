@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 const read = (path: string) => readFileSync(new URL("../../src/" + path, import.meta.url), "utf8");
 test("attendance rows keep a stable number during search and make actions discoverable", () => {
-  const code = read("app/professor/frequencias/page.tsx");
+  const code = read("components/professor/ProfessorFrequenciasWorkspace.tsx");
   assert.match(code, /new Map\(alunos\.map\(\(student, index\)/);
   assert.match(code, /studentNumbers\.get\(a\.id\)/);
   assert.match(code, /grid grid-cols-3/);
@@ -19,7 +19,7 @@ test("attendance rows keep a stable number during search and make actions discov
 
 test("plan-list skeleton matches the title/date/status/edit anatomy of real cards", () => {
   const skeleton = read("components/professor/ProfessorLoadingSkeletons.tsx");
-  const plans = read("app/professor/planos-aula/page.tsx");
+  const plans = read("components/professor/ProfessorPlanosWorkspace.tsx");
   assert.match(plans, /ProfessorPlanosListSkeleton/);
   const start = skeleton.indexOf("export function ProfessorPlanosListSkeleton()");
   const end = skeleton.indexOf("/** Layout-equivalent", start);
