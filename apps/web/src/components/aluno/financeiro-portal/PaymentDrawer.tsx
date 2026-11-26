@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 type Mensalidade = { id: string; competencia: string; valor: number };
 type DadosPagamento = {
@@ -120,17 +120,17 @@ export function PaymentDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose}>
-      <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-card p-4 shadow-xl" style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom))" }} onClick={(e) => e.stopPropagation()}>
-        <p className="text-sm font-semibold text-foreground">Pagamento consolidado</p>
-        <p className="text-xs text-muted-foreground">{mensalidades.length} mensalidade(s) · Total exacto: {money.format(total)}</p>
+    <Dialog open={open} onOpenChange={(next) => { if (!next && !sending) onClose(); }}>
+      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto overscroll-contain rounded-xl bg-card p-4 text-foreground sm:p-6">
+        <DialogTitle>Pagamento consolidado</DialogTitle>
+        <DialogDescription>{mensalidades.length} mensalidade(s) · Total exacto: {money.format(total)}</DialogDescription>
         <div className="mt-3 flex flex-wrap gap-2">
           {mensalidades.map((item) => <span key={item.id} className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-foreground">{item.competencia} · {money.format(item.valor)}</span>)}
         </div>
         <div className="mt-4 rounded-xl bg-muted p-3 text-sm text-foreground">
           <p className="font-medium text-foreground">Coordenadas bancárias</p>
           <p>Banco: {dadosPagamento?.banco || "Consultar secretaria"}</p>
-          <p>IBAN: {dadosPagamento?.iban || "Indisponível no momento"}</p>
+          <p className="break-all">IBAN: {dadosPagamento?.iban || "Indisponível no momento"}</p>
           {(dadosPagamento?.titular_conta || dadosPagamento?.titular) && (
             <p>Titular: {dadosPagamento?.titular_conta || dadosPagamento?.titular}</p>
           )}
@@ -151,12 +151,13 @@ export function PaymentDrawer({
         </label>
         <label className="mt-4 block">
           <span className="mb-2 block text-xs text-muted-foreground">Comprovativo (PDF/Imagem)</span>
-          <input type="file" className="block w-full text-sm" accept=".pdf,image/jpeg,image/png,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) void submitFile(f); }} disabled={sending} />
+          <input type="file" className="block min-h-11 w-full rounded-xl border border-border bg-card p-2 text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-muted file:px-3 file:py-2 file:text-foreground focus-visible:ring-2 focus-visible:ring-ring" accept=".pdf,image/jpeg,image/png,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) void submitFile(f); }} disabled={sending} />
         </label>
-        {sending && <p className="mt-2 text-xs text-muted-foreground">Upload: {progress}%</p>}
-        {friendlyError && <p className="mt-2 text-xs text-red-600">{friendlyError}</p>}
-        <Button tone="green" className="mt-4 min-h-11 w-full" disabled={sending}>{sending ? "A anexar..." : "Anexar Comprovativo"}</Button>
-      </div>
-    </div>
+        {sending && <p role="status" aria-live="polite" className="mt-2 text-sm text-muted-foreground">A enviar comprovativo: {progress}%</p>}
+        {friendlyError && <p role="alert" className="mt-2 text-sm text-destructive">{friendlyError}</p>}
+        <p className="text-xs text-muted-foreground">O comprovativo é enviado ao seleccionar o ficheiro. Aguarda a validação da secretaria.</p>
+        <button type="button" onClick={onClose} disabled={sending} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-50">Fechar</button>
+      </DialogContent>
+    </Dialog>
   );
 }

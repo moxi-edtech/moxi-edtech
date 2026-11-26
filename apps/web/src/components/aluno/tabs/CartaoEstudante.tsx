@@ -104,8 +104,8 @@ export function CartaoEstudante() {
   if (error?.type === "PENDING_PAYMENT") {
     return (
       <div className="py-8 px-4 max-w-sm mx-auto text-center">
-        <div className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm">
-          <div className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center mx-auto">
+        <div className="space-y-4 rounded-xl border border-border bg-card p-4 ">
+          <div className="h-11 w-11 rounded-xl bg-accent text-accent-foreground border border-primary/15 flex items-center justify-center mx-auto">
             <Wallet size={20} />
           </div>
           <div className="space-y-1">
@@ -126,7 +126,7 @@ export function CartaoEstudante() {
 
       {/* Offline Status Badge */}
       {(isServedFromCache || isOffline) && (
-        <div className="flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200/80 px-4 py-1.5 text-xs font-bold text-amber-800 shadow-sm animate-in fade-in duration-300">
+        <div className="flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200/80 px-4 py-1.5 text-xs font-bold text-amber-800  animate-in fade-in duration-300">
           <WifiOff size={14} className="text-amber-600 shrink-0" />
           <span>Offline · Cartão guardado</span>
         </div>
@@ -163,7 +163,7 @@ export function CartaoEstudante() {
       {/* TAB 1: Visual do Cartão Estudantil */}
       {activeTab === "card" && (
         <div className="w-full max-w-[360px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
-          <div className="relative min-h-[215px] w-full rounded-xl border border-border bg-card p-4 text-foreground shadow-sm flex flex-col justify-between">
+          <div className="relative min-h-[215px] w-full rounded-xl border border-border bg-card p-4 text-foreground  flex flex-col justify-between">
             
 
             {/* Header do Cartão */}
@@ -235,7 +235,7 @@ export function CartaoEstudante() {
       {/* TAB 2: QR Code de Validação (Espaçoso e Limpo) */}
       {activeTab === "qr" && (
         <div className="w-full max-w-[340px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
-          <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center shadow-sm sm:p-6">
+          <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center  sm:p-6">
             
             {/* The QR is a machine-readable document, not a themed surface.
                 Its own SVG includes a quiet zone of at least four modules

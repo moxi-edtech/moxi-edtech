@@ -77,7 +77,8 @@ jobs:
             /tmp/cc-d-all-unit-tests.txt
           retention-days: 14
   synthetic-three-attendances:
-    runs-on: ubuntu-latest
+    # Playwright 1.57 does not provide Chromium builds for Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4

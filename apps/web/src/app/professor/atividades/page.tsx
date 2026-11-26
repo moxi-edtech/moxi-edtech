@@ -347,7 +347,7 @@ export default function ProfessorAtividadesPage() {
 
   return (
     <div className="min-h-screen bg-background pb-24 text-foreground">
-      <div className={`${PORTAL_PAGE_INSET} space-y-6`}>
+      <div className={`${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 space-y-6`}>
         
         {/* HEADER DA PÁGINA */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -366,7 +366,7 @@ export default function ProfessorAtividadesPage() {
               setNextActionError(null);
               setShowModal(true);
             }}
-            className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold shadow-sm active:scale-95 transition-all self-start md:self-auto cursor-pointer"
+            className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold  active:scale-95 transition-all self-start md:self-auto cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Criar actividade</span>
@@ -374,8 +374,8 @@ export default function ProfessorAtividadesPage() {
         </header>
 
         {/* FILTROS DE ESTADO */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
-          <div className="flex items-center gap-1.5 overflow-x-auto p-1">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 ">
+          <div className="flex min-w-0 max-w-full items-center gap-1.5 overflow-x-auto p-1">
             {[
               { id: "todos", label: "Todas as Actividades" },
               { id: "rascunho", label: "Rascunhos" },
@@ -385,9 +385,11 @@ export default function ProfessorAtividadesPage() {
               <button
                 key={tab.id}
                 onClick={() => setFilterStatus(tab.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                aria-pressed={filterStatus === tab.id}
+                type="button"
+                className={`min-h-11 shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
                   filterStatus === tab.id
-                    ? "bg-klasse-gold text-klasse-gold-900 shadow-sm"
+                    ? "bg-accent text-accent-foreground ring-1 ring-primary/15"
                     : "text-muted-foreground hover:bg-muted"
                 }`}
               >
@@ -401,7 +403,7 @@ export default function ProfessorAtividadesPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-3 ">
           <label className="sr-only" htmlFor="pesquisa-atividades">Pesquisar actividades</label>
           <input
             id="pesquisa-atividades"
@@ -444,20 +446,20 @@ export default function ProfessorAtividadesPage() {
               return (
                 <div
                   key={act.id}
-                  className="group rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md hover:border-emerald-500/40 transition-all flex flex-col justify-between"
+                  className="group rounded-xl border border-border bg-card p-5   hover:border-emerald-500/40 transition-all flex flex-col justify-between"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs font-mono">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border  font-mono">
                         {act.tipo}
                       </span>
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${badgeStyle}`}>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase border ${badgeStyle}`}>
                         {act.status}
                       </span>
                     </div>
 
                     <div>
-                      <h3 className="font-black text-foreground text-base group-hover:text-emerald-700 transition-colors">
+                      <h3 className="font-semibold text-foreground text-base group-hover:text-emerald-700 transition-colors">
                         {act.titulo}
                       </h3>
                       {act.instrucoes && (
@@ -488,7 +490,7 @@ export default function ProfessorAtividadesPage() {
                   <div className="border-t border-border pt-3 mt-4 flex items-center justify-between gap-2">
                     <Link
                       href={professorHref(`/professor/atividades/${act.id}`)}
-                      className="inline-flex items-center gap-1 text-xs font-black text-emerald-700 hover:text-emerald-800"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
                     >
                       <span>{isRascunho ? "Retomar rascunho" : "Acompanhar entregas"}</span>
                       <ChevronRight size={14} />
@@ -498,7 +500,7 @@ export default function ProfessorAtividadesPage() {
                       type="button"
                       onClick={() => void togglePublishStatus(act.id, act.status)}
                       disabled={updatingActivityId === act.id}
-                      className={`px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
                         isPublicada
                           ? "bg-muted text-muted-foreground hover:bg-accent"
                           : "bg-emerald-600 text-white hover:bg-emerald-500"
@@ -520,13 +522,13 @@ export default function ProfessorAtividadesPage() {
               
               <div className="flex items-center justify-between border-b border-border pb-4">
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Aprendizagem Contínua</span>
-                  <h2 className="text-xl font-black text-foreground">Nova Actividade Pedagógica</h2>
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600">Aprendizagem Contínua</span>
+                  <h2 className="text-xl font-semibold text-foreground">Nova Actividade Pedagógica</h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="text-muted-foreground hover:text-muted-foreground font-black text-sm"
+                  className="text-muted-foreground hover:text-muted-foreground font-semibold text-sm"
                 >
                   ✕
                 </button>
@@ -534,7 +536,7 @@ export default function ProfessorAtividadesPage() {
 
               {/* FEEDBACK DE NEXT_ACTION QUANDO FALHA */}
               {nextActionError && (
-                <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 space-y-2">
+                <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-2">
                   <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
                     <AlertCircle size={16} />
                     <span>{nextActionError.error}</span>
@@ -542,7 +544,7 @@ export default function ProfessorAtividadesPage() {
                   {nextActionError.next_action && (
                     <Link
                       href={nextActionError.next_action.href}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-black text-xs hover:bg-amber-300"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-semibold text-xs hover:bg-amber-300"
                     >
                       <span>{nextActionError.next_action.label}</span>
                       <ChevronRight size={14} />
@@ -555,7 +557,7 @@ export default function ProfessorAtividadesPage() {
                 {/* TÍTULO E TIPO */}
                 <div className="grid sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2 space-y-1">
-                    <label className="text-xs font-black uppercase text-muted-foreground">Título da Actividade</label>
+                    <label className="text-xs font-semibold uppercase text-muted-foreground">Título da Actividade</label>
                     <input
                       type="text"
                       value={form.titulo}
@@ -566,7 +568,7 @@ export default function ProfessorAtividadesPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-black uppercase text-muted-foreground">Tipo</label>
+                    <label className="text-xs font-semibold uppercase text-muted-foreground">Tipo</label>
                     <select
                       value={form.tipo}
                       onChange={(e) => setForm({ ...form, tipo: e.target.value as any })}
@@ -584,7 +586,7 @@ export default function ProfessorAtividadesPage() {
                 {/* SELEÇÃO DE TURMA E DISCIPLINA */}
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-black uppercase text-muted-foreground">Turma e Disciplina</label>
+                    <label className="text-xs font-semibold uppercase text-muted-foreground">Turma e Disciplina</label>
                     <select
                       value={form.turma_id && form.disciplina_id ? `${form.turma_id}:${form.disciplina_id}` : ""}
                       onChange={(e) => {
@@ -603,7 +605,7 @@ export default function ProfessorAtividadesPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-black uppercase text-muted-foreground">Ocorrência da aula</label>
+                    <label className="text-xs font-semibold uppercase text-muted-foreground">Ocorrência da aula</label>
                     <select value={form.aula_id} onChange={(e) => setForm({ ...form, aula_id: e.target.value })} className="w-full rounded-xl border border-border p-2.5 text-xs font-bold text-foreground outline-none">
                       <option value="">Sem vínculo direto</option>
                       {lessonOccurrences.filter((lesson) => lesson.turma_id === form.turma_id && lesson.disciplina_id === form.disciplina_id).map((lesson) => <option key={lesson.id} value={lesson.id}>{lesson.data} · {lesson.inicio_previsto ?? "--:--"} · {lesson.turma_nome} · {lesson.disciplina_nome}</option>)}
@@ -611,7 +613,7 @@ export default function ProfessorAtividadesPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-black uppercase text-muted-foreground">Plano de Aula</label>
+                    <label className="text-xs font-semibold uppercase text-muted-foreground">Plano de Aula</label>
                     <select value={form.plano_aula_id} onChange={(e) => setForm({ ...form, plano_aula_id: e.target.value })} className="w-full rounded-xl border border-border p-2.5 text-xs font-bold text-foreground outline-none">
                       <option value="">Sem vínculo ao plano</option>
                       {lessonPlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.data} — {plan.tema}</option>)}
@@ -620,7 +622,7 @@ export default function ProfessorAtividadesPage() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="text-xs font-black uppercase text-muted-foreground">Prazo de Entrega</label>
+                      <label className="text-xs font-semibold uppercase text-muted-foreground">Prazo de Entrega</label>
                       <input
                         type="date"
                         value={form.prazo}
@@ -629,7 +631,7 @@ export default function ProfessorAtividadesPage() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-black uppercase text-muted-foreground">Tentativas</label>
+                      <label className="text-xs font-semibold uppercase text-muted-foreground">Tentativas</label>
                       <input
                         type="number"
                         min={1}
@@ -644,7 +646,7 @@ export default function ProfessorAtividadesPage() {
 
                 {/* INSTRUÇÕES */}
                 <div className="space-y-1">
-                  <label className="text-xs font-black uppercase text-muted-foreground">Instruções para o Aluno</label>
+                  <label className="text-xs font-semibold uppercase text-muted-foreground">Instruções para o Aluno</label>
                   <textarea
                     rows={2}
                     value={form.instrucoes}
@@ -658,7 +660,7 @@ export default function ProfessorAtividadesPage() {
                 <div className="space-y-3 pt-2 border-t border-border">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-foreground">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
                         Questões da Actividade ({questoes.length})
                       </h4>
                     </div>
@@ -688,9 +690,9 @@ export default function ProfessorAtividadesPage() {
 
                   <div className="space-y-3">
                     {questoes.map((q, qIdx) => (
-                      <div key={qIdx} className="rounded-2xl border border-border bg-muted/40/70 p-3.5 space-y-2.5">
+                      <div key={qIdx} className="rounded-xl border border-border bg-muted/40/70 p-3.5 space-y-2.5">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-black text-emerald-800 font-mono">
+                          <span className="text-xs font-semibold text-emerald-800 font-mono">
                             Questão #{q.ordem}
                           </span>
                           <div className="flex items-center gap-2">
@@ -771,7 +773,7 @@ export default function ProfessorAtividadesPage() {
                     type="button"
                     disabled={saving}
                     onClick={() => handleSubmit(true)}
-                    className="klasse-portal-cta inline-flex min-h-11 items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50 shadow-sm"
+                    className="klasse-portal-cta inline-flex min-h-11 items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50 "
                   >
                     <Send size={14} />
                     <span>Publicar para a Turma</span>

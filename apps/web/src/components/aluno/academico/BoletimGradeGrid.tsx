@@ -159,7 +159,7 @@ export function BoletimGradeGrid({
     <div className="flex w-full gap-1 rounded-xl bg-muted/50 p-1" role="group" aria-label="Modo de consulta do boletim">
       {([["trimestre", "Por trimestre"], ["disciplina", "Por disciplina"]] as const).map(([id,label]) =>
         <button key={id} type="button" aria-pressed={view === id} onClick={() => selectView(id)}
-          className={`min-h-11 min-w-0 flex-1 rounded-xl px-2 text-xs font-semibold sm:px-3 sm:text-sm ${view === id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"} ${focus}`}>{label}</button>)}
+          className={`min-h-11 min-w-0 flex-1 rounded-xl px-2 text-xs font-semibold sm:px-3 sm:text-sm ${view === id ? "bg-accent text-accent-foreground ring-1 ring-primary/15" : "text-muted-foreground hover:text-foreground"} ${focus}`}>{label}</button>)}
     </div>
 
     {loadingSubjects ? <div role="status" aria-live="polite" className="space-y-2">
@@ -175,7 +175,7 @@ export function BoletimGradeGrid({
       <div className="grid grid-cols-3 gap-2" role="group" aria-label="Selecionar trimestre">
         {[1, 2, 3].map(p => <button type="button" key={p} onClick={() => { setTerm(p); setExpandedId(null); }}
           aria-pressed={term === p}
-          className={`min-h-11 rounded-xl border px-1.5 py-1.5 text-xs font-semibold sm:px-3 sm:text-sm ${term === p ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:bg-muted"} ${focus}`}>
+          className={`min-h-11 rounded-xl border px-1.5 py-1.5 text-xs font-semibold sm:px-3 sm:text-sm ${term === p ? "border-primary/25 bg-accent text-accent-foreground" : "border-border bg-card text-foreground hover:bg-muted"} ${focus}`}>
           {p}.º trimestre
         </button>)}
       </div>

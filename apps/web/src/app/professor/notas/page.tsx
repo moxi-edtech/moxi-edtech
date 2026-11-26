@@ -1086,7 +1086,7 @@ function ProfessorNotasContent() {
                     </div>
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
                       <label className="flex-1 text-xs font-semibold text-muted-foreground">Aluno<select value={raaStudentId} onChange={(event) => { setRaaStudentId(event.target.value); setRaaResult(null); setReapreciacaoItem(null); setReapreciacaoMotivo("") }} className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-normal text-foreground"><option value="">Selecione um aluno</option>{pauta.map((student) => <option key={student.id} value={student.id}>{student.nome}</option>)}</select></label>
-                      <button type="button" onClick={() => void handleLoadRaaEligibility()} disabled={!raaStudentId || loadingRaa} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">{loadingRaa ? "A consultar..." : "Consultar elegibilidade"}</button>
+                      <button type="button" onClick={() => void handleLoadRaaEligibility()} disabled={!raaStudentId || loadingRaa} className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">{loadingRaa ? "A consultar..." : "Consultar elegibilidade"}</button>
                     </div>
                     {raaResult && (() => {
                       const result = raaResult.canonical_result
@@ -1212,7 +1212,7 @@ function ProfessorNotasContent() {
                             </table>
                           </div>
                         )}
-                        {!examLocked && selectedExamComponent && <button type="button" onClick={() => void handleSaveExamResults()} disabled={savingExam || !turmaDisciplinaId} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">{savingExam ? "Guardando resultados..." : "Guardar resultados do exame"}</button>}
+                        {!examLocked && selectedExamComponent && <button type="button" onClick={() => void handleSaveExamResults()} disabled={savingExam || !turmaDisciplinaId} className="min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground">{savingExam ? "Guardando resultados..." : "Guardar resultados do exame"}</button>}
                       </div>
                     )}
                   </div>

@@ -499,10 +499,10 @@ export function GradeEntryGrid({
   if (studentMode && data[0]) {
     const row = data[0]
     return (
-      <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="rounded-xl border border-border bg-card">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
           <div>
-            <h3 className="text-sm font-black text-foreground">{title}</h3>
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
             {subtitle ? <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p> : null}
           </div>
           <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${savingIndicator.tone}`}>
@@ -533,7 +533,7 @@ export function GradeEntryGrid({
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {gradeInputs.map((item) => (
               <div key={item.key} className="rounded-xl border border-border bg-card p-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
+                <p className="text-xs font-medium text-muted-foreground">
                   {item.label}
                 </p>
                 <div className="mt-2">
@@ -553,10 +553,10 @@ export function GradeEntryGrid({
             ))}
 
             <div className="rounded-xl border border-border bg-muted p-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 Média
               </p>
-              <p className="mt-2 text-xl font-black text-foreground">
+              <p className="mt-2 text-xl font-semibold tabular-nums text-foreground">
                 {row.mt1 ?? "—"}
                 {row.mt1 !== null ? <span className="ml-1 text-xs font-bold text-muted-foreground">/ {notaMaxima}</span> : null}
               </p>
@@ -577,30 +577,30 @@ export function GradeEntryGrid({
     <div className="space-y-4">
       {/* BARRA DE ESTATÍSTICAS EM TEMPO REAL DA TURMA */}
       {!studentMode ? <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-border bg-card p-3.5 shadow-2xs">
+        <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[10px] font-black uppercase tracking-wider">Média da Turma</span>
+            <span className="text-xs font-medium">Média da Turma</span>
             <TrendingUp size={16} className="text-emerald-600" />
           </div>
-          <p className="text-xl font-black text-foreground mt-1">
+          <p className="text-xl font-semibold tabular-nums text-foreground mt-1">
             {stats.mediaTurma !== null ? `${stats.mediaTurma} / ${notaMaxima}` : "—"}
           </p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-3.5 shadow-2xs">
+        <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[10px] font-black uppercase tracking-wider">{`Aprovados (≥${notaCorte})`}</span>
+            <span className="text-xs font-medium">{`Aprovados (≥${notaCorte})`}</span>
             <CheckCircle size={16} className="text-emerald-600" />
           </div>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-xl font-black text-emerald-700">{stats.aprovados}</span>
+            <span className="text-xl font-semibold tabular-nums text-emerald-700">{stats.aprovados}</span>
             <span className="text-xs font-bold text-muted-foreground">({stats.percAprovados}%)</span>
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-3.5 shadow-2xs">
+        <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[10px] font-black uppercase tracking-wider">{`Em risco (<${notaCorte})`}</span>
+            <span className="text-xs font-medium">{`Em risco (<${notaCorte})`}</span>
             <AlertCircle size={16} className="text-rose-500" />
           </div>
           <p className="text-xl font-black text-rose-600 mt-1">
@@ -608,12 +608,12 @@ export function GradeEntryGrid({
           </p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-3.5 shadow-2xs">
+        <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[10px] font-black uppercase tracking-wider">Lançamentos</span>
+            <span className="text-xs font-medium">Lançamentos</span>
             <Users size={16} className="text-muted-foreground" />
           </div>
-          <p className="text-xl font-black text-foreground mt-1">
+          <p className="text-xl font-semibold tabular-nums text-foreground mt-1">
             {stats.lancados} <span className="text-xs font-bold text-muted-foreground">/ {stats.total}</span>
           </p>
         </div>
@@ -624,7 +624,7 @@ export function GradeEntryGrid({
         {/* HEADER DA GRELHA */}
         <div className="p-4 border-b border-border bg-muted/80 flex flex-wrap justify-between items-center gap-3">
           <div>
-            <h3 className="text-sm font-black text-foreground uppercase tracking-tight">{title}</h3>
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-tight">{title}</h3>
             {subtitle ? <p className="text-xs font-medium text-muted-foreground">{subtitle}</p> : null}
           </div>
 
