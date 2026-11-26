@@ -98,9 +98,10 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
             }
           }
         }
-        const nextAssignments = Array.from(pairsMap.values());
+        const nextAssignments = Array.from(pairsMap.values()).filter(item => !embedded || ((!requestedTurmaId || item.turma_id === requestedTurmaId) && (!requestedDisciplinaId || item.disciplina_id === requestedDisciplinaId)));
         setAssignments(nextAssignments);
-        const requestedAssignment = nextAssignments.find((item) => item.turma_id === requestedTurmaId && (!requestedDisciplinaId || item.disciplina_id === requestedDisciplinaId));
+        const matching = nextAssignments.filter((item) => item.turma_id === requestedTurmaId && (!requestedDisciplinaId || item.disciplina_id === requestedDisciplinaId));
+        const requestedAssignment = matching.length === 1 ? matching[0] : undefined;
         if (requestedAssignment) setForm((current) => current.turma_id ? current : { ...current, turma_id: requestedAssignment.turma_id, disciplina_id: requestedAssignment.disciplina_id });
       }
     } catch (err) {
@@ -115,13 +116,14 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
   }, []);
 
   const filteredMateriais = useMemo(() => {
-    return materiais.filter((item) => matchesProfessorResourceQuery(searchTerm, item.titulo, item.descricao));
-  }, [materiais, searchTerm]);
+    return materiais.filter((item) => (!embedded || ((!requestedTurmaId || item.turma_id === requestedTurmaId) && (!requestedDisciplinaId || item.disciplina_id === requestedDisciplinaId))) && matchesProfessorResourceQuery(searchTerm, item.titulo, item.descricao));
+  }, [materiais, searchTerm, embedded, requestedTurmaId, requestedDisciplinaId]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
+      if (embedded && requestedTurmaId && (!form.turma_id || !form.disciplina_id || !assignments.some(item => item.turma_id === form.turma_id && item.disciplina_id === form.disciplina_id))) throw new Error("Seleccione a turma e disciplina atribuídas.");
       if (!form.titulo.trim()) throw new Error("Informe o título do material");
       if (!form.conteudo && !form.arquivo_url) {
         throw new Error("Informe o conteúdo em texto ou o link do arquivo");
@@ -192,7 +194,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
           />}
           <button
             type="button"
-            onClick={() => setShowModal(true)}
+            disabled={showModal || saving || updatingId !== null} onClick={() => setShowModal(true)}
             className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold shadow-sm transition cursor-pointer self-start md:self-auto"
           >
             <Plus className="w-4 h-4" />
@@ -285,7 +287,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
                     <button
                       type="button"
                       onClick={() => void toggleStatus(m.id, m.status)}
-                      disabled={updatingId === m.id}
+                      disabled={updatingId !== null || saving}
                       className={`px-3 py-1.5 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
                         isPublicado
                           ? "bg-muted text-muted-foreground hover:bg-accent"
@@ -318,7 +320,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
 
               <form onSubmit={onSubmit} className="space-y-3" onChange={() => setDirty(true)}>
                 <fieldset disabled={saving} className="space-y-3">
-                <label className="block text-sm font-medium">Turma e disciplina<select value={form.turma_id + ":" + form.disciplina_id} onChange={event => { const [turma_id, disciplina_id] = event.target.value.split(":"); setForm(current => ({ ...current, turma_id: turma_id ?? "", disciplina_id: disciplina_id ?? "" })); }} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"><option value=":">Material geral</option>{assignments.map(item => <option key={item.turma_id + ":" + item.disciplina_id} value={item.turma_id + ":" + item.disciplina_id}>{item.turma_nome} · {item.disciplina_nome}</option>)}</select></label>
+                <label className="block text-sm font-medium">Turma e disciplina<select value={form.turma_id + ":" + form.disciplina_id} onChange={event => { const [turma_id, disciplina_id] = event.target.value.split(":"); setForm(current => ({ ...current, turma_id: turma_id ?? "", disciplina_id: disciplina_id ?? "" })); }} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm"><option value=":" disabled={embedded && Boolean(requestedTurmaId)}>{embedded && requestedTurmaId ? "Seleccione a disciplina" : "Material geral"}</option>{assignments.map(item => <option key={item.turma_id + ":" + item.disciplina_id} value={item.turma_id + ":" + item.disciplina_id}>{item.turma_nome} · {item.disciplina_nome}</option>)}</select></label>
                 <div className="space-y-1">
                   <label className="text-xs font-black uppercase text-muted-foreground">Título do Material</label>
                   <input
