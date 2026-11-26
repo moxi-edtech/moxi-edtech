@@ -53,7 +53,7 @@ test("navegação e área académica explicitam contexto sem inventar estado", a
 test("notas e decisões técnicas conservam ações sem poluir a interface", async () => {
   const [alunoNotas, professorNotas, grade] = await Promise.all([
     read("components/aluno/tabs/TabNotas.tsx"),
-    read("app/professor/notas/page.tsx"),
+    read("components/professor/ProfessorGradesWorkspace.tsx"),
     read("components/aluno/academico/BoletimGradeGrid.tsx"),
   ]);
   assert.match(alunoNotas, /klasse-portal-cta/);
