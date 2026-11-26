@@ -28,7 +28,7 @@ export function PortalDrawerNavigator({ root, open, onClose }: {
   // A root identifier must include the school/student/turma scope.
   const [stack, setStack] = useState<{ rootId: string; entries: Entry[] }>({ rootId: root.id, entries: [] });
   const entries = open && stack.rootId === root.id ? stack.entries : [];
-  const active = entries.at(-1)?.frame ?? root;
+  const active = entries[entries.length - 1]?.frame ?? root;
   const body = useRef<HTMLDivElement>(null);
   const restore = useRef<{ top: number; opener: HTMLElement | null } | null>(null);
   const push = useCallback((frame: PortalDrawerFrame) => {
@@ -43,7 +43,7 @@ export function PortalDrawerNavigator({ root, open, onClose }: {
   }, [open, root.id]);
 
   const back = () => {
-    const last = entries.at(-1);
+    const last = entries[entries.length - 1];
     if (!last) return;
     restore.current = { top: last.previousScroll, opener: last.opener };
     setStack({ rootId: root.id, entries: entries.slice(0, -1) });
@@ -89,5 +89,5 @@ export function PortalDrawerPushButton({ frame, className, children }: {
 }) {
   const navigation = usePortalDrawerNavigation();
   if (!navigation) return null;
-  return <button type="button" aria-haspopup="dialog" className={className} onClick={() => navigation.push(frame)}>{children}</button>;
+  return <button type="button" className={className} onClick={() => navigation.push(frame)}>{children}</button>;
 }
