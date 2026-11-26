@@ -13,16 +13,18 @@ type Props = {
   busy?: boolean;
   children: ReactNode;
   footer?: ReactNode;
+  closeLabel?: string;
+  contentId?: string;
 };
 const sizes = { compact: "40dvh", medium: "65dvh", expanded: "90dvh" };
 
 /** Radix owns modality, focus trapping and nested dialogs; CSS owns motion. */
-export function PortalSheet({ open, onClose, title, description, size = "medium", busy = false, children, footer }: Props) {
+export function PortalSheet({ open, onClose, title, description, size = "medium", busy = false, children, footer, closeLabel = "Fechar", contentId }: Props) {
   const opener = useRef<HTMLElement | null>(null);
   const header = useRef<HTMLHeadingElement>(null);
   return (
     <Dialog open={open} onOpenChange={next => { if (!next && !busy) onClose(); }}>
-      <DialogContent layout="bottom-sheet" closeButton={false}
+      <DialogContent layout="bottom-sheet" closeButton={false} id={contentId}
         overlayClassName="klasse-portal-theme klasse-academic-dialog klasse-context-sheet-overlay bg-muted-foreground/60"
         style={{ "--portal-sheet-limit": sizes[size] } as CSSProperties}
         className="klasse-portal-theme klasse-academic-dialog klasse-context-sheet gap-0 bg-card text-foreground sm:max-w-xl"
@@ -47,7 +49,7 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
               <DialogTitle ref={header} tabIndex={-1} className="break-words text-lg leading-snug text-primary focus:outline-none">{title}</DialogTitle>
               <DialogDescription className="text-xs leading-relaxed">{description}</DialogDescription>
             </div>
-            <button type="button" aria-label="Fechar" disabled={busy} onClick={onClose}
+            <button type="button" aria-label={closeLabel} disabled={busy} onClick={onClose}
               className="klasse-portal-press flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
               <X size={20} aria-hidden="true" />
             </button>

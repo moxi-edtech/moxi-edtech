@@ -183,6 +183,7 @@ function ProfessorNotasContent() {
   const [reopenHistory, setReopenHistory] = useState<ReopenRequest[]>([])
   const [requestReason, setRequestReason] = useState("")
   const [requestingReopen, setRequestingReopen] = useState(false)
+  const [reopenSheet, setReopenSheet] = useState(false)
   const [matriculaIds, setMatriculaIds] = useState<Record<string, string>>({})
   const [examSessions, setExamSessions] = useState<ExamSession[]>([])
   const [selectedExamSessionId, setSelectedExamSessionId] = useState("")
@@ -270,6 +271,7 @@ function ProfessorNotasContent() {
   }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId])
 
   const handleRequestReopen = async () => {
+    if (requestingReopen) return
     if (!turmaId || !disciplinaId || !anoLetivoId || requestReason.trim().length < 5) {
       warning("Explique o motivo da reabertura (mínimo de 5 caracteres).")
       return
@@ -281,6 +283,7 @@ function ProfessorNotasContent() {
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível enviar a solicitação.")
       setReopenRequest(payload.item)
       setRequestReason("")
+      setReopenSheet(false)
       success("Solicitação enviada para análise da escola.")
     } catch (cause) {
       toastError("Não foi possível solicitar", cause instanceof Error ? cause.message : "Tente novamente.")
@@ -1059,6 +1062,9 @@ function ProfessorNotasContent() {
                 </div>
               )}
             </div>
+            <PortalSheet open={reopenSheet} busy={requestingReopen} onClose={()=>setReopenSheet(false)} title="Solicitar reabertura" description={`${disciplinaNome ?? "Disciplina"} · ${trimestreSelecionado}.º trimestre`} size="expanded">
+              <textarea aria-label="Motivo da reabertura" disabled={requestingReopen} value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId || requestReason.trim().length < 5} className="rounded-xl bg-amber px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "A enviar..." : "Solicitar reabertura"}</button>
+            </PortalSheet>
             {loading ? (
               <div className="rounded-xl border border-border bg-card p-3 sm:p-4 animate-pulse space-y-2">
                 <div className="h-4 w-40 rounded-md bg-muted" />
@@ -1073,7 +1079,7 @@ function ProfessorNotasContent() {
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
                 <p className="font-bold">Lançamento de notas indisponível</p>
                 <p className="mt-1">{gradeAvailability.explanation}</p>
-                {!gradeAvailability.canRequestReopen ? <p className="mt-1">{reopenRequest?.status === "PENDENTE" ? "A solicitação aguarda decisão da escola." : "Consulta o calendário oficial ou selecciona outro trimestre."}</p> : reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : <div className="mt-4 space-y-3"><p className="text-sm text-muted-foreground">{reopenRequest?.status === "REJEITADO" ? "A solicitação anterior foi rejeitada. Envie uma nova justificativa para continuar." : reopenRequest?.status === "EXPIRADO" ? "O prazo da solicitação anterior terminou. Podes apresentar novo pedido." : reopenRequest?.status === "REVOGADO" ? "A autorização anterior foi revogada pela escola. Consulta o motivo antes de apresentar outro pedido." : "Solicite à escola a abertura temporária deste trimestre."}</p><textarea value={requestReason} onChange={(event) => setRequestReason(event.target.value)} rows={3} placeholder="Explique por que precisa lançar ou corrigir esta nota." className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring" /><button type="button" onClick={() => void handleRequestReopen()} disabled={requestingReopen || !anoLetivoId} className="rounded-xl bg-amber px-4 py-2 font-bold text-white disabled:opacity-60">{requestingReopen ? "A enviar..." : "Solicitar reabertura"}</button></div>}
+                {!gradeAvailability.canRequestReopen ? <p className="mt-1">{reopenRequest?.status === "PENDENTE" ? "A solicitação aguarda decisão da escola." : "Consulta o calendário oficial ou selecciona outro trimestre."}</p> : reopenRequest?.status === "PENDENTE" ? <p className="mt-1">Solicitação pendente de análise pela escola.</p> : <div className="mt-4 space-y-3"><p className="text-sm text-muted-foreground">{reopenRequest?.status === "REJEITADO" ? "A solicitação anterior foi rejeitada. Envie uma nova justificativa para continuar." : reopenRequest?.status === "EXPIRADO" ? "O prazo da solicitação anterior terminou. Podes apresentar novo pedido." : reopenRequest?.status === "REVOGADO" ? "A autorização anterior foi revogada pela escola. Consulta o motivo antes de apresentar outro pedido." : "Solicite à escola a abertura temporária deste trimestre."}</p><button type="button" aria-haspopup="dialog" onClick={()=>setReopenSheet(true)} className="klasse-portal-press min-h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">Solicitar reabertura</button></div>}
                 <div className="mt-4">
                   <GradeEntryGrid
                     initialData={data}

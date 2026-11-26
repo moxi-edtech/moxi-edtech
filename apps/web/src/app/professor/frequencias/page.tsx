@@ -4,6 +4,9 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { enqueueOfflineAction } from '@/lib/offline/queue'
 import { createIdempotencyKey } from '@/lib/idempotency'
 import { useOfflineStatus } from '@/hooks/useOfflineStatus'
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { usePortalMobile } from "@/components/portal/ui/usePortalMobile";
+import { SlidersHorizontal } from "lucide-react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { useToast } from '@/components/feedback/FeedbackSystem';
 import { formatTurmaDisplayName } from "@/utils/formatters";
@@ -41,6 +44,9 @@ export default function ProfessorFrequenciasPage() {
   const [openActionsId, setOpenActionsId] = useState<string | null>(null)
   const [data, setData] = useState(() => new Date().toISOString().slice(0,10))
   const [saving, setSaving] = useState(false)
+  const [contextOpen, setContextOpen] = useState(false)
+  const mobile = usePortalMobile()
+  const [studentsLoading, setStudentsLoading] = useState(false)
   const [statusMap, setStatusMap] = useState<Record<string, 'presente'|'falta'|'atraso'>>({})
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'pending' | 'saved' | 'failed'>('idle')
   const [reportMonth, setReportMonth] = useState(() => (new Date().getMonth() + 1).toString().padStart(2, '0'))
@@ -78,25 +84,37 @@ export default function ProfessorFrequenciasPage() {
   }, [urlTurmaId, urlDisciplinaId, requestedAcademicYearId])
 
   useEffect(() => {
-    (async () => {
-      if (!turmaId || !disciplinaId) { setAlunos([]); setStudentsError(null); return }
-      setStudentsError(null)
+    const controller = new AbortController()
+    setAlunos([])
+    setStudentsError(null)
+    setStudentsLoading(Boolean(turmaId && disciplinaId))
+    if (!turmaId || !disciplinaId) return () => controller.abort()
+    void (async () => {
+      try {
       const params = new URLSearchParams({ disciplina_id: disciplinaId })
       if (academicYearId) params.set(ACADEMIC_YEAR_PARAM, academicYearId)
-      const res = await fetch(`/api/professor/turmas/${turmaId}/alunos?${params.toString()}`, { cache: 'no-store' })
+      const res = await fetch(`/api/professor/turmas/${turmaId}/alunos?${params.toString()}`, { cache: 'no-store', signal: controller.signal })
       const json = await res.json().catch(()=>null)
+      if (controller.signal.aborted) return
       if (!res.ok || !json?.ok) {
         setAlunos([])
         setStudentsError(json?.message || json?.error || 'Não foi possível carregar os alunos desta turma.')
         return
       }
       setAlunos((json.items as AlunoApi[] || []).map((r) => ({ id: r.id || r.aluno_id || r.profile_id || '', nome: r.nome || r.aluno_nome || 'Aluno', matriculaId: r.matricula_id ?? null })).filter((r) => r.id))
+      } catch (cause) {
+        if (!controller.signal.aborted) setStudentsError(cause instanceof Error ? cause.message : 'Não foi possível carregar os alunos desta turma.')
+      } finally {
+        if (!controller.signal.aborted) setStudentsLoading(false)
+      }
     })()
+    return () => controller.abort()
   }, [turmaId, disciplinaId, academicYearId])
 
   useEffect(() => {
     setSubmitStatus('idle')
-  }, [turmaId, disciplinaId, data])
+    setStatusMap({})
+  }, [turmaId, disciplinaId, data, academicYearId])
 
   const atribsByTurma = useMemo(() => atribs.reduce((acc, a) => {
     const arr = acc.get(a.turma.id) || []
@@ -104,6 +122,9 @@ export default function ProfessorFrequenciasPage() {
     acc.set(a.turma.id, arr)
     return acc
   }, new Map<string, Atrib[]>()), [atribs])
+
+  const attendanceDirty = Object.keys(statusMap).length > 0 && submitStatus !== 'saved' && submitStatus !== 'pending'
+  const contextLocked = saving || attendanceDirty
 
   const filteredAlunos = useMemo(() => {
     if (!searchFilter.trim()) return alunos;
@@ -153,6 +174,7 @@ export default function ProfessorFrequenciasPage() {
     setSaving(true)
     try {
       if (!turmaId || !disciplinaId) throw new Error('Selecione turma e disciplina.')
+      if (studentsLoading || studentsError || alunos.length === 0) throw new Error('Aguarde a lista de alunos válida antes de guardar.')
       if (!academicYearId) throw new Error('Ano letivo ativo não identificado. Atualize a página e tente novamente.')
       const presencas = alunos.map(a => ({ aluno_id: a.id, status: statusMap[a.id] || 'presente' }))
       const idempotencyKey = createIdempotencyKey(`presencas-${turmaId}-${disciplinaId}-${data}`)
@@ -220,11 +242,14 @@ export default function ProfessorFrequenciasPage() {
           </div>
         )}
         <aside className="space-y-3 sm:space-y-4">
-          <div className="rounded-xl border border-border bg-card p-4  space-y-3">
-            <div className="text-xs font-black uppercase tracking-wider text-muted-foreground">Turma e Disciplina</div>
-            
-            <div className="space-y-2">
-              <select
+          {mobile ? <>
+            <button type="button" disabled={contextLocked} aria-haspopup="dialog" aria-expanded={contextOpen} onClick={()=>setContextOpen(true)} className="klasse-portal-press flex min-h-14 w-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left disabled:opacity-50">
+              <SlidersHorizontal className="size-5 shrink-0 text-primary" aria-hidden="true" />
+              <span className="min-w-0"><span className="block text-sm font-semibold">Contexto da chamada</span><span className="block break-words text-xs text-muted-foreground">{[atribs.find(a=>a.turma.id===turmaId)?.turma.nome, (atribsByTurma.get(turmaId)||[]).find(a=>a.disciplina.id===disciplinaId)?.disciplina.nome, data].filter(Boolean).join(" · ")}</span></span>
+            </button>
+            <PortalSheet open={contextOpen} onClose={()=>setContextOpen(false)} title="Contexto da chamada" description="Selecciona turma, disciplina e data." size="expanded" footer={<button type="button" onClick={()=>setContextOpen(false)} className="klasse-portal-press min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">Concluir selecção</button>}>
+              <div className="space-y-2">
+              <select aria-label="Turma" disabled={contextLocked}
                 value={turmaId}
                 onChange={(e) => {
                   setTurmaId(e.target.value)
@@ -244,12 +269,12 @@ export default function ProfessorFrequenciasPage() {
                 ))}
               </select>
 
-              <select
+              <select aria-label="Disciplina"
                 value={disciplinaId}
                 onChange={(e) => setDisciplinaId(e.target.value)}
                 className="min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 disabled:opacity-50"
                 required
-                disabled={!turmaId}
+                disabled={!turmaId || contextLocked}
               >
                 <option value="">Selecione a Disciplina</option>
                 {(atribsByTurma.get(turmaId) || []).map((a) => (
@@ -260,14 +285,60 @@ export default function ProfessorFrequenciasPage() {
               </select>
 
               <input
-                type="date"
+                type="date" aria-label="Data da chamada" disabled={contextLocked}
                 value={data}
                 onChange={(e) => setData(e.target.value)}
                 className="min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                 required
               />
             </div>
-          </div>
+            </PortalSheet>
+          </> : <div className="space-y-3 rounded-xl border border-border bg-card p-4"><h2 className="text-sm font-semibold">Turma e disciplina</h2><div className="space-y-2">
+              <select aria-label="Turma" disabled={contextLocked}
+                value={turmaId}
+                onChange={(e) => {
+                  setTurmaId(e.target.value)
+                  setDisciplinaId('')
+                }}
+                className="min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                required
+              >
+                <option value="">Selecione a Turma</option>
+                {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
+                  <option key={tid} value={tid}>
+                    {(() => {
+                      const turma = atribs.find((a) => a.turma.id === tid)?.turma;
+                      return turma ? formatTurmaDisplayName(turma) : tid;
+                    })()}
+                  </option>
+                ))}
+              </select>
+
+              <select aria-label="Disciplina"
+                value={disciplinaId}
+                onChange={(e) => setDisciplinaId(e.target.value)}
+                className="min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 disabled:opacity-50"
+                required
+                disabled={!turmaId || contextLocked}
+              >
+                <option value="">Selecione a Disciplina</option>
+                {(atribsByTurma.get(turmaId) || []).map((a) => (
+                  <option key={a.disciplina.id} value={a.disciplina.id}>
+                    {a.disciplina.nome || a.disciplina.id}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="date" aria-label="Data da chamada" disabled={contextLocked}
+                value={data}
+                onChange={(e) => setData(e.target.value)}
+                className="min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                required
+              />
+            </div></div>}
+          {attendanceDirty && <p className="text-xs text-muted-foreground">Guarda ou limpa a chamada antes de mudar de contexto.</p>}
+          {studentsLoading && <p role="status" className="text-sm text-muted-foreground">A carregar alunos…</p>}
 
           {/* Status da Sincronização */}
           <div className="rounded-xl border border-border bg-card p-4 space-y-2 text-xs font-semibold text-muted-foreground ">
@@ -320,7 +391,7 @@ export default function ProfessorFrequenciasPage() {
 
           <button
             type="submit"
-            disabled={saving || !turmaId || !disciplinaId}
+            disabled={saving || studentsLoading || Boolean(studentsError) || alunos.length === 0 || !turmaId || !disciplinaId}
             className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-wider text-white  transition-all active:scale-95 disabled:opacity-50 ${submitStatus === 'failed' ? 'bg-rose-600 hover:bg-rose-700' : submitStatus === 'saved' ? 'bg-emerald-700 hover:bg-emerald-800' : submitStatus === 'pending' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
           >
             {saving ? 'A Guardar Chamada...' : submitStatus === 'saved' ? <><CheckCircle2 className="h-4 w-4" /> Chamada Guardada</> : submitStatus === 'pending' ? 'Chamada Guardada Offline' : submitStatus === 'failed' ? 'Tentar Novamente' : 'Finalizar & Guardar Chamada'}

@@ -1,6 +1,8 @@
 "use client";
 
 import { Fragment, useEffect, useId, useMemo, useState } from "react";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { usePortalMobile } from "@/components/portal/ui/usePortalMobile";
 import { ChevronDown, Download, Eye, EyeOff, FileText, Loader2, LockKeyhole } from "lucide-react";
 import {
   formatPublishedGrade,
@@ -58,6 +60,7 @@ export function BoletimGradeGrid({
   const [term, setTerm] = useState(1);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const mobile = usePortalMobile();
   const [showGrades, setShowGrades] = useState(true);
 
   useEffect(() => {
@@ -81,6 +84,9 @@ export function BoletimGradeGrid({
   const hasPublishedAssessments = safeSubjects.some((s) => s.avaliacoes.length > 0);
   const hasFinals = safeSubjects.some(s => s.classificacoes.some(c => c.status === "disponivel"));
   const valuesVisible = !locked && showGrades;
+  const sheetSubject = view === "trimestre" ? quarterSubjects.find(s => s.id === expandedId) : selectedSubject;
+  const sheetTerm = view === "trimestre" ? term : [1,2,3].find(p => expandedId === `${selectedSubject?.id}:${p}`);
+  const sheetOpen = mobile && Boolean(expandedId && sheetSubject && sheetTerm);
 
   const selectView = (next: View) => {
     setView(next);
@@ -195,7 +201,7 @@ export function BoletimGradeGrid({
                 <tr key={`${subject.id}-main`}>
                   <th scope="row" className="px-2 py-1 text-left font-normal sm:px-3">
                     <button type="button" onClick={() => setExpandedId(open ? null : subject.id)}
-                      aria-expanded={open} aria-controls={label}
+                      aria-expanded={open} aria-haspopup={mobile ? "dialog" : undefined} aria-controls={mobile ? undefined : label}
                       aria-label={`${open ? "Fechar" : "Ver"} detalhes de ${subject.nome}`}
                       className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-1 py-2 text-left text-sm font-medium text-foreground hover:text-primary ${focus}`}>
                       <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
@@ -207,7 +213,7 @@ export function BoletimGradeGrid({
                     {isSubjectOffered(subject, term) === null && <span className="block text-[10px] text-muted-foreground">Período por confirmar</span>}
                   </td>
                 </tr>
-                {open && <tr id={label} key={`${subject.id}-details`} className="bg-muted/20">
+                {open && !mobile && <tr id={label} key={`${subject.id}-details`} className="bg-muted/20">
                   <td colSpan={2} className="px-4 pb-3"><div className="klasse-portal-motion-disclosure">{detail(subject, term)}</div></td>
                 </tr>}
               </Fragment>;
@@ -247,13 +253,13 @@ export function BoletimGradeGrid({
                 <TermValue subject={selectedSubject} term={p} locked={locked} showGrades={showGrades} />
               </div>
             </div>
-            {offered !== false && <button type="button" aria-expanded={open} aria-controls={label}
+            {offered !== false && <button type="button" aria-expanded={open} aria-haspopup={mobile ? "dialog" : undefined} aria-controls={mobile ? undefined : label}
               onClick={() => setExpandedId(open ? null : `${selectedSubject.id}:${p}`)}
               className={`mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary ${focus}`}>
               {open ? "Fechar avaliações" : "Ver avaliações"}
               <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
             </button>}
-            {open && offered !== false && <div id={label} className="klasse-portal-motion-disclosure">{detail(selectedSubject, p)}</div>}
+            {open && !mobile && offered !== false && <div id={label} className="klasse-portal-motion-disclosure">{detail(selectedSubject, p)}</div>}
           </div>;
         })}
       </div>}
@@ -261,5 +267,8 @@ export function BoletimGradeGrid({
         Classificações trimestrais, sem média anual.
       </p>
     </>}
+    <PortalSheet open={sheetOpen} onClose={() => setExpandedId(null)} title={sheetSubject?.nome ?? "Avaliações"} description={sheetTerm ? `${sheetTerm}.º trimestre` : "Avaliações"} size="expanded">
+      {sheetOpen && sheetSubject && sheetTerm ? detail(sheetSubject, sheetTerm) : null}
+    </PortalSheet>
   </section>;
 }
