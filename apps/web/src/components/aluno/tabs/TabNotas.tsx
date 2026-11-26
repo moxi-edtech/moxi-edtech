@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { Lock as LockIcon, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { AcademicCarryoversCard } from "@/components/aluno/academico/AcademicCarryoversCard";
 import { BoletimGradeGrid } from "@/components/aluno/academico/BoletimGradeGrid";
 import { ServicePaymentDrawer } from "@/components/aluno/layout/ServicePaymentDrawer";
@@ -44,6 +45,7 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
   if (studentId) bulletinParams.set("studentId", studentId);
   if (academicYearId) bulletinParams.set("ano_letivo_id", academicYearId);
   const bulletinQuery = bulletinParams.toString() ? `?${bulletinParams.toString()}` : "";
+  const [academicStatusScope, setAcademicStatusScope] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLiberado, setIsLiberado] = useState(false);
   const [boletimPago, setBoletimPago] = useState(false);
@@ -487,7 +489,15 @@ export function TabNotas({ embedded = false, onOpenDocuments }: { embedded?: boo
         } : null}
       />
       {safeIsLiberado && refreshing && <p role="status" className="text-xs text-muted-foreground">A verificar novas avaliações…</p>}
-      {safeIsLiberado && !historicalRead && <section aria-label="Situação académica" className="border-t border-border pt-6"><AcademicCarryoversCard studentId={studentId}/></section>}
+      {safeIsLiberado && !historicalRead && matriculaEncontrada && <section aria-label="Situação académica" className="border-t border-border pt-4">
+        <button type="button" aria-haspopup="dialog" aria-expanded={academicStatusScope === bulletinQuery} onClick={() => setAcademicStatusScope(bulletinQuery)} className="flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-card px-4 text-left text-sm font-semibold text-primary">Situação académica <ArrowRight className="h-4 w-4" aria-hidden="true" /></button>
+        <PortalSheet open={academicStatusScope === bulletinQuery} onClose={() => setAcademicStatusScope(null)} title="Situação académica" description="Contexto da matrícula e dependências de anos anteriores." size="expanded">
+          {academicStatusScope === bulletinQuery && <>
+            <p className="text-sm text-muted-foreground">Matrícula encontrada{gridYearLabel ? ` · ${gridYearLabel}` : ""}. Consulta as dependências abaixo; este resumo não certifica a aprovação.</p>
+            <AcademicCarryoversCard key={bulletinQuery} studentId={studentId} />
+          </>}
+        </PortalSheet>
+      </section>}
       {safeIsLiberado && !historicalRead && reapreciacaoDisc && (
         <Dialog open onOpenChange={(open) => { if (!open) setReapreciacaoDisc(null); }}>
           <DialogContent closeButton={false} onCloseAutoFocus={restoreDialogFocus}

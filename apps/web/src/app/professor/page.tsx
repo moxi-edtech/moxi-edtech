@@ -4,6 +4,8 @@ import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
 import { ProfessorAgendaSkeleton, ProfessorSkeletonBone, ProfessorTurmasSkeleton } from "@/components/professor/ProfessorLoadingSkeletons";
 import ProfessorReopeningRequests from "@/components/professor/ProfessorReopeningRequests";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { ProfessorTurmaRoster } from "@/components/professor/ProfessorTurmaRoster";
 import { PortalWelcomeCard } from "@/components/portal/ui/PortalWelcomeCard";
 import { PortalSection } from "@/components/portal/ui/PortalSection";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
@@ -103,6 +105,7 @@ export default function Page() {
   const [finalizing, setFinalizing] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [expandedTurmaId, setExpandedTurmaId] = useState<string | null>(null);
+  const [selectedLessonKey, setSelectedLessonKey] = useState<string | null>(null);
   const [retryVersion, setRetryVersion] = useState(0);
   const pollingInFlight = useRef(false);
   const pollingFailures = useRef(0);
@@ -320,6 +323,9 @@ export default function Page() {
     return null;
   }, [agendaByDay, nowTick, todayKey]);
 
+  const selectedTurma = !loading && !loadError ? turmaMap.find(turma => turma.id === expandedTurmaId) : undefined;
+  const selectedLesson = !loading && !loadError ? (agendaByDay.get(todayKey) ?? []).find(item => `${getSchoolNow(new Date(nowTick)).date}:${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}` === selectedLessonKey) : undefined;
+  const lessonQuery = selectedLesson?.turma_id && selectedLesson.disciplina_id ? `?turma_id=${encodeURIComponent(selectedLesson.turma_id)}&disciplina_id=${encodeURIComponent(selectedLesson.disciplina_id)}` : null;
   const turmasAtivas = turmaMap.length;
   const avaliacoesPendentes = pendenciasResumo?.avaliacoes_pendentes ?? null;
   const faltasALancar = pendenciasResumo?.faltas_a_lancar ?? null;
@@ -472,9 +478,9 @@ export default function Page() {
                     <div key={turma.id} className={`rounded-xl border bg-card p-3 shadow-sm transition-colors sm:p-4 ${expanded ? "border-klasse-gold/50" : "border-border hover:border-klasse-gold/30"}`}>
                       <button
                         type="button"
-                        onClick={() => setExpandedTurmaId((current) => current === turma.id ? null : turma.id)}
+                        onClick={() => setExpandedTurmaId(turma.id)}
                         aria-expanded={expanded}
-                        aria-controls={`turma-acoes-${turma.id}`}
+                        aria-haspopup="dialog"
                         className="flex min-h-14 w-full items-center gap-3 text-left"
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-klasse-green" aria-hidden="true">
@@ -490,16 +496,7 @@ export default function Page() {
                         </span>
                         <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
                       </button>
-                      <div
-                        id={`turma-acoes-${turma.id}`}
-                        className={expanded ? "mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3" : "hidden"}
-                      >
-                        <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95">Chamada</Link>
-                        <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Notas</Link>
-                        <Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Plano de aula</Link>
-                        <Link href={professorHref(`/professor/materiais?turma_id=${encodeURIComponent(turma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Materiais</Link>
-                        <Link href={professorHref(`/professor/turmas/${turma.id}/horario`)} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-2 text-xs font-semibold text-foreground hover:bg-muted">Horário da turma</Link>
-                      </div>
+
                     </div>
                   );
                 })}
@@ -533,7 +530,7 @@ export default function Page() {
                       && (aulaAtiva?.slot_id ?? aulaAtiva?.inicio) === (item.slot_id ?? item.inicio);
                     return (
                       <div key={`${key}:${idx}`} className="py-3 first:pt-0 last:pb-0">
-                        <div className="flex min-w-0 items-center gap-3">
+                        <button type="button" aria-haspopup="dialog" aria-expanded={selectedLessonKey === `${getSchoolNow(new Date(nowTick)).date}:${key}`} onClick={() => setSelectedLessonKey(`${getSchoolNow(new Date(nowTick)).date}:${key}`)} className="flex min-h-11 w-full min-w-0 items-center gap-3 rounded-xl text-left focus-visible:ring-2 focus-visible:ring-ring">
                           <span className="w-11 shrink-0 text-center text-xs font-semibold tabular-nums text-foreground">
                             {item.inicio.slice(0, 5)}
                           </span>
@@ -547,7 +544,8 @@ export default function Page() {
                               {item.sala_nome && ` · Sala ${item.sala_nome}`}
                             </p>
                           </div>
-                        </div>
+                          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        </button>
                         {canNavigate && isCurrentLesson ? (
                           <>
                             <div className="mt-2 flex flex-wrap items-center gap-1.5 pl-14 text-xs">
@@ -593,6 +591,34 @@ export default function Page() {
             </div>
           </section>
         </div>
+        <PortalSheet open={Boolean(selectedTurma)} onClose={() => setExpandedTurmaId(null)} title={selectedTurma ? formatTurmaDisplayName({ nome: selectedTurma.nome }) : "Perfil da turma"} description="Disciplinas atribuídas e operações pedagógicas." size="expanded">
+          {selectedTurma && <>
+            <p className="text-sm text-muted-foreground">{selectedTurma.disciplinas.join(" · ")}</p>
+            <div className="grid grid-cols-2 gap-2">
+                        <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95">Chamada</Link>
+                        <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Notas</Link>
+                        <Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Plano de aula</Link>
+                        <Link href={professorHref(`/professor/materiais?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Materiais</Link>
+                        <Link href={professorHref(`/professor/turmas/${selectedTurma.id}/horario`)} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-2 text-xs font-semibold text-foreground hover:bg-muted">Horário da turma</Link>
+            </div>
+            <ProfessorTurmaRoster key={`${escolaParam}:${selectedTurma.id}`} turmaId={selectedTurma.id} />
+          </>}
+        </PortalSheet>
+        <PortalSheet open={Boolean(selectedLesson)} onClose={() => setSelectedLessonKey(null)} title={selectedLesson?.disciplina_nome ?? "Detalhes da aula"} description="Consulta da agenda de hoje." size="medium">
+          {selectedLesson && <>
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              <div><dt className="text-muted-foreground">Turma</dt><dd className="font-medium">{formatTurmaDisplayName({ turma_nome: selectedLesson.turma_nome })}</dd></div>
+              <div><dt className="text-muted-foreground">Horário</dt><dd className="font-medium">{selectedLesson.inicio} – {selectedLesson.fim}</dd></div>
+              <div><dt className="text-muted-foreground">Sala</dt><dd className="font-medium">{selectedLesson.sala_nome || "Não indicada"}</dd></div>
+              <div><dt className="text-muted-foreground">Estado</dt><dd className="font-medium">{selectedLesson.status === "em_andamento" ? "Em andamento" : selectedLesson.status === "finalizada" ? "Finalizada" : selectedLesson.status === "cancelada" ? "Cancelada" : "Sem confirmação de realização"}</dd></div>
+            </dl>
+            {lessonQuery && <div className="grid grid-cols-2 gap-2">
+              <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground" href={professorHref(`/professor/frequencias${lessonQuery}`)}>Chamada</Link>
+              <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 text-sm font-medium" href={professorHref(`/professor/notas${lessonQuery}`)}>Notas</Link>
+              <Link className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 text-sm font-medium" href={professorHref(`/professor/planos-aula${lessonQuery}`)}>Plano de aula</Link>
+            </div>}
+          </>}
+        </PortalSheet>
       </div>
     </div>
   );

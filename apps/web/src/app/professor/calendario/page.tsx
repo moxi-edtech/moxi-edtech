@@ -144,6 +144,8 @@ export default function ProfessorCalendarioPage() {
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [eventId, setEventId] = useState<string | null>(null);
   const [eventOpen, setEventOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyPeriod, setHistoryPeriod] = useState("");
   const selectedEvent = items.find(item => item.id === eventId) ?? null;
   const pathname = usePathname();
   const { escolaId, escolaSlug } = useEscolaId();
@@ -200,6 +202,10 @@ export default function ProfessorCalendarioPage() {
   );
 
   const pastEventsCount = items.filter((item) => item.data_fim < todayIso).length;
+  const pastAssessments = useMemo(() => {
+    const period = periodos.find(p => p.id === historyPeriod);
+    return items.filter(item => item.tipo === "AVALIACAO_ESCOLAR" && item.data_fim < todayIso && (!period || (item.data_inicio <= period.data_fim && item.data_fim >= period.data_inicio))).sort((a,b) => b.data_inicio.localeCompare(a.data_inicio));
+  }, [items, todayIso, periodos, historyPeriod]);
 
   const eventGroups = useMemo<EventGroup[]>(() => {
     const groups = new Map<string, EventGroup>();
@@ -385,6 +391,11 @@ export default function ProfessorCalendarioPage() {
               <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold text-klasse-green">Calendário de Avaliações</h2><a href="/api/professor/calendario?modo=imprimir" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium"><Printer size={16}/> Imprimir calendário</a></div>
               {items.filter(e=>e.tipo==="AVALIACAO_ESCOLAR"&&e.data_fim>=todayIso).slice(0,3).map(e=><div key={e.id} className="border-t border-border pt-2 text-sm"><p className="font-medium">{e.nome}</p><p className="text-xs text-muted-foreground">{e.data_inicio.split("-").reverse().join("/")} · {e.descricao}</p></div>)}
               {!items.some(e=>e.tipo==="AVALIACAO_ESCOLAR"&&e.data_fim>=todayIso)&&<p className="text-sm text-muted-foreground">Nenhuma avaliação próxima na agenda.</p>}
+              <button type="button" aria-haspopup="dialog" aria-expanded={historyOpen} onClick={() => { setHistoryPeriod(""); setHistoryOpen(true); }} className="min-h-11 rounded-xl border border-border px-3 text-sm font-semibold text-primary">Histórico de avaliações</button>
+              <PortalSheet open={historyOpen} onClose={() => setHistoryOpen(false)} title="Histórico de avaliações" description="Eventos de avaliação anteriores do calendário oficial; não representa lançamento de notas." size="expanded">
+                <label className="block space-y-1 text-sm font-medium">Período lectivo<select value={historyPeriod} onChange={event => setHistoryPeriod(event.target.value)} className="block min-h-11 w-full rounded-xl border border-border bg-card px-3 text-foreground"><option value="">Todos os períodos</option>{periodos.map(period => <option key={period.id} value={period.id}>{getPeriodLabel(period)}</option>)}</select></label>
+                {pastAssessments.length ? <ul className="divide-y divide-border rounded-xl border border-border px-3">{pastAssessments.map(event => <li key={event.id} className="space-y-1 py-3 text-sm"><p className="break-words font-semibold">{event.nome}</p><p className="text-xs text-muted-foreground">{formatDateRange(event.data_inicio, event.data_fim)}</p>{event.descricao && <p className="whitespace-pre-wrap break-words text-muted-foreground">{event.descricao}</p>}</li>)}</ul> : <p className="text-sm text-muted-foreground">Nenhuma avaliação anterior publicada neste período.</p>}
+              </PortalSheet>
             </section>
             <section className="rounded-xl border border-border bg-card p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">

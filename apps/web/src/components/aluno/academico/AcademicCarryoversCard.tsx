@@ -120,7 +120,7 @@ export function AcademicCarryoversCard({ studentId }: { studentId?: string | nul
     );
   }
 
-  if (items.length === 0) return null;
+  if (items.length === 0) return <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">Nenhuma dependência académica encontrada.</p>;
 
   const abertas = items.filter((item) => !item.presentation.terminal).length;
 
