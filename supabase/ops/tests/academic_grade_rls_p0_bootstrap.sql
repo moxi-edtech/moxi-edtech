@@ -31,37 +31,37 @@ create table public.servico_pedidos(id uuid primary key,escola_id uuid,aluno_id 
 create table public.pagamento_intents(id uuid primary key,escola_id uuid,aluno_id uuid,servico_pedido_id uuid,status text);
 create table storage.objects(id uuid primary key,bucket_id text,name text);
 
-insert into public.escola_users select fixture_id(s),fixture_id(u),p from (values
+insert into public.escola_users select public.fixture_id(s),public.fixture_id(u),p from (values
 (1,11,'aluno'),(1,12,'aluno'),(2,13,'aluno'),(1,14,'encarregado'),(1,15,'professor'),(1,16,'professor'),(1,17,'secretaria')) q(s,u,p);
-insert into public.alunos select fixture_id(a),fixture_id(s),fixture_id(u),null from (values (21,1,11),(22,1,12),(23,2,13)) q(a,s,u);
-insert into public.matriculas select fixture_id(m),fixture_id(s),fixture_id(a),fixture_id(t) from (values (31,1,21,41),(32,1,22,41),(33,2,23,42),(34,1,21,41)) q(m,s,a,t);
-insert into public.encarregados values(fixture_id(51),fixture_id(1),'guardian@example.invalid');
-insert into public.aluno_encarregados values(fixture_id(1),fixture_id(21),fixture_id(51));
-insert into public.professores select fixture_id(p),fixture_id(1),fixture_id(u) from (values(61,15),(62,16)) q(p,u);
-insert into public.curso_matriz select fixture_id(m),fixture_id(s),fixture_id(d),fixture_id(d) from (values(71,1,81),(72,1,82),(73,2,81)) q(m,s,d);
-insert into public.turma_disciplinas select fixture_id(td),fixture_id(s),fixture_id(t),fixture_id(cm),case when pr is null then null else fixture_id(pr) end,fixture_id(d) from (values
+insert into public.alunos select public.fixture_id(a),public.fixture_id(s),public.fixture_id(u),null from (values (21,1,11),(22,1,12),(23,2,13)) q(a,s,u);
+insert into public.matriculas select public.fixture_id(m),public.fixture_id(s),public.fixture_id(a),public.fixture_id(t) from (values (31,1,21,41),(32,1,22,41),(33,2,23,42),(34,1,21,41)) q(m,s,a,t);
+insert into public.encarregados values(public.fixture_id(51),public.fixture_id(1),'guardian@example.invalid');
+insert into public.aluno_encarregados values(public.fixture_id(1),public.fixture_id(21),public.fixture_id(51));
+insert into public.professores select public.fixture_id(p),public.fixture_id(1),public.fixture_id(u) from (values(61,15),(62,16)) q(p,u);
+insert into public.curso_matriz select public.fixture_id(m),public.fixture_id(s),public.fixture_id(d),public.fixture_id(d) from (values(71,1,81),(72,1,82),(73,2,81)) q(m,s,d);
+insert into public.turma_disciplinas select public.fixture_id(td),public.fixture_id(s),public.fixture_id(t),public.fixture_id(cm),case when pr is null then null else public.fixture_id(pr) end,public.fixture_id(d) from (values
 (91,1,41,71,61,81),(92,1,41,72,62,82),(93,2,42,73,null,81)) q(td,s,t,cm,pr,d);
-insert into public.avaliacoes select fixture_id(av),fixture_id(s),fixture_id(td) from (values (101,1,91),(102,1,92),(103,2,93)) q(av,s,td);
-insert into public.notas select fixture_id(n),fixture_id(s),fixture_id(av),fixture_id(m),v from (values
+insert into public.avaliacoes select public.fixture_id(av),public.fixture_id(s),public.fixture_id(td) from (values (101,1,91),(102,1,92),(103,2,93)) q(av,s,td);
+insert into public.notas select public.fixture_id(n),public.fixture_id(s),public.fixture_id(av),public.fixture_id(m),v from (values
 (111,1,101,31,16),(112,1,102,31,17),(113,1,101,32,18),(114,2,103,33,19),(115,1,101,34,12)) q(n,s,av,m,v);
 insert into public.notas_avaliacoes select n.id,n.avaliacao_id,n.matricula_id,m.aluno_id,n.valor from public.notas n join public.matriculas m on m.id=n.matricula_id;
-insert into public.exame_resultados values(fixture_id(121),fixture_id(1),fixture_id(91),fixture_id(31),16);
-insert into public.dependencias_academicas_transicao values(fixture_id(131),fixture_id(1),fixture_id(34),12);
-insert into public.dependencias_academicas_transicao_eventos values(fixture_id(132),fixture_id(1),fixture_id(131),'{"nota":12}');
-insert into public.pautas_oficiais values(fixture_id(141),fixture_id(1),fixture_id(41)),(fixture_id(142),fixture_id(2),fixture_id(42));
+insert into public.exame_resultados values(public.fixture_id(121),public.fixture_id(1),public.fixture_id(91),public.fixture_id(31),16);
+insert into public.dependencias_academicas_transicao values(public.fixture_id(131),public.fixture_id(1),public.fixture_id(34),12);
+insert into public.dependencias_academicas_transicao_eventos values(public.fixture_id(132),public.fixture_id(1),public.fixture_id(131),'{"nota":12}');
+insert into public.pautas_oficiais values(public.fixture_id(141),public.fixture_id(1),public.fixture_id(41)),(public.fixture_id(142),public.fixture_id(2),public.fixture_id(42));
 insert into public.servico_pedidos values
-(fixture_id(151),fixture_id(1),fixture_id(21),fixture_id(31),'granted',100,'DOC_BOLETIM_TRIMESTRAL','{}'),
-(fixture_id(152),fixture_id(1),fixture_id(22),fixture_id(32),'granted',100,'DOC_BOLETIM_TRIMESTRAL','{}'),
-(fixture_id(153),fixture_id(1),fixture_id(21),fixture_id(34),'granted',100,'DOC_DECLARACAO_NOTAS','{"origem":"documentos_emissao_individual"}');
+(public.fixture_id(151),public.fixture_id(1),public.fixture_id(21),public.fixture_id(31),'granted',100,'DOC_BOLETIM_TRIMESTRAL','{}'),
+(public.fixture_id(152),public.fixture_id(1),public.fixture_id(22),public.fixture_id(32),'granted',100,'DOC_BOLETIM_TRIMESTRAL','{}'),
+(public.fixture_id(153),public.fixture_id(1),public.fixture_id(21),public.fixture_id(34),'granted',100,'DOC_DECLARACAO_NOTAS','{"origem":"documentos_emissao_individual"}');
 insert into public.pagamento_intents values
-(fixture_id(161),fixture_id(1),fixture_id(21),fixture_id(151),'pending'),
-(fixture_id(162),fixture_id(1),fixture_id(22),fixture_id(152),'settled'),
-(fixture_id(163),fixture_id(1),fixture_id(21),fixture_id(153),'settled');
+(public.fixture_id(161),public.fixture_id(1),public.fixture_id(21),public.fixture_id(151),'pending'),
+(public.fixture_id(162),public.fixture_id(1),public.fixture_id(22),public.fixture_id(152),'settled'),
+(public.fixture_id(163),public.fixture_id(1),public.fixture_id(21),public.fixture_id(153),'settled');
 insert into storage.objects values
-(fixture_id(171),'pautas_oficiais_fechadas',fixture_id(1)::text||'/class.pdf'),
-(fixture_id(172),'pautas_zip',fixture_id(1)::text||'/class.zip'),
-(fixture_id(173),'other',fixture_id(1)::text||'/other.pdf'),
-(fixture_id(174),'pautas_oficiais_fechadas',fixture_id(2)::text||'/class.pdf');
+(public.fixture_id(171),'pautas_oficiais_fechadas',public.fixture_id(1)::text||'/class.pdf'),
+(public.fixture_id(172),'pautas_zip',public.fixture_id(1)::text||'/class.zip'),
+(public.fixture_id(173),'other',public.fixture_id(1)::text||'/other.pdf'),
+(public.fixture_id(174),'pautas_oficiais_fechadas',public.fixture_id(2)::text||'/class.pdf');
 
 create materialized view internal.mv_boletim_por_matricula as
  select n.escola_id,n.matricula_id,m.aluno_id,m.turma_id,2026 as ano_letivo,cm.disciplina_id,
@@ -91,13 +91,13 @@ begin
  IF NOT EXISTS(SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id AND eu.user_id=auth.uid() AND eu.papel='secretaria')
  AND NOT (auth.uid() IS NULL AND coalesce(current_setting('role',true),'')='service_role') THEN
  raise exception 'ACADEMIC_FORBIDDEN' using errcode='42501'; end if;
- return jsonb_build_object('decision','transitou','destino','proxima_etapa','disciplinas',jsonb_build_array(jsonb_build_object('suficiente',true,'evidence_id',fixture_id(81))));
+ return jsonb_build_object('decision','transitou','destino','proxima_etapa','disciplinas',jsonb_build_array(jsonb_build_object('suficiente',true,'evidence_id',public.fixture_id(81))));
 end $$;
 create function public.resolve_raa_decreto_for_matricula(p_escola_id uuid,p_matricula_id uuid) returns jsonb
 language sql stable security definer as $$
  select jsonb_build_object('decision','transitou','destino','proxima_etapa','motivo','sem_pendencias',
  'regime',jsonb_build_object('nivel_ensino','secundario','classe_num',7),'disciplinas',
- jsonb_build_array(public.resolve_estado_resultado(p_matricula_id,fixture_id(81)) || jsonb_build_object('nota_final',16)),
+ jsonb_build_array(public.resolve_estado_resultado(p_matricula_id,public.fixture_id(81)) || jsonb_build_object('nota_final',16)),
  'disciplina_ids_pendentes','[]'::jsonb,'efetivacao_matricula_bloqueada',false)
 $$;
 create function public.resolve_raa_progression_for_matricula_generic(p_escola_id uuid,p_matricula_id uuid) returns jsonb
@@ -107,7 +107,7 @@ language sql stable security definer as $$ select public.resolve_raa_decreto_for
 create function public.aluno_iniciar_rematricula(p_matricula_id uuid,p_servicos_ids uuid[]) returns jsonb
 language sql security definer as $$ select jsonb_build_object('eligible',public.resolve_raa_progression_for_matricula(public.current_tenant_escola_id(),p_matricula_id)->>'decision'='transitou') $$;
 create table public.periodos_letivos(id uuid primary key,escola_id uuid,ano_letivo_id uuid);
-insert into public.periodos_letivos values(fixture_id(181),fixture_id(1),fixture_id(191)),(fixture_id(182),fixture_id(2),fixture_id(192));
+insert into public.periodos_letivos values(public.fixture_id(181),public.fixture_id(1),public.fixture_id(191)),(public.fixture_id(182),public.fixture_id(2),public.fixture_id(192));
 create function public.get_teacher_compliance_status(p_teacher_ids uuid[],p_trimestre_id uuid) returns table(teacher_id uuid,status text)
 language plpgsql security definer as $$
 declare v_escola_id uuid; v_ano_letivo_id uuid;
