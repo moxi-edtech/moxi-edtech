@@ -16,10 +16,10 @@ CREATE TABLE public.turma_disciplinas(escola_id uuid,turma_id uuid,curso_matriz_
 CREATE TABLE public.horario_slots(id uuid PRIMARY KEY,escola_id uuid,turno_id text,dia_semana integer,inicio time,fim time,is_intervalo boolean);
 CREATE TABLE public.horario_versoes(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),escola_id uuid NOT NULL,turma_id uuid NOT NULL,status text NOT NULL DEFAULT 'draft',publicado_em timestamptz,updated_at timestamptz DEFAULT now());
 CREATE UNIQUE INDEX fixture_one_published ON public.horario_versoes(escola_id,turma_id) WHERE status='publicada';
-CREATE TABLE public.quadro_horarios(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),escola_id uuid NOT NULL,turma_id uuid NOT NULL,disciplina_id uuid NOT NULL,professor_id uuid,sala_id uuid,slot_id uuid NOT NULL,versao_id uuid NOT NULL REFERENCES public.horario_versoes(id),UNIQUE(turma_id,slot_id,versao_id));
+CREATE TABLE public.quadro_horarios(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),escola_id uuid NOT NULL,turma_id uuid NOT NULL,disciplina_id uuid NOT NULL,professor_id uuid,sala_id uuid,slot_id uuid NOT NULL,versao_id uuid NOT NULL REFERENCES public.horario_versoes(id) ON DELETE CASCADE,UNIQUE(turma_id,slot_id,versao_id));
 CREATE TABLE public.horario_eventos(escola_id uuid,turma_id uuid,versao_id uuid,tipo text,payload jsonb);
 CREATE TABLE public.audit_logs(escola_id uuid,portal text,action text,entity text,entity_id text,acao text,tabela text,registro_id text,"before" jsonb,"after" jsonb);
-CREATE FUNCTION public.current_tenant_escola_id() RETURNS uuid LANGUAGE sql STABLE AS $ SELECT escola_id FROM public.profiles WHERE user_id=auth.uid() $;
+CREATE FUNCTION public.current_tenant_escola_id() RETURNS uuid LANGUAGE sql STABLE AS $tenant$ SELECT escola_id FROM public.profiles WHERE user_id=auth.uid() $tenant$;
 CREATE FUNCTION public.log_horario_event(uuid,uuid,uuid,text,jsonb) RETURNS void LANGUAGE sql SECURITY DEFINER AS $$ INSERT INTO public.horario_eventos VALUES($1,$2,$3,$4,$5) $$;
 -- Install the trigger binding which already exists in production; migration replaces function.
 CREATE FUNCTION public.trg_validate_quadro_published_conflicts() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END; $$;
