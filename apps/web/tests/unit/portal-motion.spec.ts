@@ -43,3 +43,15 @@ test("save feedback reflects existing state without timers or network operations
   assert.match(grid, /hasSaveError/);
   assert.match(grid, /<MotionFeedback label=\{savingIndicator.label\}/);
 });
+
+test("outside pointer dismissal preserves modal focus until the retained exit finishes", () => {
+  const sheet = read("components/portal/ui/PortalSheet.tsx");
+  assert.match(sheet, /onPointerDownOutside/);
+  assert.match(sheet, /event\.detail\.originalEvent\.preventDefault\(\)/);
+  assert.match(sheet, /onFocusOutside/);
+  assert.match(sheet, /const requestClose = \(\) => \{/);
+  assert.match(sheet, /if \(busy \|\| closing \|\| !open\) return/);
+  assert.match(sheet, /useLayoutEffect\(\(\) => \{/);
+  const css = read("app/globals.css");
+  assert.doesNotMatch(css, /klasse-context-sheet-exit[^;]*; pointer-events: none/);
+});

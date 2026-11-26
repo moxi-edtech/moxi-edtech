@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { readMotionDuration } from "@/components/portal/motion/motion-tokens";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -27,7 +27,7 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
   const [retained, setRetained] = useState(open);
   const present = open || retained;
   const closing = !open && retained;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open) { setRetained(true); return; }
     if (!retained) return;
     // Preserve focus inside the dialog even when the closing control is disabled.
@@ -40,8 +40,14 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
     preference.addEventListener("change", changed);
     return () => { window.clearTimeout(fallback); preference.removeEventListener("change", changed); };
   }, [open, retained]);
+  const requestClose = () => {
+    if (busy || closing || !open) return;
+    // Move focus before the initiating pointer event can blur a control.
+    header.current?.focus({ preventScroll: true });
+    onClose();
+  };
   return (
-    <Dialog open={present} onOpenChange={next => { if (!next && !busy && !closing) onClose(); }}>
+    <Dialog open={present} onOpenChange={next => { if (!next && !busy && !closing) requestClose(); }}>
       <DialogContent ref={content} layout="bottom-sheet" closeButton={false} {...(contentId ? { id: contentId } : {})} aria-modal="true"
         data-motion-state={closing ? "closing" : "open"}
         onAnimationEnd={event => { if (event.target === event.currentTarget && closing && event.animationName === "klasse-context-sheet-exit") setRetained(false); }}
@@ -61,7 +67,15 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
           }
           opener.current = null;
         }}
-        onEscapeKeyDown={event => { if (busy || closing) event.preventDefault(); }}
+        onEscapeKeyDown={event => { event.preventDefault(); requestClose(); }}
+        onPointerDownOutside={event => {
+          // Own the outside dismissal so Radix/browser cannot move focus out
+          // before React commits the retained closing state.
+          event.preventDefault();
+          if (event.detail.originalEvent.cancelable) event.detail.originalEvent.preventDefault();
+          requestClose();
+        }}
+        onFocusOutside={event => { event.preventDefault(); if (closing) header.current?.focus({ preventScroll: true }); }}
         onInteractOutside={event => { if (busy || closing) event.preventDefault(); }}>
         <header className="shrink-0 border-b border-border px-4 pb-3 pt-3">
           <div aria-hidden="true" className="mx-auto mb-3 h-1 w-8 rounded-full bg-muted-foreground/30" />
@@ -70,8 +84,8 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
               <DialogTitle ref={header} tabIndex={-1} className="break-words text-lg leading-snug text-primary focus:outline-none">{title}</DialogTitle>
               <DialogDescription className="text-xs leading-relaxed">{description}</DialogDescription>
             </div>
-            <button type="button" aria-label={closeLabel} disabled={busy || closing} onClick={onClose}
-              className="klasse-portal-press flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+            <button type="button" aria-label={closeLabel} aria-disabled={busy || closing} disabled={busy} onClick={requestClose}
+              className="klasse-portal-press flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 aria-disabled:opacity-50">
               <X size={20} aria-hidden="true" />
             </button>
           </div>

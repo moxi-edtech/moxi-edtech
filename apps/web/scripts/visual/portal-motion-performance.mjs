@@ -87,7 +87,17 @@ async function run(rate, reduced, story) {
         assert.ok(await dialog.evaluate(el=>el.contains(document.activeElement)),"focus escaped forwards");
         if(reduced)assert.equal(geometry.duration,0);
         else assert.ok(geometry.duration>0);
-        const closeStart=await page.evaluate(()=>performance.now());
+        const closeStart=await page.evaluate(()=>{
+          window.__sheetExitSamples=[];
+          const sample=()=>{
+            const el=document.querySelector('[role="dialog"]');
+            if(!el)return;
+            if(el.getAttribute("data-motion-state")==="closing")window.__sheetExitSamples.push({locked:document.body.hasAttribute("data-scroll-locked"),focused:el.contains(document.activeElement)});
+            requestAnimationFrame(sample);
+          };
+          requestAnimationFrame(sample);
+          return performance.now();
+        });
         // Dispatch the real close controls. Capture the intermediate state before the transition ends.
         if(method==="Escape") await page.keyboard.press("Escape");
         else if(method==="button") await close.click();
@@ -96,11 +106,18 @@ async function run(rate, reduced, story) {
           const el=document.querySelector('[role="dialog"]');
           return {mounted:!!el,phase:el?.getAttribute("data-motion-state"),locked:document.body.hasAttribute("data-scroll-locked"),focused:el?.contains(document.activeElement)};
         });
-        if(!reduced&&state.mounted)assert.ok(state.phase==="closing"&&state.locked&&state.focused,"exit released focus or scroll lock early");
+        // Pointer dismissal may be committed on the following frame. Do not
+        // confuse the pre-commit open state with loss of modality.
+        if(!reduced&&state.phase==="closing")assert.ok(state.locked&&state.focused,`exit released focus or scroll lock early: ${JSON.stringify(state)} (${method})`);
         await dialog.waitFor({state:"hidden"});
         await page.waitForFunction(()=>document.activeElement?.getAttribute("aria-label")==="Mais áreas");
-        assert.ok(await page.evaluate(()=>!document.body.hasAttribute("data-scroll-locked")),"scroll or navigation lock leaked");
-        row.cycles.push({method,openWallMs:Math.round(opened-start),closeToFocusWallMs:Math.round(await page.evaluate(()=>performance.now())-closeStart),exitObserved:state.phase==="closing"});
+        const samples=await page.evaluate(()=>window.__sheetExitSamples);
+        if(!reduced){
+          assert.ok(samples.length>0,`animated exit not observed (${method})`);
+          assert.ok(samples.every(s=>s.locked&&s.focused),`exit lost modality (${method}): ${JSON.stringify(samples)}`);
+        }
+        await page.waitForFunction(()=>!document.body.hasAttribute("data-scroll-locked"));
+        row.cycles.push({method,openWallMs:Math.round(opened-start),closeToFocusWallMs:Math.round(await page.evaluate(()=>performance.now())-closeStart),exitObserved:samples.length>0,exitSamples:samples.length});
       }
     }
   } catch(error) {row.error=String(error);errors.push(story+" rate="+rate+" reduced="+reduced+": "+String(error));}

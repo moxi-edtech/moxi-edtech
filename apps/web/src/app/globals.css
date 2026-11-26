@@ -290,7 +290,7 @@
 @keyframes klasse-context-overlay-exit { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: no-preference) {
   .klasse-context-sheet[data-state="open"][data-motion-state="open"] { animation: klasse-context-sheet-enter var(--portal-motion-sheet) var(--portal-motion-ease) both; }
-  .klasse-context-sheet[data-state="open"][data-motion-state="closing"] { animation: klasse-context-sheet-exit var(--portal-motion-sheet) var(--portal-motion-ease) both; pointer-events: none; }
+  .klasse-context-sheet[data-state="open"][data-motion-state="closing"] { animation: klasse-context-sheet-exit var(--portal-motion-sheet) var(--portal-motion-ease) both; }
   .klasse-context-sheet[data-state="closed"] { animation: none; }
   .klasse-context-sheet-overlay[data-state="open"] { animation: klasse-context-overlay-enter var(--portal-motion-sheet) var(--portal-motion-ease) both; }
   .klasse-context-sheet-overlay.klasse-context-sheet-overlay-closing[data-state="open"] { animation: klasse-context-overlay-exit var(--portal-motion-sheet) var(--portal-motion-ease) both; }

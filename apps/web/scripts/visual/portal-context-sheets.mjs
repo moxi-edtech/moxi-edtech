@@ -40,6 +40,9 @@ try {
       await page.waitForFunction(()=>document.querySelector('[role="dialog"] button[disabled]')!==null);
       await page.keyboard.press("Escape");
       assert.ok(await sheet.isVisible(),"sheet dismissed during upload");
+      await page.mouse.click(10,10);
+      assert.ok(await sheet.isVisible(),"outside touch dismissed a pending upload");
+      assert.ok(await sheet.evaluate(el=>el.contains(document.activeElement)),"outside touch lost payment focus");
       release();
       await sheet.waitFor({state:"hidden"});
       await page.getByTestId("receipt-status").getByText("Recebido").waitFor();
