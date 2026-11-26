@@ -87,6 +87,7 @@ try {
         if (expectedState) await page.getByText(expectedState, { exact: false }).first().waitFor({ timeout: 8000 }).catch(() => {});
         await page.evaluate(z => { document.documentElement.style.zoom = String(z); }, zoom);
         await page.waitForTimeout(200);
+        await page.evaluate(() => document.fonts.ready);
         if (name.startsWith("dashboard-")) {
           const links = page.getByTestId("aluno-summary-cards").getByRole("link");
           if (await links.count() !== 3) errors.push(`${name}: expected exactly three summary cards`);
@@ -99,6 +100,7 @@ try {
           if (name === "dashboard-clean") {
             await links.first().focus();
             await page.keyboard.press("Tab");
+            await page.waitForFunction(() => document.activeElement === document.querySelectorAll('[data-testid="aluno-summary-cards"] a')[1], undefined, { timeout: 3000 }).catch(() => {});
             const focusVisible = await links.nth(1).evaluate(el => {
               const style = getComputedStyle(el);
               return document.activeElement === el && el.matches(":focus-visible") &&
@@ -106,6 +108,39 @@ try {
             });
             if (!focusVisible) errors.push(`${name} ${width}x${height} zoom ${zoom}: card keyboard focus not visible`);
             await links.nth(1).evaluate(el => el.blur());
+          }
+        }
+        if ((name.startsWith("dashboard-") || name === "professor-com-turmas") && width === 390 && zoom === 1) {
+          const welcome = page.getByTestId("portal-welcome-card");
+          await welcome.waitFor({timeout:10000});
+          const identity = await welcome.evaluate(async el => {
+            const faces = await document.fonts.load("600 16px Sora");
+            const signature = el.querySelector(".klasse-welcome-signature");
+            const img = new Image();
+            img.src = "/icons/klasse-welcome-signature.svg";
+            try { await img.decode(); } catch { /* reported below */ }
+            return {
+              font: faces.some(face => face.status === "loaded") && getComputedStyle(el).fontFamily.includes("Sora"),
+              signature: Boolean(signature && signature.getBoundingClientRect().height > 0 && getComputedStyle(signature).backgroundImage.includes("klasse-welcome-signature.svg") && img.naturalWidth > 0),
+              dates: el.querySelectorAll("time").length,
+            };
+          });
+          if (!identity.font || !identity.signature || identity.dates !== 1) errors.push(name + ": invalid welcome identity " + JSON.stringify(identity));
+          if (name === "dashboard-clean" || name === "professor-com-turmas") {
+            const more = page.getByRole("button", { name: "Mais áreas" });
+            await more.click();
+            const drawer = page.getByRole("dialog", { name: "Outras áreas" });
+            await drawer.waitFor();
+            await page.waitForFunction(() => document.querySelector('[role="dialog"][data-motion-state="open"]') !== null);
+            await drawer.evaluate(async el => { await Promise.all(el.getAnimations().map(animation => animation.finished.catch(() => {}))); });
+            const fits = await drawer.evaluate(el => {
+              const box = el.getBoundingClientRect();
+              return box.top >= 0 && box.bottom <= window.innerHeight + 1 && box.left >= 0 && box.right <= window.innerWidth + 1;
+            });
+            if (!fits) errors.push(name + ": drawer exceeds mobile viewport");
+            await page.keyboard.press("Escape");
+            await drawer.waitFor({state:"hidden"});
+            await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Mais áreas");
           }
         }
         const metrics = await page.evaluate(() => {
@@ -165,6 +200,7 @@ try {
         await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Disciplinas"));
         if (await subjectTab.getAttribute("tabindex") !== "0") errors.push("academic-tabs: roving keyboard focus broken");
         if (!(await page.getByRole("tabpanel", { name: "Disciplinas" }).isVisible())) errors.push("academic-tabs: discipline panel not visible");
+        if (await tabs.locator("[data-portal-motion-indicator]").count() !== 1 || await tabs.evaluate(el => getComputedStyle(el).getPropertyValue("--portal-tab-index").trim() !== "1")) errors.push("academic-tabs: indicator not associated with selected tab");
         await page.keyboard.press("Home");
         await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Notas"));
         await page.keyboard.press("End");
@@ -175,9 +211,32 @@ try {
         if ((await page.evaluate(() => (window).__academicFixtureSentinel)) !== "same-document" || !initialDocument) {
           errors.push("academic-tabs: navigation caused full page reload");
         }
+        await page.emulateMedia({reducedMotion:"reduce"});
+        await page.goto(`${baseUrl}/?story=academic-tabs`, {waitUntil:"domcontentloaded"});
+        await page.getByRole("tab", {name:"Notas"}).focus();
+        await page.keyboard.press("ArrowRight");
+        const reducedIndicator = page.getByRole("tablist", {name:"Área académica"}).locator("[data-portal-motion-indicator]");
+        await page.waitForFunction(() => document.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("Disciplinas"));
+        await reducedIndicator.waitFor();
+        if (await reducedIndicator.evaluate(el => el.getAnimations().length > 0 || parseFloat(getComputedStyle(el).transitionDuration) > 0)) errors.push("academic-tabs: indicator animates under reduced motion");
+        await page.emulateMedia({reducedMotion:"no-preference"});
       } catch (error) {
         errors.push(`academic-tabs: keyboard/panel/back navigation failed: ${error.message}`);
       }
+    }
+    if (name === "dashboard-clean" || name === "professor-com-turmas") {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.setViewportSize({width:390,height:844});
+      await page.goto(`${baseUrl}/?story=${name}`, {waitUntil:"domcontentloaded"});
+      const more = page.getByRole("button", {name:"Mais áreas"});
+      await more.click();
+      const sheet = page.getByRole("dialog", {name:"Outras áreas"});
+      await sheet.waitFor();
+      if (await sheet.evaluate(el => getComputedStyle(el).animationName !== "none" || el.getAnimations().length > 0)) errors.push(name + ": reduced-motion drawer still animates");
+      await page.keyboard.press("Escape");
+      await sheet.waitFor({state:"hidden"});
+      await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Mais áreas");
+      await page.emulateMedia({ reducedMotion: "no-preference" });
     }
     if (name === "grade-paid") {
       await page.goto(`${baseUrl}/?story=grade-paid`, { waitUntil: "domcontentloaded" });
@@ -191,26 +250,30 @@ try {
       await grid.getByRole("button", { name: "Exibir notas" }).click();
       await grid.getByText("16", { exact: true }).first().waitFor();
       await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
-      await grid.getByText("Prova trimestral").waitFor();
-      await grid.getByRole("button", { name: "Pedir reapreciação" }).click();
+      const assessment = page.getByRole("dialog",{name:"Matemática",exact:true});
+      const details = (page.viewportSize()?.width ?? 0) < 768 ? assessment : grid;
+      await details.getByText("Prova trimestral").waitFor();
+      await details.getByRole("button", { name: "Pedir reapreciação" }).click();
       await page.getByRole("dialog", { name: /Solicitar reapreciação/ }).waitFor();
       await page.keyboard.press("Tab");
       if (!(await page.evaluate(() => {
-        const dialog = document.querySelector('[role="dialog"]');
-        return dialog?.contains(document.activeElement) ?? false;
+        const dialogs = document.querySelectorAll('[role="dialog"]');
+        return Array.from(dialogs).some(dialog=>dialog.contains(document.activeElement));
       }))) errors.push("grade-paid: modal did not retain keyboard focus");
       await page.keyboard.press("Escape");
       await page.getByRole("dialog", { name: /Solicitar reapreciação/ }).waitFor({ state: "hidden" });
-      if (!(await grid.getByRole("button", { name: "Pedir reapreciação" }).evaluate(el => el === document.activeElement))) {
+      if (!(await details.getByRole("button", { name: "Pedir reapreciação" }).evaluate(el => el === document.activeElement))) {
         errors.push("grade-paid: focus not restored after Escape");
       }
-      await grid.getByRole("button", { name: "Solicitar melhoria" }).click();
+      await details.getByRole("button", { name: "Solicitar melhoria" }).click();
       await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor();
       await page.getByRole("button", { name: "Cancelar" }).click();
       await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor({ state: "hidden" });
+      if (details === assessment) { await page.keyboard.press("Escape"); await assessment.waitFor({state:"hidden"}); }
       await grid.getByRole("button", { name: "2.º trimestre" }).click();
       await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
-      await grid.getByText("Exame do período").waitFor();
+      await details.getByText("Exame do período").waitFor();
+      if (details === assessment) { await page.keyboard.press("Escape"); await assessment.waitFor({state:"hidden"}); }
       if (await grid.getByText("Biologia", { exact: true }).count()) errors.push("grade-paid: first-term-only subject appears in second trimester");
       await grid.getByRole("button", { name: "Por disciplina" }).click();
       const selector = grid.getByRole("combobox", { name: "Disciplina" });

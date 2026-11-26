@@ -21,13 +21,9 @@ const themeInitScript = `(() => {
   } catch {}
 })();`;
 
-const shouldLoadGoogleFonts = process.env.NEXT_FONT_GOOGLE_FONTS_DISABLE !== "1";
-
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
   themeColor: "#1F6B3B",
 };
@@ -54,14 +50,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
         <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
-        {shouldLoadGoogleFonts && (
-          <link
-            rel="stylesheet"
-            href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap"
-          />
-        )}
+        <link rel="preload" href="/fonts/sora-variable.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
       </head>
-      <body className="h-full" style={{ fontFamily: shouldLoadGoogleFonts ? "Sora, sans-serif" : "sans-serif" }}>
+      <body className="h-full" style={{ fontFamily: "Sora, sans-serif" }}>
         <ThemeProvider>
           <ServiceWorkerRegister />
         <OfflineSyncRegister />

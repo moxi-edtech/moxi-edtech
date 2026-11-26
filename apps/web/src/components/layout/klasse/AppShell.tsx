@@ -396,7 +396,7 @@ export default function AppShell({
             <AcademicContextBanner />
           </Suspense>
           <MaintenanceBanner />
-          <main className={mobileNav ? "p-4 md:p-6 pb-24" : "p-4 md:p-6"}>
+          <main className={mobileNav ? "p-4 md:p-6 pb-[calc(88px+env(safe-area-inset-bottom))] md:pb-6" : "p-4 md:p-6"}>
             <div className={`mx-auto w-full min-w-0 ${isWidePage ? "max-w-7xl" : "max-w-6xl"}`}>{children}</div>
           </main>
         </div>

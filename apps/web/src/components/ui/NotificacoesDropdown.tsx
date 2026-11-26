@@ -11,6 +11,7 @@ import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 export function NotificacoesDropdown() {
   const router = useRouter();
   const pathname = usePathname();
+  const academicPortal = /^(?:\/escola\/[^/]+)?\/(?:aluno|professor)(?:\/|$)/.test(pathname ?? "");
   const { escolaId, escolaSlug } = useEscolaId();
   const escolaParam = getEscolaParamFromPath(pathname) ?? escolaSlug ?? escolaId;
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -51,7 +52,7 @@ export function NotificacoesDropdown() {
       footer={
         modalNotificacao?.action_url ? <div className="flex justify-end">
           <button type="button" onClick={handleModalAction}
-            className="min-h-11 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-klasse-gold-900 hover:brightness-95 focus-visible:ring-4 focus-visible:ring-klasse-gold/20">
+            className={"min-h-11 rounded-xl px-4 py-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring " + (academicPortal ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-klasse-gold text-klasse-gold-900 hover:brightness-95")}>
             {modalNotificacao.action_label || "Abrir"}
           </button>
         </div> : undefined

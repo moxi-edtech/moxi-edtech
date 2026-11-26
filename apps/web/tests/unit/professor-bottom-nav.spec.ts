@@ -51,12 +51,14 @@ test("professor usa o mesmo drawer do aluno; preserva foco, acessos e prefetch",
   assert.match(professor, /moreIcon=\{Plus\}/);
   assert.match(professor, /prefetch: item\.path !== "\/professor\/provas"/);
   assert.match(shared, /grid-cols-5/);
-  assert.match(shared, /min-h-12/);
+  assert.match(shared, /min-h-14/);
   assert.match(shared, /aria-haspopup="dialog"/);
-  assert.match(shared, /aria-modal="true"/);
-  assert.match(shared, /event\.key === "Escape"/);
-  assert.match(shared, /moreButtonRef\.current\?\.focus\(\)/);
-  assert.match(shared, /document\.body\.style\.overflow = previousOverflow/);
+  assert.match(shared, /<PortalSheet/);
+  const sheet = src("components/portal/ui/PortalSheet.tsx");
+  assert.match(sheet, /aria-modal="true"/);
+  assert.match(sheet, /onEscapeKeyDown/);
+  assert.match(sheet, /onCloseAutoFocus/);
+  assert.match(sheet, /<Dialog open=\{present\}/);
   assert.match(shared, /isDrawerActive \|\| isMoreOpen/);
   assert.match(shared, /safe-area-inset-bottom/);
 });
@@ -64,6 +66,6 @@ test("dashboard do professor usa indicadores estáticos sem remover estados de c
   const dashboard = readFileSync(new URL("../../src/app/professor/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(dashboard, /animate-ping|bg-amber animate-pulse/);
   assert.match(dashboard, /motion-safe:animate-pulse/);
-  assert.match(dashboard, /avaliacoesPendentes > 0 \? "text-amber-400" : "text-white"/);
-  assert.match(dashboard, /faltasALancar > 0 \? "text-rose-400" : "text-white"/);
+  assert.match(dashboard, /needsAttention=\{!loading && !loadError && avaliacoesPendentes !== null && avaliacoesPendentes > 0\}/);
+  assert.match(dashboard, /needsAttention=\{!loading && !loadError && faltasALancar !== null && faltasALancar > 0\}/);
 });

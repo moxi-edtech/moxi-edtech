@@ -92,7 +92,7 @@ export function TabFaltas() {
   };
 
   return (
-    <section className="space-y-4" aria-labelledby="aluno-faltas-heading" data-testid="aluno-faltas">
+    <section className="space-y-6" aria-labelledby="aluno-faltas-heading" data-testid="aluno-faltas">
       <header className="space-y-1">
         <h2 id="aluno-faltas-heading" className="text-xl font-semibold text-foreground">As minhas faltas</h2>
         {safeData?.context?.anoLetivoLabel && <p className="text-xs text-muted-foreground">Ano letivo {safeData.context.anoLetivoLabel}</p>}
@@ -104,7 +104,7 @@ export function TabFaltas() {
       </div>}
       {safeData && (
         <>
-          <div className="grid gap-2 md:grid-cols-3" aria-label="Resumo de assiduidade">
+          <div className="grid gap-3 md:grid-cols-3" aria-label="Resumo de assiduidade">
             <AcaoRapidaCard dashboardCompact mobileCompact emphasizeSublabel label="Faltas" icon={<CalendarClock />} sublabel={String(safeData.resumo.faltas)} needsAttention={safeData.resumo.faltas > 0} />
             <AcaoRapidaCard dashboardCompact mobileCompact emphasizeSublabel label="Presenças" icon={<CheckCircle2 />} sublabel={String(safeData.resumo.presencas)} />
             <AcaoRapidaCard dashboardCompact mobileCompact emphasizeSublabel label="Atrasos" icon={<AlertTriangle />} sublabel={String(safeData.resumo.atrasos)} needsAttention={safeData.resumo.atrasos > 0} />

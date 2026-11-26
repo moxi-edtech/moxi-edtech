@@ -186,7 +186,7 @@ export default function AlunoAtividadeRunnerPage({
       <div className="flex items-center gap-3">
         <Link
           href={href("/aluno/atividades")}
-          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" aria-label="Voltar às actividades"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground  transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" aria-label="Voltar às actividades"
         >
           <ArrowLeft size={18} />
         </Link>
@@ -195,7 +195,7 @@ export default function AlunoAtividadeRunnerPage({
 
       {/* MODAL DE ALERTA DE PRAZO / NEXT_ACTION */}
       {nextActionError && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-5 space-y-3 shadow-sm">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-5 space-y-3 ">
           <div className="flex items-center gap-2 text-amber-950 font-semibold text-sm">
             <AlertCircle className="text-amber-600 shrink-0" size={20} />
             <span>{nextActionError.error}</span>
@@ -206,7 +206,7 @@ export default function AlunoAtividadeRunnerPage({
           {nextActionError.next_action && (
             <Link
               href={nextActionError.next_action.href.startsWith("/aluno/") ? href(nextActionError.next_action.href) : nextActionError.next_action.href}
-              className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm"
+              className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm "
             >
               <span>{nextActionError.next_action.label}</span>
               <ChevronRight size={16} />
@@ -216,7 +216,7 @@ export default function AlunoAtividadeRunnerPage({
       )}
 
       {/* HEADER DA ACTIVIDADE */}
-      <div className="rounded-xl border border-border bg-card p-3 shadow-sm space-y-3 sm:p-4">
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold  bg-muted text-foreground font-mono">
             {activity.tipo}
@@ -283,7 +283,7 @@ export default function AlunoAtividadeRunnerPage({
           return (
             <div
               key={q.id || idx}
-              className="rounded-xl border border-border bg-card p-3 shadow-sm space-y-3 sm:p-4"
+              className="rounded-xl border border-border bg-card p-4 space-y-3"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-primary font-mono">
@@ -369,7 +369,7 @@ export default function AlunoAtividadeRunnerPage({
 
       {/* BARRA DE AÇÕES (GUARDAR RASCUNHO OU SUBMETER) */}
       {!isSubmetida && !isExpirado && (
-        <div className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 flex items-stretch gap-2 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur-md">
+        <div className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 flex items-stretch gap-2 rounded-xl border border-border bg-card p-3">
           <button
             type="button"
             disabled={submitting}

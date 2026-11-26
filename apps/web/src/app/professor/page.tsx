@@ -4,9 +4,12 @@ import AssignmentsBanner from "@/components/professor/AssignmentsBanner";
 import { ProfessorAgendaSkeleton, ProfessorSkeletonBone, ProfessorTurmasSkeleton } from "@/components/professor/ProfessorLoadingSkeletons";
 import ProfessorReopeningRequests from "@/components/professor/ProfessorReopeningRequests";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { PortalWelcomeCard } from "@/components/portal/ui/PortalWelcomeCard";
+import { PortalSection } from "@/components/portal/ui/PortalSection";
+import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { formatTurmaDisplayName } from "@/utils/formatters";
-import { BookOpen, CalendarDays, ChevronDown, ClipboardCheck, Pencil, RefreshCw, School, UsersRound } from "lucide-react";
+import { BookOpen, CalendarDays, ChevronDown, ClipboardCheck, Pencil, RefreshCw, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -318,48 +321,20 @@ export default function Page() {
   }, [agendaByDay, nowTick, todayKey]);
 
   const turmasAtivas = turmaMap.length;
-  const avaliacoesPendentes = pendenciasResumo?.avaliacoes_pendentes ?? 0;
-  const faltasALancar = pendenciasResumo?.faltas_a_lancar ?? 0;
+  const avaliacoesPendentes = pendenciasResumo?.avaliacoes_pendentes ?? null;
+  const faltasALancar = pendenciasResumo?.faltas_a_lancar ?? null;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-24">
-      <div className="mx-auto max-w-6xl space-y-5 p-3 sm:space-y-8 sm:p-6">
+    <div className="min-w-0 text-foreground">
+      <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 sm:space-y-8">
         
-        {/* HEADER PREMIUM */}
-        <header aria-busy={loading} className="flex flex-col justify-between gap-2 sm:gap-4 md:flex-row md:items-center">
-          <div className="space-y-1">
-             <div className="flex items-center gap-2">
-                <span aria-hidden="true" className="h-2 w-2 rounded-full bg-amber" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Portal do Professor</span>
-             </div>
-             <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                Olá, {loading ? (
-                  <span className="inline-block align-middle"><ProfessorSkeletonBone className="h-6 w-28 motion-safe:animate-pulse sm:h-8" /></span>
-                ) : (
-                  <span className="text-klasse-green">{overview?.primeiro_nome || "Professor"}</span>
-                )}
-             </h1>
-             <p className="text-sm font-medium text-slate-500">
-                {loading ? (
-                  <ProfessorSkeletonBone className="h-4 w-52 max-w-full motion-safe:animate-pulse" />
-                ) : (
-                  overview?.escola_nome || "Bem-vindo de volta ao seu painel académico."
-                )}
-             </p>
-          </div>
-          
-          <div className="hidden items-center gap-3 sm:flex">
-             <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm">
-                <School className="w-6 h-6" />
-             </div>
-             <div className="hidden sm:block">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</p>
-                <p className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Painel académico
-                </p>
-             </div>
-          </div>
-        </header>
+        <PortalWelcomeCard
+          role="professor"
+          name={overview?.primeiro_nome}
+          context={overview?.escola_nome}
+          date={new Date(nowTick)}
+          loading={loading}
+        />
 
         {loadError && (
           <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
@@ -369,36 +344,30 @@ export default function Page() {
           </div>
         )}
         <AssignmentsBanner loading={loading} hasAssignments={atribs.length > 0} hasError={Boolean(loadError)} academicYearLabel={academicYearLabel} />
-        {escolaParam && <Link href={professorHref("/professor/provas")} prefetch={false} className="flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-3 transition hover:border-ring focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 sm:p-4">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-klasse-green"><ClipboardCheck className="h-5 w-5" aria-hidden="true" /></span>
-          <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">Provas</span><span className="block text-xs text-muted-foreground">Elaborar, enviar para revisão e consultar</span></span>
-          <span className="shrink-0 text-xs font-semibold text-klasse-green">Abrir</span>
-        </Link>}
-        <Link href={professorHref("/professor/calendario#avaliacoes")} prefetch={false} className="flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-3 hover:border-ring focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20"><CalendarDays className="h-5 w-5 shrink-0 text-klasse-green"/><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Calendário de Avaliações</span><span className="block text-xs text-muted-foreground">Consultar datas e imprimir</span></span></Link>
         <ProfessorReopeningRequests assignments={atribs} notesHref={professorHref("/professor/notas")} />
 
         {/* Aula actual: só mostra o estado real da aula, não presume que já começou. */}
         {aulaAtiva && (
-          <section className="rounded-xl border border-klasse-green-700 bg-klasse-green p-3 text-white shadow-sm sm:rounded-[2rem] sm:p-5">
+          <section className="rounded-xl border border-border bg-card p-4 text-foreground sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-start gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-klasse-green-700/70 text-white sm:h-11 sm:w-11">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground sm:h-11 sm:w-11">
                   <CalendarDays className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="rounded-full bg-klasse-green-700/70 px-2 py-0.5 text-[11px] font-semibold text-white">
+                    <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
                       {aulaAtiva.status === "em_andamento" ? "Em andamento" : aulaAtiva.status === "finalizada" ? "Finalizada" : "Aula agora"}
                     </span>
-                    <span className="text-xs font-medium tabular-nums text-white/80">
+                    <span className="text-xs font-medium tabular-nums text-muted-foreground">
                       {aulaAtiva.inicio} – {aulaAtiva.fim}
                     </span>
                   </div>
-                  <h3 className="mt-1 text-sm font-semibold leading-snug text-white sm:text-lg">
+                  <h3 className="mt-1 text-sm font-semibold leading-snug text-foreground sm:text-lg">
                     {aulaAtiva.disciplina_nome} · {formatTurmaDisplayName({ turma_nome: aulaAtiva.turma_nome })}
                   </h3>
                   {aulaAtiva.sala_nome && (
-                    <p className="mt-0.5 text-xs text-white/75">Sala {aulaAtiva.sala_nome}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Sala {aulaAtiva.sala_nome}</p>
                   )}
                 </div>
               </div>
@@ -406,14 +375,14 @@ export default function Page() {
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
                   <Link
                     href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(aulaAtiva.turma_id)}&disciplina_id=${encodeURIComponent(aulaAtiva.disciplina_id)}`)}
-                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-klasse-gold px-2.5 py-2 text-xs font-semibold text-klasse-gold-900 transition-colors hover:brightness-95 sm:px-4"
+                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-2.5 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:brightness-95 sm:px-4"
                   >
                     <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
                     Fazer chamada
                   </Link>
                   <Link
                     href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(aulaAtiva.turma_id)}&disciplina_id=${encodeURIComponent(aulaAtiva.disciplina_id)}`)}
-                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-klasse-green-700 bg-klasse-green-700/60 px-2.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-klasse-green-700 sm:px-4"
+                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted sm:px-4"
                   >
                     <Pencil className="h-4 w-4" aria-hidden="true" />
                     Lançar notas
@@ -424,110 +393,52 @@ export default function Page() {
           </section>
         )}
 
-        {/* RESUMO DE IMPACTO */}
-        <section aria-busy={loading} className="relative overflow-hidden rounded-xl bg-klasse-green p-3 text-white shadow-sm sm:rounded-[2rem] sm:p-6">
-          {/* Background Elements */}
-          <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-amber/10 blur-3xl" />
-          <div className="absolute -bottom-20 -left-10 h-64 w-64 rounded-full bg-emerald-500/5 blur-3xl" />
-          
-          <div className="relative z-10 grid gap-3 sm:gap-8 md:grid-cols-2 lg:grid-cols-4">
-             <div className="col-span-full space-y-1 sm:space-y-4 lg:col-span-1">
-                <div>
-                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400/70">Resumo do dia</p>
-                   <h2 className="mt-0.5 text-lg font-bold text-white sm:mt-1 sm:text-2xl">Sua Agenda</h2>
-                </div>
-                <p className="hidden text-xs font-medium leading-relaxed text-white/75 sm:block">
-                   Acompanhe suas aulas e tarefas pendentes para manter o ciclo académico em dia.
-                </p>
-             </div>
-
-             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-4 lg:col-span-3">
-                {[
-                  { label: "Aulas hoje", value: aulasHoje, color: "text-white" },
-                  { label: "Turmas", value: turmasAtivas, color: "text-white" },
-                  { label: "Avaliações", value: avaliacoesPendentes, color: avaliacoesPendentes > 0 ? "text-amber-400" : "text-white" },
-                  { label: "Faltas", value: faltasALancar, color: faltasALancar > 0 ? "text-rose-400" : "text-white" },
-                ].map((item) => (
-                  <div key={item.label} className="group relative rounded-xl border border-klasse-green-700 bg-klasse-green-700/40 p-2.5 transition-colors hover:bg-klasse-green-700/60 sm:rounded-3xl sm:p-4">
-                    <p className="mb-0.5 text-[11px] font-medium text-white/75 sm:mb-1 sm:text-[9px] sm:font-black sm:uppercase sm:tracking-widest">{item.label}</p>
-                    <div className="flex items-center gap-2">
-                       {loading ? (
-                         <ProfessorSkeletonBone inverse className="mt-1 h-6 w-9 motion-safe:animate-pulse sm:h-7" />
-                       ) : (
-                         <p className={`text-xl font-bold sm:text-2xl ${item.color}`}>{item.value}</p>
-                       )}
-                    </div>
-                  </div>
-                ))}
-             </div>
+        <PortalSection id="professor-today" title="Hoje">
+          <div aria-busy={loading} className="grid grid-cols-2 gap-3">
+            {[
+              { label: "Aulas hoje", value: loadError ? null : aulasHoje },
+              { label: "Turmas", value: loadError ? null : turmasAtivas },
+            ].map(item => (
+              <div key={item.label} className="min-w-0 rounded-xl border border-border bg-card p-3 sm:p-4">
+                {loading ? <ProfessorSkeletonBone className="h-7 w-10 motion-safe:animate-pulse" /> : (
+                  <p className="text-2xl font-semibold tabular-nums text-klasse-green">{item.value ?? "—"}</p>
+                )}
+                <p className="mt-1 text-xs text-muted-foreground">{item.label}</p>
+              </div>
+            ))}
           </div>
-        </section>
+        </PortalSection>
 
-        {/* GRID DE OPERAÇÕES */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[
-            { 
-               title: "Registrar Presenças", 
-               desc: "Controle diário de assiduidade", 
-               icon: ClipboardCheck, 
-               href: "/professor/frequencias",
-               color: "from-emerald-500 to-teal-600",
-               light: "bg-emerald-50 text-emerald-600"
-            },
-            { 
-               title: "Lançar Notas", 
-               desc: "Gestão de avaliações e médias", 
-               icon: Pencil, 
-               href: "/professor/notas",
-               color: "from-amber-500 to-orange-600",
-               light: "bg-amber-50 text-amber-600"
-            },
-            { 
-               title: "Materiais de Estudo", 
-               desc: "Upload de guias e manuais", 
-               icon: BookOpen, 
-               href: "/professor/materiais",
-               color: "from-blue-500 to-indigo-600",
-               light: "bg-muted text-foreground"
-            },
-            {
-               title: "Planos de Aula",
-               desc: "Preparação e revisão pedagógica",
-               icon: ClipboardCheck,
-               href: "/professor/planos-aula",
-               color: "from-emerald-500 to-green-700",
-               light: "bg-emerald-50 text-emerald-600"
-            },
-            { 
-               title: "Calendário Académico", 
-               desc: "Prazos, exames e marcos lectivos", 
-               icon: CalendarDays, 
-               href: "/professor/calendario",
-               color: "from-slate-600 to-slate-800",
-               light: "bg-slate-100 text-slate-600"
-            }
-          ].map((action) => (
-            <Link 
-               key={action.title} 
-               href={professorHref(action.href)} 
-               className="group relative overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm transition-colors hover:border-klasse-gold/50 sm:rounded-[2rem] sm:p-6 sm:hover:-translate-y-1 sm:hover:shadow-md last:col-span-2 sm:last:col-span-1 last:flex last:items-center last:gap-3 sm:last:block"
-            >
-               <div className={`mb-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105 sm:mb-4 sm:h-14 sm:w-14 sm:rounded-2xl ${action.light}`}>
-                  <action.icon className="h-5 w-5 sm:h-7 sm:w-7" />
-               </div>
-               <div className="space-y-1">
-                  <h3 className="text-sm font-semibold leading-snug text-foreground sm:text-base sm:font-black">{action.title}</h3>
-                  <p className="hidden text-[11px] font-medium text-muted-foreground sm:block">{action.desc}</p>
-               </div>
-               {/* Arrow Icon on Hover */}
-               <div className="absolute bottom-6 right-6 hidden opacity-0 transition-opacity group-hover:opacity-100 sm:block">
-                  <div className="h-8 w-8 rounded-full bg-slate-900 text-white flex items-center justify-center">
-                     <Pencil className="h-4 w-4" />
-                  </div>
-               </div>
-            </Link>
-          ))}
-        </div>
+        <PortalSection id="professor-shortcuts" title="Acesso rápido">
+          <div className="grid grid-cols-2 gap-3 min-[380px]:grid-cols-3">
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Presenças" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/frequencias")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Lançar notas" icon={<Pencil className="h-5 w-5" />} href={professorHref("/professor/notas")} />
+            {escolaParam && <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Provas" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/provas")} />}
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Materiais" icon={<BookOpen className="h-5 w-5" />} href={professorHref("/professor/materiais")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Planos de aula" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/planos-aula")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Calendário de Avaliações" icon={<CalendarDays className="h-5 w-5" />} href={professorHref("/professor/calendario#avaliacoes")} />
+          </div>
+        </PortalSection>
+
+        <PortalSection id="professor-attention" title="A acompanhar">
+          <div aria-busy={loading} className="grid gap-3 md:grid-cols-3">
+            <AcaoRapidaCard dashboardCompact mobileCompact portalClean label="Avaliações pendentes"
+              icon={<Pencil className="h-4 w-4" />}
+              unavailable={!loading && (loadError !== null || avaliacoesPendentes === null)}
+              needsAttention={!loading && !loadError && avaliacoesPendentes !== null && avaliacoesPendentes > 0}
+              sublabel={loading ? "A carregar…" : loadError || avaliacoesPendentes === null ? "Dados indisponíveis" : String(avaliacoesPendentes)}
+              href={professorHref("/professor/notas")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalClean label="Faltas a lançar"
+              icon={<ClipboardCheck className="h-4 w-4" />}
+              unavailable={!loading && (loadError !== null || faltasALancar === null)}
+              needsAttention={!loading && !loadError && faltasALancar !== null && faltasALancar > 0}
+              sublabel={loading ? "A carregar…" : loadError || faltasALancar === null ? "Dados indisponíveis" : String(faltasALancar)}
+              href={professorHref("/professor/frequencias")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalClean label="Calendário académico"
+              icon={<CalendarDays className="h-4 w-4" />} sublabel="Consultar eventos e avaliações"
+              href={professorHref("/professor/calendario")} />
+          </div>
+        </PortalSection>
 
         {/* CONTEÚDO ACADÊMICO */}
         <div className="grid gap-5 sm:gap-8 lg:grid-cols-[1.5fr_1fr]">
@@ -602,7 +513,7 @@ export default function Page() {
               <h2 className="text-sm font-semibold text-foreground">Agenda de {dayLabel(todayKey)}</h2>
               <Link href={professorHref("/professor/calendario")} className="text-xs font-semibold text-klasse-green hover:underline">Ver calendário</Link>
             </div>
-            <div className="rounded-xl border border-border bg-card p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
+            <div className="rounded-xl border border-border bg-card p-3 shadow-sm sm:rounded-xl sm:p-6">
               {loadError ? (
                 <p role="status" className="py-4 text-sm text-muted-foreground">Agenda indisponível. Utilize «Tentar novamente» acima.</p>
               ) : loading ? (

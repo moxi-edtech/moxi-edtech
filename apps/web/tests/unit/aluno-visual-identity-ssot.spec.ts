@@ -42,9 +42,9 @@ test("navegação mobile mantém as nove rotas, contexto, preloading e teclado",
   assert.match(nav, /preloadPortalData/);
   const sharedNav = source("components/layout/klasse/PortalBottomNav.tsx");
   assert.match(nav, /<PortalBottomNav/);
-  assert.match(sharedNav, /aria-modal="true"/);
-  assert.match(sharedNav, /event\.key === "Escape"/);
-  assert.match(sharedNav, /min-h-12/);
+  assert.match(sharedNav, /<PortalSheet/);
+  assert.match(sharedNav, /contentId=\{dialogId\}/);
+  assert.match(sharedNav, /min-h-14/);
   assert.match(sharedNav, /klasse-gold/);
   for (const route of [
     "/aluno/dashboard", "/aluno/horario", "/aluno/academico", "/aluno/financeiro",
@@ -62,7 +62,7 @@ test("dashboard mostra dados reais e superfícies compactas, sem homepage promoc
   assert.match(page, /<AcaoRapidaCard dashboardCompact mobileCompact label="Propinas vencidas"/);
   assert.match(page, /typeof screen\.boletim\?\.is_liberado === "boolean"/);
   assert.match(page, /screen\.dashboard\.status_financeiro && !screen\.dashboard\.status_financeiro\.error/);
-  assert.match(page, /bg-klasse-green/);
+  assert.match(page, /<PortalWelcomeCard role="aluno"/);
   assert.match(page, /rounded-xl border border-border bg-card/);
   assert.doesNotMatch(page, /-right-12 -top-20 h-64 w-64/);
 });
@@ -97,7 +97,7 @@ test("identidade preserva QR e offline; actividades mantêm acesso ao rascunho",
   assert.match(digital, /<QRCode/);
   assert.match(digital, /data\.verification_url/);
   assert.match(digital, /readIdentityCardCache\(localStorage, cacheKey\)/);
-  assert.match(digital, /aria-pressed=\{activeTab === "card"\}/);
+  assert.match(digital, /aria-pressed=\{activeTab === "card" \|\| mobile\}/);
   assert.match(activities, /Retomar Rascunho/);
   assert.match(activities, /Iniciar Actividade/);
   assert.match(home, /<CircularProgressbar/);

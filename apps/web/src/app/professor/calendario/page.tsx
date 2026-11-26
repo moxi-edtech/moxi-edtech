@@ -218,7 +218,7 @@ export default function ProfessorCalendarioPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className={`${PORTAL_PAGE_INSET} flex flex-col gap-4 sm:gap-6`}>
+      <div className={`${PORTAL_PAGE_INSET} max-md:px-0 max-md:py-0 flex flex-col gap-4 sm:gap-6`}>
         <DashboardHeader
           title="Calendário Académico"
           description="Eventos oficiais, marcos lectivos e janelas académicas sincronizadas com o portal da escola."
@@ -252,20 +252,18 @@ export default function ProfessorCalendarioPage() {
         ) : (
           <>
             <div className="grid gap-3 sm:gap-4 lg:grid-cols-[1.4fr_1fr]">
-              <section className="relative overflow-hidden rounded-xl border border-klasse-green-700 bg-klasse-green p-4 text-white shadow-sm sm:rounded-[2rem] sm:p-6">
-                <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-amber/10 blur-3xl" />
-                <div className="absolute -bottom-10 left-0 h-32 w-32 rounded-full bg-emerald-400/10 blur-3xl" />
-                <div className="relative z-10 space-y-3 sm:space-y-6">
+              <section className="min-w-0 rounded-xl border border-border bg-card p-4 text-foreground sm:p-6">
+                <div className="space-y-4 sm:space-y-6">
                   <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
                     <div className="space-y-1 sm:space-y-2">
-                      <p className="inline-flex items-center gap-1.5 rounded-full border border-klasse-green-700 bg-klasse-green-700/40 px-2 py-1 text-[10px] font-semibold text-white/80 sm:gap-2 sm:px-3 sm:text-[11px] sm:font-black sm:uppercase sm:tracking-[0.18em]">
+                      <p className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2 py-1 text-[10px] font-semibold text-muted-foreground sm:gap-2 sm:px-3 sm:text-[11px] sm:font-semibold sm:uppercase sm:tracking-[0.18em]">
                         <Sparkles className="h-3.5 w-3.5" />
                         Sincronizado com o portal
                       </p>
-                      <h2 className="text-xl font-bold tracking-tight sm:text-2xl sm:font-black">
+                      <h2 className="text-xl font-semibold tracking-tight text-primary sm:text-2xl sm:font-semibold">
                         {anoLetivo ? `Ano Lectivo ${anoLetivo.data_inicio.slice(0, 4)}/${anoLetivo.data_fim.slice(0, 4)}` : "Calendário activo da escola"}
                       </h2>
-                      <p className="max-w-2xl text-xs font-medium text-white/80 sm:text-sm">
+                      <p className="max-w-2xl text-xs font-medium text-muted-foreground sm:text-sm">
                         {anoLetivo ? (
                           <>
                             <span className="sm:hidden">Período: {anoLetivo.data_inicio.slice(8, 10)}/{anoLetivo.data_inicio.slice(5, 7)}/{anoLetivo.data_inicio.slice(0, 4)} – {anoLetivo.data_fim.slice(8, 10)}/{anoLetivo.data_fim.slice(5, 7)}/{anoLetivo.data_fim.slice(0, 4)}</span>
@@ -274,20 +272,20 @@ export default function ProfessorCalendarioPage() {
                         ) : "Ainda não há ano letivo activo. Consulta os próximos eventos disponíveis."}
                       </p>
                     </div>
-                    <div className="w-full rounded-xl border border-klasse-green-700 bg-klasse-green-700/40 p-3 sm:w-auto sm:rounded-2xl sm:p-4">
-                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Próximo marco</p>
+                    <div className="w-full rounded-xl border border-border bg-muted/40 p-3 sm:w-auto sm:rounded-xl sm:p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Próximo marco</p>
                       {nextEvent ? (
                         <div className="mt-2 space-y-1">
-                          <p className="text-sm font-semibold leading-snug sm:text-lg sm:font-black">{nextEvent.nome}</p>
-                          <p className="text-xs font-medium text-slate-300">
+                          <p className="text-sm font-semibold leading-snug sm:text-lg sm:font-semibold">{nextEvent.nome}</p>
+                          <p className="text-xs font-medium text-muted-foreground">
                             {formatCompactDateRange(nextEvent.data_inicio, nextEvent.data_fim)}
                           </p>
-                          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
                             {getRelativeLabel(nextEvent.data_inicio, nextEvent.data_fim, todayIso)}
                           </p>
                         </div>
                       ) : (
-                        <p className="mt-2 text-sm font-medium text-slate-300">Sem eventos futuros registados.</p>
+                        <p className="mt-2 text-sm font-medium text-muted-foreground">Sem eventos futuros registados.</p>
                       )}
                     </div>
                   </div>
@@ -298,19 +296,19 @@ export default function ProfessorCalendarioPage() {
                       { label: "Próximos eventos", value: upcomingItems.length, icon: Clock3 },
                       { label: "Períodos lectivos", value: periodos.length, icon: GraduationCap },
                     ].map((stat) => (
-                      <div key={stat.label} className="min-w-0 rounded-xl border border-klasse-green-700 bg-klasse-green-700/40 p-2 sm:rounded-2xl sm:p-4">
+                      <div key={stat.label} className="min-w-0 rounded-xl border border-border bg-muted/40 p-2 sm:rounded-xl sm:p-4">
                         <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-medium leading-tight text-white/80 sm:text-[11px] sm:font-black sm:uppercase sm:tracking-[0.18em]">{stat.label}</p>
-                          <stat.icon className="hidden h-4 w-4 text-white/70 sm:block" />
+                          <p className="text-[10px] font-medium leading-tight text-muted-foreground sm:text-[11px] sm:font-semibold sm:uppercase sm:tracking-[0.18em]">{stat.label}</p>
+                          <stat.icon className="hidden h-4 w-4 text-muted-foreground sm:block" />
                         </div>
-                        <p className="mt-1 text-xl font-bold sm:mt-3 sm:text-3xl sm:font-black">{stat.value}</p>
+                        <p className="mt-1 text-xl font-semibold tabular-nums text-primary sm:mt-3 sm:text-3xl sm:font-semibold">{stat.value}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               </section>
 
-              <aside className="rounded-xl border border-border bg-card p-3 shadow-sm sm:rounded-[2rem] sm:p-6">
+              <aside className="rounded-xl border border-border bg-card p-4 sm:p-6">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                   <div>

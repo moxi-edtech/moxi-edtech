@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { StudentAppyPayButton } from "@/components/financeiro/AppyPayReferenceButton";
 import { Upload, Loader2 } from "lucide-react";
 
@@ -62,6 +62,7 @@ export function ServicePaymentDrawer({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inFlight = useRef(false);
 
   useEffect(() => {
     if (open) {
@@ -96,7 +97,8 @@ export function ServicePaymentDrawer({
   };
 
   const handleUpload = async () => {
-    if (!documento?.intentId || !selectedFile || sending) return;
+    if (!documento?.intentId || !selectedFile || inFlight.current) return;
+    inFlight.current = true;
     const original = selectedFile;
     const fd = new FormData();
     fd.append("intentId", documento.intentId || "");
@@ -117,17 +119,14 @@ export function ServicePaymentDrawer({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao enviar comprovativo");
     } finally {
+      inFlight.current = false;
       setSending(false);
     }
   };
 
   return (
-    <Dialog open={open && Boolean(documento)} onOpenChange={(next) => { if (!next && !sending) onClose(); }}>
-      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto rounded-2xl bg-background p-5 text-foreground sm:p-6">
-        <DialogTitle>Pagamento do serviço</DialogTitle>
-        <DialogDescription>
-          Confere o valor e escolhe o método de pagamento. A confirmação por AppyPay é automática; transferências exigem comprovativo e validação da secretaria.
-        </DialogDescription>
+    <PortalSheet open={open && Boolean(documento)} busy={sending} onClose={onClose} size="expanded" title="Pagamento do serviço"
+      description="Confere o valor e escolhe o método de pagamento. A confirmação por AppyPay é automática; transferências exigem comprovativo e validação da secretaria.">
         {documento && (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-muted/50 p-4">
@@ -153,28 +152,27 @@ export function ServicePaymentDrawer({
               <label htmlFor={fileInputId + "-message"} className="text-sm font-medium">Mensagem à secretaria (opcional)</label>
               <textarea id={fileInputId + "-message"} value={mensagem} onChange={(event) => setMensagem(event.target.value)}
                 disabled={sending} maxLength={500} rows={2} placeholder="Ex.: Referência da transferência"
-                className="w-full rounded-lg border border-input bg-background p-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                className="w-full rounded-xl border border-input bg-background p-3 text-base text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
             <div className="space-y-2">
               <label htmlFor={fileInputId} className="text-sm font-medium">Comprovativo (PDF ou imagem, até 5 MB)</label>
               <input ref={fileInputRef} id={fileInputId} type="file" accept=".pdf,image/jpeg,image/png,image/webp"
                 onChange={selectFile} disabled={sending}
-                className="block w-full rounded-lg border border-input bg-background p-3 text-sm text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                className="block w-full rounded-xl border border-input bg-background p-3 text-sm text-foreground file:mr-3 file:rounded-xl file:border-0 file:bg-muted file:px-3 file:py-2 file:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
               {selectedFile && <p className="break-all text-sm text-muted-foreground">Selecionado: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB). Ainda não foi enviado.</p>}
             </div>
-            {sending && <p role="status" aria-live="polite" className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> A enviar comprovativo: {progress}%</p>}
-            {error && <p role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
+            {sending && <p role="status" aria-live="polite" className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 motion-safe:animate-spin" /> A enviar comprovativo: {progress}%</p>}
+            {error && <p role="alert" className="rounded-xl border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
             <p className="text-sm text-muted-foreground">O envio não confirma o pagamento. Aguarda a validação da secretaria; não precisas de realizar outra transferência.</p>
-            <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" onClick={onClose} disabled={sending} className="min-h-11 rounded-lg border border-border px-4 text-sm font-semibold disabled:opacity-50">Cancelar</button>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" onClick={onClose} disabled={sending} className="klasse-portal-press min-h-11 rounded-xl border border-border px-4 text-sm font-semibold disabled:opacity-50">Cancelar</button>
               <button type="button" onClick={() => void handleUpload()} disabled={!selectedFile || !documento.intentId || sending}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+                className="klasse-portal-press inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
                 <Upload className="h-4 w-4" /> {sending ? "A enviar…" : "Confirmar e enviar comprovativo"}
               </button>
             </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+    </PortalSheet>
   );
 }

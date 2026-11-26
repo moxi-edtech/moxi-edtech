@@ -13,7 +13,7 @@ const FormulaInput=dynamic(()=>import("./FormulaInput"),{ssr:false,loading:()=> 
 function FormulaView({node,selected,editor,getPos}:NodeViewProps){
  const latex=String(node.attrs.latex??"");
  const html=mathMarkup(latex);
- return <NodeViewWrapper as="span" contentEditable={false} onClick={()=>{if(!editor.isEditable)return;const pos=getPos();if(typeof pos==="number")editor.commands.setNodeSelection(pos);}} className={"inline-block max-w-full cursor-pointer overflow-x-auto rounded-xl px-1 align-middle "+(selected?"ring-2 ring-klasse-gold":"")}>
+ return <NodeViewWrapper as="span" contentEditable={false} onClick={()=>{if(!editor.isEditable)return;const pos=getPos();if(typeof pos==="number")editor.commands.setNodeSelection(pos);}} className={"inline-block max-w-full cursor-pointer overflow-x-auto rounded-xl px-1 align-middle "+(selected?"ring-2 ring-primary":"")}>
   {html?<span aria-label={latex} dangerouslySetInnerHTML={{__html:html}}/>:<span>{latex}</span>}
  </NodeViewWrapper>;
 }
