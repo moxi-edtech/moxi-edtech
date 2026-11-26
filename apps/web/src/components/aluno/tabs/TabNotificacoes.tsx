@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { Bell, ChevronRight } from "lucide-react";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 
 type Aviso = { id: string; titulo: string; resumo: string; origem: string; data: string };
 
 export function TabNotificacoes() {
+  const navigation = usePortalDrawerNavigation();
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [items, setItems] = useState<Aviso[]>([]);
@@ -33,11 +35,19 @@ export function TabNotificacoes() {
     return () => ctrl.abort();
   }, [retry]);
 
+  const openNotice = (notice: Aviso) => {
+    if (!navigation) { setSelectedId(notice.id); return; }
+    navigation.push({ id: `notice:${notice.id}`, title: notice.titulo || "Aviso", description: notice.origem || "Comunicação da escola", content: <>
+      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{notice.resumo || "Sem informação adicional."}</p>
+      {notice.data && !Number.isNaN(Date.parse(notice.data)) && <p className="text-xs text-muted-foreground">{new Date(notice.data).toLocaleDateString("pt-AO")}</p>}
+    </> });
+  };
+
   return (
-    <section className="space-y-6" aria-labelledby="aluno-avisos-title">
-      <div className="space-y-1">
+    <section className="space-y-6" aria-label="Avisos">
+      {!navigation && <div className="space-y-1">
         <h1 id="aluno-avisos-title" className="text-2xl font-semibold tracking-tight text-primary">Avisos</h1>
-      </div>
+      </div>}
       {loading ? (
         <p role="status" className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">A carregar avisos…</p>
       ) : failed ? (
@@ -56,7 +66,7 @@ export function TabNotificacoes() {
       ) : (
         <div className="space-y-3">
           {items.map(a => (
-            <button type="button" key={a.id} onClick={()=>setSelectedId(a.id)} aria-haspopup="dialog" className="klasse-portal-press flex w-full min-w-0 items-start gap-3 rounded-xl border border-border bg-card p-3 text-left sm:p-4">
+            <button type="button" key={a.id} onClick={()=>openNotice(a)} aria-haspopup="dialog" className="klasse-portal-press flex w-full min-w-0 items-start gap-3 rounded-xl border border-border bg-card p-3 text-left sm:p-4">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300"><Bell className="h-4 w-4" aria-hidden="true" /></span>
               <div className="min-w-0 flex-1 break-words">
               <h2 className="text-sm font-semibold text-foreground">{a.titulo}</h2>
@@ -70,10 +80,10 @@ export function TabNotificacoes() {
           ))}
         </div>
       )}
-      <PortalSheet open={Boolean(selected)&&!failed&&!loading} onClose={()=>setSelectedId(null)} title={selected?.titulo || "Aviso"} description={selected?.origem || "Comunicação da escola"} size="expanded">
+      {!navigation && <PortalSheet open={Boolean(selected)&&!failed&&!loading} onClose={()=>setSelectedId(null)} title={selected?.titulo || "Aviso"} description={selected?.origem || "Comunicação da escola"} size="expanded">
         <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{selected?.resumo || "Sem informação adicional."}</p>
         {selected?.data && !Number.isNaN(Date.parse(selected.data)) && <p className="text-xs text-muted-foreground">{new Date(selected.data).toLocaleDateString("pt-AO")}</p>}
-      </PortalSheet>
+      </PortalSheet>}
     </section>
   );
 }
