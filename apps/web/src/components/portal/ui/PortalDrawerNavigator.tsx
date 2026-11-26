@@ -12,11 +12,24 @@ export type PortalDrawerFrame = {
 };
 
 type Entry = { frame: PortalDrawerFrame; previousScroll: number; opener: HTMLElement | null };
-type Navigation = { push: (frame: PortalDrawerFrame) => void };
+type Guard = { dirty: boolean; busy: boolean };
+type Navigation = { push: (frame: PortalDrawerFrame) => void; registerGuard: (id: string, guard: Guard | null) => void };
+const FrameContext = createContext<string | null>(null);
 const Context = createContext<Navigation | null>(null);
 
 export function usePortalDrawerNavigation() {
   return useContext(Context);
+}
+
+/** Registers an explicit mutation/unsaved-state guard in an embedded workspace. */
+export function usePortalDrawerGuard(dirty: boolean, busy: boolean) {
+  const register = usePortalDrawerNavigation()?.registerGuard;
+  const id = useContext(FrameContext);
+  useLayoutEffect(() => {
+    if (!register || !id) return;
+    register(id, { dirty, busy });
+    return () => register(id, null);
+  }, [register, id, dirty, busy]);
 }
 
 /** One Radix dialog, one active frame. Parents stay mounted to retain their state. */
@@ -29,6 +42,23 @@ export function PortalDrawerNavigator({ root, open, onClose }: {
   const [stack, setStack] = useState<{ rootId: string; entries: Entry[] }>({ rootId: root.id, entries: [] });
   const entries = open && stack.rootId === root.id ? stack.entries : [];
   const active = entries[entries.length - 1]?.frame ?? root;
+  const [guards, setGuards] = useState<Record<string, Guard>>({});
+  const registerGuard = useCallback((id: string, guard: Guard | null) => {
+    setGuards(current => {
+      if (guard && current[id]?.dirty === guard.dirty && current[id]?.busy === guard.busy) return current;
+      if (!guard && !current[id]) return current;
+      const next = { ...current };
+      if (guard) next[id] = guard;
+      else delete next[id];
+      return next;
+    });
+  }, []);
+  const activeIds = [root.id, ...entries.map(entry => entry.frame.id)];
+  const busy = activeIds.some(id => guards[id]?.busy);
+  const canLeave = (ids: string[]) => {
+    if (ids.some(id => guards[id]?.busy)) return false;
+    return !ids.some(id => guards[id]?.dirty) || window.confirm("Existem alterações não guardadas. Pretende descartá-las?");
+  };
   const body = useRef<HTMLDivElement>(null);
   const restore = useRef<{ top: number; opener: HTMLElement | null } | null>(null);
   const push = useCallback((frame: PortalDrawerFrame) => {
@@ -44,11 +74,12 @@ export function PortalDrawerNavigator({ root, open, onClose }: {
 
   const back = () => {
     const last = entries[entries.length - 1];
-    if (!last) return;
+    if (!last || !canLeave([last.frame.id])) return;
     restore.current = { top: last.previousScroll, opener: last.opener };
     setStack({ rootId: root.id, entries: entries.slice(0, -1) });
   };
   const close = () => {
+    if (!canLeave(activeIds)) return;
     restore.current = null;
     setStack({ rootId: root.id, entries: [] });
     onClose();
@@ -69,14 +100,14 @@ export function PortalDrawerNavigator({ root, open, onClose }: {
 
   return (
     <PortalSheet open={open} onClose={close} title={active.title} description={active.description}
-      size={active.size ?? "expanded"} onBack={entries.length ? back : undefined} navigationKey={active.id} bodyRef={body}>
-      <Context.Provider value={{ push }}>
+      size={active.size ?? "expanded"} busy={busy} onBack={entries.length ? back : undefined} navigationKey={active.id} bodyRef={body}>
+      <Context.Provider value={{ push, registerGuard }}>
         <div key={root.id} hidden={entries.length > 0} className={entries.length ? "hidden" : "space-y-4"}>
-          {root.content}
+          <FrameContext.Provider value={root.id}>{root.content}</FrameContext.Provider>
         </div>
         {entries.map(({ frame }, index) => (
           <div key={frame.id} hidden={index !== entries.length - 1} className={index !== entries.length - 1 ? "hidden" : "space-y-4"}>
-            {frame.content}
+            <FrameContext.Provider value={frame.id}>{frame.content}</FrameContext.Provider>
           </div>
         ))}
       </Context.Provider>
