@@ -208,10 +208,11 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     const load = async () => {
       setLoadingAtribs(true)
       try {
-        const res = await fetch("/api/professor/atribuicoes", { cache: "no-store" })
+        const assignmentParams = new URLSearchParams(); if (requestedAnoLetivoId) assignmentParams.set("ano_letivo_id", requestedAnoLetivoId)
+        const res = await fetch(`/api/professor/atribuicoes${assignmentParams.size ? "?" + assignmentParams.toString() : ""}`, { cache: "no-store" })
         const json = await res.json().catch(() => null)
         if (!active) return
-        if (res.ok && json?.ok) {
+        if (res.ok && json?.ok && (!requestedAnoLetivoId || json.context?.anoLetivoId === requestedAnoLetivoId)) {
           const scoped: Atrib[] = (json.items || []).filter((item: Atrib) => (!embedded || ((!requestedTurmaId || item.turma.id === requestedTurmaId) && (!requestedDisciplinaId || item.disciplina.id === requestedDisciplinaId))))
           setAtribs(scoped)
           const matches = scoped.filter(item => item.turma.id === requestedTurmaId && item.disciplina.id && (!requestedDisciplinaId || item.disciplina.id === requestedDisciplinaId))
@@ -608,7 +609,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   }, [turmaId, anoLetivoId, periodosRetry, requestedTrimestre, requestedTrimestreValid])
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
-    if (!turmaId || !disciplinaId) return
+    if (!pautaReady || !turmaId || !disciplinaId) throw new Error("O contexto da pauta não está disponível.")
     if (!anoLetivoId) throw new Error("Ano letivo ativo não identificado. Atualize a página e tente novamente.")
     if (academicMode !== "CURRENT") {
       throw new Error("Este ano letivo está disponível apenas para consulta.")
@@ -687,7 +688,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
 
   const handleSaveNow = async () => {
     if (!pautaReady || !turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading) return
-    if (notasBloqueadas) return
+    if (notasBloqueadas || navigation?.busy) return
     setSavingNow(true)
     try {
       await handleSaveBatch(gradeDraft.length > 0 ? gradeDraft : pauta)
@@ -1066,7 +1067,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
                   <button
                     type="button"
                     onClick={handleSaveNow}
-                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading || savingNow || notasBloqueadas}
+                    disabled={!pautaReady || !turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading || savingNow || notasBloqueadas || Boolean(navigation?.busy)}
                     className="klasse-portal-cta w-full rounded-xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                   >
                     {savingNow ? "Salvando..." : "Salvar agora"}
@@ -1104,9 +1105,9 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
                 <div className="h-3 w-full rounded-md bg-muted" />
                 <div className="h-3 w-5/6 rounded-md bg-muted" />
               </div>
-            ) : data.length === 0 ? (
+            ) : (!pautaReady || data.length === 0) ? (
               <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-                Selecione a turma e disciplina para carregar os alunos.
+                {turmaId && disciplinaId && !pautaReady ? "Pauta indisponível para o contexto seleccionado. Volte a seleccionar a turma ou disciplina." : "Selecione a turma e disciplina para carregar os alunos."}
               </div>
             ) : notasBloqueadas ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
