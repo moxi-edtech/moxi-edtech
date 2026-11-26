@@ -152,8 +152,13 @@ test("erros de filtros têm resposta acionável sem expor mensagens SQL no naveg
   const admin = readFileSync(new URL("../../src/components/escola-admin/AlunosListClient.tsx", import.meta.url), "utf8");
   const secretaria = readFileSync(new URL("../../src/components/secretaria/AlunosSecretariaPage.tsx", import.meta.url), "utf8");
   const context = readFileSync(new URL("../../src/lib/services/alunosExportPdfContext.server.ts", import.meta.url), "utf8");
-  assert.match(admin, /payload\?\.error/);
-  assert.match(secretaria, /response\.json\(\)\.catch/);
+  const download = readFileSync(new URL("../../src/lib/services/alunosExportDownload.client.ts", import.meta.url), "utf8");
+  for (const client of [admin, secretaria]) assert.match(client, /await downloadAlunosExport\(/);
+  assert.match(download, /response\.json\(\)\.catch/);
+  assert.match(download, /response\.status === 400 && typeof body\?\.error === "string"/);
+  assert.match(download, /response\.status === 504/);
+  assert.match(download, /content-type/);
+  assert.equal((download.match(/throw new Error\(body\.error\)/g) ?? []).length, 1);
   assert.doesNotMatch(secretaria, /window\.open\(\`\/api\/secretaria\/alunos\/exportar/);
   assert.match(context, /new InvalidAlunoFiltersError/);
 });

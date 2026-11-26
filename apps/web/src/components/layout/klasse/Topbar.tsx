@@ -59,6 +59,8 @@ function ScopedTopbar({
 
   // The student and teacher portals do not yet support theme selection.
   const showThemeControls = portal !== "aluno" && portal !== "professor";
+  // Professor searches are contextual; do not mount the global keyboard listener.
+  const showCommandCenter = portal !== "professor";
   const academicPortal = portal === "aluno" || portal === "professor";
 
   const userInitial =
@@ -81,51 +83,55 @@ function ScopedTopbar({
               </div>
             </div>
           )}
-          <div className="hidden min-w-0 md:block md:w-[clamp(230px,27vw,420px)]">
-            <button
-              type="button"
-              onClick={() => {
-                setRestoreExplorerOnOpen(false);
-                setPaletteOpen(true);
-              }}
-              className="group relative flex w-full max-w-sm items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm transition-all hover:border-border hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/10"
-            >
-              <Search className="h-4 w-4 text-muted-foreground group-hover:text-muted-foreground" aria-hidden />
-              <span className="flex-1 text-left">Pesquisar ou digitar acção...</span>
-              <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100 sm:flex">
-                <span className="text-xs">⌘</span>K
-              </kbd>
-            </button>
-          </div>
+          {showCommandCenter && (
+            <>
+              <div className="hidden min-w-0 md:block md:w-[clamp(230px,27vw,420px)]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRestoreExplorerOnOpen(false);
+                    setPaletteOpen(true);
+                  }}
+                  className="group relative flex w-full max-w-sm items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm transition-all hover:border-border hover:bg-muted focus:outline-none focus:ring-4 focus:ring-amber/10"
+                >
+                  <Search className="h-4 w-4 text-muted-foreground group-hover:text-muted-foreground" aria-hidden />
+                  <span className="flex-1 text-left">Pesquisar ou digitar acção...</span>
+                  <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100 sm:flex">
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
+                </button>
+              </div>
 
-          <div className="md:hidden">
-            <button
-              type="button"
-              onClick={() => {
-                setRestoreExplorerOnOpen(false);
-                setPaletteOpen(true);
-              }}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-foreground transition hover:bg-muted hover:text-foreground focus:outline-none focus:ring-4 focus:ring-amber/20"
-              aria-label="Pesquisar ou abrir Command Center"
-            >
-              <Search className="h-5 w-5" aria-hidden />
-            </button>
-          </div>
+              <div className="md:hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRestoreExplorerOnOpen(false);
+                    setPaletteOpen(true);
+                  }}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-foreground transition hover:bg-muted hover:text-foreground focus:outline-none focus:ring-4 focus:ring-amber/20"
+                  aria-label="Pesquisar ou abrir Command Center"
+                >
+                  <Search className="h-5 w-5" aria-hidden />
+                </button>
+              </div>
 
-          <CommandPalette
-            escolaId={escolaId}
-            portal={portal}
-            open={paletteOpen}
-            onOpenChange={(next) => {
-              setPaletteOpen(next);
-              if (!next) setRestoreExplorerOnOpen(false);
-            }}
-            hideTrigger
-            restoreExplorerOnOpen={restoreExplorerOnOpen}
-            onStudentSelect={(student) => {
-              if (escolaId) setSelectedSearchStudent({ ...student, schoolId: escolaId });
-            }}
-          />
+              <CommandPalette
+                escolaId={escolaId}
+                portal={portal}
+                open={paletteOpen}
+                onOpenChange={(next) => {
+                  setPaletteOpen(next);
+                  if (!next) setRestoreExplorerOnOpen(false);
+                }}
+                hideTrigger
+                restoreExplorerOnOpen={restoreExplorerOnOpen}
+                onStudentSelect={(student) => {
+                  if (escolaId) setSelectedSearchStudent({ ...student, schoolId: escolaId });
+                }}
+              />
+            </>
+          )}
 
           <div className={cn("ml-auto flex shrink-0 items-center", academicPortal ? "gap-1 sm:gap-2" : "gap-2")}>
             {showThemeControls && <ThemeToggle className="hidden sm:inline-flex" />}
@@ -216,6 +222,6 @@ function ScopedTopbar({
  * effect-driven reset, remounting guarantees no earlier student's UI state
  * survives a tenant/role change before the first paint. */
 export default function Topbar(props: TopbarProps) {
-  const scope = [props.userScope ?? "-", props.escolaId ?? "-", props.poloScope ?? "-"].join(":");
+  const scope = [props.userScope ?? "-", props.escolaId ?? "-", props.poloScope ?? "-", props.portal ?? "-"].join(":");
   return <ScopedTopbar key={scope} {...props} />;
 }

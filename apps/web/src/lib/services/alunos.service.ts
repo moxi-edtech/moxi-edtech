@@ -12,6 +12,8 @@ type ListOptions = {
   academicYearId?: string;
   /** Pré-seleção opcional para reduzir enriquecimento por lote em exportações filtradas. */
   matchingAlunoIds?: ReadonlySet<string>;
+  /** Export scans one raw RPC batch at a time. */
+  scanSingleBatch?: boolean;
 };
 
 type ListPage = {
@@ -480,6 +482,12 @@ export async function listAlunos(
       enriched = enriched.filter((row) => row.status_matricula === filters.statusMatricula);
     }
 
+    if (options.scanSingleBatch) {
+      items = enriched;
+      exhausted = mapped.length < pageLimit;
+      break;
+    }
+
     // Cursor deve apontar para o último item efetivamente devolvido, caso
     // uma página filtrada seja completada a meio do lote da RPC.
     const remaining = pageLimit - items.length;
@@ -637,23 +645,29 @@ export async function listAllAlunos(
       escolaId,
       {
         ...filters,
+        limit: 50,
         cursorCreatedAt,
         cursorId,
         page: undefined,
         offset: undefined,
       },
-      { ...options, matchingAlunoIds: matchingAlunoIds ?? undefined }
+      { ...options, matchingAlunoIds: matchingAlunoIds ?? undefined, scanSingleBatch: true }
     );
 
     all.push(...items);
 
-    if (!page.hasMore || !page.nextCursor) break;
+    if (all.length > 10000) throw new Error("A exportação excede o limite seguro de registos; refine os filtros.");
+    if (!page.hasMore) break;
+    if (!page.nextCursor?.created_at || !page.nextCursor.id ||
+        (cursorCreatedAt === page.nextCursor.created_at && cursorId === page.nextCursor.id)) {
+      throw new Error("Não foi possível avançar a paginação da exportação.");
+    }
 
     cursorCreatedAt = page.nextCursor.created_at;
     cursorId = page.nextCursor.id;
 
     iterations += 1;
-    if (iterations > 220 || all.length >= 10000) {
+    if (iterations > 220) {
       throw new Error("A exportação excede o limite seguro de registos; refine os filtros.");
     }
   }
