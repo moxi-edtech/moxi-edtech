@@ -38,7 +38,9 @@ export function estimatedPages(blocks:readonly Bloco[],mode:Composicao,hasLogo=f
   const content=textLines(b.texto,b.tipo==="alinea"?78:82)*line+maths*6;
   const alternatives=(alternativesInColumns(b.alternativas)?Math.ceil(b.alternativas!.length/2)*line:(b.alternativas??[]).reduce((n,a)=>n+textLines(a,76)*line,0))+(b.alternativas?.length?p.alternativeGap:0);
   const gap=b.tipo==="grupo"?p.groupTop+p.groupBottom:p.questionGap;
-  const height=content+alternatives+gap+answer.heightMm+(answer.kind==="none"?0:p.answerGap);
+  const figures=b.figuras?.length??0;
+  const figureHeight=figures===1?71:figures>1?Math.ceil(figures/3)*43+3:0;
+  const height=content+alternatives+figureHeight+gap+answer.heightMm+(answer.kind==="none"?0:p.answerGap);
   // Estimate keep-together for ordinary questions; long material may flow across sheets.
   if(height<=BODY_MM&&used+height>BODY_MM){pages++;used=0;}
   const total=used+height;
