@@ -26,3 +26,8 @@ Estado: bloqueado para produção, 2026-11-24.
 - Os três escritores de bootstrap/onboarding passam pela RPC atómica. Remoção de rascunho usa FK cascade em uma só operação.
 - A proposta fecha RPCs directas de publicação e de log, retira TRUNCATE das tabelas, verifica actor/tenant/papel, protege snapshots e tempos partilhados. RPCs adquirem lock por escola antes de linhas; triggers usam try-lock e falham com 40001 em concorrência ou isolamento não suportado. Reatribuição docente continua independente de horário.
 - CI sintético ainda necessário; a migração continua candidata, não versionada. Não aplicar nem retirar draft sem comprovar o contrato real de onboarding, compatibilidade do consumidor Vercel, execução PG17 e versão livre no ledger.
+
+## Versionamento e gate de release
+- SQL candidato aprovado em 12/12 checks no commit `2b759b3f`, execução `45878174111`. Artefacto CLI `20271204031100_horarios_publication_guard.sql`, SHA-256 `40c42b1eca6b16fa831e440583a769fc335ecf56d2b27f73b907b3913dda3fb7`.
+- A migração versionada é a fonte única; o CI testa exactamente este ficheiro e verifica o hash. Reconciliado com main `762159d0`; sem sobreposição de ficheiros. Ledger remoto observado em 26/11: `20271204030100`, versão candidata livre. Main contém ainda `20271204031000_academic_grade_rls_p0.sql`; a sua aplicação é independente e fora desta PR.
+- Vercel: alias app.klasse.ao aponta para `3959efd4` (READY), anterior aos escritores corrigidos neste PR. **Não executar DDL restritiva antes de publicar o consumidor compatível e validar fluxo autenticado**. Não promover a branch de rascunho sem CI integral. Aplicação e homologação ainda não executadas.

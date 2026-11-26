@@ -20,6 +20,19 @@ function bancoFalso(tabelas, errorTable = null) {
   const queries = [];
   return {
     queries,
+    rpc(name, args) {
+      assert.equal(name, 'aluno_boletim_pago');
+      const filtros = [
+        (row) => row.escola_id === args.p_escola_id,
+        (row) => row.aluno_id === args.p_aluno_id,
+        (row) => row.matricula_id === args.p_matricula_id,
+        (row) => row.status === 'granted',
+      ];
+      queries.push({ tabela: name, filtros });
+      return Promise.resolve(errorTable === 'servico_pedidos'
+        ? { data: null, error: { message: 'sem conexão' } }
+        : { data: isBoletimPaid((tabelas.servico_pedidos ?? []).filter((row) => filtros.every((filter) => filter(row)))), error: null });
+    },
     from(nome) {
       const filtros = [];
       queries.push({ tabela: nome, filtros });
@@ -116,4 +129,24 @@ test('PDF mantém avaliações e pagina quando há muitas notas, sem exigir trim
   assert.ok(pdf.getPageCount() >= 3, `esperadas múltiplas páginas, obtidas ${pdf.getPageCount()}`);
   const empty = await PDFDocument.load(await criarPdfBoletim({ nomeAluno: 'Sem avaliações', escola: { nome: 'Escola de Teste' }, disciplinas: [], dataEmissao: '13/10/2026' }));
   assert.equal(empty.getPageCount(), 1);
+});
+
+// A paid bulletin is not a prerequisite for the student's operational enrollment decision.
+test('progressão protegida usa decisão do banco sem reler notas', async () => {
+  const mod = await import('../../src/lib/academico/raa-progression-server.ts');
+  const resolve = mod.resolveRaaProgressionForMatricula ?? mod.default.resolveRaaProgressionForMatricula;
+  const calls = [];
+  const db = { rpc: async (name, args) => {
+    calls.push({ name, args });
+    assert.equal(name, 'resolve_raa_progression_for_matricula');
+    return { error: null, data: { decision: 'transitou', destino: 'proxima_etapa', motivo: 'sem_pendencias',
+      regime: { nivel_ensino: 'secundario', classe_num: 7, eh_classe_exame: false },
+      disciplinas: [], disciplina_ids_pendentes: [], efetivacao_matricula_bloqueada: false, grade_details_restricted: true } };
+  } };
+  const result = await resolve(db, ESCOLA_A, { id: MAT_A, turma_id: 'turma-a' });
+  assert.equal(result.progression.decision, 'transitou');
+  assert.equal(result.progression.destino, 'proxima_etapa');
+  assert.equal(result.efetivacaoMatriculaBloqueada, false);
+  assert.deepEqual(result.disciplinas, []);
+  assert.deepEqual(calls, [{ name: 'resolve_raa_progression_for_matricula', args: { p_escola_id: ESCOLA_A, p_matricula_id: MAT_A } }]);
 });

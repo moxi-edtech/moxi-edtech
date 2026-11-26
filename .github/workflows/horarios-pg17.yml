@@ -5,7 +5,7 @@ concurrency:
 on:
   pull_request:
     paths:
-      - 'docs/engineering/horarios-publication-guard.proposed.sql'
+      - 'supabase/migrations/20271204031100_horarios_publication_guard.sql'
       - 'supabase/ops/tests/horarios_pg17_*'
       - '.github/workflows/horarios-pg17.yml'
       - 'apps/web/src/components/escola/horarios/**'
@@ -51,11 +51,12 @@ jobs:
           persist-credentials: false
       - name: Confirm PostgreSQL 17
         run: psql -X -v ON_ERROR_STOP=1 -c "SELECT version()"
-      - name: Apply candidate SQL in disposable database and validate
+      - name: Verify and apply versioned migration in disposable database
         run: |
           set -euo pipefail
           psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/horarios_pg17_fixture.sql
-          psql -X -v ON_ERROR_STOP=1 -f docs/engineering/horarios-publication-guard.proposed.sql
+          echo '40c42b1eca6b16fa831e440583a769fc335ecf56d2b27f73b907b3913dda3fb7  supabase/migrations/20271204031100_horarios_publication_guard.sql' | sha256sum --check
+          psql -X -v ON_ERROR_STOP=1 -f supabase/migrations/20271204031100_horarios_publication_guard.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/ops/tests/horarios_pg17_assert.sql
 
       - name: Concurrent publication of the same school resource
@@ -140,64 +141,3 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm -C apps/web typecheck
 
-  migration-candidate:
-    name: Horários · gerar migration candidata via CLI
-    needs: postgres17
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    env:
-      OBSERVED_REMOTE_MAX: '20271204030100'
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Gerar migration isolada sem acesso remoto
-        shell: bash
-        run: |
-          set -euo pipefail
-          scratch="$(mktemp -d)"
-          artifact="$RUNNER_TEMP/horarios-migration"
-          mkdir -p "$artifact"
-          cd "$scratch"
-          npm exec --yes --package=supabase@2.122.0 -- supabase --version
-          npm exec --yes --package=supabase@2.122.0 -- supabase migration new horarios_publication_guard
-          shopt -s nullglob
-          generated=(supabase/migrations/*_horarios_publication_guard.sql)
-          test "${#generated[@]}" -eq 1
-          test ! -s "${generated[0]}"
-          cli_filename="$(basename "${generated[0]}")"
-          cp "$GITHUB_WORKSPACE/docs/engineering/horarios-publication-guard.proposed.sql" "${generated[0]}"
-          cd "$GITHUB_WORKSPACE"
-          version="$(node --input-type=module <<'JS'
-          import { readdirSync } from 'node:fs';
-          const entries = readdirSync('supabase/migrations');
-          const local = entries.map(x=>/^(\d{14})_/.exec(x)?.[1]).filter(Boolean).sort().at(-1);
-          const remote = process.env.OBSERVED_REMOTE_MAX;
-          if (!local || !/^\d{14}$/.test(remote)) throw Error('Missing ledger floor');
-          const floor = [local,remote].sort().at(-1);
-          const [y,m,d,h,min,sec]=floor.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/).slice(1).map(Number);
-          const stamp=new Date(Date.UTC(y,m-1,d,h,min,sec));
-          const encode=date=>date.toISOString().slice(0,19).replace(/\D/g,'');
-          if (encode(stamp)!==floor) throw Error('Invalid ledger version');
-          stamp.setUTCMinutes(stamp.getUTCMinutes()+1);
-          const next=encode(stamp);
-          if (next<=floor||entries.some(x=>x.startsWith(next+'_'))) throw Error('Migration collision');
-          console.log(next);
-          JS
-          )"
-          name="${version}_horarios_publication_guard.sql"
-          cp "$scratch/${generated[0]}" "$artifact/$name"
-          cp "$artifact/$name" "supabase/migrations/$name"
-          cmp "supabase/migrations/$name" docs/engineering/horarios-publication-guard.proposed.sql
-          node scripts/ci/check-supabase-migration-ledger.mjs
-          printf 'CLI filename: %s\nForward-only candidate: %s\n' "$cli_filename" "$name" | tee "$artifact/provenance.txt"
-          sha256sum "$artifact/$name"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: horarios-publication-migration-candidate
-          path: ${{ runner.temp }}/horarios-migration/
-          if-no-files-found: error
-          retention-days: 14
