@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useId, useMemo, useState } from "react";
+import { usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 import { ChevronDown, Download, Eye, EyeOff, FileText, Loader2, LockKeyhole } from "lucide-react";
 import {
@@ -54,6 +55,7 @@ export function BoletimGradeGrid({
   historicalRead = false, downloading = false, downloadError = null,
   onDownload, onReapreciacao, onMelhoria,
 }: Props) {
+  const navigation = usePortalDrawerNavigation();
   const prefix = useId().replace(/:/g, "");
   const [view, setView] = useState<View>("trimestre");
   const [term, setTerm] = useState(1);
@@ -264,7 +266,7 @@ export function BoletimGradeGrid({
         Classificações trimestrais, sem média anual.
       </p>
     </>}
-    <PortalSheet key={sheetScope} open={sheetOpen} onClose={() => setExpandedId(null)} title={sheetSubject?.nome ?? "Avaliações"} description={sheetTerm ? `${sheetTerm}.º trimestre` : "Avaliações"} size="expanded">
+    <PortalSheet key={sheetScope} open={sheetOpen} inline={Boolean(navigation)} onClose={() => setExpandedId(null)} title={sheetSubject?.nome ?? "Avaliações"} description={sheetTerm ? `${sheetTerm}.º trimestre` : "Avaliações"} size="expanded">
       {sheetOpen && sheetSubject && sheetTerm ? detail(sheetSubject, sheetTerm) : null}
     </PortalSheet>
   </section>;
