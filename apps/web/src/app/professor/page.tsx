@@ -14,7 +14,6 @@ import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { BookOpen, CalendarDays, ChevronDown, ClipboardCheck, Pencil, RefreshCw, UsersRound } from "lucide-react";
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
@@ -97,6 +96,11 @@ const AttendanceWorkspace = dynamic(() => import("@/components/professor/Profess
 const PlansWorkspace = dynamic(() => import("@/components/professor/ProfessorPlanosWorkspace").then(module => module.ProfessorPlanosWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar planos…</p> });
 
 const MaterialsWorkspace = dynamic(() => import("@/components/professor/ProfessorMateriaisWorkspace").then(module => module.ProfessorMateriaisWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar materiais…</p> });
+
+const CalendarWorkspace = dynamic(() => import("@/components/professor/ProfessorCalendarWorkspace").then(module => module.ProfessorCalendarWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar calendário…</p> });
+const GradesWorkspace = dynamic(() => import("@/components/professor/ProfessorGradesWorkspace").then(module => module.ProfessorGradesWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar notas…</p> });
+
+type OperationKind = "attendance" | "plans" | "materials" | "grades" | "calendar" | "assessments" | "periods";
 
 export default function Page() {
   const [atribs, setAtribs] = useState<AtribItem[]>([]);
@@ -337,13 +341,13 @@ export default function Page() {
   const selectedLesson = !loading && !loadError ? (agendaByDay.get(todayKey) ?? []).find(item => `${getSchoolNow(new Date(nowTick)).date}:${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}` === selectedLessonKey) : undefined;
   const lessonQuery = selectedLesson?.turma_id && selectedLesson.disciplina_id ? `?turma_id=${encodeURIComponent(selectedLesson.turma_id)}&disciplina_id=${encodeURIComponent(selectedLesson.disciplina_id)}` : null;
   const operationScope = JSON.stringify([escolaParam ?? "", requestedAcademicYearId]);
-  const operationFrame = (kind: "attendance" | "plans" | "materials", turmaId?: string | null, disciplinaId?: string | null): PortalDrawerFrame => ({
+  const operationFrame = (kind: OperationKind, turmaId?: string | null, disciplinaId?: string | null): PortalDrawerFrame => ({
     id: JSON.stringify([operationScope, kind, turmaId ?? "", disciplinaId ?? ""]),
-    title: kind === "attendance" ? "Registar chamada" : kind === "plans" ? "Planos de aula" : "Materiais pedagógicos",
-    description: kind === "attendance" ? "Regista e guarda as presenças da turma." : kind === "plans" ? "Prepara, guarda e acompanha os planos de aula." : "Cria, consulta e publica os materiais.",
-    content: kind === "attendance" ? <AttendanceWorkspace embedded requestedAcademicYearId={requestedAcademicYearId} urlTurmaId={turmaId} urlDisciplinaId={disciplinaId} /> : kind === "plans" ? <PlansWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : <MaterialsWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} />,
+    title: ({ attendance: "Registar chamada", plans: "Planos de aula", materials: "Materiais pedagógicos", grades: "Lançamento de notas", calendar: "Calendário académico", assessments: "Calendário de avaliações", periods: "Períodos lectivos" })[kind],
+    description: ({ attendance: "Regista e guarda as presenças da turma.", plans: "Prepara, guarda e acompanha os planos de aula.", materials: "Cria, consulta e publica os materiais.", grades: "Selecciona o contexto, guarda as notas e exporta a mini-pauta.", calendar: "Consulta eventos oficiais da escola.", assessments: "Consulta avaliações próximas e anteriores.", periods: "Consulta períodos e datas de fecho." })[kind],
+    content: kind === "attendance" ? <AttendanceWorkspace embedded requestedAcademicYearId={requestedAcademicYearId} urlTurmaId={turmaId} urlDisciplinaId={disciplinaId} /> : kind === "plans" ? <PlansWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "materials" ? <MaterialsWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "grades" ? <GradesWorkspace embedded requestedAnoLetivoId={requestedAcademicYearId} requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : <CalendarWorkspace embedded initialView={kind} />,
   });
-  const openOperation = (kind: "attendance" | "plans" | "materials", turmaId?: string | null, disciplinaId?: string | null) => {
+  const openOperation = (kind: OperationKind, turmaId?: string | null, disciplinaId?: string | null) => {
     setExpandedTurmaId(null);
     setSelectedLessonKey(null);
     setOperation({ scope: operationScope, frame: operationFrame(kind, turmaId, disciplinaId) });
@@ -409,13 +413,13 @@ export default function Page() {
                     <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
                     Fazer chamada
                   </button>
-                  <Link
-                    href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(aulaAtiva.turma_id)}&disciplina_id=${encodeURIComponent(aulaAtiva.disciplina_id)}`)}
+                  <button type="button" aria-haspopup="dialog"
+                    onClick={() => openOperation("grades", aulaAtiva.turma_id, aulaAtiva.disciplina_id)}
                     className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted sm:px-4"
                   >
                     <Pencil className="h-4 w-4" aria-hidden="true" />
                     Lançar notas
-                  </Link>
+                  </button>
                 </div>
               )}
             </div>
@@ -441,11 +445,11 @@ export default function Page() {
         <PortalSection id="professor-shortcuts" title="Acesso rápido">
           <div className="grid grid-cols-2 gap-3 min-[380px]:grid-cols-3">
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Presenças" icon={<ClipboardCheck className="h-5 w-5" />} onClick={() => openOperation("attendance")} dialogOpen={activeOperation?.title === "Registar chamada"} />
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Lançar notas" icon={<Pencil className="h-5 w-5" />} href={professorHref("/professor/notas")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Lançar notas" icon={<Pencil className="h-5 w-5" />} onClick={() => openOperation("grades")} dialogOpen={activeOperation?.title === "Lançamento de notas"} />
             {escolaParam && <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Provas" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/provas")} />}
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Materiais" icon={<BookOpen className="h-5 w-5" />} onClick={() => openOperation("materials")} dialogOpen={activeOperation?.title === "Materiais pedagógicos"} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Planos de aula" icon={<ClipboardCheck className="h-5 w-5" />} onClick={() => openOperation("plans")} dialogOpen={activeOperation?.title === "Planos de aula"} />
-            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Calendário de Avaliações" icon={<CalendarDays className="h-5 w-5" />} href={professorHref("/professor/calendario#avaliacoes")} />
+            <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Calendário de Avaliações" icon={<CalendarDays className="h-5 w-5" />} onClick={() => openOperation("assessments")} dialogOpen={activeOperation?.title === "Calendário de avaliações"} />
           </div>
         </PortalSection>
 
@@ -456,7 +460,7 @@ export default function Page() {
               unavailable={!loading && (loadError !== null || avaliacoesPendentes === null)}
               needsAttention={!loading && !loadError && avaliacoesPendentes !== null && avaliacoesPendentes > 0}
               sublabel={loading ? "A carregar…" : loadError || avaliacoesPendentes === null ? "Dados indisponíveis" : String(avaliacoesPendentes)}
-              href={professorHref("/professor/notas")} />
+              onClick={() => openOperation("grades")} dialogOpen={activeOperation?.title === "Lançamento de notas"} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalClean label="Faltas a lançar"
               icon={<ClipboardCheck className="h-4 w-4" />}
               unavailable={!loading && (loadError !== null || faltasALancar === null)}
@@ -465,7 +469,7 @@ export default function Page() {
               onClick={() => openOperation("attendance")} dialogOpen={activeOperation?.title === "Registar chamada"} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalClean label="Calendário académico"
               icon={<CalendarDays className="h-4 w-4" />} sublabel="Consultar eventos e avaliações"
-              href={professorHref("/professor/calendario")} />
+              onClick={() => openOperation("calendar")} dialogOpen={activeOperation?.title === "Calendário académico"} />
           </div>
         </PortalSection>
 
@@ -531,7 +535,7 @@ export default function Page() {
           <section className="space-y-3 sm:space-y-4">
             <div className="flex items-center justify-between gap-2 px-1 sm:px-2">
               <h2 className="text-sm font-semibold text-foreground">Agenda de {dayLabel(todayKey)}</h2>
-              <Link href={professorHref("/professor/calendario")} className="text-xs font-semibold text-klasse-green hover:underline">Ver calendário</Link>
+              <button type="button" aria-haspopup="dialog" onClick={() => openOperation("calendar")} className="min-h-11 text-xs font-semibold text-klasse-green hover:underline">Ver calendário</button>
             </div>
             <div className="rounded-xl border border-border bg-card p-3 shadow-sm sm:rounded-xl sm:p-6">
               {loadError ? (
@@ -545,7 +549,6 @@ export default function Page() {
                   {(agendaByDay.get(todayKey) || []).map((item, idx) => {
                     const key = `${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`;
                     const canNavigate = Boolean(item.turma_id && item.disciplina_id);
-                    const query = canNavigate
                       ? `?turma_id=${encodeURIComponent(item.turma_id!)}&disciplina_id=${encodeURIComponent(item.disciplina_id!)}`
                       : "";
                     const isCurrentLesson = aulaAtiva?.turma_id === item.turma_id
@@ -587,7 +590,7 @@ export default function Page() {
                                 </button>
                               )}
                               <button type="button" aria-haspopup="dialog" onClick={() => openOperation("attendance", item.turma_id, item.disciplina_id)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Chamada</button>
-                              <Link href={professorHref(`/professor/notas${query}`)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Notas</Link>
+                              <button type="button" aria-haspopup="dialog" onClick={() => openOperation("grades", item.turma_id, item.disciplina_id)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Notas</button>
                               <button type="button" aria-haspopup="dialog" onClick={() => openOperation("plans", item.turma_id, item.disciplina_id)} className="inline-flex min-h-10 items-center rounded-xl px-2 font-semibold text-klasse-green hover:bg-muted">Plano</button>
                             </div>
                             {finalizingKey === key && (
@@ -614,7 +617,7 @@ export default function Page() {
             </div>
           </section>
         </div>
-        <PortalDrawerNavigator key={`${operationScope}:turma`} open={Boolean(selectedTurma)} onClose={() => setExpandedTurmaId(null)} root={{
+        <PortalDrawerNavigator key={`${operationScope}:turma`} open={Boolean(selectedTurma)} onClose={() => setExpandedTurmaId(null)} onChanged={loadAgain} root={{
           id: `${escolaParam ?? "default"}:turma:${selectedTurma?.id ?? "closed"}`,
           title: selectedTurma ? formatTurmaDisplayName({ nome: selectedTurma.nome }) : "Perfil da turma",
           description: "Disciplinas atribuídas e operações pedagógicas.",
@@ -622,7 +625,7 @@ export default function Page() {
             <p className="text-sm text-muted-foreground">{selectedTurma.disciplinas.join(" · ")}</p>
             <div className="grid grid-cols-2 gap-2">
                         <PortalDrawerPushButton frame={operationFrame("attendance", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95">Chamada</PortalDrawerPushButton>
-                        <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Notas</Link>
+                        <PortalDrawerPushButton frame={operationFrame("grades", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Notas</PortalDrawerPushButton>
                         <PortalDrawerPushButton frame={operationFrame("plans", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Plano de aula</PortalDrawerPushButton>
                         <PortalDrawerPushButton frame={operationFrame("materials", selectedTurma.id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Materiais</PortalDrawerPushButton>
                         <PortalDrawerPushButton frame={{ id: `${escolaParam ?? "default"}:horario:${selectedTurma.id}`, title: "Horário da turma", description: formatTurmaDisplayName({ nome: selectedTurma.nome }), content: <ProfessorTurmaHorario turmaId={selectedTurma.id} embedded /> }} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-2 text-xs font-semibold text-foreground hover:bg-muted">Horário da turma</PortalDrawerPushButton>
@@ -630,7 +633,7 @@ export default function Page() {
             <ProfessorTurmaRoster key={`${escolaParam}:${selectedTurma.id}`} turmaId={selectedTurma.id} />
           </>,
         }} />
-        <PortalDrawerNavigator key={`${operationScope}:lesson`} open={Boolean(selectedLesson)} onClose={() => setSelectedLessonKey(null)} root={{ id: `${operationScope}:lesson:${selectedLessonKey ?? "closed"}`, title: selectedLesson?.disciplina_nome ?? "Detalhes da aula", description: "Consulta da agenda de hoje.", size: "medium", content: selectedLesson && <>
+        <PortalDrawerNavigator key={`${operationScope}:lesson`} open={Boolean(selectedLesson)} onClose={() => setSelectedLessonKey(null)} onChanged={loadAgain} root={{ id: `${operationScope}:lesson:${selectedLessonKey ?? "closed"}`, title: selectedLesson?.disciplina_nome ?? "Detalhes da aula", description: "Consulta da agenda de hoje.", size: "medium", content: selectedLesson && <>
             <dl className="grid grid-cols-2 gap-3 text-sm">
               <div><dt className="text-muted-foreground">Turma</dt><dd className="font-medium">{formatTurmaDisplayName({ turma_nome: selectedLesson.turma_nome })}</dd></div>
               <div><dt className="text-muted-foreground">Horário</dt><dd className="font-medium">{selectedLesson.inicio} – {selectedLesson.fim}</dd></div>
@@ -639,11 +642,11 @@ export default function Page() {
             </dl>
             {lessonQuery && <div className="grid grid-cols-2 gap-2">
               <PortalDrawerPushButton frame={operationFrame("attendance", selectedLesson.turma_id, selectedLesson.disciplina_id)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground">Chamada</PortalDrawerPushButton>
-              <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 text-sm font-medium" href={professorHref(`/professor/notas${lessonQuery}`)}>Notas</Link>
+              <PortalDrawerPushButton frame={operationFrame("grades", selectedLesson.turma_id, selectedLesson.disciplina_id)} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 text-sm font-medium">Notas</PortalDrawerPushButton>
               <PortalDrawerPushButton frame={operationFrame("plans", selectedLesson.turma_id, selectedLesson.disciplina_id)} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 text-sm font-medium">Plano de aula</PortalDrawerPushButton>
             </div>}
           </>, }} />
-        <PortalDrawerNavigator key={`${operationScope}:operation`} open={Boolean(activeOperation)} onClose={() => setOperation(null)} root={activeOperation ?? { id: "closed", title: "Operação", description: "", content: null }} />
+        <PortalDrawerNavigator key={`${operationScope}:operation`} open={Boolean(activeOperation)} onClose={() => setOperation(null)} onChanged={loadAgain} root={activeOperation ?? { id: "closed", title: "Operação", description: "", content: null }} />
       </div>
     </div>
   );
