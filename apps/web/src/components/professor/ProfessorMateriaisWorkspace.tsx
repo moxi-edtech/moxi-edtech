@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { usePortalDrawerGuard } from "@/components/portal/ui/PortalDrawerNavigator";
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { PORTAL_PAGE_INSET } from "@/lib/layout/portal-page";
 import { matchesProfessorResourceQuery } from "@/lib/professor/resource-search";
@@ -52,6 +52,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const [dirty, setDirty] = useState(false);
+  const navigation = usePortalDrawerNavigation();
   usePortalDrawerGuard(dirty, saving || updatingId !== null);
   const [form, setForm] = useState({
     titulo: "",
@@ -145,6 +146,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Erro ao guardar material");
 
+      navigation?.notifyChanged();
       success("Material guardado", "O material ficou em rascunho.");
       setShowModal(false);
       setDirty(false);
@@ -169,6 +171,7 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Erro ao alterar estado");
 
+      navigation?.notifyChanged();
       success(newStatus === "publicado" ? "Material publicado" : "Material despublicado");
       loadData();
     } catch (err) {

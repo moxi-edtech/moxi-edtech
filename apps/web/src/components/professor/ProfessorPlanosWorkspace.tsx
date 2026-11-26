@@ -1,6 +1,6 @@
 "use client";
 
-import { usePortalDrawerGuard } from "@/components/portal/ui/PortalDrawerNavigator";
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileText, Send, Save, Pencil } from "lucide-react";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -31,6 +31,7 @@ export function ProfessorPlanosWorkspace({ embedded = false, requestedTurmaId = 
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const navigation = usePortalDrawerNavigation();
   usePortalDrawerGuard(dirty, saving);
   const [message, setMessage] = useState<string | null>(null);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
@@ -73,6 +74,7 @@ export function ProfessorPlanosWorkspace({ embedded = false, requestedTurmaId = 
       const response = await fetch("/api/professor/planos-aula", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, id: editingPlanId ?? undefined, status }) });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível guardar o plano.");
+      navigation?.notifyChanged();
       setMessage(status === "enviado" ? "Plano enviado para revisão." : "Rascunho guardado.");
       setForm(emptyForm); setEditingPlanId(null); setDirty(false); await load();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Não foi possível guardar o plano."); }

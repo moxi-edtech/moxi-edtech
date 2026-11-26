@@ -34,10 +34,11 @@ export function usePortalDrawerGuard(dirty: boolean, busy: boolean) {
 }
 
 /** One Radix dialog, one active frame. Parents stay mounted to retain their state. */
-export function PortalDrawerNavigator({ root, open, onClose, onChanged }: {
+export function PortalDrawerNavigator({ root, open, onClose, onReopen, onChanged }: {
   root: PortalDrawerFrame;
   open: boolean;
   onClose: () => void;
+  onReopen: () => void;
   onChanged?: () => void;
 }) {
   // A root identifier must include the school/student/turma scope.
@@ -68,30 +69,87 @@ export function PortalDrawerNavigator({ root, open, onClose, onChanged }: {
   };
   const body = useRef<HTMLDivElement>(null);
   const restore = useRef<{ top: number; opener: HTMLElement | null } | null>(null);
+  // Only opaque positions enter browser history. The scoped mount owns the trail.
+  const session = useRef<{ token: string; rootId: string; trail: Entry[]; reopen: () => void; url: string } | null>(null);
+  const travelling = useRef(false);
+  const historyKey = "klassePortalDrawer";
+  useLayoutEffect(() => {
+    if (!open) return;
+    const current = session.current;
+    if (current?.rootId === root.id && history.state?.[historyKey]?.token === current.token) return;
+    const token = crypto.randomUUID();
+    session.current = { token, rootId: root.id, trail: [], reopen: onReopen, url: location.href };
+    history.pushState({ [historyKey]: { token, depth: 0 } }, "");
+  }, [open, root.id]);
   const push = useCallback((frame: PortalDrawerFrame) => {
     if (!open || busy || dirty || frame.id === root.id) return;
     const previousScroll = body.current?.scrollTop ?? 0;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setStack(current => {
-      const prior = current.rootId === root.id ? current.entries : [];
-      if (prior.some(entry => entry.frame.id === frame.id)) return current;
-      return { rootId: root.id, entries: [...prior, { frame, previousScroll, opener }] };
-    });
-  }, [open, root.id, busy, dirty]);
+    const current = session.current;
+    if (!current || travelling.current || entries.some(entry => entry.frame.id === frame.id)) return;
+    const next = [...entries, { frame, previousScroll, opener }];
+    current.trail = next;
+    history.pushState({ [historyKey]: { token: current.token, depth: next.length } }, "");
+    setStack({ rootId: root.id, entries: next });
+  }, [open, root.id, busy, dirty, entries]);
 
+  const approved = useRef(false);
+  const travel = (delta: number) => {
+    if (travelling.current) return;
+    approved.current = true;
+    travelling.current = true;
+    history.go(delta);
+  };
   const back = () => {
     const last = entries[entries.length - 1];
-    if (!last || !canLeave([last.frame.id])) return;
-    restore.current = { top: last.previousScroll, opener: last.opener };
-    setStack({ rootId: root.id, entries: entries.slice(0, -1) });
+    if (last && canLeave([last.frame.id])) travel(-1);
   };
   const close = () => {
-    if (!canLeave(activeIds)) return;
-    restore.current = null;
-    setStack({ rootId: root.id, entries: [] });
-    onClose();
-    if (changed.current) { changed.current = false; onChanged?.(); }
+    if (canLeave(activeIds)) travel(-entries.length - 1);
   };
+  useLayoutEffect(() => {
+    const traverse = (event: PopStateEvent) => {
+      const current = session.current;
+      if (!current || current.url !== location.href) return;
+      const mark = event.state?.[historyKey];
+      const depth = mark?.token === current.token ? mark.depth : -1;
+      if ((!open && depth < 0) || depth > current.trail.length) return;
+      const position = open ? entries.length : -1;
+      if (depth === position) { travelling.current = false; return; }
+      if (open && !approved.current && !canLeave(depth < 0 ? activeIds : depth < position ? entries.slice(depth).map(entry => entry.frame.id) : activeIds)) {
+        travelling.current = true;
+        history.go(position - depth);
+        return;
+      }
+      approved.current = false;
+      travelling.current = false;
+      if (depth < 0) {
+        onClose();
+        if (changed.current) { changed.current = false; onChanged?.(); }
+      } else {
+        if (!open) current.reopen();
+        const left = entries[depth];
+        if (left) restore.current = { top: left.previousScroll, opener: left.opener };
+        setStack({ rootId: current.rootId, entries: current.trail.slice(0, depth) });
+      }
+    };
+    const unload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    const guardLink = (event: MouseEvent) => {
+      const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (!link || link.download || link.hasAttribute("download") || link.target === "_blank" || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      if (!canLeave(activeIds)) { event.preventDefault(); event.stopPropagation(); }
+    };
+    window.addEventListener("popstate", traverse);
+    if (open && (dirty || busy)) {
+      window.addEventListener("beforeunload", unload);
+      document.addEventListener("click", guardLink, true);
+    }
+    return () => {
+      window.removeEventListener("popstate", traverse);
+      window.removeEventListener("beforeunload", unload);
+      document.removeEventListener("click", guardLink, true);
+    };
+  });
   useLayoutEffect(() => {
     if (!open) {
       restore.current = null;

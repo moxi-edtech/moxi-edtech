@@ -1,8 +1,10 @@
 'use client'
 
-import { useCallback, useState, useEffect } from 'react'
-import { ArrowRight, Loader2, CheckCircle2, Wallet, X, Upload, FileCheck2 } from 'lucide-react'
+import { useCallback, useState, useEffect, useRef } from 'react'
+import { ArrowRight, Loader2, CheckCircle2, Wallet, Upload, FileCheck2 } from 'lucide-react'
 import { useToast, useConfirm } from '@/components/feedback/FeedbackSystem'
+import { PortalSheet } from '@/components/portal/ui/PortalSheet'
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from '@/components/portal/ui/PortalDrawerNavigator'
 import { Notice } from '@/components/ui/alert'
 
 type RematriculaStatus = {
@@ -46,14 +48,14 @@ function uploadWithProgress(url: string, formData: FormData, onProgress: (value:
   })
 }
 
-export function RematriculaBanner() {
+export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: boolean; onFinance?: () => void } = {}) {
   const { success, error } = useToast()
   const confirm = useConfirm()
   const [status, setStatus] = useState<RematriculaStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(embedded)
   const [selectedServices, setSelectedServices] = useState<string[]>([])
   const [starting, setStarting] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -61,18 +63,32 @@ export function RematriculaBanner() {
   const [flowError, setFlowError] = useState<string | null>(null)
   const [evidenceMessage, setEvidenceMessage] = useState('')
 
+  const navigation = usePortalDrawerNavigation()
+  const submitting = useRef(false)
+  const sequence = useRef(0)
+  const dirty = open && Boolean(selectedServices.length || evidenceMessage.trim())
+  usePortalDrawerGuard(dirty, starting || uploading)
+  const finance = onFinance ?? (() => window.location.assign('/aluno/financeiro'))
+  const closeForm = () => {
+    if (submitting.current || (dirty && !window.confirm('Descartar alterações à rematrícula?'))) return
+    setSelectedServices([])
+    setEvidenceMessage('')
+    setOpen(false)
+  }
+
   const fetchStatus = useCallback(async () => {
+    const version = ++sequence.current
     setStatusError(null)
     try {
       const res = await fetch('/api/aluno/rematricula/status', { cache: 'no-store' })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || json?.reason || 'Não foi possível verificar a rematrícula.')
-      setStatus(json)
+      if (version === sequence.current) setStatus(json)
     } catch (err: unknown) {
-      console.error(err)
+      if (version !== sequence.current) return
       setStatusError(err instanceof Error ? err.message : 'Não foi possível verificar a rematrícula.')
     } finally {
-      setLoading(false)
+      if (version === sequence.current) setLoading(false)
     }
   }, [])
 
@@ -102,7 +118,7 @@ export function RematriculaBanner() {
 
   const handleConfirm = async () => {
     if (status?.hasDebt) {
-      window.location.assign('/aluno/financeiro')
+      finance()
       return
     }
 
@@ -115,15 +131,17 @@ export function RematriculaBanner() {
     .reduce((total, service) => total + service.valor, 0)
 
   const startPayment = async () => {
-    const ok = await confirm({
-      title: 'Iniciar rematrícula',
-      message: `Deseja iniciar a rematrícula para ${status?.nextAno}? O total desta transação será ${money.format(selectedTotal)}.`,
-      confirmLabel: 'Continuar para pagamento',
-    })
-    if (!ok) return
-    setBusy(true)
+    if (submitting.current) return
+    submitting.current = true
     setStarting(true)
     try {
+      const ok = await confirm({
+        title: 'Iniciar rematrícula',
+        message: `Deseja iniciar a rematrícula para ${status?.nextAno}? O total desta transação será ${money.format(selectedTotal)}.`,
+        confirmLabel: 'Continuar para pagamento',
+      })
+      if (!ok) return
+      setBusy(true)
       const res = await fetch('/api/aluno/rematricula/iniciar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,7 +151,9 @@ export function RematriculaBanner() {
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao iniciar rematrícula')
       setOpen(true)
       success('Rematrícula iniciada', 'Confira os dados de pagamento e envie o comprovativo desta transação.')
-      void fetchStatus()
+      setSelectedServices([])
+      navigation?.notifyChanged()
+      await fetchStatus()
     } catch (err: unknown) {
       const message = err instanceof Error
         ? err.message
@@ -144,6 +164,7 @@ export function RematriculaBanner() {
         `${message} Se o problema persistir, contacte a secretaria.`,
       )
     } finally {
+      submitting.current = false
       setBusy(false)
       setStarting(false)
     }
@@ -159,16 +180,21 @@ export function RematriculaBanner() {
     formData.append('intentId', intentId)
     formData.append('file', file)
     if (evidenceMessage.trim()) formData.append('mensagem', evidenceMessage.trim())
+    if (submitting.current) return
+    submitting.current = true
     setUploading(true)
     setUploadProgress(0)
     try {
       const json = await uploadWithProgress('/api/aluno/documentos/comprovativo', formData, setUploadProgress)
       if (!json?.ok) throw new Error(json?.error || 'Falha ao enviar comprovativo')
+      navigation?.notifyChanged()
+      setEvidenceMessage('')
       success('Comprovativo enviado', 'A secretaria irá validar o pagamento e liberar o recibo financeiro.')
       await fetchStatus()
     } catch (error) {
       setFlowError(error instanceof Error ? error.message : 'Não foi possível enviar o comprovativo.')
     } finally {
+      submitting.current = false
       setUploading(false)
     }
   }
@@ -221,7 +247,7 @@ export function RematriculaBanner() {
     }
 
     if (status.code === 'REMATRICULA_DEBT_REQUIRED') {
-      return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="attention" title="Regularização financeira necessária" description={status.reason || 'Regulariza os saldos vencidos antes de rematricular.'} detail={<>A rematrícula permanece bloqueada enquanto houver saldo vencido.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={() => window.location.assign('/aluno/financeiro')} className="rounded-xl bg-[#2B6044] px-4 text-sm font-semibold text-white">Abrir financeiro</button>} />
+      return <Notice className="mb-6" eyebrow="Vida escolar · Rematrícula" tone="attention" title="Regularização financeira necessária" description={status.reason || 'Regulariza os saldos vencidos antes de rematricular.'} detail={<>A rematrícula permanece bloqueada enquanto houver saldo vencido.{(status.academic?.disciplinaIdsPendentes?.length ?? 0) > 0 && <span className="ml-2">Disciplinas pendentes: {status.academic?.disciplinaIdsPendentes?.length}.</span>}</>} action={<button type="button" onClick={finance} className="rounded-xl bg-[#2B6044] px-4 text-sm font-semibold text-white">Abrir financeiro</button>} />
     }
 
     const title = status.code === 'SERVICE_NOT_CONFIGURED'
@@ -296,20 +322,15 @@ export function RematriculaBanner() {
         {status.academic?.decision === 'inscricao_condicional' && <p className="text-sm leading-6 text-slate-600">A progressão condicional foi autorizada pelo RAA. As disciplinas pendentes continuam a exigir acompanhamento.</p>}
         {statusError && <div role="status" className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600"><span>Não foi possível atualizar o estado.</span><button type="button" onClick={() => void fetchStatus()} className="min-h-11 font-semibold text-[#2B6044] underline">Tentar novamente</button></div>}
       </Notice>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-4" onClick={() => setOpen(false)}>
-          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between gap-4">
-              <div><p className="text-xs font-black uppercase tracking-widest text-slate-400">Rematrícula {status.nextAno}</p><h4 className="mt-1 text-xl font-black text-slate-900">Confira e pague a rematrícula</h4></div>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Fechar" className="rounded-full bg-slate-100 p-2 text-slate-500"><X size={18} /></button>
-            </div>
-
+      <PortalSheet inline={embedded} open={open && !isConfirmed && !status.hasDebt} busy={starting || uploading} onClose={closeForm}
+        title="Rematrícula" description={`Confira o pedido para ${status.nextAno ?? 'o próximo ano lectivo'}.`} size="expanded">
             {paymentIntent ? (
               <div className="mt-5 space-y-4">
-                <div className={`rounded-2xl border p-4 ${paymentIntent.has_evidence ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}><p className={`text-xs font-black uppercase tracking-widest ${paymentIntent.has_evidence ? 'text-amber-700' : 'text-emerald-700'}`}>{paymentIntent.has_evidence ? 'Comprovativo recebido · em análise' : 'Pagamento disponível · aguarda comprovativo'}</p><p className="mt-1 text-sm text-slate-900">Referência: <strong>{paymentIntent.reference || 'Rematrícula'}</strong></p><p className="mt-1 text-2xl font-black text-slate-900">{money.format(paymentIntent.amount)}</p></div>
+                <div className={`rounded-2xl border p-4 ${paymentIntent.has_evidence ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}><p className={`text-xs font-black uppercase tracking-widest ${paymentIntent.has_evidence ? 'text-amber-700' : 'text-emerald-700'}`}>{rejectedEvidence ? 'Comprovativo não confirmado' : paymentIntent.status === 'settled' ? 'Pagamento confirmado' : pendingEvidence ? 'Comprovativo recebido · em análise' : 'Pagamento disponível · aguarda comprovativo'}</p><p className="mt-1 text-sm text-slate-900">Referência: <strong>{paymentIntent.reference || 'Rematrícula'}</strong></p><p className="mt-1 text-2xl font-black text-slate-900">{money.format(paymentIntent.amount)}</p></div>
                 {(paymentIntent.itens_pagamento?.length ?? 0) > 0 && <div className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm font-black text-slate-900">Detalhamento do valor</p><div className="mt-2 space-y-2">{paymentIntent.itens_pagamento?.map((item, index) => <div key={`${item.nome ?? 'item'}-${index}`} className="flex items-start justify-between gap-3 text-sm text-slate-600"><span>{item.nome || item.descricao || 'Item da rematrícula'}{item.quantidade && item.quantidade > 1 ? ` · ${item.quantidade}x` : ''}</span><strong className="text-slate-900">{money.format(Number(item.valor ?? 0) * Number(item.quantidade ?? 1))}</strong></div>)}</div><div className="mt-3 flex justify-between border-t border-slate-200 pt-3 text-sm font-black text-slate-900"><span>Total</span><span>{money.format(paymentIntent.amount)}</span></div></div>}
-                {paymentIntent.status === 'settled' && paymentIntent.receipt_url ? <a href={paymentIntent.receipt_url} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald px-4 py-3 text-sm font-black text-white"><FileCheck2 size={17} /> Abrir recibo financeiro</a> : paymentIntent.status === 'settled' && paymentIntent.receipt_pending ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-black">Pagamento confirmado.</p><p className="mt-1">O recibo financeiro está a ser emitido. Atualize o estado em alguns instantes.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm">Atualizar estado</button></div> : paymentIntent.has_evidence && !['failed', 'rejected', 'cancelled', 'canceled'].includes(paymentIntent.status) ? <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-black">Comprovativo recebido · em análise pela secretaria</p><p className="mt-1">O pagamento ainda não está confirmado. A secretaria precisa validar o documento e o valor. Não envie outro comprovativo enquanto este estiver em análise.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-amber-800 shadow-sm">Atualizar estado</button></div> : ['failed', 'rejected', 'cancelled', 'canceled'].includes(paymentIntent.status) ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"><p className="font-black">Pagamento não confirmado</p><p className="mt-1">{paymentIntent.rejection_reason || 'A secretaria não confirmou esta transação.'} Envie um novo comprovativo ou contacte a secretaria.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-rose-800 shadow-sm">Atualizar estado</button></div> : <>
+                {paymentIntent.status === 'settled' && paymentIntent.receipt_url ? <a href={paymentIntent.receipt_url} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald px-4 py-3 text-sm font-black text-white"><FileCheck2 size={17} /> Abrir recibo financeiro</a> : paymentIntent.status === 'settled' ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><p className="font-black">Pagamento confirmado.</p><p className="mt-1">O recibo financeiro está a ser emitido. Atualize o estado em alguns instantes.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm">Atualizar estado</button></div> : paymentIntent.has_evidence && !['failed', 'rejected', 'cancelled', 'canceled'].includes(paymentIntent.status) ? <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-black">Comprovativo recebido · em análise pela secretaria</p><p className="mt-1">O pagamento ainda não está confirmado. A secretaria precisa validar o documento e o valor. Não envie outro comprovativo enquanto este estiver em análise.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-amber-800 shadow-sm">Atualizar estado</button></div> : !['draft', 'pending', 'failed'].includes(paymentIntent.status) ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"><p className="font-black">Pagamento não confirmado</p><p className="mt-1">{paymentIntent.rejection_reason || 'A secretaria não confirmou esta transação.'} Contacte a secretaria.</p><button type="button" onClick={() => void fetchStatus()} className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-black text-rose-800 shadow-sm">Atualizar estado</button></div> : <>
                   <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700"><p className="font-black text-slate-900">Como pagar</p><p className="mt-2">Banco: {status.rematricula?.dadosPagamento?.banco || 'Consulte a secretaria'}</p><p>IBAN: {status.rematricula?.dadosPagamento?.iban || 'Indisponível'}</p><p>Referência: {paymentIntent.reference || 'Rematrícula'}</p></div>
+                  {paymentIntent.status === 'failed' && <p role="status">{paymentIntent.rejection_reason || 'Comprovativo rejeitado.'} Envie a correcção neste pedido.</p>}
                   <textarea value={evidenceMessage} onChange={(event) => setEvidenceMessage(event.target.value)} disabled={uploading} rows={2} maxLength={500} placeholder="Mensagem para a secretaria (opcional)" className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm" />
                   <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-6 text-center"><Upload className="text-emerald" /><span className="text-sm font-black text-slate-900">Enviar comprovativo</span><span className="text-xs text-slate-500">PDF, JPG, PNG ou WEBP · máximo 5MB</span><input type="file" className="sr-only" accept=".pdf,image/jpeg,image/png,image/webp" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void submitEvidence(file) }} />{uploading && <span className="text-xs font-bold text-emerald">Enviando… {uploadProgress}%</span>}</label>
                   <p className="text-center text-xs text-slate-500">Depois do envio, a secretaria recebe o documento para validar o valor e a referência. O estado ficará “em análise” até à decisão.</p>
@@ -325,9 +346,7 @@ export function RematriculaBanner() {
                 {flowError && <p className="rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{flowError}</p>}
               </div>
             )}
-          </div>
-        </div>
-      )}
+      </PortalSheet>
     </div>
   )
 }

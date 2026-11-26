@@ -32,6 +32,7 @@ type GradeEntryGridProps = {
   subtitle?: string
   debounceMs?: number
   onSave?: (rows: StudentGradeRow[]) => Promise<void> | void
+  saveControl?: React.RefObject<(() => Promise<void>) | null>
   onSaveError?: (error: unknown) => void
   highlightId?: string | null
   onDataChange?: (rows: StudentGradeRow[]) => void
@@ -105,6 +106,7 @@ export function GradeEntryGrid({
   subtitle,
   debounceMs = 800,
   onSave,
+  saveControl,
   onSaveError,
   highlightId,
   onDataChange,
@@ -155,7 +157,7 @@ export function GradeEntryGrid({
 
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const pendingIdsRef = useRef<Set<string>>(new Set())
-  const savingRef = useRef(false)
+  const inFlight = useRef<Promise<void> | null>(null)
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flushSaveRef = useRef<() => Promise<void>>(async () => undefined)
 
@@ -212,51 +214,55 @@ export function GradeEntryGrid({
     }
   }, [data, notaCorte])
 
-  const flushSave = useCallback(async () => {
-    if (!onSave || savingRef.current || pendingIdsRef.current.size === 0) return
+  const flushSave = useCallback((): Promise<void> => {
+    if (inFlight.current) return inFlight.current
+    if (!onSave || pendingIdsRef.current.size === 0) return Promise.resolve()
+    const drain = async () => {
+      setIsSaving(true)
+      try {
+        // Serializar gravações evita que uma resposta antiga chegue depois de
+        // uma edição mais recente e sobrescreva a nota nova no writer canónico.
+        while (pendingIdsRef.current.size > 0) {
+          const ids = new Set(pendingIdsRef.current)
+          pendingIdsRef.current.clear()
+          const payload = dataRef.current.filter((row) => ids.has(row.id))
+          if (payload.length === 0) continue
 
-    savingRef.current = true
-    setIsSaving(true)
-    try {
-      // Serializar gravações evita que uma resposta antiga chegue depois de
-      // uma edição mais recente e sobrescreva a nota nova no writer canónico.
-      while (pendingIdsRef.current.size > 0) {
-        const ids = Array.from(pendingIdsRef.current)
-        pendingIdsRef.current.clear()
-        const payload = dataRef.current.filter((row) => ids.includes(row.id))
-        if (payload.length === 0) continue
-
-        try {
-          await onSave(payload)
-          setSavedRows(previous => previous.map(row => payload.find(next => next.id === row.id) ?? row))
-          setData((prev) =>
-            prev.map((row) =>
-              ids.includes(row.id) && !pendingIdsRef.current.has(row.id)
-                ? {
-                    ...row,
-                    _status: "synced",
-                  }
-                : row
+          try {
+            await onSave(payload)
+            setSavedRows(previous => previous.map(row => payload.find(next => next.id === row.id) ?? row))
+            setData((prev) =>
+              prev.map((row) =>
+                payload.includes(row)
+                  ? {
+                      ...row,
+                      _status: "synced",
+                    }
+                  : row
+              )
             )
-          )
-        } catch (error) {
-          setData((prev) =>
-            prev.map((row) =>
-              ids.includes(row.id) && !pendingIdsRef.current.has(row.id)
-                ? {
-                    ...row,
-                    _status: "error",
-                  }
-                : row
+          } catch (error) {
+            setData((prev) =>
+              prev.map((row) =>
+                payload.includes(row)
+                  ? {
+                      ...row,
+                      _status: "error",
+                    }
+                  : row
+              )
             )
-          )
-          onSaveError?.(error)
+            onSaveError?.(error)
+            throw error
+          }
         }
+      } finally {
+        inFlight.current = null
+        setIsSaving(false)
       }
-    } finally {
-      savingRef.current = false
-      setIsSaving(false)
     }
+    inFlight.current = Promise.resolve().then(drain)
+    return inFlight.current
   }, [onSave, onSaveError])
 
   useEffect(() => {
@@ -268,8 +274,19 @@ export function GradeEntryGrid({
       clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = null
     }
-    void flushSaveRef.current()
+    void flushSaveRef.current().catch(() => undefined)
   }, [])
+
+  useEffect(() => {
+    if (!saveControl) return
+    saveControl.current = async () => {
+      for (const row of dataRef.current) {
+        if (row._status === "error") pendingIdsRef.current.add(row.id)
+      }
+      await flushSaveRef.current()
+    }
+    return () => { saveControl.current = null }
+  }, [saveControl])
 
   const scheduleSave = useCallback(() => {
     if (!onSave) return
@@ -286,7 +303,7 @@ export function GradeEntryGrid({
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       if (!drawerEmbedded && pendingRef.current.size > 0) {
-        void flushRef.current()
+        void flushRef.current().catch(() => undefined)
       }
     }
   }, [drawerEmbedded])
@@ -296,7 +313,7 @@ export function GradeEntryGrid({
       const numericValue = clampNota(value, notaMaxima)
       const current = dataRef.current
       const target = current[rowIndex]
-      if (!target) return
+      if (!target || target[columnId] === numericValue) return
 
       const next = current.map((row, index) => {
         if (index !== rowIndex) return row
@@ -329,7 +346,7 @@ export function GradeEntryGrid({
 
       const current = dataRef.current
       const next = current.map((row, index) => {
-        if (index < startRowIndex || index >= startRowIndex + lines.length) return row
+        if (row.is_isento || index < startRowIndex || index >= startRowIndex + lines.length) return row
         const valString = lines[index - startRowIndex]
         const numericValue = valString ? clampNota(valString, notaMaxima) : null
         const updatedRow = {

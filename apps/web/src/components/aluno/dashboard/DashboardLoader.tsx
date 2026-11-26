@@ -73,9 +73,10 @@ export default function DashboardLoader() {
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const drawerScope = `${school}:${scopedQuery}`;
-  const [drawer, setDrawer] = useState<{ scope: string; kind: "daily" | "notices" | "notice" | "academic" | "finance" | "documents"; noticeId?: string } | null>(null);
+  const [drawer, setDrawer] = useState<{ scope: string; kind: "daily" | "notices" | "notice" | "academic" | "finance" | "documents" | "enrollment"; noticeId?: string } | null>(null);
+  useEffect(() => { setDrawer(null); }, [drawerScope]);
   const activeDrawer = drawer?.scope === drawerScope ? drawer.kind : null;
-  const openDrawer = (kind: "daily" | "notices" | "academic" | "finance" | "documents") => setDrawer({ scope: drawerScope, kind });
+  const openDrawer = (kind: "daily" | "notices" | "academic" | "finance" | "documents" | "enrollment") => setDrawer({ scope: drawerScope, kind });
   const lessonOpen = activeDrawer === "daily";
   const selectedNotice = activeDrawer === "notice" ? screen?.dashboard.avisos_recentes.find(item => item.id === drawer?.noticeId) : null;
   const lastLoadedScope = useRef<string | null>(null);
@@ -106,7 +107,7 @@ export default function DashboardLoader() {
         void Promise.allSettled([
           fetchJson<BoletimData>("/api/aluno/boletim", controller.signal, scopedQuery).then(data => update("boletim", data)),
           fetchJson<CatalogoData>("/api/aluno/documentos/catalogo", controller.signal, scopedQuery).then(data => update("catalogo", data)),
-          fetchJson<StudentRematricula & { ok: boolean }>("/api/aluno/rematricula/status", controller.signal).then(data => update("rematricula", data)),
+          scopedQuery ? Promise.resolve() : fetchJson<StudentRematricula & { ok: boolean }>("/api/aluno/rematricula/status", controller.signal).then(data => update("rematricula", data)),
           fetchJson<RaaData>("/api/aluno/home/raa-status", controller.signal).then(data => update("raa", data)),
         ]);
       } catch(e) {
@@ -120,7 +121,7 @@ export default function DashboardLoader() {
     pendentes: screen.dashboard.status_financeiro?.pendentes ?? 0,
     financialError: Boolean(screen.dashboard.status_financeiro?.error),
     documentos: screen.catalogo?.documentos,
-    rematricula: screen.rematricula,
+    rematricula: scopedQuery ? null : screen.rematricula,
     academic: screen.raa?.result,
   }) : [], [screen]);
   if (loading || (!error && lastLoadedScope.current !== drawerScope)) return <LoadingDashboard/>;
@@ -160,7 +161,7 @@ export default function DashboardLoader() {
           {attentions.slice(0,3).map(item => {
             const Icon = item.kind === "mensalidade" ? Wallet : item.kind === "rejected" ? AlertCircle : item.kind === "rematricula" ? CalendarCheck : FileText;
             const needsAttention = item.kind === "rejected" || item.kind === "mensalidade" || item.kind === "rematricula" || item.kind === "academico";
-            const contextual = item.href === "/aluno/financeiro" ? "finance" : item.href === "/aluno/documentos" ? "documents" : item.kind === "academico" ? "academic" : null;
+            const contextual = item.href === "/aluno/academico" && item.kind !== "academico" ? "enrollment" : item.href === "/aluno/financeiro" ? "finance" : item.href === "/aluno/documentos" ? "documents" : item.kind === "academico" ? "academic" : null;
             return <AcaoRapidaCard key={item.kind + item.href} dashboardCompact mobileCompact portalClean
               icon={<Icon className="h-4 w-4"/>} label={item.title} needsAttention={needsAttention}
               sublabel={item.kind === "rejected" || item.kind === "academico" ? [item.description, item.action].filter(Boolean).join(" · ") : item.action}
@@ -177,8 +178,11 @@ export default function DashboardLoader() {
         {screen.dashboard.avisos_recentes.map(a=><li key={a.id}><button type="button" aria-haspopup="dialog" onClick={() => setDrawer({ scope: drawerScope, kind: "notice", noticeId: a.id })} className="klasse-portal-press block w-full py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><p className="text-sm font-medium text-foreground">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{a.resumo}</p>}<p className="mt-1 text-xs text-muted-foreground">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></button></li>)}
       </ul>}
     </PortalSection>
-    <PortalDrawerNavigator key={drawerScope} open={activeDrawer !== null} onClose={() => setDrawer(null)} onChanged={refresh}
-      root={activeDrawer === "academic" ? {
+    <PortalDrawerNavigator key={drawerScope} open={activeDrawer !== null} onReopen={() => setDrawer(drawer)} onClose={() => setDrawer(null)} onChanged={refresh}
+      root={activeDrawer === "enrollment" ? {
+        id: `${drawerScope}:enrollment`, title: "Rematrícula", description: "Consulta o pedido e acompanha o comprovativo.",
+        content: <StudentDrawerWorkspace scope={drawerScope} kind="enrollment" />,
+      } : activeDrawer === "academic" ? {
         id: `${drawerScope}:academic`, title: "Académico", description: "Notas, disciplinas, faltas e documentos.",
         content: <StudentDrawerWorkspace scope={drawerScope} kind="academic" initialTab="notas" />,
       } : activeDrawer === "finance" ? {

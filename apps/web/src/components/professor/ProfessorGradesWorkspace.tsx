@@ -141,6 +141,8 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   const [disciplinaId, setDisciplinaId] = useState("")
   const [turmaDisciplinaId, setTurmaDisciplinaId] = useState<string | null>(null)
   const [disciplinaNome, setDisciplinaNome] = useState<string | null>(null)
+  const saveControl = useRef<(() => Promise<void>) | null>(null)
+  const [loadedRows, setLoadedRows] = useState<StudentGradeRow[]>([])
   const [pauta, setPauta] = useState<StudentGradeRow[]>([])
   const [gradeMaxima, setGradeMaxima] = useState<number | null>(20)
   const [gradeCorte, setGradeCorte] = useState<number | null>(10)
@@ -344,8 +346,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
             acc[row.aluno_id] = row.matricula_id
             return acc
           }, {})
-          setPauta(
-            detailedRows.map((row, index) => ({
+          const rows = detailedRows.map<StudentGradeRow>((row, index) => ({
               id: row.aluno_id,
               numero: row.numero_chamada ?? index + 1,
               nome: row.nome,
@@ -356,7 +357,8 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
               mt1: row.mt ?? null,
               _status: "synced",
             }))
-          )
+          setLoadedRows(rows)
+          setPauta(rows)
           setMatriculaIds(nextMatriculaIds)
           setLoadedPautaScope(raaScope)
         } else {
@@ -688,10 +690,10 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
 
   const handleSaveNow = async () => {
     if (!pautaReady || !turmaId || !disciplinaId || pauta.length === 0 || !anoLetivoId || loading) return
-    if (notasBloqueadas || navigation?.busy) return
+    if (notasBloqueadas || savingNow || !saveControl.current) return
     setSavingNow(true)
     try {
-      await handleSaveBatch(gradeDraft.length > 0 ? gradeDraft : pauta)
+      await saveControl.current()
       if (online) {
         success("Notas guardadas", "Os lançamentos foram sincronizados com o servidor.")
       } else {
@@ -722,8 +724,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
       if (!response.ok) return
       const payload = await response.json()
       if (payload?.ok && !controller.signal.aborted) {
-        navigation?.notifyChanged()
-      setCompletedScopes((current) => ({
+        setCompletedScopes((current) => ({
           ...current,
           [completionKey]: Boolean(payload.already_completed) || Boolean(current[completionKey]),
         }))
@@ -770,6 +771,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
       if (!response.ok || !payload?.ok) {
         throw new Error(payload?.error ?? "Ainda existem notas por concluir nesta pauta.")
       }
+      if (!payload.already_completed) navigation?.notifyChanged()
       setCompletedScopes((current) => ({ ...current, [completionKey]: true }))
       success(payload.already_completed ? "Lançamento já concluído" : "Lançamento concluído",
         payload.already_completed ? "A Secretaria já foi informada." : "A Secretaria e o Admin foram informados.")
@@ -850,7 +852,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     }
   }
 
-  const data = useMemo(() => pauta, [pauta])
+  const data = loadedRows
   const reaberturaAtiva = reopenRequest?.status === "APROVADO" && Boolean(reopenRequest.expira_em) && new Date(reopenRequest.expira_em as string).getTime() > Date.now()
   const gradeAvailability = resolveGradeEntryAvailability({
     periods: periodosDetalhes,
@@ -1289,6 +1291,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
                   key={raaScope}
                   compact={embedded}
                   initialData={data}
+                  saveControl={saveControl}
                   onDataChange={setGradeDraft}
                   subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${trimestreSelecionado}`}
                   onSave={handleSaveBatch}

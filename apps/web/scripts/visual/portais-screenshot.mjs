@@ -74,6 +74,10 @@ try {
               await dialog.waitFor({timeout:10000});
               if (page.url() !== before || await button.getAttribute("aria-expanded") !== "true") errors.push(`${name}: ${label} changed route or did not expand`);
               if (await page.getByRole("dialog").count() !== 1) errors.push(`${name}: ${label} opened multiple dialogs`);
+              await page.evaluate(() => history.back());
+              await dialog.waitFor({state:"hidden"});
+              await page.evaluate(() => history.forward());
+              await dialog.waitFor({timeout:10000});
               await page.keyboard.press("Escape");
               await dialog.waitFor({state:"hidden"});
               await page.waitForFunction(label => document.activeElement?.tagName === "BUTTON" && document.activeElement.textContent?.trim().startsWith(label), label);

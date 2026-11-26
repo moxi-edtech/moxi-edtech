@@ -100,9 +100,11 @@ const MaterialsWorkspace = dynamic(() => import("@/components/professor/Professo
 const CalendarWorkspace = dynamic(() => import("@/components/professor/ProfessorCalendarWorkspace").then(module => module.ProfessorCalendarWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar calendário…</p> });
 const GradesWorkspace = dynamic(() => import("@/components/professor/ProfessorGradesWorkspace").then(module => module.ProfessorGradesWorkspace), { loading: () => <p role="status" className="text-sm text-muted-foreground">A carregar notas…</p> });
 
-type OperationKind = "attendance" | "plans" | "materials" | "grades" | "calendar" | "assessments" | "periods";
+const ExamList = dynamic(() => import("@/components/professor/ProfessorExamList").then(module => module.ProfessorExamList));
+type OperationKind = "exams" | "attendance" | "plans" | "materials" | "grades" | "calendar" | "assessments" | "periods";
 
 export default function Page() {
+  const [historical, setHistorical] = useState(false);
   const [atribs, setAtribs] = useState<AtribItem[]>([]);
   const [academicYearLabel, setAcademicYearLabel] = useState<string | null>(null);
   const [agenda, setAgenda] = useState<AgendaItem[]>([]);
@@ -144,9 +146,10 @@ export default function Page() {
         setLoadError(null);
         setPendenciasResumo(null);
         const todayIso = getSchoolNow().date;
+        const year = requestedAcademicYearId ? "?" + new URLSearchParams({ ano_letivo_id: requestedAcademicYearId }) : "";
         const [atribsRes, agendaRes, aulasRes, pendRes, overviewRes] = await Promise.all([
-          fetch("/api/professor/atribuicoes", { cache: "no-store" }),
-          fetch("/api/professor/agenda", { cache: "no-store" }),
+          fetch("/api/professor/atribuicoes" + year, { cache: "no-store" }),
+          fetch("/api/professor/agenda" + year, { cache: "no-store" }),
           fetch(`/api/professor/aulas?from=${todayIso}`, { cache: "no-store" }),
           fetch("/api/professor/dashboard/pendencias", { cache: "no-store" }),
           fetch("/api/professor/dashboard/overview", { cache: "no-store" }),
@@ -159,6 +162,7 @@ export default function Page() {
         const overviewJson = await overviewRes.json().catch(() => null);
         if (!atribsJson?.ok || !agendaJson?.ok || !aulasJson?.ok) throw new Error("Dados académicos indisponíveis. Tente novamente.");
         if (!cancelled) {
+          setHistorical(atribsJson.context?.mode === "HISTORICAL_READ");
           setAtribs((atribsJson?.items || []) as AtribItem[]);
           setAcademicYearLabel(typeof atribsJson?.context?.anoLetivoLabel === "string" ? atribsJson.context.anoLetivoLabel : null);
           const actualLessons = (aulasJson?.items || []) as AgendaItem[];
@@ -194,9 +198,10 @@ export default function Page() {
     return () => {
       cancelled = true;
     };
-  }, [retryVersion]);
+  }, [retryVersion, requestedAcademicYearId, escolaParam]);
 
   useEffect(() => {
+    if (historical) return;
     let disposed = false;
     const poll = async () => {
       if (disposed || document.hidden || pollingInFlight.current || loadError) return;
@@ -235,7 +240,7 @@ export default function Page() {
       if (timeout !== undefined) clearTimeout(timeout);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [loadError]);
+  }, [loadError, historical, escolaParam, requestedAcademicYearId]);
 
   const loadAgain = () => setRetryVersion((current) => current + 1);
 
@@ -341,11 +346,16 @@ export default function Page() {
   const selectedLesson = !loading && !loadError ? (agendaByDay.get(todayKey) ?? []).find(item => `${getSchoolNow(new Date(nowTick)).date}:${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}` === selectedLessonKey) : undefined;
   const lessonQuery = selectedLesson?.turma_id && selectedLesson.disciplina_id ? `?turma_id=${encodeURIComponent(selectedLesson.turma_id)}&disciplina_id=${encodeURIComponent(selectedLesson.disciplina_id)}` : null;
   const operationScope = JSON.stringify([escolaParam ?? "", requestedAcademicYearId]);
+  useEffect(() => {
+    setExpandedTurmaId(null);
+    setSelectedLessonKey(null);
+    setOperation(null);
+  }, [operationScope]);
   const operationFrame = (kind: OperationKind, turmaId?: string | null, disciplinaId?: string | null): PortalDrawerFrame => ({
     id: JSON.stringify([operationScope, kind, turmaId ?? "", disciplinaId ?? ""]),
-    title: ({ attendance: "Registar chamada", plans: "Planos de aula", materials: "Materiais pedagógicos", grades: "Lançamento de notas", calendar: "Calendário académico", assessments: "Calendário de avaliações", periods: "Períodos lectivos" })[kind],
-    description: ({ attendance: "Regista e guarda as presenças da turma.", plans: "Prepara, guarda e acompanha os planos de aula.", materials: "Cria, consulta e publica os materiais.", grades: "Selecciona o contexto, guarda as notas e exporta a mini-pauta.", calendar: "Consulta eventos oficiais da escola.", assessments: "Consulta avaliações próximas e anteriores.", periods: "Consulta períodos e datas de fecho." })[kind],
-    content: kind === "attendance" ? <AttendanceWorkspace embedded requestedAcademicYearId={requestedAcademicYearId} urlTurmaId={turmaId} urlDisciplinaId={disciplinaId} /> : kind === "plans" ? <PlansWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "materials" ? <MaterialsWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "grades" ? <GradesWorkspace embedded requestedAnoLetivoId={requestedAcademicYearId} requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : <CalendarWorkspace embedded initialView={kind} academicYearId={requestedAcademicYearId} />,
+    title: ({ exams: "Provas", attendance: "Registar chamada", plans: "Planos de aula", materials: "Materiais pedagógicos", grades: "Lançamento de notas", calendar: "Calendário académico", assessments: "Calendário de avaliações", periods: "Períodos lectivos" })[kind],
+    description: ({ exams: "Consulta as provas das tuas disciplinas.", attendance: "Regista e guarda as presenças da turma.", plans: "Prepara, guarda e acompanha os planos de aula.", materials: "Cria, consulta e publica os materiais.", grades: "Selecciona o contexto, guarda as notas e exporta a mini-pauta.", calendar: "Consulta eventos oficiais da escola.", assessments: "Consulta avaliações próximas e anteriores.", periods: "Consulta períodos e datas de fecho." })[kind],
+    content: (historical || (requestedAcademicYearId && (loading || loadError))) && (kind === "plans" || kind === "materials") ? <p>Esta operação está disponível no ano lectivo activo.</p> : kind === "exams" ? <ExamList school={escolaId || escolaParam || ""} yearId={requestedAcademicYearId} editor={professorHref("/professor/provas")} /> : kind === "attendance" ? <AttendanceWorkspace embedded requestedAcademicYearId={requestedAcademicYearId} urlTurmaId={turmaId} urlDisciplinaId={disciplinaId} /> : kind === "plans" ? <PlansWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "materials" ? <MaterialsWorkspace embedded requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : kind === "grades" ? <GradesWorkspace embedded requestedAnoLetivoId={requestedAcademicYearId} requestedTurmaId={turmaId ?? ""} requestedDisciplinaId={disciplinaId ?? ""} /> : <CalendarWorkspace embedded initialView={kind} academicYearId={requestedAcademicYearId} />,
   });
   const openOperation = (kind: OperationKind, turmaId?: string | null, disciplinaId?: string | null) => {
     setExpandedTurmaId(null);
@@ -446,7 +456,7 @@ export default function Page() {
           <div className="grid grid-cols-2 gap-3 min-[380px]:grid-cols-3">
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Presenças" icon={<ClipboardCheck className="h-5 w-5" />} onClick={() => openOperation("attendance")} dialogOpen={activeOperation?.title === "Registar chamada"} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Lançar notas" icon={<Pencil className="h-5 w-5" />} onClick={() => openOperation("grades")} dialogOpen={activeOperation?.title === "Lançamento de notas"} />
-            {escolaParam && <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Provas" icon={<ClipboardCheck className="h-5 w-5" />} href={professorHref("/professor/provas")} />}
+            {escolaParam && <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Provas" icon={<ClipboardCheck className="h-5 w-5" />} onClick={() => openOperation("exams")} />}
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Materiais" icon={<BookOpen className="h-5 w-5" />} onClick={() => openOperation("materials")} dialogOpen={activeOperation?.title === "Materiais pedagógicos"} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean label="Planos de aula" icon={<ClipboardCheck className="h-5 w-5" />} onClick={() => openOperation("plans")} dialogOpen={activeOperation?.title === "Planos de aula"} />
             <AcaoRapidaCard dashboardCompact mobileCompact portalTile portalClean prefetch={false} label="Calendário de Avaliações" icon={<CalendarDays className="h-5 w-5" />} onClick={() => openOperation("assessments")} dialogOpen={activeOperation?.title === "Calendário de avaliações"} />
@@ -615,7 +625,7 @@ export default function Page() {
             </div>
           </section>
         </div>
-        <PortalDrawerNavigator key={`${operationScope}:turma`} open={Boolean(selectedTurma)} onClose={() => setExpandedTurmaId(null)} onChanged={loadAgain} root={{
+        <PortalDrawerNavigator key={`${operationScope}:turma`} open={Boolean(selectedTurma)} onReopen={() => setExpandedTurmaId(expandedTurmaId)} onClose={() => setExpandedTurmaId(null)} onChanged={loadAgain} root={{
           id: `${escolaParam ?? "default"}:turma:${selectedTurma?.id ?? "closed"}`,
           title: selectedTurma ? formatTurmaDisplayName({ nome: selectedTurma.nome }) : "Perfil da turma",
           description: "Disciplinas atribuídas e operações pedagógicas.",
@@ -631,7 +641,7 @@ export default function Page() {
             <ProfessorTurmaRoster key={`${operationScope}:${selectedTurma.id}`} turmaId={selectedTurma.id} academicYearId={requestedAcademicYearId} subjects={Array.from(new Map(atribs.filter(item => item.turma.id === selectedTurma.id && item.disciplina.id).map(item => [item.disciplina.id!, { id: item.disciplina.id!, nome: item.disciplina.nome }])).values())} />
           </>,
         }} />
-        <PortalDrawerNavigator key={`${operationScope}:lesson`} open={Boolean(selectedLesson)} onClose={() => setSelectedLessonKey(null)} onChanged={loadAgain} root={{ id: `${operationScope}:lesson:${selectedLessonKey ?? "closed"}`, title: selectedLesson?.disciplina_nome ?? "Detalhes da aula", description: "Consulta da agenda de hoje.", size: "medium", content: selectedLesson && <>
+        <PortalDrawerNavigator key={`${operationScope}:lesson`} open={Boolean(selectedLesson)} onReopen={() => setSelectedLessonKey(selectedLessonKey)} onClose={() => setSelectedLessonKey(null)} onChanged={loadAgain} root={{ id: `${operationScope}:lesson:${selectedLessonKey ?? "closed"}`, title: selectedLesson?.disciplina_nome ?? "Detalhes da aula", description: "Consulta da agenda de hoje.", size: "medium", content: selectedLesson && <>
             <dl className="grid grid-cols-2 gap-3 text-sm">
               <div><dt className="text-muted-foreground">Turma</dt><dd className="font-medium">{formatTurmaDisplayName({ turma_nome: selectedLesson.turma_nome })}</dd></div>
               <div><dt className="text-muted-foreground">Horário</dt><dd className="font-medium">{selectedLesson.inicio} – {selectedLesson.fim}</dd></div>
@@ -644,7 +654,7 @@ export default function Page() {
               <PortalDrawerPushButton frame={operationFrame("plans", selectedLesson.turma_id, selectedLesson.disciplina_id)} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 text-sm font-medium">Plano de aula</PortalDrawerPushButton>
             </div>}
           </>, }} />
-        <PortalDrawerNavigator key={`${operationScope}:operation`} open={Boolean(activeOperation)} onClose={() => setOperation(null)} onChanged={loadAgain} root={activeOperation ?? { id: "closed", title: "Operação", description: "", content: null }} />
+        <PortalDrawerNavigator key={`${operationScope}:operation`} open={Boolean(activeOperation)} onReopen={() => setOperation(operation)} onClose={() => setOperation(null)} onChanged={loadAgain} root={activeOperation ?? { id: "closed", title: "Operação", description: "", content: null }} />
       </div>
     </div>
   );

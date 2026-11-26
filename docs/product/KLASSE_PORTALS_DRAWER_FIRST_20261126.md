@@ -131,6 +131,19 @@ Testes estáticos/contratos cobrem integração de triggers, wrappers, navegaç�
 
 ## 7. Checklist de homologação e backlog
 
+### Revisão da PR após o snapshot
+
+| Área | Alteração e evidência |
+|---|---|
+| Navegação | Back/Forward percorrem as posições do drawer na mesma URL. O histórico contém apenas um identificador opaco e a profundidade. A instância com âmbito de escola e ano conserva os frames em memória. Foi acrescentado um percurso Back → Forward → Escape à fixture visual. |
+| Notas | Guardar agora e autosave partilham a fila da grelha. A confirmação de um lote actualiza a pauta persistida sem substituir os dados iniciais da grelha durante a edição. Uma falha pode ser repetida pelo botão Guardar. A consulta de conclusão deixou de invalidar o resumo. |
+| Chamada, planos e materiais | As mutações confirmadas sinalizam actualização no fecho. A chamada consulta as atribuições do ano pedido e bloqueia escrita histórica. Planos e materiais são operações do ano activo. |
+| Provas | A consulta paginada usa a autorização, a ordenação e a projecção de resumos do endpoint existente. O filtro opcional por ID de ano é aplicado antes da paginação. A elaboração continua no editor completo. |
+| Rematrícula | O cartão abre o fluxo existente no drawer. O estado `failed` permite corrigir o comprovativo na mesma intenção. Um envio pendente com comprovativo apresenta o estado de análise. A rematrícula opera sobre o aluno da sessão e a janela activa; o cartão é omitido quando existe selecção explícita de educando ou ano. |
+| Avisos | A definição versionada em `populate_student_portal_life.sql` projecta `notices.conteudo AS resumo`. O detalhe já apresenta esse campo integral, enquanto o cartão limita visualmente o texto a duas linhas. A definição efectiva em produção requer confirmação. |
+
+A lista abaixo regista os critérios originais. Os testes com contas de homologação, a concorrência entre sessões e a confirmação financeira pelo fornecedor exigem evidência própria. A decisão de integrar depende dessa homologação.
+
 Não considerar a PR pronta só porque testes de contrato passaram. Antes de merge/deploy:
 
 - [ ] Novo SHA com todos os checks exigidos aprovados; validar TypeScript, lint e build de produção (sem presumir que cada job já os executou).

@@ -121,7 +121,7 @@ test("drawer navigator mantém um único diálogo, isolamento por contexto e ret
   assert.equal(navigator.match(/<PortalSheet\b/g)?.length, 1);
   assert.match(navigator, /stack.rootId === root.id/);
   assert.match(navigator, /hidden=\{entries.length > 0\}/);
-  assert.match(navigator, /entries.slice\(0, -1\)/);
+  assert.match(navigator, /current.trail.slice\(0, depth\)/);
   assert.match(navigator, /body.current.scrollTop = target\?\.top/);
   assert.match(navigator, /target.opener.focus/);
   assert.match(sheet, /onBack && <button/);
@@ -202,7 +202,7 @@ test("professor drawer-first calendar, grade entry and student lookup preserve s
   assert.match(dashboard, /openOperation\("grades"\)/);
   assert.match(dashboard, /operationFrame\("grades", selectedTurma.id\)/);
   assert.match(dashboard, /academicYearId=\{requestedAcademicYearId\}/);
-  assert.match(dashboard, /href=\{professorHref\("\/professor\/provas"\)\}/);
+  assert.match(dashboard, /openOperation\("exams"\)/);
   assert.match(calendar, /view === "periods"/);
   assert.match(calendar, /view === "assessments"/);
   assert.match(calendar, /controller.abort\(\)/);

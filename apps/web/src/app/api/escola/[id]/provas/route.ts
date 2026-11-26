@@ -59,6 +59,11 @@ export async function GET(req:Request,{params}:Context){
  }
  if(f.professor&&!access.admin)return json({error:"Sem autorização para filtro docente."},403);
  let list=(f.professor?db.rpc("provas_por_professor",{p_escola:escolaId,p_professor:f.professor}).select(summaryColumns):db.from("provas_pedagogicas").select(summaryColumns)).eq("escola_id",escolaId);
+ const yearId=query.get("ano_letivo_id");
+ if(yearId!==null){
+   if(!z.string().uuid().safeParse(yearId).success)return json({error:"Ano lectivo inválido."},400);
+   list=list.eq("ano_letivo_id",yearId);
+ }
  if(f.tipo)list=list.eq("tipo_prova",f.tipo);
  if(f.estado)list=list.eq("estado",f.estado);
  if(query.get("ativas")==="1")list=list.neq("estado","arquivada");

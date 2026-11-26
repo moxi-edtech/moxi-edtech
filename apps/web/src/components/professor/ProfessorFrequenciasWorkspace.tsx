@@ -12,7 +12,7 @@ import { useToast } from '@/components/feedback/FeedbackSystem';
 import { formatTurmaDisplayName } from "@/utils/formatters";
 import { ACADEMIC_YEAR_PARAM } from "@/lib/academic-year/context";
 import { DesistenciaMatriculaAction } from "@/components/matriculas/DesistenciaMatriculaAction";
-import { usePortalDrawerGuard } from "@/components/portal/ui/PortalDrawerNavigator";
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 
 import { Printer, CheckCircle2, XCircle, Clock, UserCheck, Search, RotateCcw, Ellipsis } from 'lucide-react'
 
@@ -52,20 +52,25 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'pending' | 'saved' | 'failed'>('idle')
   const [reportMonth, setReportMonth] = useState(() => (new Date().getMonth() + 1).toString().padStart(2, '0'))
   const { online } = useOfflineStatus()
+  const [historical, setHistorical] = useState(false)
   const [academicYearId, setAcademicYearId] = useState(requestedAcademicYearId)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [studentsError, setStudentsError] = useState<string | null>(null)
 
   useEffect(() => {
-    (async () => {
+    const controller = new AbortController()
+    ;(async () => {
       try {
         setLoadError(null)
-        const res = await fetch('/api/professor/atribuicoes', { cache: 'no-store' })
+        const query = requestedAcademicYearId ? '?' + new URLSearchParams({ ano_letivo_id: requestedAcademicYearId }) : ''
+        const res = await fetch('/api/professor/atribuicoes' + query, { cache: 'no-store', signal: controller.signal })
         const json = await res.json().catch(()=>null)
-        if (!res.ok || !json?.ok) {
+        if (controller.signal.aborted) return
+        if (!res.ok || !json?.ok || (requestedAcademicYearId && json.context?.anoLetivoId !== requestedAcademicYearId)) {
           throw new Error(json?.message || json?.error || 'Não foi possível carregar o ano letivo ativo.')
         }
         const items = ((json.items || []) as Atrib[]).filter(item => !embedded || ((!urlTurmaId || item.turma.id === urlTurmaId) && (!urlDisciplinaId || item.disciplina.id === urlDisciplinaId)))
+        setHistorical(json.context?.mode === "HISTORICAL_READ")
         setAtribs(items)
         if (!requestedAcademicYearId && json.context?.anoLetivoId) setAcademicYearId(String(json.context.anoLetivoId))
         if (urlTurmaId && items.some(a => a.turma.id === urlTurmaId)) {
@@ -75,9 +80,11 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
           }
         }
       } catch (cause) {
+        if (controller.signal.aborted) return
         setLoadError(cause instanceof Error ? cause.message : 'Não foi possível carregar o ano letivo ativo.')
       }
     })()
+    return () => controller.abort()
   }, [embedded, urlTurmaId, urlDisciplinaId, requestedAcademicYearId])
 
   useEffect(() => {
@@ -124,6 +131,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
 
   const attendanceDirty = Object.keys(statusMap).length > 0 && submitStatus !== 'saved' && submitStatus !== 'pending'
   const contextLocked = saving || attendanceDirty
+  const navigation = usePortalDrawerNavigation();
   usePortalDrawerGuard(attendanceDirty, saving)
   const rosterReady = loadedRosterKey === JSON.stringify([turmaId, disciplinaId, academicYearId]) && !studentsLoading && !studentsError
 
@@ -172,6 +180,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (historical || saving) return
     setSaving(true)
     try {
       if (!turmaId || !disciplinaId) throw new Error('Selecione turma e disciplina.')
@@ -209,6 +218,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
         throw new Error(json?.error || 'Falha ao salvar presença')
       }
       setSubmitStatus('saved')
+      navigation?.notifyChanged();
       success("Presenças guardadas", "O registo de frequências foi actualizado com sucesso.")
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
@@ -277,6 +287,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
         />
       </div>}
 
+      {historical && <p role="status">Ano lectivo histórico · consulta da turma</p>}
       <form onSubmit={onSubmit} className={embedded ? "grid min-w-0 gap-4" : "grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]"}>
         {loadError && (
           <div className="lg:col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -348,7 +359,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
 
           <button
             type="submit"
-            disabled={saving || !rosterReady || alunos.length === 0 || !turmaId || !disciplinaId || !data}
+            disabled={historical || saving || !rosterReady || alunos.length === 0 || !turmaId || !disciplinaId || !data}
             className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-wider text-white  transition-all active:scale-95 disabled:opacity-50 ${submitStatus === 'failed' ? 'bg-rose-600 hover:bg-rose-700' : submitStatus === 'saved' ? 'bg-emerald-700 hover:bg-emerald-800' : submitStatus === 'pending' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
           >
             {saving ? 'A Guardar Chamada...' : submitStatus === 'saved' ? <><CheckCircle2 className="h-4 w-4" /> Chamada Guardada</> : submitStatus === 'pending' ? 'Chamada Guardada Offline' : submitStatus === 'failed' ? 'Tentar Novamente' : 'Finalizar & Guardar Chamada'}
@@ -372,7 +383,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    disabled={saving} onClick={handleMarcarTodosPresentes}
+                    disabled={saving || historical} onClick={handleMarcarTodosPresentes}
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black  transition-all active:scale-95 cursor-pointer"
                   >
                     <UserCheck size={16} />
@@ -381,7 +392,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
 
                   <button
                     type="button"
-                    disabled={saving} onClick={handleMarcarTodosFaltas}
+                    disabled={saving || historical} onClick={handleMarcarTodosFaltas}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 text-xs font-bold transition-all active:scale-95 cursor-pointer"
                   >
                     <XCircle size={15} />
@@ -390,7 +401,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
 
                   <button
                     type="button"
-                    disabled={saving} onClick={handleResetStatus}
+                    disabled={saving || historical} onClick={handleResetStatus}
                     className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl bg-muted hover:bg-muted text-muted-foreground text-xs font-semibold transition-colors"
                     title="Resetar Seleções"
                   >
@@ -455,7 +466,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
                           <p className="min-w-0 flex-1 break-words pt-0.5 text-sm font-semibold leading-snug text-foreground">{a.nome}</p>
                         </div>
                         {a.matriculaId && turmaId && (
-                          <button type="button" disabled={saving}
+                          <button type="button" disabled={saving || historical}
                             onClick={() => setOpenActionsId((value) => value === a.id ? null : a.id)}
                             aria-expanded={actionsOpen} aria-controls={'opcoes-aluno-' + a.id}
                             aria-label={'Outras ações para ' + a.nome}
@@ -473,7 +484,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
                           const Icon = opt.icon;
                           const active = current === opt.value;
                           return (
-                            <button key={opt.value} type="button" disabled={saving} aria-pressed={active}
+                            <button key={opt.value} type="button" disabled={saving || historical} aria-pressed={active}
                               onClick={() => {
                                 setStatusMap((previous) => ({ ...previous, [a.id]: opt.value }));
                                 setSubmitStatus('idle');
