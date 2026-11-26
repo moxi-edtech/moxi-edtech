@@ -5,7 +5,7 @@ import { AcademicYearContextError } from "@/lib/academic-year/context";
 import { resolveBoletimMatricula } from "@/lib/aluno/resolveBoletimMatricula";
 import { checkBoletimAccess } from "@/lib/aluno/boletimAccess";
 import { loadClassificacoesTrimestrais, loadNotasLancadas } from "@/lib/aluno/boletimNotas";
-import { publishedTrimestersFromOfficialSheets, selectPublishedStudentGrades } from "@/lib/aluno/published-notes";
+import { selectPublishedStudentGrades } from "@/lib/aluno/published-notes";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -58,27 +58,14 @@ export async function GET(request: Request) {
       disciplinas: [], publicado_trimestres: [],
     }, { headers: { "Cache-Control": "private, no-store" } });
 
-    const [{ data: sheets, error: sheetsError }, { data: periods, error: periodsError }] = await Promise.all([
-      supabase.from("pautas_oficiais").select("periodo_letivo_id, pdf_path, tipo, status")
-        .eq("escola_id", ctx.escolaId)
-        .eq("turma_id", turma.id)
-        .eq("tipo", "trimestral").eq("status", "SUCCESS").limit(50),
-      supabase.from("periodos_letivos").select("id, numero")
-        .eq("escola_id", ctx.escolaId)
-        .eq("ano_letivo_id", context.anoLetivoId)
-        .eq("tipo", "TRIMESTRE").limit(12),
-    ]);
-    if (sheetsError || periodsError) return NextResponse.json({
+    const { data: terms, error: publicationError } = await (supabase as any).rpc("aluno_trimestres_publicados", {
+      p_escola_id: ctx.escolaId, p_matricula_id: matricula.id,
+    });
+    if (publicationError || !Array.isArray(terms)) return NextResponse.json({
       ok: false, error: "Não foi possível validar a publicação das notas.",
-    }, { status: 503 });
-
-    const periodById = new Map((periods ?? []).map((p) => [p.id, p.numero]));
-    const publishedTrimesters = publishedTrimestersFromOfficialSheets((sheets ?? []).map((sheet) => ({
-      tipo: sheet.tipo,
-      status: sheet.status,
-      pdf_path: sheet.pdf_path,
-      numero: sheet.periodo_letivo_id ? periodById.get(sheet.periodo_letivo_id) ?? null : null,
-    })));
+    }, { status: 503, headers: { "Cache-Control": "private, no-store" } });
+    const publishedTrimesters = new Set<number>(terms.filter((term: unknown): term is number =>
+      typeof term === "number" && Number.isInteger(term) && term >= 1 && term <= 3));
     const scope = { escolaId: ctx.escolaId, matriculaId: matricula.id, turmaId: turma.id };
     const [grades, classifications] = publishedTrimesters.size
       ? await Promise.all([loadNotasLancadas(supabase, scope), loadClassificacoesTrimestrais(supabase, scope)])

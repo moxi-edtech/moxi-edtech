@@ -15,6 +15,11 @@ export async function GET() {
     const access = await checkBoletimAccess(supabase, { escolaId: ctx.escolaId, alunoId: ctx.alunoId, matriculaId: ctx.matriculaId });
     if (access.error) return NextResponse.json({ ok: false, error: "Não foi possível verificar o pagamento do boletim." }, { status: 503 });
     if (!access.granted) return NextResponse.json({ ok: true, result: null, disciplinas: [], restricted: true }, { headers: { "Cache-Control": "private, no-store" } });
+    const { data: published, error: publicationError } = await (supabase as any).rpc("aluno_resultado_publicado", {
+      p_escola_id: ctx.escolaId, p_matricula_id: ctx.matriculaId,
+    });
+    if (publicationError) return NextResponse.json({ ok: false, error: "Não foi possível verificar a publicação do resultado." }, { status: 503 });
+    if (published !== true) return NextResponse.json({ ok: true, result: null, disciplinas: [], restricted: true }, { headers: { "Cache-Control": "private, no-store" } });
     const { data: disciplinas, error } = await supabase
       .from("turma_disciplinas")
       .select("avaliacao_disciplina_id")
