@@ -78,8 +78,8 @@ test("admin communications retains provider actions and pairs every form label w
 });
 
 test("teacher grading and calendar preserve their operational logic with the canonical page geometry", () => {
-  const grade = code("app/professor/notas/page.tsx");
-  const calendar = code("app/professor/calendario/page.tsx");
+  const grade = code("components/professor/ProfessorGradesWorkspace.tsx");
+  const calendar = code("components/professor/ProfessorCalendarWorkspace.tsx");
   for (const src of [grade, calendar]) assert.match(src, /PORTAL_PAGE_INSET/);
   assert.match(grade, /import \{ PORTAL_PAGE_INSET \} from "@\/lib\/layout\/portal-page"/);
   assert.match(grade, /resolveGradeEntryAvailability\(/);
