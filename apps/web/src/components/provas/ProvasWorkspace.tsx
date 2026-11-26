@@ -1,11 +1,13 @@
 "use client";
 import { useEffect,useRef,useState } from "react";
 import dynamic from "next/dynamic";
-import { ClipboardList,Copy,Eye,Pencil,Plus,Printer,Trash2,Minus,ChevronDown,ChevronUp,ArrowLeft,ArrowRight,Ellipsis,ListOrdered } from "lucide-react";
+import { ClipboardList,Copy,Eye,Pencil,Plus,Printer,Trash2,Minus,ChevronDown,ChevronUp,ArrowLeft,ArrowRight,Ellipsis,ListOrdered,ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { estados,tipos,tiposProva,provaDisplayTitle,provaSubtitle,tituloAoMudarTipo,provaWriteSchema,type Bloco,type Prova,type ProvaInput,type ProvaResumo,type AnoProva,type ContextoProva,type TipoProva } from "@/lib/provas/schema";
 import { provaHtml } from "@/lib/provas/print";
+import { contentFits,FIGURE_MAX_PER_BLOCK,FIGURE_MAX_PER_EXAM,figureCount } from "@/lib/provas/figures";
+import { prepareProvaFigure } from "@/lib/provas/figureUpload";
 import { mathMarkup } from "@/lib/provas/math";
 import { formatClasseProva } from "@/lib/provas/academicLabels";
 import { safeLogoData } from "@/lib/provas/branding";
@@ -99,6 +101,20 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  useEffect(()=>()=>request.current?.abort(),[endpoint]);
  function change<K extends keyof ProvaInput>(key:K,value:ProvaInput[K]){setForm(p=>p?{...p,[key]:value}:p);setDirty(true);setError("");}
  function patch(index:number,part:Partial<Bloco>){setForm(p=>p?{...p,conteudo:p.conteudo.map((b,i)=>i===index?{...b,...part}:b)}:p);setDirty(true);setError("");}
+ async function attachFigure(index:number,file:File){
+  if(!form||locked.current||richIndex!==null||!form.conteudo[index]||form.conteudo[index].tipo==="grupo")return;
+  const block=form.conteudo[index];
+  if((block.figuras?.length??0)>=FIGURE_MAX_PER_BLOCK||figureCount(form.conteudo)>=FIGURE_MAX_PER_EXAM){setError("Limite de figuras atingido.");return;}
+  locked.current=true;setBusy(true);setError("");
+  try{
+   const figure=await prepareProvaFigure(file,"Figura "+((block.figuras?.length??0)+1));
+   const next=[...form.conteudo];next[index]={...block,figuras:[...(block.figuras??[]),figure]};
+   if(!contentFits(next))throw new Error("A prova excede o limite total de imagens. Remova ou recorte uma figura.");
+   // While decoding, the existing modal mutation lock prevents switching or saving the draft.
+   setForm(p=>p&&p.conteudo[index]===block?{...p,conteudo:next}:p);setDirty(true);
+  }catch(e){setError(e instanceof Error?e.message:"Não foi possível inserir a figura.");}
+  finally{locked.current=false;setBusy(false);}
+ }
  function focusBlock(index:number,field:"heading"|"type"|"text"="heading"){
   requestAnimationFrame(()=>document.getElementById(field==="heading"?"provas-block-heading-"+index:field==="type"?"provas-block-type-"+index:"provas-block-"+index)?.focus());
  }
@@ -116,7 +132,7 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  function removeBlock(index:number){
   if(!form||richIndex!==null||busy||confirm||discard||form.conteudo.length<=1)return;
   const block=form.conteudo[index];if(!block)return;
-  if((block.texto.trim()||block.alternativas?.some(a=>a.trim())||block.cotacao_cent!==undefined)&&!window.confirm("Remover este bloco da prova?"))return;
+  if((block.texto.trim()||block.alternativas?.some(a=>a.trim())||block.cotacao_cent!==undefined||block.figuras?.length)&&!window.confirm("Remover este bloco da prova?"))return;
   change("conteudo",form.conteudo.filter((_,i)=>i!==index));
   const next=currentBlock>index?currentBlock-1:Math.min(currentBlock,form.conteudo.length-2);
   setActiveBlock(next);
@@ -126,8 +142,8 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
  function setQuestionType(index:number,tipo:Bloco["tipo"]){
   if(!form||richIndex!==null)return;
   const b=form.conteudo[index];if(!b||b.tipo===tipo)return;
-  if((b.alternativas?.some(a=>a.trim())&&tipo!=="escolha"||b.cotacao_cent!==undefined&&!isQuestion(tipo))&&!window.confirm("Alterar o tipo remove as alternativas ou a cotação incompatíveis. Continuar?"))return;
-  const next:Bloco={...questionTemplate(tipo),texto:b.texto,...(b.rich?{rich:b.rich}:{}),...(isQuestion(tipo)&&b.cotacao_cent!==undefined?{cotacao_cent:b.cotacao_cent}:{})};
+  if((b.alternativas?.some(a=>a.trim())&&tipo!=="escolha"||b.cotacao_cent!==undefined&&!isQuestion(tipo)||b.figuras?.length&&tipo==="grupo")&&!window.confirm("Alterar o tipo remove dados incompatíveis. Continuar?"))return;
+  const next:Bloco={...questionTemplate(tipo),texto:b.texto,...(b.rich?{rich:b.rich}:{}),...(b.figuras&&tipo!=="grupo"?{figuras:b.figuras}:{}),...(isQuestion(tipo)&&b.cotacao_cent!==undefined?{cotacao_cent:b.cotacao_cent}:{})};
   change("conteudo",form.conteudo.map((item,i)=>i===index?next:item));
  }
  function reorder(from:number,to:number){
@@ -303,6 +319,16 @@ export default function ProvasWorkspace({escolaId,printOnly=false,teacherWizard=
         <Button type="button" id={"provas-rich-"+index} size="sm" variant="outline" className="w-full sm:w-auto" disabled={richIndex!==null} onClick={e=>{richTrigger.current=e.currentTarget;setStartFormula(block.tipo==="calculo"&&!block.rich);setActiveBlock(index);setRichIndex(index);}}><Pencil/> {block.rich?"Editar conteúdo formatado":block.tipo==="calculo"?"Inserir fórmula":"Formatar / inserir fórmulas"}</Button>
        </div>}
 
+      {block.tipo!=="grupo"&&<div className="space-y-2 border-t border-border pt-3">
+       <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-medium">Figuras</span><label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium focus-within:ring-4 focus-within:ring-klasse-gold/20"><ImagePlus className="size-4 text-slate-400"/><span>Inserir imagem</span><input type="file" accept="image/png,image/jpeg,image/webp" aria-label={"Inserir imagem na pergunta "+(index+1)} className="sr-only" disabled={busy||richIndex!==null||(block.figuras?.length??0)>=FIGURE_MAX_PER_BLOCK||figureCount(form.conteudo)>=FIGURE_MAX_PER_EXAM} onChange={e=>{const file=e.currentTarget.files?.[0];e.currentTarget.value="";if(file)void attachFigure(index,file);}}/></label></div>
+       {!!block.figuras?.length&&<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{block.figuras.map((f,j)=><div key={j} className="min-w-0 space-y-2 rounded-xl border border-border p-2">
+        {/* eslint-disable-next-line @next/next/no-img-element -- validated local PNG; no remote source or optimizer */}
+        <img src={f.src} alt={f.alt} className="h-32 w-full rounded-xl bg-white object-contain"/>
+        <label className="grid gap-1 text-xs">Descrição acessível (não revelar a resposta)<input className={input} value={f.alt} maxLength={160} onChange={e=>patch(index,{figuras:block.figuras!.map((item,k)=>k===j?{...item,alt:e.target.value}:item)})}/></label>
+        <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={()=>{const figuras=block.figuras!.filter((_,k)=>j!==k);patch(index,{figuras:figuras.length?figuras:undefined});}}><Trash2/> Remover figura</Button>
+       </div>)}</div>}
+       <p className="text-xs text-muted-foreground">PNG, JPEG ou WebP · até 6 figuras por pergunta · optimizadas para impressão A4.</p>
+      </div>}
       {block.tipo==="escolha"&&<div className="space-y-2">
        {block.alternativas===undefined?<><p className="text-xs text-muted-foreground">Formato anterior: alternativas no enunciado. Pode mantê-las ou activar campos separados e ajustar o enunciado.</p><Button type="button" size="sm" variant="outline" disabled={richIndex!==null} onClick={()=>patch(index,{alternativas:["",""]})}><Plus/> Separar alternativas</Button></>:<>
        <p className="text-sm font-medium">Alternativas</p>
