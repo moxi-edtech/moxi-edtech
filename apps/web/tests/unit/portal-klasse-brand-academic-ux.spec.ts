@@ -79,7 +79,7 @@ test("dashboards não apresentam progresso fictício", async () => {
     read("components/aluno/dashboard/DashboardLoader.tsx"),
     read("components/aluno/tabs/TabHome.tsx"),
   ]);
-  assert.match(principal, /bg-klasse-green/);
+  assert.match(principal, /<PortalWelcomeCard role="aluno"/);
   assert.match(home, /Média recente/);
   assert.match(home, /mediaNotas === null/);
   assert.doesNotMatch(home, /\+0\.2|Meta: 90%/);
@@ -111,7 +111,7 @@ test("aluno reutiliza os cards de Operações com densidade mobile, sem retirar 
   ]);
   assert.match(quick, /import AcaoRapidaCard from "@\/components\/shared\/AcaoRapidaCard"/);
   assert.match(dashboard, /import AcaoRapidaCard from "@\/components\/shared\/AcaoRapidaCard"/);
-  assert.match(dashboard, /grid-cols-1 gap-2 md:grid-cols-3/);
+  assert.match(dashboard, /grid-cols-2 gap-2 min-\[380px\]:grid-cols-3/);
   assert.match(card, /mobileCompact = false/);
   assert.match(card, /unavailable: disabled \|\| unavailable/);
   assert.match(card, /min-h-16[^"]*bg-card p-3/);

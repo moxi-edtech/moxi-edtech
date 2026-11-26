@@ -8,6 +8,7 @@ type AcaoRapidaCardProps = {
   label: string;
   sublabel?: string;
   href?: string;
+  prefetch?: boolean;
   onClick?: () => void;
   buttonRef?: Ref<HTMLButtonElement>;
   dialogOpen?: boolean;
@@ -17,6 +18,8 @@ type AcaoRapidaCardProps = {
   dashboardCompact?: boolean;
   /** Same dashboard card with reduced spacing for the student mobile portal. */
   mobileCompact?: boolean;
+  /** Opt-in tile layout for dashboard shortcuts; leaves all operational rows unchanged. */
+  portalTile?: boolean;
   emphasizeSublabel?: boolean;
   /** Missing data is not a disabled destination. */
   unavailable?: boolean;
@@ -30,6 +33,7 @@ export default function AcaoRapidaCard({
   label,
   sublabel,
   href,
+  prefetch,
   onClick,
   buttonRef,
   dialogOpen,
@@ -38,6 +42,7 @@ export default function AcaoRapidaCard({
   compact = false,
   dashboardCompact = false,
   mobileCompact = false,
+  portalTile = false,
   emphasizeSublabel = false,
   unavailable = false,
   needsAttention = false,
@@ -49,7 +54,9 @@ export default function AcaoRapidaCard({
 
   if (dashboardCompact) {
     const tone = operationalCardTone({ unavailable: disabled || unavailable, needsAttention });
-    const className = (mobileCompact
+    const className = (portalTile
+      ? "group flex h-full min-h-24 w-full min-w-0 flex-col items-start gap-2 rounded-xl border border-border bg-card p-3 text-left"
+      : mobileCompact
       ? "group flex h-full min-h-16 w-full min-w-0 items-center gap-2.5 rounded-xl border border-border bg-card p-3 text-left shadow-sm"
       : "group flex h-full min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 text-left shadow-sm") + " transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
     const content = (
@@ -57,17 +64,17 @@ export default function AcaoRapidaCard({
         <span aria-hidden="true" className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl [&>svg]:size-4 ${operationalCardIconClasses[tone]}`}>
           {disabled ? <Lock className="h-4 w-4" /> : icon}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium leading-snug text-foreground">{label}</span>
+        <span className={portalTile ? "w-full min-w-0 flex-1" : "min-w-0 flex-1"}>
+          <span className={portalTile ? "block break-words text-xs font-semibold leading-snug text-foreground sm:text-sm" : "block text-sm font-medium leading-snug text-foreground"}>{label}</span>
           {sublabel && <span className={`mt-1 block break-words leading-snug ${emphasizeSublabel ? "text-base font-semibold tabular-nums text-foreground" : "text-xs text-muted-foreground"}`}>{sublabel}</span>}
           {disabled && disabledReason && <span className="mt-1 block text-xs leading-snug text-muted-foreground">{disabledReason}</span>}
         </span>
-        {!disabled && (href || onClick) && <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />}
+        {!portalTile && !disabled && (href || onClick) && <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />}
       </>
     );
     if (disabled) return <div aria-disabled="true" className={className + " opacity-60"}>{content}</div>;
     if (onClick) return <button ref={buttonRef} type="button" onClick={onClick} aria-haspopup={dialogOpen !== undefined ? "dialog" : undefined} aria-expanded={dialogOpen} className={className + " hover:border-ring"}>{content}</button>;
-    if (href) return <Link href={href} className={className + " hover:border-ring"}>{content}</Link>;
+    if (href) return <Link href={href} prefetch={prefetch} className={className + " hover:border-ring"}>{content}</Link>;
     return <div className={className}>{content}</div>;
   }
 
@@ -124,7 +131,7 @@ export default function AcaoRapidaCard({
 
   if (href) {
     return (
-      <Link href={href} className="block">
+      <Link href={href} prefetch={prefetch} className="block">
         {inner}
       </Link>
     );

@@ -62,7 +62,7 @@ test("dashboard mostra dados reais e superfícies compactas, sem homepage promoc
   assert.match(page, /<AcaoRapidaCard dashboardCompact mobileCompact label="Propinas vencidas"/);
   assert.match(page, /typeof screen\.boletim\?\.is_liberado === "boolean"/);
   assert.match(page, /screen\.dashboard\.status_financeiro && !screen\.dashboard\.status_financeiro\.error/);
-  assert.match(page, /bg-klasse-green/);
+  assert.match(page, /<PortalWelcomeCard role="aluno"/);
   assert.match(page, /rounded-xl border border-border bg-card/);
   assert.doesNotMatch(page, /-right-12 -top-20 h-64 w-64/);
 });

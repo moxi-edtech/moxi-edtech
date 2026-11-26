@@ -8,6 +8,7 @@ import { buildStudentAttention, nextLessonLabel, type StudentDocument, type Stud
 import { PortalAction } from "@/components/portal/ui/PortalAction";
 import { PortalEmptyState } from "@/components/portal/ui/PortalEmptyState";
 import { PortalSection } from "@/components/portal/ui/PortalSection";
+import { PortalWelcomeCard } from "@/components/portal/ui/PortalWelcomeCard";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 
 type DashboardData = {
@@ -36,7 +37,7 @@ async function fetchJson<T>(path: string, signal: AbortSignal, scopedQuery = "")
 }
 function LoadingDashboard() {
   return <div role="status" aria-live="polite" className="w-full animate-pulse space-y-5 py-2" aria-label="A carregar a tua página"><span className="sr-only">A carregar a tua página</span><div aria-hidden="true">
-    <div className="h-28 rounded-xl bg-muted"/>
+    <div className="h-36 rounded-xl bg-muted"/>
     <div className="grid gap-2 md:grid-cols-3"><div className="h-16 rounded-xl bg-muted"/><div className="h-16 rounded-xl bg-muted"/><div className="h-16 rounded-xl bg-muted"/></div>
     <div className="h-48 rounded-2xl bg-muted"/><div className="h-32 rounded-2xl bg-muted"/>
     </div>
@@ -113,23 +114,19 @@ export default function DashboardLoader() {
   if (error || !screen) return <div className="mx-auto max-w-6xl px-4 py-8"><ErrorState title="Não foi possível carregar" description={error || "Tenta novamente."} onRetry={refresh}/></div>;
   const lesson = nextLessonLabel(screen.dashboard.proxima_aula);
   const firstName = screen.boletim?.nome_aluno?.trim().split(/\s+/)[0] || "aluno";
-  const today = new Intl.DateTimeFormat("pt-AO",{timeZone:"Africa/Luanda",weekday:"long",day:"numeric",month:"long"}).format(new Date());
+  const today = new Date();
   return <div className="w-full min-w-0 space-y-4 text-foreground sm:space-y-6" data-testid="aluno-dashboard-editorial">
-    <header className="rounded-xl bg-klasse-green px-4 py-4 text-white sm:px-6 sm:py-5">
-      <p className="text-xs text-white/90">{today}</p>
-      <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight sm:text-3xl">Olá, {firstName}</h1>
-      {screen.dashboard.ano_letivo && <p className="mt-2 text-sm text-white/90">Ano letivo {screen.dashboard.ano_letivo}</p>}
-    </header>
+    <PortalWelcomeCard role="aluno" name={firstName} context={screen.dashboard.ano_letivo ? `Ano lectivo ${screen.dashboard.ano_letivo}` : null} date={today} />
     <PortalSection id="aluno-summary" title="Em resumo">
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-3 md:gap-3" data-testid="aluno-summary-cards">
-        <AcaoRapidaCard dashboardCompact mobileCompact label="Avisos"
+      <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 md:gap-3" data-testid="aluno-summary-cards">
+        <AcaoRapidaCard dashboardCompact mobileCompact label="Avisos" portalTile
           icon={<Bell className="h-4 w-4" />} sublabel={`${(screen.dashboard.avisos_recentes ?? []).length} recentes`}
           href={go("/aluno/avisos")} />
-        <AcaoRapidaCard dashboardCompact mobileCompact label="Notas"
+        <AcaoRapidaCard dashboardCompact mobileCompact label="Notas" portalTile
           icon={<BookOpen className="h-4 w-4" />} unavailable={typeof screen.boletim?.is_liberado !== "boolean"}
           sublabel={typeof screen.boletim?.is_liberado === "boolean" ? (screen.boletim.is_liberado ? "Acesso livre" : "Protegidas") : "Dados indisponíveis"}
           href={go("/aluno/academico")} />
-        <AcaoRapidaCard dashboardCompact mobileCompact label="Propinas vencidas"
+        <AcaoRapidaCard dashboardCompact mobileCompact label="Propinas vencidas" portalTile
           icon={<Wallet className="h-4 w-4" />}
           unavailable={!screen.dashboard.status_financeiro || Boolean(screen.dashboard.status_financeiro.error)}
           needsAttention={Boolean(screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error && screen.dashboard.status_financeiro.pendentes > 0)}

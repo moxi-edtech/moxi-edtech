@@ -64,6 +64,6 @@ test("dashboard do professor usa indicadores estáticos sem remover estados de c
   const dashboard = readFileSync(new URL("../../src/app/professor/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(dashboard, /animate-ping|bg-amber animate-pulse/);
   assert.match(dashboard, /motion-safe:animate-pulse/);
-  assert.match(dashboard, /avaliacoesPendentes > 0 \? "text-amber-400" : "text-white"/);
-  assert.match(dashboard, /faltasALancar > 0 \? "text-rose-400" : "text-white"/);
+  assert.match(dashboard, /needsAttention=\{!loading && !loadError && avaliacoesPendentes !== null && avaliacoesPendentes > 0\}/);
+  assert.match(dashboard, /needsAttention=\{!loading && !loadError && faltasALancar !== null && faltasALancar > 0\}/);
 });
