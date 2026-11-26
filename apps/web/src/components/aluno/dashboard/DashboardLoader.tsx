@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowRight, BookOpen, FileText, Wallet, Bell, Clock3, AlertCircle, CalendarCheck } from "lucide-react";
 import { ErrorState } from "@/components/feedback/FeedbackSystem";
@@ -7,6 +7,7 @@ import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { buildStudentAttention, nextLessonLabel, type StudentDocument, type StudentRematricula } from "@/lib/aluno/dashboardPresentation";
 import { TabHorario } from "@/components/aluno/tabs/TabHorario";
 import { PortalDrawerNavigator, PortalDrawerPushButton } from "@/components/portal/ui/PortalDrawerNavigator";
+import { StudentDrawerWorkspace } from "@/components/aluno/dashboard/StudentDrawerWorkspace";
 import { TabNotificacoes } from "@/components/aluno/tabs/TabNotificacoes";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { PortalAction } from "@/components/portal/ui/PortalAction";
@@ -72,18 +73,19 @@ export default function DashboardLoader() {
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const drawerScope = `${school}:${scopedQuery}`;
-  const [drawer, setDrawer] = useState<{ scope: string; kind: "daily" | "notices" | "notice"; noticeId?: string } | null>(null);
+  const [drawer, setDrawer] = useState<{ scope: string; kind: "daily" | "notices" | "notice" | "academic" | "finance" | "documents"; noticeId?: string } | null>(null);
   const activeDrawer = drawer?.scope === drawerScope ? drawer.kind : null;
-  const openDrawer = (kind: "daily" | "notices") => setDrawer({ scope: drawerScope, kind });
+  const openDrawer = (kind: "daily" | "notices" | "academic" | "finance" | "documents") => setDrawer({ scope: drawerScope, kind });
   const lessonOpen = activeDrawer === "daily";
   const selectedNotice = activeDrawer === "notice" ? screen?.dashboard.avisos_recentes.find(item => item.id === drawer?.noticeId) : null;
+  const lastLoadedScope = useRef<string | null>(null);
   const refresh = useCallback(() => setReload(n => n + 1), []);
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      setLoading(true);
+      const background = lastLoadedScope.current === drawerScope;
+      if (!background) { setLoading(true); setScreen(null); }
       setError(null);
-      setScreen(null);
       try {
         // Só o resumo é obrigatório para mostrar a página. Os restantes endpoints
         // mantêm as suas próprias regras de autorização e bloqueio financeiro.
@@ -92,6 +94,7 @@ export default function DashboardLoader() {
         if (!dashRes.ok || !dash.ok) throw new Error(dash.error || "Não foi possível carregar a tua página.");
         if (controller.signal.aborted) return;
 
+        lastLoadedScope.current = drawerScope;
         setScreen({ dashboard: dash, boletim: null, catalogo: null, rematricula: null, raa: null });
 
         // Dados facultativos chegam em paralelo e atualizam a interface independentemente.
@@ -112,7 +115,7 @@ export default function DashboardLoader() {
     };
     void load();
     return () => controller.abort();
-  }, [reload, scopedQuery]);
+  }, [reload, scopedQuery, drawerScope]);
   const attentions = useMemo(() => screen ? buildStudentAttention({
     pendentes: screen.dashboard.status_financeiro?.pendentes ?? 0,
     financialError: Boolean(screen.dashboard.status_financeiro?.error),
@@ -120,7 +123,7 @@ export default function DashboardLoader() {
     rematricula: screen.rematricula,
     academic: screen.raa?.result,
   }) : [], [screen]);
-  if (loading) return <LoadingDashboard/>;
+  if (loading || (!error && lastLoadedScope.current !== drawerScope)) return <LoadingDashboard/>;
   if (error || !screen) return <div className="mx-auto max-w-6xl px-4 py-8"><ErrorState title="Não foi possível carregar" description={error || "Tenta novamente."} onRetry={refresh}/></div>;
   const lesson = nextLessonLabel(screen.dashboard.proxima_aula);
   const firstName = screen.boletim?.nome_aluno?.trim().split(/\s+/)[0] || "aluno";
@@ -135,14 +138,14 @@ export default function DashboardLoader() {
         <AcaoRapidaCard dashboardCompact mobileCompact label="Notas" portalTile portalClean
           icon={<BookOpen className="h-4 w-4" />} unavailable={typeof screen.boletim?.is_liberado !== "boolean"}
           sublabel={typeof screen.boletim?.is_liberado === "boolean" ? (screen.boletim.is_liberado ? "Acesso livre" : "Protegidas") : "Dados indisponíveis"}
-          href={go("/aluno/academico")} />
+          onClick={() => openDrawer("academic")} dialogOpen={activeDrawer === "academic"} />
         <AcaoRapidaCard dashboardCompact mobileCompact label="Propinas vencidas" portalTile portalClean
           icon={<Wallet className="h-4 w-4" />}
           unavailable={!screen.dashboard.status_financeiro || Boolean(screen.dashboard.status_financeiro.error)}
           needsAttention={Boolean(screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error && screen.dashboard.status_financeiro.pendentes > 0)}
           sublabel={screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error
             ? String(screen.dashboard.status_financeiro.pendentes) : "Dados indisponíveis"}
-          href={go("/aluno/financeiro")} />
+          onClick={() => openDrawer("finance")} dialogOpen={activeDrawer === "finance"} />
       </div>
     </PortalSection>
     <div className="grid items-start gap-6 lg:grid-cols-5">
@@ -157,10 +160,11 @@ export default function DashboardLoader() {
           {attentions.slice(0,3).map(item => {
             const Icon = item.kind === "mensalidade" ? Wallet : item.kind === "rejected" ? AlertCircle : item.kind === "rematricula" ? CalendarCheck : FileText;
             const needsAttention = item.kind === "rejected" || item.kind === "mensalidade" || item.kind === "rematricula" || item.kind === "academico";
+            const contextual = item.href === "/aluno/financeiro" ? "finance" : item.href === "/aluno/documentos" ? "documents" : item.kind === "academico" ? "academic" : null;
             return <AcaoRapidaCard key={item.kind + item.href} dashboardCompact mobileCompact portalClean
               icon={<Icon className="h-4 w-4"/>} label={item.title} needsAttention={needsAttention}
               sublabel={item.kind === "rejected" || item.kind === "academico" ? [item.description, item.action].filter(Boolean).join(" · ") : item.action}
-              href={go(item.href)} />;
+              {...(contextual ? { onClick: () => openDrawer(contextual), dialogOpen: activeDrawer === contextual } : { href: go(item.href) })} />;
           })}
         </div>
       </PortalSection>}
@@ -173,8 +177,17 @@ export default function DashboardLoader() {
         {screen.dashboard.avisos_recentes.map(a=><li key={a.id}><button type="button" aria-haspopup="dialog" onClick={() => setDrawer({ scope: drawerScope, kind: "notice", noticeId: a.id })} className="klasse-portal-press block w-full py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><p className="text-sm font-medium text-foreground">{a.titulo?.trim() || "Aviso da escola"}</p>{a.resumo?.trim() && <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{a.resumo}</p>}<p className="mt-1 text-xs text-muted-foreground">{[a.origem?.trim(),a.data && !Number.isNaN(Date.parse(a.data))?new Intl.DateTimeFormat("pt-AO",{day:"numeric",month:"long",year:"numeric"}).format(new Date(a.data)):""].filter(Boolean).join(" · ")}</p></button></li>)}
       </ul>}
     </PortalSection>
-    <PortalDrawerNavigator key={drawerScope} open={activeDrawer !== null} onClose={() => setDrawer(null)}
-      root={selectedNotice ? {
+    <PortalDrawerNavigator key={drawerScope} open={activeDrawer !== null} onClose={() => setDrawer(null)} onChanged={refresh}
+      root={activeDrawer === "academic" ? {
+        id: `${drawerScope}:academic`, title: "Académico", description: "Notas, disciplinas, faltas e documentos.",
+        content: <StudentDrawerWorkspace scope={drawerScope} kind="academic" initialTab="notas" />,
+      } : activeDrawer === "finance" ? {
+        id: `${drawerScope}:finance`, title: "Situação financeira", description: "Consulta propinas, recibos e pagamentos.",
+        content: <StudentDrawerWorkspace scope={drawerScope} kind="finance" />,
+      } : activeDrawer === "documents" ? {
+        id: `${drawerScope}:documents:all`, title: "Documentos e serviços", description: "Consulta e acompanha os teus pedidos.",
+        content: <StudentDrawerWorkspace scope={drawerScope} kind="documents" />,
+      } : selectedNotice ? {
         id: `${drawerScope}:notice:${selectedNotice.id}`, title: selectedNotice.titulo || "Aviso da escola", description: selectedNotice.origem || "Comunicação da escola",
         content: <><AuditPageView portal="aluno" acao="PAGE_VIEW" entity="avisos" /><p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{selectedNotice.resumo || "Sem informação adicional."}</p><PortalDrawerPushButton frame={{ id: `${drawerScope}:notices`, title: "Avisos", description: "Comunicações publicadas pela escola.", content: <TabNotificacoes /> }} className="min-h-11 rounded-xl border border-border px-4 text-sm font-semibold text-primary">Ver todos os avisos</PortalDrawerPushButton></>,
       } : activeDrawer === "notices" ? {
