@@ -101,17 +101,32 @@ try {
       await page.keyboard.press("Escape");
       await daily.waitFor({state:"hidden"});
 
-      for(const mode of ["grade-paid","grade-unpaid"]){
+      // Published grades are independent from payment for the official PDF.
+      // An empty publication must never disclose scores or offer assessment actions.
+      for(const mode of ["grade-paid","grade-unpaid","grade-empty"]){
         await page.goto(base+"/?story="+mode);
-        await page.getByRole("button",{name:"Ver detalhes de Matemática"}).click();
-        const grades=page.getByRole("dialog",{name:"Matemática"});
-        if(mode==="grade-paid")await grades.getByText("Prova trimestral",{exact:true}).waitFor();
-        else {
-          await grades.getByText("Consulta o estado do boletim para aceder às notas.").waitFor();
+        const grid=page.getByTestId("aluno-boletim-grid");
+        const trigger=grid.getByRole("button",{name:"Ver detalhes de Matemática"});
+        await trigger.waitFor();
+        if(mode==="grade-unpaid"){
+          assert.ok(await grid.getByRole("button",{name:"Boletim oficial requer autorização de pagamento"}).isDisabled(),"unpaid official PDF became available");
+        }
+        await trigger.click();
+        const grades=page.getByRole("dialog",{name:"Matemática",exact:true});
+        if(mode==="grade-empty"){
+          await grades.getByText("Sem avaliações publicadas.",{exact:true}).waitFor();
+          assert.equal(await grades.locator('[aria-label^="Nota "]').count(),0,"unpublished scores disclosed");
           assert.equal(await grades.getByText("Prova trimestral",{exact:true}).count(),0);
+          assert.equal(await grades.getByRole("button",{name:"Pedir reapreciação"}).count(),0);
+          assert.equal(await grades.getByRole("button",{name:"Solicitar melhoria"}).count(),0);
+        } else {
+          await grades.getByText("Prova trimestral",{exact:true}).waitFor();
+          await grades.getByLabel("Nota 16",{exact:true}).waitFor();
+          assert.equal(await grid.getByTestId("boletim-assessment-details").count(),0,"assessment detail duplicated in grid");
         }
         await page.keyboard.press("Escape");
         await grades.waitFor({state:"hidden"});
+        await page.waitForFunction(()=>document.activeElement?.getAttribute("aria-label")==="Ver detalhes de Matemática");
         if(mode==="grade-paid"){
           await page.getByRole("button",{name:"Situação académica"}).click();
           const academic=page.getByRole("dialog",{name:"Situação académica"});

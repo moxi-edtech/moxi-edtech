@@ -290,8 +290,10 @@ try {
       await grid.getByText("16", { exact: true }).first().waitFor();
       await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
       const assessment = page.getByRole("dialog",{name:"Matemática",exact:true});
-      const details = (page.viewportSize()?.width ?? 0) < 768 ? assessment : grid;
-      await details.getByText("Prova trimestral").waitFor();
+      // PortalSheet renders through a Radix portal on every viewport.
+      const details = assessment;
+      await details.getByText("Prova trimestral",{exact:true}).waitFor();
+      if (await grid.getByTestId("boletim-assessment-details").count()) errors.push("grade-paid: assessment details duplicated in the grid");
       await details.getByRole("button", { name: "Pedir reapreciação" }).click();
       await page.getByRole("dialog", { name: /Solicitar reapreciação/ }).waitFor();
       await page.keyboard.press("Tab");
@@ -308,11 +310,13 @@ try {
       await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor();
       await page.getByRole("button", { name: "Cancelar" }).click();
       await page.getByRole("dialog", { name: /Solicitar melhoria/ }).waitFor({ state: "hidden" });
-      if (details === assessment) { await page.keyboard.press("Escape"); await assessment.waitFor({state:"hidden"}); }
+      await page.keyboard.press("Escape");
+      await assessment.waitFor({state:"hidden"});
       await grid.getByRole("button", { name: "2.º trimestre" }).click();
       await grid.getByRole("button", { name: "Ver detalhes de Matemática" }).click();
       await details.getByText("Exame do período").waitFor();
-      if (details === assessment) { await page.keyboard.press("Escape"); await assessment.waitFor({state:"hidden"}); }
+      await page.keyboard.press("Escape");
+      await assessment.waitFor({state:"hidden"});
       if (await grid.getByText("Biologia", { exact: true }).count()) errors.push("grade-paid: first-term-only subject appears in second trimester");
       await grid.getByRole("button", { name: "Por disciplina" }).click();
       const selector = grid.getByRole("combobox", { name: "Disciplina" });
@@ -331,6 +335,12 @@ try {
       if (!(await grid.getByRole("button", { name: /Boletim oficial requer autorização de pagamento/ }).isDisabled())) {
         errors.push("grade-unpaid: official PDF unexpectedly enabled");
       }
+      await grid.getByRole("button",{name:"Ver detalhes de Matemática"}).click();
+      const assessment=page.getByRole("dialog",{name:"Matemática",exact:true});
+      await assessment.getByText("Prova trimestral",{exact:true}).waitFor();
+      await assessment.getByLabel("Nota 16",{exact:true}).waitFor();
+      await page.keyboard.press("Escape");
+      await assessment.waitFor({state:"hidden"});
     }
     if (["notice-info","notice-attention","notice-finance"].includes(name)) {
       await page.keyboard.press("Tab");
