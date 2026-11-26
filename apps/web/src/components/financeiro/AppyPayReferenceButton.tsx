@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { Copy, Loader2, ReceiptText, RefreshCw } from 'lucide-react';
+import { usePortalDrawerGuard, usePortalDrawerNavigation } from '@/components/portal/ui/PortalDrawerNavigator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type Reference = { id: string; entity: string; reference: string; amount: number; currency: string; expires_at: string; status: string };
@@ -35,6 +36,8 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
   const paths = api({ escolaId, mensalidadeId, alunoNome, descricao, student });
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState<'load' | 'create' | 'check' | null>('load');
+  const navigation = usePortalDrawerNavigation();
+  usePortalDrawerGuard(false, busy === 'create' || busy === 'check');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [uncertain, setUncertain] = useState(false);
@@ -60,7 +63,7 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
     locked.current = true; setBusy('create'); setError(''); setNotice('');
     try {
       const body = await requestJson(paths.issue, escolaId, { method: 'POST', body: JSON.stringify({ ...paths.issueBody, expectedAmount: preview.amount }) });
-      if (mounted.current) setPreview({ ...preview, canIssue: false, reference: body.reference });
+      if (mounted.current) { navigation?.notifyChanged(); setPreview({ ...preview, canIssue: false, reference: body.reference }); }
     } catch (e) {
       if (mounted.current) { setUncertain(true); setError(`${e instanceof Error ? e.message : 'Emissão indisponível.'} Consulte o estado antes de voltar a emitir.`); }
     } finally { locked.current = false; if (mounted.current) setBusy(null); }
@@ -73,7 +76,7 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
       if (!mounted.current) return;
       if (body.status === 'reconciled') {
         setPreview({ ...preview, reference: { ...preview.reference, status: 'paid' } });
-        setNotice('Pagamento confirmado e registado.'); onPaid?.(mensalidadeId); router.refresh();
+        setNotice('Pagamento confirmado e registado.'); navigation?.notifyChanged(); onPaid?.(mensalidadeId); if (!navigation) router.refresh();
       } else setNotice(body.status === 'manual_review' ? 'O pagamento precisa de conferência pela tesouraria.' : 'O pagamento ainda não foi confirmado.');
     } catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : 'Verificação indisponível.'); }
     finally { locked.current = false; if (mounted.current) setBusy(null); }
@@ -88,8 +91,8 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
       setNotice('Dados copiados.');
     } catch { setError('Não foi possível copiar. Selecione os dados da referência para os copiar.'); }
   }
-  return <Dialog open onOpenChange={open => { if (!open && busy !== 'create') onClose(); }}>
-    <DialogContent onCloseAutoFocus={event => { event.preventDefault(); restoreFocus(); }} className="max-h-[90vh] overflow-y-auto bg-card text-foreground" closeButton={busy !== 'create'}>
+  return <Dialog open onOpenChange={open => { if (!open && busy !== 'create' && busy !== 'check') onClose(); }}>
+    <DialogContent onCloseAutoFocus={event => { event.preventDefault(); restoreFocus(); }} className="max-h-[90vh] overflow-y-auto bg-card text-foreground" closeButton={busy !== 'create' && busy !== 'check'}>
       <DialogHeader>
         <DialogTitle>Pagamento por referência</DialogTitle>
         <DialogDescription>{alunoNome} · {descricao}</DialogDescription>
@@ -114,7 +117,7 @@ function ReferenceDialog({ escolaId, mensalidadeId, alunoNome, descricao, onPaid
         <p role="status" aria-live="polite" className="mt-3 text-sm text-muted-foreground">{notice}</p>
       </div>
       <div className="flex flex-wrap justify-end gap-2">
-        <button type="button" className={button} onClick={onClose} disabled={busy === 'create'}>Fechar</button>
+        <button type="button" className={button} onClick={onClose} disabled={busy === 'create' || busy === 'check'}>Fechar</button>
         {issued ? <>
           <button type="button" className={button} onClick={copy} disabled={Boolean(busy)}><Copy className="h-4 w-4" aria-hidden="true" />Copiar dados</button>
           {reference.status !== 'paid' ? <button type="button" className={button} onClick={check} disabled={Boolean(busy)}><RefreshCw className={`h-4 w-4 ${busy === 'check' ? 'animate-spin' : ''}`} aria-hidden="true" />Verificar pagamento</button> : null}
