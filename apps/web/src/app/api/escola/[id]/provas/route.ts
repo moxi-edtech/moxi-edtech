@@ -15,13 +15,36 @@ export async function GET(req:Request,{params}:Context){
  const query=new URL(req.url).searchParams;
  if(query.get("professores")==="1"){
    if(!access.admin)return json({error:"Sem autorização."},403);
-   const r=await db.from("professores").select("id,nome,nome_completo").eq("escola_id",escolaId).order("nome").order("id").limit(1001);
-   if(r.error||r.data?.length>1000)return json({error:"Não foi possível consultar o catálogo docente."},409);
-   return json({items:(r.data??[]).map((p:{id:string;nome:string|null;nome_completo:string|null})=>({id:p.id,nome:p.nome_completo||p.nome||"Professor sem nome"}))});
+   const r=await db.from("professores").select("id,profile_id,apelido",{count:"exact"}).eq("escola_id",escolaId).order("id").limit(1000);
+   if(r.error||r.count===null||r.count>1000)return json({error:"Não foi possível consultar o catálogo docente."},409);
+   const teachers=(r.data??[]) as {id:string;profile_id:string|null;apelido:string|null}[];
+   const ids=[...new Set(teachers.flatMap(p=>p.profile_id?[p.profile_id]:[]))];
+   const names=new Map<string,string>();
+   for(let i=0;i<ids.length;i+=100){const profiles=await db.rpc("tenant_profiles_by_ids",{p_user_ids:ids.slice(i,i+100)});if(profiles.error)return json({error:"Catálogo docente indisponível."},409);for(const p of (profiles.data??[]) as {user_id:string;nome:string|null}[])if(p.nome)names.set(p.user_id,p.nome);}
+   return json({items:teachers.map(p=>({id:p.id,nome:(p.profile_id?names.get(p.profile_id):null)||p.apelido||"Professor sem nome"})).sort((a,b)=>a.nome.localeCompare(b.nome,"pt")||a.id.localeCompare(b.id))});
+ }
+ if(query.get("facetas")==="1"){
+   if(!access.admin)return json({error:"Sem autorização."},403);
+   const historical=query.get("estado")==="arquivada";
+   const sets={classe:new Set<string>(),disciplina:new Set<string>(),ano:new Set<string>()};
+   // Bounded tenant-scoped catalogue, not the current 30-row page.
+   for(let offset=0;offset<10000;offset+=500){
+     let q=db.from("provas_pedagogicas").select("id,classe,disciplina,ano_lectivo",{count:offset===0?"exact":undefined}).eq("escola_id",escolaId);
+     q=historical?q.eq("estado","arquivada"):q.neq("estado","arquivada");
+     const r=await q.order("id").range(offset,offset+499);
+     if(r.error||offset===0&&(r.count===null||r.count>10000))return json({error:"Catálogo de filtros indisponível."},409);
+     const rows=(r.data??[]) as {classe:string;disciplina:string;ano_lectivo:string}[];
+     for(const p of rows){if(p.classe)sets.classe.add(p.classe);if(p.disciplina)sets.disciplina.add(p.disciplina);if(p.ano_lectivo)sets.ano.add(p.ano_lectivo);}
+     if(rows.length<500)break;
+   }
+   return json({facetas:{classe:[...sets.classe].sort((a,b)=>a.localeCompare(b,"pt",{numeric:true})),disciplina:[...sets.disciplina].sort((a,b)=>a.localeCompare(b,"pt")),ano:[...sets.ano].sort().reverse()}});
  }
  if(query.get("branding")==="1"){
    const school=await db.from("escolas").select("logo_url").eq("id",escolaId).maybeSingle();
-   return json({logo:school.error?null:await loadProvaLogo(school.data?.logo_url,escolaId)});
+   if(school.error)return json({error:"Identidade institucional indisponível."},503);
+   const logo=await loadProvaLogo(school.data?.logo_url,escolaId);
+   if(school.data?.logo_url&&!logo)console.warn("[provas] institutional logo unavailable",{escolaId});
+   return json({logo});
  }
  if(query.get("contexto")==="1"){
    if(!access.author)return json({error:"Sem autorização para elaborar provas."},403);

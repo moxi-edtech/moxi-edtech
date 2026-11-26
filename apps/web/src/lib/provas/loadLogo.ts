@@ -44,7 +44,7 @@ export async function loadProvaLogo(value:unknown,escolaId:string,fetcher:typeof
  const url=schoolLogoSource(value,escolaId,origins);
  if(!url)return null;
  try{
-  const response=await fetcher(url,{cache:"no-store",redirect:"error",credentials:"omit",signal:AbortSignal.timeout(3000)});
+  const response=await fetcher(url,{cache:"force-cache",redirect:"error",credentials:"omit",signal:AbortSignal.timeout(6000)});
   if(!response.ok||!response.body||Number(response.headers.get("content-length")??0)>MAX_LOGO_BYTES){await response.body?.cancel();return null;}
   const reader=response.body.getReader();
   const chunks:Uint8Array[]=[];let size=0;
@@ -59,7 +59,8 @@ export async function loadProvaLogo(value:unknown,escolaId:string,fetcher:typeof
   }finally{reader.releaseLock();}
   const bytes=Buffer.concat(chunks,size);
   const type=rasterType(bytes);
-  if(!type||response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase()!=="image/"+type)return null;
+  const mime=response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+  if(!type||mime!=="image/"+type&&mime!=="application/octet-stream")return null;
   return safeLogoData("data:image/"+type+";base64,"+bytes.toString("base64"));
  }catch{return null;}
 }
