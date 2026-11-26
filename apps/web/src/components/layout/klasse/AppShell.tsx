@@ -370,7 +370,7 @@ export default function AppShell({
         <AcademicContextSync pathname={pathname} onSearchSync={handleSearchSync} />
       </Suspense>
       <div className="flex">
-        <div className={hideSidebarOnMobile ? "hidden md:block" : "block"}>
+        <div className={hideSidebarOnMobile ? "hidden shrink-0 md:block" : "block shrink-0"}>
           <Sidebar
             items={navItems}
             escolaNome={displayedEscolaNome}

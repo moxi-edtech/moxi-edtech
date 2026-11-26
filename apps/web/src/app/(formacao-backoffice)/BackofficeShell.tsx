@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { SIDEBAR_WIDTH, SIDEBAR_LABEL, SIDEBAR_NAV, SIDEBAR_ROW, sidebarLabel } from '@/lib/sidebarPresentation'
 import { usePathname } from 'next/navigation'
 import type { ComponentType, ReactNode } from 'react'
 import { BarChart3, BookOpen, LayoutDashboard, Settings, Shield, Wallet, UsersRound } from 'lucide-react'
@@ -36,9 +37,9 @@ export function BackofficeShell({
   return (
     <div className="min-h-screen bg-slate-100 text-sm">
       <div className="flex min-h-screen">
-        <aside className="w-64 bg-slate-950 p-4">
-          <div className="mb-6 px-3 text-base font-semibold text-white">KLASSE Formação</div>
-          <nav className="space-y-1">
+        <aside className="klasse-sidebar-theme sticky top-0 flex h-dvh max-w-[65vw] shrink-0 flex-col overflow-hidden bg-sidebar p-2 md:max-w-none" style={{ width: SIDEBAR_WIDTH.expanded }}>
+          <div className="mb-4 shrink-0 truncate px-3 py-3 text-base font-semibold text-white">KLASSE Formação</div>
+          <nav className={`${SIDEBAR_NAV} space-y-1 p-1`}>
             {allowedItems.map((item) => {
               const Icon = item.icon
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
@@ -46,20 +47,22 @@ export function BackofficeShell({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 rounded-xl px-3 py-2 ${
+                  title={item.label}
+                  aria-current={active ? "page" : undefined}
+                  className={`${SIDEBAR_ROW} ${
                     active
-                      ? 'bg-slate-900 text-amber ring-1 ring-amber/25'
-                      : 'text-slate-400 hover:text-amber'
+                      ? 'bg-sidebar-accent text-klasse-gold ring-1 ring-klasse-gold/25'
+                      : 'text-sidebar-muted-foreground hover:text-klasse-gold'
                   }`}
                 >
-                  <Icon className="h-5 w-5" />
-                  <span>{item.label}</span>
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className={SIDEBAR_LABEL}>{sidebarLabel(item.label)}</span>
                 </Link>
               )
             })}
           </nav>
         </aside>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-6">{children}</main>
       </div>
     </div>
   )

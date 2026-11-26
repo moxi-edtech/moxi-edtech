@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { SIDEBAR_WIDTH, SIDEBAR_LABEL, SIDEBAR_NAV, SIDEBAR_ROW, sidebarLabel } from '@/lib/sidebarPresentation'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import type { ComponentType, ReactNode } from 'react'
@@ -46,9 +47,9 @@ export function FormacaoRoleShell({ title, items, children }: FormacaoRoleShellP
       </header>
 
       <div className="flex min-h-screen">
-        <aside className="sticky top-0 hidden h-screen w-64 bg-slate-950 p-4 md:block">
-          <div className="mb-6 px-3 text-base font-semibold text-white">{title}</div>
-          <nav className="space-y-1">
+        <aside className="klasse-sidebar-theme sticky top-0 hidden h-dvh shrink-0 flex-col overflow-hidden bg-sidebar p-2 md:flex" style={{ width: SIDEBAR_WIDTH.expanded }}>
+          <div className="mb-4 shrink-0 truncate px-3 py-3 text-base font-semibold text-white" title={title}>{title}</div>
+          <nav className={`${SIDEBAR_NAV} space-y-1 p-1`}>
             {items.map((item) => {
               const Icon = item.icon
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
@@ -56,21 +57,23 @@ export function FormacaoRoleShell({ title, items, children }: FormacaoRoleShellP
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 rounded-xl px-3 py-2 ${
+                  title={item.label}
+                  aria-current={active ? "page" : undefined}
+                  className={`${SIDEBAR_ROW} ${
                     active
-                      ? 'bg-slate-900 text-amber ring-1 ring-amber/25'
-                      : 'text-slate-400 hover:text-amber'
+                      ? 'bg-sidebar-accent text-klasse-gold ring-1 ring-klasse-gold/25'
+                      : 'text-sidebar-muted-foreground hover:text-klasse-gold'
                   }`}
                 >
-                  <Icon className="h-5 w-5" />
-                  <span>{item.label}</span>
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className={SIDEBAR_LABEL}>{sidebarLabel(item.label)}</span>
                 </Link>
               )
             })}
           </nav>
         </aside>
 
-        <main className="flex-1 p-4 pb-28 md:p-6 md:pb-6">{children}</main>
+        <main className="min-w-0 flex-1 p-4 pb-28 md:p-6 md:pb-6">{children}</main>
       </div>
 
       <nav
