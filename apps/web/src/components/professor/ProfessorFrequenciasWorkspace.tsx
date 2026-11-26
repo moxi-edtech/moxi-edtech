@@ -65,7 +65,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
         if (!res.ok || !json?.ok) {
           throw new Error(json?.message || json?.error || 'Não foi possível carregar o ano letivo ativo.')
         }
-        const items = (json.items || []) as Atrib[]
+        const items = ((json.items || []) as Atrib[]).filter(item => !embedded || ((!urlTurmaId || item.turma.id === urlTurmaId) && (!urlDisciplinaId || item.disciplina.id === urlDisciplinaId)))
         setAtribs(items)
         if (!requestedAcademicYearId && json.context?.anoLetivoId) setAcademicYearId(String(json.context.anoLetivoId))
         if (urlTurmaId && items.some(a => a.turma.id === urlTurmaId)) {
@@ -78,7 +78,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
         setLoadError(cause instanceof Error ? cause.message : 'Não foi possível carregar o ano letivo ativo.')
       }
     })()
-  }, [urlTurmaId, urlDisciplinaId, requestedAcademicYearId])
+  }, [embedded, urlTurmaId, urlDisciplinaId, requestedAcademicYearId])
 
   useEffect(() => {
     const controller = new AbortController()
