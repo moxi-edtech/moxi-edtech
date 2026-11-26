@@ -34,8 +34,8 @@ test("resumo não inventa média nem transforma mensalidades futuras em atraso",
   assert.match(dashboard, /<AcaoRapidaCard dashboardCompact mobileCompact label="Propinas vencidas"/);
   assert.match(dashboard, /typeof screen.boletim\?\.is_liberado === "boolean"/);
   assert.match(dashboard, /screen.dashboard.status_financeiro && !screen.dashboard.status_financeiro.error/);
-  assert.match(dashboard, /href=\{go\("\/aluno\/academico"\)\}/);
-  assert.match(dashboard, /href=\{go\("\/aluno\/financeiro"\)\}/);
+  assert.match(dashboard, /onClick=\{\(\) => openDrawer\("academic"\)\}/);
+  assert.match(dashboard, /onClick=\{\(\) => openDrawer\("finance"\)\}/);
   assert.doesNotMatch(dashboard, /ultima_nota|notasRecentes|\bmediaFinal\b/);
 });
 
