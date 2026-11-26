@@ -372,7 +372,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleMarcarTodosPresentes}
+                    disabled={saving} onClick={handleMarcarTodosPresentes}
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black  transition-all active:scale-95 cursor-pointer"
                   >
                     <UserCheck size={16} />
@@ -381,7 +381,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
 
                   <button
                     type="button"
-                    onClick={handleMarcarTodosFaltas}
+                    disabled={saving} onClick={handleMarcarTodosFaltas}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 text-xs font-bold transition-all active:scale-95 cursor-pointer"
                   >
                     <XCircle size={15} />
@@ -390,7 +390,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
 
                   <button
                     type="button"
-                    onClick={handleResetStatus}
+                    disabled={saving} onClick={handleResetStatus}
                     className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl bg-muted hover:bg-muted text-muted-foreground text-xs font-semibold transition-colors"
                     title="Resetar Seleções"
                   >
@@ -455,7 +455,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
                           <p className="min-w-0 flex-1 break-words pt-0.5 text-sm font-semibold leading-snug text-foreground">{a.nome}</p>
                         </div>
                         {a.matriculaId && turmaId && (
-                          <button type="button"
+                          <button type="button" disabled={saving}
                             onClick={() => setOpenActionsId((value) => value === a.id ? null : a.id)}
                             aria-expanded={actionsOpen} aria-controls={'opcoes-aluno-' + a.id}
                             aria-label={'Outras ações para ' + a.nome}
@@ -473,7 +473,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
                           const Icon = opt.icon;
                           const active = current === opt.value;
                           return (
-                            <button key={opt.value} type="button" aria-pressed={active}
+                            <button key={opt.value} type="button" disabled={saving} aria-pressed={active}
                               onClick={() => {
                                 setStatusMap((previous) => ({ ...previous, [a.id]: opt.value }));
                                 setSubmitStatus('idle');
@@ -484,7 +484,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
                           );
                         })}
                       </div>
-                      {a.matriculaId && turmaId && actionsOpen && (
+                      {a.matriculaId && turmaId && actionsOpen && !saving && (
                         <div id={'opcoes-aluno-' + a.id} className="rounded-xl border border-border bg-muted/40 p-1.5">
                           <DesistenciaMatriculaAction variant="menu" tipo="sinalizar" alunoId={a.id}
                             alunoNome={a.nome} turmaId={turmaId} matriculaId={a.matriculaId} />
