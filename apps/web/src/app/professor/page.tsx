@@ -5,6 +5,8 @@ import { ProfessorAgendaSkeleton, ProfessorSkeletonBone, ProfessorTurmasSkeleton
 import ProfessorReopeningRequests from "@/components/professor/ProfessorReopeningRequests";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { PortalDrawerNavigator, PortalDrawerPushButton } from "@/components/portal/ui/PortalDrawerNavigator";
+import { ProfessorTurmaHorario } from "@/components/professor/ProfessorTurmaHorario";
 import { ProfessorTurmaRoster } from "@/components/professor/ProfessorTurmaRoster";
 import { PortalWelcomeCard } from "@/components/portal/ui/PortalWelcomeCard";
 import { PortalSection } from "@/components/portal/ui/PortalSection";
@@ -591,19 +593,22 @@ export default function Page() {
             </div>
           </section>
         </div>
-        <PortalSheet open={Boolean(selectedTurma)} onClose={() => setExpandedTurmaId(null)} title={selectedTurma ? formatTurmaDisplayName({ nome: selectedTurma.nome }) : "Perfil da turma"} description="Disciplinas atribuídas e operações pedagógicas." size="expanded">
-          {selectedTurma && <>
+        <PortalDrawerNavigator key={`${escolaParam ?? "default"}:turma`} open={Boolean(selectedTurma)} onClose={() => setExpandedTurmaId(null)} root={{
+          id: `${escolaParam ?? "default"}:turma:${selectedTurma?.id ?? "closed"}`,
+          title: selectedTurma ? formatTurmaDisplayName({ nome: selectedTurma.nome }) : "Perfil da turma",
+          description: "Disciplinas atribuídas e operações pedagógicas.",
+          content: selectedTurma && <>
             <p className="text-sm text-muted-foreground">{selectedTurma.disciplinas.join(" · ")}</p>
             <div className="grid grid-cols-2 gap-2">
                         <Link href={professorHref(`/professor/frequencias?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 hover:brightness-95">Chamada</Link>
                         <Link href={professorHref(`/professor/notas?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Notas</Link>
                         <Link href={professorHref(`/professor/planos-aula?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Plano de aula</Link>
                         <Link href={professorHref(`/professor/materiais?turma_id=${encodeURIComponent(selectedTurma.id)}`)} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-muted px-2 text-xs font-semibold text-foreground hover:brightness-95">Materiais</Link>
-                        <Link href={professorHref(`/professor/turmas/${selectedTurma.id}/horario`)} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-2 text-xs font-semibold text-foreground hover:bg-muted">Horário da turma</Link>
+                        <PortalDrawerPushButton frame={{ id: `${escolaParam ?? "default"}:horario:${selectedTurma.id}`, title: "Horário da turma", description: formatTurmaDisplayName({ nome: selectedTurma.nome }), content: <ProfessorTurmaHorario turmaId={selectedTurma.id} embedded /> }} className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-2 text-xs font-semibold text-foreground hover:bg-muted">Horário da turma</PortalDrawerPushButton>
             </div>
             <ProfessorTurmaRoster key={`${escolaParam}:${selectedTurma.id}`} turmaId={selectedTurma.id} />
-          </>}
-        </PortalSheet>
+          </>,
+        }} />
         <PortalSheet open={Boolean(selectedLesson)} onClose={() => setSelectedLessonKey(null)} title={selectedLesson?.disciplina_nome ?? "Detalhes da aula"} description="Consulta da agenda de hoje." size="medium">
           {selectedLesson && <>
             <dl className="grid grid-cols-2 gap-3 text-sm">
