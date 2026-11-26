@@ -61,7 +61,7 @@ test("registos de avaliação duplicados com matrizes divergentes não entram na
 });
 
 test("a pauta selecciona o trimestre corrente no fuso de Luanda", () => {
-  const page = readFileSync(resolve(process.cwd(), "src/app/professor/notas/page.tsx"), "utf8");
+  const page = readFileSync(resolve(process.cwd(), "src/components/professor/ProfessorGradesWorkspace.tsx"), "utf8");
   const api = readFileSync(resolve(process.cwd(), "src/app/api/professor/periodos/route.ts"), "utf8");
   assert.match(page, /currentGradePeriod\(canonicalPeriods\)/);
   assert.match(page, /requestedTrimestreValid/);
