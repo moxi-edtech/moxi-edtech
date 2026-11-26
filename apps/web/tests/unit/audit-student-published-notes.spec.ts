@@ -58,9 +58,9 @@ test("consulta e documento exigem a mesma autorização financeira", () => {
   }
   assert.match(consultation,/checkBoletimAccess\(/);
   assert.match(consultation,/if \(!access\.granted\)/);
-  assert.ok(consultation.indexOf("if (!access.granted)") < consultation.indexOf('supabase.from("pautas_oficiais")'));
+  assert.ok(consultation.indexOf("if (!access.granted)") < consultation.indexOf('rpc("aluno_trimestres_publicados"'));
   assert.match(consultation,/is_liberado: false, matricula_encontrada: true, context,\s*disciplinas: \[\]/);
-  assert.match(consultation,/publishedTrimestersFromOfficialSheets/);
+  assert.match(consultation,/aluno_trimestres_publicados/);
   assert.match(consultation,/ano_letivo_id", context\.anoLetivoId/);
   assert.match(paid,/checkBoletimAccess\(/);
   assert.match(pdf,/checkBoletimAccess\(/);

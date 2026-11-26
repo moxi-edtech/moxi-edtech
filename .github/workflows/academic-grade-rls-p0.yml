@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'supabase/migrations/20271204031000_academic_grade_rls_p0.sql'
+      - 'supabase/migrations/20271204032000_academic_publication_history_p0.sql'
       - 'supabase/ops/tests/academic_grade_rls_p0*'
       - '.github/workflows/academic-grade-rls-p0.yml'
 permissions:
@@ -34,4 +35,7 @@ jobs:
             -f supabase/ops/tests/academic_grade_rls_p0_bootstrap.sql \
             -f supabase/migrations/20271204031000_academic_grade_rls_p0.sql \
             -f supabase/ops/tests/academic_grade_rls_p0_regression.sql \
-            -f supabase/ops/tests/academic_grade_rls_p0_performance.sql
+            -f supabase/ops/tests/academic_grade_rls_p0_performance.sql \
+            -f supabase/ops/tests/academic_grade_rls_p0_publication_bootstrap.sql \
+            -f supabase/migrations/20271204032000_academic_publication_history_p0.sql \
+            -f supabase/ops/tests/academic_grade_rls_p0_publication_regression.sql

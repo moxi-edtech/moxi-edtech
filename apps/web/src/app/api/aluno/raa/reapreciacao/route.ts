@@ -25,6 +25,11 @@ export async function POST(request: Request) {
   const { data: vinculo } = await supabase.from("turma_disciplinas").select("id").eq("escola_id", ctx.escolaId).eq("turma_id", ctx.turmaId).eq("avaliacao_disciplina_id", parsed.data.disciplina_id).maybeSingle();
   if (!vinculo) return NextResponse.json({ ok: false, error: "A disciplina não pertence à turma atual." }, { status: 409 });
 
+  const { data: published, error: publicationError } = await (supabase as any).rpc("aluno_resultado_publicado", {
+    p_escola_id: ctx.escolaId, p_matricula_id: ctx.matriculaId,
+  });
+  if (publicationError) return NextResponse.json({ ok: false, error: "Não foi possível verificar a publicação do resultado." }, { status: 503 });
+  if (published !== true) return NextResponse.json({ ok: false, error: "O resultado anual deve estar publicado e o acesso às notas autorizado.", code: "RAA_RESULT_RESTRICTED" }, { status: 403 });
   const { data: canonical, error: resolverError } = await (supabase as any).rpc("resolve_estado_resultado", { p_matricula_id: ctx.matriculaId, p_disciplina_id: parsed.data.disciplina_id });
   if (resolverError) return NextResponse.json({ ok: false, error: "O resolvedor académico está indisponível." }, { status: 503 });
   if (canonical?.status !== "reprovado") return NextResponse.json({ ok: false, error: canonical?.status === "reprovado_por_indisciplina" ? "Este resultado está retido por indisciplina grave e não pode abrir reapreciação académica." : "A reapreciação só pode ser solicitada para resultado académico negativo.", code: "RAA_REAPRECIACAO_NOT_ELIGIBLE", canonical_result: canonical }, { status: 409 });
