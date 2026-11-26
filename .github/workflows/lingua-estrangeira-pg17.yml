@@ -73,3 +73,66 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm -C apps/web typecheck
+
+  migration-candidate:
+    name: Gerar migração forward-only via CLI (sem deploy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      # Observado no ledger de produção em 26/11/2026. Revalidar antes de aplicar.
+      OBSERVED_REMOTE_MAX: '20271204030000'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Gerar ficheiro candidato local, sem credenciais ou ligação remota
+        shell: bash
+        run: |
+          set -euo pipefail
+          scratch="$(mktemp -d)"
+          artifact="$RUNNER_TEMP/lingua-migration"
+          mkdir -p "$artifact"
+          cd "$scratch"
+          npm exec --yes --package=supabase@2.122.0 -- supabase --version
+          npm exec --yes --package=supabase@2.122.0 -- supabase migration new lingua_estrangeira_config
+          shopt -s nullglob
+          generated=(supabase/migrations/*_lingua_estrangeira_config.sql)
+          test "${#generated[@]}" -eq 1
+          test ! -s "${generated[0]}"
+          cli_filename="$(basename "${generated[0]}")"
+          cp "$GITHUB_WORKSPACE/supabase/ops/lingua_estrangeira_config.proposed.sql" "${generated[0]}"
+          cd "$GITHUB_WORKSPACE"
+          export CLI_FILENAME="$cli_filename"
+          version="$(node --input-type=module <<'JS'
+          import { readdirSync } from 'node:fs';
+          const entries = readdirSync('supabase/migrations');
+          const local = entries.map(x => /^(\d{14})_/.exec(x)?.[1]).filter(Boolean).sort().at(-1);
+          const remote = process.env.OBSERVED_REMOTE_MAX;
+          if (!local || !/^\d{14}$/.test(remote)) throw Error('Missing ledger floor');
+          const floor = [local, remote].sort().at(-1);
+          const [y,m,d,h,min,sec] = floor.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/).slice(1).map(Number);
+          const stamp = new Date(Date.UTC(y,m-1,d,h,min,sec));
+          const encode = date => date.toISOString().slice(0,19).replace(/\D/g,'');
+          if (encode(stamp) !== floor) throw Error('Invalid latest migration version');
+          stamp.setUTCMinutes(stamp.getUTCMinutes()+1);
+          const next = encode(stamp);
+          if (next <= floor || entries.some(x=>x.startsWith(next+'_'))) throw Error('Migration collision');
+          console.log(next);
+          JS
+          )"
+          name="${version}_lingua_estrangeira_config.sql"
+          cp "$scratch/${generated[0]}" "$artifact/$name"
+          cp "$artifact/$name" "supabase/migrations/$name"
+          cmp "supabase/migrations/$name" supabase/ops/lingua_estrangeira_config.proposed.sql
+          node scripts/ci/check-supabase-migration-ledger.mjs
+          printf 'CLI filename: %s\nForward-only candidate: %s\nObserved remote max: %s\n' "$CLI_FILENAME" "$name" "$OBSERVED_REMOTE_MAX" | tee "$artifact/provenance.txt"
+          sha256sum "$artifact/$name"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lingua-estrangeira-migration-candidate
+          path: ${{ runner.temp }}/lingua-migration/
+          if-no-files-found: error
+          retention-days: 14
