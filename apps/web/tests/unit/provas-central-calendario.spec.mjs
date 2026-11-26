@@ -20,7 +20,7 @@ test("Central de Provas embeds the existing evaluation calendar and preserves po
 test("Central de Provas uses progressive disclosure instead of permanent explanatory copy",()=>{
  const w=read("components/provas/ProvasWorkspace.tsx");const c=read("components/academico/CalendarioAvaliacoesClient.tsx");
  const f=read("components/provas/ProvasFilters.tsx");
- assert.match(w,/<ProvasFilters key=\{tab\}/);assert.match(f,/aria-expanded=\{open\}/);assert.match(f,/aria-pressed=/);assert.match(f,/aria-label=\{"Filtrar "\+name\}/);assert.match(w,/header\(h\)/);assert.match(w,/historyFilters:activeFilters/);
+ assert.match(w,/<ProvasFilters key=\{tab\}/);assert.match(f,/aria-expanded=\{open\}/);assert.match(f,/aria-pressed=/);assert.match(f,/aria-label=\{"Filtrar "\+name\}/);assert.match(w,/header\(h\)/);assert.match(w,/header\(h,true\)/);assert.doesNotMatch(f,/aria-label="Estado da prova"/);assert.match(w,/historyFilters:activeFilters/);
  assert.doesNotMatch(w,/Elabore, reveja e imprima avaliações|A leitura no ecrã é contínua/);
  assert.match(c,/useState\(!embedded\)/);assert.match(c,/hidden=\{!planningOpen\}/);
  assert.match(w,/cotacao\.ready/);assert.match(c,/assessmentPlanOverlaps/);

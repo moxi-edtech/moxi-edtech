@@ -101,6 +101,8 @@ try{
  const adminDialog=adminPage.getByRole("dialog");
  await adminDialog.getByRole("button",{name:"Nova prova"}).waitFor();
  await adminDialog.getByRole("tab",{name:"Histórico",exact:true}).waitFor();
+ assert.equal(await adminDialog.getByRole("button",{name:"Filtros",exact:true}).count(),0,"no duplicate filter toolbar");
+ assert.equal(await adminDialog.getByRole("group",{name:"Estado da prova"}).count(),0,"state selection lives in the header");
  const classHeader=adminDialog.getByRole("button",{name:"Filtrar Classe",exact:true});
  await classHeader.click();
  const region=adminDialog.getByRole("region",{name:"Opções de filtro"});
@@ -116,9 +118,16 @@ try{
  await adminDialog.getByText("Nenhuma prova arquivada.",{exact:true}).waitFor();
  assert.equal(await adminDialog.getByRole("button",{name:"Rascunhos",exact:true}).count(),0);
  await adminDialog.getByRole("tab",{name:"Provas",exact:true}).click();
- assert.equal(await adminDialog.getByRole("button",{name:"Rascunhos",exact:true}).getAttribute("aria-pressed"),"true");
+ await adminDialog.getByRole("button",{name:"Filtrar Estado",exact:true}).click();
+ assert.equal(await region.getByRole("button",{name:"Rascunhos",exact:true}).getAttribute("aria-pressed"),"true");
+ await region.getByRole("button",{name:"Todas",exact:true}).click();
  await adminDialog.getByRole("button",{name:"Remover filtro Classe"}).click();
- await adminDialog.getByRole("group",{name:"Estado da prova"}).getByRole("button",{name:"Todas",exact:true}).click();
+ await adminPage.setViewportSize({width:390,height:844});
+ await adminDialog.getByRole("button",{name:"Filtrar Prova",exact:true}).click();
+ await region.getByRole("button",{name:"Trimestre",exact:true}).click();
+ await region.getByRole("button",{name:"1.º trimestre",exact:true}).click();
+ await adminDialog.getByRole("button",{name:"Remover filtro Trimestre"}).click();
+ await adminPage.setViewportSize({width:1280,height:844});
  await adminDialog.getByRole("button",{name:"Consultar",exact:true}).click();
  await adminDialog.getByRole("button",{name:"Recarregar logótipo",exact:true}).click();
  const preview=adminDialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
