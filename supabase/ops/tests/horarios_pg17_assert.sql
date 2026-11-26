@@ -50,6 +50,7 @@ DO $$ BEGIN
   IF has_function_privilege('anon','public.ensure_horario_versao(uuid,uuid,uuid,text)','EXECUTE')
      OR has_function_privilege('authenticated','public.publish_horario_versao(uuid,uuid,uuid)','EXECUTE')
      OR has_function_privilege('authenticated','public.log_horario_event(uuid,uuid,uuid,text,jsonb)','EXECUTE')
+     OR has_function_privilege('authenticated','public.horario_guard_row_lock(uuid)','EXECUTE')
      OR has_table_privilege('authenticated','public.horario_eventos','INSERT')
      OR has_table_privilege('authenticated','public.quadro_horarios','TRUNCATE')
   THEN RAISE EXCEPTION 'direct writer bypass'; END IF;
@@ -63,5 +64,18 @@ DO $$ BEGIN
   BEGIN PERFORM public.ensure_horario_versao(fixture_id(2),fixture_id(23),NULL,'draft'); RAISE EXCEPTION 'cross-school draft allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   BEGIN PERFORM public.log_horario_event(fixture_id(1),fixture_id(20),fixture_id(81),'PUBLISH','{}'); RAISE EXCEPTION 'fake event allowed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
   IF public.ensure_horario_versao(fixture_id(1),fixture_id(20),NULL,'draft') IS NULL THEN RAISE EXCEPTION 'admin draft failed'; END IF;
+END $$;
+RESET ROLE;
+
+-- Real-role direct draft deletion cascades atomically. Non-official edits stay possible.
+SET ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub',fixture_id(100)::text,false);
+DO $$
+DECLARE draft_id uuid;
+BEGIN
+  draft_id:=public.ensure_horario_versao(fixture_id(1),fixture_id(20),NULL,'draft');
+  PERFORM public.upsert_quadro_horarios_versao_atomic(fixture_id(1),fixture_id(20),draft_id,fixture_item(70),false);
+  DELETE FROM public.horario_versoes WHERE id=draft_id AND status='draft';
+  IF EXISTS(SELECT 1 FROM public.quadro_horarios WHERE versao_id=draft_id) THEN RAISE EXCEPTION 'draft deletion did not cascade'; END IF;
 END $$;
 RESET ROLE;

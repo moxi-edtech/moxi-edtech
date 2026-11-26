@@ -82,8 +82,7 @@ BEGIN
   THEN RAISE EXCEPTION 'HORARIO_RETRY: recarregue e tente novamente' USING ERRCODE='40001'; END IF;
 END;
 $$;
-REVOKE ALL ON FUNCTION public.horario_guard_row_lock(uuid) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.horario_guard_row_lock(uuid) TO authenticated,service_role;
+REVOKE ALL ON FUNCTION public.horario_guard_row_lock(uuid) FROM PUBLIC,anon,authenticated,service_role;
 
 -- Direct API callers may create/delete a draft but cannot publish/archive,
 -- change identity or delete historical versions. RPC runs as trusted owner.
@@ -92,11 +91,15 @@ RETURNS trigger LANGUAGE plpgsql SET search_path=''
 AS $$
 BEGIN
   IF TG_OP='DELETE' THEN
-    PERFORM public.horario_guard_row_lock(OLD.escola_id);
+    IF current_setting('transaction_isolation') <> 'read committed' OR NOT pg_catalog.pg_try_advisory_xact_lock(pg_catalog.hashtextextended('horarios:'||OLD.escola_id::text,0)) THEN
+      RAISE EXCEPTION 'HORARIO_RETRY: recarregue e tente novamente' USING ERRCODE='40001';
+    END IF;
     IF OLD.status<>'draft' THEN RAISE EXCEPTION 'HORARIO_STALE: versão oficial protegida' USING ERRCODE='23514'; END IF;
     RETURN OLD;
   END IF;
-  PERFORM public.horario_guard_row_lock(NEW.escola_id);
+  IF current_setting('transaction_isolation') <> 'read committed' OR NOT pg_catalog.pg_try_advisory_xact_lock(pg_catalog.hashtextextended('horarios:'||NEW.escola_id::text,0)) THEN
+    RAISE EXCEPTION 'HORARIO_RETRY: recarregue e tente novamente' USING ERRCODE='40001';
+  END IF;
   IF TG_OP='INSERT' THEN
     IF NEW.status<>'draft' THEN RAISE EXCEPTION 'HORARIO_STALE: crie um rascunho' USING ERRCODE='23514'; END IF;
   ELSE
