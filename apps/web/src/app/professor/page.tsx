@@ -549,8 +549,6 @@ export default function Page() {
                   {(agendaByDay.get(todayKey) || []).map((item, idx) => {
                     const key = `${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`;
                     const canNavigate = Boolean(item.turma_id && item.disciplina_id);
-                      ? `?turma_id=${encodeURIComponent(item.turma_id!)}&disciplina_id=${encodeURIComponent(item.disciplina_id!)}`
-                      : "";
                     const isCurrentLesson = aulaAtiva?.turma_id === item.turma_id
                       && aulaAtiva?.disciplina_id === item.disciplina_id
                       && (aulaAtiva?.slot_id ?? aulaAtiva?.inicio) === (item.slot_id ?? item.inicio);
