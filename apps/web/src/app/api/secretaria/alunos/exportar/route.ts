@@ -87,7 +87,7 @@ export async function GET(req: Request) {
     if (e instanceof AcademicYearContextError) {
       return NextResponse.json({ ok: false, error: e.message, code: e.code }, { status: e.status });
     }
-    console.error("[alunos export error]", { requestId, phase, elapsedMs: Date.now() - startedAt, code: e?.code });
-    return NextResponse.json({ ok: false, error: "Não foi possível gerar a lista de alunos.", requestId }, { status: 500 });
+    console.error("[alunos export error]", { requestId, phase, elapsedMs: Date.now() - startedAt, code: (e as { code?: string } | null)?.code });
+    return NextResponse.json({ ok: false, error: "Não foi possível preparar a exportação. Reaplique os filtros e tente novamente.", requestId }, { status: 500 });
   }
 }

@@ -1309,6 +1309,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
 
   const handleExport = async (tipo: "excel" | "pdf") => {
     if (exporting) return;
+    setExporting(true);
     const params = new URLSearchParams({
       q: debouncedQ,
       status: TAB_TO_STATUS[tab],
@@ -1328,12 +1329,12 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     params.set("all", "1");
     params.set("tipo", tipo);
     setShowExport(false);
-    setExporting(true);
     try {
-      await downloadAlunosExport(`/api/secretaria/alunos/exportar?${params.toString()}`, tipo, `alunos-${Date.now()}.${tipo === "excel" ? "xlsx" : "pdf"}`);
-      success("Exportação concluída", `Lista exportada em ${tipo === "excel" ? "Excel" : "PDF"}.`);
-    } catch (e) {
-      error("Erro na exportação", e instanceof Error ? e.message : "Não foi possível exportar a lista.");
+      await downloadAlunosExport(`/api/secretaria/alunos/exportar?${params.toString()}`, tipo, `alunos-filtrados-${Date.now()}.${tipo === "excel" ? "xlsx" : "pdf"}`);
+      success("Exportação concluída", "Lista filtrada descarregada.");
+    } catch (cause) {
+      error("Erro na exportação", cause instanceof Error ? cause.message
+        : "Falha de ligação. Tente novamente.");
     } finally {
       setExporting(false);
     }
@@ -1535,7 +1536,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                       </select>
                     </div>
                     <div>
-                      <label htmlFor="sec-alunos-bolsa" className="block text-xs font-bold text-muted-foreground mb-1.5">Bolsa integral</label>
+                      <label htmlFor="sec-alunos-bolsa" className="block text-xs font-bold text-muted-foreground mb-1.5">Bolsa</label>
                       <select id="sec-alunos-bolsa" value={filters.bolsa} onChange={event => setFilters(prev => ({...prev, bolsa:event.target.value as Filters["bolsa"]}))} className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
                         <option value="">Todos</option><option value="sim">Bolseiros</option><option value="nao">Não bolseiros</option>
                       </select>
@@ -1594,22 +1595,23 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
               <div className="relative">
                 <button
                   onClick={() => setShowExport((prev) => !prev)}
-                  disabled={exporting}
                   className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted/50 transition-colors"
                   title="Exportar lista filtrada"
                 >
-                  {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} Exportar
+                  <Download size={12} /> Exportar
                 </button>
                 {showExport && (
                   <div className="absolute right-0 mt-2 w-40 rounded-xl border border-border bg-card shadow-xl p-2 z-20">
                     <button
-                      onClick={() => handleExport("excel")}
+                      disabled={exporting}
+                      onClick={() => void handleExport("excel")}
                       className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted/50"
                     >
                       Excel · todos os filtrados
                     </button>
                     <button
-                      onClick={() => handleExport("pdf")}
+                      disabled={exporting}
+                      onClick={() => void handleExport("pdf")}
                       className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted/50"
                     >
                       PDF · todos os filtrados

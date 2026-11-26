@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { resourceConflicts, slotsOverlap, type LessonSlot } from '@/lib/horarios/temporal-conflicts'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
@@ -22,8 +23,8 @@ const BodySchema = z.object({
       professor_id: z.string().uuid().nullable().optional(),
       sala_id: z.string().uuid().nullable().optional(),
     })
-  ),
-  mode: z.enum(['draft', 'publish']).optional(),
+  ).max(500),
+  mode: z.enum(['draft', 'publish', 'validate']).optional(),
 })
 
 type PublishWarning = {
@@ -91,20 +92,22 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     let quadroQuery = supabase
       .from('quadro_horarios')
-      .select('id, turma_id, disciplina_id, professor_id, sala_id, slot_id, versao_id')
+      .select('id, turma_id, disciplina_id, professor_id, sala_id, slot_id, versao_id', { count: 'exact' })
       .eq('escola_id', escolaIdResolved)
       .eq('versao_id', effectiveVersionId)
       .eq('turma_id', turmaId)
 
     quadroQuery = applyKf2ListInvariants(quadroQuery, {
-      defaultLimit: 50,
+      defaultLimit: 500,
+      maxLimit: 500,
       order: [{ column: 'slot_id', ascending: true }],
     })
 
-    const { data, error } = await quadroQuery
+    const { data, error, count } = await quadroQuery
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
+    if (count === null || count !== (data || []).length) return NextResponse.json({ ok: false, error: 'Horário incompleto. Não é seguro editar esta versão.' }, { status: 409 })
     const response = NextResponse.json({ ok: true, context: academicContext, versao_id: effectiveVersionId, items: data || [] })
     response.headers.set('Server-Timing', `app;dur=${Date.now() - start}`)
     return response
@@ -147,7 +150,23 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       anoLetivoId: academicContext.anoLetivoId,
     })
 
-    const { data: previousPublishedVersion } = await supabase
+    const { data: turma, error: turmaError } = await supabase.from('turmas')
+      .select('turno').eq('escola_id', escolaIdResolved).eq('id', parsed.data.turma_id).maybeSingle()
+    if (turmaError || !turma) return NextResponse.json({ ok: false, error: 'Não foi possível validar o turno da turma.' }, { status: 409 })
+    const turn = String(turma.turno ?? '').toUpperCase()
+    const expectedShift = turn === 'M' ? 'matinal' : turn === 'T' ? 'tarde' : turn === 'N' ? 'noite' : null
+    const requestedSlots = Array.from(new Set(parsed.data.items.map((item) => item.slot_id)))
+    if (!expectedShift) return NextResponse.json({ ok: false, error: 'Defina o turno da turma.' }, { status: 409 })
+    let requestedSlotTimes: LessonSlot[] = []
+    if (requestedSlots.length) {
+      const { data: validSlots, error: validSlotsError } = await supabase.from('horario_slots')
+        .select('id, dia_semana, inicio, fim').eq('escola_id', escolaIdResolved).eq('turno_id', expectedShift)
+        .or('is_intervalo.is.null,is_intervalo.eq.false').in('id', requestedSlots)
+      if (validSlotsError) return NextResponse.json({ ok: false, error: 'Não foi possível validar os tempos.' }, { status: 503 })
+      requestedSlotTimes = (validSlots || []) as LessonSlot[]
+      if (requestedSlotTimes.length !== requestedSlots.length) return NextResponse.json({ ok: false, error: 'O quadro contém intervalos ou tempos de outro turno.' }, { status: 409 })
+    }
+    const { data: previousPublishedVersion, error: previousPublishedError } = await supabase
       .from('horario_versoes')
       .select('id')
       .eq('escola_id', escolaIdResolved)
@@ -157,7 +176,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .limit(1)
       .maybeSingle()
 
+    if (previousPublishedError) return NextResponse.json({ ok: false, error: 'Não foi possível consultar a versão publicada.' }, { status: 503 })
     const mode = parsed.data.mode ?? 'draft'
+    if (mode !== 'draft' && parsed.data.items.length === 0) {
+      return NextResponse.json({ ok: false, error: 'Adicione pelo menos uma aula antes de publicar.' }, { status: 400 })
+    }
     const emitObs = (status: 'success' | 'error', httpStatus: number, details: Record<string, unknown> = {}) =>
       emitirEvento(supabase as any, {
         escola_id: escolaIdResolved,
@@ -177,29 +200,34 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         entidade_id: parsed.data.turma_id,
       }).catch(() => null)
 
-    const { data: versionIdFromDb, error: ensureVersionError } = await supabase.rpc('ensure_horario_versao', {
-      p_escola_id: escolaIdResolved,
-      p_turma_id: parsed.data.turma_id,
-      p_versao_id: parsed.data.versao_id ?? null,
-      p_status: mode === 'publish' ? 'draft' : mode,
-    })
-
-    if (ensureVersionError || !versionIdFromDb) {
-      emitObs('error', 400, { error_code: 'ENSURE_VERSION_FAILED' })
-      return NextResponse.json({ ok: false, error: ensureVersionError?.message || 'Falha ao garantir versão' }, { status: 400 })
+    // A published version is a snapshot, never the editor's write target.
+    // Resolve the source under the exact tenant/turma before creating a draft.
+    const sourceVersionId = parsed.data.versao_id ?? previousPublishedVersion?.id ?? null
+    let sourceStatus: string | null = null
+    if (sourceVersionId) {
+      const { data: sourceVersion, error: sourceError } = await supabase
+        .from('horario_versoes')
+        .select('id, status')
+        .eq('escola_id', escolaIdResolved)
+        .eq('turma_id', parsed.data.turma_id)
+        .eq('id', sourceVersionId)
+        .maybeSingle()
+      if (sourceError || !sourceVersion || !['draft', 'publicada'].includes(sourceVersion.status)) {
+        return NextResponse.json({ ok: false, error: 'Versão desactualizada. Recarregue o horário.' }, { status: 409 })
+      }
+      sourceStatus = sourceVersion.status
     }
-
-    const versaoId = String(versionIdFromDb)
-
-    const { data: previousRows } = await supabase
+    const { data: previousRows, error: previousRowsError } = sourceVersionId ? await supabase
       .from('quadro_horarios')
       .select('slot_id, disciplina_id, professor_id, sala_id, versao_id')
       .eq('escola_id', escolaIdResolved)
       .eq('turma_id', parsed.data.turma_id)
-      .eq('versao_id', versaoId)
-      .limit(200)
+      .eq('versao_id', sourceVersionId)
+      .limit(500) : { data: [], error: null }
 
-    const previousBySlot = new Map((previousRows || []).map((row: { slot_id: string; sala_id?: string | null }) => [row.slot_id, row]))
+    if (previousRowsError) return NextResponse.json({ ok: false, error: 'Não foi possível preservar o horário anterior.' }, { status: 503 })
+    const previousBySlot = new Map<string, { slot_id: string; sala_id?: string | null }>()
+    for (const row of previousRows || []) previousBySlot.set(row.slot_id, row)
     const payload = parsed.data.items.map((item) => ({
       escola_id: escolaIdResolved,
       turma_id: parsed.data.turma_id,
@@ -209,10 +237,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       // apagar uma sala já persistida; null explícito continua a removê-la.
       sala_id: item.sala_id === undefined ? (previousBySlot.get(item.slot_id)?.sala_id ?? null) : item.sala_id,
       slot_id: item.slot_id,
-      versao_id: versaoId,
     }))
 
-    const slotIds = Array.from(new Set(payload.map((item) => item.slot_id)))
     const professorIds = Array.from(new Set(payload.map((item) => item.professor_id).filter(Boolean)))
     const salaIds = Array.from(new Set(payload.map((item) => item.sala_id).filter(Boolean)))
     const publishWarnings: PublishWarning[] = []
@@ -223,7 +249,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const seenSlots = new Set<string>()
     const seenProfessors = new Set<string>()
     const seenSalas = new Set<string>()
-    for (const item of parsed.data.items) {
+    for (const item of payload) {
       if (seenSlots.has(item.slot_id)) conflicts.push({ slot_id: item.slot_id, kind: 'turma' })
       seenSlots.add(item.slot_id)
       if (item.professor_id) {
@@ -238,55 +264,56 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
     }
 
-    if (mode === 'publish') {
-      const { data: publishedVersions } = await supabase
-        .from('horario_versoes')
-        .select('id')
-        .eq('escola_id', escolaIdResolved)
-        .eq('status', 'publicada')
-
-      const publishedVersionIds = (publishedVersions || []).map((row: { id: string }) => row.id)
-
-      if (slotIds.length > 0 && professorIds.length > 0 && publishedVersionIds.length > 0) {
-        const { data: profConflicts } = await supabase
-          .from('quadro_horarios')
-          .select('slot_id, professor_id')
-          .eq('escola_id', escolaIdResolved)
-          .in('slot_id', slotIds)
-          .in('professor_id', professorIds as string[])
-          .in('versao_id', publishedVersionIds)
-          .neq('versao_id', versaoId)
-
-        for (const row of profConflicts || []) {
-          conflicts.push({ slot_id: row.slot_id, professor_id: row.professor_id, kind: 'professor' })
-        }
+    if (mode !== 'draft' && (professorIds.length > 0 || salaIds.length > 0)) {
+      const { data: allSlots, count: allSlotCount, error: slotsError } = await supabase.from('horario_slots')
+        .select('id, dia_semana, inicio, fim', { count: 'exact' }).eq('escola_id', escolaIdResolved)
+        .order('id').limit(500)
+      if (slotsError || allSlotCount !== (allSlots || []).length) {
+        return NextResponse.json({ ok: false, error: 'Não foi possível validar todos os tempos da escola.' }, { status: 503 })
       }
-
-      if (slotIds.length > 0 && salaIds.length > 0 && publishedVersionIds.length > 0) {
-        const { data: salaConflicts } = await supabase
-          .from('quadro_horarios')
-          .select('slot_id, sala_id')
-          .eq('escola_id', escolaIdResolved)
-          .in('slot_id', slotIds)
-          .in('sala_id', salaIds as string[])
-          .in('versao_id', publishedVersionIds)
-          .neq('versao_id', versaoId)
-
-        for (const row of salaConflicts || []) {
-          conflicts.push({ slot_id: row.slot_id, sala_id: row.sala_id, kind: 'sala' })
+      const temporalSlots = (allSlots || []) as LessonSlot[]
+      const overlapping = temporalSlots.filter((slot) => requestedSlotTimes.some((requested) => slotsOverlap(requested, slot)))
+      const overlappingIds = overlapping.map((slot) => slot.id)
+      const slotMap = new Map(temporalSlots.map((slot) => [slot.id, slot]))
+      const { data: otherTurmas, count: otherCount, error: otherError } = await supabase
+        .from('turmas').select('id', { count: 'exact' })
+        .eq('escola_id', escolaIdResolved).eq('ano_letivo_id', academicContext.anoLetivoId)
+        .neq('id', parsed.data.turma_id).order('id').limit(1000)
+      if (otherError || otherCount !== (otherTurmas || []).length) {
+        return NextResponse.json({ ok: false, error: 'Não foi possível validar todos os horários concorrentes.' }, { status: 503 })
+      }
+      // Bounded batches avoid oversized URL filters and detect incomplete results.
+      const otherIds = (otherTurmas || []).map((row: { id: string }) => row.id)
+      for (let start = 0; start < otherIds.length; start += 50) {
+        const { data: versions, count: versionCount, error: versionError } = await supabase.from('horario_versoes')
+          .select('id', { count: 'exact' }).eq('escola_id', escolaIdResolved)
+          .eq('status', 'publicada').in('turma_id', otherIds.slice(start, start + 50))
+        if (versionError || versionCount !== (versions || []).length) {
+          return NextResponse.json({ ok: false, error: 'Não foi possível validar as versões publicadas.' }, { status: 503 })
+        }
+        const ids = (versions || []).map((row: { id: string }) => row.id)
+        if (!ids.length || !overlappingIds.length) continue
+        for (let index = 0; index < overlappingIds.length; index += 50) {
+          const { data: existing, count: existingCount, error: existingError } = await supabase.from('quadro_horarios')
+            .select('slot_id, professor_id, sala_id', { count: 'exact' }).eq('escola_id', escolaIdResolved)
+            .in('versao_id', ids).in('slot_id', overlappingIds.slice(index, index + 50)).limit(1000)
+          if (existingError || existingCount !== (existing || []).length) {
+            return NextResponse.json({ ok: false, error: 'Não foi possível validar todos os conflitos.' }, { status: 503 })
+          }
+          conflicts.push(...resourceConflicts(payload, existing || [], slotMap))
         }
       }
     }
 
     if (conflicts.length > 0) {
-      emitObs('error', 409, { error_code: 'HORARIO_CONFLICT', conflicts_count: conflicts.length })
+      if (mode !== 'validate') emitObs('error', 409, { error_code: 'HORARIO_CONFLICT', conflicts_count: conflicts.length })
       return NextResponse.json(
         { ok: false, error: 'Conflito de horário detectado', conflicts },
         { status: 409 }
       )
     }
 
-    if (mode === 'publish') {
+    if (mode !== 'draft') {
       const { data: cargas, error: cargasError } = await supabase
         .from('turma_disciplinas')
         .select(
@@ -296,10 +323,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         .eq('turma_id', parsed.data.turma_id)
 
       if (cargasError) {
-        emitObs('error', 400, { error_code: 'LOAD_TURMA_DISCIPLINAS_FAILED' })
+        if (mode !== 'validate') emitObs('error', 400, { error_code: 'LOAD_TURMA_DISCIPLINAS_FAILED' })
         return NextResponse.json({ ok: false, error: cargasError.message }, { status: 400 })
       }
 
+      const allowedDisciplines = new Set((cargas || []).flatMap((row: any) => { const matrix = Array.isArray(row.curso_matriz) ? row.curso_matriz[0] : row.curso_matriz; return matrix?.disciplina_id && (row.entra_no_horario ?? matrix.entra_no_horario ?? true) ? [matrix.disciplina_id] : [] }))
+      if (payload.some(item => !allowedDisciplines.has(item.disciplina_id))) return NextResponse.json({ ok: false, error: 'O quadro contém disciplinas que não pertencem ao horário da turma.' }, { status: 409 })
       const disciplinaCounts: Record<string, number> = {}
       for (const item of parsed.data.items) {
         disciplinaCounts[item.disciplina_id] = (disciplinaCounts[item.disciplina_id] || 0) + 1
@@ -348,19 +377,41 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
     }
 
+    if (mode === 'validate') {
+      return NextResponse.json({ ok: true, validated: true, warnings: publishWarnings, conflicts: [] }, { headers: { 'Cache-Control': 'no-store' } })
+    }
+
+    // Keep the old publication available while editing or validating its replacement.
+    const { data: versionIdFromDb, error: ensureVersionError } = await supabase.rpc('ensure_horario_versao', {
+      p_escola_id: escolaIdResolved,
+      p_turma_id: parsed.data.turma_id,
+      p_versao_id: sourceStatus === 'draft' ? sourceVersionId : null,
+      p_status: 'draft',
+    })
+
+    if (ensureVersionError || !versionIdFromDb) {
+      emitObs('error', 400, { error_code: 'ENSURE_VERSION_FAILED' })
+      return NextResponse.json({ ok: false, error: ensureVersionError?.message || 'Falha ao garantir versão' }, { status: 400 })
+    }
+
+    let versaoId = String(versionIdFromDb)
+
     const { data: upsertResult, error: upsertError } = await supabase.rpc('upsert_quadro_horarios_versao_atomic', {
       p_escola_id: escolaIdResolved,
       p_turma_id: parsed.data.turma_id,
       p_versao_id: versaoId,
-      p_items: parsed.data.items,
+      p_items: payload.map(item => ({ ...item, versao_id: versaoId })),
       p_publish: mode === 'publish',
     })
 
     if (upsertError) {
+      const conflict = /conflito|HORARIO_CONFLICT|HORARIO_STALE/i.test(upsertError.message || '')
+      if (conflict) return NextResponse.json({ ok: false, error: upsertError.message }, { status: 409 })
       emitObs('error', 400, { error_code: 'UPSERT_QUADRO_FAILED' })
       return NextResponse.json({ ok: false, error: upsertError.message }, { status: 400 })
     }
 
+    versaoId = String((upsertResult as { versao_id?: string } | null)?.versao_id ?? versaoId)
     const { data, error: selectError } = await supabase
       .from('quadro_horarios')
       .select('id, turma_id, disciplina_id, professor_id, sala_id, slot_id, versao_id')

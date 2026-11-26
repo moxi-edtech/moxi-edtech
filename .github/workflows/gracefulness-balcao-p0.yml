@@ -475,6 +475,16 @@ jobs:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
         run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_documentos_individuais_cutover.sql
 
+      - name: Apply individual document free-service policy
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/migrations/20271203004000_documentos_individuais_gratuidade_ssot.sql
+
+      - name: Regress free declarations and certificate approval
+        env:
+          PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: psql "$PGURL" -v ON_ERROR_STOP=1 -f supabase/ops/tests/regression_documentos_individuais_gratuidade.sql
+
       - name: Create isolated grade-writer database
         env:
           PGURL: postgresql://postgres:postgres@127.0.0.1:5432/postgres

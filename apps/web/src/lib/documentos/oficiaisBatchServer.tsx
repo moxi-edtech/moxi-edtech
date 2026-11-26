@@ -23,7 +23,7 @@ type SupabasePdfClient = {
   rpc<T>(fn: string, args: Record<string, unknown>): SupabaseRpc<T>;
 };
 
-type TurmaLookup = { id?: string | null; escola_id?: string | null; ano_letivo?: number | string | null };
+type TurmaLookup = { id?: string | null; escola_id?: string | null; ano_letivo?: number | string | null; session_id?: string | null };
 type MatriculaLookup = { id: string; aluno_id: string };
 type DocumentoEmitidoLookup = { dados_snapshot?: Record<string, unknown> | null; hash_validacao?: string | null };
 type DocumentoFinalResult = { docId?: string | null };
@@ -35,49 +35,53 @@ export async function renderBoletimPdfBuffer(params: {
   supabase: unknown;
   escolaId: string;
   turmaId: string;
+  jobId: string;
   alunosIds?: string[];
 }): Promise<Buffer> {
   const supabase = params.supabase as SupabasePdfClient;
-  const { escolaId, turmaId, alunosIds = [] } = params;
+  const { escolaId, turmaId, jobId, alunosIds = [] } = params;
 
   const { data: turma } = await supabase
     .from<TurmaLookup>("turmas")
-    .select("id, escola_id, ano_letivo")
+    .select("id, escola_id, ano_letivo, session_id")
     .eq("id", turmaId)
     .eq("escola_id", escolaId)
     .single();
 
-  if (!turma?.id) throw new Error("Turma não encontrada");
+  if (!turma?.id || !turma.session_id) throw new Error("Turma ou ano letivo não encontrado");
 
   let query = supabase
     .from<MatriculaLookup[]>("matriculas")
     .select("id, aluno_id")
     .eq("escola_id", escolaId)
     .eq("turma_id", turmaId)
+    .eq("session_id", turma.session_id)
     .in("status", ["concluido", "reprovado"]);
   if (alunosIds.length > 0) query = query.in("aluno_id", alunosIds);
 
   const { data: matriculas, error: matError } = await query;
   if (matError) throw new Error(matError.message);
+  if (!matriculas?.length || (alunosIds.length && new Set(matriculas.map(m => m.aluno_id)).size !== new Set(alunosIds).size)) throw new Error("DOCUMENT_BATCH_INCOMPLETE");
 
   const snapshots: BoletimSnapshot[] = [];
   for (const m of matriculas || []) {
-    const { data: docRes, error: emitError } = await supabase.rpc<DocumentoFinalResult>("emitir_documento_final", {
-      p_escola_id: escolaId,
-      p_aluno_id: m.aluno_id,
-      p_ano_letivo: Number(turma.ano_letivo),
-      p_tipo_documento: "boletim_trimestral",
+    const { data: docRes, error: emitError } = await supabase.rpc<DocumentoFinalResult>("documento_final_lote_item", {
+      p_job_id: jobId,
+      p_turma_id: turmaId,
+      p_matricula_id: m.id,
+      p_tipo: "boletim_trimestral",
     });
-    if (emitError || !docRes?.docId) continue;
+    if (emitError || !docRes?.docId) throw new Error("DOCUMENT_BATCH_BLOCKED");
 
-    const { data: row } = await supabase
+    const { data: row, error: rowError } = await supabase
       .from<DocumentoEmitidoLookup>("documentos_emitidos")
       .select("dados_snapshot, hash_validacao")
       .eq("id", docRes.docId)
       .eq("escola_id", escolaId)
       .maybeSingle();
 
-    const snapshot = (row?.dados_snapshot || {}) as Record<string, unknown>;
+    if (rowError || !row?.dados_snapshot || row.dados_snapshot.matricula_id !== m.id) throw new Error("DOCUMENT_BATCH_SCOPE_MISMATCH");
+    const snapshot = row.dados_snapshot;
     const hashValidacao =
       row?.hash_validacao ?? (typeof snapshot.hash_validacao === "string" ? snapshot.hash_validacao : null);
 
@@ -104,49 +108,53 @@ export async function renderCertificadoPdfBuffer(params: {
   supabase: unknown;
   escolaId: string;
   turmaId: string;
+  jobId: string;
   alunosIds?: string[];
 }): Promise<Buffer> {
   const supabase = params.supabase as SupabasePdfClient;
-  const { escolaId, turmaId, alunosIds = [] } = params;
+  const { escolaId, turmaId, jobId, alunosIds = [] } = params;
 
   const { data: turma } = await supabase
     .from<TurmaLookup>("turmas")
-    .select("id, escola_id, ano_letivo")
+    .select("id, escola_id, ano_letivo, session_id")
     .eq("id", turmaId)
     .eq("escola_id", escolaId)
     .single();
 
-  if (!turma?.id) throw new Error("Turma não encontrada");
+  if (!turma?.id || !turma.session_id) throw new Error("Turma ou ano letivo não encontrado");
 
   let query = supabase
     .from<MatriculaLookup[]>("matriculas")
     .select("id, aluno_id")
     .eq("escola_id", escolaId)
     .eq("turma_id", turmaId)
+    .eq("session_id", turma.session_id)
     .in("status", ["concluido", "reprovado"]);
   if (alunosIds.length > 0) query = query.in("aluno_id", alunosIds);
 
   const { data: matriculas, error: matError } = await query;
   if (matError) throw new Error(matError.message);
+  if (!matriculas?.length || (alunosIds.length && new Set(matriculas.map(m => m.aluno_id)).size !== new Set(alunosIds).size)) throw new Error("DOCUMENT_BATCH_INCOMPLETE");
 
   const snapshots: CertificadoSnapshot[] = [];
   for (const m of matriculas || []) {
-    const { data: docRes, error: emitError } = await supabase.rpc<DocumentoFinalResult>("emitir_documento_final", {
-      p_escola_id: escolaId,
-      p_aluno_id: m.aluno_id,
-      p_ano_letivo: Number(turma.ano_letivo),
-      p_tipo_documento: "certificado",
+    const { data: docRes, error: emitError } = await supabase.rpc<DocumentoFinalResult>("documento_final_lote_item", {
+      p_job_id: jobId,
+      p_turma_id: turmaId,
+      p_matricula_id: m.id,
+      p_tipo: "certificado",
     });
-    if (emitError || !docRes?.docId) continue;
+    if (emitError || !docRes?.docId) throw new Error("DOCUMENT_BATCH_BLOCKED");
 
-    const { data: row } = await supabase
+    const { data: row, error: rowError } = await supabase
       .from<DocumentoEmitidoLookup>("documentos_emitidos")
       .select("dados_snapshot, hash_validacao")
       .eq("id", docRes.docId)
       .eq("escola_id", escolaId)
       .maybeSingle();
 
-    const snapshot = (row?.dados_snapshot || {}) as Record<string, unknown>;
+    if (rowError || !row?.dados_snapshot || row.dados_snapshot.matricula_id !== m.id) throw new Error("DOCUMENT_BATCH_SCOPE_MISMATCH");
+    const snapshot = row.dados_snapshot;
     const hashValidacao =
       row?.hash_validacao ?? (typeof snapshot.hash_validacao === "string" ? snapshot.hash_validacao : null);
     const certificado = await buildCertificadoSnapshot({

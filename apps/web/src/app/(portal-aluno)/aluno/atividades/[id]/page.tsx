@@ -164,7 +164,7 @@ export default function AlunoAtividadeRunnerPage({
 
   if (!activity) {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center space-y-3">
+      <div className="rounded-xl border border-dashed border-border bg-card p-4 text-center space-y-2">
         <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
         <h3 className="text-base font-semibold text-foreground">Actividade Indisponível</h3>
         <Link href={href("/aluno/atividades")} className="inline-block text-xs font-bold text-emerald-600">
@@ -186,7 +186,7 @@ export default function AlunoAtividadeRunnerPage({
       <div className="flex items-center gap-3">
         <Link
           href={href("/aluno/atividades")}
-          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" aria-label="Voltar às actividades"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground  transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20" aria-label="Voltar às actividades"
         >
           <ArrowLeft size={18} />
         </Link>
@@ -195,7 +195,7 @@ export default function AlunoAtividadeRunnerPage({
 
       {/* MODAL DE ALERTA DE PRAZO / NEXT_ACTION */}
       {nextActionError && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-5 space-y-3 shadow-sm">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-5 space-y-3 ">
           <div className="flex items-center gap-2 text-amber-950 font-semibold text-sm">
             <AlertCircle className="text-amber-600 shrink-0" size={20} />
             <span>{nextActionError.error}</span>
@@ -206,7 +206,7 @@ export default function AlunoAtividadeRunnerPage({
           {nextActionError.next_action && (
             <Link
               href={nextActionError.next_action.href.startsWith("/aluno/") ? href(nextActionError.next_action.href) : nextActionError.next_action.href}
-              className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm shadow-sm"
+              className="klasse-portal-cta inline-flex min-h-11 items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm "
             >
               <span>{nextActionError.next_action.label}</span>
               <ChevronRight size={16} />
@@ -216,24 +216,24 @@ export default function AlunoAtividadeRunnerPage({
       )}
 
       {/* HEADER DA ACTIVIDADE */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-3">
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold  bg-muted text-foreground font-mono">
             {activity.tipo}
           </span>
 
           {isSubmetida ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <CheckCircle2 size={14} />
               Entregue ({entrega?.nota !== null && entrega?.nota !== undefined ? `${entrega.nota} pts` : "Em Avaliação"})
             </span>
           ) : isExpirado ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold uppercase bg-rose-50 text-rose-700 border border-rose-200">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
               <AlertCircle size={14} />
               Prazo Expirado
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold uppercase bg-amber-50 text-amber-800 border border-amber-200">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
               <Clock size={14} />
               Rascunho em Andamento
             </span>
@@ -283,7 +283,7 @@ export default function AlunoAtividadeRunnerPage({
           return (
             <div
               key={q.id || idx}
-              className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-3"
+              className="rounded-xl border border-border bg-card p-4 space-y-3"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-primary font-mono">
@@ -369,7 +369,7 @@ export default function AlunoAtividadeRunnerPage({
 
       {/* BARRA DE AÇÕES (GUARDAR RASCUNHO OU SUBMETER) */}
       {!isSubmetida && !isExpirado && (
-        <div className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 flex items-stretch gap-2 rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur-md">
+        <div className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] z-20 flex items-stretch gap-2 rounded-xl border border-border bg-card p-3">
           <button
             type="button"
             disabled={submitting}

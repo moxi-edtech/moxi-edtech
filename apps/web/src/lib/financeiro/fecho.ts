@@ -1,10 +1,5 @@
 import "server-only";
-import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { roleMatchesAllowedRoles } from "@/lib/permissions";
-import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+import { expedienteAccess, canReadCashMovements, daySchema, todayLuanda } from "@/lib/secretaria/expediente";
 
 type FechoItem = {
   id: string;
@@ -34,11 +29,6 @@ type FechoResponse = {
   items: FechoItem[];
 };
 
-function normalizeDate(dateParam?: string | null) {
-  if (dateParam && DATE_RE.test(dateParam)) return dateParam;
-  return new Date().toISOString().slice(0, 10);
-}
-
 function mapMetodo(metodo: string | null) {
   const normalized = (metodo || "").toLowerCase();
   if (normalized === "cash") return "especie";
@@ -66,40 +56,19 @@ export async function getFechoCaixaData({
   operadorScope?: "self" | "all";
   escolaId?: string | null;
 }): Promise<FechoResponse | { ok: false; error: string }> {
-  const supabase = await supabaseServerTyped();
-  const { data: auth } = await supabase.auth.getUser();
-  const user = auth?.user;
-
-  if (!user) {
-    return { ok: false, error: "Não autenticado" };
+  if (!escolaIdParam) return { ok: false, error: "Escola não identificada" };
+  const access = await expedienteAccess(escolaIdParam);
+  if (!access.ok) return { ok: false, error: "Sem permissão" };
+  const { supabase, escolaId, userId } = access;
+  const dateStr = date ?? todayLuanda();
+  if (!daySchema.safeParse(dateStr).success || dateStr > todayLuanda()) return { ok: false, error: "Data inválida" };
+  if (!access.canSupervise && (operadorScope === "all" || (operadorId && operadorId !== userId))) {
+    return { ok: false, error: "Sem permissão para consultar o caixa de outros operadores" };
   }
-
-  const escolaId = escolaIdParam || await resolveEscolaIdForUser(supabase as any, user.id);
-  if (!escolaId) {
-    return { ok: false, error: "Escola não encontrada" };
-  }
-
-  const { data: vinc } = await supabase
-    .from("escola_users")
-    .select("papel")
-    .eq("escola_id", escolaId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const papel = String((vinc as any)?.papel ?? "").toLowerCase();
-  const allowedRoles = [...K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP];
-  if (!roleMatchesAllowedRoles(papel, allowedRoles, "k12")) {
-    return { ok: false, error: "Sem permissão" };
-  }
-
-  const dateStr = normalizeDate(date);
-
-  let operadorFilter: string | null = null;
-  if (papel === "secretaria") {
-    if (operadorScope !== "all") operadorFilter = user.id;
-  } else if (operadorId) {
-    operadorFilter = operadorId;
-  }
+  const snapshot = await supabase.from("fecho_caixa").select("status").eq("escola_id", escolaId).eq("day_key", dateStr).maybeSingle();
+  if (snapshot.error) return { ok: false, error: "Não foi possível verificar o estado do caixa" };
+  if (!canReadCashMovements(access, snapshot.data?.status)) return { ok: false, error: "Extrato disponível após a declaração de caixa" };
+  const operadorFilter = operadorScope === "self" ? userId : operadorId || null;
 
   let pagamentosQuery = supabase
     .from("pagamentos")
@@ -107,15 +76,20 @@ export async function getFechoCaixaData({
     .eq("escola_id", escolaId)
     .eq("day_key", dateStr)
     .eq("status", "settled")
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
 
   if (operadorFilter) {
     pagamentosQuery = pagamentosQuery.eq("created_by", operadorFilter);
   }
 
-  const { data: rows, error } = await pagamentosQuery;
-  if (error) {
-    return { ok: false, error: error.message };
+  const rows: any[] = [];
+  for(let offset=0;;offset+=500){
+    const {data:page,error}=await pagamentosQuery.range(offset,offset+499);
+    if(error)return {ok:false,error:error.message};
+    rows.push(...(page??[]));
+    if(rows.length>5000)return {ok:false,error:"Volume elevado. Consulte o fecho consolidado."};
+    if(!page||page.length<500)break;
   }
 
   const alunoIds = Array.from(new Set((rows || []).map((row: any) => row.aluno_id).filter(Boolean)));
@@ -150,6 +124,7 @@ export async function getFechoCaixaData({
     const { data: operadores } = await supabase
       .from("profiles")
       .select("user_id, nome")
+      .eq("escola_id", escolaId)
       .in("user_id", operadorIds);
     (operadores ?? []).forEach((op: any) => {
       operadorMap.set(op.user_id, op.nome || "—");
@@ -196,6 +171,7 @@ export async function getFechoCaixaData({
         : "Pagamento";
     const hora = row.created_at
       ? new Date(row.created_at).toLocaleTimeString("pt-PT", {
+          timeZone: "Africa/Luanda",
           hour: "2-digit",
           minute: "2-digit",
         })
@@ -213,8 +189,8 @@ export async function getFechoCaixaData({
   });
 
   const operadorLabel = operadorFilter
-    ? operadorFilter === user.id
-      ? (user.user_metadata?.nome || user.email || "Operador")
+    ? operadorFilter === userId
+      ? "Meus lançamentos"
       : "Operador"
     : "Todos";
 

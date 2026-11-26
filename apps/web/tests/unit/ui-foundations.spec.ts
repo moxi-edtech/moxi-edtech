@@ -94,9 +94,13 @@ test("ModalShell keeps its Radix focus scope viewport-sized for fixed Balcão wo
 
   // The card may clip its own scrolling contents, but it must not be the
   // transformed containing block of a nested fixed full-screen workspace.
-  assert.match(modal, /fixed inset-0 left-0 top-0 z-50 flex h-\[100dvh\]/);
-  // A zero translate still creates a CSS containing block; Radix also animates transforms.
-  assert.match(modal, /!transform-none !animate-none/);
+  const dialog = source("components/ui/dialog.tsx");
+  assert.match(modal, /layout="viewport"/);
+  // The viewport branch must never inherit the default translated/animated layout.
+  const viewport = dialog.match(/layout === "viewport" \? "([^"]+)"/)?.[1] ?? "";
+  assert.match(viewport, /fixed inset-0 z-50 flex h-\[100dvh\]/);
+  assert.match(viewport, /items-center justify-center/);
+  assert.doesNotMatch(viewport, /translate|transform|animate|zoom|slide/);
   assert.doesNotMatch(modal, /className="[^"]*translate-x-0/);
   assert.match(modal, /onEscapeKeyDown=\{\(event\) => \{/);
   assert.match(modal, /data-balcao-workspace-modal/);

@@ -3,10 +3,14 @@
 
 import { UsersRound, Users, UserCheck, Wallet, AlertCircle } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { useState } from "react";
+import Link from "next/link";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
+import { OperationalMetricCard, OperationalMetricSkeleton } from "@/components/shared/OperationalMetricCard";
 import type { SetupStatus } from "./setupStatus";
 import type { KpiStats, OperationalSnapshot } from "./dashboard.types";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { buildPortalHref } from "@/lib/navigation";
+import { buildPortalHref, buildFinancialWorkspaceHref } from "@/lib/navigation";
 
 type Props = {
   escolaId:        string;
@@ -16,6 +20,7 @@ type Props = {
   error?:          string | null;
   setupStatus:     SetupStatus;
   operationalSnapshot?: OperationalSnapshot;
+  academicYearId?: string | null;
   financeiroHref?: string;
   portalBase?:     "admin" | "operacoes";
   alunoSeries?:    number[];
@@ -64,16 +69,21 @@ export default function KpiSection({
   error,
   setupStatus,
   operationalSnapshot,
+  academicYearId,
   financeiroHref,
   portalBase = "admin",
   alunoSeries,
 }: Props) {
+  const [detailSelection, setDetailSelection] = useState<{label:string;scope:string} | null>(null);
+  const detailScope = JSON.stringify([escolaId, academicYearId, mode]);
+  const detailLabel = detailSelection?.scope === detailScope ? detailSelection.label : null;
+  const [detailOpen, setDetailOpen] = useState(false);
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
 
   // Keep the loading skeleton in the same column structure as the final KPIs.
   const gridClasses = mode === "operacoes"
-    ? "operations-kpi-grid grid gap-3"
+    ? "operations-kpi-grid grid"
     : "grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1280px]:grid-cols-4 min-[1700px]:gap-4";
 
   if (error) {
@@ -88,7 +98,7 @@ export default function KpiSection({
   if (loading) {
     return (
       <div className={gridClasses}>
-        {Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)}
+        {Array.from({ length: 4 }).map((_, i) => mode === "operacoes" ? <OperationalMetricSkeleton key={i} /> : <KpiSkeleton key={i} />)}
       </div>
     );
   }
@@ -98,9 +108,7 @@ export default function KpiSection({
 
   const portalHref = (path: string) => buildPortalHref(escolaParam, `/${portalBase}/${path}`);
   const financeHref = financeiroHref ?? buildPortalHref(escolaParam, "/financeiro");
-  const financeRadarHref = mode === "operacoes"
-    ? buildPortalHref(escolaParam, "/operacoes/turmas-alunos")
-    : `${financeHref}/radar`;
+  const overdueHref = buildFinancialWorkspaceHref(escolaParam, "cobrancas", "/operacoes/dashboard", academicYearId);
   const op = operationalSnapshot ?? {
     mensalidadesPendentes: 0,
     mensalidadesInadimplentes: 0,
@@ -112,6 +120,7 @@ export default function KpiSection({
     documentosEmProcessamento: 0,
     turmasSemHorarioPublicado: 0,
   };
+  const propinasDisponiveis = Boolean(operationalSnapshot) && operationalSnapshot?.mensalidadesStatusDisponivel !== false;
   const alunosChartData = toChartData(alunoSeries);
   const alunosTrend = trendFromSeries(alunoSeries) ?? { value: 0, isPositive: true };
   const kpis = mode === "operacoes"
@@ -121,10 +130,10 @@ export default function KpiSection({
           value: s.alunos,
           icon: Users,
           href: portalHref("alunos"),
-          variant: turmasOk ? ("brand" as const) : ("warning" as const),
+          variant: "brand" as const,
           trend: undefined,
           chartData: undefined,
-          description: "Base activa",
+          description: undefined,
         },
         {
           label: "Turmas",
@@ -134,27 +143,27 @@ export default function KpiSection({
           variant: "default" as const,
           trend: undefined,
           chartData: undefined,
-          description: "Em circulação",
+          description: undefined,
         },
         {
-          label: "Pendentes",
-          value: op.mensalidadesPendentes,
+          label: "Propinas pendentes",
+          value: propinasDisponiveis ? op.mensalidadesPendentes : undefined,
           icon: Wallet,
           href: buildPortalHref(escolaParam, "/operacoes/recebimentos"),
-          variant: op.mensalidadesPendentes > 0 ? ("warning" as const) : ("success" as const),
+          variant: !propinasDisponiveis ? ("default" as const) : op.mensalidadesPendentes > 0 ? ("warning" as const) : ("success" as const),
           trend: undefined,
           chartData: undefined,
-          description: "Cobranças por tratar",
+          description: propinasDisponiveis ? "Não vencidas · ano activo" : "Dados indisponíveis",
         },
         {
-          label: "Em Atraso",
-          value: op.mensalidadesInadimplentes,
+          label: "Propinas em atraso",
+          value: propinasDisponiveis ? op.mensalidadesInadimplentes : undefined,
           icon: UserCheck,
-          href: financeRadarHref,
-          variant: op.mensalidadesInadimplentes > 0 ? ("warning" as const) : ("success" as const),
+          href: overdueHref,
+          variant: !propinasDisponiveis ? ("default" as const) : op.mensalidadesInadimplentes > 0 ? ("warning" as const) : ("success" as const),
           trend: undefined,
           chartData: undefined,
-          description: "Cobrança crítica",
+          description: propinasDisponiveis ? "Ano activo" : "Dados indisponíveis",
         },
       ]
     : [
@@ -197,9 +206,12 @@ export default function KpiSection({
         },
       ];
 
+  const detail = kpis.find(kpi => kpi.label === detailLabel);
   return (
     <div className={gridClasses}>
-      {kpis.map((kpi) => (
+      {kpis.map((kpi) => mode === "operacoes" && (kpi.label === "Alunos" || kpi.label === "Turmas") ? (
+        <OperationalMetricCard key={kpi.label} label={kpi.label} value={kpi.value} icon={kpi.icon} description={kpi.description} onClick={() => { setDetailSelection({label:kpi.label,scope:detailScope}); setDetailOpen(true); }} dialogOpen={detailOpen && detailLabel === kpi.label} />
+      ) : (
         <KpiCard
           key={kpi.label}
           label={kpi.label}
@@ -214,6 +226,9 @@ export default function KpiSection({
           responsiveDensity={mode === "admin"}
         />
       ))}
+      {mode === "operacoes" && <PortalSheet open={detailOpen && Boolean(detail)} onClose={() => setDetailOpen(false)} title={detail?.label ?? "Indicador"} description="Visão geral da escola" size="compact">
+        {detail && <><p className="text-3xl font-semibold tabular-nums text-primary">{detail.value ?? "—"}</p><p className="text-sm text-muted-foreground">Total apresentado no painel da escola.</p><Link href={detail.href} className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold text-primary">Abrir listagem de {detail.label.toLowerCase()}</Link></>}
+      </PortalSheet>}
     </div>
   );
 }

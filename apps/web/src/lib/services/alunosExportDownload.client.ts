@@ -7,9 +7,11 @@ export async function downloadAlunosExport(
   fallbackFilename: string,
   init?: RequestInit
 ): Promise<void> {
+  const target = new URL(url, window.location.origin);
+  if (target.origin !== window.location.origin) throw new Error("Destino de exportação inválido.");
   let response: Response;
   try {
-    response = await fetch(url, { ...init, cache: "no-store", credentials: "same-origin" });
+    response = await fetch(target, { ...init, cache: "no-store", credentials: "same-origin" });
   } catch {
     throw new Error("Não foi possível contactar o servidor. Verifique a ligação e tente novamente.");
   }
@@ -27,6 +29,7 @@ export async function downloadAlunosExport(
     throw new Error("O servidor não devolveu o documento solicitado. Verifique a sessão e tente novamente.");
   }
   const blob = await response.blob();
+  if (blob.size === 0) throw new Error("O documento devolvido está vazio.");
   const filename = response.headers.get("content-disposition")?.match(/filename="([^"]+)"/)?.[1] ?? fallbackFilename;
   const blobUrl = URL.createObjectURL(blob);
   const anchor = document.createElement("a");

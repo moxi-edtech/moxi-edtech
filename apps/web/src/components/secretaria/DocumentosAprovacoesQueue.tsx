@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Clock3, FileText, RefreshCw, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -9,7 +9,6 @@ import {
   OperationalTableFilterBar,
   OperationalTablePagination,
 } from "@/components/ui/OperationalTableStates";
-import { filterAndPaginateOperationalRows } from "@/lib/operacoes/operational-table";
 import { formatDateTime } from "@/lib/formatters";
 
 type Approval = {
@@ -18,13 +17,14 @@ type Approval = {
   servico_codigo: string;
   servico_nome: string;
   created_at: string;
+  ano_letivo?: number | null;
   reason_detail?: string | null;
   aluno?: { nome?: string | null; nome_completo?: string | null; numero_processo?: string | null } | null;
 };
 type Decision = "approve" | "reject";
 const PAGE_SIZE = 10;
 
-export default function DocumentosAprovacoesQueue() {
+export default function DocumentosAprovacoesQueue({ onCountChange }: { onCountChange?: (count: number | null) => void } = {}) {
   const [items, setItems] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -36,6 +36,9 @@ export default function DocumentosAprovacoesQueue() {
   const [reason, setReason] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [query, setQuery] = useState("");
+  const [total, setTotal] = useState(0);
+  useEffect(() => { const timer = setTimeout(() => { setPage(1); setQuery(search.trim()); }, 250); return () => clearTimeout(timer); }, [search]);
   const requestRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
@@ -45,38 +48,29 @@ export default function DocumentosAprovacoesQueue() {
     setLoading(true);
     setLoadError(null);
     try {
-      const response = await fetch("/api/secretaria/documentos/aprovacoes", {
+      const response = await fetch(`/api/secretaria/documentos/aprovacoes?${new URLSearchParams({ page: String(page), q: query })}`, {
         cache: "no-store", signal: controller.signal,
       });
       const json = await response.json().catch(() => null);
       if (!response.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar a fila.");
       if (controller.signal.aborted) return;
       setItems(Array.isArray(json.items) ? json.items : []);
+      setTotal(Number(json.filteredTotal ?? 0));
+      onCountChange?.(typeof json.total === "number" ? json.total : null);
+      if (page > Math.max(1, Math.ceil(Number(json.filteredTotal ?? 0) / PAGE_SIZE))) setPage(Math.max(1, Math.ceil(Number(json.filteredTotal ?? 0) / PAGE_SIZE)));
     } catch (err) {
       if (controller.signal.aborted) return;
+      onCountChange?.(null);
       setLoadError(err instanceof Error ? err.message : "Falha ao carregar a fila.");
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  }, []);
+  }, [onCountChange, page, query]);
 
   useEffect(() => {
     void load();
     return () => { requestRef.current?.abort(); };
   }, [load]);
-
-  const pagination = useMemo(() => filterAndPaginateOperationalRows({
-    rows: items,
-    search,
-    getSearchText: (item) => [
-      item.aluno?.nome_completo ?? item.aluno?.nome ?? "",
-      item.aluno?.numero_processo ?? "",
-      item.servico_nome ?? "",
-      item.servico_codigo ?? "",
-    ].join(" "),
-    page,
-    pageSize: PAGE_SIZE,
-  }), [items, search, page]);
 
   const openDecision = (item: Approval, next: Decision) => {
     if (loading || submitting) return;
@@ -103,6 +97,7 @@ export default function DocumentosAprovacoesQueue() {
       setItems((current) => current.filter((entry) => entry.id !== selectedId));
       setFeedback(json.message || "Decisão registada.");
       setSelected(null);
+      await load();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Não foi possível concluir a decisão.");
     } finally {
@@ -131,7 +126,7 @@ export default function DocumentosAprovacoesQueue() {
         label="Pesquisar pedidos de documentos"
         placeholder="Aluno, processo ou documento"
         query={search}
-        onQueryChange={(value) => { setSearch(value); setPage(1); }}
+        onQueryChange={setSearch}
       />
 
       {loading ? (
@@ -145,15 +140,15 @@ export default function DocumentosAprovacoesQueue() {
         </div>
       ) : loadError ? (
         <OperationalTableErrorState description={loadError} onRetry={() => void load()} />
-      ) : pagination.filteredCount === 0 ? (
+      ) : total === 0 ? (
         <OperationalTableEmptyState
           title={search ? "Nenhum pedido corresponde à pesquisa." : "Nenhum documento gratuito aguarda decisão."}
-          description={search ? "Limpe a pesquisa para ver os pedidos carregados." : "Novas solicitações aparecerão nesta fila."}
+          description={search ? "Limpe a pesquisa para consultar todos os pedidos." : "Novas solicitações aparecerão nesta fila."}
         />
       ) : (
         <>
           <div className="grid gap-3">
-            {pagination.items.map((item) => {
+            {items.map((item) => {
               const nome = item.aluno?.nome_completo || item.aluno?.nome || "Aluno";
               return (
                 <article key={item.id} className="rounded-xl border border-border p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
@@ -163,7 +158,7 @@ export default function DocumentosAprovacoesQueue() {
                       <h3 className="break-words font-semibold">{item.servico_nome}</h3>
                     </div>
                     <p className="break-words text-sm text-foreground">{nome}{item.aluno?.numero_processo ? ` · Processo ${item.aluno.numero_processo}` : ""}</p>
-                    <p className="text-xs text-muted-foreground">Solicitado em {formatDateTime(item.created_at)}</p>
+                    <p className="text-xs text-muted-foreground">{item.ano_letivo ? `${item.ano_letivo}/${item.ano_letivo + 1} · ` : ""}Solicitado em {formatDateTime(item.created_at)}</p>
                     {item.reason_detail && <p className="break-words text-xs text-muted-foreground">{item.reason_detail}</p>}
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-0 sm:shrink-0">
@@ -181,13 +176,12 @@ export default function DocumentosAprovacoesQueue() {
             })}
           </div>
           <OperationalTablePagination
-            page={pagination.currentPage}
+            page={page}
             pageSize={PAGE_SIZE}
-            total={pagination.filteredCount}
+            total={total}
             onPageChange={setPage}
             disabled={submitting}
           />
-          <p className="text-xs text-muted-foreground">Paginação dos pedidos carregados (até 50 por consulta), não do total histórico.</p>
         </>
       )}
 

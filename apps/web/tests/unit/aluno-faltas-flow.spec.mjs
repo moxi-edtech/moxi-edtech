@@ -63,7 +63,9 @@ test("fila de decisão é ligada à secretaria e requer motivo para rejeição",
   const ws = read("components/secretaria/SecretariaDocumentosWorkspace.tsx");
   const q = read("components/secretaria/FaltasJustificacoesQueue.tsx");
   assert.match(ws, /<FaltasJustificacoesQueue key=\{escolaId\} \/>/);
-  assert.match(ws, /<DocumentosAprovacoesQueue key=\{escolaId\} \/>/);
+  assert.match(ws, /<DocumentosAprovacoesQueue key=\{escolaId\} onCountChange=\{setPendingCount\} \/>/);
+  assert.match(ws, /id: "solicitacoes"/);
+  assert.match(ws, /id: "faltas"/);
   assert.match(q, /DialogContent/);
   assert.match(q, /decision === "rejected" && reason\.trim\(\)\.length < 8/);
   assert.match(q, /A ausência original continuará no histórico/);

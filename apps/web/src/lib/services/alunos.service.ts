@@ -10,7 +10,9 @@ type ListOptions = {
   includeFinanceiro?: boolean;
   includeResumo?: boolean;
   academicYearId?: string;
-  // Full exports consume each raw RPC batch exactly once, even when filters are sparse.
+  /** Pré-seleção opcional para reduzir enriquecimento por lote em exportações filtradas. */
+  matchingAlunoIds?: ReadonlySet<string>;
+  /** Export scans one raw RPC batch at a time. */
   scanSingleBatch?: boolean;
 };
 
@@ -36,6 +38,7 @@ type MatriculaResumo = {
   updated_at?: string | null;
   numero_chamada?: number | null;
   bolsa_integral?: boolean | null;
+  bolsa_parcial_percentagem?: number | null;
 };
 
 type MensalidadeResumo = {
@@ -192,8 +195,15 @@ export async function listAlunos(
 
     lastCursorItem = mapped[mapped.length - 1];
 
-    let enriched: AlunoListItem[] = mapped;
-    const alunoIds = mapped
+    // A RPC KF2 mantém a paginação por cursor. Não fazer N consultas de
+    // propinas/turmas para candidatos que nunca podem corresponder ao filtro.
+    // O cursor continua a usar o lote bruto, nunca o subconjunto pré-selecionado.
+    const scoped = options.matchingAlunoIds
+      ? mapped.filter((row) => row.origem === "aluno" &&
+          options.matchingAlunoIds!.has(row.aluno_id ?? row.id))
+      : mapped;
+    let enriched: AlunoListItem[] = scoped;
+    const alunoIds = scoped
       .filter((row) => row.origem === "aluno")
       .map((row) => row.aluno_id ?? row.id)
       .filter(Boolean) as string[];
@@ -260,7 +270,7 @@ export async function listAlunos(
       let matriculasQuery = supabase
         .from("matriculas")
         .select(
-          "id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id, bolsa_integral"
+          "id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id, bolsa_integral, bolsa_parcial_percentagem"
         )
         .eq("escola_id", escolaId)
         .in("aluno_id", alunoIds)
@@ -332,6 +342,7 @@ export async function listAlunos(
           classe_nome: string | null;
           turno: string | null;
           bolsa_integral: boolean;
+          bolseiro: boolean;
         }
       >();
 
@@ -349,6 +360,7 @@ export async function listAlunos(
           classe_nome: turma?.classe_nome ?? null,
           turno: turma?.turno ?? null,
           bolsa_integral: row.bolsa_integral === true,
+          bolseiro: row.bolsa_integral === true || Number(row.bolsa_parcial_percentagem ?? 0) > 0,
         });
       });
 
@@ -401,6 +413,7 @@ export async function listAlunos(
             classe_nome: null,
             turno: null,
             bolsa_integral: null,
+            bolseiro: null,
             situacao_financeira: "sem_registo",
             meses_atraso: 0,
             valor_em_divida: 0,
@@ -434,6 +447,7 @@ export async function listAlunos(
           classe_nome: matricula?.classe_nome ?? null,
           turno: matricula?.turno ?? null,
           bolsa_integral: matricula?.bolsa_integral ?? null,
+          bolseiro: matricula?.bolseiro ?? null,
           situacao_financeira: financeiro.situacao,
           meses_atraso: financeiro.meses,
           valor_em_divida: financeiro.valor,
@@ -457,7 +471,7 @@ export async function listAlunos(
 
     // Apenas matrículas do ano selecionado: ausência de matrícula não é "não bolseiro".
     if (filters.bolsa) {
-      enriched = enriched.filter((row) => row.bolsa_integral === (filters.bolsa === "sim"));
+      enriched = enriched.filter((row) => row.bolseiro === (filters.bolsa === "sim"));
     }
 
     if (filters.situacaoFinanceira) {
@@ -526,6 +540,92 @@ export async function listAlunos(
   };
 }
 
+/**
+ * Pré-seleciona matrículas elegíveis para os filtros académicos antes dos
+ * enriquecimentos financeiros da exportação. A seleção é sempre limitada
+ * à escola e ao ano; o filtro final continua em listAlunos (sem alterar SSOT).
+ *
+ * Não usar para filtrar por dívida: a situação financeira depende de todos os
+ * pagamentos e competências e é calculada na camada canónica existente.
+ */
+export async function preselectExportAlunoIds(
+  supabase: SupabaseClient,
+  escolaId: string,
+  filters: AlunoListFilters,
+  options: Pick<ListOptions, "academicYearId"> = {},
+): Promise<ReadonlySet<string> | null> {
+  if (!filters.turmaId && !filters.classeId && !filters.turno && !filters.bolsa) return null;
+
+  let targetAno = filters.ano;
+  if (!targetAno) {
+    let anoQuery = supabase
+      .from("anos_letivos")
+      .select("ano")
+      .eq("escola_id", escolaId);
+    if (options.academicYearId) anoQuery = anoQuery.eq("id", options.academicYearId);
+    else anoQuery = anoQuery.eq("ativo", true);
+    const { data: ano, error } = await anoQuery
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (error) throw error;
+    if (!ano) return new Set();
+    targetAno = Number(ano.ano);
+  }
+
+  // A base pode ter turnos históricos "M"/"T"/"N" ou nomes por extenso.
+  let turmaIds: string[] | null = filters.turmaId ? [filters.turmaId] : null;
+  if (filters.classeId || filters.turno) {
+    const scopedTurmas: string[] = [];
+    for (let offset = 0; offset < 10000; offset += 500) {
+      let query = supabase.from("turmas").select("id,turno")
+        .eq("escola_id", escolaId).eq("ano_letivo", targetAno)
+        .order("id", { ascending: true }).range(offset, offset + 499);
+      if (filters.classeId) query = query.eq("classe_id", filters.classeId);
+      if (options.academicYearId) query = query.eq("session_id", options.academicYearId);
+      const { data, error } = await query;
+      if (error) throw error;
+      const turmas = data ?? [];
+      for (const turma of turmas) {
+        if (!filters.turno || turnoCanonico(turma.turno) === filters.turno) scopedTurmas.push(turma.id);
+      }
+      if (turmas.length < 500) break;
+      if (offset >= 9500) throw new Error("Demasiadas turmas para exportação filtrada.");
+    }
+    turmaIds = filters.turmaId
+      ? scopedTurmas.filter((id) => id === filters.turmaId)
+      : scopedTurmas;
+  }
+  if (turmaIds !== null && turmaIds.length === 0) return new Set();
+
+  const matching = new Set<string>();
+  // Evitar URL com milhares de UUIDs: PostgREST aceita conjuntos pequenos.
+  const turmaChunks = turmaIds === null
+    ? [null] as Array<string[] | null>
+    : Array.from({ length: Math.ceil(turmaIds.length / 40) }, (_, i) =>
+        turmaIds!.slice(i * 40, (i + 1) * 40));
+  for (const chunk of turmaChunks) {
+    for (let offset = 0; offset < 10000; offset += 500) {
+      let query = supabase.from("matriculas").select("aluno_id")
+        .eq("escola_id", escolaId).eq("ano_letivo", targetAno)
+        .in("status", ["ativo", "ativa"])
+        .order("aluno_id", { ascending: true }).range(offset, offset + 499);
+      if (options.academicYearId) query = query.eq("session_id", options.academicYearId);
+      if (chunk !== null) query = chunk.length === 1
+        ? query.eq("turma_id", chunk[0]) : query.in("turma_id", chunk);
+      if (filters.bolsa === "sim") query = query.or("bolsa_integral.eq.true,bolsa_parcial_percentagem.gt.0");
+      else if (filters.bolsa === "nao") query = query.eq("bolsa_integral", false).eq("bolsa_parcial_percentagem", 0);
+      const { data, error } = await query;
+      if (error) throw error;
+      const matriculas = data ?? [];
+      for (const matricula of matriculas) {
+        if (matricula.aluno_id) matching.add(matricula.aluno_id);
+      }
+      if (matriculas.length < 500) break;
+      if (offset >= 9500) throw new Error("A exportação excede 10.000 matrículas por escopo.");
+    }
+  }
+  return matching;
+}
+
 export async function listAllAlunos(
   supabase: SupabaseClient,
   escolaId: string,
@@ -536,6 +636,8 @@ export async function listAllAlunos(
   let cursorId: string | undefined;
   const all: AlunoListItem[] = [];
   let iterations = 0;
+  const matchingAlunoIds = await preselectExportAlunoIds(supabase, escolaId, filters, options);
+  if (matchingAlunoIds && matchingAlunoIds.size === 0) return [];
 
   while (true) {
     const { items, page } = await listAlunos(
@@ -549,14 +651,12 @@ export async function listAllAlunos(
         page: undefined,
         offset: undefined,
       },
-      { ...options, scanSingleBatch: true }
+      { ...options, matchingAlunoIds: matchingAlunoIds ?? undefined, scanSingleBatch: true }
     );
 
     all.push(...items);
 
-    if (all.length > 10000) {
-      throw new Error("A exportação excede o limite seguro de registos; refine os filtros.");
-    }
+    if (all.length > 10000) throw new Error("A exportação excede o limite seguro de registos; refine os filtros.");
     if (!page.hasMore) break;
     if (!page.nextCursor?.created_at || !page.nextCursor.id ||
         (cursorCreatedAt === page.nextCursor.created_at && cursorId === page.nextCursor.id)) {

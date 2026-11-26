@@ -91,8 +91,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (error instanceof InvalidAlunoFiltersError) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
-    console.error("[admin alunos export error]", { requestId, phase, elapsedMs: Date.now() - startedAt, code: (error as { code?: string } | null)?.code });
-    return NextResponse.json({ ok: false, error: "Não foi possível gerar a lista de alunos.", requestId }, { status: 500 });
+    console.error("[alunos export error]", { requestId, phase, elapsedMs: Date.now() - startedAt, code: (error as { code?: string } | null)?.code });
+    return NextResponse.json({ ok: false, error: "Não foi possível preparar a exportação. Reaplique os filtros e tente novamente.", requestId }, { status: 500 });
   }
 }
 

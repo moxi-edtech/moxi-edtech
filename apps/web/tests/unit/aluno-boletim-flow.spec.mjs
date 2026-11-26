@@ -64,6 +64,7 @@ test('não desbloqueia por comprovativo pendente, cancelado, gratuito ou liquida
   }
   const legacyPaid = { ...GRANT, servico_codigo: 'DOC_DECLARACAO_NOTAS' };
   assert.equal(isBoletimPaid([legacyPaid]), true, 'pagamento legado não exige nova cobrança');
+  assert.equal(isBoletimPaid([{ ...legacyPaid, contexto: { origem: 'documentos_emissao_individual', tipo_documento: 'declaracao_notas' } }]), false, 'declaração oficial não desbloqueia boletim');
   assert.equal(isBoletimPaid([{ ...legacyPaid, valor_cobrado: 0 }]), false);
 });
 

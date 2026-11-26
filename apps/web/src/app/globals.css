@@ -10,6 +10,22 @@
 
 .dark { --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0); --card-foreground: oklch(0.985 0 0); --popover: oklch(0.205 0 0); --popover-foreground: oklch(0.985 0 0); --primary: oklch(0.922 0 0); --primary-foreground: oklch(0.205 0 0); --secondary: oklch(0.269 0 0); --secondary-foreground: oklch(0.985 0 0); --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0); --accent: oklch(0.269 0 0); --accent-foreground: oklch(0.985 0 0); --destructive: oklch(0.704 0.191 22.216); --border: oklch(1 0 0 / 10%); --input: oklch(1 0 0 / 15%); --ring: oklch(0.556 0 0); --chart-1: oklch(0.488 0.243 264.376); --chart-2: oklch(0.696 0.17 162.48); --chart-3: oklch(0.769 0.188 70.08); --chart-4: oklch(0.627 0.265 303.9); --chart-5: oklch(0.645 0.246 16.439); --sidebar: oklch(0.205 0 0); --sidebar-foreground: oklch(0.985 0 0); --sidebar-primary: oklch(0.488 0.243 264.376); --sidebar-primary-foreground: oklch(0.985 0 0); --sidebar-accent: oklch(0.269 0 0); --sidebar-accent-foreground: oklch(0.985 0 0); --sidebar-border: oklch(1 0 0 / 10%); --sidebar-ring: oklch(0.556 0 0); }
 
+/* Permanent KLASSE brand chrome. Only sidebar descendants inherit these
+   semantic colors; the portal's light/dark/system preference remains intact. */
+@theme inline {
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground, var(--muted-foreground));
+  --color-sidebar-raised: var(--sidebar-raised, var(--sidebar-accent));
+}
+.klasse-sidebar-theme {
+  --sidebar: theme("colors.klasse.dark");
+  --sidebar-foreground: theme("colors.slate.200");
+  --sidebar-muted-foreground: theme("colors.slate.400");
+  --sidebar-accent: theme("colors.slate.900");
+  --sidebar-raised: theme("colors.slate.800");
+  --sidebar-border: color-mix(in srgb, theme("colors.klasse.gold.400") 15%, transparent);
+  --sidebar-ring: theme("colors.klasse.gold.400");
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50; }
@@ -18,14 +34,9 @@
 
 /* Dashboard de Operações: geometria pelo espaço útil, nunca pela viewport.
    Não altera o shell, os formulários ou os cartões partilhados. */
-.operations-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .operations-context-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
 @container (min-width: 840px) {
-  .operations-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .operations-context-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: stretch; }
-}
-@container (max-width: 479px) {
-  .operations-kpi-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 
@@ -53,3 +64,267 @@
 
 /* Títulos de páginas partilhados ganham a marca apenas nos portais. */
 .klasse-portal-theme .klasse-dashboard-header-title { color: var(--primary); }
+
+/* Operações: ritmo vertical e respiro consistentes, apenas neste dashboard.
+   Alturas mínimas, nunca fixas: rótulos e zoom podem ampliar os cartões. */
+.operations-dashboard-flow { display: flex; flex-direction: column; gap: 1.75rem; }
+@container (min-width: 920px) {
+  .operations-dashboard-flow { gap: 2rem; }
+}
+.operations-daily-grid,
+.operations-actions-grid,
+.operations-kpi-grid {
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: 1fr;
+  align-items: stretch;
+  gap: 1rem;
+}
+.operations-metric-card {
+  display: grid;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  min-width: 0;
+  height: 100%;
+}
+.operations-metric-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+}
+.operations-metric-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2rem;
+}
+.operations-metric-size { min-height: 7.5rem; }
+@container (min-width: 480px) {
+  .operations-actions-grid, .operations-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (min-width: 600px) {
+  .operations-daily-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@container (min-width: 920px) {
+  .operations-actions-grid, .operations-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* Fixed identity artwork, scoped to the institutional card in both themes.
+   The rest of the portals continue to consume semantic theme tokens. */
+.klasse-portal-theme .klasse-welcome-card,
+.klasse-welcome-card.klasse-operations-academic-card {
+  --welcome-amber: #fea513;
+  --welcome-forest: #124527;
+  background: var(--welcome-amber);
+  color: var(--welcome-forest);
+  box-shadow: inset 0 0 0 1px rgb(18 69 39 / 9%);
+}
+
+.klasse-welcome-card .klasse-welcome-editorial {
+  border-inline-start: 4px solid var(--welcome-forest);
+}
+
+.klasse-welcome-card .klasse-welcome-signature {
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: 20px;
+  flex: none;
+  /* The opaque SVG owns its artwork colours; use the scoped brand token as fallback. */
+  background-color: var(--welcome-forest);
+  background-image: url("/icons/klasse-welcome-signature.svg");
+  background-repeat: repeat-x;
+  /* Centre whole tiles so the two rounded edges crop at the same height. */
+  background-position: center top;
+  background-size: 80px 20px;
+}
+
+/* Operations retains its compact banner; scale only its decorative signature. */
+.klasse-operations-academic-card .klasse-welcome-signature {
+  block-size: 8px;
+  background-size: 32px 8px;
+}
+
+/* Academic mobile only; keep status semantics and desktop layouts. */
+@media (max-width: 767px) {
+  .klasse-academic-mobile .klasse-portal-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .klasse-academic-mobile .klasse-portal-section > :not(:last-child) {
+    margin-block-end: 0;
+    margin-block-start: 0;
+  }
+  .klasse-academic-mobile .klasse-portal-tabs [role="tab"][aria-selected="true"] {
+    border-bottom-color: var(--primary);
+    color: var(--primary);
+    background: var(--accent);
+    border-radius: 0.75rem 0.75rem 0 0;
+  }
+  .klasse-academic-mobile .klasse-portal-surface { padding: 1rem; }
+  .klasse-academic-mobile .klasse-portal-operational-card { box-shadow: none; }
+  .klasse-academic-mobile .klasse-portal-operational-card [data-portal-tone="normal"] {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+  .klasse-academic-mobile .klasse-dashboard-header-title {
+    font-size: 1.5rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Sora variable from Google Fonts (SIL OFL 1.1); public/fonts/OFL-Sora.txt. */
+@font-face {
+  font-family: Sora;
+  src: url("/fonts/sora-variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+}
+.klasse-portal-theme {
+  font-family: Sora, system-ui, sans-serif;
+}
+.klasse-academic-mobile, .klasse-academic-dialog {
+  font-synthesis: none;
+}
+.klasse-academic-mobile .klasse-portal-section h2 {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.35;
+}
+.klasse-academic-mobile .klasse-portal-operational-card:is(a,button):not([aria-disabled="true"]),
+.klasse-academic-mobile .klasse-portal-press,
+.klasse-academic-dialog .klasse-portal-press {
+  transition: background-color var(--portal-motion-press) ease, border-color var(--portal-motion-press) ease, opacity var(--portal-motion-press) ease, transform var(--portal-motion-press) ease;
+}
+.klasse-academic-mobile .klasse-portal-operational-card:is(a,button):not([aria-disabled="true"]):active,
+.klasse-academic-mobile .klasse-portal-press:not(:disabled):not([aria-disabled="true"]):active,
+.klasse-academic-dialog .klasse-portal-press:not(:disabled):active {
+  opacity: 0.9;
+}
+@media (prefers-reduced-motion: reduce) {
+  .klasse-academic-mobile .klasse-portal-operational-card,
+  .klasse-academic-mobile .klasse-portal-press,
+  .klasse-academic-dialog .klasse-portal-press {
+    transition: none;
+  }
+}
+@media (max-width: 767px) {
+  .klasse-academic-mobile .klasse-academic-topbar { padding-top: env(safe-area-inset-top, 0px); }
+  .klasse-academic-mobile .klasse-portal-bottom-nav {
+    padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+  }
+  .klasse-academic-mobile .klasse-portal-drawer {
+    padding-inline: max(1rem, env(safe-area-inset-left, 0px)) max(1rem, env(safe-area-inset-right, 0px));
+  }
+  .klasse-academic-mobile :is(input:not([type]),input[type="text"],input[type="email"],input[type="tel"],input[type="search"],input[type="password"],input[type="number"],textarea,select),
+  .klasse-academic-dialog :is(input:not([type]),input[type="text"],input[type="email"],input[type="tel"],input[type="search"],input[type="password"],input[type="number"],textarea,select) {
+    font-size: 1rem;
+  }
+  .klasse-academic-dialog {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* KLASSE Motion System — single source for CSS and browser animation timings. */
+.klasse-academic-mobile, .klasse-academic-dialog {
+  --portal-motion-press: 100ms;
+  --portal-motion-tab: 200ms;
+  --portal-motion-sheet: 280ms;
+  --portal-motion-disclosure: 220ms;
+  --portal-motion-feedback: 180ms;
+  --portal-motion-ease: cubic-bezier(.2,.8,.2,1);
+}
+.klasse-academic-mobile .klasse-portal-operational-card:is(a,button):focus-visible,
+.klasse-academic-mobile .klasse-portal-press:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.klasse-academic-mobile .klasse-portal-tabs[data-sliding="true"] [role="tab"][aria-selected="true"] {
+  border-bottom-color: transparent;
+}
+.klasse-academic-mobile .klasse-portal-motion-indicator {
+  width: calc((100% - 0.75rem) / 4);
+  transform: translateX(calc(var(--portal-tab-index) * (100% + 0.25rem)));
+  z-index: 1;
+}
+.klasse-academic-mobile .klasse-portal-motion-indicator::after {
+  content: "";
+  position: absolute;
+  inset: 0 0.25rem;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+@keyframes klasse-portal-disclosure-in {
+  from { transform: translateY(-3px); opacity: 0.7; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .klasse-academic-mobile .klasse-portal-motion-indicator {
+    transition: transform var(--portal-motion-tab) var(--portal-motion-ease);
+  }
+  .klasse-academic-mobile .klasse-portal-motion-sheet {
+    transition: transform var(--portal-motion-sheet) var(--portal-motion-ease);
+    transform: translateY(0);
+  }
+  .klasse-academic-mobile .klasse-portal-motion-sheet:is([data-motion-state="entering"],[data-motion-state="closing"]) {
+    transform: translateY(100%);
+  }
+  .klasse-academic-mobile .klasse-portal-motion-overlay {
+    transition: opacity var(--portal-motion-sheet) var(--portal-motion-ease);
+    opacity: 1;
+  }
+  .klasse-academic-mobile .klasse-portal-motion-overlay:is([data-motion-state="entering"],[data-motion-state="closing"]) {
+    opacity: 0;
+  }
+  .klasse-academic-mobile .klasse-portal-motion-disclosure {
+    animation: klasse-portal-disclosure-in var(--portal-motion-disclosure) var(--portal-motion-ease) both;
+  }
+}
+@media (pointer: coarse) and (prefers-reduced-motion: no-preference) {
+  .klasse-academic-mobile .klasse-portal-operational-card:is(a,button):not([aria-disabled="true"]):not(:disabled):active,
+  .klasse-academic-mobile .klasse-portal-press:not(:disabled):not([aria-disabled="true"]):active,
+  .klasse-academic-dialog .klasse-portal-press:not(:disabled):active {
+    transform: scale(0.98);
+  }
+  /* Tabs use the shared-layout indicator: do not transform its parent. */
+  .klasse-academic-mobile .klasse-portal-tabs [role="tab"]:active {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .klasse-academic-mobile .klasse-portal-motion-sheet,
+  .klasse-academic-mobile .klasse-portal-motion-overlay,
+  .klasse-academic-mobile .klasse-portal-motion-disclosure,
+  .klasse-academic-mobile .klasse-portal-motion-indicator {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* Contextual sheets: Radix Presence waits for CSS exit animation. */
+.klasse-portal-theme.klasse-context-sheet {
+  max-height: min(var(--portal-sheet-limit, 90dvh), calc(100dvh - env(safe-area-inset-top, 0px) - 1rem));
+  padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@keyframes klasse-context-sheet-enter { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes klasse-context-sheet-exit { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@keyframes klasse-context-overlay-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes klasse-context-overlay-exit { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  .klasse-context-sheet[data-state="open"][data-motion-state="open"] { animation: klasse-context-sheet-enter var(--portal-motion-sheet) var(--portal-motion-ease) both; }
+  .klasse-context-sheet[data-state="open"][data-motion-state="closing"] { animation: klasse-context-sheet-exit var(--portal-motion-sheet) var(--portal-motion-ease) both; }
+  .klasse-context-sheet[data-state="closed"] { animation: none; }
+  .klasse-context-sheet-overlay[data-state="open"] { animation: klasse-context-overlay-enter var(--portal-motion-sheet) var(--portal-motion-ease) both; }
+  .klasse-context-sheet-overlay.klasse-context-sheet-overlay-closing[data-state="open"] { animation: klasse-context-overlay-exit var(--portal-motion-sheet) var(--portal-motion-ease) both; }
+  .klasse-context-sheet-overlay[data-state="closed"] { animation: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .klasse-context-sheet, .klasse-context-sheet-overlay { animation: none !important; }
+}

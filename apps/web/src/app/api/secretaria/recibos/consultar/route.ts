@@ -5,7 +5,7 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP } from "@/lib/roles";
-import { candidateReceiptBatchIds } from "@/lib/financeiro/receipt-batch-lookup";
+import { loadIssuedBatchPaymentReceipt, loadIssuedMonthlyReceipts } from "@/lib/financeiro/issued-monthly-receipts";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -50,42 +50,6 @@ async function findIssuedDocument(
     throw new Error("DOCUMENT_LOOKUP_FAILED");
   }
   return data?.id ?? null;
-}
-
-/**
- * Batch financial writers suppress individual receipts (emitir_recibo=false)
- * and emit one consolidated document on the terminal payment. That payment
- * may be a service with mensalidade_id=NULL (including admissions).
- *
- * Never infer batch membership from dates or the same student. Both source
- * and issuer must be settled, within the SAME school, student and explicit
- * batch_idempotency_key. This function never creates a receipt.
- */
-async function findConsolidatedReceipt(
-  db: any, escolaId: string, alunoId: string, batchIds: string[],
-): Promise<string | null> {
-  for (const batchId of batchIds) {
-    const { data: issuers, error } = await db.from("pagamentos")
-      .select("id,mensalidade_id").eq("escola_id", escolaId).eq("aluno_id", alunoId)
-      .eq("status", "settled")
-      .contains("meta", { batch_idempotency_key: batchId, emitir_recibo: true })
-      .limit(2);
-    if (error) {
-      console.warn("[OPERATIONAL-RECEIPT-LOOKUP][BATCH]", { code: error.code ?? null });
-      throw new Error("BATCH_LOOKUP_FAILED");
-    }
-    if ((issuers ?? []).length > 1) {
-      console.warn("[OPERATIONAL-RECEIPT-LOOKUP][AMBIGUOUS_BATCH]");
-      throw new Error("AMBIGUOUS_BATCH");
-    }
-    const issuer = issuers?.[0];
-    if (!issuer) continue;
-    const docId = issuer.mensalidade_id
-      ? await findIssuedDocument(db, escolaId, alunoId, { mensalidadeId: issuer.mensalidade_id })
-      : await findIssuedDocument(db, escolaId, alunoId, { paymentId: issuer.id });
-    if (docId) return docId;
-  }
-  return null;
 }
 
 /** Read-only recovery. No payment, receipt-emission or fiscal RPC is called. */
@@ -135,10 +99,10 @@ export async function GET(request: Request) {
       // An intermediate payment explicitly suppressed its own receipt.
       // Resolve its actual issuer FIRST: a direct document on the same
       // mensalidade could belong to an earlier, different payment.
-      const batches = candidateReceiptBatchIds([payment]);
-      if (payment.meta?.emitir_recibo === false) {
-        if (!batches.length) return pendingReceipt(); // No reliable association.
-        const consolidated = await findConsolidatedReceipt(db, escolaId, payment.aluno_id, batches);
+      if (payment.meta?.batch_idempotency_key || payment.meta?.emitir_recibo === false) {
+        const consolidated = await loadIssuedBatchPaymentReceipt(db, {
+          escolaId, alunoId: payment.aluno_id, pagamentoId: payment.id,
+        });
         return consolidated ? readyReceipt(consolidated, "consolidated") : pendingReceipt();
       }
 
@@ -156,26 +120,17 @@ export async function GET(request: Request) {
     if (monthlyError) throw new Error("MONTHLY_LOOKUP_FAILED");
     if (!monthly) return NextResponse.json({ ok: false, error: "Mensalidade não encontrada nesta escola." }, { status: 404 });
 
-    const document = await findIssuedDocument(db, escolaId, monthly.aluno_id, { mensalidadeId: monthly.id });
-    if (document) return readyReceipt(document, "monthly");
-
-    const { data: payments, error: paymentsError } = await db.from("pagamentos")
-      .select("id,meta").eq("escola_id", escolaId).eq("aluno_id", monthly.aluno_id)
-      .eq("mensalidade_id", monthly.id).eq("status", "settled")
-      .order("created_at", { ascending: false }).limit(10);
-    if (paymentsError) throw new Error("PAYMENTS_LOOKUP_FAILED");
-
-    const batches = candidateReceiptBatchIds(payments ?? []);
-    const consolidated = await findConsolidatedReceipt(db, escolaId, monthly.aluno_id, batches);
-    return consolidated ? readyReceipt(consolidated, "consolidated") : pendingReceipt();
+    const receipts = await loadIssuedMonthlyReceipts(db, {
+      escolaId, alunoId: monthly.aluno_id, mensalidadeIds: [monthly.id],
+    });
+    const document = receipts.get(monthly.id);
+    return document ? readyReceipt(document, "monthly") : pendingReceipt();
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     console.warn("[OPERATIONAL-RECEIPT-LOOKUP][FAILED]", { code });
     return NextResponse.json({
       ok: false,
-      error: code === "AMBIGUOUS_BATCH"
-        ? "Lote financeiro inconsistente. Solicite reconciliação."
-        : "Não foi possível consultar o recibo. Tente novamente.",
-    }, { status: code === "AMBIGUOUS_BATCH" ? 409 : 500, headers: noStore });
+      error: "Não foi possível consultar o recibo. Tente novamente.",
+    }, { status: 500, headers: noStore });
   }
 }

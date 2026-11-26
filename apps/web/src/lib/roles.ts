@@ -63,6 +63,13 @@ export const K12_SECRETARIA_OPERACIONAL_ROLE_GROUP = [
   'staff_admin',
 ] as const satisfies readonly PapelEscola[]
 
+// Escopo documental: não ampliar as permissões dos demais módulos da Secretaria.
+export const K12_DOCUMENTOS_ROLE_GROUP = [
+  ...K12_SECRETARIA_OPERACIONAL_ROLE_GROUP,
+  'admin_secretaria',
+  'diretor',
+] as const satisfies readonly PapelEscola[]
+
 export const K12_FINANCEIRO_OPERACIONAL_ROLE_GROUP = [
   'secretaria',
   'financeiro',

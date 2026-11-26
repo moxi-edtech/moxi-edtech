@@ -22,6 +22,8 @@ export const academicContextRoutes = [
   "/operacoes/turmas",
   "/operacoes/academico",
   "/operacoes/financeiro",
+  "/operacoes/radar",
+  "/operacoes/turmas-alunos",
 ] as const;
 
 export const academicContextPreservedParams = ["page", "sort", "order", "search", "view", "tab"] as const;

@@ -102,11 +102,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     let slotsQuery = supabase
       .from('horario_slots')
-      .select('id, turno_id, ordem, inicio, fim, dia_semana, is_intervalo, escola_id')
+      .select('id, turno_id, ordem, inicio, fim, dia_semana, is_intervalo, escola_id', { count: 'exact' })
       .eq('escola_id', escolaIdResolved)
 
     slotsQuery = applyKf2ListInvariants(slotsQuery, {
-      defaultLimit: 50,
+      defaultLimit: 500,
+      maxLimit: 500,
       order: [
         { column: 'dia_semana', ascending: true },
         { column: 'ordem', ascending: true },
@@ -114,10 +115,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       tieBreakerColumn: 'id',
     })
 
-    const { data, error } = await slotsQuery
+    const { data, error, count } = await slotsQuery
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
+    if (count === null || count !== (data || []).length) return NextResponse.json({ ok: false, error: 'Configuração de tempos incompleta. Não é seguro editar o quadro.' }, { status: 409 })
     const response = NextResponse.json({ ok: true, items: data || [] })
     response.headers.set('Server-Timing', `app;dur=${Date.now() - start}`)
     return response

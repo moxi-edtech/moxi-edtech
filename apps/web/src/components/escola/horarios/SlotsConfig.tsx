@@ -41,11 +41,12 @@ type SlotsConfigProps = {
   value: HorarioSlot[];
   onChange: (slots: HorarioSlot[]) => void;
   onSave: () => void | Promise<void>;
+  initialTurno?: string;
 };
 
-export function SlotsConfig({ value, onChange, onSave }: SlotsConfigProps) {
+export function SlotsConfig({ value, onChange, onSave, initialTurno = "matinal" }: SlotsConfigProps) {
   const { success } = useToast();
-  const [activeTurno, setActiveTurno] = useState("matinal");
+  const [activeTurno, setActiveTurno] = useState(initialTurno);
   const [activeDia, setActiveDia] = useState(1);
   const [showGenerator, setShowGenerator] = useState(false); // Esconde o gerador por padrão
   const [editingId, setEditingId] = useState<string | null>(null);

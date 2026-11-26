@@ -35,6 +35,7 @@ interface MiniPautaProps {
     qrCodeDataUrl?: string
     trimestresAtivos?: Array<1 | 2 | 3>
     mostrarTrimestresInativos?: boolean
+    conferencia?: boolean
   }
   alunos: AlunoPauta[]
 }
@@ -77,7 +78,7 @@ export const MiniPautaV2: React.FC<MiniPautaProps> = ({ metadata, alunos }) => {
           <Text style={s.subHeaderText}>Governo da Província de {metadata.provincia}</Text>
           <Text style={s.subHeaderText}>Gabinete Provincial da Educação</Text>
           <Text style={s.schoolName}>{metadata.escola}</Text>
-          <Text style={s.docTitle}>Mini-Pauta — {metadata.anoLectivo}</Text>
+          <Text style={s.docTitle}>{metadata.conferencia ? "Mini-Pauta de Conferência · Não oficial" : `Mini-Pauta — ${metadata.anoLectivo}`}</Text>
         </View>
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15, fontSize: 10 }}>

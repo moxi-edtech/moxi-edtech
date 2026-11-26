@@ -28,6 +28,7 @@ export type MiniPautaPayload = {
     qrCodeDataUrl?: string
     trimestresAtivos?: Array<1 | 2 | 3>
     mostrarTrimestresInativos?: boolean
+    conferencia?: boolean
   }
   alunos: Array<{
     id: string

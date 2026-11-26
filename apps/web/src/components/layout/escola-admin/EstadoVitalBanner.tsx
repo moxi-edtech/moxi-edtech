@@ -1,6 +1,10 @@
 "use client";
 
-import { Calendar, Clock, Activity } from "lucide-react";
+import { Calendar, Clock, Activity, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { PortalCulturalSignature } from "@/components/portal/ui/PortalWelcomeCard";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 
 type EstadoVital = {
   escola_id: string;
@@ -14,8 +18,11 @@ type EstadoVital = {
   fase_operacional: 'PRE_INICIO' | 'REGULAR' | 'EXAMES' | 'POS_ENCERRAMENTO';
 };
 
-export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
+export function EstadoVitalBanner({ estado, compact = false, calendarHref }: { estado: EstadoVital | null; compact?: boolean; calendarHref?: string }) {
+  const [openedEventKey, setOpenedEventKey] = useState<string | null>(null);
   if (!estado) return null;
+  const eventKey = JSON.stringify([estado.escola_id, estado.session_id, estado.periodo_id, estado.evento_hoje_nome]);
+  const eventOpen = openedEventKey === eventKey;
 
   const isExames = estado.fase_operacional === 'EXAMES';
   const isBoundary = estado.fase_operacional === 'PRE_INICIO' || estado.fase_operacional === 'POS_ENCERRAMENTO';
@@ -23,6 +30,42 @@ export function EstadoVitalBanner({ estado }: { estado: EstadoVital | null }) {
   const faseLabel = isBoundary
     ? estado.fase_operacional === 'PRE_INICIO' ? 'Pré-início' : 'Encerrado'
     : isExames ? 'Exames' : 'Aulas';
+
+  if (compact) {
+    const periodo = estado.periodo_tipo?.toUpperCase() === "TRIMESTRE" && estado.periodo_numero
+      ? estado.periodo_numero + "º Trimestre"
+      : [estado.periodo_tipo, estado.periodo_numero].filter(Boolean).join(" ") || "Intervalo";
+    return (
+      <>
+        <section aria-label="Estado académico" data-testid="operations-academic-card" className="klasse-welcome-card klasse-operations-academic-card min-w-0 overflow-hidden rounded-xl">
+          <div className="px-4 py-3">
+            <div data-testid="operations-academic-row" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                <Calendar className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="font-medium">{estado.ano_ativo ?? "—"} · {periodo}</span>
+                <span>{isBloqueado && !isBoundary ? "Interrupção" : faseLabel}</span>
+                <span className={isBloqueado ? "font-medium text-red-900" : undefined}>{isBloqueado ? "Diário bloqueado" : "Diário liberado"}</span>
+              </div>
+              {calendarHref && <Link href={calendarHref} className="inline-flex min-h-6 max-w-full items-center gap-1 rounded-sm text-xs font-medium underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current">Calendário académico <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /></Link>}
+            </div>
+            {estado.evento_hoje_nome && (isBloqueado || isExames ? (
+              <p className="mt-2 break-words text-sm font-medium">{estado.evento_hoje_nome}</p>
+            ) : (
+              <button type="button" aria-haspopup="dialog" aria-expanded={eventOpen} onClick={() => setOpenedEventKey(eventKey)}
+                className="mt-2 flex min-h-6 w-fit max-w-full items-center gap-1 rounded-sm text-xs underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current">
+                <ChevronRight className="h-3 w-3 shrink-0" aria-hidden="true" /> Evento de hoje
+              </button>
+            ))}
+          </div>
+          <PortalCulturalSignature />
+        </section>
+        <PortalSheet open={eventOpen && Boolean(estado.evento_hoje_nome) && !isBloqueado && !isExames} onClose={() => setOpenedEventKey(null)} title="Evento de hoje" description={`${estado.ano_ativo ?? "—"} · ${periodo}`} size="compact">
+          <p className="break-words text-base font-semibold text-foreground">{estado.evento_hoje_nome}</p>
+          <p className="text-sm text-muted-foreground">{faseLabel} · Diário liberado</p>
+        </PortalSheet>
+      </>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border border-border bg-card p-4 shadow-sm">

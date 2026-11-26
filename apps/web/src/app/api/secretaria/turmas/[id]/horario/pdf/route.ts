@@ -46,7 +46,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": `${searchParams.get("inline") === "1" ? "inline" : "attachment"}; filename="${filename}"`,
         "Cache-Control": "no-store",
       },
     });

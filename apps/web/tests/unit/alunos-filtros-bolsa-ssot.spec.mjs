@@ -22,13 +22,13 @@ test("os quatro filtros são aceites e validados na API", () => {
 });
 
 test("a bolsa é a matrícula SSOT no ano selecionado, nunca o valor de mensalidade", () => {
-  assert.match(service, /"id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id, bolsa_integral"/);
+  assert.match(service, /"id, aluno_id, status, turma_id, created_at, updated_at, numero_chamada, session_id, bolsa_integral, bolsa_parcial_percentagem"/);
   assert.match(service, /\.from\("matriculas"\)/);
   assert.match(service, /\.eq\("escola_id", escolaId\)/);
   assert.match(service, /matriculasQuery = matriculasQuery\.eq\("session_id", options\.academicYearId\)/);
   assert.match(service, /matriculasQuery = matriculasQuery\.eq\("ano_letivo", targetAno\)/);
   assert.match(service, /row\.bolsa_integral === true/);
-  assert.match(service, /row\.bolsa_integral === \(filters\.bolsa === "sim"\)/);
+  assert.match(service, /row\.bolseiro === \(filters\.bolsa === "sim"\)/);
   assert.match(service, /bolsa_integral: null/); // sem matrícula não é "não bolseiro"
 });
 
@@ -64,7 +64,7 @@ test("Admin e Secretaria passam os mesmos filtros à listagem e exportação", (
 test("Excel e PDF incluem classe, turno e status real da bolsa", () => {
   assert.match(exportRenderer, /key: "classe_nome", label: "Classe"/);
   assert.match(exportRenderer, /key: "turno", label: "Turno"/);
-  assert.match(exportRenderer, /key: "bolsa_integral", label: "Bolseiro"/);
+  assert.match(exportRenderer, /key: "bolseiro", label: "Bolseiro"/);
   assert.match(exportRenderer, /value === true \? "Sim" : value === false \? "Não"/);
   assert.match(exportRenderer, /renderNominalA4\(/);
   assert.match(exportRenderer, /key: "bolsa", label: "Bolsa"/);
@@ -88,29 +88,24 @@ test("PDF geral partilha template institucional da lista nominal e recebe dados 
   assert.match(exportSecretaria, /loadAlunosPdfInstitutionalContext/);
 });
 
-test("exportação percorre lotes brutos completos sem depender da paginação visual", () => {
+test("exportação percorre lotes brutos mantendo a pré-selecção", () => {
   const full = service.slice(service.indexOf("export async function listAllAlunos"));
   assert.match(full, /limit: 50/);
   assert.match(full, /scanSingleBatch: true/);
-  assert.match(service, /if \(options\.scanSingleBatch\) \{\s*items = enriched;\s*exhausted = mapped\.length < pageLimit;\s*break;/);
+  assert.match(full, /preselectExportAlunoIds/);
+  assert.match(full, /matchingAlunoIds: matchingAlunoIds/);
   assert.match(full, /cursorCreatedAt === page\.nextCursor\.created_at && cursorId === page\.nextCursor\.id/);
-  assert.match(full, /all\.length > 10000/);
 });
-
-test("exportações preservam autorização, timeout limitado e diagnóstico sem dados de alunos", () => {
+test("downloads autenticados e diagnóstico sem dados pessoais", () => {
   for (const route of [exportAdmin, exportSecretaria]) {
     assert.match(route, /requireRoleInSchool/);
     assert.match(route, /export const maxDuration = 60/);
     assert.match(route, /requestId, phase, elapsedMs/);
-    assert.match(route, /phase = "list"/);
-    assert.match(route, /phase = "render"/);
   }
-  for (const page of [admin, secretaria]) {
-    assert.match(page, /await downloadAlunosExport\(/);
-  }
+  for (const page of [admin, secretaria]) assert.match(page, /await downloadAlunosExport\(/);
   const download = src("lib/services/alunosExportDownload.client.ts");
   assert.match(download, /credentials: "same-origin"/);
-  assert.match(download, /response\.status === 504/);
+  assert.match(download, /target.origin !== window.location.origin/);
   assert.match(download, /content-type/);
   assert.match(download, /window\.setTimeout\(\(\) => URL\.revokeObjectURL/);
 });

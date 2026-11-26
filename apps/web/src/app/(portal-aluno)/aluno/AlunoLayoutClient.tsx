@@ -181,7 +181,7 @@ export default function AlunoLayoutClient({
   if (redirectTarget) return null;
 
   return (
-    <div className="klasse-portal-theme min-h-screen bg-muted/25 text-foreground">
+    <div className="klasse-portal-theme klasse-academic-mobile min-h-screen bg-muted/25 text-foreground">
       <a href="#conteudo-aluno" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-xl focus:bg-klasse-gold focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-foreground">Ir para o conteúdo</a>
       <AlunoHeader
         escolaNome={escolaNome}
@@ -194,7 +194,7 @@ export default function AlunoLayoutClient({
 
       <NetworkStatus />
 
-      <main id="conteudo-aluno" className="mx-auto w-full max-w-[1200px] px-4 py-5 pb-[calc(96px+env(safe-area-inset-bottom))] md:px-6 md:py-6">
+      <main id="conteudo-aluno" className="mx-auto w-full max-w-[1200px] px-3 pt-3 pb-[calc(88px+env(safe-area-inset-bottom))] md:px-6 md:pt-6">
         <AlunoPortalScopeContext.Provider value={portalScope}>{children}</AlunoPortalScopeContext.Provider>
 
         <AlunoBottomNav items={navItems} activePath={safePathname} withAlunoParam={withAlunoParam} />

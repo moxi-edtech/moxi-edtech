@@ -7,6 +7,7 @@ import LockScreenButton from "@/components/session/LockScreenButton";
 import { requestSessionConfig } from "@/components/session/SessionLockProvider";
 import BackButton from "@/components/navigation/BackButton";
 import ThemeToggle from "@/components/ThemeToggle";
+import { SIDEBAR_WIDTH, SIDEBAR_LABEL, SIDEBAR_NAV, SIDEBAR_ROW, sidebarLabel } from "@/lib/sidebarPresentation";
 import Link from "next/link"; // Add this import
 import {
   ChevronDownIcon,
@@ -108,7 +109,7 @@ export default function PortalLayout({
     try {
       document.documentElement.style.setProperty(
         "--sidebar-w",
-        collapsed ? "80px" : "256px"
+        collapsed ? SIDEBAR_WIDTH.collapsed : SIDEBAR_WIDTH.expanded
       );
     } catch {}
   }, [collapsed]);
@@ -181,16 +182,16 @@ export default function PortalLayout({
     return calc || 'AD'
   }, [userName])
 
-  const sidebarW = collapsed ? 64 : 256;
+  const sidebarW = collapsed ? SIDEBAR_WIDTH.collapsed : SIDEBAR_WIDTH.expanded;
 
   return (
         <div className="flex min-h-screen w-full bg-background text-foreground">
           {/* Sidebar */}
           <aside
             className={clsx(
-              "fixed top-0 left-0 z-40 h-screen border-r border-border bg-card transition-[width] duration-200 ease-in-out flex flex-col",
+              "fixed top-0 left-0 z-40 h-dvh shrink-0 overflow-hidden border-r border-border bg-card transition-[width] duration-200 ease-in-out flex flex-col",
             )}
-            style={{ width: "var(--sidebar-w, 256px)" }}
+            style={{ width: sidebarW }}
             // Adiciona flex-shrink-0 para garantir que a sidebar não encolha
             // e z-index para garantir que ela fique acima do conteúdo principal
             aria-label="Navegação lateral"
@@ -233,7 +234,7 @@ export default function PortalLayout({
             </div>
     
             {/* Navegação scrollável */}
-            <nav className="flex-1 overflow-y-auto mt-2 px-2">
+            <nav className={clsx(SIDEBAR_NAV, "mt-2 px-2 py-1")}>
               <ul className="space-y-1">
                 {navItems.map((item) => {
                   const Icon = Icons[item.icon as IconName] ?? Icons.HelpCircle;
@@ -244,17 +245,18 @@ export default function PortalLayout({
                       <Link
                         href={item.href}
                         className={clsx(
-                          "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium w-full transition-all duration-200",
+                          SIDEBAR_ROW, "group font-medium transition-colors duration-200", collapsed && "justify-center",
                           isActive
                             ? "bg-primary/10 text-foreground ring-1 ring-primary/20"
                             : "text-foreground hover:bg-muted hover:text-foreground"
                         )}
                         title={item.label}
+                        aria-label={item.label}
                       >
                         <IconComponent className={clsx("h-5 w-5 shrink-0 transition-colors", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")} />
-                        {!collapsed && <span className="truncate">{item.label}</span>}
+                        {!collapsed && <span className={SIDEBAR_LABEL}>{sidebarLabel(item.label)}</span>}
                         {item.badge && !collapsed && (
-                          <span className="ml-auto px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+                          <span className="ml-auto shrink-0 max-w-[4rem] truncate px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-100">
                             {item.badge}
                           </span>
                         )}
@@ -266,7 +268,7 @@ export default function PortalLayout({
             </nav>
 
             {/* Footer fixo no fundo */}
-            <div className="mt-auto p-4 border-t border-border">
+            <div className="mt-auto shrink-0 min-w-0 p-2 border-t border-border">
               <div className={clsx(
                 "flex items-center gap-3 rounded-2xl p-2 transition-colors",
                 !collapsed && "bg-muted border border-border"
@@ -290,8 +292,8 @@ export default function PortalLayout({
     
           {/* Wrapper para o conteúdo principal, que agora é scrollável */}
           <div
-            className="flex-1 overflow-y-auto transition-[padding] duration-200 ease-in-out"
-            style={{ paddingLeft: "var(--sidebar-w, 256px)" }}
+            className="min-w-0 flex-1 overflow-y-auto transition-[padding] duration-200 ease-in-out"
+            style={{ paddingLeft: sidebarW }}
           >
             <main className="flex flex-col min-h-full">
               {/* Header modernizado */}

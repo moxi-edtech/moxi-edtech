@@ -11,7 +11,8 @@ import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import { 
     TrendingUp, 
-    Calendar, 
+    Calendar,
+    Printer, 
     Wallet, 
     User, 
     ChevronRight, 
@@ -35,7 +36,7 @@ type StatusResponse = {
 
 type FinanceResponse = { id: string; valor: number; mes: string | null } | null;
 type GradeItem = { disciplina: string; tipo: string; nota: number | null; data: string | null };
-type AcademicEvent = { id: string; nome: string; data_inicio: string; data_fim: string; tipo: string };
+type AcademicEvent = { id: string; nome: string; data_inicio: string; data_fim: string; tipo: string; descricao?: string | null };
 
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 
@@ -223,6 +224,11 @@ export function TabHome() {
         </motion.div>
       )}
 
+      <section className="space-y-3 rounded-xl border border-border bg-card p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold text-klasse-green">Próximas avaliações</h3><a href={"/api/aluno/home/academic-events?"+new URLSearchParams({modo:"imprimir",...(studentId?{studentId}:{})})} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 text-xs font-semibold text-klasse-green"><Printer size={16}/> Ver / imprimir calendário</a></div>
+        {events.filter(e=>e.tipo==="AVALIACAO_ESCOLAR").slice(0,3).map(e=><div key={e.id} className="flex items-start gap-3 border-t border-border pt-2 text-sm"><Calendar size={18} className="shrink-0 text-klasse-green"/><div className="min-w-0"><p className="font-medium break-words">{e.nome}</p><p className="text-xs text-muted-foreground">{format(parseISO(e.data_inicio),"dd/MM/yyyy")} {e.descricao??""}</p></div></div>)}
+        {!events.some(e=>e.tipo==="AVALIACAO_ESCOLAR")&&<p className="text-xs text-muted-foreground">Nenhuma avaliação publicada na agenda próxima.</p>}
+      </section>
       {/* TIMELINE: Próximas Avaliações / Eventos */}
       <section className="space-y-4">
         <div className="flex items-center justify-between px-1">
@@ -231,7 +237,7 @@ export function TabHome() {
         </div>
         
         <div className="grid gap-3">
-            {events.slice(0, 2).map((ev) => (
+            {events.filter(e=>e.tipo!=="AVALIACAO_ESCOLAR").slice(0, 2).map((ev) => (
                 <div key={ev.id} className="flex items-center gap-4 rounded-xl bg-card p-4 border border-border shadow-sm">
                     <div className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl ${
                         ev.tipo === 'FERIADO' ? 'bg-rose-50 text-rose-600' : 

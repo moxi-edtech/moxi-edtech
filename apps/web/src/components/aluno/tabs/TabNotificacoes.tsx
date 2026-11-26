@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, ChevronRight } from "lucide-react";
+import { PortalSheet } from "@/components/portal/ui/PortalSheet";
 
 type Aviso = { id: string; titulo: string; resumo: string; origem: string; data: string };
 
@@ -10,6 +11,8 @@ export function TabNotificacoes() {
   const [failed, setFailed] = useState(false);
   const [items, setItems] = useState<Aviso[]>([]);
   const [retry, setRetry] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = items.find(item => item.id === selectedId);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -31,10 +34,9 @@ export function TabNotificacoes() {
   }, [retry]);
 
   return (
-    <section className="space-y-4" aria-labelledby="aluno-avisos-title">
+    <section className="space-y-6" aria-labelledby="aluno-avisos-title">
       <div className="space-y-1">
         <h1 id="aluno-avisos-title" className="text-2xl font-semibold tracking-tight text-primary">Avisos</h1>
-        <p className="text-sm text-muted-foreground">Mensagens e novidades da tua escola.</p>
       </div>
       {loading ? (
         <p role="status" className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">A carregar avisos…</p>
@@ -42,7 +44,7 @@ export function TabNotificacoes() {
         <div role="alert" className="rounded-xl border border-border bg-card p-4">
           <p className="text-sm font-semibold text-foreground">Não foi possível consultar os avisos.</p>
           <button type="button" onClick={() => setRetry(v => v + 1)}
-            className="mt-3 min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-primary hover:bg-muted">
+            className="mt-3 min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-primary hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
             Tentar novamente
           </button>
         </div>
@@ -52,18 +54,26 @@ export function TabNotificacoes() {
           <p className="text-sm text-muted-foreground">Ainda não há avisos publicados.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {items.map(a => (
-            <article key={a.id} className="rounded-xl border border-border bg-card p-4">
+            <button type="button" key={a.id} onClick={()=>setSelectedId(a.id)} aria-haspopup="dialog" className="klasse-portal-press flex w-full min-w-0 items-start gap-3 rounded-xl border border-border bg-card p-3 text-left sm:p-4">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald/10 text-emerald dark:text-emerald-300"><Bell className="h-4 w-4" aria-hidden="true" /></span>
+              <div className="min-w-0 flex-1 break-words">
               <h2 className="text-sm font-semibold text-foreground">{a.titulo}</h2>
-              {a.resumo && <p className="mt-2 text-sm text-muted-foreground">{a.resumo}</p>}
+              {a.resumo && <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{a.resumo}</p>}
               <p className="mt-2 text-xs text-muted-foreground">
                 {[a.origem, a.data && !Number.isNaN(Date.parse(a.data)) ? new Date(a.data).toLocaleDateString("pt-AO") : ""].filter(Boolean).join(" · ")}
               </p>
-            </article>
+              </div>
+              <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            </button>
           ))}
         </div>
       )}
+      <PortalSheet open={Boolean(selected)&&!failed&&!loading} onClose={()=>setSelectedId(null)} title={selected?.titulo || "Aviso"} description={selected?.origem || "Comunicação da escola"} size="expanded">
+        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{selected?.resumo || "Sem informação adicional."}</p>
+        {selected?.data && !Number.isNaN(Date.parse(selected.data)) && <p className="text-xs text-muted-foreground">{new Date(selected.data).toLocaleDateString("pt-AO")}</p>}
+      </PortalSheet>
     </section>
   );
 }

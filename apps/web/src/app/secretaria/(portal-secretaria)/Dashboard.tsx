@@ -7,6 +7,7 @@ import {
   FileText,
   Banknote,
   CalendarX,
+  CalendarCheck,
   FileEdit,
   AlertCircle,
   UserPlus,
@@ -33,6 +34,7 @@ import OperacoesPainelHub from "@/components/layout/operacoes/OperacoesPainelHub
 import StatCard from "@/components/shared/StatCard";
 import SecaoLabel from "@/components/shared/SecaoLabel";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
+import ExpedienteDashboardCard from "@/components/secretaria/ExpedienteDashboardCard";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
 import { FichaRapidaModal } from "@/components/secretaria/FichaRapidaModal";
 import type { DashboardCounts, DashboardRecentes } from "./types";
@@ -73,6 +75,7 @@ const JustificarFaltaModal = dynamic(
   { ssr: false, loading: () => <ModalLoading /> }
 );
 
+const ProvasModal = dynamic(() => import("@/components/provas/ProvasModal"), {ssr:false});
 const QuickDocHub = dynamic(
   () => import("@/components/secretaria/QuickDocHub"),
   { ssr: false, loading: () => <ModalLoading /> }
@@ -107,6 +110,7 @@ export function Dashboard({
   const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
   const pathname = usePathname();
   const [filaOpen, setFilaOpen] = useState(false);
+  const [provasOpen,setProvasOpen]=useState(false);
   const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
   const [nowMs] = useState(() => Date.now());
   const [userName, setUserName] = useState<string | null>(null);
@@ -451,14 +455,23 @@ export function Dashboard({
             </div>
 
             <div>
-              <SecaoLabel>Balcão de Atendimento</SecaoLabel>
+              <SecaoLabel>Ações rápidas</SecaoLabel>
               <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {escolaId && <ExpedienteDashboardCard escolaId={escolaId} portal="secretaria" />}
                 <AcaoRapidaCard
                   icon={<Printer className="h-5 w-5" />}
                   label="Listas de turmas"
                   sublabel="Exportação nominal"
                   onClick={() => setBalcaoModal("turma_docs")}
                 />
+                {escolaParam && <AcaoRapidaCard
+                  icon={<Printer className="h-5 w-5" />}
+                  label="Imprimir provas"
+                  sublabel="Por turma ou aluno"
+                  onClick={()=>setProvasOpen(true)}
+                  dialogOpen={provasOpen}
+                />}
+                {escolaParam && <AcaoRapidaCard icon={<CalendarCheck className="h-5 w-5"/>} label="Calendário de Avaliações" sublabel="Planear e imprimir" href={buildPortalHref(escolaParam,"/secretaria/operacoes-academicas/calendario-avaliacoes")} />}
                 <AcaoRapidaCard
                   icon={<Banknote className="h-5 w-5" />}
                   label="Pagar Propina"
@@ -574,6 +587,7 @@ export function Dashboard({
         <QuickDocHub escolaId={escolaId} initialNominal />
       </ModalShell>
 
+      {provasOpen&&escolaParam&&<ProvasModal escolaId={escolaParam} onClose={()=>setProvasOpen(false)}/>}
       <FilaAtendimentoModal open={filaOpen} onClose={() => setFilaOpen(false)} />
       <ModalShell
         open={balcaoModal === "matricular"}

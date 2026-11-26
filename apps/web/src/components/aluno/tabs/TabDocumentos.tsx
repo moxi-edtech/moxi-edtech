@@ -9,7 +9,7 @@ import { PortalStatus } from "@/components/portal/ui/PortalStatus";
 import { PortalAction } from "@/components/portal/ui/PortalAction";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { BOLETIM_SERVICE_CODE, BOLETIM_LEGACY_SERVICE_CODE, isBoletimServiceCode } from "@/lib/aluno/boletimAccess";
+import { BOLETIM_SERVICE_CODE } from "@/lib/aluno/boletimAccess";
 import { buildPortalHref, getEscolaParamFromPath } from "@/lib/navigation";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { formatKwanza } from "@/lib/formatters";
@@ -42,10 +42,12 @@ interface DocumentoCatalogo {
   exige_pagamento_antes_de_liberar: boolean;
   reject_reason?: string | null;
   pagamento_configurado?: boolean;
+  indisponivel_motivo?: string | null;
 }
 
 const DIGITAL_DOCUMENT_CODES = new Set([
   'DOC_DECLARACAO_FREQUENCIA',
+  'DOC_DECLARACAO_NOTAS',
   BOLETIM_SERVICE_CODE,
   'DOC_COMPROVANTE_MATRICULA',
   'DOC_CARTAO_ESTUDANTE',
@@ -64,7 +66,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   const rawServiceCode = searchParams?.get("servico") ?? null;
   // Deep links legados continuam a abrir o único boletim, sem iniciar nova cobrança antiga.
   const requestedService = focusServiceCode ?? rawServiceCode;
-  const serviceCode = requestedService === BOLETIM_LEGACY_SERVICE_CODE ? BOLETIM_SERVICE_CODE : requestedService;
+  const serviceCode = requestedService;
   const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
   const queryParams = new URLSearchParams();
   if (studentId) queryParams.set("studentId", studentId);
@@ -81,7 +83,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   const [selectedDoc, setSelectedDoc] = useState<DocumentoCatalogo | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
   const visibleDocs = docs.filter((doc) =>
-    doc.codigo !== BOLETIM_LEGACY_SERVICE_CODE && (!serviceCode || doc.codigo === serviceCode)
+    (!serviceCode || doc.codigo === serviceCode)
   );
 
   const fetchCatalogo = useCallback(async (quiet = false) => {
@@ -153,7 +155,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
 
   const handleAction = async (doc: DocumentoCatalogo) => {
     if (doc.pagamento_configurado === false) {
-      error("Taxa não configurada", "A secretaria precisa definir o valor do boletim antes de o aluno fazer o pagamento.");
+      error("Documento indisponível", doc.indisponivel_motivo ?? "A secretaria precisa definir o valor antes de o aluno fazer o pagamento.");
       return;
     }
     if (doc.status === 'granted') {
@@ -164,7 +166,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
          if (academicYearId) nav.set("ano_letivo_id", academicYearId);
          router.push(buildPortalHref(escolaSlug, `/aluno/avisos${nav.size ? `?${nav.toString()}` : ""}`));
        }
-    } else if (doc.status === 'rejected' && isBoletimServiceCode(doc.codigo)) {
+    } else if (doc.status === 'rejected' && doc.pagamento_intent_id) {
       if (!doc.pagamento_intent_id) {
         error("Comprovativo não localizado", "Contacte a secretaria. Não solicite outro boletim nem pague novamente.");
         return;
@@ -220,7 +222,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   const handleDownload = async (doc: DocumentoCatalogo) => {
     setLoading(doc.codigo);
     try {
-      const isBoletim = isBoletimServiceCode(doc.codigo);
+      const isBoletim = doc.codigo === BOLETIM_SERVICE_CODE;
       if (isBoletim) {
         const res = await fetch(`/api/aluno/boletim/pdf${query}`, { cache: "no-store" });
         if (!res.ok) {
@@ -257,15 +259,11 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
   if (fetching) return <PortalLoadingState label="A carregar documentos" rows={3} className="pb-4" />;
 
   return (
-    <div className="min-w-0 space-y-4 pb-8">
+    <div className="min-w-0 space-y-5">
       {/* Cabeçalho */}
-      {!embedded && <header className="px-1 space-y-1">
+      {!embedded && <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-primary">Secretaria Digital</h1>
-        <p className="text-sm leading-5 text-muted-foreground">
-          Solicita documentos e acompanha os teus pedidos.
-        </p>
       </header>}
-      {embedded && <p className="text-sm leading-6 text-muted-foreground">Solicita documentos e acompanha o estado dos teus pedidos.</p>}
 
       {catalogError ? (
         <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-foreground" role="alert">
@@ -282,24 +280,24 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
            description={serviceCode ? "Consulta outros serviços ou contacta a secretaria." : "A secretaria ainda não publicou serviços de documentação."}
          />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {visibleDocs.map((doc) => (
              <PortalSurface key={doc.id} as="article" className="min-w-0 space-y-2 rounded-xl">
                <div className="flex min-w-0 items-start gap-3">
-                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
-                   doc.status === "granted" ? "border-emerald-100 bg-emerald-50 text-emerald-700" :
-                   doc.status === "pending_payment" ? "border-amber-100 bg-amber-50 text-amber-700" :
-                   doc.status === "pending" || doc.status === "blocked" ? "border-blue-100 bg-blue-50 text-blue-700" :
-                   doc.status === "rejected" ? "border-rose-100 bg-rose-50 text-rose-700" :
-                   "border-border bg-muted text-muted-foreground"
+                 <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                   doc.status === "granted" ? "bg-emerald/10 text-emerald dark:text-emerald-300" :
+                   doc.status === "pending_payment" ? "bg-amber/15 text-amber-700 dark:text-amber-300" :
+                   doc.status === "pending" || doc.status === "blocked" ? "bg-amber/15 text-amber-700 dark:text-amber-300" :
+                   doc.status === "rejected" ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300" :
+                   "bg-muted text-muted-foreground"
                  }`}>
-                   <FileText aria-hidden="true" className="h-5 w-5" />
+                   <FileText aria-hidden="true" className="h-4 w-4" />
                  </div>
                  <div className="min-w-0 flex-1 space-y-1.5">
                    <div className="flex flex-wrap items-start gap-2">
                      <h3 className="min-w-0 break-words text-sm font-semibold leading-6 text-foreground sm:text-base">{doc.nome}</h3>
                      <span className="inline-flex max-w-full shrink-0 items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-                       {doc.pagamento_configurado === false ? "Taxa por definir" : doc.valor > 0 ? formatKwanza(doc.valor) : "Gratuito"}
+                       {doc.pagamento_configurado === false ? "Indisponível" : doc.valor > 0 ? formatKwanza(doc.valor) : "Gratuito"}
                      </span>
                    </div>
                    {doc.descricao && (
@@ -325,7 +323,7 @@ export function TabDocumentos({ embedded = false, focusServiceCode = null, onOpe
                      <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> A processar
                    </span>
                  ) : doc.pagamento_configurado === false ? (
-                   <p className="text-xs font-medium leading-5 text-amber-800">Taxa ainda não disponível.</p>
+                   <p className="text-xs font-medium leading-5 text-amber-800">{doc.indisponivel_motivo ?? "Taxa ainda não disponível."}</p>
                  ) : (
                    <PortalAction onClick={() => void handleAction(doc)}
                       variant={["pending", "blocked"].includes(doc.status) ? "outline" : "primary"}

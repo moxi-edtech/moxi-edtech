@@ -210,7 +210,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       title: "Horários",
       desc: "Slots e quadro automático.",
       icon: CalendarCheck,
-      href: portalHref("/horarios/slots"),
+      href: `${portalHref("/horarios/quadro")}?configurar=1`,
     },
   ];
 

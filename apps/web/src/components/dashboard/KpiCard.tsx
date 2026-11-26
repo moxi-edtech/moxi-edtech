@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { OperationalMetricCard } from "@/components/shared/OperationalMetricCard";
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
@@ -62,6 +63,13 @@ export function KpiCard({
       chart: "var(--chart-2)",
     },
   }[variant];
+
+  if (compact) {
+    if (href) {
+      return <OperationalMetricCard label={label} value={value} icon={Icon} needsAttention={variant === "warning"} description={description} href={href} />;
+    }
+    return <OperationalMetricCard label={label} value={value} icon={Icon} needsAttention={variant === "warning"} description={description} />;
+  }
 
   const Content = (
     <>

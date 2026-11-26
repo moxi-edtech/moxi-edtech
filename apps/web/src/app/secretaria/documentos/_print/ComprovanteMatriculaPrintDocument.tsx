@@ -65,7 +65,7 @@ export async function ComprovanteMatriculaPrintDocument({
 
   return (
     <div className={`min-h-screen ${styles.printRoot} font-serif text-slate-900`}>
-      <PrintTrigger />
+      <PrintTrigger autoPrint={false} />
       <div className={`${styles.sheet} ${styles.comprovanteSheet} shadow-lg`}>
         <div className={`${styles.comprovanteContent} space-y-8 print:space-y-4`}>
           <header className="text-center space-y-2 border-b border-slate-200 pb-6 print:pb-3">

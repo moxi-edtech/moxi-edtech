@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Clock, MapPin, User, Calendar, FileCheck, CheckCircle2 } from "lucide-react";
+import { Clock, Calendar, FileCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { AlunoCard } from "@/components/aluno/shared/AlunoCard";
+import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { TableSkeleton } from "@/components/feedback/FeedbackSystem";
 
 type Slot = {
@@ -59,7 +59,7 @@ const DIAS_SEMANA = [
   { id: 5, nome: "Sexta" },
 ];
 
-export function TabHorario() {
+export function TabHorario({ dailyOnly = false }: { dailyOnly?: boolean } = {}) {
   const searchParams = useSearchParams();
   const studentId = searchParams?.get("aluno") ?? null;
   const academicYearId = searchParams?.get("ano_letivo_id") ?? null;
@@ -72,7 +72,10 @@ export function TabHorario() {
   const [resolvedRequestKey, setResolvedRequestKey] = useState<string | null>(null);
   const visibleData = resolvedRequestKey === requestKey ? data : null;
   const timetableLoading = loading || resolvedRequestKey !== requestKey;
-  const [activeDay, setActiveDay] = useState<number>(Math.min(5, Math.max(1, new Date().getDay())));
+  const [activeDay, setActiveDay] = useState<number>(() => {
+    const day = new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Luanda", weekday: "short" }).format(new Date());
+    return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(day);
+  });
   const [activeTab, setActiveTab] = useState<"horario" | "agenda">("horario");
   const [academicEvents, setAcademicEvents] = useState<AcademicEvent[]>([]);
   const [agendaLoading, setAgendaLoading] = useState(false);
@@ -161,43 +164,44 @@ export function TabHorario() {
   }, [studentId, academicYearId, activeTab, agendaRetry]);
 
   return (
-    <div className="space-y-6 pb-8">
-      <header className="space-y-1 px-1">
-        <h2 className="text-xl font-semibold text-primary tracking-tight">Horário e calendário</h2>
-        <p className="text-xs font-medium text-muted-foreground">Consulta o teu horário e os próximos eventos do ano letivo.</p>
+    <div className="min-w-0 space-y-6">
+      {!dailyOnly && <header className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-primary">Horário</h1>
         {visibleData?.context?.anoLetivoLabel && (
           <p className="text-xs font-semibold text-primary">
             Ano letivo {visibleData.context.anoLetivoLabel}
             {visibleData.context.mode === "HISTORICAL_READ" ? " · Histórico" : ""}
           </p>
         )}
-      </header>
+      </header>}
 
       {/* Switcher Sóbrio de Modos */}
-      <div className="flex w-full rounded-2xl bg-muted p-1">
+      {!dailyOnly && <div role="group" aria-label="Horário e calendário" className="flex w-full rounded-xl bg-muted p-1">
         <button
           type="button"
           onClick={() => setActiveTab("horario")}
-          className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${
+          aria-pressed={activeTab === "horario"}
+          className={`min-h-11 flex-1 rounded-xl py-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring transition-colors ${
             activeTab === "horario"
-              ? "bg-card text-primary shadow-sm ring-1 ring-klasse-gold/40"
+              ? "bg-accent text-accent-foreground ring-1 ring-primary/15"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Grade de Aulas
+          Aulas
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("agenda")}
-          className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${
+          aria-pressed={activeTab === "agenda"}
+          className={`min-h-11 flex-1 rounded-xl py-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring transition-colors ${
             activeTab === "agenda"
-              ? "bg-card text-primary shadow-sm ring-1 ring-klasse-gold/40"
+              ? "bg-accent text-accent-foreground ring-1 ring-primary/15"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
           Próximos eventos
         </button>
-      </div>
+      </div>}
 
       {/* MODO 1: Grade de Aulas Semanal */}
       {activeTab === "horario" && (timetableLoading ? (
@@ -228,15 +232,19 @@ export function TabHorario() {
         </section>
       ) : (
         <div className="space-y-4 animate-in fade-in duration-200">
+          {dailyOnly && visibleData.context?.anoLetivoLabel && <p className="text-xs text-muted-foreground">Ano lectivo {visibleData.context.anoLetivoLabel}</p>}
           {/* Selector de Dias */}
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <div role="group" aria-label="Dia da semana" className="grid grid-cols-5 gap-1.5">
             {DIAS_SEMANA.map((dia) => (
               <button
                 key={dia.id}
+                type="button"
+                aria-pressed={activeDay === dia.id}
+                aria-label={dia.nome.slice(0,3)}
                 onClick={() => setActiveDay(dia.id)}
-                className={`flex-shrink-0 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                className={`min-h-11 min-w-0 rounded-xl px-1 py-2 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-ring transition-colors ${
                   activeDay === dia.id
-                    ? "bg-klasse-gold text-klasse-gold-900 shadow-sm"
+                    ? "bg-accent text-accent-foreground ring-1 ring-primary/15"
                     : "bg-card text-foreground border border-border hover:bg-muted"
                 }`}
               >
@@ -266,44 +274,15 @@ export function TabHorario() {
               }
 
               return (
-                <AlunoCard key={slot.id} className="relative overflow-hidden group border border-border/80 bg-card p-4 rounded-2xl">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0 pt-0.5 text-center min-w-[48px]">
-                      <div className="text-xs font-semibold text-foreground">{slot.inicio}</div>
-                      <div className="text-[10px] font-semibold text-muted-foreground">{slot.fim}</div>
-                    </div>
-
-                    <div className="flex-grow min-w-0 space-y-1">
-                      <h4 className="text-sm font-bold text-foreground truncate">
-                        {aula?.disciplina || "Sem aula agendada"}
-                      </h4>
-                      
-                      {aula && (
-                        <div className="flex flex-wrap gap-3 pt-0.5">
-                          <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                            <User className="h-3 w-3" />
-                            <span className="truncate max-w-[140px]">{aula.professor}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                            <MapPin className="h-3 w-3" />
-                            <span>{aula.sala}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {aula && (
-                      <div className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-xl bg-muted/40 text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                      </div>
-                    )}
-                  </div>
-                </AlunoCard>
+                <AcaoRapidaCard key={slot.id} dashboardCompact mobileCompact
+                  icon={<Clock className="h-4 w-4" />} unavailable={!aula}
+                  label={aula?.disciplina || "Sem aula agendada"}
+                  sublabel={[slot.inicio + " – " + slot.fim, aula?.professor, aula?.sala].filter(Boolean).join(" · ")} />
               );
             })}
 
             {slotsPorDia.length === 0 && (
-              <div className="py-12 text-center text-xs text-muted-foreground font-medium">
+              <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
                 Nenhuma aula agendada para este dia.
               </div>
             )}
@@ -330,26 +309,10 @@ export function TabHorario() {
               <p className="mt-1 text-sm text-muted-foreground">Ainda não há avaliações ou eventos futuros publicados para o teu curso.</p>
             </div>
           ) : academicEvents.map((item) => (
-            <article key={item.id} className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-start gap-3">
-                <FileCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground">{item.nome}</p>
-                  {item.tipo === "AVALIACAO_ESCOLAR" && item.descricao && (
-                    <p className="mt-1 text-xs text-primary">{item.descricao}</p>
-                  )}
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {formatAcademicDate(item.data_inicio)}
-                    {item.data_fim.slice(0, 10) !== item.data_inicio.slice(0, 10)
-                      ? ` — ${formatAcademicDate(item.data_fim)}` : ""}
-                  </p>
-                </div>
-              </div>
-            </article>
+            <AcaoRapidaCard key={item.id} dashboardCompact mobileCompact
+              icon={<FileCheck className="h-4 w-4" />} label={item.nome}
+              sublabel={[formatAcademicDate(item.data_inicio) + (item.data_fim.slice(0, 10) !== item.data_inicio.slice(0, 10) ? " – " + formatAcademicDate(item.data_fim) : ""), item.tipo === "AVALIACAO_ESCOLAR" ? item.descricao : null].filter(Boolean).join(" · ")} />
           ))}
-          {academicEvents.length > 0 && (
-            <p className="text-xs text-muted-foreground">As avaliações publicadas pela escola aparecem aqui com as datas atualizadas.</p>
-          )}
         </section>
       )}
 

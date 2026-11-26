@@ -1,1 +1,14 @@
-export { default } from "@/app/secretaria/(portal-secretaria)/fecho/page";
+import { redirect } from "next/navigation";
+import { daySchema, todayLuanda } from "@/lib/secretaria/expediente";
+
+export const dynamic = "force-dynamic";
+
+export default async function SecretariaFechoAlias({params,searchParams}:{
+  params:Promise<{id:string}>;
+  searchParams:Promise<{date?:string}>;
+}) {
+  const {id}=await params;
+  const parsed=daySchema.safeParse((await searchParams).date);
+  const date=parsed.success&&parsed.data<=todayLuanda()?"&date="+encodeURIComponent(parsed.data):"";
+  redirect("/escola/"+encodeURIComponent(id)+"/secretaria/fecho-diario?view=cash"+date);
+}

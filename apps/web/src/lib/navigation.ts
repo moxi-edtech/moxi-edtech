@@ -56,6 +56,7 @@ export function toContextualPortalPath(path: string, pathname: string | null | u
     ["/secretaria/calendario", "/operacoes/calendario"],
     ["/secretaria/documentos-oficiais", "/operacoes/documentos-oficiais"],
     ["/secretaria/documentos", "/operacoes/documentos"],
+    ["/secretaria/provas", "/operacoes/provas"],
     ["/secretaria/operacoes-academicas", "/operacoes/academico"],
     ["/secretaria/importacoes", "/operacoes/importacoes"],
     ["/secretaria/exportacoes", "/operacoes/exportacoes"],
@@ -68,6 +69,7 @@ export function toContextualPortalPath(path: string, pathname: string | null | u
     ["/secretaria/migracao", "/operacoes/migracao"],
     ["/horarios", "/operacoes/horarios"],
     ["/financeiro/radar", "/operacoes/radar"],
+    ["/financeiro/turmas-alunos", "/operacoes/turmas-alunos"],
     ["/financeiro", "/operacoes/financeiro"],
   ];
 
@@ -126,4 +128,17 @@ export function buildStudentPortalHref(
   const href = buildPortalHref(getEscolaParamFromPath(pathname), path);
   const query = params.toString();
   return query ? `${href}?${query}` : href;
+}
+
+/** Navigation between the existing financial workspaces. Only carry the academic
+ * year, never unrelated filters, IDs or a relative path from the current URL. */
+export function buildFinancialWorkspaceHref(
+  escola: string | null | undefined,
+  workspace: "radar" | "turmas-alunos" | "cobrancas",
+  pathname: string | null | undefined,
+  academicYearId?: string | null,
+): string {
+  const href = buildContextualPortalHref(escola, "/financeiro/" + workspace, pathname);
+  if (!academicYearId) return href;
+  return href + "?" + new URLSearchParams({ ano_letivo_id: academicYearId }).toString();
 }
