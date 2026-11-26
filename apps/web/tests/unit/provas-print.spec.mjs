@@ -447,3 +447,32 @@ test("bounded matrix, determinant and system validation and cell editing",()=>{
  const proof=provaHtml({...base,conteudo:good.map(latex=>({tipo:"calculo",texto:latex,linhas:2,rich:{version:1,segments:[{kind:"math",latex}]}}))},"Escola");
  assert.equal((proof.match(/<mtable/g)||[]).length,4);
 });
+
+test("illustrated qualitative questions retain existing scoring, reject external sources and deduplicate print figures",()=>{
+ const {provaSchema}=require("../../src/lib/provas/schema.ts");
+ const {cotacaoStatus}=require("../../src/lib/provas/cotacao.ts");
+ const {figureDimensions,safeProvaFigure}=require("../../src/lib/provas/figures.ts");
+ const src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==";
+ const figure={src,alt:'Figura <script>alert(1)</script>'};
+ const block={tipo:"desenho",texto:"Observe e pinte.",linhas:0,figuras:[figure,figure]};
+ assert.deepEqual(figureDimensions(src),{width:80,height:40});
+ assert.equal(safeProvaFigure(figure)?.alt,figure.alt);
+ assert.equal(provaSchema.safeParse({...base,conteudo:[block]}).success,true);
+ assert.equal(cotacaoStatus([block],0).ready,true);
+ assert.equal(cotacaoStatus([{...block,cotacao_cent:100}],0).ready,false);
+ for(const bad of ["https://evil.test/x.png","data:image/svg+xml;base64,PHN2Zz4=","data:image/png;base64,AAAA",src+"!"]){
+  const badBlock={...block,figuras:[{src:bad,alt:"Figura"}]};
+  assert.equal(provaSchema.safeParse({...base,conteudo:[badBlock]}).success,false);
+  assert.doesNotMatch(provaHtml({...base,conteudo:[badBlock]},"Escola"),/class="question-figure"/);
+ }
+ assert.equal(provaSchema.safeParse({...base,conteudo:[{...block,tipo:"grupo"}]}).success,false);
+ assert.equal(provaSchema.safeParse({...base,conteudo:[{...block,figuras:Array(7).fill(figure)}]}).success,false);
+ assert.equal(provaSchema.safeParse({...base,conteudo:Array(13).fill(block)}).success,false);
+ const recipient={nome:"Estudante",turma:"A",numero_chamada:null};
+ const html=provaHtml({...base,conteudo:[block]},"Escola",{recipients:[recipient,recipient]});
+ assert.equal(html.split(src).length-1,1,"only one encoded asset in the nominal document");
+ assert.equal((html.match(/class="question-figure"/g)||[]).length,4);
+ assert.match(html,/Figura &lt;script&gt;/);
+ assert.doesNotMatch(html,/<script\b/);
+ assert.doesNotMatch(html,/class="cotacao"/);
+});

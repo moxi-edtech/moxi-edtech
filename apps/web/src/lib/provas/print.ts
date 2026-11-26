@@ -5,6 +5,7 @@ import { mathMarkup } from "./math";
 import { PROVA_FOOTER,safeLogoData } from "./branding";
 import { PROVA_PAPER as P,respostaLayout,chooseComposicao,COMPOSICAO,alternativesInColumns } from "./layout";
 import { formatCotacao,blockNumbering,groupSummaries,groupTitleInput } from "./questionTemplates";
+import { safeProvaFigure,figureDimensions } from "./figures";
 const esc=(s:unknown)=>String(s??"").replace(/[&<>"']/g,c=>(({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"} as Record<string,string>)[c]!));
 export function blocoHtml(b:Bloco):string{
  if(!b.rich)return esc(b.texto);
@@ -19,6 +20,16 @@ export function blocoHtml(b:Bloco):string{
  }).join("");
 }
 export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:string;draft?:boolean;recipients?:readonly PrintRecipient[];includeName?:boolean;logo?:string|null;blankSheet?:boolean}={}){
+ const figureIds=new Map<string,{id:string;width:number;height:number}>();
+ const figuresHtml=(b:Bloco)=>{
+  const figures=(b.figuras??[]).slice(0,6).flatMap(value=>{
+   const f=safeProvaFigure(value);if(!f)return [];
+   let entry=figureIds.get(f.src);
+   if(!entry){const dims=figureDimensions(f.src)!;entry={id:"prova-figure-"+figureIds.size,...dims};figureIds.set(f.src,entry);}
+   return ['<svg class="question-figure" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="'+esc(f.alt)+'" viewBox="0 0 '+entry.width+' '+entry.height+'"><use href="#'+entry.id+'"/></svg>'];
+  });
+  return figures.length?'<div class="figure-grid figures-'+Math.min(3,figures.length)+'">'+figures.join("")+'</div>':"";
+ };
  const numbering=blockNumbering(prova.conteudo);
  const groups=groupSummaries(prova.conteudo);
  const blocks=options.blankSheet?'<section class="blank-writing" aria-label="Espaço para respostas">'+Array.from({length:18},()=>'<div class="linha"></div>').join("")+'</section>':prova.conteudo.map((b,index)=>{
@@ -37,7 +48,7 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
     const total=group.hasNumeric&&group.assigned===group.questions?'<span class="group-total"> · '+esc(formatCotacao(group.total))+' val.</span>':"";
     return '<h3>'+title+total+'</h3>';
    }
-   if(b.tipo==="texto")return '<div class="apoio">'+blocoHtml(b)+'</div>';
+   if(b.tipo==="texto")return '<div class="apoio">'+blocoHtml(b)+figuresHtml(b)+'</div>';
    const prefix=numbering[index].prefix;
    const suffix=b.tipo==="verdadeiro_falso"?'<span class="vf" aria-label="Verdadeiro ou falso">( &nbsp; ) V &nbsp; ( &nbsp; ) F</span>':"";
    const cotacao=b.cotacao_cent===undefined?"":'<span class="cotacao">('+esc(formatCotacao(b.cotacao_cent))+' val.)</span>';
@@ -47,7 +58,7 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
    const first=answer.kind==="lines"?'<div class="resposta resposta-inicio">'+lines[0]+'</div>':answer.kind==="box"?'<div class="resposta"><div class="espaco" style="height:'+answer.heightMm+'mm"></div></div>':"";
    const rest=answer.kind==="lines"&&answer.count>1?'<div class="resposta-cont">'+lines.slice(1).join("")+'</div>':"";
    const long=b.texto.length+(b.alternativas?.reduce((n,a)=>n+a.length,0)??0)>1000||answer.heightMm>=104;
-   return '<section class="questao '+(b.tipo==="alinea"?"alinea":"")+(long?" long":"")+'"><div class="questao-inicio"><div class="enunciado">'+cotacao+'<strong class="question-number">'+esc(prefix)+'</strong> '+blocoHtml(b)+suffix+'</div>'+alternatives+first+'</div>'+rest+'</section>';
+   return '<section class="questao '+(b.tipo==="alinea"?"alinea":"")+(long?" long":"")+'"><div class="questao-inicio"><div class="enunciado">'+cotacao+'<strong class="question-number">'+esc(prefix)+'</strong> '+blocoHtml(b)+suffix+'</div>'+figuresHtml(b)+alternatives+first+'</div>'+rest+'</section>';
  }).join("");
  const tr=["I","II","III"][prova.trimestre-1]??"";
  const recipients=options.recipients??[null];
@@ -57,6 +68,7 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
  const spacing=COMPOSICAO[composition];
  const logoDefs=logo?'<svg class="logo-defs" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true"><defs><symbol id="prova-school-logo" viewBox="0 0 100 100"><image width="100" height="100" preserveAspectRatio="xMidYMid meet" href="'+esc(logo)+'"/></symbol></defs></svg>':'';
  const logoMark=logo?'<svg class="school-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Logótipo da escola"><use href="#prova-school-logo"/></svg>':'';
+ const figureDefs=figureIds.size?'<svg class="logo-defs" xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true"><defs>'+Array.from(figureIds,([src,f])=>'<symbol id="'+f.id+'" viewBox="0 0 '+f.width+' '+f.height+'"><image width="'+f.width+'" height="'+f.height+'" href="'+esc(src)+'"/></symbol>').join("")+'</defs></svg>':"";
  const documentTitle=provaDisplayTitle(prova);
  const subtitle=provaSubtitle(prova);
  const showTrim=!prova.tipo_prova||["professor","trimestral","segunda_chamada","diagnostica","outro"].includes(prova.tipo_prova);
@@ -98,6 +110,7 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
  .enunciado,.apoio,h3{white-space:pre-wrap;overflow-wrap:anywhere}
  .apoio{margin:0 0 var(--question-gap);orphans:3;widows:3}
  .group-total{font-size:10pt;font-weight:normal;white-space:nowrap}\n h3{text-align:center;font-size:12pt;margin:var(--group-top) 0 var(--group-bottom);break-after:avoid-page;page-break-after:avoid}
+ .figure-grid{display:grid;gap:3mm;margin:3mm 0;break-inside:avoid-page;page-break-inside:avoid}.figures-1{grid-template-columns:1fr}.figures-2{grid-template-columns:repeat(2,minmax(0,1fr))}.figures-3{grid-template-columns:repeat(3,minmax(0,1fr))}.question-figure{display:block;width:100%;height:40mm;max-width:100%;overflow:hidden}.figures-1 .question-figure{height:65mm}.figure-grid+*{break-before:avoid-page}
  .formula{display:inline-block;vertical-align:middle;max-width:100%;break-inside:avoid-page}.formula math{font-size:1.05em}
  .cotacao{float:right;margin-left:4mm;font-size:10pt;font-weight:normal;color:#444;white-space:nowrap}.alternativas{list-style:none;margin:var(--alternative-gap) 0 0;padding:0 0 0 5mm}.alternativas.duas-colunas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:5mm;row-gap:1mm;break-inside:avoid-page}.alternativas li{white-space:pre-wrap;overflow-wrap:anywhere;break-inside:avoid-page;page-break-inside:avoid}.alternativas li:last-child{break-after:avoid-page}.opcao{white-space:nowrap}\n .alinea{margin-left:5mm}.vf{display:inline-block;white-space:nowrap;margin-left:3mm;min-width:9mm}
  .resposta{margin-top:var(--answer-gap);break-before:avoid-page}.linha,.espaco{break-inside:avoid-page;page-break-inside:avoid}
@@ -108,7 +121,7 @@ export function provaHtml(prova:ProvaPrintInput,escola:string,options:{nonce?:st
  .draft{text-align:center;color:#555;font-size:10pt;letter-spacing:.1em}
  @media screen and (max-width:600px){.paper{min-height:0;margin:0 auto;padding:16px 12px}.meta{gap:6px}.school{font-size:12pt}.title{font-size:13pt}.student{flex-wrap:wrap}.student-line{min-width:50px}.alternativas.duas-colunas{grid-template-columns:1fr}}
  @media print{body{background:#fff}.paper{display:block;width:auto;margin:0;padding:0;max-width:none;min-height:0}.screen-footer{display:none}.controls{display:none}.paper+.paper{break-before:page;page-break-before:always}}`+
- '</style></head><body>'+controls+logoDefs+'<main>'+sheets+'</main></body></html>';
+ '</style></head><body>'+controls+logoDefs+figureDefs+'<main>'+sheets+'</main></body></html>';
 }
 
 /** Independent writing sheet: no assessment, enrollment or academic snapshot is persisted. */

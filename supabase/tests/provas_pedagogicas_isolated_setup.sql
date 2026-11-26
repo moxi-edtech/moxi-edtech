@@ -86,3 +86,10 @@ INSERT INTO public.escola_users VALUES ('00000000-0000-4000-8000-000000000001','
 -- Synthetic regime fixture; production uses the actual canonical resolver.
 ALTER TABLE public.turmas ADD COLUMN fixture_escala text DEFAULT 'quantitativa_secundario';
 CREATE FUNCTION public.resolve_regime_academico(p_turma_id uuid) RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT jsonb_build_object('escala',fixture_escala) FROM public.turmas WHERE id=p_turma_id $$;
+
+-- Existing production audit sink: synthetic fixture only, no extra production table.
+CREATE TABLE public.profiles(user_id uuid PRIMARY KEY);
+INSERT INTO public.profiles SELECT id FROM auth.users;
+CREATE TABLE public.audit_logs(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,escola_id uuid,user_id uuid REFERENCES public.profiles(user_id),actor_id uuid,acao text,tabela text,registro_id text,action text,entity text,entity_id text,details jsonb);
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.audit_logs FROM PUBLIC,anon,authenticated,service_role;

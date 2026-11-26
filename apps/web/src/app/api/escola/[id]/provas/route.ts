@@ -3,6 +3,7 @@ import { z } from "zod";
 import { provaAccess,summaryColumns,detailColumns } from "@/lib/provas/access";
 import { mutationSchema,blockSchema } from "@/lib/provas/schema";
 import { groupSummaries } from "@/lib/provas/questionTemplates";
+import { EXAM_REQUEST_MAX_BYTES } from "@/lib/provas/figures";
 import { loadProvaLogo } from "@/lib/provas/loadLogo";
 export const dynamic="force-dynamic";
 const json=(data:unknown,status=200)=>NextResponse.json(data,{status,headers:{"Cache-Control":"private, no-store"}});
@@ -53,8 +54,10 @@ export async function POST(req:Request,{params}:Context){
  const origin=req.headers.get("origin");
  if(origin&&origin!==new URL(req.url).origin)return json({error:"Origem inválida."},403);
  if(!req.headers.get("content-type")?.includes("application/json"))return json({error:"Formato inválido."},415);
+ const declared=Number(req.headers.get("content-length")??0);
+ if(declared>EXAM_REQUEST_MAX_BYTES)return json({error:"Prova demasiado extensa."},413);
  const body=await req.text();
- if(new TextEncoder().encode(body).byteLength>160000)return json({error:"Prova demasiado extensa."},413);
+ if(new TextEncoder().encode(body).byteLength>EXAM_REQUEST_MAX_BYTES)return json({error:"Prova demasiado extensa."},413);
  let raw:unknown;
  try{raw=JSON.parse(body);}catch{return json({error:"Pedido inválido."},400);}
  const parsed=mutationSchema.safeParse(raw);

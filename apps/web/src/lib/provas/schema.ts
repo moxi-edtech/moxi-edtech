@@ -2,8 +2,11 @@ import { z } from "zod";
 import { richSchema,richText } from "./rich";
 import { mathMarkup } from "./math";
 import { APRESENTACOES } from "./layout";
+import { FIGURE_MAX_PER_BLOCK,safeProvaFigure,contentFits } from "./figures";
+export const figureSchema=z.object({src:z.string(),alt:z.string().trim().min(1).max(160)}).strict().refine(f=>safeProvaFigure(f)!==null,"Figura PNG inválida ou demasiado grande");
 export const TIPOS = ["grupo","texto","discursiva","verdadeiro_falso","lacunas","escolha","calculo","desenho","alinea"] as const;
-export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().min(1).max(3000),linhas:z.number().int().min(0).max(20),rich:richSchema.optional(),alternativas:z.array(z.string().trim().min(1).max(500)).min(2).max(8).optional(),cotacao_cent:z.number().int().min(0).max(2000).optional()}).strict().superRefine((b,ctx)=>{
+export const blockSchema=z.object({tipo:z.enum(TIPOS),texto:z.string().trim().min(1).max(3000),linhas:z.number().int().min(0).max(20),rich:richSchema.optional(),figuras:z.array(figureSchema).min(1).max(FIGURE_MAX_PER_BLOCK).optional(),alternativas:z.array(z.string().trim().min(1).max(500)).min(2).max(8).optional(),cotacao_cent:z.number().int().min(0).max(2000).optional()}).strict().superRefine((b,ctx)=>{
+ if(b.figuras&&b.tipo==="grupo")ctx.addIssue({code:z.ZodIssueCode.custom,message:"Figuras não pertencem ao título do grupo",path:["figuras"]});
  if(b.alternativas!==undefined&&b.tipo!=="escolha")ctx.addIssue({code:z.ZodIssueCode.custom,message:"Alternativas apenas em escolha múltipla",path:["alternativas"]});
  if(b.cotacao_cent!==undefined&&["grupo","texto"].includes(b.tipo))ctx.addIssue({code:z.ZodIssueCode.custom,message:"Cotação apenas em perguntas",path:["cotacao_cent"]});
  if(b.rich&&richText(b.rich)!==b.texto)ctx.addIssue({code:z.ZodIssueCode.custom,message:"Conteúdo formatado inconsistente",path:["rich"]});
@@ -38,7 +41,7 @@ export const provaSchema=z.object({
  titulo:z.string().trim().min(1).max(160),classe:z.string().trim().min(1).max(80),disciplina:z.string().trim().min(1).max(120),
  ano_lectivo:z.string().regex(/^\d{4}\/\d{4}$/).refine(v=>[Number(v.slice(0,4)),Number(v.slice(0,4))+1].includes(Number(v.slice(5))),"Ano lectivo inválido"),
  trimestre:z.number().int().min(1).max(3),duracao:z.number().int().min(1).max(480),serie:z.string().trim().min(1).max(20),
- conteudo:z.array(blockSchema).min(1).max(80).refine(v=>v.reduce((n,b)=>n+(b.rich?.segments.filter(s=>s.kind==="math").length??0),0)<=80,"Até 80 fórmulas por prova")
+ conteudo:z.array(blockSchema).min(1).max(80).refine(v=>v.reduce((n,b)=>n+(b.rich?.segments.filter(s=>s.kind==="math").length??0),0)<=80,"Até 80 fórmulas por prova").refine(contentFits,"A prova excede o limite de figuras ou de tamanho")
 }).strict();
 export const provaWriteSchema=provaSchema.extend({tipo_prova:z.enum(TIPOS_PROVA).default("trimestral"),apresentacao:z.enum(APRESENTACOES).optional(),ano_letivo_id:z.string().uuid(),curso_matriz_id:z.string().uuid()});
 export const mutationSchema=z.discriminatedUnion("acao",[
@@ -52,7 +55,7 @@ export type AnoProva={id:string;label:string;ativo:boolean};
 export type ContextoProva={ano_letivo_id:string;curso_matriz_id:string;ano_lectivo:string;classe:string;disciplina:string;curso:string;trimestre:number;cotacao_max_cent:number|null};
 export type Bloco=z.infer<typeof blockSchema>;
 export type ProvaEstado="rascunho"|"em_revisao"|"aprovada"|"arquivada";
-export type ProvaResumo=Omit<ProvaInput,"conteudo">&{id:string;autor_id:string;estado:ProvaEstado;versao:number;atualizado_em:string};
+export type ProvaResumo=Omit<ProvaInput,"conteudo">&{id:string;autor_id:string|null;estado:ProvaEstado;versao:number;atualizado_em:string};
 export type Prova=ProvaResumo&{conteudo:Bloco[]};
 export const estados:Record<ProvaEstado,string>={rascunho:"Rascunho",em_revisao:"Em revisão",aprovada:"Aprovada",arquivada:"Arquivada"};
 export const tipos:Record<Bloco["tipo"],string>={grupo:"Grupo",texto:"Texto de apoio",discursiva:"Pergunta discursiva",verdadeiro_falso:"Verdadeiro ou falso",lacunas:"Preencher lacunas",escolha:"Escolha múltipla",calculo:"Cálculo",desenho:"Desenho",alinea:"Alínea"};

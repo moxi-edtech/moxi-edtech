@@ -27,6 +27,7 @@ try{
     assert.ok(data.dados.conteudo[0].rich.segments.some(s=>s.kind==="math"&&s.latex===(width===320?"\\frac{7}{5}+2^{3}":width===390?"\\frac{7}{5}":"2+3")));
     assert.deepEqual(data.dados.conteudo[1].alternativas,["Joule","Watt","Newton","Pascal"]);
     assert.equal(data.dados.conteudo[1].cotacao_cent,125);
+    assert.equal(data.dados.conteudo[1].figuras?.length,1);assert.equal(data.dados.conteudo[1].figuras[0].alt,"Ilustração de teste");assert.match(data.dados.conteudo[1].figuras[0].src,/^data:image\/png;base64,/);
     assert.equal(data.dados.apresentacao,"espacosa");
     assert.equal(data.dados.titulo,"Prova Trimestral");
     assert.equal(data.dados.serie,"A");
@@ -284,6 +285,13 @@ try{
    await noOverflow(page,"single question "+width);
    await page.screenshot({path:"apps/web/visual-evidence/provas/pergunta-individual-"+width+".png"});
   }
+  // Actual file picker, local re-encoding and preview on both browser engines.
+  const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAFAAAAAoCAIAAADmAupWAAAAT0lEQVR4nO3PQRHAIADAMMAIQpCE//9cbHddoqCd+57xJ+vrgLcZrjNcZ7jOcJ3hOsN1husM1xmuM1xnuM5wneE6w3WG6wzXGa4zXGe47gEClwEVK6MyPwAAAABJRU5ErkJggg==","base64");
+  const picker=dialog.getByLabel("Inserir imagem na pergunta 2",{exact:true});
+  await picker.setInputFiles({name:"figura.png",mimeType:"image/png",buffer:png});
+  await dialog.getByRole("img",{name:"Figura 1",exact:true}).waitFor();
+  await dialog.getByLabel("Descrição acessível (não revelar a resposta)").fill("Ilustração de teste");
+  await noOverflow(page,"figura "+width);
   await dialog.getByRole("button",{name:"Organizar perguntas",exact:true}).click();
   const order=dialog.getByRole("region",{name:"Organizar perguntas",exact:true});
   await order.getByRole("list",{name:"Ordem dos blocos"}).waitFor();
@@ -336,6 +344,7 @@ try{
   await dialog.getByRole("button",{name:"Pré-visualizar"}).click();
   const preview=dialog.frameLocator('iframe[title="Pré-visualização A4 da prova"]');
   await preview.locator("math").waitFor();
+  assert.equal(await preview.locator(".question-figure").count(),1);
   assert.equal(await preview.locator(".paper").getAttribute("data-layout"),"espacosa");
   assert.equal(await preview.locator(".linha").count(),7);
   assert.equal(await preview.locator(".alternativas li").count(),4);
@@ -385,4 +394,39 @@ try{
   await page.close();
   console.log("Mobile professor fixture passed:",width);
  }
+
+ // Shared system exams arrive already scoped by the database/API; no author reassignment.
+ const sharedPage=await browser.newPage({viewport:{width:1280,height:900}});
+ let shared={...base,autor_id:null,estado:"rascunho",versao:1,conteudo:[{tipo:"discursiva",texto:"Questão original",linhas:2,cotacao_cent:2000}]};
+ let sharedSaves=0;
+ await sharedPage.route("**/api/escola/**/provas**",async route=>{
+  const req=route.request(),url=new URL(req.url());
+  if(req.method()==="POST"){
+   const data=req.postDataJSON();
+   assert.equal(data.acao,"guardar");assert.equal(data.id,shared.id);assert.equal(data.versao,shared.versao);
+   assert.equal(data.dados.curso_matriz_id,matrix);assert.equal(data.dados.ano_letivo_id,year);assert.equal(data.dados.trimestre,1);
+   assert.equal(data.dados.conteudo[0].texto,"Questão revista pelo professor");
+   shared={...shared,...data.dados,autor_id:null,versao:2};sharedSaves++;
+   return route.fulfill({json:{prova:shared}});
+  }
+  if(url.searchParams.has("branding"))return route.fulfill({json:{logo:null}});
+  if(url.searchParams.has("contexto"))return route.fulfill({json:{items:url.searchParams.has("ano")?[{ano_letivo_id:year,curso_matriz_id:matrix,ano_lectivo:"2026/2027",classe:"8.ª Classe",disciplina:"Física",curso:"Ensino Geral",trimestre:1,cotacao_max_cent:2000}]:[{id:year,ativo:true,label:"2026/2027"}]}});
+  if(url.searchParams.has("prova"))return route.fulfill({json:{prova:shared}});
+  return route.fulfill({json:{provas:[shared],escola:"Escola de teste",permissions:{author:true,admin:false,userId:user}}});
+ });
+ await sharedPage.goto("http://127.0.0.1:6006/provas.html");
+ const sharedRow=sharedPage.getByRole("row").filter({hasText:"Sistema KLASSE"});
+ await sharedRow.getByRole("button",{name:"Editar",exact:true}).click();
+ const sharedDialog=sharedPage.getByRole("dialog");
+ await sharedDialog.getByLabel("Ano lectivo",{exact:true}).waitFor();
+ assert.equal(await sharedDialog.getByLabel("Ano lectivo",{exact:true}).isDisabled(),true);
+ assert.equal(await sharedDialog.getByLabel("Classe e disciplina",{exact:true}).isDisabled(),true);
+ assert.equal(await sharedDialog.getByLabel("Trimestre",{exact:true}).isDisabled(),true);
+ assert.equal(await sharedDialog.getByRole("button",{name:"Arquivar",exact:true}).count(),0);
+ assert.equal(await sharedDialog.getByRole("button",{name:"Duplicar",exact:true}).count(),0);
+ await sharedDialog.getByLabel("Enunciado 1",{exact:true}).fill("Questão revista pelo professor");
+ await sharedDialog.getByRole("button",{name:"Guardar rascunho",exact:true}).click();
+ await sharedDialog.getByRole("status").filter({hasText:"Prova guardada."}).waitFor();
+ assert.equal(sharedSaves,1);assert.equal(shared.autor_id,null);
+ await sharedPage.close();
 }finally{await browser.close();}
