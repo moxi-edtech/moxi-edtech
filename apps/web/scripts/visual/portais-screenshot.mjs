@@ -62,7 +62,7 @@ try {
             ["Notas", "Académico"],
             ["Propinas vencidas", "Situação financeira"],
           ]) {
-            const button = summary.getByRole("button", {name: new RegExp("^" + label)});
+            const button = summary.getByRole("button", {name: new RegExp("^" + label), includeHidden: true});
             await button.waitFor({timeout:10000});
             if (await button.getAttribute("aria-haspopup") !== "dialog" || await button.getAttribute("aria-expanded") !== "false") {
               errors.push(`${name} ${width}x${height} zoom ${zoom}: invalid drawer trigger ${label}`);
