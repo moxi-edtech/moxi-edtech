@@ -267,6 +267,22 @@ BEGIN
  copy:=public.provas_mutar(sch,copy.id,copy.versao,'devolver',NULL);
  copy:=public.provas_mutar(sch,copy.id,copy.versao,'arquivar',NULL);
  IF copy.estado<>'arquivada' THEN RAISE EXCEPTION 'financial admin lifecycle failed'; END IF;
+ -- Direct administrative publication is versioned, validates marks and preserves local schedule.
+ copy:=public.provas_mutar(sch,p,4,'duplicar',NULL);
+ IF copy.data_realizacao IS NOT NULL OR copy.hora_inicio IS NOT NULL THEN RAISE EXCEPTION 'duplicate inherited schedule'; END IF;
+ data:=(to_jsonb(copy)-ARRAY['id','escola_id','autor_id','estado','versao','criado_em','atualizado_em','aprovado_por','aprovado_em'])||'{"data_realizacao":"2026-12-07","hora_inicio":"08:30"}'::jsonb;
+ copy:=public.provas_mutar(sch,copy.id,copy.versao,'guardar',data);
+ IF copy.data_realizacao IS DISTINCT FROM DATE '2026-12-07' OR copy.hora_inicio IS DISTINCT FROM TIME '08:30' THEN RAISE EXCEPTION 'schedule not persisted'; END IF;
+ BEGIN
+   PERFORM public.provas_mutar(sch,copy.id,copy.versao,'guardar',data||'{"data_realizacao":null}'::jsonb);
+   RAISE EXCEPTION 'hour without date accepted';
+ EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ copy:=public.provas_mutar(sch,copy.id,copy.versao,'aprovar',NULL);
+ IF copy.estado<>'aprovada' OR copy.aprovado_por IS DISTINCT FROM auth.uid() OR copy.data_realizacao IS DISTINCT FROM DATE '2026-12-07' THEN RAISE EXCEPTION 'direct publication failed'; END IF;
+ BEGIN
+   PERFORM public.provas_mutar(sch,copy.id,copy.versao-1,'aprovar',NULL);
+   RAISE EXCEPTION 'stale direct publication accepted';
+ EXCEPTION WHEN serialization_failure THEN NULL; END;
  BEGIN
   PERFORM public.provas_mutar('00000000-0000-4000-8000-000000000002',NULL,NULL,'criar',data);
   RAISE EXCEPTION 'financial admin cross tenant write allowed';
