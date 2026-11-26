@@ -131,7 +131,7 @@ export default function Sidebar({
   return (
     <aside
       className={cn(
-        "klasse-sidebar-theme h-dvh sticky top-0 z-40 shrink-0 max-w-[65vw] md:max-w-none border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col",
+        "klasse-sidebar-theme h-dvh sticky top-0 z-40 shrink-0 max-w-[65vw] md:max-w-none border-r border-sidebar-border bg-klasse-dark text-sidebar-foreground flex flex-col",
         "transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] overflow-x-hidden"
       )}
       style={{ width: collapsed ? SIDEBAR_WIDTH.collapsed : SIDEBAR_WIDTH.expanded }}

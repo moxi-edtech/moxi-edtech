@@ -26,9 +26,20 @@ try {
         const stressRow = nav.getByRole("button", { name: "Menu de teste com um título excepcionalmente longo" });
         const colors = async () => ({
           surface: await sidebar.evaluate(el => getComputedStyle(el).backgroundColor),
+          semanticSurface: await sidebar.evaluate(el => {
+            const probe = document.createElement("span");
+            probe.style.backgroundColor = "var(--sidebar)";
+            el.append(probe);
+            const color = getComputedStyle(probe).backgroundColor;
+            probe.remove();
+            return color;
+          }),
           text: await stressRow.evaluate(el => getComputedStyle(el).color),
         });
         const light = await colors();
+        assert.equal(light.surface, "rgb(2, 6, 23)");
+        assert.equal(light.semanticSurface, light.surface);
+        assert.equal(light.text, "rgb(226, 232, 240)");
         assert.ok(contrastRatio(light.text, light.surface) >= 4.5, JSON.stringify({ role, width, light }));
         await page.evaluate(() => document.documentElement.classList.add("dark"));
         const dark = await colors();

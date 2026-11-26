@@ -17,13 +17,13 @@
   --color-sidebar-raised: var(--sidebar-raised, var(--sidebar-accent));
 }
 .klasse-sidebar-theme {
-  --sidebar: var(--color-klasse-dark, #020617);
-  --sidebar-foreground: var(--color-slate-200, #e2e8f0);
-  --sidebar-muted-foreground: var(--color-slate-400, #94a3b8);
-  --sidebar-accent: var(--color-slate-900, #0f172a);
-  --sidebar-raised: var(--color-slate-800, #1e293b);
-  --sidebar-border: color-mix(in srgb, var(--color-klasse-gold, #e3b23c) 15%, transparent);
-  --sidebar-ring: var(--color-klasse-gold, #e3b23c);
+  --sidebar: theme("colors.klasse.dark");
+  --sidebar-foreground: theme("colors.slate.200");
+  --sidebar-muted-foreground: theme("colors.slate.400");
+  --sidebar-accent: theme("colors.slate.900");
+  --sidebar-raised: theme("colors.slate.800");
+  --sidebar-border: color-mix(in srgb, theme("colors.klasse.gold.400") 15%, transparent);
+  --sidebar-ring: theme("colors.klasse.gold.400");
 }
 
 @layer base {
