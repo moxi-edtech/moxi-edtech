@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebarContext } from "./SidebarContext";
 import * as Icons from "lucide-react";
+import { SIDEBAR_LABEL, SIDEBAR_NAV, SIDEBAR_ROW, sidebarLabel } from "@/lib/sidebarPresentation";
 
 export type NavItem = {
   label: string;
@@ -17,7 +18,7 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
   const { collapsed } = useSidebarContext();
 
   return (
-    <nav className="flex-1 space-y-1 py-4">
+    <nav className={`${SIDEBAR_NAV} space-y-1 px-2 py-3`}>
       {items.map((item) => {
         const Icon = (Icons as any)[item.icon] || Icons.HelpCircle;
         const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
@@ -26,21 +27,21 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
           <Link
             key={item.href}
             href={item.href}
-            title={collapsed ? item.label : undefined}
+            title={item.label}
+            aria-label={item.label}
+            aria-current={isActive ? "page" : undefined}
             className={`
-              relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all mx-2
-              ${isActive ? "bg-teal-600 text-white shadow-md shadow-teal-900/20" : "text-slate-400 hover:bg-white/5 hover:text-white"}
-              ${collapsed ? "justify-center px-0" : ""}
+              ${SIDEBAR_ROW} relative font-medium transition-colors
+              ${isActive ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25" : "text-slate-400 hover:bg-slate-900 hover:text-klasse-gold"}
+              ${collapsed ? "justify-center" : ""}
             `}
           >
             <Icon size={20} className="shrink-0" />
 
-            <span className={`whitespace-nowrap transition-all duration-300 ${collapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100 block"}`}>
-              {item.label}
-            </span>
+            {!collapsed && <span className={SIDEBAR_LABEL}>{sidebarLabel(item.label)}</span>}
 
             {item.badge && !collapsed && (
-              <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+              <span className="ml-auto shrink-0 max-w-[4rem] truncate rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
                 {item.badge}
               </span>
             )}

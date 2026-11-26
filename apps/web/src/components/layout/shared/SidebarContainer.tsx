@@ -5,6 +5,7 @@ import { useSidebar } from "./useSidebar"; // O teu hook atual
 import { SidebarProvider } from "./SidebarContext"; // O ficheiro acima
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import clsx from "clsx";
+import { SIDEBAR_WIDTH } from "@/lib/sidebarPresentation";
 
 type Props = PropsWithChildren<{
   storageKey: string;
@@ -17,8 +18,8 @@ type Props = PropsWithChildren<{
 export default function SidebarContainer({
   storageKey,
   cssVar = "--sidebar-w",
-  collapsedWidth = "80px",
-  expandedWidth = "256px",
+  collapsedWidth = SIDEBAR_WIDTH.collapsed,
+  expandedWidth = SIDEBAR_WIDTH.expanded,
   className,
   children,
 }: Props) {
@@ -33,8 +34,8 @@ export default function SidebarContainer({
     <SidebarProvider value={{ collapsed, toggle }}>
       <aside
         className={clsx(
-          "group/sidebar fixed top-0 z-40 h-screen transition-[width] duration-300 ease-in-out",
-          "bg-slate-900 border-r border-slate-800 text-white shadow-xl", // Estilo MoxiNexa Dark
+          "group/sidebar fixed top-0 z-40 h-dvh shrink-0 transition-[width] duration-300 ease-in-out",
+          "bg-slate-950 border-r border-slate-800 text-white shadow-xl", // Estilo MoxiNexa Dark
           className,
         )}
         style={{ width: collapsed ? collapsedWidth : expandedWidth }}
@@ -42,13 +43,16 @@ export default function SidebarContainer({
         {/* Botão de Toggle Flutuante */}
         <button
           onClick={toggle}
+          type="button"
+          aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
+          aria-expanded={!collapsed}
           className="absolute -right-3 top-6 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:bg-muted hover:text-teal-600 transition-colors hidden md:flex"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
         {/* Conteúdo Interno */}
-        <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex h-full min-w-0 flex-col overflow-hidden">
           {children}
         </div>
       </aside>

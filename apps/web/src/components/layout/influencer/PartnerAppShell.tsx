@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { SIDEBAR_WIDTH, SIDEBAR_LABEL, SIDEBAR_NAV, SIDEBAR_ROW, SIDEBAR_SUBROW, sidebarLabel } from "@/lib/sidebarPresentation";
 import Image from "next/image";
 import { 
   Zap, 
@@ -125,9 +126,9 @@ export default function PartnerAppShell({
 
   return <div className="min-h-screen bg-neutral-50 font-sans flex flex-col md:flex-row">
       {/* SIDEBAR FOR DESKTOP */}
-      <aside className="hidden md:flex w-64 bg-[#09090b] border-r border-zinc-900 flex-col fixed inset-y-0 left-0 z-30 text-zinc-300">
+      <aside className="hidden md:flex shrink-0 overflow-hidden bg-slate-950 border-r border-zinc-900 flex-col fixed inset-y-0 left-0 z-30 text-zinc-300" style={{ width: SIDEBAR_WIDTH.expanded }}>
         {/* Brand/Logo Section */}
-        <div className="p-5 border-b border-zinc-900">
+        <div className="min-w-0 shrink-0 p-4 border-b border-zinc-900">
           <div className="flex items-center gap-3 mb-5">
             <div className="h-9 w-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center">
               <Image
@@ -148,7 +149,7 @@ export default function PartnerAppShell({
           <div className="rounded-xl bg-zinc-900/30 border border-zinc-800/40 p-3">
             <p className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Membro Ativo</p>
             <p className="text-xs font-semibold truncate text-zinc-100" title={memberName}>{memberName || "Operador"}</p>
-            <div className="flex items-center gap-1.5 mt-1.5">
+            <div className="flex min-w-0 items-center gap-1.5 mt-1.5">
               <Badge className={`text-[8px] font-semibold px-1.5 py-0.5 rounded border shadow-none ${
                 memberRole === 'owner'
                   ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
@@ -156,13 +157,13 @@ export default function PartnerAppShell({
               }`}>
                 {memberRole === 'owner' ? 'PROPRIETÁRIO' : memberRole.toUpperCase()}
               </Badge>
-              <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider">{codigo}</span>
+              <span className="min-w-0 truncate text-[9px] font-semibold text-zinc-500 uppercase tracking-wider" title={codigo}>{codigo}</span>
             </div>
           </div>
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className={`${SIDEBAR_NAV} p-2 space-y-1`}>
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const hasChildren = item.children && item.children.length > 0;
@@ -174,17 +175,19 @@ export default function PartnerAppShell({
                   <button
                     type="button"
                     onClick={() => setExpandedItems(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
-                    className="w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-semibold transition-all duration-200 text-left text-zinc-400 hover:bg-zinc-900/40 hover:text-zinc-100"
+                    title={item.label}
+                    aria-expanded={isExpanded}
+                    className={`${SIDEBAR_ROW} font-medium text-zinc-400 hover:bg-slate-900 hover:text-klasse-gold`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className="h-4.5 w-4.5 shrink-0 text-zinc-500" />
-                      <span className="truncate uppercase tracking-wider">{item.label}</span>
+                    <div className="flex flex-1 min-w-0 items-center gap-3">
+                      <Icon className="h-5 w-5 shrink-0 text-zinc-500" />
+                      <span className={SIDEBAR_LABEL}>{sidebarLabel(item.label)}</span>
                     </div>
-                    <ChevronDown size={12} className={`text-zinc-500 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                    <ChevronDown size={12} className={`shrink-0 text-zinc-500 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                   </button>
                   
                   {isExpanded && (
-                    <div className="pl-3 space-y-0.5 border-l border-zinc-900 ml-5 mt-0.5 animate-in slide-in-from-left-1 duration-200">
+                    <div className="min-w-0 pl-2 space-y-0.5 border-l border-zinc-900 ml-4 mt-0.5 animate-in slide-in-from-left-1 duration-200">
                       {item.children!.map((child) => {
                         const ChildIcon = child.icon;
                         const isChildActive = activeTab === child.id;
@@ -193,9 +196,10 @@ export default function PartnerAppShell({
                             key={child.id}
                             type="button"
                             onClick={() => handleTabClick(child.id)}
-                            className={`w-full flex items-center gap-2.5 rounded-md px-3 py-2 text-[11px] font-semibold transition-all duration-200 text-left ${
+                            title={child.label}
+                            className={`${SIDEBAR_SUBROW} font-medium transition-colors ${
                               isChildActive
-                                ? "bg-zinc-900 text-zinc-100 border-l-2 border-emerald-500"
+                                ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25"
                                 : "text-zinc-500 hover:bg-zinc-900/20 hover:text-zinc-300"
                             }`}
                           >
@@ -204,9 +208,9 @@ export default function PartnerAppShell({
                                 isChildActive ? "text-emerald-500" : "text-zinc-500"
                               }`}
                             />
-                            <span className="truncate uppercase tracking-wider">{child.label}</span>
+                            <span className={SIDEBAR_LABEL}>{sidebarLabel(child.label)}</span>
                             {child.badge !== undefined && (
-                              <span className="ml-auto rounded bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-rose-400 border border-rose-500/20">
+                              <span className="ml-auto shrink-0 max-w-[4rem] truncate rounded bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-rose-400 border border-rose-500/20">
                                 {child.badge}
                               </span>
                             )}
@@ -225,9 +229,10 @@ export default function PartnerAppShell({
                 key={item.id}
                 type="button"
                 onClick={() => handleTabClick(item.id as any)}
-                className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs font-semibold transition-all duration-200 text-left ${
+                title={item.label}
+                  className={`${SIDEBAR_ROW} font-medium transition-colors ${
                   isActive
-                    ? "bg-zinc-900 text-zinc-100 border-l-2 border-emerald-500"
+                    ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25"
                     : "text-zinc-400 hover:bg-zinc-900/40 hover:text-zinc-100"
                 }`}
               >
@@ -238,7 +243,7 @@ export default function PartnerAppShell({
                 />
                 <span className="truncate uppercase tracking-wider">{item.label}</span>
                 {item.badge !== undefined && (
-                  <span className="ml-auto rounded bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-rose-400 border border-rose-500/20">
+                  <span className="ml-auto shrink-0 max-w-[4rem] truncate rounded bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-rose-400 border border-rose-500/20">
                     {item.badge}
                   </span>
                 )}
@@ -248,7 +253,7 @@ export default function PartnerAppShell({
         </nav>
 
         {/* Sidebar Footer Stats & Logout */}
-        <div className="p-4 border-t border-zinc-900 space-y-3">
+        <div className="min-w-0 shrink-0 p-3 border-t border-zinc-900 space-y-3">
           <div className="rounded-xl bg-zinc-900/30 border border-zinc-800/40 p-3 flex items-center justify-between">
             <div>
               <p className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wider leading-none mb-1">Conversão Geral</p>
