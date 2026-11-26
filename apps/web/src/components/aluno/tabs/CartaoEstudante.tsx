@@ -126,6 +126,40 @@ export function CartaoEstudante() {
 
   if (!data) return <div role="alert" className="rounded-xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">{error?.message || "Falha ao carregar identidade."}</div>;
 
+  const qrContent = (<div className="w-full max-w-[340px] mx-auto space-y-6">
+          <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center  sm:p-6">
+            
+            {/* The QR is a machine-readable document, not a themed surface.
+                Its own SVG includes a quiet zone of at least four modules
+                (36 units for a 180-unit symbol, even at QR version 1). */}
+            <svg viewBox="0 0 252 252" width={252} height={252}
+              className="block h-auto w-full max-w-[252px]"
+              role="img" aria-label="Código QR de validação do cartão do estudante">
+              <rect width={252} height={252} rx={8} fill="#ffffff" />
+              <QRCode
+                x={36}
+                y={36}
+                value={data.verification_url}
+                size={180}
+                bgColor="#ffffff"
+                fgColor="#0f172a"
+                aria-hidden="true"
+              />
+            </svg>
+
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">Validação em tempo real</h3>
+              <p className="text-sm leading-5 text-muted-foreground">
+                Apresenta o código para validar a tua identidade.
+              </p>
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald/10 border border-emerald/20 px-3.5 py-1 text-xs font-medium text-emerald dark:text-emerald-300">
+              <ShieldCheck size={12} /> Válido até {new Date(data.validade).toLocaleDateString("pt-PT")}
+            </div>
+
+          </div>
+        </div>);
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-md flex-col items-center space-y-4">
 
@@ -142,7 +176,7 @@ export function CartaoEstudante() {
         <button
           type="button"
           onClick={() => setActiveTab("card")}
-          aria-pressed={activeTab === "card"}
+          aria-pressed={activeTab === "card" || mobile}
           className={`min-h-11 flex-1 rounded-xl px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
             activeTab === "card"
               ? "bg-card text-primary ring-1 ring-klasse-gold/30 shadow-sm"
@@ -155,7 +189,8 @@ export function CartaoEstudante() {
           type="button"
           onClick={() => { if (mobile) setQrOpen(true); else setActiveTab("qr"); }}
           aria-haspopup={mobile ? "dialog" : undefined}
-          aria-pressed={activeTab === "qr"}
+          aria-pressed={mobile ? undefined : activeTab === "qr"}
+          aria-expanded={mobile ? qrOpen : undefined}
           className={`min-h-11 flex-1 rounded-xl px-2 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-klasse-gold/20 ${
             activeTab === "qr"
               ? "bg-card text-primary ring-1 ring-klasse-gold/30 shadow-sm"
@@ -240,77 +275,11 @@ export function CartaoEstudante() {
 
       {/* TAB 2: QR Code de Validação (Espaçoso e Limpo) */}
       {activeTab === "qr" && !mobile && (
-        <div className="w-full max-w-[340px] animate-in fade-in zoom-in-95 duration-300 space-y-6">
-          <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center  sm:p-6">
-            
-            {/* The QR is a machine-readable document, not a themed surface.
-                Its own SVG includes a quiet zone of at least four modules
-                (36 units for a 180-unit symbol, even at QR version 1). */}
-            <svg viewBox="0 0 252 252" width={252} height={252}
-              className="block h-auto w-full max-w-[252px]"
-              role="img" aria-label="Código QR de validação do cartão do estudante">
-              <rect width={252} height={252} rx={8} fill="#ffffff" />
-              <QRCode
-                x={36}
-                y={36}
-                value={data.verification_url}
-                size={180}
-                bgColor="#ffffff"
-                fgColor="#0f172a"
-                aria-hidden="true"
-              />
-            </svg>
-
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">Validação em tempo real</h3>
-              <p className="text-sm leading-5 text-muted-foreground">
-                Apresenta o código para validar a tua identidade.
-              </p>
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald/10 border border-emerald/20 px-3.5 py-1 text-xs font-medium text-emerald dark:text-emerald-300">
-              <ShieldCheck size={12} /> Válido até {new Date(data.validade).toLocaleDateString("pt-PT")}
-            </div>
-
-          </div>
-        </div>
+        qrContent
       )}
 
       <PortalSheet open={mobile && qrOpen} onClose={()=>setQrOpen(false)} title="QR de validação" description="Apresenta o código para validar a tua identidade." size="expanded">
-                <div className="w-full max-w-[340px] mx-auto space-y-6">
-          <div className="flex flex-col items-center space-y-5 rounded-xl border border-border bg-card p-5 text-center  sm:p-6">
-            
-            {/* The QR is a machine-readable document, not a themed surface.
-                Its own SVG includes a quiet zone of at least four modules
-                (36 units for a 180-unit symbol, even at QR version 1). */}
-            <svg viewBox="0 0 252 252" width={252} height={252}
-              className="block h-auto w-full max-w-[252px]"
-              role="img" aria-label="Código QR de validação do cartão do estudante">
-              <rect width={252} height={252} rx={8} fill="#ffffff" />
-              <QRCode
-                x={36}
-                y={36}
-                value={data.verification_url}
-                size={180}
-                bgColor="#ffffff"
-                fgColor="#0f172a"
-                aria-hidden="true"
-              />
-            </svg>
-
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">Validação em tempo real</h3>
-              <p className="text-sm leading-5 text-muted-foreground">
-                Apresenta o código para validar a tua identidade.
-              </p>
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald/10 border border-emerald/20 px-3.5 py-1 text-xs font-medium text-emerald dark:text-emerald-300">
-              <ShieldCheck size={12} /> Válido até {new Date(data.validade).toLocaleDateString("pt-PT")}
-            </div>
-
-          </div>
-        </div>
+                {qrContent}
       </PortalSheet>
     </div>
   );

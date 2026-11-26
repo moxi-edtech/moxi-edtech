@@ -11,7 +11,7 @@ test("academic payment flows use accessible constrained dialogs without changing
     assert.match(ui, /inFlight.current/);
   }
   const sheet = read("components/portal/ui/PortalSheet.tsx");
-  assert.match(sheet, /<DialogContent layout="bottom-sheet"/);
+  assert.match(sheet, /<DialogContent[^>]*layout="bottom-sheet"/);
   assert.match(sheet, /overflow-y-auto/);
   assert.match(sheet, /!next && !busy && !closing/);
   assert.match(sheet, /onCloseAutoFocus/);
@@ -36,4 +36,25 @@ test("teacher exam and operational printing keep distinct authorization boundari
   assert.match(operational, /!access.distribute/);
   assert.match(teacher, /!access.author/);
   assert.match(teacher, /teacherWizard/);
+});
+
+test("contextual sheets retain existing permissions, routes and roster protections", () => {
+  const grades = read("components/aluno/academico/BoletimGradeGrid.tsx");
+  assert.match(grades, /locked \? \[\] : subject\.avaliacoes/);
+  assert.match(grades, /<PortalSheet key=\{sheetScope\}/);
+  assert.match(grades, /!locked && showGrades && entries\.length > 0 && !historicalRead/);
+  const attendance = read("app/professor/frequencias/page.tsx");
+  assert.match(attendance, /loadedRosterKey === JSON\.stringify/);
+  assert.match(attendance, /contextLocked = saving \|\| attendanceDirty/);
+  assert.match(attendance, /if \(!rosterReady \|\| alunos\.length === 0\)/);
+  assert.match(attendance, /controller\.abort\(\)/);
+  assert.match(attendance, /\/api\/professor\/presencas/);
+  const identity = read("components/aluno/tabs/CartaoEstudante.tsx");
+  assert.match(identity, /readIdentityCardCache\(localStorage, cacheKey\)/);
+  assert.equal((identity.match(/<QRCode\b/g) ?? []).length, 1);
+  assert.match(identity, /setQrOpen\(false\)/);
+  const notes = read("app/professor/notas/page.tsx");
+  assert.match(notes, /gradeAvailability\.canRequestReopen/);
+  assert.match(notes, /<PortalSheet open=\{reopenSheet\} busy=\{requestingReopen\}/);
+  assert.match(notes, /\/api\/professor\/notas\/reabertura/);
 });

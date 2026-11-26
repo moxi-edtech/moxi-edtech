@@ -87,6 +87,7 @@ export function BoletimGradeGrid({
   const sheetSubject = view === "trimestre" ? quarterSubjects.find(s => s.id === expandedId) : selectedSubject;
   const sheetTerm = view === "trimestre" ? term : [1,2,3].find(p => expandedId === `${selectedSubject?.id}:${p}`);
   const sheetOpen = mobile && Boolean(expandedId && sheetSubject && sheetTerm);
+  const sheetScope = `${scope}:${view}:${term}`;
 
   const selectView = (next: View) => {
     setView(next);
@@ -267,7 +268,7 @@ export function BoletimGradeGrid({
         Classificações trimestrais, sem média anual.
       </p>
     </>}
-    <PortalSheet open={sheetOpen} onClose={() => setExpandedId(null)} title={sheetSubject?.nome ?? "Avaliações"} description={sheetTerm ? `${sheetTerm}.º trimestre` : "Avaliações"} size="expanded">
+    <PortalSheet key={sheetScope} open={sheetOpen} onClose={() => setExpandedId(null)} title={sheetSubject?.nome ?? "Avaliações"} description={sheetTerm ? `${sheetTerm}.º trimestre` : "Avaliações"} size="expanded">
       {sheetOpen && sheetSubject && sheetTerm ? detail(sheetSubject, sheetTerm) : null}
     </PortalSheet>
   </section>;

@@ -97,7 +97,7 @@ test("identidade preserva QR e offline; actividades mantêm acesso ao rascunho",
   assert.match(digital, /<QRCode/);
   assert.match(digital, /data\.verification_url/);
   assert.match(digital, /readIdentityCardCache\(localStorage, cacheKey\)/);
-  assert.match(digital, /aria-pressed=\{activeTab === "card"\}/);
+  assert.match(digital, /aria-pressed=\{activeTab === "card" \|\| mobile\}/);
   assert.match(activities, /Retomar Rascunho/);
   assert.match(activities, /Iniciar Actividade/);
   assert.match(home, /<CircularProgressbar/);

@@ -30,6 +30,8 @@ export function PortalSheet({ open, onClose, title, description, size = "medium"
   useEffect(() => {
     if (open) { setRetained(true); return; }
     if (!retained) return;
+    // Preserve focus inside the dialog even when the closing control is disabled.
+    header.current?.focus({ preventScroll: true });
     const duration = content.current ? readMotionDuration(content.current, "sheet") : 0;
     if (!duration) { setRetained(false); return; }
     const fallback = window.setTimeout(() => setRetained(false), duration + 80);
