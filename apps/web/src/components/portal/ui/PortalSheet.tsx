@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
+import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { readMotionDuration } from "@/components/portal/motion/motion-tokens";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -19,11 +19,43 @@ type Props = {
   onBack?: () => void;
   navigationKey?: string;
   bodyRef?: Ref<HTMLDivElement>;
+  inline?: boolean;
 };
 const sizes = { compact: "40dvh", medium: "65dvh", expanded: "90dvh" };
 
-/** Radix owns modality, focus trapping and nested dialogs; CSS owns motion. */
-export function PortalSheet({ open, onClose, title, description, size = "medium", busy = false, children, footer, closeLabel = "Fechar", contentId, onBack, navigationKey, bodyRef }: Props) {
+/** Secondary operations can opt into an inline region inside the parent drawer. */
+export function PortalSheet(props: Props) {
+  return props.inline ? <InlinePortalPanel {...props} /> : <ModalPortalSheet {...props} />;
+}
+
+function InlinePortalPanel({ open, onClose, title, description, busy = false, children, footer, closeLabel = "Voltar", contentId }: Props) {
+  const titleId = useId();
+  const descriptionId = useId();
+  const header = useRef<HTMLHeadingElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    header.current?.focus({ preventScroll: true });
+    header.current?.scrollIntoView({ block: "nearest" });
+    return () => {
+      if (opener.current?.isConnected && !opener.current.matches(":disabled,[aria-disabled=true]")) opener.current.focus();
+      opener.current = null;
+    };
+  }, [open]);
+  if (!open) return null;
+  return <section id={contentId} role="region" aria-labelledby={titleId} aria-describedby={descriptionId} aria-busy={busy} className="min-w-0 space-y-4 rounded-xl border border-border bg-card p-4">
+    <div className="flex items-start gap-3">
+      <button type="button" onClick={onClose} disabled={busy} aria-label={closeLabel} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border text-primary focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"><ArrowLeft size={18} aria-hidden="true" /></button>
+      <div className="min-w-0"><h3 id={titleId} ref={header} tabIndex={-1} className="break-words text-base font-semibold text-primary focus:outline-none">{title}</h3><p id={descriptionId} className="text-xs text-muted-foreground">{description}</p></div>
+    </div>
+    <div className="min-w-0 space-y-3">{children}</div>
+    {footer && <div className="border-t border-border pt-3">{footer}</div>}
+  </section>;
+}
+
+/** Radix owns modality, focus trapping and motion in standalone sheets. */
+function ModalPortalSheet({ open, onClose, title, description, size = "medium", busy = false, children, footer, closeLabel = "Fechar", contentId, onBack, navigationKey, bodyRef }: Props) {
   const opener = useRef<HTMLElement | null>(null);
   const header = useRef<HTMLHeadingElement>(null);
   const content = useRef<HTMLDivElement>(null);
