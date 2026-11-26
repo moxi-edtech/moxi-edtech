@@ -284,4 +284,39 @@ try{
   await page.close();
   console.log("Mobile professor fixture passed:",width);
  }
+
+ // Shared system exams arrive already scoped by the database/API; no author reassignment.
+ const sharedPage=await browser.newPage({viewport:{width:1280,height:900}});
+ let shared={...base,autor_id:null,estado:"rascunho",versao:1,conteudo:[{tipo:"discursiva",texto:"Questão original",linhas:2,cotacao_cent:2000}]};
+ let sharedSaves=0;
+ await sharedPage.route("**/api/escola/**/provas**",async route=>{
+  const req=route.request(),url=new URL(req.url());
+  if(req.method()==="POST"){
+   const data=req.postDataJSON();
+   assert.equal(data.acao,"guardar");assert.equal(data.id,shared.id);assert.equal(data.versao,shared.versao);
+   assert.equal(data.dados.curso_matriz_id,matrix);assert.equal(data.dados.ano_letivo_id,year);assert.equal(data.dados.trimestre,1);
+   assert.equal(data.dados.conteudo[0].texto,"Questão revista pelo professor");
+   shared={...shared,...data.dados,autor_id:null,versao:2};sharedSaves++;
+   return route.fulfill({json:{prova:shared}});
+  }
+  if(url.searchParams.has("branding"))return route.fulfill({json:{logo:null}});
+  if(url.searchParams.has("contexto"))return route.fulfill({json:{items:url.searchParams.has("ano")?[{ano_letivo_id:year,curso_matriz_id:matrix,ano_lectivo:"2026/2027",classe:"8.ª Classe",disciplina:"Física",curso:"Ensino Geral",trimestre:1,cotacao_max_cent:2000}]:[{id:year,ativo:true,label:"2026/2027"}]}});
+  if(url.searchParams.has("prova"))return route.fulfill({json:{prova:shared}});
+  return route.fulfill({json:{provas:[shared],escola:"Escola de teste",permissions:{author:true,admin:false,userId:user}}});
+ });
+ await sharedPage.goto("http://127.0.0.1:6006/provas.html");
+ const sharedRow=sharedPage.getByRole("row").filter({hasText:"Sistema KLASSE"});
+ await sharedRow.getByRole("button",{name:"Editar",exact:true}).click();
+ const sharedDialog=sharedPage.getByRole("dialog");
+ await sharedDialog.getByLabel("Ano lectivo",{exact:true}).waitFor();
+ assert.equal(await sharedDialog.getByLabel("Ano lectivo",{exact:true}).isDisabled(),true);
+ assert.equal(await sharedDialog.getByLabel("Classe e disciplina",{exact:true}).isDisabled(),true);
+ assert.equal(await sharedDialog.getByLabel("Trimestre",{exact:true}).isDisabled(),true);
+ assert.equal(await sharedDialog.getByRole("button",{name:"Arquivar",exact:true}).count(),0);
+ assert.equal(await sharedDialog.getByRole("button",{name:"Duplicar",exact:true}).count(),0);
+ await sharedDialog.getByLabel("Enunciado 1",{exact:true}).fill("Questão revista pelo professor");
+ await sharedDialog.getByRole("button",{name:"Guardar rascunho",exact:true}).click();
+ await sharedDialog.getByRole("status").filter({hasText:"Prova guardada."}).waitFor();
+ assert.equal(sharedSaves,1);assert.equal(shared.autor_id,null);
+ await sharedPage.close();
 }finally{await browser.close();}
