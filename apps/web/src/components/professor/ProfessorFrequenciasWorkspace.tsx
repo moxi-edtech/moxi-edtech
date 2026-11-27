@@ -57,13 +57,15 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
   const [loadError, setLoadError] = useState<string | null>(null)
   const [studentsError, setStudentsError] = useState<string | null>(null)
 
+  const navigation = usePortalDrawerNavigation();
+  const read = navigation?.read;
   useEffect(() => {
     const controller = new AbortController()
     ;(async () => {
       try {
         setLoadError(null)
         const query = requestedAcademicYearId ? '?' + new URLSearchParams({ ano_letivo_id: requestedAcademicYearId }) : ''
-        const res = await fetch('/api/professor/atribuicoes' + query, { cache: 'no-store', signal: controller.signal })
+        const res = await (read ? read('/api/professor/atribuicoes' + query, { signal: controller.signal }) : fetch('/api/professor/atribuicoes' + query, { cache: 'no-store', signal: controller.signal }))
         const json = await res.json().catch(()=>null)
         if (controller.signal.aborted) return
         if (!res.ok || !json?.ok || (requestedAcademicYearId && json.context?.anoLetivoId !== requestedAcademicYearId)) {
@@ -85,7 +87,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
       }
     })()
     return () => controller.abort()
-  }, [embedded, urlTurmaId, urlDisciplinaId, requestedAcademicYearId])
+  }, [embedded, urlTurmaId, urlDisciplinaId, requestedAcademicYearId, read])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -98,7 +100,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
       try {
       const params = new URLSearchParams({ disciplina_id: disciplinaId })
       if (academicYearId) params.set(ACADEMIC_YEAR_PARAM, academicYearId)
-      const res = await fetch(`/api/professor/turmas/${turmaId}/alunos?${params.toString()}`, { cache: 'no-store', signal: controller.signal })
+      const res = await (read ? read(`/api/professor/turmas/${turmaId}/alunos?${params.toString()}`, { signal: controller.signal }) : fetch(`/api/professor/turmas/${turmaId}/alunos?${params.toString()}`, { cache: 'no-store', signal: controller.signal }))
       const json = await res.json().catch(()=>null)
       if (controller.signal.aborted) return
       if (!res.ok || !json?.ok) {
@@ -115,7 +117,7 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
       }
     })()
     return () => controller.abort()
-  }, [turmaId, disciplinaId, academicYearId])
+  }, [turmaId, disciplinaId, academicYearId, read])
 
   useEffect(() => {
     setSubmitStatus('idle')
@@ -131,7 +133,6 @@ export function ProfessorFrequenciasWorkspace({ embedded = false, requestedAcade
 
   const attendanceDirty = Object.keys(statusMap).length > 0 && submitStatus !== 'saved' && submitStatus !== 'pending'
   const contextLocked = saving || attendanceDirty
-  const navigation = usePortalDrawerNavigation();
   usePortalDrawerGuard(attendanceDirty, saving)
   const rosterReady = loadedRosterKey === JSON.stringify([turmaId, disciplinaId, academicYearId]) && !studentsLoading && !studentsError
 
