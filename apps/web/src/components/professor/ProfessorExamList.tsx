@@ -1,26 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { estados, provaDisplayTitle, type ProvaResumo } from "@/lib/provas/schema";
 
 export function ProfessorExamList({ school, yearId, editor }: { school: string; yearId: string; editor: string }) {
+  return <ExamPages key={JSON.stringify([school, yearId])} school={school} yearId={yearId} editor={editor} />;
+}
+
+function ExamPages({ school, yearId, editor }: { school: string; yearId: string; editor: string }) {
+  const pages = useRef(new Map<number, ProvaResumo[]>());
   const [offset, setOffset] = useState(0);
   const [retry, setRetry] = useState(0);
-  const [rows, setRows] = useState<ProvaResumo[] | null>(null);
+  const [, redraw] = useState(0);
+  const rows = pages.current.get(offset);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
+    setFailed(false);
+    if (pages.current.has(offset)) return;
     const controller = new AbortController();
     const query = new URLSearchParams({ offset: String(offset) });
     if (yearId) query.set("ano_letivo_id", yearId);
-    setRows(null);
-    setFailed(false);
     async function load() {
       try {
         const response = await fetch(`/api/escola/${encodeURIComponent(school)}/provas?${query}`, { cache: "no-store", signal: controller.signal });
         const data = await response.json();
+        if (controller.signal.aborted) return;
+        if (response.status === 401 || response.status === 403 || !data.permissions?.author) pages.current.clear();
         if (!response.ok || !data.permissions?.author || !Array.isArray(data.provas)) throw new Error();
-        if (!controller.signal.aborted) setRows(data.provas);
+        pages.current.set(offset, data.provas);
+        redraw(value => value + 1);
       } catch {
         if (!controller.signal.aborted) setFailed(true);
       }
