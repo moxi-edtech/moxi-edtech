@@ -62,3 +62,24 @@ test("aborting one consumer does not cancel another; invalidation cannot republi
   assert.equal((await (await cache.read("/api/fixture")).json()).version, 2);
   assert.equal(calls, 2);
 });
+
+test("pauta arrays preserve revision headers; unrelated array responses and rejected reads are not cached", async () => {
+  let calls = 0;
+  const cache = createDrawerReadCache({ fetcher: async () => {
+    calls++;
+    return Response.json([{ aluno_id: "fixture", versions: { MAC: { id: "v1" } } }], { headers: { "x-klasse-grade-max": "20", "x-klasse-grade-components": "MAC,NPT" } });
+  } });
+  const first = await cache.read("/api/professor/pauta?trimestre=1&disciplinaId=d");
+  const second = await cache.read("/api/professor/pauta?disciplinaId=d&trimestre=1");
+  assert.equal(calls, 1);
+  assert.equal(second.headers.get("x-klasse-grade-max"), "20");
+  assert.deepEqual(await first.json(), await second.json());
+  await cache.read("/api/professor/pauta?disciplinaId=d&trimestre=2");
+  assert.equal(calls, 2);
+  await cache.read("/api/fixture");
+  await cache.read("/api/fixture");
+  assert.equal(calls, 4);
+  cache.invalidate();
+  await cache.read("/api/professor/pauta?disciplinaId=d&trimestre=1");
+  assert.equal(calls, 5);
+});
