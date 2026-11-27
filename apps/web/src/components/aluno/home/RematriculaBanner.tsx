@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback, useState, useEffect, useRef } from 'react'
+import { useContext, useCallback, useState, useEffect, useRef } from 'react'
 import { ArrowRight, Loader2, CheckCircle2, Wallet, Upload, FileCheck2 } from 'lucide-react'
 import { useToast } from '@/components/feedback/FeedbackSystem'
 import { PortalSheet } from '@/components/portal/ui/PortalSheet'
-import { usePortalDrawerGuard, usePortalDrawerNavigation } from '@/components/portal/ui/PortalDrawerNavigator'
+import { usePortalDrawerGuard, PortalFrameActiveContext, usePortalDrawerNavigation } from '@/components/portal/ui/PortalDrawerNavigator'
 import { Notice } from '@/components/ui/alert'
 
 type RematriculaStatus = {
@@ -63,6 +63,7 @@ export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: 
   const [flowError, setFlowError] = useState<string | null>(null)
   const [evidenceMessage, setEvidenceMessage] = useState('')
 
+  const frameActive = useContext(PortalFrameActiveContext);
   const navigation = usePortalDrawerNavigation()
   const submitting = useRef(false)
   const sequence = useRef(0)
@@ -98,6 +99,7 @@ export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: 
   }, [fetchStatus])
 
   useEffect(() => {
+    if (!frameActive) return
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') void fetchStatus()
     }
@@ -107,15 +109,15 @@ export function RematriculaBanner({ embedded = false, onFinance }: { embedded?: 
       window.removeEventListener('focus', refreshWhenVisible)
       document.removeEventListener('visibilitychange', refreshWhenVisible)
     }
-  }, [fetchStatus])
+  }, [fetchStatus, frameActive])
 
   useEffect(() => {
     const payment = status?.rematricula?.paymentIntent
     const shouldRefresh = Boolean(status?.hasDebt || (payment && payment.status !== 'settled'))
-    if (!shouldRefresh) return
-    const timer = window.setInterval(() => void fetchStatus(), 30000)
+    if (!frameActive || !shouldRefresh) return
+    const timer = window.setInterval(() => { if (!document.hidden) void fetchStatus() }, 30000)
     return () => window.clearInterval(timer)
-  }, [fetchStatus, status?.hasDebt, status?.rematricula?.paymentIntent])
+  }, [fetchStatus, frameActive, status?.hasDebt, status?.rematricula?.paymentIntent])
 
   const handleConfirm = async () => {
     if (status?.hasDebt) {
