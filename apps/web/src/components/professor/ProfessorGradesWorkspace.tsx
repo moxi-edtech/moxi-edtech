@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator"
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { PortalFrameActiveContext, usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator"
 import { enqueueOfflineAction } from "@/lib/offline/queue"
 import { createIdempotencyKey } from "@/lib/idempotency"
 import { currentGradePeriod, type GradePeriodRow } from "@/lib/academico/grade-period-context"
@@ -140,6 +140,9 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
   embedded?: boolean; requestedAnoLetivoId?: string; requestedTurmaId?: string; requestedDisciplinaId?: string; requestedTerm?: string | null; highlightAlunoId?: string | null;
 }) {
   const navigation = usePortalDrawerNavigation()
+  const read = navigation?.read
+  const frameActive = useContext(PortalFrameActiveContext)
+  const reopenLoadedKey = useRef<string | null>(null)
   const [anoLetivoId, setAnoLetivoId] = useState(requestedAnoLetivoId)
   const [atribs, setAtribs] = useState<Atrib[]>([])
   const [loadingAtribs, setLoadingAtribs] = useState(true)
@@ -221,7 +224,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
       setLoadingAtribs(true)
       try {
         const assignmentParams = new URLSearchParams(); if (requestedAnoLetivoId) assignmentParams.set("ano_letivo_id", requestedAnoLetivoId)
-        const res = await fetch(`/api/professor/atribuicoes${assignmentParams.size ? "?" + assignmentParams.toString() : ""}`, { cache: "no-store" })
+        const res = await (read ? read(`/api/professor/atribuicoes${assignmentParams.size ? "?" + assignmentParams.toString() : ""}`) : fetch(`/api/professor/atribuicoes${assignmentParams.size ? "?" + assignmentParams.toString() : ""}`, { cache: "no-store" }))
         const json = await res.json().catch(() => null)
         if (!active) return
         if (res.ok && json?.ok && (!requestedAnoLetivoId || json.context?.anoLetivoId === requestedAnoLetivoId)) {
@@ -240,7 +243,7 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
     return () => {
       active = false
     }
-  }, [requestedAnoLetivoId, requestedTurmaId, requestedDisciplinaId, embedded])
+  }, [requestedAnoLetivoId, requestedTurmaId, requestedDisciplinaId, embedded, read])
 
   const atribsByTurma = useMemo(() => {
     return atribs.reduce((acc, a) => {
@@ -263,24 +266,35 @@ export function ProfessorGradesWorkspace({ embedded = false, requestedAnoLetivoI
 
   useEffect(() => {
     if (!turmaId || !disciplinaId || !anoLetivoId) {
+      reopenLoadedKey.current = null
       setReopenRequest(null)
       setReopenHistory([])
       return
     }
-    let active = true
+    if (!frameActive) return
+    const controller = new AbortController()
+    const params = new URLSearchParams({ turma_id: turmaId, disciplina_id: disciplinaId, trimestre: String(trimestreSelecionado), ano_letivo_id: anoLetivoId })
+    const key = params.toString()
+    let inFlight = false
     const loadReopenRequests = async () => {
-      const params = new URLSearchParams({ turma_id: turmaId, disciplina_id: disciplinaId, trimestre: String(trimestreSelecionado), ano_letivo_id: anoLetivoId })
-      const response = await fetch(`/api/professor/notas/reabertura?${params.toString()}`, { cache: "no-store" })
-      const payload = await response.json().catch(() => null)
-      if (active && payload?.ok) {
-        setReopenRequest(payload.current ?? null)
-        setReopenHistory(Array.isArray(payload.items) ? payload.items : [])
-      }
+      if (document.hidden || controller.signal.aborted || inFlight) return
+      inFlight = true
+      try {
+        const response = await fetch(`/api/professor/notas/reabertura?${key}`, { cache: "no-store", signal: controller.signal })
+        const payload = await response.json().catch(() => null)
+        if (!controller.signal.aborted && response.ok && payload?.ok) {
+          reopenLoadedKey.current = key
+          setReopenRequest(payload.current ?? null)
+          setReopenHistory(Array.isArray(payload.items) ? payload.items : [])
+        }
+      } catch {
+        // Keep the existing state; the next visible poll may retry.
+      } finally { inFlight = false }
     }
-    void loadReopenRequests()
+    if (reopenLoadedKey.current !== key) void loadReopenRequests()
     const timer = window.setInterval(() => void loadReopenRequests(), 30_000)
-    return () => { active = false; window.clearInterval(timer) }
-  }, [turmaId, disciplinaId, turmaDisciplinaId, trimestreSelecionado, anoLetivoId])
+    return () => { controller.abort(); window.clearInterval(timer) }
+  }, [turmaId, disciplinaId, trimestreSelecionado, anoLetivoId, frameActive])
 
   const handleRequestReopen = async () => {
     if (requestingReopen) return
