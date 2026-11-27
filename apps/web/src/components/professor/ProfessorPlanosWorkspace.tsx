@@ -33,16 +33,17 @@ export function ProfessorPlanosWorkspace({ embedded = false, requestedTurmaId = 
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const navigation = usePortalDrawerNavigation();
+  const read = navigation?.read;
   usePortalDrawerGuard(dirty, saving);
   const [message, setMessage] = useState<string | null>(null);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (fresh = false) => {
     setLoading(true); setLoadError(null);
     try {
-      const [agendaItems, plansRes] = await Promise.all([loadAgendaAssignments(initialAgenda), fetch("/api/professor/planos-aula", { cache: "no-store" })]);
+      const [agendaItems, plansRes] = await Promise.all([loadAgendaAssignments(initialAgenda), (read ? read("/api/professor/planos-aula", { fresh }) : fetch("/api/professor/planos-aula", { cache: "no-store" }))]);
       const planData = await plansRes.json().catch(() => null);
       if (!plansRes.ok || !planData?.ok) throw new Error(planData?.error ?? "Não foi possível carregar os planos.");
       const map = new Map<string, Assignment>();
@@ -59,7 +60,7 @@ export function ProfessorPlanosWorkspace({ embedded = false, requestedTurmaId = 
       if (requestedAssignment) setForm((current) => current.turma_id ? current : { ...current, turma_id: requestedAssignment.turma_id, disciplina_id: requestedAssignment.disciplina_id });
     } catch (cause) { setLoadError(cause instanceof Error ? cause.message : "Não foi possível carregar os planos."); }
     finally { setLoading(false); }
-  }, [embedded, requestedTurmaId, requestedDisciplinaId, initialAgenda]);
+  }, [embedded, requestedTurmaId, requestedDisciplinaId, initialAgenda, read]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -76,7 +77,7 @@ export function ProfessorPlanosWorkspace({ embedded = false, requestedTurmaId = 
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível guardar o plano.");
       navigation?.notifyChanged();
       setMessage(status === "enviado" ? "Plano enviado para revisão." : "Rascunho guardado.");
-      setForm(emptyForm); setEditingPlanId(null); setDirty(false); await load();
+      setForm(emptyForm); setEditingPlanId(null); setDirty(false); await load(true);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Não foi possível guardar o plano."); }
     finally { setSaving(false); }
   };
@@ -103,7 +104,7 @@ export function ProfessorPlanosWorkspace({ embedded = false, requestedTurmaId = 
         {message && <p className="mt-3 text-sm font-semibold text-muted-foreground">{message}</p>}
         </fieldset>
       </section>
-        <section className="rounded-xl border border-border bg-card p-4 sm:p-6"><h2 className="font-black text-foreground">Os meus planos</h2><p className="mb-4 mt-1 text-xs text-muted-foreground">Acompanhe o estado de cada preparação.</p>{loadError ? <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><p>{loadError}</p><button type="button" onClick={() => void load()} className="mt-3 rounded-xl bg-rose-700 px-3 py-2 text-xs font-black text-white">Tentar novamente</button></div> : loading ? <ProfessorPlanosListSkeleton /> : <div className="space-y-3">{plans.length === 0 ? <div className="rounded-xl border border-dashed border-border p-5 text-center"><p className="text-sm font-bold text-foreground">Ainda não há planos.</p><button type="button" onClick={() => document.getElementById("plan-tema")?.focus()} className="mt-2 text-xs font-black text-emerald-700 hover:underline">Criar o primeiro plano</button></div> : plans.map((plan) => <div key={plan.id} className="rounded-xl border border-border p-4"><div className="flex items-start justify-between gap-2"><div><p className="font-bold text-foreground">{plan.tema}</p><p className="text-xs text-muted-foreground">{plan.data}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase text-muted-foreground">{plan.status}</span>{plan.status !== "aprovado" && plan.status !== "arquivado" && <button type="button" disabled={saving} onClick={() => { if (dirty && !window.confirm("Descartar alterações do plano actual?")) return; setEditingPlanId(plan.id); setDirty(false); setForm({ turma_id: plan.turma_id ?? "", disciplina_id: plan.disciplina_id ?? "", data: plan.data, tema: plan.tema, subtema: plan.subtema ?? "", objetivos: plan.objetivos ?? "", competencias: plan.competencias ?? "", conteudos: plan.conteudos ?? "", metodologia: plan.metodologia ?? "", recursos: plan.recursos ?? "", atividades: plan.atividades ?? "", avaliacao: plan.avaliacao ?? "", tarefa_casa: plan.tarefa_casa ?? "", anotacoes_alunos_avaliados: plan.anotacoes_alunos_avaliados ?? "", observacoes: plan.observacoes ?? "", arquivo_url: plan.arquivo_url ?? "" }); if (embedded) document.getElementById("plan-tema")?.focus(); else window.scrollTo({ top: 0, behavior: "smooth" }); }} className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Editar plano"><Pencil className="h-3.5 w-3.5" /></button>}</div></div>{plan.objetivos && <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{plan.objetivos}</p>}</div>)}</div>}</section>
+        <section className="rounded-xl border border-border bg-card p-4 sm:p-6"><h2 className="font-black text-foreground">Os meus planos</h2><p className="mb-4 mt-1 text-xs text-muted-foreground">Acompanhe o estado de cada preparação.</p>{loadError ? <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><p>{loadError}</p><button type="button" onClick={() => void load(true)} className="mt-3 rounded-xl bg-rose-700 px-3 py-2 text-xs font-black text-white">Tentar novamente</button></div> : loading ? <ProfessorPlanosListSkeleton /> : <div className="space-y-3">{plans.length === 0 ? <div className="rounded-xl border border-dashed border-border p-5 text-center"><p className="text-sm font-bold text-foreground">Ainda não há planos.</p><button type="button" onClick={() => document.getElementById("plan-tema")?.focus()} className="mt-2 text-xs font-black text-emerald-700 hover:underline">Criar o primeiro plano</button></div> : plans.map((plan) => <div key={plan.id} className="rounded-xl border border-border p-4"><div className="flex items-start justify-between gap-2"><div><p className="font-bold text-foreground">{plan.tema}</p><p className="text-xs text-muted-foreground">{plan.data}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase text-muted-foreground">{plan.status}</span>{plan.status !== "aprovado" && plan.status !== "arquivado" && <button type="button" disabled={saving} onClick={() => { if (dirty && !window.confirm("Descartar alterações do plano actual?")) return; setEditingPlanId(plan.id); setDirty(false); setForm({ turma_id: plan.turma_id ?? "", disciplina_id: plan.disciplina_id ?? "", data: plan.data, tema: plan.tema, subtema: plan.subtema ?? "", objetivos: plan.objetivos ?? "", competencias: plan.competencias ?? "", conteudos: plan.conteudos ?? "", metodologia: plan.metodologia ?? "", recursos: plan.recursos ?? "", atividades: plan.atividades ?? "", avaliacao: plan.avaliacao ?? "", tarefa_casa: plan.tarefa_casa ?? "", anotacoes_alunos_avaliados: plan.anotacoes_alunos_avaliados ?? "", observacoes: plan.observacoes ?? "", arquivo_url: plan.arquivo_url ?? "" }); if (embedded) document.getElementById("plan-tema")?.focus(); else window.scrollTo({ top: 0, behavior: "smooth" }); }} className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Editar plano"><Pencil className="h-3.5 w-3.5" /></button>}</div></div>{plan.objetivos && <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{plan.objetivos}</p>}</div>)}</div>}</section>
     </div>}
   </div></div>;
 }
