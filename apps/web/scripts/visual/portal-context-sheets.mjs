@@ -8,7 +8,76 @@ const dir="apps/web/visual-evidence";
 await mkdir(dir,{recursive:true});
 const browser=await chromium.launch({headless:true});
 const results=[];
+async function validateDrawerData() {
+  const page = await browser.newPage();
+  const counts = new Map();
+  const writes = [];
+  let release;
+  const slow = new Promise(resolve => { release = resolve; });
+  const responses = {
+    "/api/aluno/rematricula/status": { ok: true, eligible: true, nextAno: 2027, rematricula: { service: { nome: "Rematrícula", valor: 2500 }, services: [] } },
+    "/api/aluno/disciplinas": { ok: true, disciplinas: [{ id: "disc", nome: "Disciplina sintética", periodos_ativos: [1] }] },
+    "/api/aluno/faltas": { ok: true, resumo: {faltas: 0, presencas: 1, atrasos: 0}, items: [] },
+    "/api/aluno/minhas-notas": { ok: true, matricula_encontrada: true, is_liberado: true, disciplinas: [] },
+    "/api/aluno/documentos/catalogo": { ok: true, documentos: [], boletim_pago: true },
+  };
+  await page.route("**/api/**", async route => {
+    const req = route.request();
+    const path = new URL(req.url()).pathname;
+    counts.set(path, (counts.get(path) ?? 0) + 1);
+    if (req.method() === "POST") writes.push({path, body: req.postDataJSON()});
+    if (path === "/api/aluno/disciplinas") await slow;
+    await route.fulfill({json: responses[path] ?? {ok: true}});
+  });
+  const open = async flow => {
+    await page.goto(base + "/?story=drawer-data&flow=" + flow);
+    await page.getByRole("button", {name: "Abrir portal"}).click();
+  };
+  try {
+    await open("academic");
+    const response = page.waitForResponse(r => new URL(r.url()).pathname === "/api/aluno/disciplinas");
+    const area = page.getByRole("tabpanel", {name: "Disciplinas"});
+    await page.getByRole("tab", {name: "Disciplinas"}).click();
+    await area.getByText("A carregar disciplinas").waitFor({state:"attached"});
+    release();
+    await response;
+    await area.getByText("Disciplina sintética").waitFor();
+    await page.waitForLoadState("networkidle");
+    const loaded = Object.fromEntries(counts);
+    for (const name of ["Faltas", "Documentos", "Notas", "Disciplinas"]) {
+      await page.getByRole("tab", {name, exact:true}).click();
+      await page.getByRole("tabpanel", {name, exact:true}).waitFor();
+    }
+    await area.getByText("Disciplina sintética").waitFor();
+    await page.waitForLoadState("networkidle");
+    assert.deepEqual(Object.fromEntries(counts), loaded, "tab switches repeated API calls");
+    await open("withdrawal");
+    await page.getByRole("button", {name:"Sinalizar desistência"}).click();
+    const signal = page.getByRole("region", {name:"Sinalizar possível desistência"});
+    await signal.getByRole("textbox").fill("Sinalização sintética para teste.");
+    assert.equal(await page.getByRole("dialog").count(), 1);
+    await signal.getByRole("button", {name:"Enviar sinalização"}).click();
+    await signal.getByText("Sinalização enviada à Secretaria.").waitFor();
+    await open("enrollment");
+    const review = page.getByRole("button", {name:"Continuar para pagamento"});
+    await review.click();
+    assert.equal(await page.getByRole("dialog").count(), 1);
+    await page.getByRole("button", {name:"Rever serviços"}).click();
+    await review.click();
+    const path = "/api/aluno/rematricula/iniciar";
+    assert.equal(writes.filter(w => w.path === path).length, 0);
+    const refreshed = page.waitForResponse(r => new URL(r.url()).pathname === "/api/aluno/rematricula/status");
+    await page.getByRole("button", {name:"Confirmar e iniciar pagamento"}).click();
+    await refreshed;
+    assert.deepEqual(writes.filter(w => w.path === path), [{path, body:{servicos_ids:[]}}]);
+    results.push({scenario:"drawer-data", initialAcademicRequests:loaded, requestsOnTabSwitch:0});
+  } finally {
+    release();
+    await page.close();
+  }
+}
 try {
+  await validateDrawerData();
   for (const viewport of [{width:390,height:844},{width:768,height:1024},{width:1024,height:768},{width:1366,height:768}]) {
     for (const reducedMotion of ["reduce","no-preference"]) {
       const ctx=await browser.newContext({viewport,reducedMotion});
