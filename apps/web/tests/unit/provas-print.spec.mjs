@@ -579,3 +579,25 @@ test("imported formulas retain unsupported notation and numeric slot boundaries"
  const recognized="\\frac{-7}{5}+x^{-2}";
  assert.equal(serializeMath(parseMath(recognized)),recognized);
 });
+
+
+test("visual composition attaches scripts to whole operands and inserts outside them",()=>{
+ const {parseMath,serializeMath,attachMathScript,mathInsertionIndex,editableValueNode,validMathExpression}=require("../../src/lib/provas/formulaAst.ts");
+ const t=parseMath("12+3");
+ const powered=attachMathScript(t,0,"^");assert.ok(powered);
+ assert.equal(validMathExpression(powered.nodes),"{12}^{2}+3");
+ assert.equal(powered.index,1);
+ assert.equal(attachMathScript(powered.nodes,0,"^"),null);
+ assert.equal(attachMathScript(t,1,"^"),null);
+ const indexed=attachMathScript(powered.nodes,0,"_");assert.ok(indexed);
+ assert.equal(validMathExpression(indexed.nodes),"{12}^{2}_{1}+3");
+ assert.equal(mathInsertionIndex(indexed.nodes,0,"after"),3);
+ assert.equal(mathInsertionIndex(indexed.nodes,2,"before"),0);
+ assert.equal(mathInsertionIndex(indexed.nodes,1,"after"),3);
+ assert.equal(mathInsertionIndex(indexed.nodes,1,"replace"),1);
+ assert.equal(mathInsertionIndex([],null,"end"),0);
+ assert.equal(serializeMath(attachMathScript(parseMath("-3"),0,"^").nodes),"(-3)^{2}");
+ const power=parseMath("x^{2}");
+ assert.equal(serializeMath([editableValueNode("12",[],power.slice(1),power[0]),...power.slice(1)]),"{12}^{2}");
+ assert.equal(serializeMath(t),"12+3");
+});
