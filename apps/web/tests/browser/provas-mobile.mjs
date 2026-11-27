@@ -515,6 +515,12 @@ try{
  assert.equal(await importPreview.locator("annotation").textContent(),"\\left(8+\\frac{3}{4}\\right)");
  await fallback.getByRole("button",{name:"Cancelar",exact:true}).click();
  assert.equal(await importedQuestion.locator("annotation").textContent(),importedLatex);
+ // The original formula remains selected after cancelling, even before a new tap.
+ const editImported=importDialog.getByRole("button",{name:"Editar fórmula",exact:true});
+ await editImported.waitFor({state:"visible"});
+ await editImported.click();
+ assert.equal(await importPreview.locator("annotation").textContent(),importedLatex);
+ await fallback.getByRole("button",{name:"Cancelar",exact:true}).click();
  await importedQuestion.locator("math").click();
  await importDialog.getByRole("button",{name:"Editar fórmula",exact:true}).click();
  await fallback.getByRole("button",{name:"Edição avançada (LaTeX)",exact:true}).click();
