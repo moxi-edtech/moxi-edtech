@@ -4,7 +4,7 @@ import { flushSync } from "react-dom";
 import { ArrowLeft,Plus,Trash2,MoveLeft,MoveRight,Undo2,Redo2,SlidersHorizontal,ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { mathMarkup } from "@/lib/provas/math";
-import { AST_LIMITS,editableMathToken,editableValueNode,groupMathRange,ungroupMathRange,mathAt,mathNodeLabel,mathSlots,mathSymbols,mathTreeValid,modelMathTree,replaceMathAt,serializeMath,tokenNode,validMathExpression,validMathToken,type MathNode,type MathPath } from "@/lib/provas/formulaAst";
+import { AST_LIMITS,attachMathScript,editableMathToken,editableValueNode,groupMathRange,ungroupMathRange,mathAt,mathNodeLabel,mathSlots,mathSymbols,mathTreeValid,modelMathTree,replaceMathAt,serializeMath,tokenNode,validMathExpression,validMathToken,type MathNode,type MathPath } from "@/lib/provas/formulaAst";
 import { formulaModels,formulaCategories,type FormulaCategory } from "@/lib/provas/formulaModels";
 
 const fieldStyle="min-h-11 w-full min-w-0 rounded-xl border border-border bg-background px-2 text-base focus:outline-none focus:ring-4 focus:ring-klasse-gold/20";
@@ -25,7 +25,7 @@ const structures:readonly {name:string;sample:string;nodes:()=>MathNode[]}[]=[
  {name:"Parênteses",sample:"(x+1)",nodes:()=>[{kind:"group",open:"(",body:[tokenNode("x"),tokenNode("+"),tokenNode("1")]}]},
  {name:"Colchetes",sample:"[x+1]",nodes:()=>[{kind:"group",open:"[",body:[tokenNode("x"),tokenNode("+"),tokenNode("1")]}]},
 ];
-const allSymbols=[...mathSymbols,["α","\\alpha"],["β","\\beta"],["θ","\\theta"],["λ","\\lambda"],["ω","\\omega"],["γ","\\gamma"],["δ","\\delta"],["φ","\\phi"]] as const;
+const allSymbols=[...mathSymbols,["α","\\alpha"],["β","\\beta"],["θ","\\theta"],["λ","\\lambda"],["ω","\\omega"],["γ","\\gamma"],["δ","\\delta"],["φ","\\phi"],["∪","\\cup"],["∩","\\cap"],["∈","\\in"],["∉","\\notin"],["⊂","\\subset"],["⊆","\\subseteq"],["⊃","\\supset"],["⊇","\\supseteq"],["≈","\\approx"],["≡","\\equiv"],["∏","\\prod"],["exp","\\exp"],["Δ","\\Delta"],["Ω","\\Omega"],["Γ","\\Gamma"],["Σ","\\Sigma"],["Espaço","\\,"]] as const;
 type Picker="numbers"|"symbols"|"structures"|"models";
 export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled,label}:{initial:MathNode[];onInsert:(value:string)=>void;onBack:()=>void;disabled:boolean;label:string}){
  const [tree,setTree]=useState(initial);
@@ -37,6 +37,7 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
  const [category,setCategory]=useState<FormulaCategory>("Aritmética");
  const [error,setError]=useState("");
  const [advanced,setAdvanced]=useState(false);
+ const [insertionOptions,setInsertionOptions]=useState(false);
  const [grouping,setGrouping]=useState<{path:MathPath;first:number}|null>(null);
  const [groupMode,setGroupMode]=useState(false);
  const [live,setLive]=useState(false);
@@ -45,7 +46,7 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
  const [past,setPast]=useState<MathNode[][]>([]);
  const [future,setFuture]=useState<MathNode[][]>([]);
  const liveInvalid=live&&!validMathToken(atom.replace(",","."));
- function resetSelection(){setGroupMode(false);setGrouping(null);setPath([]);setSelection(null);setPicker(null);setLive(false);setError("");}
+ function resetSelection(){setInsertionOptions(false);setGroupMode(false);setGrouping(null);setPath([]);setSelection(null);setPicker(null);setLive(false);setError("");}
  function undo(){if(disabled||!past.length)return;setFuture(f=>[tree,...f].slice(0,50));setTree(past[past.length-1]);setPast(p=>p.slice(0,-1));resetSelection();}
  function redo(){if(disabled||!future.length)return;setPast(p=>[...p,tree].slice(-50));setTree(future[0]);setFuture(f=>f.slice(1));resetSelection();}
  const list=mathAt(tree,path)??[];
@@ -58,7 +59,7 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
   const updated=replaceMathAt(tree,path,next);
   if(!updated||!mathTreeValid(updated,true)){setError("Limite de profundidade, 160 elementos ou 300 caracteres atingido.");return false;}
   if(serializeMath(updated)!==serializeMath(tree)){setPast(p=>[...p,tree].slice(-50));setFuture([]);setTree(updated);}
-  setGroupMode(false);setGrouping(null);setSelection(focus);if(!keepLive){setPicker(null);setLive(false);}setError("");return true;
+  setInsertionOptions(false);setGroupMode(false);setGrouping(null);setSelection(focus);if(!keepLive){setPicker(null);setLive(false);}setError("");return true;
  }
  function add(nodes:MathNode[]){
   if(disabled||!nodes.length)return;
@@ -68,7 +69,7 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
  }
  function openPicker(kind:Picker,at:typeof position){
   if(disabled||liveInvalid||error&&live)return;
-  setLive(false);setPosition(at);setPicker(kind);setAtom(kind==="numbers"&&at==="replace"&&selected?.kind==="token"?selected.value:"1");setError("");
+  setInsertionOptions(false);setLive(false);setPosition(at);setPicker(kind);setAtom(kind==="numbers"&&at==="replace"&&selected?.kind==="token"?selected.value:"1");setError("");
  }
  function openSlot(index:number,slot:MathPath[number]["slot"]){
   setPath(p=>[...p,{index,slot}]);setSelection(null);setPicker(null);setLive(false);setError("");
@@ -85,12 +86,17 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
   }
   const numeric=node.kind==="token"&&editableMathToken(node.value);
   const select=()=>{
-   setPath(at);setSelection(index);setPosition("replace");setError("");
+   setInsertionOptions(false);setPath(at);setSelection(index);setPosition("replace");setError("");
    setLive(numeric);setPicker(numeric?"numbers":node.kind==="token"?"symbols":null);
    setAdvanced(node.kind!=="token");
    if(numeric&&node.kind==="token"){setAtom(node.value);setKeyboard(/^[A-Za-z]$/.test(node.value)?"text":"decimal");}
   };
   if(numeric){flushSync(select);valueInput.current?.focus();valueInput.current?.select();}else select();
+ }
+ function addScript(symbol:"^"|"_"){
+  if(disabled||selection===null||liveInvalid||error&&live)return;
+  const result=attachMathScript(list,selection,symbol);if(!result)return;
+  if(change(result.nodes,result.index)){setPath(p=>[...p,{index:result.index,slot:"body"}]);setSelection(0);setAdvanced(false);}
  }
  function selectEmpty(at:MathPath){
   if(disabled||liveInvalid)return;
@@ -122,7 +128,7 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
      <button type="button" aria-label={context+" · Seleccionar fracção"} aria-pressed={active} disabled={disabled||liveInvalid||Boolean(error&&live)} onClick={()=>selectElement(at,i)} className="flex min-h-11 items-center justify-center rounded-xl focus-visible:ring-4 focus-visible:ring-klasse-gold/20"><span className="h-px w-full bg-current"/></button>
      <span className="flex justify-center">{slot(i,"denominator",node.denominator,"Denominador")}</span>
     </span>;
-    if(node.kind==="script")return <span key={i} className={"inline-flex shrink-0 "+(node.symbol==="^"?"-translate-y-3 self-start":"translate-y-3 self-end")}>{slot(i,"body",node.body,node.symbol==="^"?"Expoente":"Índice")}</span>;
+    if(node.kind==="script")return <span key={i} className={"inline-flex shrink-0 items-center gap-0.5 "+(node.symbol==="^"?"-translate-y-3 self-start":"translate-y-3 self-end")}>{groupMode||advanced?control(node.symbol==="^"?"Seleccionar expoente":"Seleccionar índice",node.symbol==="^"?"↑":"↓","text-xs px-1"):null}{slot(i,"body",node.body,node.symbol==="^"?"Expoente":"Índice")}</span>;
     if(node.kind==="root")return <span key={i} className="inline-flex shrink-0 items-start gap-0.5">
      {node.index&&slot(i,"index",node.index,"Índice da raiz")}
      {control("Seleccionar raiz","√","self-stretch text-xl")}
@@ -204,6 +210,17 @@ export default function RecursiveFormulaEditor({initial,onInsert,onBack,disabled
     <Button type="button" size="sm" variant="ghost" onClick={()=>move(1)} disabled={disabled||selection===list.length-1} aria-label="Mover elemento para a direita"><MoveRight/><span className="sr-only">Mover direita</span></Button>
     <Button type="button" size="sm" variant="ghost" className="text-destructive" onClick={()=>change(list.filter((_,i)=>i!==selection),null)} disabled={disabled}><Trash2/> Remover</Button>
    </div>
+  </div>}
+  {!groupMode&&!liveInvalid&&!(error&&live)&&selected&&selection!==null&&(!picker||live)&&<div className="space-y-2">
+   <div className="flex flex-wrap gap-1">
+    {attachMathScript(list,selection,"^")&&<Button type="button" size="sm" variant="outline" disabled={disabled} onClick={()=>addScript("^")}>Adicionar expoente</Button>}
+    {attachMathScript(list,selection,"_")&&<Button type="button" size="sm" variant="outline" disabled={disabled} onClick={()=>addScript("_")}>Adicionar índice</Button>}
+    {!advanced&&<Button type="button" size="sm" variant="ghost" aria-expanded={insertionOptions} disabled={disabled} onClick={()=>setInsertionOptions(v=>!v)}>Inserir junto ao elemento</Button>}
+   </div>
+   {insertionOptions&&!advanced&&<div className="grid grid-cols-2 gap-1">
+    <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={()=>openPicker("numbers","before")}>Antes</Button>
+    <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={()=>openPicker("numbers","after")}>Depois</Button>
+   </div>}
   </div>}
   {!groupMode&&!liveInvalid&&!(error&&live)&&(!picker||live)&&<div className="grid grid-cols-2 gap-2">
    <Button type="button" variant="outline" disabled={disabled} onClick={()=>openPicker("numbers","end")}><Plus/> Número / variável</Button>
