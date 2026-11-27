@@ -1069,3 +1069,75 @@ REVOKE ALL ON FUNCTION public.create_or_update_professor_academico(uuid,uuid,jso
 GRANT EXECUTE ON FUNCTION public.create_or_update_professor_academico(uuid,uuid,jsonb,jsonb,uuid[]) TO authenticated,service_role;
 REVOKE ALL ON FUNCTION public.update_teacher_details_atomic(uuid,uuid,jsonb,uuid[]) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.update_teacher_details_atomic(uuid,uuid,jsonb,uuid[]) TO authenticated,service_role;
+
+-- Explicit multi-subject replacement: all expected owners must still match.
+-- Reuse the existing single-assignment and replacement engines under one lock.
+CREATE FUNCTION public.replace_teacher_subjects_atomic(p_escola_id uuid,p_turma_id uuid,
+ p_professor_novo_id uuid,p_scope text,p_expected jsonb)
+RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $swap$
+DECLARE v_ano uuid; v_regime text; v_titular uuid; v_ids uuid[]; v_all uuid[];
+ v_item record; v_seen integer:=0; v_total integer:=0; v_titular_outside boolean:=false;
+BEGIN
+ IF (SELECT auth.uid()) IS NULL OR NOT EXISTS (
+  SELECT 1 FROM public.escola_users eu WHERE eu.escola_id=p_escola_id AND eu.user_id=(SELECT auth.uid())
+  AND COALESCE(eu.papel,eu.role) IN ('admin','admin_escola','admin_secretaria','admin_secretario','admin_financeiro','diretor','staff_admin','secretaria','secretaria_financeiro'))
+ THEN RAISE EXCEPTION 'TEACHER_REPLACE_FORBIDDEN'; END IF;
+ IF p_scope IS NULL OR p_scope NOT IN ('all','some') OR p_expected IS NULL OR jsonb_typeof(p_expected)<>'array'
+ THEN RAISE EXCEPTION 'TEACHER_REPLACE_INVALID_INPUT'; END IF;
+ IF jsonb_array_length(p_expected) NOT BETWEEN 1 AND 100 THEN RAISE EXCEPTION 'TEACHER_REPLACE_INVALID_INPUT'; END IF;
+ SELECT array_agg(x.matriz_id ORDER BY x.matriz_id) INTO v_ids FROM jsonb_to_recordset(p_expected) AS x(matriz_id uuid,professor_id uuid);
+ IF array_position(v_ids,NULL) IS NOT NULL OR cardinality(v_ids)<>(SELECT count(DISTINCT x) FROM unnest(v_ids) x)
+ OR EXISTS(SELECT 1 FROM jsonb_array_elements(p_expected) e WHERE NOT (e ? 'professor_id'))
+ THEN RAISE EXCEPTION 'TEACHER_REPLACE_INVALID_INPUT'; END IF;
+ PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('klasse:teacher-assign:'||p_escola_id::text,0));
+ SELECT a.id INTO v_ano FROM public.anos_letivos a WHERE a.escola_id=p_escola_id AND a.ativo ORDER BY a.data_inicio DESC NULLS LAST,a.ano DESC,a.id LIMIT 1;
+ SELECT t.regime_docencia,t.professor_titular_id INTO v_regime,v_titular FROM public.turmas t
+ WHERE t.id=p_turma_id AND t.escola_id=p_escola_id AND t.session_id=v_ano FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'TEACHER_REGIME_TURMA_INVALID'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.professores pr JOIN public.teachers t ON t.escola_id=pr.escola_id AND t.profile_id=pr.profile_id
+ WHERE pr.escola_id=p_escola_id AND pr.id=p_professor_novo_id) THEN RAISE EXCEPTION 'TEACHER_REPLACE_NEW_TEACHER_NOT_FOUND'; END IF;
+ FOR v_item IN
+  SELECT td.curso_matriz_id,td.professor_id AS owner,tdp.professor_id AS shared_owner,x.matriz_id AS selected_id,x.professor_id AS expected_owner
+  FROM public.turma_disciplinas td
+  JOIN public.turmas tu ON tu.id=td.turma_id AND tu.escola_id=td.escola_id
+  JOIN public.curso_matriz cm ON cm.id=td.curso_matriz_id AND cm.escola_id=td.escola_id
+   AND cm.curso_id=tu.curso_id AND cm.classe_id=tu.classe_id AND cm.ativo
+  JOIN public.curso_curriculos cc ON cc.id=cm.curso_curriculo_id AND cc.escola_id=td.escola_id AND cc.ano_letivo_id=v_ano AND cc.status='published'
+  LEFT JOIN public.turma_disciplinas_professores tdp ON tdp.escola_id=td.escola_id AND tdp.turma_id=td.turma_id AND tdp.disciplina_id=cm.disciplina_id
+  LEFT JOIN jsonb_to_recordset(p_expected) AS x(matriz_id uuid,professor_id uuid) ON x.matriz_id=td.curso_matriz_id
+  WHERE td.escola_id=p_escola_id AND td.turma_id=p_turma_id
+  ORDER BY td.curso_matriz_id FOR UPDATE OF td
+ LOOP
+  v_all:=array_append(v_all,v_item.curso_matriz_id);
+  IF v_item.selected_id IS NULL THEN
+   IF v_titular IS NOT NULL AND COALESCE(v_item.owner,v_item.shared_owner)=v_titular THEN v_titular_outside:=true; END IF;
+   CONTINUE;
+  END IF;
+  IF (v_item.owner IS NOT NULL AND v_item.shared_owner IS NOT NULL AND v_item.owner<>v_item.shared_owner)
+   OR COALESCE(v_item.owner,v_item.shared_owner) IS DISTINCT FROM v_item.expected_owner
+  THEN RAISE EXCEPTION 'TEACHER_REPLACE_PREVIOUS_MISMATCH'; END IF;
+  v_seen:=v_seen+1;
+ END LOOP;
+ IF v_seen<>cardinality(v_ids) OR (p_scope='all' AND cardinality(v_all)<>cardinality(v_ids))
+ THEN RAISE EXCEPTION 'TEACHER_REPLACE_OFFERING_NOT_PUBLISHED'; END IF;
+ IF p_scope='all' THEN
+  UPDATE public.turmas SET regime_docencia='monodocencia',professor_titular_id=p_professor_novo_id WHERE id=p_turma_id AND escola_id=p_escola_id;
+ ELSIF v_titular IS NOT NULL AND v_titular<>p_professor_novo_id AND EXISTS (
+  SELECT 1 FROM jsonb_to_recordset(p_expected) AS x(matriz_id uuid,professor_id uuid) WHERE x.professor_id=v_titular
+ ) THEN
+  UPDATE public.turmas SET regime_docencia='misto',
+   professor_titular_id=CASE WHEN v_titular_outside THEN v_titular ELSE p_professor_novo_id END
+   WHERE id=p_turma_id AND escola_id=p_escola_id;
+ END IF;
+ FOR v_item IN SELECT * FROM jsonb_to_recordset(p_expected) AS x(matriz_id uuid,professor_id uuid) ORDER BY x.matriz_id LOOP
+  IF v_item.professor_id IS NULL THEN
+   PERFORM public.assign_professor_turma_disciplina_atomic(p_escola_id,p_turma_id,v_item.matriz_id,p_professor_novo_id,NULL,NULL);
+  ELSIF v_item.professor_id<>p_professor_novo_id THEN
+   PERFORM public.trocar_professor_turma_disciplina_atomic(p_escola_id,p_turma_id,v_item.matriz_id,v_item.professor_id,p_professor_novo_id);
+  END IF;
+  v_total:=v_total+1;
+ END LOOP;
+ RETURN v_total;
+END $swap$;
+REVOKE ALL ON FUNCTION public.replace_teacher_subjects_atomic(uuid,uuid,uuid,text,jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.replace_teacher_subjects_atomic(uuid,uuid,uuid,text,jsonb) TO authenticated;
