@@ -83,6 +83,7 @@ export function TabFinanceiro({ onOpenDocuments }: { onOpenDocuments?: (serviceC
 function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | null; onOpenDocuments?: (serviceCode: string | null) => void }) {
   const frameActive = useContext(PortalFrameActiveContext);
   const navigation = usePortalDrawerNavigation();
+  const read = navigation?.read;
   const currentYear = Number(new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "Africa/Luanda" }).format(new Date()));
 
   const [loading, setLoading] = useState(true);
@@ -128,7 +129,7 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
   }, [studentId, fromAno, toAno]);
 
   // One request per scope. A superseded response cannot publish data or errors.
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (fresh = true) => {
     if (activeRequest.current || paymentLock.current) return;
     const controller = new AbortController();
     activeRequest.current = controller;
@@ -136,7 +137,7 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
     if (scopeReady.current !== query) setLoading(true);
     setFetchError(null);
     try {
-      const response = await fetch(`/api/aluno/financeiro${query}`, { cache: "no-store", signal: controller.signal });
+      const response = await (read ? read(`/api/aluno/financeiro${query}`, { signal: controller.signal, fresh }) : fetch(`/api/aluno/financeiro${query}`, { cache: "no-store", signal: controller.signal }));
       const json = await response.json() as ApiResponse;
       if (controller.signal.aborted || activeRequest.current !== controller) return;
       if (!response.ok || !json.ok) {
@@ -164,9 +165,9 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
         setRefreshing(false);
       }
     }
-  }, [query]);
+  }, [query, read]);
   useEffect(() => {
-    void refresh();
+    void refresh(false);
     return () => {
       activeRequest.current?.abort();
       activeRequest.current = null;
@@ -229,7 +230,7 @@ function FinanceiroScope({ studentId, onOpenDocuments }: { studentId: string | n
       <div className="flex flex-wrap items-center justify-between gap-2">
         {!navigation && <h1 className="text-2xl font-semibold tracking-tight text-primary">Financeiro</h1>}
         <button
-          onClick={refresh}
+          onClick={() => void refresh()}
           className="min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
         >
           {refreshing ? "A atualizar..." : "Atualizar"}
