@@ -18,7 +18,7 @@ type EstadoVital = {
   fase_operacional: 'PRE_INICIO' | 'REGULAR' | 'EXAMES' | 'POS_ENCERRAMENTO';
 };
 
-export function EstadoVitalBanner({ estado, compact = false, calendarHref }: { estado: EstadoVital | null; compact?: boolean; calendarHref?: string }) {
+export function EstadoVitalBanner({ estado, compact = false, calendarHref, showSignature = true }: { estado: EstadoVital | null; compact?: boolean; calendarHref?: string; showSignature?: boolean }) {
   const [openedEventKey, setOpenedEventKey] = useState<string | null>(null);
   if (!estado) return null;
   const eventKey = JSON.stringify([estado.escola_id, estado.session_id, estado.periodo_id, estado.evento_hoje_nome]);
@@ -57,7 +57,7 @@ export function EstadoVitalBanner({ estado, compact = false, calendarHref }: { e
               </button>
             ))}
           </div>
-          <PortalCulturalSignature />
+          {showSignature && <PortalCulturalSignature />}
         </section>
         <PortalSheet open={eventOpen && Boolean(estado.evento_hoje_nome) && !isBloqueado && !isExames} onClose={() => setOpenedEventKey(null)} title="Evento de hoje" description={`${estado.ano_ativo ?? "—"} · ${periodo}`} size="compact">
           <p className="break-words text-base font-semibold text-foreground">{estado.evento_hoje_nome}</p>

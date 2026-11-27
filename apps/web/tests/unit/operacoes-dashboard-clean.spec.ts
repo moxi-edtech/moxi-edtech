@@ -40,7 +40,7 @@ test("single dashboard refresh and compact cards preserve actions", () => {
   assert.match(hub, /disabled=\{refreshing \|\| dashboardRefreshing\}/);
   assert.match(source("components/shared/OperationalMetricCard.tsx"), /aria-haspopup="dialog"/);
   assert.match(quick, /dashboardCompact=\{portalBase === "operacoes"\}/);
-  assert.match(expediente, /dashboardCompact=\{portal==="operacoes"\}/);
+  assert.match(expediente, /dashboardCompact=\{portal!=="admin"\}/);
   assert.match(action, /ref=\{buttonRef\}/);
   assert.match(action, /disabled && disabledReason/);
 });
@@ -98,7 +98,7 @@ test("operational icon semantics are contextual, not decorative", () => {
   assert.match(operationalCardIconClasses.attention, /bg-amber\/15 text-amber-700/);
   assert.match(operationalCardIconClasses.neutral, /bg-muted text-muted-foreground/);
   const expediente = source("components/secretaria/ExpedienteDashboardCard.tsx");
-  assert.match(expediente, /needsAttention=\{portal==="operacoes" && \(\(summary\?\.pendingCount\?\?0\)>0 \|\| \(summary\?\.rejectedCount\?\?0\)>0\)\}/);
+  assert.match(expediente, /needsAttention=\{\(portal==="operacoes" && \(summary\?\.pendingCount\?\?0\)>0\) \|\| \(summary\?\.rejectedCount\?\?0\)>0\}/);
   const kpi = source("components/layout/escola-admin/KpiSection.tsx");
   assert.match(kpi, /op\.mensalidadesPendentes > 0 \? \("warning"/);
   assert.match(kpi, /op\.mensalidadesInadimplentes > 0 \? \("warning"/);
