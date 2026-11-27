@@ -98,6 +98,7 @@ async function validateDrawerData() {
 try {
   await validateDrawerData();
   await validateDashboardNavigation();
+  await validateGradeAndPaymentRequests();
   for (const viewport of [{width:390,height:844},{width:768,height:1024},{width:1024,height:768},{width:1366,height:768}]) {
     for (const reducedMotion of ["reduce","no-preference"]) {
       const ctx=await browser.newContext({viewport,reducedMotion});
@@ -449,5 +450,83 @@ async function validateDashboardNavigation() {
       await close();
     }
     assert.deepEqual(failures,[]);
+  } finally { await page.close(); }
+}
+
+async function validateGradeAndPaymentRequests() {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const requests = [];
+  const api = "/api/aluno/financeiro/appypay";
+  const reference = { id: "fixture-reference", entity: "12345", reference: "123456789", amount: 500, currency: "AOA", expires_at: "2099-12-01T00:00:00Z", status: "active" };
+  let issued = false;
+  try {
+    await page.route("**/api/**", route => {
+      const req = route.request();
+      const url = new URL(req.url());
+      url.searchParams.sort();
+      const body = req.method() === "POST" ? req.postDataJSON() : null;
+      requests.push({ path: url.pathname, key: req.method() + " " + url.pathname + url.search, action: body?.action ?? url.searchParams.get("action"), body });
+      if (url.pathname === "/api/professor/periodos") return route.fulfill({ json: { ok: true, items: [1,2,3].map(numero => ({ id: "period-"+numero, numero, data_inicio: null, data_fim: null, trava_notas_em: null })) } });
+      if (url.pathname === "/api/professor/pauta") {
+        const mac = 10 + Number(url.searchParams.get("trimestre")) + (url.searchParams.get("disciplinaId") === "disc-2" ? 3 : 0);
+        return route.fulfill({ json: [{ aluno_id:"fixture-student", matricula_id:"fixture-enrollment", mac, npt: 17, mt: 15 }], headers: { "x-klasse-grade-max":"20", "x-klasse-grade-components":"MAC,NPT" } });
+      }
+      if (url.pathname === api) {
+        if (req.method() === "GET") return route.fulfill({ json: url.searchParams.get("action") === "status" ? { ok:true, enabled:true } : { ok:true, amount:500, environment:"sandbox", canIssue:!issued, reference:issued ? reference : null } });
+        if (body.action === "issue") { issued = true; return route.fulfill({ json: { ok:true, reference } }); }
+        if (body.action === "check") return route.fulfill({ json: { ok:true, status:"reconciled" } });
+      }
+      return route.fulfill({ json:{ok:true} });
+    });
+    const open = async flow => {
+      await page.goto(base + "/?story=drawer-data&flow=" + flow);
+      await page.getByRole("button",{name:"Abrir portal"}).click();
+    };
+    await open("individual-grades");
+    const discipline = page.getByLabel("Disciplina",{exact:true});
+    const period = page.getByLabel("Trimestre",{exact:true});
+    const expectGrade = async value => page.getByText(value + " / 20",{exact:true}).waitFor();
+    await expectGrade(11);
+    await period.selectOption("2"); await expectGrade(12);
+    await discipline.selectOption("disc-2"); await expectGrade(15);
+    await period.selectOption("1"); await expectGrade(14);
+    const gradeReads = () => requests.filter(r => r.path === "/api/professor/pauta");
+    assert.equal(gradeReads().length,4,"first visit to each subject/term combination must query once");
+    assert.equal(new Set(gradeReads().map(r=>r.key)).size,4);
+    await discipline.selectOption("disc"); await expectGrade(11);
+    await period.selectOption("2"); await expectGrade(12);
+    await discipline.selectOption("disc-2"); await expectGrade(15);
+    assert.equal(gradeReads().length,4,"revisiting subject/term repeated the grade query");
+    assert.equal(requests.filter(r => r.path === "/api/professor/periodos").length,1);
+    console.log("Drawer request budget: individual grades, four first reads, zero repeats on subject/term revisit");
+    await open("appypay");
+    await page.getByRole("button",{name:"Pagar com AppyPay"}).click();
+    const panel = page.getByRole("region",{name:"Pagamento por referência"});
+    const generate = panel.getByRole("button",{name:/Gerar referência de/});
+    await generate.waitFor();
+    const payments = action => requests.filter(r=>r.path===api&&r.action===action);
+    assert.equal(payments("status").length,1);
+    assert.equal(payments("preview").length,1);
+    assert.equal(payments("issue").length,0);
+    assert.equal(payments("check").length,0);
+    await panel.getByRole("button",{name:"Fechar",exact:true}).click();
+    await page.getByRole("button",{name:"Pagar com AppyPay"}).click();
+    await generate.waitFor();
+    // A new payment preview is deliberate: the payable balance may have changed.
+    assert.equal(payments("preview").length,2);
+    assert.equal(payments("status").length,1);
+    assert.equal(payments("issue").length,0);
+    await generate.click();
+    await panel.getByText("Referência emitida — a aguardar pagamento",{exact:true}).waitFor();
+    assert.equal(payments("issue").length,1);
+    assert.equal(payments("issue")[0].body.expectedAmount,500);
+    assert.equal(payments("preview").length,2);
+    assert.equal(payments("check").length,0);
+    await panel.getByRole("button",{name:"Verificar pagamento"}).click();
+    await panel.getByText("Pagamento confirmado e registado.",{exact:true}).waitFor();
+    assert.equal(payments("check").length,1);
+    assert.equal(payments("issue").length,1);
+    assert.equal(payments("preview").length,2);
+    console.log("Drawer request budget: AppyPay monthly: one preview per opening, one explicit issue, one explicit check, no implicit writes");
   } finally { await page.close(); }
 }
