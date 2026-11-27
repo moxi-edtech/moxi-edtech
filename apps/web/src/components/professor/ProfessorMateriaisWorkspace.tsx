@@ -1,5 +1,6 @@
 "use client";
 
+import { loadAgendaAssignments, type AgendaAssignment } from "./agendaAssignments";
 import React, { useEffect, useState, useMemo } from "react";
 import { usePortalDrawerGuard, usePortalDrawerNavigation } from "@/components/portal/ui/PortalDrawerNavigator";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
@@ -40,7 +41,7 @@ type Assignment = {
   disciplina_nome?: string;
 };
 
-export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId = "", requestedDisciplinaId = "" }: { embedded?: boolean; requestedTurmaId?: string; requestedDisciplinaId?: string }) {
+export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId = "", requestedDisciplinaId = "", initialAgenda }: { embedded?: boolean; requestedTurmaId?: string; requestedDisciplinaId?: string; initialAgenda?: readonly AgendaAssignment[] }) {
   const { success, error: toastError } = useToast();
   const [materiais, setMateriais] = useState<MaterialPedagogico[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -73,20 +74,19 @@ export function ProfessorMateriaisWorkspace({ embedded = false, requestedTurmaId
     try {
       setLoading(true);
       setLoadError(null);
-      const [mRes, agendaRes] = await Promise.all([
+      const [mRes, agendaItems] = await Promise.all([
         fetch("/api/professor/materiais-pedagogicos", { cache: "no-store" }),
-        fetch("/api/professor/agenda", { cache: "no-store" }),
+        loadAgendaAssignments(initialAgenda),
       ]);
 
       const mJson = await mRes.json();
-      const agendaJson = await agendaRes.json();
 
       if (!mRes.ok || !mJson?.ok) throw new Error(mJson?.error || "Não foi possível carregar os materiais.");
       setMateriais(Array.isArray(mJson.items) ? mJson.items : []);
 
-      if (agendaRes.ok && agendaJson.items) {
+      {
         const pairsMap = new Map<string, Assignment>();
-        for (const item of agendaJson.items) {
+        for (const item of agendaItems) {
           if (item.turma_id && item.disciplina_id) {
             const key = `${item.turma_id}:${item.disciplina_id}`;
             if (!pairsMap.has(key)) {
