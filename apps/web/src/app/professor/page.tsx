@@ -105,6 +105,9 @@ type OperationKind = "exams" | "attendance" | "plans" | "materials" | "grades" |
 
 export default function Page() {
   const [historical, setHistorical] = useState(false);
+  const [loadedLessonScope, setLoadedLessonScope] = useState<string | null>(null);
+  const [lessonYearId, setLessonYearId] = useState<string | null>(null);
+  const lessonWriteLock = useRef(false);
   const [atribs, setAtribs] = useState<AtribItem[]>([]);
   const [academicYearLabel, setAcademicYearLabel] = useState<string | null>(null);
   const [agenda, setAgenda] = useState<AgendaItem[]>([]);
@@ -143,6 +146,8 @@ export default function Page() {
     const load = async () => {
       try {
         setLoading(true);
+        setLoadedLessonScope(null);
+        setLessonYearId(null);
         setLoadError(null);
         setPendenciasResumo(null);
         const todayIso = getSchoolNow().date;
@@ -162,10 +167,14 @@ export default function Page() {
         const overviewJson = await overviewRes.json().catch(() => null);
         if (!atribsJson?.ok || !agendaJson?.ok || !aulasJson?.ok) throw new Error("Dados académicos indisponíveis. Tente novamente.");
         if (!cancelled) {
-          setHistorical(atribsJson.context?.mode === "HISTORICAL_READ");
+          const context = atribsJson.context;
+          const current = context?.mode === "CURRENT" && typeof context.anoLetivoId === "string" && (!requestedAcademicYearId || context.anoLetivoId === requestedAcademicYearId);
+          setHistorical(context?.mode === "HISTORICAL_READ");
+          setLoadedLessonScope(current ? JSON.stringify([escolaParam ?? "", requestedAcademicYearId]) : null);
+          setLessonYearId(current ? context.anoLetivoId : null);
           setAtribs((atribsJson?.items || []) as AtribItem[]);
           setAcademicYearLabel(typeof atribsJson?.context?.anoLetivoLabel === "string" ? atribsJson.context.anoLetivoLabel : null);
-          const actualLessons = (aulasJson?.items || []) as AgendaItem[];
+          const actualLessons = (current ? (aulasJson?.items || []) : []) as AgendaItem[];
           const actualByKey = new Map(actualLessons.map((lesson) => [`${lesson.turma_id}:${lesson.disciplina_id}:${lesson.slot_id ?? lesson.inicio}`, lesson]));
           setAgenda(((agendaJson?.items || []) as AgendaItem[]).map((item) => {
             const actual = actualByKey.get(`${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`);
@@ -201,7 +210,7 @@ export default function Page() {
   }, [retryVersion, requestedAcademicYearId, escolaParam]);
 
   useEffect(() => {
-    if (historical) return;
+    if (historical || !lessonYearId || loadedLessonScope !== JSON.stringify([escolaParam ?? "", requestedAcademicYearId])) return;
     let disposed = false;
     const poll = async () => {
       if (disposed || document.hidden || pollingInFlight.current || loadError) return;
@@ -240,17 +249,19 @@ export default function Page() {
       if (timeout !== undefined) clearTimeout(timeout);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [loadError, historical, escolaParam, requestedAcademicYearId]);
+  }, [loadError, historical, escolaParam, requestedAcademicYearId, loadedLessonScope, lessonYearId]);
 
   const loadAgain = () => setRetryVersion((current) => current + 1);
 
+  const lessonWritable = !historical && !loading && !loadError && Boolean(lessonYearId) && loadedLessonScope === JSON.stringify([escolaParam ?? "", requestedAcademicYearId]);
   const startLesson = async (item: AgendaItem) => {
-    if (!item.turma_id || !item.disciplina_id) return;
+    if (!lessonWritable || lessonWriteLock.current || !item.turma_id || !item.disciplina_id) return;
+    lessonWriteLock.current = true;
     const key = `${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}`;
     setStartingKey(key);
     try {
       const data = getSchoolNow().date;
-      const response = await fetch("/api/professor/aulas/iniciar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turma_id: item.turma_id, disciplina_id: item.disciplina_id, data, slot_id: item.slot_id ?? undefined, inicio_previsto: item.inicio, fim_previsto: item.fim }) });
+      const response = await fetch("/api/professor/aulas/iniciar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ano_letivo_id: lessonYearId, turma_id: item.turma_id, disciplina_id: item.disciplina_id, data, slot_id: item.slot_id ?? undefined, inicio_previsto: item.inicio, fim_previsto: item.fim }) });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível confirmar a aula.");
       const aulaId = payload.aula?.id ?? payload.aula_id ?? null;
@@ -259,15 +270,17 @@ export default function Page() {
     } catch (cause) {
       toastError("Não foi possível confirmar", cause instanceof Error ? cause.message : "Tente novamente.");
     } finally {
+      lessonWriteLock.current = false;
       setStartingKey(null);
     }
   };
 
   const finalizeLesson = async (item: AgendaItem) => {
-    if (!item.aula_id) return;
+    if (!lessonWritable || lessonWriteLock.current || !item.aula_id) return;
+    lessonWriteLock.current = true;
     setFinalizing(true);
     try {
-      const response = await fetch("/api/professor/aulas/finalizar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aula_id: item.aula_id, resumo: finalizeSummary.trim() || null }) });
+      const response = await fetch("/api/professor/aulas/finalizar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ano_letivo_id: lessonYearId, aula_id: item.aula_id, resumo: finalizeSummary.trim() || null }) });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? "Não foi possível finalizar a aula.");
       setAgenda((current) => current.map((candidate) => candidate.aula_id === item.aula_id ? { ...candidate, status: "finalizada" } : candidate));
@@ -283,6 +296,7 @@ export default function Page() {
     } catch (cause) {
       toastError("Não foi possível finalizar", cause instanceof Error ? cause.message : "Tente novamente.");
     } finally {
+      lessonWriteLock.current = false;
       setFinalizing(false);
     }
   };
@@ -323,6 +337,7 @@ export default function Page() {
   }, [agenda, todayKey]);
 
   const aulaAtiva = useMemo(() => {
+    if (!lessonWritable) return null;
     const aulasHojeList = agendaByDay.get(todayKey) || [];
     if (aulasHojeList.length === 0) return null;
     
@@ -340,7 +355,7 @@ export default function Page() {
       }
     }
     return null;
-  }, [agendaByDay, nowTick, todayKey]);
+  }, [agendaByDay, nowTick, todayKey, lessonWritable]);
 
   const selectedTurma = !loading && !loadError ? turmaMap.find(turma => turma.id === expandedTurmaId) : undefined;
   const selectedLesson = !loading && !loadError ? (agendaByDay.get(todayKey) ?? []).find(item => `${getSchoolNow(new Date(nowTick)).date}:${item.turma_id}:${item.disciplina_id}:${item.slot_id ?? item.inicio}` === selectedLessonKey) : undefined;
@@ -350,6 +365,8 @@ export default function Page() {
     setExpandedTurmaId(null);
     setSelectedLessonKey(null);
     setOperation(null);
+    setFinalizingKey(null);
+    setFinalizeSummary("");
   }, [operationScope]);
   const operationFrame = (kind: OperationKind, turmaId?: string | null, disciplinaId?: string | null): PortalDrawerFrame => ({
     id: JSON.stringify([operationScope, kind, turmaId ?? "", disciplinaId ?? ""]),
@@ -593,7 +610,7 @@ export default function Page() {
                               ) : item.status === "finalizada" ? (
                                 <span className="font-semibold text-muted-foreground">Finalizada</span>
                               ) : (
-                                <button type="button" onClick={() => void startLesson(item)} disabled={startingKey === key} className="inline-flex min-h-10 items-center rounded-xl border border-border px-2.5 font-semibold text-klasse-green disabled:opacity-50">
+                                <button type="button" onClick={() => void startLesson(item)} disabled={!lessonWritable || startingKey !== null || finalizing} className="inline-flex min-h-10 items-center rounded-xl border border-border px-2.5 font-semibold text-klasse-green disabled:opacity-50">
                                   {startingKey === key ? "A confirmar..." : "Entrar na sala"}
                                 </button>
                               )}
@@ -606,7 +623,7 @@ export default function Page() {
                                 <label className="block text-xs font-semibold text-foreground" htmlFor={`resumo-${idx}`}>Resumo da aula (opcional)</label>
                                 <textarea id={`resumo-${idx}`} value={finalizeSummary} onChange={(event) => setFinalizeSummary(event.target.value)} rows={2} className="w-full rounded-xl border border-border bg-card p-2 text-sm text-foreground focus:border-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20" />
                                 <div className="grid grid-cols-2 gap-2">
-                                  <button type="button" onClick={() => void finalizeLesson(item)} disabled={finalizing} className="min-h-11 rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 disabled:opacity-50">
+                                  <button type="button" onClick={() => void finalizeLesson(item)} disabled={!lessonWritable || finalizing || startingKey !== null} className="min-h-11 rounded-xl bg-klasse-gold px-2 text-xs font-semibold text-klasse-gold-900 disabled:opacity-50">
                                     {finalizing ? "A finalizar..." : "Confirmar saída"}
                                   </button>
                                   <button type="button" onClick={() => setFinalizingKey(null)} disabled={finalizing} className="min-h-11 rounded-xl border border-border bg-card px-2 text-xs font-semibold text-foreground disabled:opacity-50">Cancelar</button>
